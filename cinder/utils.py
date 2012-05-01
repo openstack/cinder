@@ -52,6 +52,7 @@ from cinder import exception
 from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
 
@@ -868,32 +869,6 @@ def generate_glance_url():
 
 
 @contextlib.contextmanager
-def save_and_reraise_exception():
-    """Save current exception, run some code and then re-raise.
-
-    In some cases the exception context can be cleared, resulting in None
-    being attempted to be reraised after an exception handler is run. This
-    can happen when eventlet switches greenthreads or when running an
-    exception handler, code raises and catches an exception. In both
-    cases the exception context will be cleared.
-
-    To work around this, we save the exception state, run handler code, and
-    then re-raise the original exception. If another exception occurs, the
-    saved exception is logged and the new exception is reraised.
-    """
-    type_, value, traceback = sys.exc_info()
-    try:
-        yield
-    except Exception:
-        # NOTE(jkoelker): Using LOG.error here since it accepts exc_info
-        #                 as a kwargs.
-        LOG.error(_('Original exception being dropped'),
-                  exc_info=(type_, value, traceback))
-        raise
-    raise type_, value, traceback
-
-
-@contextlib.contextmanager
 def logging_error(message):
     """Catches exception, write message to the log, re-raise.
     This is a common refinement of save_and_reraise that writes a specific
@@ -902,7 +877,7 @@ def logging_error(message):
     try:
         yield
     except Exception as error:
-        with save_and_reraise_exception():
+        with excutils.save_and_reraise_exception():
             LOG.exception(message)
 
 
@@ -914,7 +889,7 @@ def remove_path_on_error(path):
     try:
         yield
     except Exception:
-        with save_and_reraise_exception():
+        with excutils.save_and_reraise_exception():
             delete_if_exists(path)
 
 
@@ -1281,7 +1256,7 @@ class UndoManager(object):
         .. note:: (sirp) This should only be called within an
                   exception handler.
         """
-        with save_and_reraise_exception():
+        with excutils.save_and_reraise_exception():
             if msg:
                 LOG.exception(msg, **kwargs)
 

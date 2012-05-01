@@ -44,6 +44,7 @@ from cinder import flags
 from cinder import log as logging
 from cinder import manager
 from cinder.openstack.common import cfg
+from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
 from cinder import rpc
@@ -135,7 +136,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             if model_update:
                 self.db.volume_update(context, volume_ref['id'], model_update)
         except Exception:
-            with utils.save_and_reraise_exception():
+            with excutils.save_and_reraise_exception():
                 self.db.volume_update(context,
                                       volume_ref['id'], {'status': 'error'})
 
@@ -169,7 +170,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   {'status': 'available'})
             return True
         except Exception:
-            with utils.save_and_reraise_exception():
+            with excutils.save_and_reraise_exception():
                 self.db.volume_update(context,
                                       volume_ref['id'],
                                       {'status': 'error_deleting'})
@@ -193,7 +194,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                         model_update)
 
         except Exception:
-            with utils.save_and_reraise_exception():
+            with excutils.save_and_reraise_exception():
                 self.db.snapshot_update(context,
                                         snapshot_ref['id'],
                                         {'status': 'error'})
@@ -219,7 +220,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                     {'status': 'available'})
             return True
         except Exception:
-            with utils.save_and_reraise_exception():
+            with excutils.save_and_reraise_exception():
                 self.db.snapshot_update(context,
                                         snapshot_ref['id'],
                                         {'status': 'error_deleting'})

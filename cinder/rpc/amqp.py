@@ -34,9 +34,10 @@ from eventlet import greenpool
 from eventlet import pools
 from eventlet import semaphore
 
+from cinder.openstack.common import excutils
 from cinder.openstack.common import local
 import cinder.rpc.common as rpc_common
-from cinder import utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -312,7 +313,7 @@ class MulticallWaiter(object):
             try:
                 self._iterator.next()
             except Exception:
-                with utils.save_and_reraise_exception():
+                with excutils.save_and_reraise_exception():
                     self.done()
             if self._got_ending:
                 self.done()
