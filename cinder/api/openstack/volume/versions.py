@@ -15,10 +15,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 
-from cinder.api.openstack.compute import versions
+from lxml import etree
+
 from cinder.api.openstack.volume.views import versions as views_versions
 from cinder.api.openstack import wsgi
+from cinder.api.openstack import xmlutil
 
 
 VERSIONS = {
@@ -55,25 +58,177 @@ VERSIONS = {
 }
 
 
-class Versions(versions.Versions):
-    @wsgi.serializers(xml=versions.VersionsTemplate,
-                      atom=versions.VersionsAtomSerializer)
+class MediaTypesTemplateElement(xmlutil.TemplateElement):
+    def will_render(self, datum):
+        return 'media-types' in datum
+
+
+def make_version(elem):
+    elem.set('id')
+    elem.set('status')
+    elem.set('updated')
+
+    mts = MediaTypesTemplateElement('media-types')
+    elem.append(mts)
+
+    mt = xmlutil.SubTemplateElement(mts, 'media-type', selector='media-types')
+    mt.set('base')
+    mt.set('type')
+
+    xmlutil.make_links(elem, 'links')
+
+
+version_nsmap = {None: xmlutil.XMLNS_COMMON_V10, 'atom': xmlutil.XMLNS_ATOM}
+
+
+class VersionTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        root = xmlutil.TemplateElement('version', selector='version')
+        make_version(root)
+        return xmlutil.MasterTemplate(root, 1, nsmap=version_nsmap)
+
+
+class VersionsTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        root = xmlutil.TemplateElement('versions')
+        elem = xmlutil.SubTemplateElement(root, 'version', selector='versions')
+        make_version(elem)
+        return xmlutil.MasterTemplate(root, 1, nsmap=version_nsmap)
+
+
+class ChoicesTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        root = xmlutil.TemplateElement('choices')
+        elem = xmlutil.SubTemplateElement(root, 'version', selector='choices')
+        make_version(elem)
+        return xmlutil.MasterTemplate(root, 1, nsmap=version_nsmap)
+
+
+class AtomSerializer(wsgi.XMLDictSerializer):
+
+    NSMAP = {None: xmlutil.XMLNS_ATOM}
+
+    def __init__(self, metadata=None, xmlns=None):
+        self.metadata = metadata or {}
+        if not xmlns:
+            self.xmlns = wsgi.XMLNS_ATOM
+        else:
+            self.xmlns = xmlns
+
+    def _get_most_recent_update(self, versions):
+        recent = None
+        for version in versions:
+            updated = datetime.datetime.strptime(version['updated'],
+                                                 '%Y-%m-%dT%H:%M:%SZ')
+            if not recent:
+                recent = updated
+            elif updated > recent:
+                recent = updated
+
+        return recent.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def _get_base_url(self, link_href):
+        # Make sure no trailing /
+        link_href = link_href.rstrip('/')
+        return link_href.rsplit('/', 1)[0] + '/'
+
+    def _create_feed(self, versions, feed_title, feed_id):
+        feed = etree.Element('feed', nsmap=self.NSMAP)
+        title = etree.SubElement(feed, 'title')
+        title.set('type', 'text')
+        title.text = feed_title
+
+        # Set this updated to the most recently updated version
+        recent = self._get_most_recent_update(versions)
+        etree.SubElement(feed, 'updated').text = recent
+
+        etree.SubElement(feed, 'id').text = feed_id
+
+        link = etree.SubElement(feed, 'link')
+        link.set('rel', 'self')
+        link.set('href', feed_id)
+
+        author = etree.SubElement(feed, 'author')
+        etree.SubElement(author, 'name').text = 'Rackspace'
+        etree.SubElement(author, 'uri').text = 'http://www.rackspace.com/'
+
+        for version in versions:
+            feed.append(self._create_version_entry(version))
+
+        return feed
+
+    def _create_version_entry(self, version):
+        entry = etree.Element('entry')
+        etree.SubElement(entry, 'id').text = version['links'][0]['href']
+        title = etree.SubElement(entry, 'title')
+        title.set('type', 'text')
+        title.text = 'Version %s' % version['id']
+        etree.SubElement(entry, 'updated').text = version['updated']
+
+        for link in version['links']:
+            link_elem = etree.SubElement(entry, 'link')
+            link_elem.set('rel', link['rel'])
+            link_elem.set('href', link['href'])
+            if 'type' in link:
+                link_elem.set('type', link['type'])
+
+        content = etree.SubElement(entry, 'content')
+        content.set('type', 'text')
+        content.text = 'Version %s %s (%s)' % (version['id'],
+                                               version['status'],
+                                               version['updated'])
+        return entry
+
+
+class VersionsAtomSerializer(AtomSerializer):
+    def default(self, data):
+        versions = data['versions']
+        feed_id = self._get_base_url(versions[0]['links'][0]['href'])
+        feed = self._create_feed(versions, 'Available API Versions', feed_id)
+        return self._to_xml(feed)
+
+
+class VersionAtomSerializer(AtomSerializer):
+    def default(self, data):
+        version = data['version']
+        feed_id = version['links'][0]['href']
+        feed = self._create_feed([version], 'About This Version', feed_id)
+        return self._to_xml(feed)
+
+
+class Versions(wsgi.Resource):
+
+    def __init__(self):
+        super(Versions, self).__init__(None)
+
+    @wsgi.serializers(xml=VersionsTemplate,
+                      atom=VersionsAtomSerializer)
     def index(self, req):
         """Return all versions."""
         builder = views_versions.get_view_builder(req)
         return builder.build_versions(VERSIONS)
 
-    @wsgi.serializers(xml=versions.ChoicesTemplate)
+    @wsgi.serializers(xml=ChoicesTemplate)
     @wsgi.response(300)
     def multi(self, req):
         """Return multiple choices."""
         builder = views_versions.get_view_builder(req)
         return builder.build_choices(VERSIONS, req)
 
+    def get_action_args(self, request_environment):
+        """Parse dictionary created by routes library."""
+        args = {}
+        if request_environment['PATH_INFO'] == '/':
+            args['action'] = 'index'
+        else:
+            args['action'] = 'multi'
+
+        return args
+
 
 class VolumeVersionV1(object):
-    @wsgi.serializers(xml=versions.VersionTemplate,
-                      atom=versions.VersionAtomSerializer)
+    @wsgi.serializers(xml=VersionTemplate,
+                      atom=VersionAtomSerializer)
     def show(self, req):
         builder = views_versions.get_view_builder(req)
         return builder.build_version(VERSIONS['v1.0'])

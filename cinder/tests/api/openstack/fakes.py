@@ -26,7 +26,7 @@ from cinder.api import auth as api_auth
 from cinder.api import openstack as openstack_api
 from cinder.api.openstack import auth
 from cinder.api.openstack import urlmap
-from cinder.api.openstack.compute import versions
+from cinder.api.openstack.volume import versions
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder import context
 from cinder.db.sqlalchemy import models
