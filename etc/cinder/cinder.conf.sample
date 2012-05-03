@@ -1,0 +1,673 @@
+####################
+# cinder.conf sample #
+####################
+
+[DEFAULT]
+
+######### defined in cinder.flags #########
+
+###### (BoolOpt) Allow destination machine to match source for resize. Useful when testing in single-host environments.
+# allow_resize_to_same_host=false
+###### (StrOpt) File name for the paste.deploy config for cinder-api
+# api_paste_config="api-paste.ini"
+###### (BoolOpt) whether to rate limit the api
+# api_rate_limit=true
+###### (StrOpt) The strategy to use for auth. Supports noauth, keystone, and deprecated.
+# auth_strategy="noauth"
+###### (IntOpt) Seconds for auth tokens to linger
+# auth_token_ttl=3600
+###### (StrOpt) AWS Access ID
+# aws_access_key_id="admin"
+###### (StrOpt) AWS Access Key
+# aws_secret_access_key="admin"
+###### (IntOpt) interval to pull bandwidth usage info
+# bandwith_poll_interval=600
+###### (StrOpt) Directory where cinder binaries are installed
+# bindir="$pybasedir/bin"
+###### (BoolOpt) Cache glance images locally
+# cache_images=true
+###### (StrOpt) full class name for the Manager for cert
+# cert_manager="cinder.cert.manager.CertManager"
+###### (MultiStrOpt) Path to a config file to use. Multiple config files can be specified, with values in later files taking precedence. The default files used are: []
+###### (StrOpt) Virtualization api connection type : libvirt, xenapi, or fake
+# connection_type=<None>
+###### (StrOpt) full class name for the Manager for console proxy
+# console_manager="cinder.console.manager.ConsoleProxyManager"
+###### (StrOpt) the topic console proxy nodes listen on
+# console_topic="console"
+###### (StrOpt) the main RabbitMQ exchange to connect to
+# control_exchange="cinder"
+###### (BoolOpt) Print debugging output
+# debug=false
+###### (StrOpt) Name of network to use to set access ips for instances
+# default_access_ip_network_name=<None>
+###### (StrOpt) The default format a ephemeral_volume will be formatted with on creation.
+# default_ephemeral_format=<None>
+###### (StrOpt) default image to use, testing only
+# default_image="ami-11111"
+###### (StrOpt) default instance type to use, testing only
+# default_instance_type="m1.small"
+###### (StrOpt) the default project to use for openstack
+# default_project="openstack"
+###### (StrOpt) availability zone to use when user doesn't specify one
+# default_schedule_zone=<None>
+###### (StrOpt) the internal ip of the ec2 api server
+# ec2_dmz_host="$my_ip"
+###### (StrOpt) the ip of the ec2 api server
+# ec2_host="$my_ip"
+###### (StrOpt) the path prefix used to call the ec2 api server
+# ec2_path="/services/Cloud"
+###### (IntOpt) the port of the ec2 api server
+# ec2_port=8773
+###### (StrOpt) the protocol to use when connecting to the ec2 api server (http, https)
+# ec2_scheme="http"
+###### (BoolOpt) Allows use of instance password during server creation
+# enable_instance_password=true
+###### (ListOpt) a list of APIs to enable by default
+# enabled_apis="ec2,osapi_compute,osapi_volume,metadata"
+###### (BoolOpt) If passed, use fake network devices and addresses
+# fake_network=false
+###### (BoolOpt) If passed, use a fake RabbitMQ provider
+# fake_rabbit=false
+###### (StrOpt) Firewall driver (defaults to iptables)
+# firewall_driver="cinder.virt.firewall.IptablesFirewallDriver"
+###### (StrOpt) full class name for the DNS Manager for floating IPs
+# floating_ip_dns_manager="cinder.network.dns_driver.DNSDriver"
+###### (ListOpt) A list of the glance api servers available to cinder ([hostname|ip]:port)
+# glance_api_servers="$glance_host:$glance_port"
+###### (StrOpt) default glance hostname or ip
+# glance_host="$my_ip"
+###### (IntOpt) Number retries when downloading an image from glance
+# glance_num_retries=0
+###### (IntOpt) default glance port
+# glance_port=9292
+###### (StrOpt) Name of this node.  This can be an opaque identifier.  It is not necessarily a hostname, FQDN, or IP address.
+# host="cinder"
+###### (StrOpt) The service to use for retrieving and searching images.
+# image_service="cinder.image.glance.GlanceImageService"
+###### (StrOpt) full class name for the DNS Zone for instance IPs
+# instance_dns_domain=""
+###### (StrOpt) full class name for the DNS Manager for instance IPs
+# instance_dns_manager="cinder.network.dns_driver.DNSDriver"
+###### (StrOpt) time period to generate instance usages for.  Time period must be hour, day, month or year
+# instance_usage_audit_period="month"
+###### (ListOpt) Host reserved for specific images
+# isolated_hosts=""
+###### (ListOpt) Images to run on isolated host
+# isolated_images=""
+###### (StrOpt) Directory to use for lock files
+# lock_path="$pybasedir"
+###### (StrOpt) If this option is specified, the logging configuration file specified is used and overrides any other logging options specified. Please see the Python logging module documentation for details on logging configuration files.
+# log-config=<None>
+###### (StrOpt) Format string for %(asctime)s in log records. Default: %default
+# log-date-format="%Y-%m-%d %H:%M:%S"
+###### (StrOpt) (Optional) The directory to keep log files in (will be prepended to --logfile)
+# log-dir=<None>
+###### (StrOpt) (Optional) Name of log file to output to. If not set, logging will go to stdout.
+# log-file=<None>
+###### (StrOpt) A logging.Formatter log message format string which may use any of the available logging.LogRecord attributes. Default: %default
+# log-format="%(asctime)s %(levelname)8s [%(name)s] %(message)s"
+###### (StrOpt) Log output to a per-service log file in named directory
+# logdir=<None>
+###### (StrOpt) Log output to a named file
+# logfile=<None>
+###### (StrOpt) Default file mode used when creating log files
+# logfile_mode="0644"
+###### (ListOpt) Memcached servers or None for in process cache.
+# memcached_servers=<None>
+###### (StrOpt) the ip for the metadata api server
+# metadata_host="$my_ip"
+###### (IntOpt) the port for the metadata api port
+# metadata_port=8775
+###### (BoolOpt) Whether to log monkey patching
+# monkey_patch=false
+###### (ListOpt) List of modules/decorators to monkey patch
+# monkey_patch_modules="cinder.api.ec2.cloud:cinder.notifier.api.notify_decorator,cinder.compute.api:cinder.notifier.api.notify_decorator"
+###### (StrOpt) ip address of this host
+# my_ip="10.0.0.1"
+###### (StrOpt) availability zone of this node
+# node_availability_zone="cinder"
+###### (StrOpt) Default driver for sending notifications
+# notification_driver="cinder.notifier.no_op_notifier"
+###### (StrOpt) kernel image that indicates not to use a kernel, but to use a raw disk image instead
+# null_kernel="nokernel"
+###### (ListOpt) Specify list of extensions to load when using osapi_compute_extension option with cinder.api.openstack.compute.contrib.select_extensions
+# osapi_compute_ext_list=""
+###### (MultiStrOpt) osapi compute extension to load
+# osapi_compute_extension="cinder.api.openstack.compute.contrib.standard_extensions"
+###### (StrOpt) Base URL that will be presented to users in links to the OpenStack Compute API
+# osapi_compute_link_prefix=<None>
+###### (StrOpt) Base URL that will be presented to users in links to glance resources
+# osapi_glance_link_prefix=<None>
+###### (IntOpt) the maximum number of items returned in a single response from a collection resource
+# osapi_max_limit=1000
+###### (StrOpt) the path prefix used to call the openstack api server
+# osapi_path="/v1.1/"
+###### (StrOpt) the protocol to use when connecting to the openstack api server (http, https)
+# osapi_scheme="http"
+###### (ListOpt) Specify list of extensions to load when using osapi_volume_extension option with cinder.api.openstack.volume.contrib.select_extensions
+# osapi_volume_ext_list=""
+###### (MultiStrOpt) osapi volume extension to load
+# osapi_volume_extension="cinder.api.openstack.volume.contrib.standard_extensions"
+###### (IntOpt) Length of generated instance admin passwords
+# password_length=12
+###### (StrOpt) Directory where the cinder python module is installed
+# pybasedir="/usr/lib/python/site-packages"
+###### (BoolOpt) use durable queues in RabbitMQ
+# rabbit_durable_queues=false
+###### (StrOpt) the RabbitMQ host
+# rabbit_host="localhost"
+###### (IntOpt) maximum retries with trying to connect to RabbitMQ (the default of 0 implies an infinite retry count)
+# rabbit_max_retries=0
+###### (StrOpt) the RabbitMQ password
+# rabbit_password="guest"
+###### (IntOpt) the RabbitMQ port
+# rabbit_port=5672
+###### (IntOpt) how long to backoff for between retries when connecting to RabbitMQ
+# rabbit_retry_backoff=2
+###### (IntOpt) how frequently to retry connecting with RabbitMQ
+# rabbit_retry_interval=1
+###### (BoolOpt) connect over SSL for RabbitMQ
+# rabbit_use_ssl=false
+###### (StrOpt) the RabbitMQ userid
+# rabbit_userid="guest"
+###### (StrOpt) the RabbitMQ virtual host
+# rabbit_virtual_host="/"
+###### (IntOpt) Interval in seconds for reclaiming deleted instances
+# reclaim_instance_interval=0
+###### (ListOpt) list of region=fqdn pairs separated by commas
+# region_list=""
+###### (BoolOpt) Whether to start guests that were running before the host rebooted
+# resume_guests_state_on_host_boot=false
+###### (StrOpt) Command prefix to use for running commands as root
+# root_helper="sudo"
+###### (StrOpt) hostname or ip for the instances to use when accessing the s3 api
+# s3_dmz="$my_ip"
+###### (StrOpt) hostname or ip for openstack to use when accessing the s3 api
+# s3_host="$my_ip"
+###### (IntOpt) port used when accessing the s3 api
+# s3_port=3333
+###### (StrOpt) full class name for the Manager for scheduler
+# scheduler_manager="cinder.scheduler.manager.SchedulerManager"
+###### (StrOpt) the topic scheduler nodes listen on
+# scheduler_topic="scheduler"
+###### (StrOpt) The full class name of the security group handler class
+# security_group_handler="cinder.network.quantum.sg.NullSecurityGroupHandler"
+###### (IntOpt) maximum time since last check-in for up service
+# service_down_time=60
+###### (StrOpt) The SQLAlchemy connection string used to connect to the database
+# sql_connection="sqlite:///$state_path/$sqlite_db"
+###### (IntOpt) timeout before idle sql connections are reaped
+# sql_idle_timeout=3600
+###### (IntOpt) maximum db connection retries during startup. (setting -1 implies an infinite retry count)
+# sql_max_retries=10
+###### (IntOpt) interval between retries of opening a sql connection
+# sql_retry_interval=10
+###### (StrOpt) the filename to use with sqlite
+# sqlite_db="cinder.sqlite"
+###### (BoolOpt) If passed, use synchronous mode for sqlite
+# sqlite_synchronous=true
+###### (BoolOpt) Whether to restart guests when the host reboots
+# start_guests_on_host_boot=false
+###### (StrOpt) Top-level directory for maintaining cinder's state
+# state_path="$pybasedir"
+###### (StrOpt) Stub network related code
+# stub_network="False"
+###### (StrOpt) syslog facility to receive log lines
+# syslog-log-facility="LOG_USER"
+###### (BoolOpt) Whether to use cow images
+# use_cow_images=true
+###### (BoolOpt) use ipv6
+# use_ipv6=false
+###### (BoolOpt) Log output to standard error
+# use_stderr=true
+###### (BoolOpt) Use syslog for logging.
+# use-syslog=false
+###### (BoolOpt) Print more verbose output
+# verbose=false
+###### (StrOpt) The full class name of the volume API class to use
+# volume_api_class="cinder.volume.api.API"
+###### (StrOpt) full class name for the Manager for volume
+# volume_manager="cinder.volume.manager.VolumeManager"
+###### (StrOpt) the topic volume nodes listen on
+# volume_topic="volume"
+###### (StrOpt) image id used when starting up a cloudpipe vpn server
+# vpn_image_id="0"
+###### (StrOpt) Suffix to add to project name for vpn key and secgroups
+# vpn_key_suffix="-vpn"
+###### (IntOpt) Number of seconds zombie instances are cleaned up.
+# zombie_instance_updated_at_window=172800
+
+######### defined in cinder.log #########
+
+###### (ListOpt) list of logger=LEVEL pairs
+# default_log_levels="amqplib=WARN,sqlalchemy=WARN,boto=WARN,suds=INFO,eventlet.wsgi.server=WARN"
+###### (StrOpt) If an instance is passed with the log message, format it like this
+# instance_format="[instance: %(uuid)s] "
+###### (StrOpt) format string to use for log messages with context
+# logging_context_format_string="%(asctime)s %(levelname)s %(name)s [%(request_id)s %(user_id)s %(project_id)s] %(instance)s%(message)s"
+###### (StrOpt) data to append to log format when level is DEBUG
+# logging_debug_format_suffix="from (pid=%(process)d) %(funcName)s %(pathname)s:%(lineno)d"
+###### (StrOpt) format string to use for log messages without context
+# logging_default_format_string="%(asctime)s %(levelname)s %(name)s [-] %(instance)s%(message)s"
+###### (StrOpt) prefix each line of exception output with this format
+# logging_exception_prefix="(%(name)s): TRACE: "
+###### (BoolOpt) publish error events
+# publish_errors=false
+
+######### defined in cinder.utils #########
+
+###### (BoolOpt) Whether to disable inter-process locks
+# disable_process_locking=false
+
+######### defined in cinder.service #########
+
+###### (StrOpt) The backend to use for db
+# db_backend="sqlalchemy"
+###### (StrOpt) IP address for EC2 API to listen
+# ec2_listen="0.0.0.0"
+###### (IntOpt) port for ec2 api to listen
+# ec2_listen_port=8773
+###### (BoolOpt) Services to be added to the available pool on create
+# enable_new_services=true
+###### (StrOpt) Template string to be used to generate instance names
+# instance_name_template="instance-%08x"
+###### (StrOpt) IP address for metadata api to listen
+# metadata_listen="0.0.0.0"
+###### (IntOpt) port for metadata api to listen
+# metadata_listen_port=8775
+###### (StrOpt) OpenStack metadata service manager
+# metadata_manager="cinder.api.manager.MetadataManager"
+###### (StrOpt) IP address for OpenStack API to listen
+# osapi_compute_listen="0.0.0.0"
+###### (IntOpt) list port for osapi compute
+# osapi_compute_listen_port=8774
+###### (StrOpt) IP address for OpenStack Volume API to listen
+# osapi_volume_listen="0.0.0.0"
+###### (IntOpt) port for os volume api to listen
+# osapi_volume_listen_port=8776
+###### (IntOpt) seconds between running periodic tasks
+# periodic_interval=60
+###### (IntOpt) seconds between nodes reporting state to datastore
+# report_interval=10
+###### (StrOpt) The messaging module to use, defaults to kombu.
+# rpc_backend="cinder.rpc.impl_kombu"
+###### (StrOpt) Template string to be used to generate snapshot names
+# snapshot_name_template="snapshot-%08x"
+###### (StrOpt) Template string to be used to generate instance names
+# volume_name_template="volume-%08x"
+
+######### defined in cinder.crypto #########
+
+###### (StrOpt) Filename of root CA
+# ca_file="cacert.pem"
+###### (StrOpt) Where we keep our root CA
+# ca_path="$state_path/CA"
+###### (StrOpt) Filename of root Certificate Revocation List
+# crl_file="crl.pem"
+###### (StrOpt) Filename of private key
+# key_file="private/cakey.pem"
+###### (StrOpt) Where we keep our keys
+# keys_path="$state_path/keys"
+###### (StrOpt) Subject for certificate for projects, %s for project, timestamp
+# project_cert_subject="/C=US/ST=California/O=OpenStack/OU=CinderDev/CN=project-ca-%.16s-%s"
+###### (BoolOpt) Should we use a CA for each project?
+# use_project_ca=false
+###### (StrOpt) Subject for certificate for users, %s for project, user, timestamp
+# user_cert_subject="/C=US/ST=California/O=OpenStack/OU=CinderDev/CN=%.16s-%.16s-%s"
+
+######### defined in cinder.policy #########
+
+###### (StrOpt) Rule checked when requested rule is not found
+# policy_default_rule="default"
+###### (StrOpt) JSON file representing policy
+# policy_file="policy.json"
+
+######### defined in cinder.quota #########
+
+###### (IntOpt) number of instance cores allowed per project
+# quota_cores=20
+###### (IntOpt) number of floating ips allowed per project
+# quota_floating_ips=10
+###### (IntOpt) number of volume gigabytes allowed per project
+# quota_gigabytes=1000
+###### (IntOpt) number of instances allowed per project
+# quota_instances=10
+###### (IntOpt) number of bytes allowed per injected file
+# quota_injected_file_content_bytes=10240
+###### (IntOpt) number of bytes allowed per injected file path
+# quota_injected_file_path_bytes=255
+###### (IntOpt) number of injected files allowed
+# quota_injected_files=5
+###### (IntOpt) number of metadata items allowed per instance
+# quota_metadata_items=128
+###### (IntOpt) megabytes of instance ram allowed per project
+# quota_ram=51200
+###### (IntOpt) number of volumes allowed per project
+# quota_volumes=10
+
+######### defined in cinder.test #########
+
+###### (StrOpt) the topic console auth proxy nodes listen on
+# consoleauth_topic="consoleauth"
+###### (StrOpt) driver to use for database access
+# db_driver="cinder.db"
+###### (BoolOpt) should we use everything for testing
+# fake_tests=true
+###### (StrOpt) Timeout after NN seconds when looking for a host.
+# find_host_timeout="30"
+###### (IntOpt) Size of RPC connection pool
+# rpc_conn_pool_size=30
+###### (IntOpt) Seconds to wait for a response from call or multicall
+# rpc_response_timeout=60
+###### (IntOpt) Size of RPC thread pool
+# rpc_thread_pool_size=1024
+###### (StrOpt) File name of clean sqlite db
+# sqlite_clean_db="clean.sqlite"
+###### (StrOpt) availability zone of this service
+# storage_availability_zone="cinder"
+###### (BoolOpt) if True, will not discover local volumes
+# use_local_volumes=true
+###### (StrOpt) Driver to use for volume creation
+# volume_driver="cinder.volume.driver.ISCSIDriver"
+###### (BoolOpt) if True will force update capabilities on each check
+# volume_force_update_capabilities=false
+
+######### defined in cinder.auth.ldapdriver #########
+
+###### (StrOpt) cn for Cloud Admins
+# ldap_cloudadmin="cn=cloudadmins,ou=Groups,dc=example,dc=com"
+###### (StrOpt) cn for Developers
+# ldap_developer="cn=developers,ou=Groups,dc=example,dc=com"
+###### (StrOpt) cn for ItSec
+# ldap_itsec="cn=itsec,ou=Groups,dc=example,dc=com"
+###### (StrOpt) cn for NetAdmins
+# ldap_netadmin="cn=netadmins,ou=Groups,dc=example,dc=com"
+###### (StrOpt) LDAP password
+# ldap_password="changeme"
+###### (StrOpt) OU for Projects
+# ldap_project_subtree="ou=Groups,dc=example,dc=com"
+###### (IntOpt) Current version of the LDAP schema
+# ldap_schema_version=2
+###### (StrOpt) cn for Sysadmins
+# ldap_sysadmin="cn=sysadmins,ou=Groups,dc=example,dc=com"
+###### (StrOpt) Point this at your ldap server
+# ldap_url="ldap://localhost"
+###### (StrOpt) DN of admin user
+# ldap_user_dn="cn=Manager,dc=example,dc=com"
+###### (StrOpt) Attribute to use as id
+# ldap_user_id_attribute="uid"
+###### (BoolOpt) Modify user attributes instead of creating/deleting
+# ldap_user_modify_only=false
+###### (StrOpt) Attribute to use as name
+# ldap_user_name_attribute="cn"
+###### (StrOpt) OU for Users
+# ldap_user_subtree="ou=Users,dc=example,dc=com"
+###### (StrOpt) OID for Users
+# ldap_user_unit="Users"
+###### (StrOpt) OU for Roles
+# role_project_subtree="ou=Groups,dc=example,dc=com"
+
+######### defined in cinder.auth.manager #########
+
+###### (ListOpt) Allowed roles for project
+# allowed_roles="cloudadmin,itsec,sysadmin,netadmin,developer"
+###### (StrOpt) Driver that auth manager uses
+# auth_driver="cinder.auth.dbdriver.DbDriver"
+###### (StrOpt) Filename of certificate in credentials zip
+# credential_cert_file="cert.pem"
+###### (StrOpt) Filename of private key in credentials zip
+# credential_key_file="pk.pem"
+###### (StrOpt) Filename of rc in credentials zip %s will be replaced by name of the region (cinder by default)
+# credential_rc_file="%src"
+###### (StrOpt) Filename of certificate in credentials zip
+# credential_vpn_file="cinder-vpn.conf"
+###### (StrOpt) Template for creating users rc file
+# credentials_template="$pybasedir/cinder/auth/cinderrc.template"
+###### (ListOpt) Roles that apply to all projects
+# global_roles="cloudadmin,itsec"
+###### (ListOpt) Roles that ignore authorization checking completely
+# superuser_roles="cloudadmin"
+###### (StrOpt) Template for creating users vpn file
+# vpn_client_template="$pybasedir/cinder/cloudpipe/client.ovpn.template"
+
+######### defined in cinder.api.auth #########
+
+###### (BoolOpt) Treat X-Forwarded-For as the canonical remote address. Only enable this if you have a sanitizing proxy.
+# use_forwarded_for=false
+
+######### defined in cinder.api.ec2 #########
+
+###### (BoolOpt) Return the IP address as private dns hostname in describe instances
+# ec2_private_dns_show_ip=false
+###### (StrOpt) URL to get token from ec2 request.
+# keystone_ec2_url="http://localhost:5000/v2.0/ec2tokens"
+###### (IntOpt) Number of failed auths before lockout.
+# lockout_attempts=5
+###### (IntOpt) Number of minutes to lockout if triggered.
+# lockout_minutes=15
+###### (IntOpt) Number of minutes for lockout window.
+# lockout_window=15
+
+######### defined in cinder.api.openstack.compute #########
+
+###### (BoolOpt) Permit instance snapshot operations.
+# allow_instance_snapshots=true
+
+######### defined in cinder.ipv6.api #########
+
+###### (StrOpt) Backend to use for IPv6 generation
+# ipv6_backend="rfc2462"
+
+######### defined in cinder.virt.baremetal.nodes #########
+
+###### (StrOpt) Bare-metal driver runs on
+# baremetal_driver="tilera"
+###### (StrOpt) Tilera command line program for Bare-metal driver
+# tile_monitor="/usr/local/TileraMDE/bin/tile-monitor"
+
+######### defined in cinder.notifier.list_notifier #########
+
+###### (MultiStrOpt) List of drivers to send notifications
+# list_notifier_drivers="cinder.notifier.no_op_notifier"
+
+######### defined in cinder.notifier.rabbit_notifier #########
+
+###### (ListOpt) AMQP topic used for Cinder notifications
+# notification_topics="notifications"
+
+######### defined in cinder.rpc.common #########
+
+###### (ListOpt) Modules of exceptions that are permitted to be recreated
+# allowed_rpc_exception_modules="cinder.exception"
+
+######### defined in cinder.rpc.impl_kombu #########
+
+###### (StrOpt) SSL certification authority file (valid only if SSL enabled)
+# kombu_ssl_ca_certs=""
+###### (StrOpt) SSL cert file (valid only if SSL enabled)
+# kombu_ssl_certfile=""
+###### (StrOpt) SSL key file (valid only if SSL enabled)
+# kombu_ssl_keyfile=""
+###### (StrOpt) SSL version to use (valid only if SSL enabled)
+# kombu_ssl_version=""
+
+######### defined in cinder.rpc.impl_qpid #########
+
+###### (IntOpt) Seconds between connection keepalive heartbeats
+# qpid_heartbeat=5
+###### (StrOpt) Qpid broker hostname
+# qpid_hostname="localhost"
+###### (StrOpt) Password for qpid connection
+# qpid_password=""
+###### (StrOpt) Qpid broker port
+# qpid_port="5672"
+###### (StrOpt) Transport to use, either 'tcp' or 'ssl'
+# qpid_protocol="tcp"
+###### (BoolOpt) Automatically reconnect
+# qpid_reconnect=true
+###### (IntOpt) Equivalent to setting max and min to the same value
+# qpid_reconnect_interval=0
+###### (IntOpt) Maximum seconds between reconnection attempts
+# qpid_reconnect_interval_max=0
+###### (IntOpt) Minimum seconds between reconnection attempts
+# qpid_reconnect_interval_min=0
+###### (IntOpt) Max reconnections before giving up
+# qpid_reconnect_limit=0
+###### (IntOpt) Reconnection timeout in seconds
+# qpid_reconnect_timeout=0
+###### (StrOpt) Space separated list of SASL mechanisms to use for auth
+# qpid_sasl_mechanisms=""
+###### (BoolOpt) Disable Nagle algorithm
+# qpid_tcp_nodelay=true
+###### (StrOpt) Username for qpid connection
+# qpid_username=""
+
+######### defined in cinder.scheduler.driver #########
+
+###### (StrOpt) The scheduler host manager class to use
+# scheduler_host_manager="cinder.scheduler.host_manager.HostManager"
+
+######### defined in cinder.scheduler.filters.core_filter #########
+
+###### (FloatOpt) Virtual CPU to Physical CPU allocation ratio
+# cpu_allocation_ratio=16.0
+
+######### defined in cinder.scheduler.filters.ram_filter #########
+
+###### (FloatOpt) virtual ram to physical ram allocation ratio
+# ram_allocation_ratio=1.5
+
+######### defined in cinder.scheduler.host_manager #########
+
+###### (IntOpt) Amount of disk in MB to reserve for host/dom0
+# reserved_host_disk_mb=0
+###### (IntOpt) Amount of memory in MB to reserve for host/dom0
+# reserved_host_memory_mb=512
+###### (MultiStrOpt) Filter classes available to the scheduler which may be specified more than once.  An entry of "cinder.scheduler.filters.standard_filters" maps to all filters included with cinder.
+# scheduler_available_filters="cinder.scheduler.filters.standard_filters"
+###### (ListOpt) Which filter class names to use for filtering hosts when not specified in the request.
+# scheduler_default_filters="AvailabilityZoneFilter,RamFilter,ComputeFilter"
+
+######### defined in cinder.scheduler.least_cost #########
+
+###### (FloatOpt) How much weight to give the fill-first cost function. A negative value will reverse behavior: e.g. spread-first
+# compute_fill_first_cost_fn_weight=-1.0
+###### (ListOpt) Which cost functions the LeastCostScheduler should use
+# least_cost_functions="cinder.scheduler.least_cost.compute_fill_first_cost_fn"
+###### (FloatOpt) How much weight to give the noop cost function
+# noop_cost_fn_weight=1.0
+
+######### defined in cinder.scheduler.manager #########
+
+###### (StrOpt) Default driver to use for the scheduler
+# scheduler_driver="cinder.scheduler.multi.MultiScheduler"
+
+######### defined in cinder.scheduler.multi #########
+
+###### (StrOpt) Driver to use for scheduling compute calls
+# compute_scheduler_driver="cinder.scheduler.filter_scheduler.FilterScheduler"
+###### (StrOpt) Driver to use for scheduling volume calls
+# volume_scheduler_driver="cinder.scheduler.chance.ChanceScheduler"
+
+######### defined in cinder.scheduler.scheduler_options #########
+
+###### (StrOpt) Absolute path to scheduler configuration JSON file.
+# scheduler_json_config_location=""
+
+######### defined in cinder.scheduler.simple #########
+
+###### (IntOpt) maximum number of instance cores to allow per host
+# max_cores=16
+###### (IntOpt) maximum number of volume gigabytes to allow per host
+# max_gigabytes=10000
+###### (IntOpt) maximum number of networks to allow per host
+# max_networks=1000
+###### (BoolOpt) Allow overcommitting vcpus on isolated hosts
+# skip_isolated_core_check=true
+
+######### defined in cinder.volume.driver #########
+
+###### (StrOpt) iscsi target user-land tool to use
+# iscsi_helper="ietadm"
+###### (StrOpt) use this ip for iscsi
+# iscsi_ip_address="$my_ip"
+###### (IntOpt) Number of iscsi target ids per host
+# iscsi_num_targets=100
+###### (IntOpt) The port that the iSCSI daemon is listening on
+# iscsi_port=3260
+###### (StrOpt) prefix for iscsi volumes
+# iscsi_target_prefix="iqn.2010-10.org.openstack:"
+###### (StrOpt) number of times to rescan iSCSI target to find volume
+# num_iscsi_scan_tries="3"
+###### (StrOpt) number of times to attempt to run flakey shell commands
+# num_shell_tries="3"
+###### (StrOpt) the rbd pool in which volumes are stored
+# rbd_pool="rbd"
+###### (StrOpt) Name for the VG that will contain exported volumes
+# volume_group="cinder-volumes"
+
+######### defined in cinder.volume.netapp #########
+
+###### (StrOpt) User name for the DFM server
+# netapp_login=<None>
+###### (StrOpt) Password for the DFM server
+# netapp_password=<None>
+###### (StrOpt) Hostname for the DFM server
+# netapp_server_hostname=<None>
+###### (IntOpt) Port number for the DFM server
+# netapp_server_port=8088
+###### (StrOpt) Storage service to use for provisioning
+# netapp_storage_service=<None>
+###### (StrOpt) Vfiler to use for provisioning
+# netapp_vfiler=<None>
+###### (StrOpt) URL of the WSDL file for the DFM server
+# netapp_wsdl_url=<None>
+
+######### defined in cinder.volume.nexenta.volume #########
+
+###### (StrOpt) block size for volumes (blank=default,8KB)
+# nexenta_blocksize=""
+###### (StrOpt) IP address of Nexenta SA
+# nexenta_host=""
+###### (IntOpt) Nexenta target portal port
+# nexenta_iscsi_target_portal_port=3260
+###### (StrOpt) Password to connect to Nexenta SA
+# nexenta_password="nexenta"
+###### (IntOpt) HTTP port to connect to Nexenta REST API server
+# nexenta_rest_port=2000
+###### (StrOpt) Use http or https for REST connection (default auto)
+# nexenta_rest_protocol="auto"
+###### (BoolOpt) flag to create sparse volumes
+# nexenta_sparse=false
+###### (StrOpt) prefix for iSCSI target groups on SA
+# nexenta_target_group_prefix="cinder/"
+###### (StrOpt) IQN prefix for iSCSI targets
+# nexenta_target_prefix="iqn.1986-03.com.sun:02:cinder-"
+###### (StrOpt) User name to connect to Nexenta SA
+# nexenta_user="admin"
+###### (StrOpt) pool on SA that will hold all volumes
+# nexenta_volume="cinder"
+
+######### defined in cinder.volume.san #########
+
+###### (StrOpt) Cluster name to use for creating volumes
+# san_clustername=""
+###### (StrOpt) IP address of SAN controller
+# san_ip=""
+###### (BoolOpt) Execute commands locally instead of over SSH; use if the volume service is running on the SAN device
+# san_is_local=false
+###### (StrOpt) Username for SAN controller
+# san_login="admin"
+###### (StrOpt) Password for SAN controller
+# san_password=""
+###### (StrOpt) Filename of private key to use for SSH authentication
+# san_private_key=""
+###### (IntOpt) SSH port to use with SAN
+# san_ssh_port=22
+###### (BoolOpt) Use thin provisioning for SAN volumes?
+# san_thin_provision=true
+###### (StrOpt) The ZFS path under which to create zvols for volumes.
+# san_zfs_volume_base="rpool/"
+
+# Total option count: 467
