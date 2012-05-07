@@ -30,6 +30,7 @@ from cinder import flags
 from cinder import log as logging
 from cinder.rpc import amqp as rpc_amqp
 from cinder.rpc import common as rpc_common
+from cinder.rpc import dispatcher as rpc_dispatcher
 from cinder import test
 
 
@@ -44,8 +45,9 @@ class BaseRpcTestCase(test.TestCase):
         self.context = context.get_admin_context()
         if self.rpc:
             self.conn = self.rpc.create_connection(FLAGS, True)
-            self.receiver = TestReceiver()
-            self.conn.create_consumer('test', self.receiver, False)
+            receiver = TestReceiver()
+            self.dispatcher = rpc_dispatcher.RpcDispatcher([receiver])
+            self.conn.create_consumer('test', self.dispatcher, False)
             self.conn.consume_in_thread()
 
     def tearDown(self):
@@ -145,8 +147,9 @@ class BaseRpcTestCase(test.TestCase):
                 return value
 
         nested = Nested()
+        dispatcher = rpc_dispatcher.RpcDispatcher([nested])
         conn = self.rpc.create_connection(FLAGS, True)
-        conn.create_consumer('nested', nested, False)
+        conn.create_consumer('nested', dispatcher, False)
         conn.consume_in_thread()
         value = 42
         result = self.rpc.call(FLAGS, self.context,
@@ -228,7 +231,6 @@ class TestReceiver(object):
     Uses static methods because we aren't actually storing any state.
 
     """
-
     @staticmethod
     def echo(context, value):
         """Simply returns whatever value is sent in."""

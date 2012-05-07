@@ -17,6 +17,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+"""
+A remote procedure call (rpc) abstraction.
+
+For some wrappers that add message versioning to rpc, see:
+    rpc.dispatcher
+    rpc.proxy
+"""
+
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 
