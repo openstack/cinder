@@ -115,7 +115,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_show(self):
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
-        res_dict = self.controller.show(req, 1)
+        res_dict = self.controller.show(req, '1')
         expected = {'volume': {'status': 'fakestatus',
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',
@@ -140,7 +140,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
-        res_dict = self.controller.show(req, 1)
+        res_dict = self.controller.show(req, '1')
         expected = {'volume': {'status': 'fakestatus',
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',

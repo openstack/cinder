@@ -403,6 +403,10 @@ class InstanceUnacceptable(Invalid):
     message = _("Instance %(instance_id)s is unacceptable: %(reason)s")
 
 
+class InvalidUUID(Invalid):
+    message = _("Expected a uuid but received %(uuid).")
+
+
 class NotFound(CinderException):
     message = _("Resource could not be found.")
     code = 404

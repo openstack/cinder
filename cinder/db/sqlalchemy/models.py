@@ -300,15 +300,6 @@ class InstanceInfoCache(BASE, CinderBase):
                             primaryjoin=instance_id == Instance.uuid)
 
 
-class InstanceActions(BASE, CinderBase):
-    """Represents a guest VM's actions and results"""
-    __tablename__ = "instance_actions"
-    id = Column(Integer, primary_key=True)
-    instance_uuid = Column(String(36), ForeignKey('instances.uuid'))
-    action = Column(String(255))
-    error = Column(Text)
-
-
 class InstanceTypes(BASE, CinderBase):
     """Represent possible instance_types or flavor of VM offered"""
     __tablename__ = "instance_types"
@@ -350,12 +341,7 @@ class Volume(BASE, CinderBase):
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
-    instance_id = Column(Integer, ForeignKey('instances.id'), nullable=True)
-    instance = relationship(Instance,
-                            backref=backref('volumes'),
-                            foreign_keys=instance_id,
-                            primaryjoin='and_(Volume.instance_id==Instance.id,'
-                                             'Volume.deleted==False)')
+    instance_uuid = Column(String(36))
     mountpoint = Column(String(255))
     attach_time = Column(String(255))  # TODO(vish): datetime
     status = Column(String(255))  # TODO(vish): enum?

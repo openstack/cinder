@@ -34,6 +34,7 @@ from migrate.versioning import repository
 import sqlalchemy
 
 import cinder.db.sqlalchemy.migrate_repo
+import cinder.db.migration as migration
 from cinder.db.sqlalchemy.migration import versioning_api as migration_api
 from cinder import log as logging
 from cinder import test
@@ -68,10 +69,11 @@ def _is_mysql_avail(user="openstack_citest",
         return True
 
 
-def _missing_mysql():
-    if "NOVA_TEST_MYSQL_PRESENT" in os.environ:
-        return True
-    return not _is_mysql_avail()
+def _have_mysql():
+    present = os.environ.get('NOVA_TEST_MYSQL_PRESENT')
+    if present is None:
+        return _is_mysql_avail()
+    return present.lower() in ('', 'true')
 
 
 class TestMigrations(test.TestCase):
@@ -215,7 +217,7 @@ class TestMigrations(test.TestCase):
         if _is_mysql_avail(user="openstack_cifail"):
             self.fail("Shouldn't have connected")
 
-    @test.skip_if(_missing_mysql(), "mysql not available")
+    @test.skip_unless(_have_mysql(), "mysql not available")
     def test_mysql_innodb(self):
         """
         Test that table creation on mysql only builds InnoDB tables
@@ -231,7 +233,7 @@ class TestMigrations(test.TestCase):
         self._reset_databases()
         self._walk_versions(engine, False, False)
 
-        uri = self._mysql_get_connect_string(database="information_schema")
+        uri = _mysql_get_connect_string(database="information_schema")
         connection = sqlalchemy.create_engine(uri).connect()
 
         # sanity check
