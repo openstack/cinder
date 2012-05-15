@@ -21,7 +21,6 @@ import copy
 import sys
 import traceback
 
-from cinder import exception
 from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
@@ -31,7 +30,29 @@ from cinder import utils
 LOG = logging.getLogger(__name__)
 
 
-class RemoteError(exception.CinderException):
+class RPCException(Exception):
+    message = _("An unknown RPC related exception occurred.")
+
+    def __init__(self, message=None, **kwargs):
+        self.kwargs = kwargs
+
+        if not message:
+            try:
+                message = self.message % kwargs
+
+            except Exception as e:
+                # kwargs doesn't match a variable in the message
+                # log the issue and the kwargs
+                LOG.exception(_('Exception in string format operation'))
+                for name, value in kwargs.iteritems():
+                    LOG.error("%s: %s" % (name, value))
+                # at least get the core message out if something happened
+                message = self.message
+
+        super(RPCException, self).__init__(message)
+
+
+class RemoteError(RPCException):
     """Signifies that a remote class has raised an exception.
 
     Contains a string representation of the type of the original exception,
@@ -51,13 +72,17 @@ class RemoteError(exception.CinderException):
                                           traceback=traceback)
 
 
-class Timeout(exception.CinderException):
+class Timeout(RPCException):
     """Signifies that a timeout has occurred.
 
     This exception is raised if the rpc_response_timeout is reached while
     waiting for a response from the remote side.
     """
     message = _("Timeout while waiting on RPC response.")
+
+
+class InvalidRPCConnectionReuse(RPCException):
+    message = _("Invalid reuse of an RPC connection.")
 
 
 class Connection(object):
