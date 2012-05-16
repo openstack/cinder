@@ -47,6 +47,8 @@ FLAGS.register_opt(scheduler_driver_opt)
 class SchedulerManager(manager.Manager):
     """Chooses a host to run instances on."""
 
+    RPC_API_VERSION = '1.0'
+
     def __init__(self, scheduler_driver=None, *args, **kwargs):
         if not scheduler_driver:
             scheduler_driver = FLAGS.scheduler_driver
@@ -55,6 +57,9 @@ class SchedulerManager(manager.Manager):
 
     def __getattr__(self, key):
         """Converts all method calls to use the schedule method"""
+        # NOTE(russellb) Because of what this is doing, we must be careful
+        # when changing the API of the scheduler drivers, as that changes
+        # the rpc API as well, and the version should be updated accordingly.
         return functools.partial(self._schedule, key)
 
     def get_host_list(self, context):
