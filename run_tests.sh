@@ -39,6 +39,7 @@ function process_option {
     -p|--pep8) just_pep8=1;;
     -P|--no-pep8) no_pep8=1;;
     -c|--coverage) coverage=1;;
+    -x|--coverage-xml) coverage_xml=1;;
     -*) noseopts="$noseopts $1";;
     *) noseargs="$noseargs $1"
   esac
@@ -57,6 +58,7 @@ wrapper=""
 just_pep8=0
 no_pep8=0
 coverage=0
+coverage_xml=0
 recreate_db=1
 patch_migrate=1
 
@@ -67,6 +69,9 @@ done
 # If enabled, tell nose to collect coverage data
 if [ $coverage -eq 1 ]; then
     noseopts="$noseopts --with-coverage --cover-package=cinder"
+fi
+if [ $coverage_xml -eq 1 ]; then
+    noseopts="$noseopts --with-xcoverage --cover-package=cinder --xcoverage-file=`pwd`/coverage.xml"
 fi
 
 if [ $no_site_packages -eq 1 ]; then
