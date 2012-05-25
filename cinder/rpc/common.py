@@ -25,6 +25,7 @@ from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import local
 
 
 LOG = logging.getLogger(__name__)
@@ -248,3 +249,47 @@ def deserialize_remote_exception(conf, data):
         # first exception argument.
         failure.args = (message,) + failure.args[1:]
     return failure
+
+
+class CommonRpcContext(object):
+    def __init__(self, **kwargs):
+        self.values = kwargs
+
+    def __getattr__(self, key):
+        try:
+            return self.values[key]
+        except KeyError:
+            raise AttributeError(key)
+
+    def to_dict(self):
+        return copy.deepcopy(self.values)
+
+    @classmethod
+    def from_dict(cls, values):
+        return cls(**values)
+
+    def update_store(self):
+        local.store.context = self
+
+    def elevated(self, read_deleted=None, overwrite=False):
+        """Return a version of this context with admin flag set."""
+        # TODO(russellb) This method is a bit of a cinder-ism.  It makes
+        # some assumptions about the data in the request context sent
+        # across rpc, while the rest of this class does not.  We could get
+        # rid of this if we changed the cinder code that uses this to
+        # convert the RpcContext back to its native RequestContext doing
+        # something like
+        # cinder.context.RequestContext.from_dict(ctxt.to_dict())
+
+        context = copy.deepcopy(self)
+        context.values['is_admin'] = True
+
+        context.values.setdefault('roles', [])
+
+        if 'admin' not in context.values['roles']:
+            context.values['roles'].append('admin')
+
+        if read_deleted is not None:
+            context.values['read_deleted'] = read_deleted
+
+        return context

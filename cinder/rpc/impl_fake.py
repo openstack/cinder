@@ -26,15 +26,14 @@ import traceback
 
 import eventlet
 
-from cinder import context
 from cinder.rpc import common as rpc_common
 
 CONSUMERS = {}
 
 
-class RpcContext(context.RequestContext):
-    def __init__(self, *args, **kwargs):
-        super(RpcContext, self).__init__(*args, **kwargs)
+class RpcContext(rpc_common.CommonRpcContext):
+    def __init__(self, **kwargs):
+        super(RpcContext, self).__init__(**kwargs)
         self._response = []
         self._done = False
 
