@@ -39,41 +39,8 @@ class SchedulerAPI(cinder.rpc.proxy.RpcProxy):
         super(SchedulerAPI, self).__init__(topic=FLAGS.scheduler_topic,
                 default_version=self.RPC_API_VERSION)
 
-    def run_instance(self, ctxt, topic, request_spec, admin_password,
-            injected_files, requested_networks, is_first_time,
-            filter_properties, call=True):
-        rpc_method = self.call if call else self.cast
-        return rpc_method(ctxt, self.make_msg('run_instance', topic=topic,
-                request_spec=request_spec, admin_password=admin_password,
-                injected_files=injected_files,
-                requested_networks=requested_networks,
-                is_first_time=is_first_time,
-                filter_properties=filter_properties))
-
-    def prep_resize(self, ctxt, topic, instance_uuid, instance_type_id, image,
-            update_db, request_spec, filter_properties):
-        self.cast(ctxt, self.make_msg('prep_resize', topic=topic,
-                instance_uuid=instance_uuid, instance_type_id=instance_type_id,
-                image=image, update_db=update_db, request_spec=request_spec,
-                filter_properties=filter_properties))
-
-    def show_host_resources(self, ctxt, host):
-        return self.call(ctxt, self.make_msg('show_host_resources', host=host))
-
-    def live_migration(self, ctxt, block_migration, disk_over_commit,
-            instance_id, dest, topic):
-        # NOTE(comstud): Call vs cast so we can get exceptions back, otherwise
-        # this call in the scheduler driver doesn't return anything.
-        return self.call(ctxt, self.make_msg('live_migration',
-                block_migration=block_migration,
-                disk_over_commit=disk_over_commit, instance_id=instance_id,
-                dest=dest, topic=topic))
-
     def update_service_capabilities(self, ctxt, service_name, host,
             capabilities):
         self.fanout_cast(ctxt, self.make_msg('update_service_capabilities',
                 service_name=service_name, host=host,
                 capabilities=capabilities))
-
-    def get_host_list(self, ctxt):
-        return self.call(ctxt, self.make_msg('get_host_list'))

@@ -63,41 +63,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(arg, expected_arg)
 
-    def test_run_instance_call(self):
-        self._test_scheduler_api('run_instance', rpc_method='call',
-                topic='fake_topic', request_spec='fake_request_spec',
-                admin_password='pw', injected_files='fake_injected_files',
-                requested_networks='fake_requested_networks',
-                is_first_time=True, filter_properties='fake_filter_properties')
-
-    def test_run_instance_cast(self):
-        self._test_scheduler_api('run_instance', rpc_method='cast',
-                topic='fake_topic', request_spec='fake_request_spec',
-                admin_password='pw', injected_files='fake_injected_files',
-                requested_networks='fake_requested_networks',
-                is_first_time=True, filter_properties='fake_filter_properties')
-
-    def test_prep_resize(self):
-        self._test_scheduler_api('prep_resize', rpc_method='cast',
-                topic='fake_topic', instance_uuid='fake_uuid',
-                instance_type_id='fake_type_id', image='fake_image',
-                update_db='fake_update_db', request_spec='fake_request_spec',
-                filter_properties='fake_props')
-
-    def test_show_host_resources(self):
-        self._test_scheduler_api('show_host_resources', rpc_method='call',
-                host='fake_host')
-
-    def test_live_migration(self):
-        self._test_scheduler_api('live_migration', rpc_method='call',
-                block_migration='fake_block_migration',
-                disk_over_commit='fake_disk_over_commit',
-                instance_id='fake_id', dest='fake_dest', topic='fake_topic')
-
     def test_update_service_capabilities(self):
         self._test_scheduler_api('update_service_capabilities',
                 rpc_method='fanout_cast', service_name='fake_name',
                 host='fake_host', capabilities='fake_capabilities')
-
-    def test_get_host_list(self):
-        self._test_scheduler_api('get_host_list', rpc_method='call')
