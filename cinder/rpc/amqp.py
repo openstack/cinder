@@ -26,6 +26,7 @@ AMQP, but is deprecated and predates this code.
 """
 
 import inspect
+import logging
 import sys
 import uuid
 
@@ -33,7 +34,6 @@ from eventlet import greenpool
 from eventlet import pools
 from eventlet import semaphore
 
-from cinder import log as logging
 from cinder.openstack.common import local
 import cinder.rpc.common as rpc_common
 from cinder import utils
