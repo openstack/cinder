@@ -54,8 +54,8 @@ def cast_to_volume_host(context, host, method, update_db=True, **kwargs):
             db.volume_update(context, volume_id,
                     {'host': host, 'scheduled_at': now})
     rpc.cast(context,
-            db.queue_get_for(context, FLAGS.volume_topic, host),
-            {"method": method, "args": kwargs})
+             rpc.queue_get_for(context, FLAGS.volume_topic, host),
+             {"method": method, "args": kwargs})
     LOG.debug(_("Casted '%(method)s' to host '%(host)s'") % locals())
 
 
@@ -70,8 +70,8 @@ def cast_to_host(context, topic, host, method, update_db=True, **kwargs):
         func(context, host, method, update_db=update_db, **kwargs)
     else:
         rpc.cast(context,
-            db.queue_get_for(context, topic, host),
-                {"method": method, "args": kwargs})
+                 rpc.queue_get_for(context, topic, host),
+                 {"method": method, "args": kwargs})
         LOG.debug(_("Casted '%(method)s' to %(topic)s '%(host)s'")
                 % locals())
 
@@ -145,8 +145,8 @@ class Scheduler(object):
         """
 
         src = instance_ref['host']
-        dst_t = db.queue_get_for(context, FLAGS.compute_topic, dest)
-        src_t = db.queue_get_for(context, FLAGS.compute_topic, src)
+        dst_t = rpc.queue_get_for(context, FLAGS.compute_topic, dest)
+        src_t = rpc.queue_get_for(context, FLAGS.compute_topic, src)
 
         filename = rpc.call(context, dst_t,
                             {"method": 'create_shared_storage_test_file'})

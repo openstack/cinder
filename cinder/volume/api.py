@@ -148,7 +148,7 @@ class API(base.Base):
                                                    'terminated_at': now})
         host = volume['host']
         rpc.cast(context,
-                 self.db.queue_get_for(context, FLAGS.volume_topic, host),
+                 rpc.queue_get_for(context, FLAGS.volume_topic, host),
                  {"method": "delete_volume",
                   "args": {"volume_id": volume_id}})
 
@@ -234,7 +234,7 @@ class API(base.Base):
     def remove_from_compute(self, context, volume, instance_id, host):
         """Remove volume from specified compute host."""
         rpc.call(context,
-                 self.db.queue_get_for(context, FLAGS.compute_topic, host),
+                 rpc.queue_get_for(context, FLAGS.compute_topic, host),
                  {"method": "remove_volume_connection",
                   "args": {'instance_id': instance_id,
                            'volume_id': volume['id']}})
@@ -251,7 +251,7 @@ class API(base.Base):
     @wrap_check_policy
     def attach(self, context, volume, instance_uuid, mountpoint):
         host = volume['host']
-        queue = self.db.queue_get_for(context, FLAGS.volume_topic, host)
+        queue = rpc.queue_get_for(context, FLAGS.volume_topic, host)
         return rpc.call(context, queue,
                         {"method": "attach_volume",
                          "args": {"volume_id": volume['id'],
@@ -261,7 +261,7 @@ class API(base.Base):
     @wrap_check_policy
     def detach(self, context, volume):
         host = volume['host']
-        queue = self.db.queue_get_for(context, FLAGS.volume_topic, host)
+        queue = rpc.queue_get_for(context, FLAGS.volume_topic, host)
         return rpc.call(context, queue,
                  {"method": "detach_volume",
                   "args": {"volume_id": volume['id']}})
@@ -269,7 +269,7 @@ class API(base.Base):
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
         host = volume['host']
-        queue = self.db.queue_get_for(context, FLAGS.volume_topic, host)
+        queue = rpc.queue_get_for(context, FLAGS.volume_topic, host)
         return rpc.call(context, queue,
                         {"method": "initialize_connection",
                          "args": {"volume_id": volume['id'],
@@ -279,7 +279,7 @@ class API(base.Base):
     def terminate_connection(self, context, volume, connector):
         self.unreserve_volume(context, volume)
         host = volume['host']
-        queue = self.db.queue_get_for(context, FLAGS.volume_topic, host)
+        queue = rpc.queue_get_for(context, FLAGS.volume_topic, host)
         return rpc.call(context, queue,
                         {"method": "terminate_connection",
                          "args": {"volume_id": volume['id'],
@@ -306,7 +306,7 @@ class API(base.Base):
         snapshot = self.db.snapshot_create(context, options)
         host = volume['host']
         rpc.cast(context,
-                 self.db.queue_get_for(context, FLAGS.volume_topic, host),
+                 rpc.queue_get_for(context, FLAGS.volume_topic, host),
                  {"method": "create_snapshot",
                   "args": {"volume_id": volume['id'],
                            "snapshot_id": snapshot['id']}})
@@ -330,7 +330,7 @@ class API(base.Base):
         volume = self.db.volume_get(context, snapshot['volume_id'])
         host = volume['host']
         rpc.cast(context,
-                 self.db.queue_get_for(context, FLAGS.volume_topic, host),
+                 rpc.queue_get_for(context, FLAGS.volume_topic, host),
                  {"method": "delete_snapshot",
                   "args": {"snapshot_id": snapshot['id']}})
 
