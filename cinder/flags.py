@@ -155,10 +155,10 @@ global_opts = [
                 help='A list of the glance api servers available to cinder '
                      '([hostname|ip]:port)'),
     cfg.StrOpt('scheduler_topic',
-               default='scheduler',
+               default='cinder-scheduler',
                help='the topic scheduler nodes listen on'),
     cfg.StrOpt('volume_topic',
-               default='volume',
+               default='cinder-volume',
                help='the topic volume nodes listen on'),
     cfg.StrOpt('rabbit_host',
                default='localhost',

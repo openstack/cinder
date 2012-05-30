@@ -244,7 +244,8 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         utils.utcnow().AndReturn('fake-now')
         db.volume_update(self.context, 31337,
                 {'host': host, 'scheduled_at': 'fake-now'})
-        db.queue_get_for(self.context, 'volume', host).AndReturn(queue)
+        db.queue_get_for(self.context,
+                         FLAGS.volume_topic, host).AndReturn(queue)
         rpc.cast(self.context, queue,
                 {'method': method,
                  'args': fake_kwargs})
@@ -262,7 +263,8 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         self.mox.StubOutWithMock(db, 'queue_get_for')
         self.mox.StubOutWithMock(rpc, 'cast')
 
-        db.queue_get_for(self.context, 'volume', host).AndReturn(queue)
+        db.queue_get_for(self.context,
+                         FLAGS.volume_topic, host).AndReturn(queue)
         rpc.cast(self.context, queue,
                 {'method': method,
                  'args': fake_kwargs})
@@ -280,7 +282,8 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         self.mox.StubOutWithMock(db, 'queue_get_for')
         self.mox.StubOutWithMock(rpc, 'cast')
 
-        db.queue_get_for(self.context, 'volume', host).AndReturn(queue)
+        db.queue_get_for(self.context,
+                         FLAGS.volume_topic, host).AndReturn(queue)
         rpc.cast(self.context, queue,
                 {'method': method,
                  'args': fake_kwargs})

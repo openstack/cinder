@@ -53,9 +53,9 @@ def cast_to_volume_host(context, host, method, update_db=True, **kwargs):
             db.volume_update(context, volume_id,
                     {'host': host, 'scheduled_at': now})
     rpc.cast(context,
-            db.queue_get_for(context, 'volume', host),
+            db.queue_get_for(context, FLAGS.volume_topic, host),
             {"method": method, "args": kwargs})
-    LOG.debug(_("Casted '%(method)s' to volume '%(host)s'") % locals())
+    LOG.debug(_("Casted '%(method)s' to host '%(host)s'") % locals())
 
 
 def cast_to_host(context, topic, host, method, update_db=True, **kwargs):

@@ -25,7 +25,7 @@ intact.
 
 **Related Flags**
 
-:volume_topic:  What :mod:`rpc` topic to listen to (default: `volume`).
+:volume_topic:  What :mod:`rpc` topic to listen to (default: `cinder-volume`).
 :volume_manager:  The module name of a class derived from
                   :class:`manager.Manager` (default:
                   :class:`cinder.volume.manager.Manager`).

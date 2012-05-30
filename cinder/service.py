@@ -238,9 +238,10 @@ class Service(object):
         if not binary:
             binary = os.path.basename(inspect.stack()[-1][1])
         if not topic:
-            topic = binary.rpartition('cinder-')[2]
+            topic = binary
         if not manager:
-            manager = FLAGS.get('%s_manager' % topic, None)
+            subtopic = topic.rpartition('cinder-')[2]
+            manager = FLAGS.get('%s_manager' % subtopic, None)
         if report_interval is None:
             report_interval = FLAGS.report_interval
         if periodic_interval is None:

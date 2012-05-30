@@ -297,7 +297,7 @@ def _service_get_all_topic_subquery(context, session, topic, subq, label):
 def service_get_all_volume_sorted(context):
     session = get_session()
     with session.begin():
-        topic = 'volume'
+        topic = FLAGS.volume_topic
         label = 'volume_gigabytes'
         subq = model_query(context, models.Volume.host,
                            func.sum(models.Volume.size).label(label),
