@@ -77,6 +77,8 @@ qpid_opts = [
                 help='Disable Nagle algorithm'),
     ]
 
+cfg.CONF.register_opts(qpid_opts)
+
 
 class ConsumerBase(object):
     """Consumer base class."""
@@ -562,7 +564,3 @@ def notify(conf, context, topic, msg):
 
 def cleanup():
     return rpc_amqp.cleanup(Connection.pool)
-
-
-def register_opts(conf):
-    conf.register_opts(qpid_opts)

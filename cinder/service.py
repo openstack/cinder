@@ -156,7 +156,6 @@ class Service(object):
         vcs_string = version.version_string_with_vcs()
         LOG.audit(_('Starting %(topic)s node (version %(vcs_string)s)'),
                   {'topic': self.topic, 'vcs_string': vcs_string})
-        rpc.register_opts(FLAGS)
         self.manager.init_host()
         self.model_disconnected = False
         ctxt = context.get_admin_context()
@@ -375,7 +374,6 @@ class WSGIService(object):
         :returns: None
 
         """
-        rpc.register_opts(FLAGS)
         if self.manager:
             self.manager.init_host()
         self.server.start()

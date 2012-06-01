@@ -59,9 +59,6 @@ def reset_db():
 def setup():
     import mox  # Fail fast if you don't have mox. Workaround for bug 810424
 
-    from cinder import rpc  # Register rpc_backend before fake_flags sets it
-    FLAGS.register_opts(rpc.rpc_opts)
-
     from cinder.db import migration
     from cinder.tests import fake_flags
     fake_flags.set_defaults(FLAGS)

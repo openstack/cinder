@@ -177,7 +177,3 @@ def fanout_cast(conf, context, topic, msg):
             consumer.call(context, method, args, None)
         except Exception:
             pass
-
-
-def register_opts(conf):
-    pass
