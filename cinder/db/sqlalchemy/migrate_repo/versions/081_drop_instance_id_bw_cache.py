@@ -64,6 +64,6 @@ def downgrade(migrate_engine):
 
     for row in migrate_engine.execute(bw_usage_cache.select()):
         instance_id = cache[row['mac']]
-        migrate_engine.execute(bw_usage_cache.update()\
-                    .where(bw_usage_cache.c.id == row['id'])\
+        migrate_engine.execute(bw_usage_cache.update()
+                    .where(bw_usage_cache.c.id == row['id'])
                     .values(instance_id=instance_id))

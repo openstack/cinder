@@ -31,8 +31,8 @@ def upgrade(migrate_engine):
     rows = migrate_engine.execute(instances.select())
     for row in rows:
         instance_uuid = str(utils.gen_uuid())
-        migrate_engine.execute(instances.update()\
-                .where(instances.c.id == row[0])\
+        migrate_engine.execute(instances.update()
+                .where(instances.c.id == row[0])
                 .values(uuid=instance_uuid))
 
 

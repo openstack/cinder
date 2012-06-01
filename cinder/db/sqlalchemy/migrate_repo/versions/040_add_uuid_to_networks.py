@@ -31,8 +31,8 @@ def upgrade(migrate_engine):
     rows = migrate_engine.execute(networks.select())
     for row in rows:
         networks_uuid = str(utils.gen_uuid())
-        migrate_engine.execute(networks.update()\
-                .where(networks.c.id == row[0])\
+        migrate_engine.execute(networks.update()
+                .where(networks.c.id == row[0])
                 .values(uuid=networks_uuid))
 
 

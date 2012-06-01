@@ -51,11 +51,11 @@ def upgrade(migrate_engine):
     bw_usage_cache.create_column(mac_column)
 
     bw_usage_cache.update()\
-        .values(mac=select([vifs.c.address])\
+        .values(mac=select([vifs.c.address])
             .where(and_(
                     networks.c.label == bw_usage_cache.c.network_label,
                     networks.c.id == vifs.c.network_id,
-                    bw_usage_cache.c.instance_id == vifs.c.instance_id))\
+                    bw_usage_cache.c.instance_id == vifs.c.instance_id))
             .as_scalar()).execute()
 
     bw_usage_cache.c.network_label.drop()
@@ -87,11 +87,11 @@ def downgrade(migrate_engine):
     bw_usage_cache.create_column(network_label_column)
 
     bw_usage_cache.update()\
-        .values(network_label=select([network.c.label])\
+        .values(network_label=select([network.c.label])
             .where(and_(
                 network.c.id == vifs.c.network_id,
                vifs.c.address == bw_usage_cache.c.mac,
-               bw_usage_cache.c.instance_id == vifs.c.instance_id))\
+               bw_usage_cache.c.instance_id == vifs.c.instance_id))
             .as_scalar()).execute()
 
     bw_usage_cache.c.mac.drop()

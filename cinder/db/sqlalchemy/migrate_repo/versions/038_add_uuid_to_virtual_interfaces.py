@@ -31,8 +31,8 @@ def upgrade(migrate_engine):
     rows = migrate_engine.execute(virtual_interfaces.select())
     for row in rows:
         vif_uuid = str(utils.gen_uuid())
-        migrate_engine.execute(virtual_interfaces.update()\
-                .where(virtual_interfaces.c.id == row[0])\
+        migrate_engine.execute(virtual_interfaces.update()
+                .where(virtual_interfaces.c.id == row[0])
                 .values(uuid=vif_uuid))
 
 

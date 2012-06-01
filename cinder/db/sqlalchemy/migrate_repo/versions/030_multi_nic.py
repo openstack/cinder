@@ -103,7 +103,7 @@ def upgrade(migrate_engine):
 
     # populate the fixed_ips virtual_interface_id column
     s = select([fixed_ips.c.id, fixed_ips.c.instance_id],
-               fixed_ips.c.instance_id != None)
+               fixed_ips.c.instance_id is not None)
 
     for row in s.execute():
         m = select([virtual_interfaces.c.id]).\

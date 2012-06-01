@@ -90,7 +90,7 @@ def _assert_no_duplicate_project_ids(quotas):
 
 def assert_old_quotas_have_no_active_duplicates(migrate_engine, quotas):
     """Ensure that there are no duplicate non-deleted quota entries."""
-    select = quotas.select().where(quotas.c.deleted == False)
+    select = quotas.select().where(quotas.c.deleted is False)
     results = migrate_engine.execute(select)
     _assert_no_duplicate_project_ids(list(results))
 
@@ -99,7 +99,7 @@ def assert_new_quotas_have_no_active_duplicates(migrate_engine, quotas):
     """Ensure that there are no duplicate non-deleted quota entries."""
     for resource in resources:
         select = quotas.select().\
-                where(quotas.c.deleted == False).\
+                where(quotas.c.deleted is False).\
                 where(quotas.c.resource == resource)
         results = migrate_engine.execute(select)
         _assert_no_duplicate_project_ids(list(results))

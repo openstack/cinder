@@ -40,8 +40,8 @@ def upgrade(migrate_engine):
         type_names[row[0]] = row[1]
 
     for type_id, type_name in type_names.iteritems():
-        migrate_engine.execute(instances.update()\
-            .where(instances.c.instance_type == type_name)\
+        migrate_engine.execute(instances.update()
+            .where(instances.c.instance_type == type_name)
             .values(instance_type_id=type_id))
 
     instances.c.instance_type.drop()
@@ -67,8 +67,8 @@ def downgrade(migrate_engine):
         type_names[row[0]] = row[1]
 
     for type_id, type_name in type_names.iteritems():
-        migrate_engine.execute(instances.update()\
-            .where(instances.c.instance_type_id == type_id)\
+        migrate_engine.execute(instances.update()
+            .where(instances.c.instance_type_id == type_id)
             .values(instance_type=type_name))
 
     instances.c.instance_type_id.drop()

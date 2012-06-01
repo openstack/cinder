@@ -31,8 +31,8 @@ def upgrade(migrate_engine):
                                       _warn_on_bytestring=False),
                                nullable=True)
     instances.create_column(instances_os_type)
-    migrate_engine.execute(instances.update()\
-                           .where(instances.c.os_type == None)\
+    migrate_engine.execute(instances.update()
+                           .where(instances.c.os_type is None)
                            .values(os_type='linux'))
 
 
