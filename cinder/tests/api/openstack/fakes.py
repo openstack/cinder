@@ -26,6 +26,7 @@ from cinder.api import auth as api_auth
 from cinder.api import openstack as openstack_api
 from cinder.api.openstack import auth
 from cinder.api.openstack import urlmap
+from cinder.api.openstack import volume
 from cinder.api.openstack.volume import versions
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder import context
@@ -60,28 +61,27 @@ def fake_wsgi(self, req):
     return self.application
 
 
-def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
+def wsgi_app(inner_app_v1=None, fake_auth=True, fake_auth_context=None,
         use_no_auth=False, ext_mgr=None):
-    if not inner_app_v2:
-        inner_app_v2 = compute.APIRouter(ext_mgr)
+    if not inner_app_v1:
+        inner_app_v1 = volume.APIRouter(ext_mgr)
 
     if fake_auth:
         if fake_auth_context is not None:
             ctxt = fake_auth_context
         else:
             ctxt = context.RequestContext('fake', 'fake', auth_token=True)
-        api_v2 = openstack_api.FaultWrapper(api_auth.InjectContext(ctxt,
-              limits.RateLimitingMiddleware(inner_app_v2)))
+        api_v1 = openstack_api.FaultWrapper(api_auth.InjectContext(ctxt,
+              inner_app_v1))
     elif use_no_auth:
-        api_v2 = openstack_api.FaultWrapper(auth.NoAuthMiddleware(
-              limits.RateLimitingMiddleware(inner_app_v2)))
+        api_v1 = openstack_api.FaultWrapper(auth.NoAuthMiddleware(
+              limits.RateLimitingMiddleware(inner_app_v1)))
     else:
-        api_v2 = openstack_api.FaultWrapper(auth.AuthMiddleware(
-              limits.RateLimitingMiddleware(inner_app_v2)))
+        api_v1 = openstack_api.FaultWrapper(auth.AuthMiddleware(
+              limits.RateLimitingMiddleware(inner_app_v1)))
 
     mapper = urlmap.URLMap()
-    mapper['/v2'] = api_v2
-    mapper['/v1.1'] = api_v2
+    mapper['/v1'] = api_v1
     mapper['/'] = openstack_api.FaultWrapper(versions.Versions())
     return mapper
 
@@ -122,7 +122,7 @@ class HTTPRequest(webob.Request):
 
     @classmethod
     def blank(cls, *args, **kwargs):
-        kwargs['base_url'] = 'http://localhost/v2'
+        kwargs['base_url'] = 'http://localhost/v1'
         use_admin_context = kwargs.pop('use_admin_context', False)
         out = webob.Request.blank(*args, **kwargs)
         out.environ['cinder.context'] = FakeRequestContext('fake_user', 'fake',

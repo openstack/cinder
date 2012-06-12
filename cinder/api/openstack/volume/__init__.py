@@ -50,7 +50,8 @@ class APIRouter(cinder.api.openstack.APIRouter):
         self.resources['volumes'] = volumes.create_resource()
         mapper.resource("volume", "volumes",
                         controller=self.resources['volumes'],
-                        collection={'detail': 'GET'})
+                        collection={'detail': 'GET'},
+                        member={'action': 'POST'})
 
         self.resources['types'] = types.create_resource()
         mapper.resource("type", "types",
