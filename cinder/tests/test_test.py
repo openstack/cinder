@@ -18,7 +18,7 @@
 
 """Tests for the testing base code."""
 
-from cinder import rpc
+from cinder.openstack.common import rpc
 from cinder import test
 
 

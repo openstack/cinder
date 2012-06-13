@@ -18,10 +18,10 @@
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import flags
 from cinder import quota
-from cinder import exception
-from cinder import rpc
+from cinder.openstack.common import rpc
 from cinder import test
 from cinder import volume
 from cinder.scheduler import driver as scheduler_driver

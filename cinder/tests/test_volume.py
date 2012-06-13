@@ -30,8 +30,8 @@ from cinder import db
 from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import importutils
+from cinder.openstack.common import rpc
 import cinder.policy
-from cinder import rpc
 from cinder import test
 import cinder.volume.api
 

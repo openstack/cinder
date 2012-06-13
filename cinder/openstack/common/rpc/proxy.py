@@ -22,7 +22,7 @@ For more information about rpc API version numbers, see:
 """
 
 
-from cinder import rpc
+from cinder.openstack.common import rpc
 
 
 class RpcProxy(object):
@@ -127,7 +127,7 @@ class RpcProxy(object):
         rpc.fanout_cast(context, self.topic, msg)
 
     def cast_to_server(self, context, server_params, msg, topic=None,
-            version=None):
+                       version=None):
         """rpc.cast_to_server() a remote method.
 
         :param context: The request context

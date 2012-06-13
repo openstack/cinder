@@ -67,7 +67,7 @@ class NotifierTestCase(test.TestCase):
         def mock_notify(cls, *args):
             self.mock_notify = True
 
-        self.stubs.Set(cinder.rpc, 'notify', mock_notify)
+        self.stubs.Set(cinder.openstack.common.rpc, 'notify', mock_notify)
         notifier_api.notify('publisher_id', 'event_type',
                 cinder.notifier.api.WARN, dict(a=3))
 
@@ -90,7 +90,7 @@ class NotifierTestCase(test.TestCase):
         def mock_notify(context, topic, msg):
             self.test_topic = topic
 
-        self.stubs.Set(cinder.rpc, 'notify', mock_notify)
+        self.stubs.Set(cinder.openstack.common.rpc, 'notify', mock_notify)
         notifier_api.notify('publisher_id', 'event_type', 'DEBUG', dict(a=3))
         self.assertEqual(self.test_topic, 'testnotify.debug')
 
@@ -105,7 +105,7 @@ class NotifierTestCase(test.TestCase):
         def mock_notify(context, topic, data):
             msgs.append(data)
 
-        self.stubs.Set(cinder.rpc, 'notify', mock_notify)
+        self.stubs.Set(cinder.openstack.common.rpc, 'notify', mock_notify)
         LOG.error('foo')
         self.assertEqual(1, len(msgs))
         msg = msgs[0]

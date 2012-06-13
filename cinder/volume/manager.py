@@ -46,8 +46,8 @@ from cinder import manager
 from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
-from cinder import rpc
 from cinder import utils
 from cinder.volume import volume_types
 

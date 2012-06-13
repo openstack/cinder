@@ -26,9 +26,8 @@ from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
+from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
-from cinder import rpc
-from cinder.rpc import common as rpc_common
 from cinder import utils
 
 

@@ -18,15 +18,12 @@ queues.  Casts will block, but this is very useful for tests.
 """
 
 import inspect
-import json
-import signal
-import sys
 import time
-import traceback
 
 import eventlet
 
-from cinder.rpc import common as rpc_common
+from cinder.openstack.common import jsonutils
+from cinder.openstack.common.rpc import common as rpc_common
 
 CONSUMERS = {}
 
@@ -36,6 +33,13 @@ class RpcContext(rpc_common.CommonRpcContext):
         super(RpcContext, self).__init__(**kwargs)
         self._response = []
         self._done = False
+
+    def deepcopy(self):
+        values = self.to_dict()
+        new_inst = self.__class__(**values)
+        new_inst._response = self._response
+        new_inst._done = self._done
+        return new_inst
 
     def reply(self, reply=None, failure=None, ending=False):
         if ending:
@@ -117,7 +121,7 @@ def create_connection(conf, new=True):
 
 def check_serialize(msg):
     """Make sure a message intended for rpc can be serialized."""
-    json.dumps(msg)
+    jsonutils.dumps(msg)
 
 
 def multicall(conf, context, topic, msg, timeout=None):
@@ -171,9 +175,10 @@ def fanout_cast(conf, context, topic, msg):
     if not method:
         return
     args = msg.get('args', {})
+    version = msg.get('version', None)
 
     for consumer in CONSUMERS.get(topic, []):
         try:
-            consumer.call(context, method, args, None)
+            consumer.call(context, version, method, args, None)
         except Exception:
             pass

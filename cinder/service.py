@@ -34,7 +34,7 @@ from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
-from cinder import rpc
+from cinder.openstack.common import rpc
 from cinder import utils
 from cinder import version
 from cinder import wsgi

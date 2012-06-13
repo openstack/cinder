@@ -31,7 +31,7 @@ from cinder.openstack.common import importutils
 
 rpc_opts = [
     cfg.StrOpt('rpc_backend',
-               default='cinder.rpc.impl_kombu',
+               default='%s.impl_kombu' % __package__,
                help="The messaging module to use, defaults to kombu."),
     cfg.IntOpt('rpc_thread_pool_size',
                default=64,
@@ -42,17 +42,23 @@ rpc_opts = [
     cfg.IntOpt('rpc_response_timeout',
                default=60,
                help='Seconds to wait for a response from call or multicall'),
+    cfg.IntOpt('rpc_cast_timeout',
+               default=30,
+               help='Seconds to wait before a cast expires (TTL). '
+                    'Only supported by impl_zmq.'),
     cfg.ListOpt('allowed_rpc_exception_modules',
-               default=['cinder.exception'],
-               help='Modules of exceptions that are permitted to be recreated'
-                    'upon receiving exception data from an rpc call.'),
+                default=['cinder.openstack.common.exception',
+                         'nova.exception',
+                         ],
+                help='Modules of exceptions that are permitted to be recreated'
+                     'upon receiving exception data from an rpc call.'),
     cfg.StrOpt('control_exchange',
-               default='cinder',
+               default='nova',
                help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
     cfg.BoolOpt('fake_rabbit',
                 default=False,
                 help='If passed, use a fake RabbitMQ provider'),
-    ]
+]
 
 cfg.CONF.register_opts(rpc_opts)
 
@@ -61,14 +67,14 @@ def create_connection(new=True):
     """Create a connection to the message bus used for rpc.
 
     For some example usage of creating a connection and some consumers on that
-    connection, see cinder.service.
+    connection, see nova.service.
 
     :param new: Whether or not to create a new connection.  A new connection
                 will be created by default.  If new is False, the
                 implementation is free to return an existing connection from a
                 pool.
 
-    :returns: An instance of cinder.rpc.common.Connection
+    :returns: An instance of openstack.common.rpc.common.Connection
     """
     return _get_impl().create_connection(cfg.CONF, new=new)
 
@@ -80,9 +86,9 @@ def call(context, topic, msg, timeout=None):
                     request.
     :param topic: The topic to send the rpc message to.  This correlates to the
                   topic argument of
-                  cinder.rpc.common.Connection.create_consumer()
-                  and only applies when the consumer was created
-                  with fanout=False.
+                  openstack.common.rpc.common.Connection.create_consumer()
+                  and only applies when the consumer was created with
+                  fanout=False.
     :param msg: This is a dict in the form { "method" : "method_to_invoke",
                                              "args" : dict_of_kwargs }
     :param timeout: int, number of seconds to use for a response timeout.
@@ -90,8 +96,8 @@ def call(context, topic, msg, timeout=None):
 
     :returns: A dict from the remote method.
 
-    :raises: cinder.rpc.common.Timeout if a complete response is not received
-             before the timeout is reached.
+    :raises: openstack.common.rpc.common.Timeout if a complete response
+             is not received before the timeout is reached.
     """
     return _get_impl().call(cfg.CONF, context, topic, msg, timeout)
 
@@ -103,9 +109,9 @@ def cast(context, topic, msg):
                     request.
     :param topic: The topic to send the rpc message to.  This correlates to the
                   topic argument of
-                  cinder.rpc.common.Connection.create_consumer()
-                  and only applies when the consumer was created
-                  with fanout=False.
+                  openstack.common.rpc.common.Connection.create_consumer()
+                  and only applies when the consumer was created with
+                  fanout=False.
     :param msg: This is a dict in the form { "method" : "method_to_invoke",
                                              "args" : dict_of_kwargs }
 
@@ -124,9 +130,9 @@ def fanout_cast(context, topic, msg):
                     request.
     :param topic: The topic to send the rpc message to.  This correlates to the
                   topic argument of
-                  cinder.rpc.common.Connection.create_consumer()
-                  and only applies when the consumer was created
-                  with fanout=True.
+                  openstack.common.rpc.common.Connection.create_consumer()
+                  and only applies when the consumer was created with
+                  fanout=True.
     :param msg: This is a dict in the form { "method" : "method_to_invoke",
                                              "args" : dict_of_kwargs }
 
@@ -146,9 +152,9 @@ def multicall(context, topic, msg, timeout=None):
                     request.
     :param topic: The topic to send the rpc message to.  This correlates to the
                   topic argument of
-                  cinder.rpc.common.Connection.create_consumer()
-                  and only applies when the consumer was created
-                  with fanout=False.
+                  openstack.common.rpc.common.Connection.create_consumer()
+                  and only applies when the consumer was created with
+                  fanout=False.
     :param msg: This is a dict in the form { "method" : "method_to_invoke",
                                              "args" : dict_of_kwargs }
     :param timeout: int, number of seconds to use for a response timeout.
@@ -159,8 +165,8 @@ def multicall(context, topic, msg, timeout=None):
               returned and X is the Nth value that was returned by the remote
               method.
 
-    :raises: cinder.rpc.common.Timeout if a complete response is not received
-             before the timeout is reached.
+    :raises: openstack.common.rpc.common.Timeout if a complete response
+             is not received before the timeout is reached.
     """
     return _get_impl().multicall(cfg.CONF, context, topic, msg, timeout)
 
@@ -224,7 +230,20 @@ def fanout_cast_to_server(context, server_params, topic, msg):
 
 
 def queue_get_for(context, topic, host):
-    """Get a queue name for a given topic + host."""
+    """Get a queue name for a given topic + host.
+
+    This function only works if this naming convention is followed on the
+    consumer side, as well.  For example, in nova, every instance of the
+    nova-foo service calls create_consumer() for two topics:
+
+        foo
+        foo.<host>
+
+    Messages sent to the 'foo' topic are distributed to exactly one instance of
+    the nova-foo service.  The services are chosen in a round-robin fashion.
+    Messages sent to the 'foo.<host>' topic are sent to the nova-foo service on
+    <host>.
+    """
     return '%s.%s' % (topic, host)
 
 
@@ -235,5 +254,11 @@ def _get_impl():
     """Delay import of rpc_backend until configuration is loaded."""
     global _RPCIMPL
     if _RPCIMPL is None:
-        _RPCIMPL = importutils.import_module(cfg.CONF.rpc_backend)
+        try:
+            _RPCIMPL = importutils.import_module(cfg.CONF.rpc_backend)
+        except ImportError:
+            # For backwards compatibility with older nova config.
+            impl = cfg.CONF.rpc_backend.replace('nova.rpc',
+                                                'nova.openstack.common.rpc')
+            _RPCIMPL = importutils.import_module(impl)
     return _RPCIMPL

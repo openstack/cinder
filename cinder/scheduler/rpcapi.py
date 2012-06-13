@@ -19,13 +19,13 @@ Client side of the scheduler manager RPC API.
 """
 
 from cinder import flags
-import cinder.rpc.proxy
+import cinder.openstack.common.rpc.proxy
 
 
 FLAGS = flags.FLAGS
 
 
-class SchedulerAPI(cinder.rpc.proxy.RpcProxy):
+class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     '''Client side of the scheduler rpc API.
 
     API version history:

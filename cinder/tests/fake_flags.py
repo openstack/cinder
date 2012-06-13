@@ -29,7 +29,7 @@ def set_defaults(conf):
     conf.set_default('volume_driver', 'cinder.volume.driver.FakeISCSIDriver')
     conf.set_default('connection_type', 'fake')
     conf.set_default('fake_rabbit', True)
-    conf.set_default('rpc_backend', 'cinder.rpc.impl_fake')
+    conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('iscsi_num_targets', 8)
     conf.set_default('verbose', True)
     conf.set_default('sql_connection', "sqlite://")

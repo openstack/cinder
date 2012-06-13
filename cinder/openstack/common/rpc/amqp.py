@@ -18,7 +18,7 @@
 #    under the License.
 
 """
-Shared code between AMQP based cinder.rpc implementations.
+Shared code between AMQP based openstack.common.rpc implementations.
 
 The code in this module is shared between the rpc implemenations based on AMQP.
 Specifically, this includes impl_kombu and impl_qpid.  impl_carrot also uses
@@ -35,8 +35,9 @@ from eventlet import pools
 from eventlet import semaphore
 
 from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import local
-import cinder.rpc.common as rpc_common
+from cinder.openstack.common.rpc import common as rpc_common
 
 
 LOG = logging.getLogger(__name__)
@@ -74,13 +75,14 @@ def get_connection_pool(conf, connection_cls):
 
 class ConnectionContext(rpc_common.Connection):
     """The class that is actually returned to the caller of
-    create_connection().  This is a essentially a wrapper around
-    Connection that supports 'with' and can return a new Connection or
-    one from a pool.  It will also catch when an instance of this class
-    is to be deleted so that we can return Connections to the pool on
-    exceptions and so forth without making the caller be responsible for
-    catching all exceptions and making sure to return a connection to
-    the pool.
+    create_connection().  This is essentially a wrapper around
+    Connection that supports 'with'.  It can also return a new
+    Connection, or one from a pool.  The function will also catch
+    when an instance of this class is to be deleted.  With that
+    we can return Connections to the pool on exceptions and so
+    forth without making the caller be responsible for catching
+    them.  If possible the function makes sure to return a
+    connection to the pool.
     """
 
     def __init__(self, conf, connection_pool, pooled=True, server_params=None):
@@ -91,8 +93,9 @@ class ConnectionContext(rpc_common.Connection):
         if pooled:
             self.connection = connection_pool.get()
         else:
-            self.connection = connection_pool.connection_cls(conf,
-                    server_params=server_params)
+            self.connection = connection_pool.connection_cls(
+                conf,
+                server_params=server_params)
         self.pooled = pooled
 
     def __enter__(self):
@@ -131,6 +134,9 @@ class ConnectionContext(rpc_common.Connection):
     def create_consumer(self, topic, proxy, fanout=False):
         self.connection.create_consumer(topic, proxy, fanout)
 
+    def create_worker(self, topic, proxy, pool_name):
+        self.connection.create_worker(topic, proxy, pool_name)
+
     def consume_in_thread(self):
         self.connection.consume_in_thread()
 
@@ -157,8 +163,8 @@ def msg_reply(conf, msg_id, connection_pool, reply=None, failure=None,
             msg = {'result': reply, 'failure': failure}
         except TypeError:
             msg = {'result': dict((k, repr(v))
-                            for k, v in reply.__dict__.iteritems()),
-                    'failure': failure}
+                   for k, v in reply.__dict__.iteritems()),
+                   'failure': failure}
         if ending:
             msg['ending'] = True
         conn.direct_send(msg_id, msg)
@@ -170,6 +176,12 @@ class RpcContext(rpc_common.CommonRpcContext):
         self.msg_id = kwargs.pop('msg_id', None)
         self.conf = kwargs.pop('conf')
         super(RpcContext, self).__init__(**kwargs)
+
+    def deepcopy(self):
+        values = self.to_dict()
+        values['conf'] = self.conf
+        values['msg_id'] = self.msg_id
+        return self.__class__(**values)
 
     def reply(self, reply=None, failure=None, ending=False,
               connection_pool=None):
@@ -278,8 +290,8 @@ class ProxyCallback(object):
 class MulticallWaiter(object):
     def __init__(self, conf, connection, timeout):
         self._connection = connection
-        self._iterator = connection.iterconsume(
-                                timeout=timeout or conf.rpc_response_timeout)
+        self._iterator = connection.iterconsume(timeout=timeout or
+                                                conf.rpc_response_timeout)
         self._result = None
         self._done = False
         self._got_ending = False
@@ -298,7 +310,7 @@ class MulticallWaiter(object):
         if data['failure']:
             failure = data['failure']
             self._result = rpc_common.deserialize_remote_exception(self._conf,
-                    failure)
+                                                                   failure)
 
         elif data.get('ending', False):
             self._got_ending = True
@@ -379,16 +391,16 @@ def cast_to_server(conf, context, server_params, topic, msg, connection_pool):
     """Sends a message on a topic to a specific server."""
     pack_context(msg, context)
     with ConnectionContext(conf, connection_pool, pooled=False,
-            server_params=server_params) as conn:
+                           server_params=server_params) as conn:
         conn.topic_send(topic, msg)
 
 
 def fanout_cast_to_server(conf, context, server_params, topic, msg,
-        connection_pool):
+                          connection_pool):
     """Sends a message on a fanout exchange to a specific server."""
     pack_context(msg, context)
     with ConnectionContext(conf, connection_pool, pooled=False,
-            server_params=server_params) as conn:
+                           server_params=server_params) as conn:
         conn.fanout_send(topic, msg)
 
 

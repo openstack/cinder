@@ -20,7 +20,7 @@ Unit Tests for cinder.scheduler.rpcapi
 
 from cinder import context
 from cinder import flags
-from cinder import rpc
+from cinder.openstack.common import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 

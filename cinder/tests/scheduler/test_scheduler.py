@@ -27,9 +27,9 @@ from cinder import db
 from cinder import exception
 from cinder import flags
 from cinder.notifier import api as notifier
-from cinder import rpc
+from cinder.openstack.common import rpc
+from cinder.openstack.common.rpc import common as rpc_common
 from cinder.openstack.common import timeutils
-from cinder.rpc import common as rpc_common
 from cinder.scheduler import driver
 from cinder.scheduler import manager
 from cinder import test
