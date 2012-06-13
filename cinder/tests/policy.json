@@ -21,5 +21,6 @@
     "volume:get_all_snapshots": [],
 
     "volume_extension:types_manage": [],
-    "volume_extension:types_extra_specs": []
+    "volume_extension:types_extra_specs": [],
+    "volume_extension:extended_snapshot_attributes": []
 }

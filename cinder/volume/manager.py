@@ -230,10 +230,11 @@ class VolumeManager(manager.SchedulerDependentManager):
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
         """Updates db to show volume is attached"""
         # TODO(vish): refactor this into a more general "reserve"
+        # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
         if not utils.is_uuid_like(instance_uuid):
             raise exception.InvalidUUID(instance_uuid)
 
-        self.db.volume_attached(context,
+        self.db.volume_attached(context.elevated(),
                                 volume_id,
                                 instance_uuid,
                                 mountpoint)
@@ -241,7 +242,8 @@ class VolumeManager(manager.SchedulerDependentManager):
     def detach_volume(self, context, volume_id):
         """Updates db to show volume is detached"""
         # TODO(vish): refactor this into a more general "unreserve"
-        self.db.volume_detached(context, volume_id)
+        # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
+        self.db.volume_detached(context.elevated(), volume_id)
 
     def initialize_connection(self, context, volume_id, connector):
         """Prepare volume for connection from host represented by connector.
