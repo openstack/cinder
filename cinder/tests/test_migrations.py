@@ -245,7 +245,8 @@ class TestMigrations(test.TestCase):
         noninnodb = connection.execute("SELECT count(*) "
                                        "from information_schema.TABLES "
                                        "where TABLE_SCHEMA='openstack_citest' "
-                                       "and ENGINE!='InnoDB'")
+                                       "and ENGINE!='InnoDB' "
+                                       "and TABLE_NAME!='migrate_version'")
         count = noninnodb.scalar()
         self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
 
@@ -256,14 +257,19 @@ class TestMigrations(test.TestCase):
         # upgrades successfully.
 
         # Place the database under version control
-        migration_api.version_control(engine, TestMigrations.REPOSITORY)
-        self.assertEqual(0,
+        migration_api.version_control(engine, TestMigrations.REPOSITORY,
+                                     migration.INIT_VERSION)
+        self.assertEqual(migration.INIT_VERSION,
                 migration_api.db_version(engine,
                                          TestMigrations.REPOSITORY))
 
+        migration_api.upgrade(engine, TestMigrations.REPOSITORY,
+                              migration.INIT_VERSION + 1)
+
         LOG.debug('latest version is %s' % TestMigrations.REPOSITORY.latest)
 
-        for version in xrange(1, TestMigrations.REPOSITORY.latest + 1):
+        for version in xrange(migration.INIT_VERSION + 2,
+                               TestMigrations.REPOSITORY.latest + 1):
             # upgrade -> downgrade -> upgrade
             self._migrate_up(engine, version)
             if snake_walk:
@@ -274,7 +280,8 @@ class TestMigrations(test.TestCase):
             # Now walk it back down to 0 from the latest, testing
             # the downgrade paths.
             for version in reversed(
-                xrange(0, TestMigrations.REPOSITORY.latest)):
+                xrange(migration.INIT_VERSION + 1,
+                       TestMigrations.REPOSITORY.latest)):
                 # downgrade -> upgrade -> downgrade
                 self._migrate_down(engine, version)
                 if snake_walk:
