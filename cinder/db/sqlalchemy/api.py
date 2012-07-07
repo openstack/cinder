@@ -20,7 +20,6 @@
 """Implementation of SQLAlchemy backend."""
 
 import datetime
-import functools
 import warnings
 
 from cinder import db
@@ -28,15 +27,12 @@ from cinder import exception
 from cinder import flags
 from cinder import utils
 from cinder import log as logging
-from cinder.compute import aggregate_states
 from cinder.db.sqlalchemy import models
 from cinder.db.sqlalchemy.session import get_session
+from cinder.openstack.common import timeutils
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.sql import func
-from sqlalchemy.sql.expression import asc
-from sqlalchemy.sql.expression import desc
 from sqlalchemy.sql.expression import literal_column
 
 FLAGS = flags.FLAGS
@@ -134,20 +130,6 @@ def require_volume_exists(f):
         db.volume_get(context, volume_id)
         return f(context, volume_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
-    return wrapper
-
-
-def require_aggregate_exists(f):
-    """Decorator to require the specified aggregate to exist.
-
-    Requires the wrapped function to use context and aggregate_id as
-    their first two arguments.
-    """
-
-    @functools.wraps(f)
-    def wrapper(context, aggregate_id, *args, **kwargs):
-        db.aggregate_get(context, aggregate_id)
-        return f(context, aggregate_id, *args, **kwargs)
     return wrapper
 
 
@@ -405,152 +387,6 @@ def iscsi_target_create_safe(context, values):
         return iscsi_target_ref
     except IntegrityError:
         return None
-
-
-###################
-
-
-@require_context
-def quota_get(context, project_id, resource, session=None):
-    result = model_query(context, models.Quota, session=session,
-                         read_deleted="no").\
-                     filter_by(project_id=project_id).\
-                     filter_by(resource=resource).\
-                     first()
-
-    if not result:
-        raise exception.ProjectQuotaNotFound(project_id=project_id)
-
-    return result
-
-
-@require_context
-def quota_get_all_by_project(context, project_id):
-    authorize_project_context(context, project_id)
-
-    rows = model_query(context, models.Quota, read_deleted="no").\
-                   filter_by(project_id=project_id).\
-                   all()
-
-    result = {'project_id': project_id}
-    for row in rows:
-        result[row.resource] = row.hard_limit
-
-    return result
-
-
-@require_admin_context
-def quota_create(context, project_id, resource, limit):
-    quota_ref = models.Quota()
-    quota_ref.project_id = project_id
-    quota_ref.resource = resource
-    quota_ref.hard_limit = limit
-    quota_ref.save()
-    return quota_ref
-
-
-@require_admin_context
-def quota_update(context, project_id, resource, limit):
-    session = get_session()
-    with session.begin():
-        quota_ref = quota_get(context, project_id, resource, session=session)
-        quota_ref.hard_limit = limit
-        quota_ref.save(session=session)
-
-
-@require_admin_context
-def quota_destroy(context, project_id, resource):
-    session = get_session()
-    with session.begin():
-        quota_ref = quota_get(context, project_id, resource, session=session)
-        quota_ref.delete(session=session)
-
-
-@require_admin_context
-def quota_destroy_all_by_project(context, project_id):
-    session = get_session()
-    with session.begin():
-        quotas = model_query(context, models.Quota, session=session,
-                             read_deleted="no").\
-                         filter_by(project_id=project_id).\
-                         all()
-
-        for quota_ref in quotas:
-            quota_ref.delete(session=session)
-
-
-###################
-
-
-@require_context
-def quota_class_get(context, class_name, resource, session=None):
-    result = model_query(context, models.QuotaClass, session=session,
-                         read_deleted="no").\
-                     filter_by(class_name=class_name).\
-                     filter_by(resource=resource).\
-                     first()
-
-    if not result:
-        raise exception.QuotaClassNotFound(class_name=class_name)
-
-    return result
-
-
-@require_context
-def quota_class_get_all_by_name(context, class_name):
-    authorize_quota_class_context(context, class_name)
-
-    rows = model_query(context, models.QuotaClass, read_deleted="no").\
-                   filter_by(class_name=class_name).\
-                   all()
-
-    result = {'class_name': class_name}
-    for row in rows:
-        result[row.resource] = row.hard_limit
-
-    return result
-
-
-@require_admin_context
-def quota_class_create(context, class_name, resource, limit):
-    quota_class_ref = models.QuotaClass()
-    quota_class_ref.class_name = class_name
-    quota_class_ref.resource = resource
-    quota_class_ref.hard_limit = limit
-    quota_class_ref.save()
-    return quota_class_ref
-
-
-@require_admin_context
-def quota_class_update(context, class_name, resource, limit):
-    session = get_session()
-    with session.begin():
-        quota_class_ref = quota_class_get(context, class_name, resource,
-                                          session=session)
-        quota_class_ref.hard_limit = limit
-        quota_class_ref.save(session=session)
-
-
-@require_admin_context
-def quota_class_destroy(context, class_name, resource):
-    session = get_session()
-    with session.begin():
-        quota_class_ref = quota_class_get(context, class_name, resource,
-                                          session=session)
-        quota_class_ref.delete(session=session)
-
-
-@require_admin_context
-def quota_class_destroy_all_by_name(context, class_name):
-    session = get_session()
-    with session.begin():
-        quota_classes = model_query(context, models.QuotaClass,
-                                    session=session, read_deleted="no").\
-                                filter_by(class_name=class_name).\
-                                all()
-
-        for quota_class_ref in quota_classes:
-            quota_class_ref.delete(session=session)
 
 
 ###################
@@ -968,8 +804,6 @@ def volume_type_create(context, values):
         except exception.VolumeTypeNotFoundByName:
             pass
         try:
-            specs = values.get('extra_specs')
-
             values['extra_specs'] = _metadata_refs(values.get('extra_specs'),
                                                    models.VolumeTypeExtraSpecs)
             volume_type_ref = models.VolumeTypes()
@@ -1170,7 +1004,6 @@ def sm_backend_conf_get(context, sm_backend_id):
 
 @require_admin_context
 def sm_backend_conf_get_by_sr(context, sr_uuid):
-    session = get_session()
     return model_query(context, models.SMBackendConf, read_deleted="yes").\
                     filter_by(sr_uuid=sr_uuid).\
                     first()
@@ -1273,237 +1106,223 @@ def sm_volume_get_all(context):
     return model_query(context, models.SMVolume, read_deleted="yes").all()
 
 
-################
+###############################
 
 
-def _aggregate_get_query(context, model_class, id_field, id,
-                         session=None, read_deleted=None):
-    return model_query(context, model_class, session=session,
-                       read_deleted=read_deleted).filter(id_field == id)
-
-
-@require_admin_context
-def aggregate_create(context, values, metadata=None):
-    session = get_session()
-    aggregate = _aggregate_get_query(context,
-                                     models.Aggregate,
-                                     models.Aggregate.name,
-                                     values['name'],
-                                     session=session,
-                                     read_deleted='yes').first()
-    values.setdefault('operational_state', aggregate_states.CREATED)
-    if not aggregate:
-        aggregate = models.Aggregate()
-        aggregate.update(values)
-        aggregate.save(session=session)
-    elif aggregate.deleted:
-        values['deleted'] = False
-        values['deleted_at'] = None
-        aggregate.update(values)
-        aggregate.save(session=session)
-    else:
-        raise exception.AggregateNameExists(aggregate_name=values['name'])
-    if metadata:
-        aggregate_metadata_add(context, aggregate.id, metadata)
-    return aggregate
-
-
-@require_admin_context
-def aggregate_get(context, aggregate_id):
-    aggregate = _aggregate_get_query(context,
-                                     models.Aggregate,
-                                     models.Aggregate.id,
-                                     aggregate_id).first()
-
-    if not aggregate:
-        raise exception.AggregateNotFound(aggregate_id=aggregate_id)
-
-    return aggregate
-
-
-@require_admin_context
-def aggregate_get_by_host(context, host):
-    aggregate_host = _aggregate_get_query(context,
-                                          models.AggregateHost,
-                                          models.AggregateHost.host,
-                                          host).first()
-
-    if not aggregate_host:
-        raise exception.AggregateHostNotFound(host=host)
-
-    return aggregate_get(context, aggregate_host.aggregate_id)
-
-
-@require_admin_context
-def aggregate_update(context, aggregate_id, values):
-    session = get_session()
-    aggregate = _aggregate_get_query(context,
-                                     models.Aggregate,
-                                     models.Aggregate.id,
-                                     aggregate_id,
-                                     session=session).first()
-    if aggregate:
-        metadata = values.get('metadata')
-        if metadata is not None:
-            aggregate_metadata_add(context,
-                                   aggregate_id,
-                                   values.pop('metadata'),
-                                   set_delete=True)
-        with session.begin():
-            aggregate.update(values)
-            aggregate.save(session=session)
-        values['metadata'] = metadata
-        return aggregate
-    else:
-        raise exception.AggregateNotFound(aggregate_id=aggregate_id)
-
-
-@require_admin_context
-def aggregate_delete(context, aggregate_id):
-    query = _aggregate_get_query(context,
-                                 models.Aggregate,
-                                 models.Aggregate.id,
-                                 aggregate_id)
-    if query.first():
-        query.update({'deleted': True,
-                      'deleted_at': utils.utcnow(),
-                      'operational_state': aggregate_states.DISMISSED,
-                      'updated_at': literal_column('updated_at')})
-    else:
-        raise exception.AggregateNotFound(aggregate_id=aggregate_id)
-
-
-@require_admin_context
-def aggregate_get_all(context):
-    return model_query(context, models.Aggregate).all()
-
-
-@require_admin_context
-@require_aggregate_exists
-def aggregate_metadata_get(context, aggregate_id):
-    rows = model_query(context,
-                       models.AggregateMetadata).\
-                       filter_by(aggregate_id=aggregate_id).all()
-
-    return dict([(r['key'], r['value']) for r in rows])
-
-
-@require_admin_context
-@require_aggregate_exists
-def aggregate_metadata_delete(context, aggregate_id, key):
-    query = _aggregate_get_query(context,
-                                 models.AggregateMetadata,
-                                 models.AggregateMetadata.aggregate_id,
-                                 aggregate_id).\
-                                 filter_by(key=key)
-    if query.first():
-        query.update({'deleted': True,
-                      'deleted_at': utils.utcnow(),
-                      'updated_at': literal_column('updated_at')})
-    else:
-        raise exception.AggregateMetadataNotFound(aggregate_id=aggregate_id,
-                                                  metadata_key=key)
-
-
-@require_admin_context
-@require_aggregate_exists
-def aggregate_metadata_get_item(context, aggregate_id, key, session=None):
-    result = _aggregate_get_query(context,
-                                  models.AggregateMetadata,
-                                  models.AggregateMetadata.aggregate_id,
-                                  aggregate_id, session=session,
-                                  read_deleted='yes').\
-                                  filter_by(key=key).first()
+@require_context
+def quota_get(context, project_id, resource, session=None):
+    result = model_query(context, models.Quota, session=session,
+                         read_deleted="no").\
+                     filter_by(project_id=project_id).\
+                     filter_by(resource=resource).\
+                     first()
 
     if not result:
-        raise exception.AggregateMetadataNotFound(metadata_key=key,
-                                                 aggregate_id=aggregate_id)
+        raise exception.ProjectQuotaNotFound(project_id=project_id)
+
+    return result
+
+
+@require_context
+def quota_get_all_by_project(context, project_id):
+    authorize_project_context(context, project_id)
+
+    rows = model_query(context, models.Quota, read_deleted="no").\
+                   filter_by(project_id=project_id).\
+                   all()
+
+    result = {'project_id': project_id}
+    for row in rows:
+        result[row.resource] = row.hard_limit
 
     return result
 
 
 @require_admin_context
-@require_aggregate_exists
-def aggregate_metadata_add(context, aggregate_id, metadata, set_delete=False):
+def quota_create(context, project_id, resource, limit):
+    quota_ref = models.Quota()
+    quota_ref.project_id = project_id
+    quota_ref.resource = resource
+    quota_ref.hard_limit = limit
+    quota_ref.save()
+    return quota_ref
+
+
+@require_admin_context
+def quota_update(context, project_id, resource, limit):
     session = get_session()
-
-    if set_delete:
-        original_metadata = aggregate_metadata_get(context, aggregate_id)
-        for meta_key, meta_value in original_metadata.iteritems():
-            if meta_key not in metadata:
-                meta_ref = aggregate_metadata_get_item(context, aggregate_id,
-                                                      meta_key, session)
-                meta_ref.update({'deleted': True})
-                meta_ref.save(session=session)
-
-    meta_ref = None
-
-    for meta_key, meta_value in metadata.iteritems():
-        item = {"value": meta_value}
-        try:
-            meta_ref = aggregate_metadata_get_item(context, aggregate_id,
-                                                  meta_key, session)
-            if meta_ref.deleted:
-                item.update({'deleted': False, 'deleted_at': None})
-        except exception.AggregateMetadataNotFound:
-            meta_ref = models.AggregateMetadata()
-            item.update({"key": meta_key, "aggregate_id": aggregate_id})
-
-        meta_ref.update(item)
-        meta_ref.save(session=session)
-
-    return metadata
+    with session.begin():
+        quota_ref = quota_get(context, project_id, resource, session=session)
+        quota_ref.hard_limit = limit
+        quota_ref.save(session=session)
 
 
 @require_admin_context
-@require_aggregate_exists
-def aggregate_host_get_all(context, aggregate_id):
-    rows = model_query(context,
-                       models.AggregateHost).\
-                       filter_by(aggregate_id=aggregate_id).all()
-
-    return [r.host for r in rows]
-
-
-@require_admin_context
-@require_aggregate_exists
-def aggregate_host_delete(context, aggregate_id, host):
-    query = _aggregate_get_query(context,
-                                 models.AggregateHost,
-                                 models.AggregateHost.aggregate_id,
-                                 aggregate_id).filter_by(host=host)
-    if query.first():
-        query.update({'deleted': True,
-                      'deleted_at': utils.utcnow(),
-                      'updated_at': literal_column('updated_at')})
-    else:
-        raise exception.AggregateHostNotFound(aggregate_id=aggregate_id,
-                                              host=host)
-
-
-@require_admin_context
-@require_aggregate_exists
-def aggregate_host_add(context, aggregate_id, host):
+def quota_destroy(context, project_id, resource):
     session = get_session()
-    host_ref = _aggregate_get_query(context,
-                                    models.AggregateHost,
-                                    models.AggregateHost.aggregate_id,
-                                    aggregate_id,
-                                    session=session,
-                                    read_deleted='yes').\
-                                    filter_by(host=host).first()
-    if not host_ref:
-        try:
-            host_ref = models.AggregateHost()
-            values = {"host": host, "aggregate_id": aggregate_id, }
-            host_ref.update(values)
-            host_ref.save(session=session)
-        except exception.DBError:
-            raise exception.AggregateHostConflict(host=host)
-    elif host_ref.deleted:
-        host_ref.update({'deleted': False, 'deleted_at': None})
-        host_ref.save(session=session)
+    with session.begin():
+        quota_ref = quota_get(context, project_id, resource, session=session)
+        quota_ref.delete(session=session)
+
+
+@require_admin_context
+def quota_destroy_all_by_project(context, project_id):
+    session = get_session()
+    with session.begin():
+        quotas = model_query(context, models.Quota, session=session,
+                             read_deleted="no").\
+                         filter_by(project_id=project_id).\
+                         all()
+
+        for quota_ref in quotas:
+            quota_ref.delete(session=session)
+
+
+###################
+
+
+@require_context
+def quota_class_get(context, class_name, resource, session=None):
+    result = model_query(context, models.QuotaClass, session=session,
+                         read_deleted="no").\
+                     filter_by(class_name=class_name).\
+                     filter_by(resource=resource).\
+                     first()
+
+    if not result:
+        raise exception.QuotaClassNotFound(class_name=class_name)
+
+    return result
+
+
+@require_context
+def quota_class_get_all_by_name(context, class_name):
+    authorize_quota_class_context(context, class_name)
+
+    rows = model_query(context, models.QuotaClass, read_deleted="no").\
+                   filter_by(class_name=class_name).\
+                   all()
+
+    result = {'class_name': class_name}
+    for row in rows:
+        result[row.resource] = row.hard_limit
+
+    return result
+
+
+@require_admin_context
+def quota_class_create(context, class_name, resource, limit):
+    quota_class_ref = models.QuotaClass()
+    quota_class_ref.class_name = class_name
+    quota_class_ref.resource = resource
+    quota_class_ref.hard_limit = limit
+    quota_class_ref.save()
+    return quota_class_ref
+
+
+@require_admin_context
+def quota_class_update(context, class_name, resource, limit):
+    session = get_session()
+    with session.begin():
+        quota_class_ref = quota_class_get(context, class_name, resource,
+                                          session=session)
+        quota_class_ref.hard_limit = limit
+        quota_class_ref.save(session=session)
+
+
+@require_admin_context
+def quota_class_destroy(context, class_name, resource):
+    session = get_session()
+    with session.begin():
+        quota_class_ref = quota_class_get(context, class_name, resource,
+                                          session=session)
+        quota_class_ref.delete(session=session)
+
+
+@require_admin_context
+def quota_class_destroy_all_by_name(context, class_name):
+    session = get_session()
+    with session.begin():
+        quota_classes = model_query(context, models.QuotaClass,
+                                    session=session, read_deleted="no").\
+                                filter_by(class_name=class_name).\
+                                all()
+
+        for quota_class_ref in quota_classes:
+            quota_class_ref.delete(session=session)
+
+
+@require_context
+def quota_usage_get(context, project_id, resource, session=None):
+    result = model_query(context, models.QuotaUsage, session=session,
+                         read_deleted="no").\
+                     filter_by(project_id=project_id).\
+                     filter_by(resource=resource).\
+                     first()
+
+    if not result:
+        raise exception.QuotaUsageNotFound(project_id=project_id)
+
+    return result
+
+
+@require_context
+def quota_usage_get_all_by_project(context, project_id):
+    authorize_project_context(context, project_id)
+
+    rows = model_query(context, models.QuotaUsage, read_deleted="no").\
+                   filter_by(project_id=project_id).\
+                   all()
+
+    result = {'project_id': project_id}
+    for row in rows:
+        result[row.resource] = dict(in_use=row.in_use, reserved=row.reserved)
+
+    return result
+
+
+@require_admin_context
+def quota_usage_create(context, project_id, resource, in_use, reserved,
+                       until_refresh, session=None, save=True):
+    quota_usage_ref = models.QuotaUsage()
+    quota_usage_ref.project_id = project_id
+    quota_usage_ref.resource = resource
+    quota_usage_ref.in_use = in_use
+    quota_usage_ref.reserved = reserved
+    quota_usage_ref.until_refresh = until_refresh
+
+    # Allow us to hold the save operation until later; keeps the
+    # transaction in quota_reserve() from breaking too early
+    if save:
+        quota_usage_ref.save(session=session)
+
+    return quota_usage_ref
+
+
+@require_admin_context
+def quota_usage_update(context, project_id, resource, in_use, reserved,
+                       until_refresh, session=None):
+    def do_update(session):
+        quota_usage_ref = quota_usage_get(context, project_id, resource,
+                                          session=session)
+        quota_usage_ref.in_use = in_use
+        quota_usage_ref.reserved = reserved
+        quota_usage_ref.until_refresh = until_refresh
+        quota_usage_ref.save(session=session)
+
+    if session:
+        # Assume caller started a transaction
+        do_update(session)
     else:
-        raise exception.AggregateHostExists(host=host,
-                                            aggregate_id=aggregate_id)
-    return host_ref
+        session = get_session()
+        with session.begin():
+            do_update(session)
+
+
+@require_admin_context
+def quota_usage_destroy(context, project_id, resource):
+    session = get_session()
+    with session.begin():
+        quota_usage_ref = quota_usage_get(context, project_id, resource,
+                                          session=session)
+        quota_usage_ref.delete(session=session)
