@@ -26,6 +26,7 @@ from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
+from cinder.openstack.common import timeutils
 from cinder import rpc
 from cinder.rpc import common as rpc_common
 from cinder import utils
@@ -49,7 +50,7 @@ def cast_to_volume_host(context, host, method, update_db=True, **kwargs):
     if update_db:
         volume_id = kwargs.get('volume_id', None)
         if volume_id is not None:
-            now = utils.utcnow()
+            now = timeutils.utcnow()
             db.volume_update(context, volume_id,
                     {'host': host, 'scheduled_at': now})
     rpc.cast(context,

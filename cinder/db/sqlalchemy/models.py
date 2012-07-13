@@ -32,6 +32,7 @@ from cinder.db.sqlalchemy.session import get_session
 from cinder import exception
 from cinder import flags
 from cinder import utils
+from cinder.openstack.common import timeutils
 
 
 FLAGS = flags.FLAGS
@@ -42,8 +43,8 @@ class CinderBase(object):
     """Base class for Cinder Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
     __table_initialized__ = False
-    created_at = Column(DateTime, default=utils.utcnow)
-    updated_at = Column(DateTime, onupdate=utils.utcnow)
+    created_at = Column(DateTime, default=timeutils.utcnow)
+    updated_at = Column(DateTime, onupdate=timeutils.utcnow)
     deleted_at = Column(DateTime)
     deleted = Column(Boolean, default=False)
     metadata = None
@@ -64,7 +65,7 @@ class CinderBase(object):
     def delete(self, session=None):
         """Delete this object."""
         self.deleted = True
-        self.deleted_at = utils.utcnow()
+        self.deleted_at = timeutils.utcnow()
         self.save(session=session)
 
     def __setitem__(self, key, value):

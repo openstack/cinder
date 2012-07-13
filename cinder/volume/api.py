@@ -28,6 +28,7 @@ from cinder import exception
 from cinder import flags
 from cinder import log as logging
 import cinder.policy
+from cinder.openstack.common import timeutils
 from cinder import quota
 from cinder import rpc
 from cinder import utils
@@ -142,7 +143,7 @@ class API(base.Base):
             msg = _("Volume still has %d dependent snapshots") % len(snapshots)
             raise exception.InvalidVolume(reason=msg)
 
-        now = utils.utcnow()
+        now = timeutils.utcnow()
         self.db.volume_update(context, volume_id, {'status': 'deleting',
                                                    'terminated_at': now})
         host = volume['host']
