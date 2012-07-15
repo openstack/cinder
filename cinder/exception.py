@@ -936,3 +936,8 @@ class InvalidInstanceIDMalformed(Invalid):
 
 class CouldNotFetchImage(CinderException):
     message = _("Could not fetch image %(image)s")
+
+
+class VolumeBackendAPIException(CinderException):
+    message = _("Bad or unexpected response from the storage volume "
+                "backend API: data=%(data)s")
