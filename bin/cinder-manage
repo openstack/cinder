@@ -76,7 +76,6 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
 
 gettext.install('cinder', unicode=1)
 
-from cinder.compat import flagfile
 from cinder import context
 from cinder import db
 from cinder.db import migration
@@ -432,23 +431,6 @@ class ConfigCommands(object):
         for key, value in FLAGS.iteritems():
             if value is not None:
                 print '%s = %s' % (key, value)
-
-    @args('--infile', dest='infile', metavar='<path>',
-          help='old-style flagfile to convert to config')
-    @args('--outfile', dest='outfile', metavar='<path>',
-          help='path for output file. Writes config'
-               'to stdout if not specified.')
-    def convert(self, infile, outfile=None):
-        """Converts a flagfile and prints results to stdout."""
-        arg = '--flagfile=%s' % infile
-        with flagfile.handle_flagfiles_managed([arg]) as newargs:
-            with open(newargs[0].split('=')[1]) as configfile:
-                config = configfile.read()
-            if outfile:
-                with open(outfile, 'w') as configfile:
-                    configfile.write(config)
-            else:
-                print config,
 
 
 class GetLogCommands(object):
