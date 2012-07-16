@@ -49,7 +49,7 @@ from cinder import utils
 LOG = logging.getLogger('cinder.all')
 
 if __name__ == '__main__':
-    utils.default_flagfile()
+    utils.default_cfgfile()
     flags.FLAGS(sys.argv)
     logging.setup()
     utils.monkey_patch()

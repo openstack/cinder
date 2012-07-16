@@ -307,12 +307,12 @@ def cinderdir():
     return os.path.abspath(cinder.__file__).split('cinder/__init__.py')[0]
 
 
-def default_flagfile(filename='cinder.conf', args=None):
+def default_cfgfile(filename='cinder.conf', args=None):
     if args is None:
         args = sys.argv
     for arg in args:
-        if arg.find('flagfile') != -1:
-            return arg[arg.index('flagfile') + len('flagfile') + 1:]
+        if arg.find('config-file') != -1:
+            return arg[arg.index('config-file') + len('config-file') + 1:]
     else:
         if not os.path.isabs(filename):
             # turn relative filename into an absolute path
@@ -323,8 +323,8 @@ def default_flagfile(filename='cinder.conf', args=None):
             if not os.path.exists(filename):
                 filename = '/etc/cinder/cinder.conf'
         if os.path.exists(filename):
-            flagfile = '--flagfile=%s' % filename
-            args.insert(1, flagfile)
+            cfgfile = '--config-file=%s' % filename
+            args.insert(1, cfgfile)
             return filename
 
 
