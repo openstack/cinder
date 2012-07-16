@@ -37,6 +37,8 @@ from cinder.openstack.common import cfg
 class CinderConfigOpts(cfg.CommonConfigOpts):
 
     def __init__(self, *args, **kwargs):
+        if 'project' not in kwargs:
+            kwargs['project'] = 'cinder'
         super(CinderConfigOpts, self).__init__(*args, **kwargs)
         self.disable_interspersed_args()
 
