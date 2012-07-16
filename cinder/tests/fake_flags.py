@@ -20,15 +20,18 @@ from cinder import flags
 
 FLAGS = flags.FLAGS
 
-flags.DECLARE('volume_driver', 'cinder.volume.manager')
-FLAGS.set_default('volume_driver', 'cinder.volume.driver.FakeISCSIDriver')
-FLAGS.set_default('connection_type', 'fake')
-FLAGS.set_default('fake_rabbit', True)
-FLAGS.set_default('rpc_backend', 'cinder.rpc.impl_fake')
 flags.DECLARE('iscsi_num_targets', 'cinder.volume.driver')
-FLAGS.set_default('iscsi_num_targets', 8)
-FLAGS.set_default('verbose', True)
-FLAGS.set_default('sql_connection', "sqlite://")
-FLAGS.set_default('sqlite_synchronous', False)
 flags.DECLARE('policy_file', 'cinder.policy')
-FLAGS.set_default('policy_file', 'cinder/tests/policy.json')
+flags.DECLARE('volume_driver', 'cinder.volume.manager')
+
+
+def set_defaults(conf):
+    conf.set_default('volume_driver', 'cinder.volume.driver.FakeISCSIDriver')
+    conf.set_default('connection_type', 'fake')
+    conf.set_default('fake_rabbit', True)
+    conf.set_default('rpc_backend', 'cinder.rpc.impl_fake')
+    conf.set_default('iscsi_num_targets', 8)
+    conf.set_default('verbose', True)
+    conf.set_default('sql_connection', "sqlite://")
+    conf.set_default('sqlite_synchronous', False)
+    conf.set_default('policy_file', 'cinder/tests/policy.json')

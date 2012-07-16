@@ -64,6 +64,7 @@ def setup():
 
     from cinder.db import migration
     from cinder.tests import fake_flags
+    fake_flags.set_defaults(FLAGS)
 
     if FLAGS.sql_connection == "sqlite://":
         if migration.db_version() > 1:
