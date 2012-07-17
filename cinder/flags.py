@@ -198,9 +198,6 @@ global_opts = [
     cfg.BoolOpt('api_rate_limit',
                 default=True,
                 help='whether to rate limit the api'),
-    cfg.ListOpt('enabled_apis',
-                default=['osapi_volume'],
-                help='a list of APIs to enable by default'),
     cfg.ListOpt('osapi_volume_ext_list',
                 default=[],
                 help='Specify list of extensions to load when using osapi_'

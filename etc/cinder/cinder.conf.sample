@@ -63,8 +63,6 @@
 # ec2_scheme="http"
 ###### (BoolOpt) Allows use of instance password during server creation
 # enable_instance_password=true
-###### (ListOpt) a list of APIs to enable by default
-# enabled_apis="ec2,osapi_compute,osapi_volume,metadata"
 ###### (BoolOpt) If passed, use fake network devices and addresses
 # fake_network=false
 ###### (BoolOpt) If passed, use a fake RabbitMQ provider
