@@ -95,8 +95,6 @@
 # isolated_hosts=""
 ###### (ListOpt) Images to run on isolated host
 # isolated_images=""
-###### (StrOpt) Directory to use for lock files
-# lock_path="$pybasedir"
 ###### (StrOpt) If this option is specified, the logging configuration file specified is used and overrides any other logging options specified. Please see the Python logging module documentation for details on logging configuration files.
 # log-config=<None>
 ###### (StrOpt) Format string for %(asctime)s in log records. Default: %default
@@ -254,11 +252,6 @@
 # logging_exception_prefix="(%(name)s): TRACE: "
 ###### (BoolOpt) publish error events
 # publish_errors=false
-
-######### defined in cinder.utils #########
-
-###### (BoolOpt) Whether to disable inter-process locks
-# disable_process_locking=false
 
 ######### defined in cinder.service #########
 

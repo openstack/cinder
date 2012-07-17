@@ -116,9 +116,6 @@ core_opts = [
     cfg.StrOpt('state_path',
                default='$pybasedir',
                help="Top-level directory for maintaining cinder's state"),
-    cfg.StrOpt('lock_path',
-               default='$pybasedir',
-               help='Directory to use for lock files'),
     ]
 
 debug_opts = [
