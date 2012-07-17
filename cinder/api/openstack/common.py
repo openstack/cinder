@@ -178,18 +178,6 @@ def dict_to_query_str(params):
     return param_str.rstrip('&')
 
 
-def check_snapshots_enabled(f):
-    @functools.wraps(f)
-    def inner(*args, **kwargs):
-        if not FLAGS.allow_instance_snapshots:
-            LOG.warn(_('Rejecting snapshot request, snapshots currently'
-                       ' disabled'))
-            msg = _("Instance snapshots are not permitted at this time.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-        return f(*args, **kwargs)
-    return inner
-
-
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 

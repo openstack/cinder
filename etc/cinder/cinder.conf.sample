@@ -440,11 +440,6 @@
 ###### (IntOpt) Number of minutes for lockout window.
 # lockout_window=15
 
-######### defined in cinder.api.openstack.compute #########
-
-###### (BoolOpt) Permit instance snapshot operations.
-# allow_instance_snapshots=true
-
 ######### defined in cinder.ipv6.api #########
 
 ###### (StrOpt) Backend to use for IPv6 generation
