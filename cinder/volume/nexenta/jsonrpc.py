@@ -22,9 +22,9 @@
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
-import json
 import urllib2
 
+from cinder.openstack.common import jsonutils
 from cinder.volume import nexenta
 from cinder import log as logging
 
@@ -55,7 +55,7 @@ class NexentaJSONProxy(object):
                                 obj, method)
 
     def __call__(self, *args):
-        data = json.dumps({'object': self.obj,
+        data = jsonutils.dumps({'object': self.obj,
                            'method': self.method,
                            'params': args})
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
@@ -77,7 +77,7 @@ class NexentaJSONProxy(object):
 
         response_data = response_obj.read()
         LOG.debug(_('Got response: %s'), response_data)
-        response = json.loads(response_data)
+        response = jsonutils.loads(response_data)
         if response.get('error') is not None:
             raise NexentaJSONException(response['error'].get('message', ''))
         else:

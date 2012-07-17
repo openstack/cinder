@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 
 from cinder import flags
 from cinder import log as logging
+from cinder.openstack.common import jsonutils
 
 
 FLAGS = flags.FLAGS
@@ -31,4 +31,4 @@ def notify(message):
     priority = priority.lower()
     logger = logging.getLogger(
             'cinder.notification.%s' % message['event_type'])
-    getattr(logger, priority)(json.dumps(message))
+    getattr(logger, priority)(jsonutils.dumps(message))

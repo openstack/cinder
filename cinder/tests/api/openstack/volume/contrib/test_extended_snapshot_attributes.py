@@ -15,14 +15,14 @@
 
 from lxml import etree
 import webob
-import json
 
 from cinder.api.openstack.volume.contrib import extended_snapshot_attributes
-from cinder import volume
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api.openstack import fakes
+from cinder import volume
 
 
 FLAGS = flags.FLAGS
@@ -73,10 +73,10 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         return res
 
     def _get_snapshot(self, body):
-        return json.loads(body).get('snapshot')
+        return jsonutils.loads(body).get('snapshot')
 
     def _get_snapshots(self, body):
-        return json.loads(body).get('snapshots')
+        return jsonutils.loads(body).get('snapshots')
 
     def assertSnapshotAttributes(self, snapshot, project_id, progress):
         self.assertEqual(snapshot.get('%sproject_id' % self.prefix),

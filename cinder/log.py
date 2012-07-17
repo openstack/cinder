@@ -32,7 +32,6 @@ It also allows setting of formatting information through flags.
 import cStringIO
 import inspect
 import itertools
-import json
 import logging
 import logging.config
 import logging.handlers
@@ -44,6 +43,7 @@ import traceback
 import cinder
 from cinder import flags
 from cinder.openstack.common import cfg
+from cinder.openstack.common import jsonutils
 from cinder.openstack.common import local
 from cinder import version
 
@@ -221,7 +221,7 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             message['traceback'] = self.formatException(record.exc_info)
 
-        return json.dumps(message)
+        return jsonutils.dumps(message)
 
 
 class LegacyCinderFormatter(logging.Formatter):

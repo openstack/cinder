@@ -15,25 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
-
 import webob
-
-
-def webob_factory(url):
-    """Factory for removing duplicate webob code from tests"""
-
-    base_url = url
-
-    def web_request(url, method=None, body=None):
-        req = webob.Request.blank("%s%s" % (base_url, url))
-        if method:
-            req.content_type = "application/json"
-            req.method = method
-        if body:
-            req.body = json.dumps(body)
-        return req
-    return web_request
 
 
 def compare_links(actual, expected):

@@ -1,11 +1,10 @@
 import cStringIO
-import json
 import logging
-import sys
 
 from cinder import context
 from cinder import flags
 from cinder import log
+from cinder.openstack.common import jsonutils
 from cinder.notifier import api as notifier
 from cinder import test
 
@@ -180,7 +179,7 @@ class JSONFormatterTestCase(test.TestCase):
         test_data = {'test': 'log'}
         self.log.debug(test_msg, test_data)
 
-        data = json.loads(self.stream.getvalue())
+        data = jsonutils.loads(self.stream.getvalue())
         self.assertTrue(data)
         self.assertTrue('extra' in data)
         self.assertEqual('test-json', data['name'])
@@ -204,7 +203,7 @@ class JSONFormatterTestCase(test.TestCase):
         except Exception:
             self.log.exception(test_msg, test_data)
 
-        data = json.loads(self.stream.getvalue())
+        data = jsonutils.loads(self.stream.getvalue())
         self.assertTrue(data)
         self.assertTrue('extra' in data)
         self.assertEqual('test-json', data['name'])

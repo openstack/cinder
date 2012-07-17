@@ -12,17 +12,12 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import datetime
-import json
-
 import webob
 
-from cinder.api.openstack import volume as volume_api
 from cinder import volume
-from cinder import context
-from cinder import exception
 from cinder import flags
 from cinder import test
+from cinder.openstack.common import jsonutils
 from cinder.tests.api.openstack import fakes
 from cinder import utils
 
@@ -59,7 +54,7 @@ class VolumeActionsTest(test.TestCase):
             req = webob.Request.blank('/v1/fake/volumes/%s/action' %
                     self.UUID)
             req.method = 'POST'
-            req.body = json.dumps({_action: None})
+            req.body = jsonutils.dumps({_action: None})
             req.content_type = 'application/json'
             res = req.get_response(app)
             self.assertEqual(res.status_int, 202)
@@ -73,11 +68,11 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-initialize_connection': {'connector': 'fake'}}
         req = webob.Request.blank('/v1/fake/volumes/1/action')
         req.method = "POST"
-        req.body = json.dumps(body)
+        req.body = jsonutils.dumps(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
-        output = json.loads(res.body)
+        output = jsonutils.loads(res.body)
         self.assertEqual(res.status_int, 200)
 
     def test_terminate_connection(self):
@@ -89,7 +84,7 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-terminate_connection': {'connector': 'fake'}}
         req = webob.Request.blank('/v1/fake/volumes/1/action')
         req.method = "POST"
-        req.body = json.dumps(body)
+        req.body = jsonutils.dumps(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
@@ -100,7 +95,7 @@ class VolumeActionsTest(test.TestCase):
                               'mountpoint': '/dev/vdc'}}
         req = webob.Request.blank('/v1/fake/volumes/1/action')
         req.method = "POST"
-        req.body = json.dumps(body)
+        req.body = jsonutils.dumps(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
