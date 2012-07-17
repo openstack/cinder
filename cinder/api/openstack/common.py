@@ -138,19 +138,6 @@ def limited_by_marker(items, request, max_limit=FLAGS.osapi_max_limit):
     return items[start_index:range_end]
 
 
-def get_id_from_href(href):
-    """Return the id or uuid portion of a url.
-
-    Given: 'http://www.foo.com/bar/123?q=4'
-    Returns: '123'
-
-    Given: 'http://www.foo.com/bar/abc123?q=4'
-    Returns: 'abc123'
-
-    """
-    return urlparse.urlsplit("%s" % href).path.split('/')[-1]
-
-
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
@@ -179,26 +166,6 @@ def remove_version_from_href(href):
     parsed_url = list(parsed_url)
     parsed_url[2] = new_path
     return urlparse.urlunsplit(parsed_url)
-
-
-def get_version_from_href(href):
-    """Returns the api version in the href.
-
-    Returns the api version in the href.
-    If no version is found, '2' is returned
-
-    Given: 'http://www.cinder.com/123'
-    Returns: '2'
-
-    Given: 'http://www.cinder.com/v1.1'
-    Returns: '1.1'
-
-    """
-    try:
-        expression = r'/v([0-9]+|[0-9]+\.[0-9]+)(/|$)'
-        return re.findall(expression, href)[0][0]
-    except IndexError:
-        return '2'
 
 
 def dict_to_query_str(params):
