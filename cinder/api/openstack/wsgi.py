@@ -26,7 +26,7 @@ import webob
 
 from cinder import exception
 from cinder import log as logging
-from cinder import utils
+from cinder.openstack.common import jsonutils
 from cinder import wsgi
 
 
@@ -129,7 +129,7 @@ class JSONDeserializer(TextDeserializer):
 
     def _from_json(self, datastring):
         try:
-            return utils.loads(datastring)
+            return jsonutils.loads(datastring)
         except ValueError:
             msg = _("cannot understand JSON")
             raise exception.MalformedRequestBody(reason=msg)
@@ -241,7 +241,7 @@ class JSONDictSerializer(DictSerializer):
     """Default JSON request body serialization"""
 
     def default(self, data):
-        return utils.dumps(data)
+        return jsonutils.dumps(data)
 
 
 class XMLDictSerializer(DictSerializer):
@@ -532,7 +532,7 @@ def action_peek_json(body):
     """Determine action to invoke."""
 
     try:
-        decoded = utils.loads(body)
+        decoded = jsonutils.loads(body)
     except ValueError:
         msg = _("cannot understand JSON")
         raise exception.MalformedRequestBody(reason=msg)

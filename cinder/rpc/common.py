@@ -24,7 +24,7 @@ import traceback
 from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
-from cinder import utils
+from cinder.openstack.common import jsonutils
 
 
 LOG = logging.getLogger(__name__)
@@ -204,13 +204,13 @@ def serialize_remote_exception(failure_info):
         'kwargs': kwargs
     }
 
-    json_data = utils.dumps(data)
+    json_data = jsonutils.dumps(data)
 
     return json_data
 
 
 def deserialize_remote_exception(conf, data):
-    failure = utils.loads(str(data))
+    failure = jsonutils.loads(str(data))
 
     trace = failure.get('tb', [])
     message = failure.get('message', "") + "\n" + "\n".join(trace)
