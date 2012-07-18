@@ -192,7 +192,6 @@ class HostCommands(object):
         print "%-25s\t%-15s" % (_('host'),
                                 _('zone'))
         ctxt = context.get_admin_context()
-        now = utils.utcnow()
         services = db.service_get_all(ctxt)
         if zone:
             services = [s for s in services if s['availability_zone'] == zone]

@@ -465,7 +465,7 @@ def volume_destroy(context, volume_id):
         session.query(models.Volume).\
                 filter_by(id=volume_id).\
                 update({'deleted': True,
-                        'deleted_at': utils.utcnow(),
+                        'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
         session.query(models.IscsiTarget).\
                 filter_by(volume_id=volume_id).\
@@ -473,7 +473,7 @@ def volume_destroy(context, volume_id):
         session.query(models.VolumeMetadata).\
                 filter_by(volume_id=volume_id).\
                 update({'deleted': True,
-                        'deleted_at': utils.utcnow(),
+                        'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
 
 
@@ -603,7 +603,7 @@ def volume_metadata_delete(context, volume_id, key):
     _volume_metadata_get_query(context, volume_id).\
         filter_by(key=key).\
         update({'deleted': True,
-                'deleted_at': utils.utcnow(),
+                'deleted_at': timeutils.utcnow(),
                 'updated_at': literal_column('updated_at')})
 
 
@@ -679,7 +679,7 @@ def snapshot_destroy(context, snapshot_id):
         session.query(models.Snapshot).\
                 filter_by(id=snapshot_id).\
                 update({'deleted': True,
-                        'deleted_at': utils.utcnow(),
+                        'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
 
 
@@ -775,7 +775,7 @@ def migration_get_by_instance_and_status(context, instance_uuid, status):
 
 @require_admin_context
 def migration_get_all_unconfirmed(context, confirm_window, session=None):
-    confirm_window = datetime.datetime.utcnow() - datetime.timedelta(
+    confirm_window = timeutils.utcnow() - datetime.timedelta(
             seconds=confirm_window)
 
     return model_query(context, models.Migration, session=session,
@@ -875,12 +875,12 @@ def volume_type_destroy(context, name):
         session.query(models.VolumeTypes).\
                 filter_by(id=volume_type_id).\
                 update({'deleted': True,
-                        'deleted_at': utils.utcnow(),
+                        'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
         session.query(models.VolumeTypeExtraSpecs).\
                 filter_by(volume_type_id=volume_type_id).\
                 update({'deleted': True,
-                        'deleted_at': utils.utcnow(),
+                        'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
 
 
@@ -910,7 +910,7 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
     _volume_type_extra_specs_query(context, volume_type_id).\
         filter_by(key=key).\
         update({'deleted': True,
-                'deleted_at': utils.utcnow(),
+                'deleted_at': timeutils.utcnow(),
                 'updated_at': literal_column('updated_at')})
 
 

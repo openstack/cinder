@@ -34,6 +34,7 @@ from cinder.db.sqlalchemy import models
 from cinder import exception as exc
 from cinder import utils
 from cinder import wsgi
+from cinder.openstack.common import timeutils
 
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -147,7 +148,7 @@ class FakeAuthDatabase(object):
 
     @staticmethod
     def auth_token_create(context, token):
-        fake_token = FakeToken(created_at=utils.utcnow(), **token)
+        fake_token = FakeToken(created_at=timeutils.utcnow(), **token)
         FakeAuthDatabase.data[fake_token.token_hash] = fake_token
         FakeAuthDatabase.data['id_%i' % fake_token.id] = fake_token
         return fake_token

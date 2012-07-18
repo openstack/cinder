@@ -45,6 +45,7 @@ from cinder import log as logging
 from cinder import manager
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
+from cinder.openstack.common import timeutils
 from cinder import rpc
 from cinder import utils
 from cinder.volume import volume_types
@@ -138,7 +139,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.db.volume_update(context,
                                       volume_ref['id'], {'status': 'error'})
 
-        now = utils.utcnow()
+        now = timeutils.utcnow()
         self.db.volume_update(context,
                               volume_ref['id'], {'status': 'available',
                                                  'launched_at': now})

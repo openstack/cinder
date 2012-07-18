@@ -58,6 +58,7 @@ from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
+from cinder.openstack.common import timeutils
 
 
 LOG = logging.getLogger(__name__)
@@ -376,7 +377,7 @@ def last_completed_audit_period(unit=None):
         unit, offset = unit.split("@", 1)
         offset = int(offset)
 
-    rightnow = utcnow()
+    rightnow = timeutils.utcnow()
     if unit not in ('month', 'day', 'year', 'hour'):
         raise ValueError('Time period must be hour, day, month or year')
     if unit == 'month':
@@ -488,83 +489,6 @@ def get_my_linklocal(interface):
     except Exception as ex:
         raise exception.Error(_("Couldn't get Link Local IP of %(interface)s"
                                 " :%(ex)s") % locals())
-
-
-def utcnow():
-    """Overridable version of utils.utcnow."""
-    if utcnow.override_time:
-        return utcnow.override_time
-    return datetime.datetime.utcnow()
-
-
-utcnow.override_time = None
-
-
-def is_older_than(before, seconds):
-    """Return True if before is older than seconds."""
-    return utcnow() - before > datetime.timedelta(seconds=seconds)
-
-
-def utcnow_ts():
-    """Timestamp version of our utcnow function."""
-    return time.mktime(utcnow().timetuple())
-
-
-def set_time_override(override_time=datetime.datetime.utcnow()):
-    """Override utils.utcnow to return a constant time."""
-    utcnow.override_time = override_time
-
-
-def advance_time_delta(timedelta):
-    """Advance overriden time using a datetime.timedelta."""
-    assert(not utcnow.override_time is None)
-    utcnow.override_time += timedelta
-
-
-def advance_time_seconds(seconds):
-    """Advance overriden time by seconds."""
-    advance_time_delta(datetime.timedelta(0, seconds))
-
-
-def clear_time_override():
-    """Remove the overridden time."""
-    utcnow.override_time = None
-
-
-def strtime(at=None, fmt=PERFECT_TIME_FORMAT):
-    """Returns formatted utcnow."""
-    if not at:
-        at = utcnow()
-    return at.strftime(fmt)
-
-
-def parse_strtime(timestr, fmt=PERFECT_TIME_FORMAT):
-    """Turn a formatted time back into a datetime."""
-    return datetime.datetime.strptime(timestr, fmt)
-
-
-def isotime(at=None):
-    """Stringify time in ISO 8601 format"""
-    if not at:
-        at = datetime.datetime.utcnow()
-    str = at.strftime(ISO_TIME_FORMAT)
-    tz = at.tzinfo.tzname(None) if at.tzinfo else 'UTC'
-    str += ('Z' if tz == 'UTC' else tz)
-    return str
-
-
-def parse_isotime(timestr):
-    """Turn an iso formatted time back into a datetime."""
-    try:
-        return iso8601.parse_date(timestr)
-    except (iso8601.ParseError, TypeError) as e:
-        raise ValueError(e.message)
-
-
-def normalize_time(timestamp):
-    """Normalize time in arbitrary timezone to UTC"""
-    offset = timestamp.utcoffset()
-    return timestamp.replace(tzinfo=None) - offset if offset else timestamp
 
 
 def parse_mailmap(mailmap='.mailmap'):
@@ -1571,7 +1495,7 @@ def service_is_up(service):
     """Check whether a service is up based on last heartbeat."""
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
-    elapsed = total_seconds(utcnow() - last_heartbeat)
+    elapsed = total_seconds(timeutils.utcnow() - last_heartbeat)
     return abs(elapsed) <= FLAGS.service_down_time
 
 

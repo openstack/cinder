@@ -36,6 +36,7 @@ import stubout
 from cinder import flags
 from cinder import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder import service
 from cinder import tests
@@ -126,7 +127,7 @@ class TestCase(unittest.TestCase):
         # NOTE(vish): We need a better method for creating fixtures for tests
         #             now that we have some required db setup for the system
         #             to work properly.
-        self.start = utils.utcnow()
+        self.start = timeutils.utcnow()
         tests.reset_db()
 
         # emulate some of the mox stuff, we can't use the metaclass
