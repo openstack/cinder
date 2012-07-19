@@ -30,19 +30,19 @@ import os
 import socket
 import sys
 
-from cinder.compat import flagfile
 from cinder.openstack.common import cfg
 
 
 class CinderConfigOpts(cfg.CommonConfigOpts):
 
     def __init__(self, *args, **kwargs):
+        if 'project' not in kwargs:
+            kwargs['project'] = 'cinder'
         super(CinderConfigOpts, self).__init__(*args, **kwargs)
         self.disable_interspersed_args()
 
     def __call__(self, argv):
-        with flagfile.handle_flagfiles_managed(argv[1:]) as args:
-            return argv[:1] + super(CinderConfigOpts, self).__call__(args)
+        return argv[:1] + super(CinderConfigOpts, self).__call__(argv[1:])
 
 
 FLAGS = CinderConfigOpts()
