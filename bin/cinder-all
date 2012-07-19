@@ -54,11 +54,10 @@ if __name__ == '__main__':
     utils.monkey_patch()
     servers = []
     # cinder-api
-    for api in flags.FLAGS.enabled_apis:
-        try:
-            servers.append(service.WSGIService(api))
-        except (Exception, SystemExit):
-            logging.exception(_('Failed to load %s') % '%s-api' % api)
+    try:
+        servers.append(service.WSGIService('osapi_volume'))
+    except (Exception, SystemExit):
+        logging.exception(_('Failed to load %s') % '%s-api' % api)
 
     for binary in ['cinder-volume', 'cinder-scheduler']:
         try:
