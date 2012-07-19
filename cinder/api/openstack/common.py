@@ -138,19 +138,6 @@ def limited_by_marker(items, request, max_limit=FLAGS.osapi_max_limit):
     return items[start_index:range_end]
 
 
-def get_id_from_href(href):
-    """Return the id or uuid portion of a url.
-
-    Given: 'http://www.foo.com/bar/123?q=4'
-    Returns: '123'
-
-    Given: 'http://www.foo.com/bar/abc123?q=4'
-    Returns: 'abc123'
-
-    """
-    return urlparse.urlsplit("%s" % href).path.split('/')[-1]
-
-
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
@@ -181,26 +168,6 @@ def remove_version_from_href(href):
     return urlparse.urlunsplit(parsed_url)
 
 
-def get_version_from_href(href):
-    """Returns the api version in the href.
-
-    Returns the api version in the href.
-    If no version is found, '2' is returned
-
-    Given: 'http://www.cinder.com/123'
-    Returns: '2'
-
-    Given: 'http://www.cinder.com/v1.1'
-    Returns: '1.1'
-
-    """
-    try:
-        expression = r'/v([0-9]+|[0-9]+\.[0-9]+)(/|$)'
-        return re.findall(expression, href)[0][0]
-    except IndexError:
-        return '2'
-
-
 def dict_to_query_str(params):
     # TODO(throughnothing): we should just use urllib.urlencode instead of this
     # But currently we don't work with urlencoded url's
@@ -209,78 +176,6 @@ def dict_to_query_str(params):
         param_str = param_str + '='.join([str(key), str(val)]) + '&'
 
     return param_str.rstrip('&')
-
-
-class MetadataDeserializer(wsgi.MetadataXMLDeserializer):
-    def deserialize(self, text):
-        dom = minidom.parseString(text)
-        metadata_node = self.find_first_child_named(dom, "metadata")
-        metadata = self.extract_metadata(metadata_node)
-        return {'body': {'metadata': metadata}}
-
-
-class MetaItemDeserializer(wsgi.MetadataXMLDeserializer):
-    def deserialize(self, text):
-        dom = minidom.parseString(text)
-        metadata_item = self.extract_metadata(dom)
-        return {'body': {'meta': metadata_item}}
-
-
-class MetadataXMLDeserializer(wsgi.XMLDeserializer):
-
-    def extract_metadata(self, metadata_node):
-        """Marshal the metadata attribute of a parsed request"""
-        if metadata_node is None:
-            return {}
-        metadata = {}
-        for meta_node in self.find_children_named(metadata_node, "meta"):
-            key = meta_node.getAttribute("key")
-            metadata[key] = self.extract_text(meta_node)
-        return metadata
-
-    def _extract_metadata_container(self, datastring):
-        dom = minidom.parseString(datastring)
-        metadata_node = self.find_first_child_named(dom, "metadata")
-        metadata = self.extract_metadata(metadata_node)
-        return {'body': {'metadata': metadata}}
-
-    def create(self, datastring):
-        return self._extract_metadata_container(datastring)
-
-    def update_all(self, datastring):
-        return self._extract_metadata_container(datastring)
-
-    def update(self, datastring):
-        dom = minidom.parseString(datastring)
-        metadata_item = self.extract_metadata(dom)
-        return {'body': {'meta': metadata_item}}
-
-
-metadata_nsmap = {None: xmlutil.XMLNS_V11}
-
-
-class MetaItemTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        sel = xmlutil.Selector('meta', xmlutil.get_items, 0)
-        root = xmlutil.TemplateElement('meta', selector=sel)
-        root.set('key', 0)
-        root.text = 1
-        return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
-
-
-class MetadataTemplateElement(xmlutil.TemplateElement):
-    def will_render(self, datum):
-        return True
-
-
-class MetadataTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = MetadataTemplateElement('metadata', selector='metadata')
-        elem = xmlutil.SubTemplateElement(root, 'meta',
-                                          selector=xmlutil.get_items)
-        elem.set('key', 0)
-        elem.text = 1
-        return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
 
 
 def check_snapshots_enabled(f):
