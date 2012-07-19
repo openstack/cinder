@@ -297,18 +297,6 @@ class ResourceExtension(object):
         self.custom_routes_fn = custom_routes_fn
 
 
-def wrap_errors(fn):
-    """Ensure errors are not passed along."""
-    def wrapped(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except webob.exc.HTTPException:
-            raise
-        except Exception:
-            raise webob.exc.HTTPInternalServerError()
-    return wrapped
-
-
 def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
     """Registers all standard API extensions."""
 
