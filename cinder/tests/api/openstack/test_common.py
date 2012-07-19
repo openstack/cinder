@@ -300,34 +300,6 @@ class MiscFunctionsTest(test.TestCase):
         actual = common.get_version_from_href(fixture)
         self.assertEqual(actual, expected)
 
-    def test_raise_http_conflict_for_instance_invalid_state(self):
-        # Correct args
-        exc = exception.InstanceInvalidState(attr='fake_attr',
-                state='fake_state', method='fake_method')
-        try:
-            common.raise_http_conflict_for_instance_invalid_state(exc,
-                    'meow')
-        except Exception, e:
-            self.assertTrue(isinstance(e, webob.exc.HTTPConflict))
-            msg = str(e)
-            self.assertEqual(msg,
-                "Cannot 'meow' while instance is in fake_attr fake_state")
-        else:
-            self.fail("webob.exc.HTTPConflict was not raised")
-
-        # Incorrect args
-        exc = exception.InstanceInvalidState()
-        try:
-            common.raise_http_conflict_for_instance_invalid_state(exc,
-                    'meow')
-        except Exception, e:
-            self.assertTrue(isinstance(e, webob.exc.HTTPConflict))
-            msg = str(e)
-            self.assertEqual(msg,
-                "Instance is in an invalid state for 'meow'")
-        else:
-            self.fail("webob.exc.HTTPConflict was not raised")
-
 
 class MetadataXMLDeserializationTest(test.TestCase):
 
