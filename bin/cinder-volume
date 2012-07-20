@@ -37,6 +37,7 @@ if os.path.exists(os.path.join(possible_topdir, 'cinder', '__init__.py')):
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import service
+from cinder import utils
 
 if __name__ == '__main__':
     flags.parse_args(sys.argv)
