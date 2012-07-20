@@ -21,7 +21,7 @@ import webob
 from cinder.api.openstack.volume import snapshots
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import volume
 from cinder.tests.api.openstack import fakes

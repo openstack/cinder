@@ -17,7 +17,7 @@ import uuid
 
 from cinder import flags
 from cinder import utils
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils

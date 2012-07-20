@@ -21,7 +21,7 @@
 
 import copy
 
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import local
 from cinder.openstack.common import timeutils
 from cinder import utils

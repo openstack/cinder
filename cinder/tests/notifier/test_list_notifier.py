@@ -14,7 +14,7 @@
 #    under the License.
 
 import cinder
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 import cinder.notifier.api
 import cinder.notifier.log_notifier
 import cinder.notifier.no_op_notifier

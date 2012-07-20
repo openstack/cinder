@@ -74,7 +74,7 @@ absdir = os.path.abspath(reldir)
 sys.path.insert(0, absdir)
 
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
 
 
@@ -345,7 +345,7 @@ def run():
     # arbitrary nosetest flags as well
     argv = [x for x in sys.argv if x != '--hide-elapsed']
     hide_elapsed = argv != sys.argv
-    logging.setup()
+    logging.setup("cinder")
 
     # If any argument looks like a test name but doesn't have "cinder.tests" in
     # front of it, automatically add that so we don't have to type as much

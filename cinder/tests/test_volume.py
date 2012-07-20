@@ -21,6 +21,7 @@ Tests for Volume Code.
 """
 
 import cStringIO
+import logging
 
 import mox
 
@@ -28,7 +29,7 @@ from cinder import context
 from cinder import exception
 from cinder import db
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as os_logging
 from cinder.openstack.common import importutils
 from cinder.openstack.common import rpc
 import cinder.policy
@@ -36,7 +37,7 @@ from cinder import test
 import cinder.volume.api
 
 FLAGS = flags.FLAGS
-LOG = logging.getLogger(__name__)
+LOG = os_logging.getLogger(__name__)
 
 
 class VolumeTestCase(test.TestCase):
@@ -354,7 +355,7 @@ class DriverTestCase(test.TestCase):
 
         log = logging.getLogger()
         self.stream = cStringIO.StringIO()
-        log.logger.addHandler(logging.logging.StreamHandler(self.stream))
+        log.addHandler(logging.StreamHandler(self.stream))
 
     def _attach_volume(self):
         """Attach volumes to an instance. This function also sets

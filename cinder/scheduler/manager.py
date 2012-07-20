@@ -26,7 +26,7 @@ import functools
 from cinder import db
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import manager
 from cinder.notifier import api as notifier
 from cinder.openstack.common import cfg

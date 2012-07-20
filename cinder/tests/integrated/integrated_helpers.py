@@ -22,7 +22,7 @@ Provides common functionality for integrated unit tests
 import random
 import string
 
-from cinder.log import logging
+from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import test  # For the flags
 from cinder.tests.integrated.api import client

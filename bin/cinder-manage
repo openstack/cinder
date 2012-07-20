@@ -81,7 +81,7 @@ from cinder import db
 from cinder.db import migration
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import rpc
@@ -531,7 +531,7 @@ def main():
 
     try:
         argv = flags.parse_args(sys.argv)
-        logging.setup()
+        logging.setup("cinder")
     except cfg.ConfigFilesNotFoundError:
         cfgfile = FLAGS.config_file[-1] if FLAGS.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):

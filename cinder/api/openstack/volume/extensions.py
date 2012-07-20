@@ -17,7 +17,7 @@
 
 from cinder.api.openstack import extensions as base_extensions
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

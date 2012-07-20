@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from cinder import exception
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import san
 

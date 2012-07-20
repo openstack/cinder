@@ -25,7 +25,7 @@ import webob.dec
 import webob.exc
 
 from cinder.api.openstack import wsgi
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import wsgi as base_wsgi
 
 

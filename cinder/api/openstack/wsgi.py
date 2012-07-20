@@ -25,7 +25,7 @@ from lxml import etree
 import webob
 
 from cinder import exception
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import jsonutils
 from cinder import wsgi
 

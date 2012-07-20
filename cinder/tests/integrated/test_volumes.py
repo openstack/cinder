@@ -19,7 +19,7 @@ import unittest
 import time
 
 from cinder import service
-from cinder.log import logging
+from cinder.openstack.common import log as logging
 from cinder.tests.integrated import integrated_helpers
 from cinder.tests.integrated.api import client
 from cinder.volume import driver

@@ -55,7 +55,7 @@ This module provides Manager, a base class for managers.
 
 from cinder.db import base
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common.rpc import dispatcher as rpc_dispatcher
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version

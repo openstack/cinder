@@ -34,7 +34,7 @@ from lxml import etree
 
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import jsonutils
 from cinder import utils

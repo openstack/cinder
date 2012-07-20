@@ -14,7 +14,7 @@
 #    under the License.
 
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import exception as common_exception
 from cinder.openstack.common import importutils

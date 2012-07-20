@@ -16,7 +16,7 @@
 #    under the License.
 
 from cinder import exception
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.volume import san
 from cinder import test
 

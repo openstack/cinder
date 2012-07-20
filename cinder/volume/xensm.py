@@ -14,7 +14,7 @@
 
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.virt.xenapi import connection as xenapi_conn
 from cinder.virt.xenapi import volumeops
