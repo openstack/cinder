@@ -19,7 +19,7 @@ import paste.urlmap
 import re
 import urllib2
 
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.api.openstack import wsgi
 
 

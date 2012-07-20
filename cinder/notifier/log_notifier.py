@@ -15,7 +15,7 @@
 
 
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import jsonutils
 
 

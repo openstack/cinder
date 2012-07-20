@@ -21,7 +21,7 @@ import time
 from cinder import context
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import volume_types
 from cinder.db.sqlalchemy import session as sql_session

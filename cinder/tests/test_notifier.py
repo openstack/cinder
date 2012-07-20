@@ -15,7 +15,7 @@
 
 import cinder
 from cinder import flags
-from cinder import log
+from cinder.openstack.common import log as logging
 import cinder.notifier.no_op_notifier
 from cinder.notifier import api as notifier_api
 from cinder import test
@@ -98,8 +98,8 @@ class NotifierTestCase(test.TestCase):
         self.stubs.Set(cinder.flags.FLAGS, 'notification_driver',
             'cinder.notifier.rabbit_notifier')
         self.stubs.Set(cinder.flags.FLAGS, 'publish_errors', True)
-        LOG = log.getLogger('cinder')
-        log.setup()
+        LOG = logging.getLogger('cinder')
+        logging.setup("cinder")
         msgs = []
 
         def mock_notify(context, topic, data):

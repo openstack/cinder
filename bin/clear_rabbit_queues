@@ -43,7 +43,7 @@ gettext.install('cinder', unicode=1)
 from cinder import context
 from cinder import exception
 from cinder import flags
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
 from cinder.openstack.common import rpc
 
@@ -71,7 +71,7 @@ def delete_queues(queues):
 
 if __name__ == '__main__':
     args = flags.parse_args(sys.argv)
-    logging.setup()
+    logging.setup("cinder")
     delete_queues(args[1:])
     if FLAGS.delete_exchange:
         delete_exchange(FLAGS.control_exchange)

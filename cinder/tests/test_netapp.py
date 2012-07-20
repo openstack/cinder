@@ -25,7 +25,7 @@ import StringIO
 
 from lxml import etree
 
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import netapp
 

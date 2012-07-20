@@ -27,7 +27,7 @@ from sqlalchemy.pool import NullPool, StaticPool
 
 import cinder.exception
 import cinder.flags as flags
-import cinder.log as logging
+from cinder.openstack.common import log as logging
 
 
 FLAGS = flags.FLAGS

@@ -36,7 +36,7 @@ import sqlalchemy
 import cinder.db.sqlalchemy.migrate_repo
 import cinder.db.migration as migration
 from cinder.db.sqlalchemy.migration import versioning_api as migration_api
-from cinder import log as logging
+from cinder.openstack.common import log as logging
 from cinder import test
 
 LOG = logging.getLogger('cinder.tests.test_migrations')
