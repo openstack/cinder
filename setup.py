@@ -16,42 +16,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import glob
-import os
-
 import setuptools
 
+from cinder.openstack.common import setup as common_setup
 from cinder import version
-
-cinder_cmdclass = {}
-
-try:
-    from sphinx import setup_command
-
-    class local_BuildDoc(setup_command.BuildDoc):
-        def run(self):
-            for builder in ['html', 'man']:
-                self.builder = builder
-                self.finalize_options()
-                setup_command.BuildDoc.run(self)
-    cinder_cmdclass['build_sphinx'] = local_BuildDoc
-
-except Exception:
-    pass
-
-
-def find_data_files(destdir, srcdir):
-    package_data = []
-    files = []
-    for d in glob.glob('%s/*' % (srcdir, )):
-        if os.path.isdir(d):
-            package_data += find_data_files(
-                                 os.path.join(destdir, os.path.basename(d)), d)
-        else:
-            files += [d]
-    package_data += [(destdir, files)]
-    return package_data
-
 
 setuptools.setup(name='cinder',
       version=version.canonical_version_string(),
@@ -59,7 +27,7 @@ setuptools.setup(name='cinder',
       author='OpenStack',
       author_email='cinder@lists.launchpad.net',
       url='http://www.openstack.org/',
-      cmdclass=cinder_cmdclass,
+      cmdclass=common_setup.get_cmdclass(),
       packages=setuptools.find_packages(exclude=['bin', 'smoketests']),
       include_package_data=True,
       test_suite='nose.collector',
