@@ -81,6 +81,9 @@ class API(base.Base):
         else:
             snapshot_id = None
 
+        if not isinstance(size, int) or size <= 0:
+            msg = _('Volume size must be an integer and greater than 0')
+            raise exception.InvalidInput(reason=msg)
         if quota.allowed_volumes(context, 1, size) < 1:
             pid = context.project_id
             LOG.warn(_("Quota exceeded for %(pid)s, tried to create"
