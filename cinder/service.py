@@ -167,9 +167,6 @@ class Service(object):
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
-        if 'cinder-compute' == self.binary:
-            self.manager.update_available_resource(ctxt)
-
         self.conn = rpc.create_connection(new=True)
         LOG.debug(_("Creating Consumer connection for Service %s") %
                   self.topic)
