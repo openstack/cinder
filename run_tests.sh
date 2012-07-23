@@ -104,7 +104,7 @@ function run_tests {
 # NOTE(dprince): Exclude xenapi plugins. They are Python 2.4 code and as such
 #                cannot be expected to work with tools/hacking checks.
 xen_net_path="plugins/xenserver/networking/etc/xensource/scripts"
-srcfiles=`find cinder -type f -name "*.py"`
+srcfiles=`find cinder -type f -name "*.py" ! -path "cinder/openstack/common/*"`
 srcfiles+=" `find bin -type f ! -name "cinder.conf*" ! -name "*api-paste.ini*"`"
 srcfiles+=" `find tools -type f -name "*.py"`"
 srcfiles+=" setup.py"
