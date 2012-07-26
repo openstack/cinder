@@ -21,6 +21,7 @@ import webob
 
 from cinder.api.openstack import extensions
 from cinder.api.openstack.volume import types
+from cinder.api.openstack.volume.views import types as views_types
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.volume import volume_types
@@ -31,6 +32,8 @@ authorize = extensions.extension_authorizer('volume', 'types_manage')
 
 class VolumeTypesManageController(wsgi.Controller):
     """ The volume types API controller for the OpenStack API """
+
+    _view_builder_class = views_types.ViewBuilder
 
     @wsgi.action("create")
     @wsgi.serializers(xml=types.VolumeTypeTemplate)
@@ -60,7 +63,7 @@ class VolumeTypesManageController(wsgi.Controller):
         except exception.NotFound:
             raise webob.exc.HTTPNotFound()
 
-        return {'volume_type': vol_type}
+        return self._view_builder.show(req, vol_type)
 
     @wsgi.action("delete")
     def _delete(self, req, id):
