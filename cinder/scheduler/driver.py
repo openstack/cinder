@@ -75,24 +75,6 @@ def cast_to_host(context, topic, host, method, update_db=True, **kwargs):
                 % locals())
 
 
-def encode_instance(instance, local=True):
-    """Encode locally created instance for return via RPC"""
-    # TODO(comstud): I would love to be able to return the full
-    # instance information here, but we'll need some modifications
-    # to the RPC code to handle datetime conversions with the
-    # json encoding/decoding.  We should be able to set a default
-    # json handler somehow to do it.
-    #
-    # For now, I'll just return the instance ID and let the caller
-    # do a DB lookup :-/
-    if local:
-        return dict(id=instance['id'], _is_precooked=False)
-    else:
-        inst = dict(instance)
-        inst['_is_precooked'] = True
-        return inst
-
-
 class Scheduler(object):
     """The base class that all Scheduler classes should inherit from."""
 
@@ -125,40 +107,3 @@ class Scheduler(object):
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement a fallback schedule"))
-
-    def schedule_prep_resize(self, context, request_spec, *_args, **_kwargs):
-        """Must override schedule_prep_resize method for scheduler to work."""
-        msg = _("Driver must implement schedule_prep_resize")
-        raise NotImplementedError(msg)
-
-    def mounted_on_same_shared_storage(self, context, instance_ref, dest):
-        """Check if the src and dest host mount same shared storage.
-
-        At first, dest host creates temp file, and src host can see
-        it if they mounts same shared storage. Then src host erase it.
-
-        :param context: security context
-        :param instance_ref: cinder.db.sqlalchemy.models.Instance object
-        :param dest: destination host
-
-        """
-
-        src = instance_ref['host']
-        dst_t = rpc.queue_get_for(context, FLAGS.compute_topic, dest)
-        src_t = rpc.queue_get_for(context, FLAGS.compute_topic, src)
-
-        filename = rpc.call(context, dst_t,
-                            {"method": 'create_shared_storage_test_file'})
-
-        try:
-            # make sure existence at src host.
-            ret = rpc.call(context, src_t,
-                        {"method": 'check_shared_storage_test_file',
-                        "args": {'filename': filename}})
-
-        finally:
-            rpc.cast(context, dst_t,
-                    {"method": 'cleanup_shared_storage_test_file',
-                    "args": {'filename': filename}})
-
-        return ret

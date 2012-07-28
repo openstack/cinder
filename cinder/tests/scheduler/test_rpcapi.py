@@ -42,8 +42,6 @@ class SchedulerRpcAPITestCase(test.TestCase):
         expected_retval = 'foo' if method == 'call' else None
         expected_msg = rpcapi.make_msg(method, **kwargs)
         expected_msg['version'] = rpcapi.RPC_API_VERSION
-        if rpc_method == 'cast' and method == 'run_instance':
-            kwargs['call'] = False
 
         self.fake_args = None
         self.fake_kwargs = None
