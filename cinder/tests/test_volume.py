@@ -53,7 +53,7 @@ class VolumeTestCase(test.TestCase):
         super(VolumeTestCase, self).tearDown()
 
     @staticmethod
-    def _create_volume(size='0', snapshot_id=None):
+    def _create_volume(size='0', snapshot_id=None, metadata=None):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -63,6 +63,8 @@ class VolumeTestCase(test.TestCase):
         vol['availability_zone'] = FLAGS.storage_availability_zone
         vol['status'] = "creating"
         vol['attach_status'] = "detached"
+        if metadata is not None:
+            vol['metadata'] = metadata
         return db.volume_create(context.get_admin_context(), vol)
 
     def test_create_delete_volume(self):
@@ -72,6 +74,22 @@ class VolumeTestCase(test.TestCase):
         self.volume.create_volume(self.context, volume_id)
         self.assertEqual(volume_id, db.volume_get(context.get_admin_context(),
                          volume_id).id)
+
+        self.volume.delete_volume(self.context, volume_id)
+        self.assertRaises(exception.NotFound,
+                          db.volume_get,
+                          self.context,
+                          volume_id)
+
+    def test_create_delete_volume_with_metadata(self):
+        """Test volume can be created and deleted."""
+        test_meta = {'fake_key': 'fake_value'}
+        volume = self._create_volume('0', None, test_meta)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        result_meta = {
+            volume.volume_metadata[0].key: volume.volume_metadata[0].value}
+        self.assertEqual(result_meta, test_meta)
 
         self.volume.delete_volume(self.context, volume_id)
         self.assertRaises(exception.NotFound,
