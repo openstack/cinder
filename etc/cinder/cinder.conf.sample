@@ -261,8 +261,6 @@
 # ec2_listen_port=8773
 ###### (BoolOpt) Services to be added to the available pool on create
 # enable_new_services=true
-###### (StrOpt) Template string to be used to generate instance names
-# instance_name_template="instance-%08x"
 ###### (StrOpt) IP address for metadata api to listen
 # metadata_listen="0.0.0.0"
 ###### (IntOpt) port for metadata api to listen
