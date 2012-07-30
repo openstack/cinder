@@ -39,10 +39,10 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', fakes.stub_volume_get)
         self.stubs.Set(volume_api.API, 'delete', fakes.stub_volume_delete)
 
-    def test_volume_create(self):
+    def _do_test_volume_create(self, size):
         self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
 
-        vol = {"size": 100,
+        vol = {"size": size,
                "display_name": "Volume Test Name",
                "display_description": "Volume Test Desc",
                "availability_zone": "zone1:host1"}
@@ -65,6 +65,12 @@ class VolumeApiTest(test.TestCase):
                                                               1, 1, 1),
                                'size': 100}}
         self.assertEqual(res_dict, expected)
+
+    def test_volume_create_int_size(self):
+        self._do_test_volume_create(100)
+
+    def test_volume_create_str_size(self):
+        self._do_test_volume_create('100')
 
     def test_volume_creation_fails_with_bad_size(self):
         vol = {"size": '',
