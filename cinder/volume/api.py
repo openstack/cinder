@@ -165,14 +165,19 @@ class API(base.Base):
         check_policy(context, 'get', volume)
         return volume
 
-    def get_all(self, context, search_opts={}):
+    def get_all(self, context, search_opts=None):
         check_policy(context, 'get_all')
-        if context.is_admin:
+
+        if search_opts is None:
+            search_opts = {}
+
+        if (context.is_admin and 'all_tenants' in search_opts):
+            # Need to remove all_tenants to pass the filtering below.
+            del search_opts['all_tenants']
             volumes = self.db.volume_get_all(context)
         else:
             volumes = self.db.volume_get_all_by_project(context,
-                                    context.project_id)
-
+                                                        context.project_id)
         if search_opts:
             LOG.debug(_("Searching by: %s") % str(search_opts))
 
