@@ -1,3 +1,4 @@
+include AUTHORS
 include HACKING.rst
 include LICENSE run_tests.sh
 include README.rst
