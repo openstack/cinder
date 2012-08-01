@@ -434,7 +434,16 @@ def volume_create(context, values):
     with session.begin():
         volume_ref.save(session=session)
 
-    return volume_ref
+    meta = volume_metadata_get(context, volume_ref.id)
+    volume_ref.metadata = meta
+
+    result = model_query(context, models.Volume, read_deleted="no").\
+                         options(joinedload('volume_metadata')).\
+                         filter_by(id=volume_ref['id']).first()
+    if not result:
+        raise exception.VolumeNotFound(volume_id=volume_ref['id'])
+
+    return result
 
 
 @require_admin_context
