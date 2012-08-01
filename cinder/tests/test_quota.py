@@ -263,16 +263,7 @@ class QuotaTestCase(test.TestCase):
         orig_rpc_call = rpc.call
 
         def rpc_call_wrapper(context, topic, msg, timeout=None):
-            """Stub out the scheduler creating the instance entry"""
-            if (topic == FLAGS.scheduler_topic and
-                msg['method'] == 'run_instance'):
-                scheduler = scheduler_driver.Scheduler
-                instance = scheduler().create_instance_db_entry(
-                        context,
-                        msg['args']['request_spec'])
-                return [scheduler_driver.encode_instance(instance)]
-            else:
-                return orig_rpc_call(context, topic, msg)
+            return orig_rpc_call(context, topic, msg)
 
         self.stubs.Set(rpc, 'call', rpc_call_wrapper)
 

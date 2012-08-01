@@ -561,14 +561,8 @@
 
 ######### defined in cinder.scheduler.simple #########
 
-###### (IntOpt) maximum number of instance cores to allow per host
-# max_cores=16
 ###### (IntOpt) maximum number of volume gigabytes to allow per host
 # max_gigabytes=10000
-###### (IntOpt) maximum number of networks to allow per host
-# max_networks=1000
-###### (BoolOpt) Allow overcommitting vcpus on isolated hosts
-# skip_isolated_core_check=true
 
 ######### defined in cinder.volume.driver #########
 
