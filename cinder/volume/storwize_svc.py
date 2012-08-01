@@ -15,6 +15,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+#
+# Authors:
+#   Ronen Kat <ronenkat@il.ibm.com>
+#   Avishay Traeger <avishay@il.ibm.com>
 
 """
 Volume driver for IBM Storwize V7000 and SVC storage systems.
