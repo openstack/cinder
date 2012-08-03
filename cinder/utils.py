@@ -62,6 +62,12 @@ ISO_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 PERFECT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 FLAGS = flags.FLAGS
 
+if FLAGS.rootwrap_config is None or FLAGS.root_helper != 'sudo':
+    LOG.warn(_('The root_helper option (which lets you specify a root '
+               'wrapper different from cinder-rootwrap, and defaults to '
+               'using sudo) is now deprecated. You should use the '
+               'rootwrap_config option instead.'))
+
 
 def find_config(config_path):
     """Find a configuration file using the given hint.
@@ -143,7 +149,7 @@ def execute(*cmd, **kwargs):
     """Helper method to execute command with optional retry.
 
     If you add a run_as_root=True command, don't forget to add the
-    corresponding filter to cinder.rootwrap !
+    corresponding filter to etc/cinder/rootwrap.d !
 
     :param cmd:                Passed to subprocess.Popen.
     :param process_input:      Send to opened process.
@@ -184,7 +190,11 @@ def execute(*cmd, **kwargs):
                                 'to utils.execute: %r') % kwargs)
 
     if run_as_root:
-        cmd = shlex.split(FLAGS.root_helper) + list(cmd)
+        if (FLAGS.rootwrap_config is not None):
+            cmd = ['sudo', 'cinder-rootwrap',
+                   FLAGS.rootwrap_config] + list(cmd)
+        else:
+            cmd = shlex.split(FLAGS.root_helper) + list(cmd)
     cmd = map(str, cmd)
 
     while attempts > 0:

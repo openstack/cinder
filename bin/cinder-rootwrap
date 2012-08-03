@@ -21,7 +21,7 @@
    Filters which commands cinder is allowed to run as another user.
 
    To use this, you should set the following in cinder.conf:
-   root_helper=sudo cinder-rootwrap /etc/cinder/rootwrap.conf
+   rootwrap_config=/etc/cinder/rootwrap.conf
 
    You also need to let the cinder user run cinder-rootwrap as root in sudoers:
    cinder ALL = (root) NOPASSWD: /usr/bin/cinder-rootwrap

@@ -247,7 +247,11 @@ global_opts = [
                     'formatted with on creation.'),
     cfg.StrOpt('root_helper',
                default='sudo',
-               help='Command prefix to use for running commands as root'),
+               help='Deprecated: command to use for running commands as root'),
+    cfg.StrOpt('rootwrap_config',
+               default=None,
+               help='Path to the rootwrap configuration file to use for '
+                    'running commands as root'),
     cfg.BoolOpt('use_ipv6',
                 default=False,
                 help='use ipv6'),
