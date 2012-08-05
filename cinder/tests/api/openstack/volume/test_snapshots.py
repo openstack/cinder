@@ -19,6 +19,7 @@ from lxml import etree
 import webob
 
 from cinder.api.openstack.volume import snapshots
+from cinder import db
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
@@ -67,7 +68,7 @@ def stub_snapshot_get(self, context, snapshot_id):
     return param
 
 
-def stub_snapshot_get_all(self, context):
+def stub_snapshot_get_all(self, context, search_opts=None):
     param = _get_default_snapshot_param()
     return [param]
 
@@ -77,9 +78,10 @@ class SnapshotApiTest(test.TestCase):
         super(SnapshotApiTest, self).setUp()
         self.controller = snapshots.SnapshotsController()
 
-        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
-        self.stubs.Set(volume.api.API, "get_all_snapshots",
-            stub_snapshot_get_all)
+        self.stubs.Set(db, 'snapshot_get_all_by_project',
+                       fakes.stub_snapshot_get_all_by_project)
+        self.stubs.Set(db, 'snapshot_get_all',
+                      fakes.stub_snapshot_get_all)
 
     def test_snapshot_create(self):
         self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
@@ -117,6 +119,7 @@ class SnapshotApiTest(test.TestCase):
                         snapshot['display_description'])
 
     def test_snapshot_delete(self):
+        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
         self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)
 
         snapshot_id = UUID
@@ -134,6 +137,7 @@ class SnapshotApiTest(test.TestCase):
                           snapshot_id)
 
     def test_snapshot_show(self):
+        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
         resp_dict = self.controller.show(req, UUID)
 
@@ -149,6 +153,8 @@ class SnapshotApiTest(test.TestCase):
                           snapshot_id)
 
     def test_snapshot_detail(self):
+        self.stubs.Set(volume.api.API, "get_all_snapshots",
+            stub_snapshot_get_all)
         req = fakes.HTTPRequest.blank('/v1/snapshots/detail')
         resp_dict = self.controller.detail(req)
 
@@ -158,6 +164,33 @@ class SnapshotApiTest(test.TestCase):
 
         resp_snapshot = resp_snapshots.pop()
         self.assertEqual(resp_snapshot['id'], UUID)
+
+    def test_admin_list_snapshots_limited_to_project(self):
+        req = fakes.HTTPRequest.blank('/v1/fake/snapshots',
+                                      use_admin_context=True)
+        res = self.controller.index(req)
+
+        self.assertTrue('snapshots' in res)
+        self.assertEqual(1, len(res['snapshots']))
+
+    def test_admin_list_snapshots_all_tenants(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots?all_tenants=1',
+                                      use_admin_context=True)
+        res = self.controller.index(req)
+        self.assertTrue('snapshots' in res)
+        self.assertEqual(3, len(res['snapshots']))
+
+    def test_all_tenants_non_admin_gets_all_tenants(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots?all_tenants=1')
+        res = self.controller.index(req)
+        self.assertTrue('snapshots' in res)
+        self.assertEqual(1, len(res['snapshots']))
+
+    def test_non_admin_get_by_project(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
+        res = self.controller.index(req)
+        self.assertTrue('snapshots' in res)
+        self.assertEqual(1, len(res['snapshots']))
 
 
 class SnapshotSerializerTest(test.TestCase):
