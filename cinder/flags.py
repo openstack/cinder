@@ -222,7 +222,7 @@ global_opts = [
                default='cinder',
                help='availability zone of this node'),
     cfg.StrOpt('notification_driver',
-               default='cinder.notifier.no_op_notifier',
+               default='cinder.openstack.common.notifier.no_op_notifier',
                help='Default driver for sending notifications'),
     cfg.ListOpt('memcached_servers',
                 default=None,

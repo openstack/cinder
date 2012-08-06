@@ -805,10 +805,11 @@ def monkey_patch():
     You can set decorators for each modules
     using FLAGS.monkey_patch_modules.
     The format is "Module path:Decorator function".
-    Example: 'cinder.api.ec2.cloud:cinder.notifier.api.notify_decorator'
+    Example: 'cinder.api.ec2.cloud:' \
+     cinder.openstack.common.notifier.api.notify_decorator'
 
     Parameters of the decorator is as follows.
-    (See cinder.notifier.api.notify_decorator)
+    (See cinder.openstack.common.notifier.api.notify_decorator)
 
     name - name of the function
     function - object of the function

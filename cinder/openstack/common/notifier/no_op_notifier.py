@@ -13,4 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.tests import *
+
+def notify(_context, message):
+    """Notifies the recipient of the desired event given the model"""
+    pass

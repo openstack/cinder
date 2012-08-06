@@ -14,6 +14,9 @@
 #    under the License.
 
 
-def notify(message):
-    """Notifies the recipient of the desired event given the model"""
-    pass
+NOTIFICATIONS = []
+
+
+def notify(_context, message):
+    """Test notifier, stores notifications in memory for unittests."""
+    NOTIFICATIONS.append(message)

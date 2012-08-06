@@ -14,30 +14,30 @@
 #    under the License.
 
 
-import cinder.context
-
-from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import context as req_context
+from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 
 LOG = logging.getLogger(__name__)
 
-notification_topic_opt = cfg.ListOpt('notification_topics',
-        default=['notifications', ],
-        help='AMQP topic used for Cinder notifications')
+notification_topic_opt = cfg.ListOpt(
+    'notification_topics', default=['notifications', ],
+    help='AMQP topic used for openstack notifications')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(notification_topic_opt)
+CONF = cfg.CONF
+CONF.register_opt(notification_topic_opt)
 
 
-def notify(message):
+def notify(context, message):
     """Sends a notification to the RabbitMQ"""
-    context = cinder.context.get_admin_context()
+    if not context:
+        context = req_context.get_admin_context()
     priority = message.get('priority',
-                           FLAGS.default_notification_level)
+                           CONF.default_notification_level)
     priority = priority.lower()
-    for topic in FLAGS.notification_topics:
+    for topic in CONF.notification_topics:
         topic = '%s.%s' % (topic, priority)
         try:
             rpc.notify(context, topic, message)
