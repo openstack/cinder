@@ -811,7 +811,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         orig_pool = getattr(storwize_svc.FLAGS, "storwize_svc_volpool_name")
         no_exist_pool = "i-dont-exist-%s" % random.randint(10000, 99999)
         storwize_svc.FLAGS.storwize_svc_volpool_name = no_exist_pool
-        self.assertRaises(exception.InvalidParameterValue,
+        self.assertRaises(exception.InvalidInput,
                 self.driver.check_for_setup_error)
         storwize_svc.FLAGS.storwize_svc_volpool_name = orig_pool
 

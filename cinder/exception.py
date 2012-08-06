@@ -222,6 +222,10 @@ class VolumeUnattached(Invalid):
     message = _("Volume %(volume_id)s is not attached to anything")
 
 
+class VolumeAttached(Invalid):
+    message = _("Volume %(volume_id)s is still attached, detach volume first.")
+
+
 class InvalidKeypair(Invalid):
     message = _("Keypair data is invalid")
 
@@ -940,4 +944,4 @@ class CouldNotFetchImage(CinderException):
 
 class VolumeBackendAPIException(CinderException):
     message = _("Bad or unexpected response from the storage volume "
-                "backend API: data=%(data)s")
+                "backend API: %(data)s")

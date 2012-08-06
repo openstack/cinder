@@ -187,7 +187,7 @@ class VolumeTestCase(test.TestCase):
         self.assertEqual(vol['mountpoint'], mountpoint)
         self.assertEqual(vol['instance_uuid'], instance_uuid)
 
-        self.assertRaises(exception.Error,
+        self.assertRaises(exception.VolumeAttached,
                           self.volume.delete_volume,
                           self.context,
                           volume_id)
