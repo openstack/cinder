@@ -26,6 +26,7 @@ from eventlet import greenthread
 
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 import cinder.policy
@@ -34,7 +35,12 @@ from cinder import quota
 from cinder import utils
 from cinder.db import base
 
+volume_host_opt = cfg.BoolOpt('snapshot_same_host',
+        default=True,
+        help='Create volume from snapshot at the host where snapshot resides')
+
 FLAGS = flags.FLAGS
+FLAGS.register_opt(volume_host_opt)
 flags.DECLARE('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
@@ -113,13 +119,35 @@ class API(base.Base):
             }
 
         volume = self.db.volume_create(context, options)
-        rpc.cast(context,
-                 FLAGS.scheduler_topic,
-                 {"method": "create_volume",
-                  "args": {"topic": FLAGS.volume_topic,
-                           "volume_id": volume['id'],
-                           "snapshot_id": snapshot_id}})
+        self._cast_create_volume(context, volume['id'], snapshot_id)
         return volume
+
+    def _cast_create_volume(self, context, volume_id, snapshot_id):
+
+        # NOTE(Rongze Zhu): It is a simple solution for bug 1008866
+        # If snapshot_id is set, make the call create volume directly to
+        # the volume host where the snapshot resides instead of passing it
+        # through the scheduer. So snapshot can be copy to new volume.
+
+        if snapshot_id and FLAGS.snapshot_same_host:
+            snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+            src_volume_ref = self.db.volume_get(context,
+                                                snapshot_ref['volume_id'])
+            topic = rpc.queue_get_for(context,
+                                      FLAGS.volume_topic,
+                                      src_volume_ref['host'])
+            rpc.cast(context,
+                     topic,
+                     {"method": "create_volume",
+                      "args": {"volume_id": volume_id,
+                               "snapshot_id": snapshot_id}})
+        else:
+            rpc.cast(context,
+                     FLAGS.scheduler_topic,
+                     {"method": "create_volume",
+                      "args": {"topic": FLAGS.volume_topic,
+                               "volume_id": volume_id,
+                               "snapshot_id": snapshot_id}})
 
     # TODO(yamahata): eliminate dumb polling
     def wait_creation(self, context, volume):

@@ -564,6 +564,11 @@
 ###### (IntOpt) maximum number of volume gigabytes to allow per host
 # max_gigabytes=10000
 
+######## defined in cinder.volume.api ########
+
+# snapshot_same_host=true
+#### (BoolOpt) Create volume form snapshot at the host where snapshot resides.
+
 ######### defined in cinder.volume.driver #########
 
 ###### (StrOpt) iscsi target user-land tool to use
