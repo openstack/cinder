@@ -24,6 +24,8 @@ import cStringIO
 import logging
 
 import mox
+import shutil
+import tempfile
 
 from cinder import context
 from cinder import exception
@@ -45,11 +47,17 @@ class VolumeTestCase(test.TestCase):
 
     def setUp(self):
         super(VolumeTestCase, self).setUp()
-        self.flags(connection_type='fake')
+        vol_tmpdir = tempfile.mkdtemp()
+        self.flags(connection_type='fake',
+                   volumes_dir=vol_tmpdir)
         self.volume = importutils.import_object(FLAGS.volume_manager)
         self.context = context.get_admin_context()
 
     def tearDown(self):
+        try:
+            shutil.rmtree(FLAGS.volumes_dir)
+        except OSError, e:
+            pass
         super(VolumeTestCase, self).tearDown()
 
     @staticmethod
@@ -360,7 +368,9 @@ class DriverTestCase(test.TestCase):
 
     def setUp(self):
         super(DriverTestCase, self).setUp()
+        vol_tmpdir = tempfile.mkdtemp()
         self.flags(volume_driver=self.driver_name,
+                   volumes_dir=vol_tmpdir,
                    logging_default_format_string="%(message)s")
         self.volume = importutils.import_object(FLAGS.volume_manager)
         self.context = context.get_admin_context()
@@ -374,6 +384,13 @@ class DriverTestCase(test.TestCase):
         log = logging.getLogger()
         self.stream = cStringIO.StringIO()
         log.addHandler(logging.StreamHandler(self.stream))
+
+    def tearDown(self):
+        try:
+            shutil.rmtree(FLAGS.volumes_dir)
+        except OSError, e:
+            pass
+        super(DriverTestCase, self).tearDown()
 
     def _attach_volume(self):
         """Attach volumes to an instance. This function also sets
