@@ -202,7 +202,7 @@ class Service(object):
             self.timers.append(periodic)
 
     def _create_service_ref(self, context):
-        zone = FLAGS.node_availability_zone
+        zone = FLAGS.storage_availability_zone
         service_ref = db.service_create(context,
                                         {'host': self.host,
                                          'binary': self.binary,
@@ -289,7 +289,7 @@ class Service(object):
     def report_state(self):
         """Update the state of this service in the datastore."""
         ctxt = context.get_admin_context()
-        zone = FLAGS.node_availability_zone
+        zone = FLAGS.storage_availability_zone
         state_catalog = {}
         try:
             try:

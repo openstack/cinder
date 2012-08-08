@@ -29,7 +29,6 @@ intact.
 :volume_manager:  The module name of a class derived from
                   :class:`manager.Manager` (default:
                   :class:`cinder.volume.manager.Manager`).
-:storage_availability_zone:  Defaults to `cinder`.
 :volume_driver:  Used by :class:`Manager`.  Defaults to
                  :class:`cinder.volume.driver.ISCSIDriver`.
 :volume_group:  Name of the group that will contain exported volumes (default:
@@ -55,9 +54,6 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 volume_manager_opts = [
-    cfg.StrOpt('storage_availability_zone',
-               default='cinder',
-               help='availability zone of this service'),
     cfg.StrOpt('volume_driver',
                default='cinder.volume.driver.ISCSIDriver',
                help='Driver to use for volume creation'),

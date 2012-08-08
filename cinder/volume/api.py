@@ -41,7 +41,6 @@ volume_host_opt = cfg.BoolOpt('snapshot_same_host',
 
 FLAGS = flags.FLAGS
 FLAGS.register_opt(volume_host_opt)
-flags.DECLARE('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
 
