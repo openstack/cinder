@@ -171,6 +171,10 @@ class CinderException(Exception):
         super(CinderException, self).__init__(message)
 
 
+class DeprecatedConfig(CinderException):
+    message = _("Fatal call to deprecated config") + " %(msg)s"
+
+
 class DecryptionFailure(CinderException):
     message = _("Failed to decrypt text")
 
