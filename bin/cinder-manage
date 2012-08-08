@@ -54,16 +54,14 @@
   CLI interface for cinder management.
 """
 
-import ast
-import errno
 import gettext
-import json
-import math
-import netaddr
 import optparse
 import os
-import StringIO
 import sys
+
+from sqlalchemy import create_engine, MetaData, Table
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
 
 # If ../cinder/__init__.py exists, add ../ to Python search path, so that
@@ -83,12 +81,9 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
-from cinder.openstack.common import importutils
 from cinder.openstack.common import rpc
-from cinder import quota
 from cinder import utils
 from cinder import version
-from cinder.volume import volume_types
 
 FLAGS = flags.FLAGS
 
@@ -234,6 +229,126 @@ class VersionCommands(object):
 
     def __call__(self):
         self.list()
+
+
+class ImportCommands(object):
+    """Methods for importing Nova volumes to Cinder.
+
+    EXPECTATIONS:
+    These methods will do two things:
+      1. Import relevant Nova DB info in to Cinder
+      2. Import persistent tgt files from Nova to Cinder (see copy_tgt_files)
+
+    If you're using VG's (local storage) for your backend YOU MUST install
+    Cinder on the same node that you're migrating from.
+    """
+    def __init__(self):
+        pass
+
+    def _map_table(self, table):
+        class Mapper(declarative_base()):
+            __table__ = table
+        return Mapper
+
+    def _open_session(self, con_info):
+        engine = create_engine(con_info,
+                               convert_unicode=True,
+                               echo=True)
+        session = sessionmaker(bind=engine)
+        return (session(), engine)
+
+    def _backup_cinder_db(self):
+        #First, dump the dest_db as a backup incase this goes wrong
+        cinder_dump = utils.execute('mysqldump', 'cinder')
+        if 'Dump completed on' in cinder_dump[0]:
+            with open('./cinder_db_bkup.sql', 'w+') as fo:
+                for line in cinder_dump:
+                    fo.write(line)
+        else:
+            raise exception.InvalidResults()
+
+    def _import_db(self, src_db, dest_db, backup_db):
+        # Remember order matters due to FK's
+        table_list = ['sm_flavors',
+                      'sm_backend_config',
+                      'snapshots',
+                      'volume_types',
+                      'volumes',
+                      'iscsi_targets',
+                      'sm_volume',
+                      'volume_metadata',
+                      'volume_type_extra_specs']
+
+        if backup_db > 0:
+            if 'mysql:' not in dest_db:
+                print (_('Sorry, only mysql backups are supported!'))
+                raise exception.InvalidRequest()
+            else:
+                self._backup_cinder_db()
+
+        (src, src_engine) = self._open_session(src_db)
+        src_meta = MetaData(bind=src_engine)
+        (dest, dest_engine) = self._open_session(dest_db)
+
+        for table_name in table_list:
+            print (_('Importing table %s...' % table_name))
+            table = Table(table_name, src_meta, autoload=True)
+            new_row = self._map_table(table)
+            columns = table.columns.keys()
+            for row in src.query(table).all():
+                data = dict([(str(column), getattr(row, column))
+                    for column in columns])
+                dest.add(new_row(**data))
+            dest.commit()
+
+    @args('--src', dest='src_db', metavar='<Nova DB>',
+          help='db-engine://db_user[:passwd]@db_host[:port]\t\t'
+               'example: mysql://root:secrete@192.168.137.1')
+    @args('--dest', dest='dest_db', metavar='<Cinder DB>',
+          help='db-engine://db_user[:passwd]@db_host[:port]\t\t'
+               'example: mysql://root:secrete@192.168.137.1')
+    @args('--backup', dest='backup_db', metavar='<0|1>',
+          help='Perform mysqldump of cinder db before writing to it')
+    def import_db(self, src_db, dest_db, backup_db=1):
+        """Import relevant volume DB entries from Nova into Cinder.
+
+        NOTE:
+        Your Cinder DB should be clean WRT volume entries.
+
+        NOTE:
+        We take an sqldump of the cinder DB before mods
+        If you're not using mysql, set backup_db=0
+        and create your own backup.
+        """
+        src_db = '%s/nova' % src_db
+        dest_db = '%s/cinder' % dest_db
+        self._import_db(src_db, dest_db, backup_db)
+
+    @args('--src', dest='src_tgts', metavar='<src tgts>',
+        help='[login@src_host:]/opt/stack/nova/volumes/')
+    @args('--dest', dest='dest_tgts', metavar='<dest tgts>',
+        help='[login@src_host:/opt/stack/cinder/volumes/]')
+    def copy_ptgt_files(self, src_tgts, dest_tgts=None):
+        """Copy persistent scsi tgt files from nova to cinder.
+
+        Default destination is FLAGS.volume_dir or state_path/volumes/
+
+        PREREQUISITES:
+        Persistent tgts were introduced in Folsom.  If you're running
+        Essex or other release, this script is unnecessary.
+
+        NOTE:
+        If you're using local VG's and LVM for your nova volume backend
+        there's no point in copying these files over.  Leave them on
+        your Nova system as they won't do any good here.
+        """
+        if dest_tgts is None:
+            try:
+                dest_tgts = FLAGS.volumes_dir
+            except:
+                dest_tgts = '%s/volumes' % FLAGS.state_path
+
+        utils.execute('rsync', '-avz', src_tgts, dest_tgts)
 
 
 class VolumeCommands(object):
@@ -492,6 +607,7 @@ CATEGORIES = [
     ('sm', StorageManagerCommands),
     ('version', VersionCommands),
     ('volume', VolumeCommands),
+    ('migrate', ImportCommands),
 ]
 
 
