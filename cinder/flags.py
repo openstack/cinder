@@ -218,7 +218,7 @@ global_opts = [
                default=socket.gethostname(),
                help='Name of this node.  This can be an opaque identifier.  '
                     'It is not necessarily a hostname, FQDN, or IP address.'),
-    cfg.StrOpt('node_availability_zone',
+    cfg.StrOpt('storage_availability_zone',
                default='cinder',
                help='availability zone of this node'),
     cfg.StrOpt('notification_driver',

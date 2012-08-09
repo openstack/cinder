@@ -43,7 +43,7 @@ FLAGS.register_opts(simple_scheduler_opts)
 class SimpleScheduler(chance.ChanceScheduler):
     """Implements Naive Scheduler that tries to find least loaded host."""
 
-    def schedule_create_volume(self, context, volume_id, *_args, **_kwargs):
+    def schedule_create_volume(self, context, volume_id, **_kwargs):
         """Picks a host that is up and has the fewest volumes."""
         elevated = context.elevated()
 
