@@ -51,7 +51,7 @@ def fake_snapshot_get(self, context, snapshot_id):
     return param
 
 
-def fake_snapshot_get_all(self, context):
+def fake_snapshot_get_all(self, context, search_opts=None):
     param = _get_default_snapshot_param()
     return [param]
 

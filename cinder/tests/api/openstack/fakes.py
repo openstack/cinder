@@ -239,3 +239,29 @@ def stub_volume_get_all(context, search_opts=None):
 
 def stub_volume_get_all_by_project(self, context, search_opts=None):
     return [stub_volume_get(self, context, '1')]
+
+
+def stub_snapshot(id, **kwargs):
+    snapshot = {
+        'id': id,
+        'volume_id': 12,
+        'status': 'available',
+        'volume_size': 100,
+        'created_at': None,
+        'display_name': 'Default name',
+        'display_description': 'Default description',
+        'project_id': 'fake'
+        }
+
+    snapshot.update(kwargs)
+    return snapshot
+
+
+def stub_snapshot_get_all(self):
+    return [stub_snapshot(100, project_id='fake'),
+            stub_snapshot(101, project_id='superfake'),
+            stub_snapshot(102, project_id='superduperfake')]
+
+
+def stub_snapshot_get_all_by_project(self, context):
+    return [stub_snapshot(1)]
