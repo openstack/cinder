@@ -9,3 +9,4 @@ openstack.nose_plugin
 pep8==1.1
 sphinx>=1.1.2
 MySQL-python
+setuptools-git>=0.4

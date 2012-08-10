@@ -1,38 +1,6 @@
 include AUTHORS
-include HACKING.rst
-include LICENSE run_tests.sh
-include README.rst
-include MANIFEST.in pylintrc Authors
-include openstack-common.conf
-include babel.cfg tox.ini
-graft cinder/CA
-graft doc
-graft smoketests
-graft tools
-graft etc
-graft contrib
-graft plugins
-graft cinder/api/openstack/*/schemas
-include cinder/auth/*.schema
-include cinder/auth/cinderrc.template
-include cinder/auth/opendj.sh
-include cinder/auth/slap.sh
-include cinder/db/sqlalchemy/migrate_repo/migrate.cfg
-include cinder/db/sqlalchemy/migrate_repo/README
-include cinder/db/sqlalchemy/migrate_repo/versions/*.sql
-include cinder/openstack/common/README
-include cinder/virt/interfaces.template
-include cinder/virt/libvirt*.xml.template
-include cinder/virt/cpuinfo.xml.template
-include cinder/testing/README.rst
-include cinder/tests/db/cinder.austin.sqlite
-include cinder/tests/image/*.tar.gz
-include cinder/tests/policy.json
-include cinder/tests/test_migrations.conf
-include cinder/tests/xenapi/vm_rrd.xml
-include plugins/xenapi/README
-include plugins/xenapi/etc/xapi.d/plugins/objectstore
-include plugins/xenapi/etc/xapi.d/plugins/pluginlib_cinder.py
-global-exclude *.pyc
+include ChangeLog
+exclude .gitignore
+exclude .gitreview
 
-recursive-include cinder/locale *
+global-exclude *.pyc
