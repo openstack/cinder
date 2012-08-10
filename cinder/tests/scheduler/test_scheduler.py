@@ -26,7 +26,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flags
-from cinder.notifier import api as notifier
+from cinder.openstack.common.notifier import api as notifier
 from cinder.openstack.common import rpc
 from cinder.openstack.common.rpc import common as rpc_common
 from cinder.openstack.common import timeutils

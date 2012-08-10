@@ -91,9 +91,10 @@ def wrap_exception(notifier=None, publisher_id=None, event_type=None,
     get thrown. It logs the exception as well as optionally sending
     it to the notification system.
     """
-    # TODO(sandy): Find a way to import cinder.notifier.api so we don't have
-    # to pass it in as a parameter. Otherwise we get a cyclic import of
-    # cinder.notifier.api -> cinder.utils -> cinder.exception :(
+    # TODO(sandy): Find a way to import cinder.openstackc.common.notifier.api
+    # so we don't have to pass it in as a parameter. Otherwise we get a cyclic
+    # import of cinder.openstack.common.notifier.api -> cinder.utils ->
+    # cinder.exception :(
     # TODO(johannes): Also, it would be nice to use
     # utils.save_and_reraise_exception() without an import loop
     def inner(f):

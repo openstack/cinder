@@ -35,7 +35,6 @@ def parse_mailmap(mailmap='.mailmap'):
         for l in fp:
             l = l.strip()
             if not l.startswith('#') and ' ' in l:
-                print l
                 canonical_email, alias = [x for x in l.split(' ')
                                           if x.startswith('<')]
                 mapping[alias] = canonical_email
@@ -53,7 +52,6 @@ def canonicalize_emails(changelog, mapping):
 
 # Get requirements from the first file that exists
 def get_reqs_from_files(requirements_files):
-    reqs_in = []
     for requirements_file in requirements_files:
         if os.path.exists(requirements_file):
             return open(requirements_file, 'r').read().split('\n')
@@ -145,8 +143,8 @@ def _get_git_next_version_suffix(branch_name):
     # where the bit after the last . is the short sha, and the bit between
     # the last and second to last is the revno count
     (revno, sha) = post_version.split(".")[-2:]
-    first_half = "%(milestonever)s~%(datestamp)s" % locals()
-    second_half = "%(revno_prefix)s%(revno)s.%(sha)s" % locals()
+    first_half = "%s~%s" % (milestonever, datestamp)
+    second_half = "%s%s.%s" % (revno_prefix, revno, sha)
     return ".".join((first_half, second_half))
 
 

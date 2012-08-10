@@ -21,7 +21,7 @@ from cinder import exception
 
 
 class FakeNotifier(object):
-    """Acts like the cinder.notifier.api module."""
+    """Acts like the cinder.openstack.common.notifier.api module."""
     ERROR = 88
 
     def __init__(self):

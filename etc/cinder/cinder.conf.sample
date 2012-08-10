@@ -118,13 +118,13 @@
 ###### (BoolOpt) Whether to log monkey patching
 # monkey_patch=false
 ###### (ListOpt) List of modules/decorators to monkey patch
-# monkey_patch_modules="cinder.api.ec2.cloud:cinder.notifier.api.notify_decorator,cinder.compute.api:cinder.notifier.api.notify_decorator"
+# monkey_patch_modules="cinder.api.ec2.cloud:cinder.openstack.common.notifier.api.notify_decorator,cinder.compute.api:cinder.openstack.common.notifier.api.notify_decorator"
 ###### (StrOpt) ip address of this host
 # my_ip="10.0.0.1"
 ###### (StrOpt) availability zone of this node
 # storage_availability_zone="cinder"
 ###### (StrOpt) Default driver for sending notifications
-# notification_driver="cinder.notifier.no_op_notifier"
+# notification_driver="cinder.openstack.common.notifier.no_op_notifier"
 ###### (StrOpt) kernel image that indicates not to use a kernel, but to use a raw disk image instead
 # null_kernel="nokernel"
 ###### (ListOpt) Specify list of extensions to load when using osapi_compute_extension option with cinder.api.openstack.compute.contrib.select_extensions
@@ -448,12 +448,12 @@
 ###### (StrOpt) Tilera command line program for Bare-metal driver
 # tile_monitor="/usr/local/TileraMDE/bin/tile-monitor"
 
-######### defined in cinder.notifier.list_notifier #########
+######### defined in cinder.openstack.common.notifier.list_notifier #########
 
 ###### (MultiStrOpt) List of drivers to send notifications
-# list_notifier_drivers="cinder.notifier.no_op_notifier"
+# list_notifier_drivers="cinder.openstack.common.notifier.no_op_notifier"
 
-######### defined in cinder.notifier.rabbit_notifier #########
+######### defined in cinder.openstack.common.notifier.rabbit_notifier #########
 
 ###### (ListOpt) AMQP topic used for Cinder notifications
 # notification_topics="notifications"

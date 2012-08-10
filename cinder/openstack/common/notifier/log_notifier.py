@@ -14,21 +14,22 @@
 #    under the License.
 
 
-from cinder import flags
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import cfg
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import log as logging
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
-def notify(message):
+def notify(_context, message):
     """Notifies the recipient of the desired event given the model.
-    Log notifications using cinder's default logging system"""
+    Log notifications using openstack's default logging system"""
 
     priority = message.get('priority',
-                           FLAGS.default_notification_level)
+                           CONF.default_notification_level)
     priority = priority.lower()
     logger = logging.getLogger(
-            'cinder.notification.%s' % message['event_type'])
+        'cinder.openstack.common.notification.%s' %
+        message['event_type'])
     getattr(logger, priority)(jsonutils.dumps(message))
