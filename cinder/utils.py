@@ -43,15 +43,12 @@ from xml.sax import saxutils
 
 from eventlet import event
 from eventlet import greenthread
-from eventlet import semaphore
 from eventlet.green import subprocess
-import iso8601
 import netaddr
 
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
@@ -959,6 +956,18 @@ def read_cached_file(filename, cache_info, reload_func=None):
         if reload_func:
             reload_func(cache_info['data'])
     return cache_info['data']
+
+
+def file_open(*args, **kwargs):
+    """Open file
+
+    see built-in file() documentation for more details
+
+    Note: The reason this is kept in a separate module is to easily
+          be able to provide a stub module that doesn't alter system
+          state at all (for unit tests)
+    """
+    return file(*args, **kwargs)
 
 
 def hash_file(file_like_object):

@@ -39,7 +39,7 @@ class APIRouter(cinder.api.openstack.APIRouter):
     """
     ExtensionManager = extensions.ExtensionManager
 
-    def _setup_routes(self, mapper):
+    def _setup_routes(self, mapper, ext_mgr):
         self.resources['versions'] = versions.create_resource()
         mapper.connect("versions", "/",
                     controller=self.resources['versions'],
@@ -47,7 +47,7 @@ class APIRouter(cinder.api.openstack.APIRouter):
 
         mapper.redirect("", "/")
 
-        self.resources['volumes'] = volumes.create_resource()
+        self.resources['volumes'] = volumes.create_resource(ext_mgr)
         mapper.resource("volume", "volumes",
                         controller=self.resources['volumes'],
                         collection={'detail': 'GET'},

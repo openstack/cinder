@@ -30,7 +30,6 @@ from cinder.api.openstack import volume
 from cinder.api.openstack.volume import versions
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder import context
-from cinder.db.sqlalchemy import models
 from cinder import exception as exc
 from cinder import utils
 from cinder import wsgi
@@ -212,6 +211,18 @@ def stub_volume_create(self, context, size, name, description, snapshot,
     except (KeyError, TypeError):
         vol['snapshot_id'] = None
     vol['availability_zone'] = param.get('availability_zone', 'fakeaz')
+    return vol
+
+
+def stub_volume_create_from_image(self, context, size, name, description,
+                                  snapshot, volume_type, metadata,
+                                  availability_zone):
+    vol = stub_volume('1')
+    vol['status'] = 'creating'
+    vol['size'] = size
+    vol['display_name'] = name
+    vol['display_description'] = description
+    vol['availability_zone'] = 'cinder'
     return vol
 
 

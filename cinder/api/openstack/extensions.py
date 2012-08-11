@@ -180,6 +180,9 @@ class ExtensionManager(object):
 
     """
 
+    def is_loaded(self, alias):
+        return alias in self.extensions
+
     def register(self, ext):
         # Do nothing if the extension doesn't check out
         if not self._check_extension(ext):
