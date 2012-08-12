@@ -59,7 +59,6 @@ class _FakeImageService(object):
 
         image2 = {'id': 'a2459075-d96c-40d5-893e-577ff92e721c',
                  'name': 'fakeimage123456',
-                 'size': 1048576 * 1024 * 2,  # Image of size 2GB
                  'created_at': timestamp,
                  'updated_at': timestamp,
                  'deleted_at': None,
@@ -99,7 +98,6 @@ class _FakeImageService(object):
 
         image5 = {'id': 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
                  'name': 'fakeimage123456',
-                 'size': 1048576,  # Image of size 1MB
                  'created_at': timestamp,
                  'updated_at': timestamp,
                  'deleted_at': None,
@@ -190,7 +188,7 @@ class _FakeImageService(object):
         return self.images[image_id]
 
     def update(self, context, image_id, metadata, data=None,
-               headers=None):
+               purge_props=False):
         """Replace the contents of the given image with the new data.
 
         :raises: ImageNotFound if the image does not exist.
@@ -198,11 +196,7 @@ class _FakeImageService(object):
         """
         if not self.images.get(image_id):
             raise exception.ImageNotFound(image_id=image_id)
-        try:
-            purge = headers['x-glance-registry-purge-props']
-        except Exception:
-            purge = True
-        if purge:
+        if purge_props:
             self.images[image_id] = copy.deepcopy(metadata)
         else:
             image = self.images[image_id]
@@ -223,9 +217,6 @@ class _FakeImageService(object):
         if not removed:
             raise exception.ImageNotFound(image_id=image_id)
 
-    def delete_all(self):
-        """Clears out all images."""
-        self.images.clear()
 
 _fakeImageService = _FakeImageService()
 

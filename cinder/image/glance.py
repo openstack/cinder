@@ -26,8 +26,8 @@ import sys
 import time
 import urlparse
 
-import glance.client
-from glance.common import exception as glance_exception
+import glanceclient
+import glanceclient.exc
 
 from cinder import exception
 from cinder import flags
@@ -56,16 +56,12 @@ def _parse_image_ref(image_href):
 
 
 def _create_glance_client(context, host, port):
+    """Instantiate a new glanceclient.Client object"""
     params = {}
     if FLAGS.auth_strategy == 'keystone':
-        params['creds'] = {
-            'strategy': 'keystone',
-            'username': context.user_id,
-            'tenant': context.project_id,
-        }
-        params['auth_tok'] = context.auth_token
-
-    return glance.client.Client(host, port, **params)
+        params['token'] = context.auth_token
+    endpoint = 'http://%s:%s' % (host, port)
+    return glanceclient.Client('1', endpoint, **params)
 
 
 def get_api_servers():
@@ -87,7 +83,7 @@ class GlanceClientWrapper(object):
 
     def __init__(self, context=None, host=None, port=None):
         if host is not None:
-            self._create_static_client(context, host, port)
+            self.client = self._create_static_client(context, host, port)
         else:
             self.client = None
         self.api_servers = None
@@ -96,7 +92,7 @@ class GlanceClientWrapper(object):
         """Create a client that we'll use for every call."""
         self.host = host
         self.port = port
-        self.client = _create_glance_client(context, self.host, self.port)
+        return _create_glance_client(context, self.host, self.port)
 
     def _create_onetime_client(self, context):
         """Create a client that will be used for one call."""
@@ -110,19 +106,15 @@ class GlanceClientWrapper(object):
         Call a glance client method.  If we get a connection error,
         retry the request according to FLAGS.glance_num_retries.
         """
-
-        retry_excs = (glance_exception.ClientConnectionError,
-                glance_exception.ServiceUnavailable)
-
+        retry_excs = (glanceclient.exc.ServiceUnavailable,
+                glanceclient.exc.InvalidEndpoint,
+                glanceclient.exc.CommunicationError)
         num_attempts = 1 + FLAGS.glance_num_retries
 
         for attempt in xrange(1, num_attempts + 1):
-            if self.client:
-                client = self.client
-            else:
-                client = self._create_onetime_client(context)
+            client = self.client or self._create_onetime_client(context)
             try:
-                return getattr(client, method)(*args, **kwargs)
+                return getattr(client.images, method)(*args, **kwargs)
             except retry_excs as e:
                 host = self.host
                 port = self.port
@@ -136,28 +128,28 @@ class GlanceClientWrapper(object):
                             host=host, port=port, reason=str(e))
                 LOG.exception(error_msg, locals())
                 time.sleep(1)
-        # Not reached
 
 
 class GlanceImageService(object):
     """Provides storage and retrieval of disk image objects within Glance."""
 
     def __init__(self, client=None):
-        if client is None:
-            client = GlanceClientWrapper()
-        self._client = client
+        self._client = client or GlanceClientWrapper()
 
     def detail(self, context, **kwargs):
         """Calls out to Glance for a list of detailed image information."""
         params = self._extract_query_params(kwargs)
-        image_metas = self._get_images(context, **params)
+        try:
+            images = self._client.call(context, 'list', **params)
+        except Exception:
+            _reraise_translated_exception()
 
-        images = []
-        for image_meta in image_metas:
-            if self._is_image_available(context, image_meta):
-                base_image_meta = self._translate_from_glance(image_meta)
-                images.append(base_image_meta)
-        return images
+        _images = []
+        for image in images:
+            if self._is_image_available(context, image):
+                _images.append(self._translate_from_glance(image))
+
+        return _images
 
     def _extract_query_params(self, params):
         _params = {}
@@ -167,69 +159,30 @@ class GlanceImageService(object):
             if param in params:
                 _params[param] = params.get(param)
 
-        return _params
-
-    def _get_images(self, context, **kwargs):
-        """Get image entitites from images service"""
-
         # ensure filters is a dict
-        kwargs['filters'] = kwargs.get('filters') or {}
+        params.setdefault('filters', {})
         # NOTE(vish): don't filter out private images
-        kwargs['filters'].setdefault('is_public', 'none')
+        params['filters'].setdefault('is_public', 'none')
 
-        return self._fetch_images(context, 'get_images_detailed', **kwargs)
-
-    def _fetch_images(self, context, fetch_method, **kwargs):
-        """Paginate through results from glance server"""
-        try:
-            images = self._client.call(context, fetch_method, **kwargs)
-        except Exception:
-            _reraise_translated_exception()
-
-        if not images:
-            # break out of recursive loop to end pagination
-            return
-
-        for image in images:
-            yield image
-
-        try:
-            # attempt to advance the marker in order to fetch next page
-            kwargs['marker'] = images[-1]['id']
-        except KeyError:
-            raise exception.ImagePaginationFailed()
-
-        try:
-            kwargs['limit'] = kwargs['limit'] - len(images)
-            # break if we have reached a provided limit
-            if kwargs['limit'] <= 0:
-                return
-        except KeyError:
-            # ignore missing limit, just proceed without it
-            pass
-
-        for image in self._fetch_images(context, fetch_method, **kwargs):
-            yield image
+        return _params
 
     def show(self, context, image_id):
         """Returns a dict with image data for the given opaque image id."""
         try:
-            image_meta = self._client.call(context, 'get_image_meta',
-                    image_id)
+            image = self._client.call(context, 'get', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
 
-        if not self._is_image_available(context, image_meta):
+        if not self._is_image_available(context, image):
             raise exception.ImageNotFound(image_id=image_id)
 
-        base_image_meta = self._translate_from_glance(image_meta)
+        base_image_meta = self._translate_from_glance(image)
         return base_image_meta
 
     def download(self, context, image_id, data):
         """Calls out to Glance for metadata and data and writes data."""
         try:
-            image_meta, image_chunks = self._client.call(context,
-                    'get_image', image_id)
+            image_chunks = self._client.call(context, 'data', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
 
@@ -237,44 +190,34 @@ class GlanceImageService(object):
             data.write(chunk)
 
     def create(self, context, image_meta, data=None):
-        """Store the image data and return the new image id.
-
-        :raises: AlreadyExists if the image already exist.
-
-        """
-        # Translate Base -> Service
-        LOG.debug(_('Creating image in Glance. Metadata passed in %s'),
-                  image_meta)
+        """Store the image data and return the new image object."""
         sent_service_image_meta = self._translate_to_glance(image_meta)
-        LOG.debug(_('Metadata after formatting for Glance %s'),
-                  sent_service_image_meta)
 
-        recv_service_image_meta = self._client.call(context,
-                'add_image', sent_service_image_meta, data)
+        if data:
+            sent_service_image_meta['data'] = data
 
-        # Translate Service -> Base
-        base_image_meta = self._translate_from_glance(recv_service_image_meta)
-        LOG.debug(_('Metadata returned from Glance formatted for Base %s'),
-                  base_image_meta)
-        return base_image_meta
+        recv_service_image_meta = self._client.call(context, 'create',
+                                                    **sent_service_image_meta)
 
-    def update(self, context, image_id, image_meta, data=None, features=None):
-        """Replace the contents of the given image with the new data.
+        return self._translate_from_glance(recv_service_image_meta)
 
-        :raises: ImageNotFound if the image does not exist.
-
-        """
-        # NOTE(vish): show is to check if image is available
-        self.show(context, image_id)
+    def update(self, context, image_id, image_meta, data=None,
+            purge_props=True):
+        """Modify the given image with the new data."""
         image_meta = self._translate_to_glance(image_meta)
+        image_meta['purge_props'] = purge_props
+        #NOTE(bcwaldon): id is not an editable field, but it is likely to be
+        # passed in by calling code. Let's be nice and ignore it.
+        image_meta.pop('id', None)
+        if data:
+            image_meta['data'] = data
         try:
-            image_meta = self._client.call(context, 'update_image',
-                    image_id, image_meta, data, features)
+            image_meta = self._client.call(context, 'update',
+                                           image_id, **image_meta)
         except Exception:
             _reraise_translated_image_exception(image_id)
-
-        base_image_meta = self._translate_from_glance(image_meta)
-        return base_image_meta
+        else:
+            return self._translate_from_glance(image_meta)
 
     def delete(self, context, image_id):
         """Delete the given image.
@@ -283,46 +226,41 @@ class GlanceImageService(object):
         :raises: NotAuthorized if the user is not an owner.
 
         """
-        # NOTE(vish): show is to check if image is available
-        self.show(context, image_id)
         try:
-            result = self._client.call(context, 'delete_image', image_id)
-        except glance_exception.NotFound:
+            self._client.call(context, 'delete', image_id)
+        except glanceclient.exc.NotFound:
             raise exception.ImageNotFound(image_id=image_id)
-        return result
+        return True
 
-    def delete_all(self):
-        """Clears out all images."""
-        pass
-
-    @classmethod
-    def _translate_to_glance(cls, image_meta):
+    @staticmethod
+    def _translate_to_glance(image_meta):
         image_meta = _convert_to_string(image_meta)
         image_meta = _remove_read_only(image_meta)
         return image_meta
 
-    @classmethod
-    def _translate_from_glance(cls, image_meta):
-        image_meta = _limit_attributes(image_meta)
+    @staticmethod
+    def _translate_from_glance(image):
+        image_meta = _extract_attributes(image)
         image_meta = _convert_timestamps_to_datetimes(image_meta)
         image_meta = _convert_from_string(image_meta)
         return image_meta
 
     @staticmethod
-    def _is_image_available(context, image_meta):
+    def _is_image_available(context, image):
         """Check image availability.
 
-        Under Glance, images are always available if the context has
-        an auth_token.
-
+        This check is needed in case Nova and Glance are deployed
+        without authentication turned on.
         """
+        # The presence of an auth token implies this is an authenticated
+        # request and we need not handle the noauth use-case.
         if hasattr(context, 'auth_token') and context.auth_token:
             return True
 
-        if image_meta['is_public'] or context.is_admin:
+        if image.is_public or context.is_admin:
             return True
 
-        properties = image_meta['properties']
+        properties = image.properties
 
         if context.project_id and ('owner_id' in properties):
             return str(properties['owner_id']) == str(context.project_id)
@@ -338,28 +276,12 @@ class GlanceImageService(object):
         return str(user_id) == str(context.user_id)
 
 
-# utility functions
 def _convert_timestamps_to_datetimes(image_meta):
     """Returns image with timestamp fields converted to datetime objects."""
     for attr in ['created_at', 'updated_at', 'deleted_at']:
         if image_meta.get(attr):
-            image_meta[attr] = _parse_glance_iso8601_timestamp(
-                image_meta[attr])
+            image_meta[attr] = timeutils.parse_isotime(image_meta[attr])
     return image_meta
-
-
-def _parse_glance_iso8601_timestamp(timestamp):
-    """Parse a subset of iso8601 timestamps into datetime objects."""
-    iso_formats = ['%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S']
-
-    for iso_format in iso_formats:
-        try:
-            return timeutils.parse_strtime(timestamp, iso_format)
-        except ValueError:
-            pass
-
-    raise ValueError(_('%(timestamp)s does not follow any of the '
-                       'signatures: %(iso_formats)s') % locals())
 
 
 # NOTE(bcwaldon): used to store non-string data in glance metadata
@@ -397,7 +319,7 @@ def _convert_to_string(metadata):
     return _convert(_json_dumps, metadata)
 
 
-def _limit_attributes(image_meta):
+def _extract_attributes(image):
     IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
                         'container_format', 'checksum', 'id',
                         'name', 'created_at', 'updated_at',
@@ -405,15 +327,15 @@ def _limit_attributes(image_meta):
                         'min_disk', 'min_ram', 'is_public']
     output = {}
     for attr in IMAGE_ATTRIBUTES:
-        output[attr] = image_meta.get(attr)
+        output[attr] = getattr(image, attr, None)
 
-    output['properties'] = image_meta.get('properties', {})
+    output['properties'] = getattr(image, 'properties', {})
 
     return output
 
 
 def _remove_read_only(image_meta):
-    IMAGE_ATTRIBUTES = ['updated_at', 'created_at', 'deleted_at']
+    IMAGE_ATTRIBUTES = ['status', 'updated_at', 'created_at', 'deleted_at']
     output = copy.deepcopy(image_meta)
     for attr in IMAGE_ATTRIBUTES:
         if attr in output:
@@ -436,25 +358,23 @@ def _reraise_translated_exception():
 
 
 def _translate_image_exception(image_id, exc_type, exc_value):
-    if exc_type in (glance_exception.Forbidden,
-                    glance_exception.NotAuthenticated,
-                    glance_exception.MissingCredentialError):
+    if exc_type in (glanceclient.exc.Forbidden,
+                    glanceclient.exc.Unauthorized):
         return exception.ImageNotAuthorized(image_id=image_id)
-    if exc_type is glance_exception.NotFound:
+    if exc_type is glanceclient.exc.NotFound:
         return exception.ImageNotFound(image_id=image_id)
-    if exc_type is glance_exception.Invalid:
+    if exc_type is glanceclient.exc.BadRequest:
         return exception.Invalid(exc_value)
     return exc_value
 
 
 def _translate_plain_exception(exc_type, exc_value):
-    if exc_type in (glance_exception.Forbidden,
-                    glance_exception.NotAuthenticated,
-                    glance_exception.MissingCredentialError):
+    if exc_type in (glanceclient.exc.Forbidden,
+                    glanceclient.exc.Unauthorized):
         return exception.NotAuthorized(exc_value)
-    if exc_type is glance_exception.NotFound:
+    if exc_type is glanceclient.exc.NotFound:
         return exception.NotFound(exc_value)
-    if exc_type is glance_exception.Invalid:
+    if exc_type is glanceclient.exc.BadRequest:
         return exception.Invalid(exc_value)
     return exc_value
 

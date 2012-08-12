@@ -15,8 +15,8 @@ PasteDeploy==1.5.0
 paste
 sqlalchemy-migrate>=0.7.2
 netaddr
-glance>=2011.3.1
 suds==0.4
 paramiko
 Babel>=0.9.6
 iso8601>=0.1.4
+python-glanceclient<2
