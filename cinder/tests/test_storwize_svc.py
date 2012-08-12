@@ -25,6 +25,7 @@ Tests for the IBM Storwize V7000 and SVC volume driver.
 """
 
 import random
+import socket
 
 from cinder import exception
 from cinder.openstack.common import excutils
@@ -43,7 +44,15 @@ class StorwizeSVCManagementSimulator:
         self._hosts_list = {}
         self._mappings_list = {}
         self._fcmappings_list = {}
-        self._next_cmd_error = {}
+        self._next_cmd_error = {
+            "lsportip": "",
+            "lsnodecanister": "",
+            "lsvdisk": "",
+            "lsfcmap": "",
+            "prestartfcmap": "",
+            "startfcmap": "",
+            "rmfcmap": "",
+        }
         self._errors = {
             "CMMVC5701E": ("", "CMMVC5701E No object ID was specified."),
             "CMMVC6035E": ("", "CMMVC6035E The action failed as the " +
@@ -56,8 +65,6 @@ class StorwizeSVCManagementSimulator:
                                "qualified names (IQNs) has been reached, " +
                                "or the IQN is already assigned or is not " +
                                "valid."),
-            "CMMVC5708E": ("", "CMMVC5708E The [XXX] parameter is missing " +
-                               "its associated arguments."),
             "CMMVC5754E": ("", "CMMVC5754E The specified object does not " +
                                "exist, or the name supplied does not meet " +
                                "the naming rules."),
@@ -72,11 +79,6 @@ class StorwizeSVCManagementSimulator:
                                "host or because it is part of a FlashCopy " +
                                "or Remote Copy mapping, or is involved in " +
                                "an image mode migrate."),
-            "CMMVC6070E": ("", "CMMVC6070E An invalid or duplicated " +
-                               "parameter, unaccompanied argument, or " +
-                               "incorrect argument sequence has been " +
-                               "detected. Ensure that the input is as per " +
-                               "the help."),
             "CMMVC6527E": ("", "CMMVC6527E The name that you have entered " +
                                "is not valid. The name can contain letters, " +
                                "numbers, spaces, periods, dashes, and " +
@@ -114,34 +116,73 @@ class StorwizeSVCManagementSimulator:
                 return True
         return False
 
-    # Check if name is valid
-    def _strip_quotes(self, str):
-        if ((str[0] == '\"' and str[-1] == '\"') or
-                (str[0] == '\'' and str[-1] == '\'')):
-            return str[1:-1]
-        return str
+    # Convert argument string to dictionary
+    def _cmd_to_dict(self, cmd):
+        arg_list = cmd.split()
+        no_param_args = [
+            "autodelete",
+            "autoexpand",
+            "bytes",
+            "compressed",
+            "force",
+            "nohdr",
+        ]
+        one_param_args = [
+            "cleanrate",
+            "delim",
+            "filtervalue",
+            "grainsize",
+            "host",
+            "iogrp",
+            "iscsiname",
+            "mdiskgrp",
+            "name",
+            "rsize",
+            "scsi",
+            "size",
+            "source",
+            "target",
+            "unit",
+            "vtype",
+        ]
+
+        # Handle the special case of lsnode which is a two-word command
+        # Use the one word version of the command internally
+        if arg_list[0] == "svcinfo" and arg_list[1] == "lsnode":
+            ret = {"cmd": "lsnodecanister"}
+            arg_list.pop(0)
+        else:
+            ret = {"cmd": arg_list[0]}
+
+        skip = False
+        for i in range(1, len(arg_list)):
+            if skip:
+                skip = False
+                continue
+            if arg_list[i][0] == "-":
+                if arg_list[i][1:] in no_param_args:
+                    ret[arg_list[i][1:]] = True
+                elif arg_list[i][1:] in one_param_args:
+                    ret[arg_list[i][1:]] = arg_list[i + 1]
+                    skip = True
+                else:
+                    raise exception.InvalidInput(
+                        reason=_('unrecognized argument %s') % arg_list[i])
+            else:
+                ret["obj"] = arg_list[i]
+        return ret
 
     # Generic function for printing information
-    def _print_info_cmd(self, arg_list, rows):
-        for arg in arg_list:
-            if arg == "-nohdr":
+    def _print_info_cmd(self, rows, delim=" ", nohdr=False, **kwargs):
+        if nohdr:
                 del rows[0]
 
-        delimeter = " "
-        try:
-            arg_index = arg_list.index("-delim")
-            delimeter = arg_list[arg_index + 1]
-        except ValueError:
-            pass
-        except IndexError:
-            return self._errors["CMMVC5707E"]
-
         for index in range(len(rows)):
-            rows[index] = delimeter.join(rows[index])
+            rows[index] = delim.join(rows[index])
         return ("%s" % "\n".join(rows), "")
 
     # Print mostly made-up stuff in the correct syntax
-    def _cmd_lsmdiskgrp(self, arg_list):
+    def _cmd_lsmdiskgrp(self, **kwargs):
         rows = [None] * 2
         rows[0] = ["id", "name", "status", "mdisk_count",
                    "vdisk_count capacity", "extent_size", "free_capacity",
@@ -152,10 +193,10 @@ class StorwizeSVCManagementSimulator:
                    "1", str(len(self._volumes_list)), "3.25TB", "256",
                    "3.21TB", "1.54TB", "264.97MB", "35.58GB", "47", "80",
                    "auto", "inactive"]
-        return self._print_info_cmd(arg_list, rows)
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax
-    def _cmd_lsnodecanister(self, arg_list):
+    def _cmd_lsnodecanister(self, **kwargs):
         rows = [None] * 3
         rows[0] = ["id", "name", "UPS_serial_number", "WWNN", "status",
                    "IO_group_id", "IO_group_name", "config_node",
@@ -172,13 +213,21 @@ class StorwizeSVCManagementSimulator:
                    "no", "123456789ABCDEF1", "100",
                    "iqn.1982-01.com.ibm:1234.sim.node2", "", "01-2", "1", "2",
                    "0123ABC"]
-        return self._print_info_cmd(arg_list, rows)
+
+        if self._next_cmd_error["lsnodecanister"] == "header_mismatch":
+            rows[0].pop(2)
+            self._next_cmd_error["lsnodecanister"] = ""
+        if self._next_cmd_error["lsnodecanister"] == "remove_field":
+            for row in rows:
+                row.pop(0)
+            self._next_cmd_error["lsnodecanister"] = ""
+
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax
-    def _cmd_lsportip(self, arg_list):
-        if (("lsportip" in self._next_cmd_error) and
-                (self._next_cmd_error["lsportip"] == "ip_no_config")):
-            self._next_cmd_error["lsportip"] = None
+    def _cmd_lsportip(self, **kwargs):
+        if self._next_cmd_error["lsportip"] == "ip_no_config":
+            self._next_cmd_error["lsportip"] = ""
             ip_addr1 = ""
             ip_addr2 = ""
             gw = ""
@@ -227,25 +276,31 @@ class StorwizeSVCManagementSimulator:
         rows[16] = ["4", "6", "node2", "", "", "", "", "", "", "", "",
                     "unconfigured", "", "yes"]
 
-        return self._print_info_cmd(arg_list, rows)
+        if self._next_cmd_error["lsportip"] == "header_mismatch":
+            rows[0].pop(2)
+            self._next_cmd_error["lsportip"] = ""
+        if self._next_cmd_error["lsportip"] == "remove_field":
+            for row in rows:
+                row.pop(1)
+            self._next_cmd_error["lsportip"] = ""
+
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     # Create a vdisk
-    def _cmd_mkvdisk(self, arg_list):
+    def _cmd_mkvdisk(self, **kwargs):
         # We only save the id/uid, name, and size - all else will be made up
         volume_info = {}
         volume_info["id"] = self._find_unused_id(self._volumes_list)
         volume_info["uid"] = ("ABCDEF" * 3) + ("0" * 14) + volume_info["id"]
-        try:
-            arg_index = arg_list.index("-name") + 1
-            volume_info["name"] = self._strip_quotes(arg_list[arg_index])
-        except ValueError:
-            volume_info["name"] = "vdisk" + str(len(self._volumes_list))
-        except IndexError:
-            return self._errors["CMMVC5707E"]
+
+        if "name" in kwargs:
+            volume_info["name"] = kwargs["name"].strip('\'\"')
+        else:
+            volume_info["name"] = "vdisk" + volume_info["id"]
 
         # Assume size and unit are given, store it in bytes
-        capacity = int(arg_list[arg_list.index("-size") + 1])
-        unit = arg_list[arg_list.index("-unit") + 1]
+        capacity = int(kwargs["size"])
+        unit = kwargs["unit"]
 
         if unit == "b":
             volume_info["capacity"] = capacity
@@ -268,22 +323,14 @@ class StorwizeSVCManagementSimulator:
                     (volume_info["id"]), "")
 
     # Delete a vdisk
-    def _cmd_rmvdisk(self, arg_list):
-        if len(arg_list) == 1:
-            return self._errors["CMMVC5701E"]
-        elif len(arg_list) == 2:
-            force = 0
-            vol_name = arg_list[1]
-        elif len(arg_list) == 3:
-            if (arg_list[1] == "-force"):
-                force = 1
-            else:
-                return self._errors["CMMVC6070E"]
-            vol_name = arg_list[2]
-        else:
-            return self._errors["CMMVC6070E"]
+    def _cmd_rmvdisk(self, **kwargs):
+        force = 0
+        if "force" in kwargs:
+            force = 1
 
-        vol_name = self._strip_quotes(vol_name)
+        if "obj" not in kwargs:
+            return self._errors["CMMVC5701E"]
+        vol_name = kwargs["obj"].strip('\'\"')
 
         if not vol_name in self._volumes_list:
             return self._errors["CMMVC5753E"]
@@ -300,34 +347,6 @@ class StorwizeSVCManagementSimulator:
         del self._volumes_list[vol_name]
         return ("", "")
 
-    def _generic_parse_ls_args(self, arg_list):
-        index = 1
-        ret_vals = {
-            "no_hdr": 0,
-            "delim": "",
-            "obj_name": "",
-            "filter": "",
-        }
-
-        while index < len(arg_list):
-            try:
-                if arg_list[index] == "-delim":
-                    ret_vals["delim"] = arg_list[index + 1]
-                    index += 2
-                elif arg_list[index] == "-nohdr":
-                    ret_vals["no_hdr"] = 1
-                    index += 1
-                elif arg_list[index] == "-filtervalue":
-                    ret_vals["filter"] = arg_list[index + 1].split("=")[1]
-                    index += 2
-                else:
-                    ret_vals["obj_name"] = arg_list[index]
-                    index += 1
-            except IndexError:
-                return self._errors["CMMVC5708E"]
-
-        return ret_vals
-
     def _get_fcmap_info(self, vol_name):
         ret_vals = {
             "fc_id": "",
@@ -343,10 +362,8 @@ class StorwizeSVCManagementSimulator:
         return ret_vals
 
     # List information about vdisks
-    def _cmd_lsvdisk(self, arg_list):
-        arg_dict = self._generic_parse_ls_args(arg_list)
-
-        if arg_dict["obj_name"] == "":
+    def _cmd_lsvdisk(self, **kwargs):
+        if "obj" not in kwargs:
             rows = []
             rows.append(["id", "name", "IO_group_id", "IO_group_name",
                          "status", "mdisk_grp_id", "mdisk_grp_name",
@@ -355,8 +372,8 @@ class StorwizeSVCManagementSimulator:
                          "fast_write_state", "se_copy_count", "RC_change"])
 
             for k, vol in self._volumes_list.iteritems():
-                if ((arg_dict["filter"] == "") or
-                        (arg_dict["filter"] == vol["name"])):
+                if (("filtervalue" not in kwargs) or
+                        (kwargs["filtervalue"] == "name=" + vol["name"])):
                     fcmap_info = self._get_fcmap_info(vol["name"])
 
                     rows.append([str(vol["id"]), vol["name"], "0", "io_grp0",
@@ -368,12 +385,12 @@ class StorwizeSVCManagementSimulator:
                                 fcmap_info["fc_map_count"], "1", "empty",
                                 "1", "no"])
 
-            return self._print_info_cmd(arg_list, rows)
+            return self._print_info_cmd(rows=rows, **kwargs)
 
         else:
-            if arg_dict["obj_name"] not in self._volumes_list:
+            if kwargs["obj"] not in self._volumes_list:
                 return self._errors["CMMVC5754E"]
-            vol = self._volumes_list[arg_dict["obj_name"]]
+            vol = self._volumes_list[kwargs["obj"]]
             fcmap_info = self._get_fcmap_info(vol["name"])
             rows = []
             rows.append(["id", str(vol["id"])])
@@ -395,7 +412,14 @@ class StorwizeSVCManagementSimulator:
             rows.append(["RC_name", ""])
             rows.append(["vdisk_UID", vol["uid"]])
             rows.append(["throttling", "0"])
-            rows.append(["preferred_node_id", "2"])
+
+            if self._next_cmd_error["lsvdisk"] == "blank_pref_node":
+                rows.append(["preferred_node_id", ""])
+                self._next_cmd_error["lsvdisk"] = ""
+            elif self._next_cmd_error["lsvdisk"] == "no_pref_node":
+                self._next_cmd_error["lsvdisk"] = ""
+            else:
+                rows.append(["preferred_node_id", "6"])
             rows.append(["fast_write_state", "empty"])
             rows.append(["cache", "readwrite"])
             rows.append(["udid", ""])
@@ -406,33 +430,30 @@ class StorwizeSVCManagementSimulator:
             rows.append(["mirror_write_priority", "latency"])
             rows.append(["RC_change", "no"])
 
-            if arg_dict["no_hdr"] == 1:
+            if "nohdr" in kwargs:
                 for index in range(len(rows)):
                     rows[index] = " ".join(rows[index][1:])
 
-            if arg_dict["delim"] != "":
+            if "delim" in kwargs:
                 for index in range(len(rows)):
-                    rows[index] = arg_dict["delim"].join(rows[index])
+                    rows[index] = kwargs["delim"].join(rows[index])
 
             return ("%s" % "\n".join(rows), "")
 
     # Make a host
-    def _cmd_mkhost(self, arg_list):
-        try:
-            arg_index = arg_list.index("-name") + 1
-            host_name = self._strip_quotes(arg_list[arg_index])
-        except ValueError:
-            host_name = "host" + str(self._num_host())
-        except IndexError:
-            return self._errors["CMMVC5707E"]
+    def _cmd_mkhost(self, **kwargs):
+        host_info = {}
+        host_info["id"] = self._find_unused_id(self._hosts_list)
 
-        try:
-            arg_index = arg_list.index("-iscsiname") + 1
-            iscsi_name = self._strip_quotes(arg_list[arg_index])
-        except ValueError:
+        if "name" in kwargs:
+            host_name = kwargs["name"].strip('\'\"')
+        else:
+            host_name = "host" + str(host_info["id"])
+        host_info["host_name"] = host_name
+
+        if "iscsiname" not in kwargs:
             return self._errors["CMMVC5707E"]
-        except IndexError:
-            return self._errors["CMMVC5708E"].replace("XXX", "-iscsiname")
+        host_info["iscsi_name"] = kwargs["iscsiname"].strip('\'\"')
 
         if self._is_invalid_name(host_name):
             return self._errors["CMMVC6527E"]
@@ -441,24 +462,19 @@ class StorwizeSVCManagementSimulator:
             return self._errors["CMMVC6035E"]
 
         for k, v in self._hosts_list.iteritems():
-            if v["iscsi_name"] == iscsi_name:
+            if v["iscsi_name"] == host_info["iscsi_name"]:
                 return self._errors["CMMVC6581E"]
-
-        host_info = {}
-        host_info["host_name"] = host_name
-        host_info["iscsi_name"] = iscsi_name
-        host_info["id"] = self._find_unused_id(self._hosts_list)
 
         self._hosts_list[host_name] = host_info
         return ("Host, id [%s], successfully created" %
                 (host_info["id"]), "")
 
     # Remove a host
-    def _cmd_rmhost(self, arg_list):
-        if len(arg_list) == 1:
+    def _cmd_rmhost(self, **kwargs):
+        if "obj" not in kwargs:
             return self._errors["CMMVC5701E"]
 
-        host_name = self._strip_quotes(arg_list[1])
+        host_name = kwargs["obj"].strip('\'\"')
         if host_name not in self._hosts_list:
             return self._errors["CMMVC5753E"]
 
@@ -470,23 +486,27 @@ class StorwizeSVCManagementSimulator:
         return ("", "")
 
     # List information about hosts
-    def _cmd_lshost(self, arg_list):
-        arg_dict = self._generic_parse_ls_args(arg_list)
-
-        if arg_dict["obj_name"] == "":
+    def _cmd_lshost(self, **kwargs):
+        if "obj" not in kwargs:
             rows = []
             rows.append(["id", "name", "port_count", "iogrp_count", "status"])
 
+            found = False
             for k, host in self._hosts_list.iteritems():
-                if ((arg_dict["filter"] == "") or
-                        (arg_dict["filter"] == host["host_name"])):
+                filterstr = "name=" + host["host_name"]
+                if (("filtervalue" not in kwargs) or
+                        (kwargs["filtervalue"] == filterstr)):
                     rows.append([host["id"], host["host_name"], "1", "4",
                                 "offline"])
-            return self._print_info_cmd(arg_list, rows)
+                    found = True
+            if found:
+                return self._print_info_cmd(rows=rows, **kwargs)
+            else:
+                return ("", "")
         else:
-            if arg_dict["obj_name"] not in self._hosts_list:
+            if kwargs["obj"] not in self._hosts_list:
                 return self._errors["CMMVC5754E"]
-            host = self._hosts_list[arg_dict["obj_name"]]
+            host = self._hosts_list[kwargs["obj"]]
             rows = []
             rows.append(["id", host["id"]])
             rows.append(["name", host["host_name"]])
@@ -499,33 +519,32 @@ class StorwizeSVCManagementSimulator:
             rows.append(["node_logged_in_count", "0"])
             rows.append(["state", "offline"])
 
-            if arg_dict["no_hdr"] == 1:
+            if "nohdr" in kwargs:
                 for index in range(len(rows)):
                     rows[index] = " ".join(rows[index][1:])
 
-            if arg_dict["delim"] != "":
+            if "delim" in kwargs:
                 for index in range(len(rows)):
-                    rows[index] = arg_dict["delim"].join(rows[index])
+                    rows[index] = kwargs["delim"].join(rows[index])
 
             return ("%s" % "\n".join(rows), "")
 
     # Create a vdisk-host mapping
-    def _cmd_mkvdiskhostmap(self, arg_list):
+    def _cmd_mkvdiskhostmap(self, **kwargs):
         mapping_info = {}
         mapping_info["id"] = self._find_unused_id(self._mappings_list)
-        try:
-            arg_index = arg_list.index("-host") + 1
-            mapping_info["host"] = self._strip_quotes(arg_list[arg_index])
-        except (ValueError, IndexError):
-            return self._errors["CMMVC5707E"]
 
-        try:
-            arg_index = arg_list.index("-scsi") + 1
-            mapping_info["lun"] = self._strip_quotes(arg_list[arg_index])
-        except (ValueError, IndexError):
+        if "host" not in kwargs:
             return self._errors["CMMVC5707E"]
+        mapping_info["host"] = kwargs["host"].strip('\'\"')
 
-        mapping_info["vol"] = self._strip_quotes(arg_list[-1])
+        if "scsi" not in kwargs:
+            return self._errors["CMMVC5707E"]
+        mapping_info["lun"] = kwargs["scsi"].strip('\'\"')
+
+        if "obj" not in kwargs:
+            return self._errors["CMMVC5707E"]
+        mapping_info["vol"] = kwargs["obj"].strip('\'\"')
 
         if not mapping_info["vol"] in self._volumes_list:
             return self._errors["CMMVC5753E"]
@@ -546,13 +565,14 @@ class StorwizeSVCManagementSimulator:
                 % (mapping_info["id"]), "")
 
     # Delete a vdisk-host mapping
-    def _cmd_rmvdiskhostmap(self, arg_list):
-        try:
-            host = self._strip_quotes(arg_list[arg_list.index("-host") + 1])
-        except (ValueError, IndexError):
+    def _cmd_rmvdiskhostmap(self, **kwargs):
+        if "host" not in kwargs:
             return self._errors["CMMVC5707E"]
+        host = kwargs["host"].strip('\'\"')
 
-        vol = self._strip_quotes(arg_list[-1])
+        if "obj" not in kwargs:
+            return self._errors["CMMVC5701E"]
+        vol = kwargs["obj"].strip('\'\"')
 
         if not vol in self._mappings_list:
             return self._errors["CMMVC5753E"]
@@ -564,24 +584,11 @@ class StorwizeSVCManagementSimulator:
         return ("", "")
 
     # List information about vdisk-host mappings
-    def _cmd_lshostvdiskmap(self, arg_list):
+    def _cmd_lshostvdiskmap(self, **kwargs):
         index = 1
         no_hdr = 0
         delimeter = ""
-        host_name = ""
-        while index < len(arg_list):
-            try:
-                if arg_list[index] == "-delim":
-                    delimeter = arg_list[index + 1]
-                    index += 2
-                elif arg_list[index] == "-nohdr":
-                    no_hdr = 1
-                    index += 1
-                else:
-                    host_name = arg_list[index]
-                    index += 1
-            except IndexError:
-                return self._errors["CMMVC5708E"]
+        host_name = kwargs["obj"]
 
         if host_name not in self._hosts_list:
             return self._errors["CMMVC5754E"]
@@ -597,26 +604,22 @@ class StorwizeSVCManagementSimulator:
                             mapping["lun"], volume["id"],
                             volume["name"], volume["uid"]])
 
-        return self._print_info_cmd(arg_list, rows)
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     # Create a FlashCopy mapping
-    def _cmd_mkfcmap(self, arg_list):
+    def _cmd_mkfcmap(self, **kwargs):
         source = ""
         target = ""
 
-        try:
-            arg_index = arg_list.index("-source") + 1
-            source = self._strip_quotes(arg_list[arg_index])
-        except (ValueError, IndexError):
+        if "source" not in kwargs:
             return self._errors["CMMVC5707E"]
+        source = kwargs["source"].strip('\'\"')
         if not source in self._volumes_list:
             return self._errors["CMMVC5754E"]
 
-        try:
-            arg_index = arg_list.index("-target") + 1
-            target = self._strip_quotes(arg_list[arg_index])
-        except (ValueError, IndexError):
+        if "target" not in kwargs:
             return self._errors["CMMVC5707E"]
+        target = kwargs["target"].strip('\'\"')
         if not target in self._volumes_list:
             return self._errors["CMMVC5754E"]
 
@@ -625,8 +628,7 @@ class StorwizeSVCManagementSimulator:
 
         if (self._volumes_list[source]["capacity"] !=
                 self._volumes_list[target]["capacity"]):
-            return ("", "%s != %s" % (self._volumes_list[source]["capacity"],
-                    self._volumes_list[target]["capacity"]))
+            return self._errors["CMMVC5924E"]
 
         fcmap_info = {}
         fcmap_info["source"] = source
@@ -641,12 +643,19 @@ class StorwizeSVCManagementSimulator:
                "], successfully created", "")
 
     # Same function used for both prestartfcmap and startfcmap
-    def _cmd_gen_startfcmap(self, arg_list, mode):
-        if len(arg_list) == 1:
+    def _cmd_gen_startfcmap(self, mode, **kwargs):
+        if "obj" not in kwargs:
             return self._errors["CMMVC5701E"]
-        elif len(arg_list) > 2:
-            return self._errors["CMMVC6070E"]
-        id_num = arg_list[1]
+        id_num = kwargs["obj"]
+
+        if mode == "pre":
+            if self._next_cmd_error["prestartfcmap"] == "bad_id":
+                id_num = -1
+                self._next_cmd_error["prestartfcmap"] = ""
+        else:
+            if self._next_cmd_error["startfcmap"] == "bad_id":
+                id_num = -1
+                self._next_cmd_error["startfcmap"] = ""
 
         for k, fcmap in self._fcmappings_list.iteritems():
             if fcmap["id"] == id_num:
@@ -658,7 +667,34 @@ class StorwizeSVCManagementSimulator:
                 return ("", "")
         return self._errors["CMMVC5753E"]
 
-    def _cmd_lsfcmap(self, arg_list):
+    # Same function used for both stopfcmap and rmfcmap
+    # Assumes it is called with "-force <fc_map_id>"
+    def _cmd_stoprmfcmap(self, mode, **kwargs):
+        if "obj" not in kwargs:
+            return self._errors["CMMVC5701E"]
+        id_num = kwargs["obj"]
+
+        if self._next_cmd_error["rmfcmap"] == "bad_id":
+            id_num = -1
+            self._next_cmd_error["rmfcmap"] = ""
+
+        to_delete = None
+        found = False
+        for k, fcmap in self._fcmappings_list.iteritems():
+            if fcmap["id"] == id_num:
+                found = True
+                if mode == "rm":
+                    to_delete = k
+
+        if to_delete:
+            del self._fcmappings_list[to_delete]
+
+        if found:
+            return ("", "")
+        else:
+            return self._errors["CMMVC5753E"]
+
+    def _cmd_lsfcmap(self, **kwargs):
         rows = []
         rows.append(["id", "name", "source_vdisk_id", "source_vdisk_name",
                      "target_vdisk_id", "target_vdisk_name", "group_id",
@@ -668,66 +704,92 @@ class StorwizeSVCManagementSimulator:
                      "rc_controlled"])
 
         # Assume we always get a filtervalue argument
-        arg_index = arg_list.index("-filtervalue")
-        filter_key = arg_list[arg_index + 1].split("=")[0]
-        filter_value = arg_list[arg_index + 1].split("=")[1]
+        filter_key = kwargs["filtervalue"].split("=")[0]
+        filter_value = kwargs["filtervalue"].split("=")[1]
         to_delete = []
         for k, v in self._fcmappings_list.iteritems():
             if str(v[filter_key]) == filter_value:
                 source = self._volumes_list[v["source"]]
                 target = self._volumes_list[v["target"]]
+                old_status = v["status"]
+                if old_status == "preparing":
+                    new_status = "prepared"
+                    if self._next_cmd_error["lsfcmap"] == "bogus_prepare":
+                        new_status = "bogus"
+                elif (old_status == "copying") and (v["progress"] == "0"):
+                    new_status = "copying"
+                    v["progress"] = "50"
+                elif (old_status == "copying") and (v["progress"] == "50"):
+                    new_status = "idle_or_copied"
+                    to_delete.append(k)
+                else:
+                    new_status = old_status
+                v["status"] = new_status
+
+                if ((self._next_cmd_error["lsfcmap"] == "speed_up") or
+                        (self._next_cmd_error["lsfcmap"] == "bogus_prepare")):
+                    print_status = new_status
+                    self._next_cmd_error["lsfcmap"] = ""
+                else:
+                    print_status = old_status
+
                 rows.append([v["id"], v["name"], source["id"],
                             source["name"], target["id"], target["name"], "",
-                            "", v["status"], v["progress"], "50", "100",
+                            "", print_status, v["progress"], "50", "100",
                             "off", "", "", "no", "", "no"])
-                if v["status"] == "preparing":
-                    v["status"] = "prepared"
-                elif (v["status"] == "copying") and (v["progress"] == "0"):
-                    v["progress"] = "50"
-                elif (v["status"] == "copying") and (v["progress"] == "50"):
-                    to_delete.append(k)
 
         for d in to_delete:
             del self._fcmappings_list[k]
 
-        return self._print_info_cmd(arg_list, rows)
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     # The main function to run commands on the management simulator
     def execute_command(self, cmd, check_exit_code=True):
+        try:
+            kwargs = self._cmd_to_dict(cmd)
+        except IndexError:
+            return self._errors["CMMVC5707E"]
+
+        command = kwargs["cmd"]
+        del kwargs["cmd"]
         arg_list = cmd.split()
 
-        if arg_list[0] == "lsmdiskgrp":
-            out, err = self._cmd_lsmdiskgrp(arg_list)
-        elif arg_list[0] == "lsnodecanister":
-            out, err = self._cmd_lsnodecanister(arg_list)
-        elif arg_list[0] == "lsportip":
-            out, err = self._cmd_lsportip(arg_list)
-        elif arg_list[0] == "mkvdisk":
-            out, err = self._cmd_mkvdisk(arg_list)
-        elif arg_list[0] == "rmvdisk":
-            out, err = self._cmd_rmvdisk(arg_list)
-        elif arg_list[0] == "lsvdisk":
-            out, err = self._cmd_lsvdisk(arg_list)
-        elif arg_list[0] == "mkhost":
-            out, err = self._cmd_mkhost(arg_list)
-        elif arg_list[0] == "rmhost":
-            out, err = self._cmd_rmhost(arg_list)
-        elif arg_list[0] == "lshost":
-            out, err = self._cmd_lshost(arg_list)
-        elif arg_list[0] == "mkvdiskhostmap":
-            out, err = self._cmd_mkvdiskhostmap(arg_list)
-        elif arg_list[0] == "rmvdiskhostmap":
-            out, err = self._cmd_rmvdiskhostmap(arg_list)
-        elif arg_list[0] == "lshostvdiskmap":
-            out, err = self._cmd_lshostvdiskmap(arg_list)
-        elif arg_list[0] == "mkfcmap":
-            out, err = self._cmd_mkfcmap(arg_list)
-        elif arg_list[0] == "prestartfcmap":
-            out, err = self._cmd_gen_startfcmap(arg_list, "pre")
-        elif arg_list[0] == "startfcmap":
-            out, err = self._cmd_gen_startfcmap(arg_list, "start")
-        elif arg_list[0] == "lsfcmap":
-            out, err = self._cmd_lsfcmap(arg_list)
+        if command == "lsmdiskgrp":
+            out, err = self._cmd_lsmdiskgrp(**kwargs)
+        elif command == "lsnodecanister":
+            out, err = self._cmd_lsnodecanister(**kwargs)
+        elif command == "lsportip":
+            out, err = self._cmd_lsportip(**kwargs)
+        elif command == "mkvdisk":
+            out, err = self._cmd_mkvdisk(**kwargs)
+        elif command == "rmvdisk":
+            out, err = self._cmd_rmvdisk(**kwargs)
+        elif command == "lsvdisk":
+            out, err = self._cmd_lsvdisk(**kwargs)
+        elif command == "mkhost":
+            out, err = self._cmd_mkhost(**kwargs)
+        elif command == "rmhost":
+            out, err = self._cmd_rmhost(**kwargs)
+        elif command == "lshost":
+            out, err = self._cmd_lshost(**kwargs)
+        elif command == "mkvdiskhostmap":
+            out, err = self._cmd_mkvdiskhostmap(**kwargs)
+        elif command == "rmvdiskhostmap":
+            out, err = self._cmd_rmvdiskhostmap(**kwargs)
+        elif command == "lshostvdiskmap":
+            out, err = self._cmd_lshostvdiskmap(**kwargs)
+        elif command == "mkfcmap":
+            out, err = self._cmd_mkfcmap(**kwargs)
+        elif command == "prestartfcmap":
+            out, err = self._cmd_gen_startfcmap(mode="pre", **kwargs)
+        elif command == "startfcmap":
+            out, err = self._cmd_gen_startfcmap(mode="start", **kwargs)
+        elif command == "stopfcmap":
+            out, err = self._cmd_stoprmfcmap(mode="stop", **kwargs)
+        elif command == "rmfcmap":
+            out, err = self._cmd_stoprmfcmap(mode="rm", **kwargs)
+        elif command == "lsfcmap":
+            out, err = self._cmd_lsfcmap(**kwargs)
         else:
             out, err = ("", "ERROR: Unsupported command")
 
@@ -793,7 +855,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
 
-    def test_storwize_svc_volume_non_space_efficient(self):
+    def test_storwize_svc_volume_tests(self):
         storwize_svc.FLAGS.storwize_svc_vol_rsize = "-1"
         volume = {}
         volume["name"] = "test1_volume%s" % random.randint(10000, 99999)
@@ -803,8 +865,42 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Make sure that the volume has been created
         is_volume_defined = self.driver._is_volume_defined(volume["name"])
         self.assertEqual(is_volume_defined, True)
-
         self.driver.delete_volume(volume)
+
+        if self.USESIM == 1:
+            saved_rsize = storwize_svc.FLAGS.storwize_svc_vol_rsize
+            saved_comp = storwize_svc.FLAGS.storwize_svc_vol_compression
+            storwize_svc.FLAGS.storwize_svc_vol_rsize = "2%"
+            storwize_svc.FLAGS.storwize_svc_vol_compression = True
+            self.driver.create_volume(volume)
+            is_volume_defined = self.driver._is_volume_defined(volume["name"])
+            self.assertEqual(is_volume_defined, True)
+            self.driver.delete_volume(volume)
+            storwize_svc.FLAGS.storwize_svc_vol_rsize = saved_rsize
+            storwize_svc.FLAGS.storwize_svc_vol_compression = saved_comp
+
+    def test_storwize_svc_ip_connectivity(self):
+        # Check for missing san_ip
+        saved = storwize_svc.FLAGS.san_ip
+        storwize_svc.FLAGS.san_ip = None
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.san_ip = saved
+
+        if self.USESIM != 1:
+            saved = storwize_svc.FLAGS.san_ip
+
+            # Check for invalid ip
+            storwize_svc.FLAGS.san_ip = "-1.-1.-1.-1"
+            self.assertRaises(socket.gaierror,
+                        self.driver.check_for_setup_error)
+
+            # Check for unreachable IP
+            storwize_svc.FLAGS.san_ip = "1.1.1.1"
+            self.assertRaises(socket.error,
+                        self.driver.check_for_setup_error)
+
+            storwize_svc.FLAGS.san_ip = saved
 
     def test_storwize_svc_connectivity(self):
         # Make sure we detect if the pool doesn't exist
@@ -816,10 +912,69 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         storwize_svc.FLAGS.storwize_svc_volpool_name = orig_pool
 
         # Check the case where the user didn't configure IP addresses
+        # as well as receiving unexpected results from the storage
         if self.USESIM == 1:
+            self.sim.error_injection("lsnodecanister", "header_mismatch")
+            self.assertRaises(exception.VolumeBackendAPIException,
+                    self.driver.check_for_setup_error)
+            self.sim.error_injection("lsnodecanister", "remove_field")
+            self.assertRaises(exception.VolumeBackendAPIException,
+                    self.driver.check_for_setup_error)
             self.sim.error_injection("lsportip", "ip_no_config")
             self.assertRaises(exception.VolumeBackendAPIException,
                     self.driver.check_for_setup_error)
+            self.sim.error_injection("lsportip", "header_mismatch")
+            self.assertRaises(exception.VolumeBackendAPIException,
+                    self.driver.check_for_setup_error)
+            self.sim.error_injection("lsportip", "remove_field")
+            self.assertRaises(exception.VolumeBackendAPIException,
+                    self.driver.check_for_setup_error)
+
+        # Check with bad parameters
+        saved_pass = storwize_svc.FLAGS.san_password
+        saved_key = storwize_svc.FLAGS.san_private_key
+        storwize_svc.FLAGS.san_password = None
+        storwize_svc.FLAGS.san_private_key = None
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.san_password = saved_pass
+        storwize_svc.FLAGS.san_private_key = saved_key
+
+        saved = storwize_svc.FLAGS.storwize_svc_vol_vtype
+        storwize_svc.FLAGS.storwize_svc_vol_vtype = "invalid"
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.storwize_svc_vol_vtype = saved
+
+        saved = storwize_svc.FLAGS.storwize_svc_vol_rsize
+        storwize_svc.FLAGS.storwize_svc_vol_rsize = "invalid"
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.storwize_svc_vol_rsize = saved
+
+        saved = storwize_svc.FLAGS.storwize_svc_vol_warning
+        storwize_svc.FLAGS.storwize_svc_vol_warning = "invalid"
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.storwize_svc_vol_warning = saved
+
+        saved = storwize_svc.FLAGS.storwize_svc_vol_autoexpand
+        storwize_svc.FLAGS.storwize_svc_vol_autoexpand = "invalid"
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.storwize_svc_vol_autoexpand = saved
+
+        saved = storwize_svc.FLAGS.storwize_svc_vol_grainsize
+        storwize_svc.FLAGS.storwize_svc_vol_grainsize = str(42)
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.storwize_svc_vol_grainsize = saved
+
+        saved = storwize_svc.FLAGS.storwize_svc_flashcopy_timeout
+        storwize_svc.FLAGS.storwize_svc_flashcopy_timeout = str(601)
+        self.assertRaises(exception.InvalidInput,
+                self.driver._check_flags)
+        storwize_svc.FLAGS.storwize_svc_flashcopy_timeout = saved
 
         # Finally, check with good parameters
         self.driver.check_for_setup_error()
@@ -834,13 +989,103 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         snapshot = {}
         snapshot["name"] = "snap_volume%s" % random.randint(10000, 99999)
         snapshot["volume_name"] = volume1["name"]
+
+        # Test timeout and volume cleanup
+        saved = storwize_svc.FLAGS.storwize_svc_flashcopy_timeout
+        storwize_svc.FLAGS.storwize_svc_flashcopy_timeout = str(1)
+        self.assertRaises(exception.InvalidSnapshot,
+                self.driver.create_snapshot, snapshot)
+        is_volume_defined = self.driver._is_volume_defined(snapshot["name"])
+        self.assertEqual(is_volume_defined, False)
+        storwize_svc.FLAGS.storwize_svc_flashcopy_timeout = saved
+
+        # Test bogus statuses
+        if self.USESIM == 1:
+            self.sim.error_injection("lsfcmap", "bogus_prepare")
+            self.assertRaises(exception.VolumeBackendAPIException,
+                self.driver.create_snapshot, snapshot)
+
+        # Test prestartfcmap, startfcmap, and rmfcmap failing
+        if self.USESIM == 1:
+            self.sim.error_injection("prestartfcmap", "bad_id")
+            self.assertRaises(exception.ProcessExecutionError,
+                self.driver.create_snapshot, snapshot)
+            self.sim.error_injection("lsfcmap", "speed_up")
+            self.sim.error_injection("startfcmap", "bad_id")
+            self.assertRaises(exception.ProcessExecutionError,
+                self.driver.create_snapshot, snapshot)
+            self.sim.error_injection("prestartfcmap", "bad_id")
+            self.sim.error_injection("rmfcmap", "bad_id")
+            self.assertRaises(exception.ProcessExecutionError,
+                self.driver.create_snapshot, snapshot)
+
+        # Test successful snapshot
         self.driver.create_snapshot(snapshot)
 
+        # Ensure snapshot is defined
         is_volume_defined = self.driver._is_volume_defined(snapshot["name"])
         self.assertEqual(is_volume_defined, True)
 
+        # Try to create a snapshot from an non-existing volume - should fail
+        snapshot2 = {}
+        snapshot2["name"] = "snap_volume%s" % random.randint(10000, 99999)
+        snapshot2["volume_name"] = "undefined-vol"
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.create_snapshot,
+                          snapshot2)
+
+        # Create volume from snapshot
+        volume2 = {}
+        volume2["name"] = "snap2vol_volume%s" % random.randint(10000, 99999)
+
+        # Create volume from snapshot into an existsing volume
+        self.assertRaises(exception.InvalidSnapshot,
+                          self.driver.create_volume_from_snapshot,
+                          volume1,
+                          snapshot)
+
+        # Try to create a volume from a non-existing snapshot
+        self.assertRaises(exception.SnapshotNotFound,
+                          self.driver.create_volume_from_snapshot,
+                          volume2,
+                          snapshot2)
+
+        # Fail the snapshot
+        if self.USESIM == 1:
+            self.sim.error_injection("prestartfcmap", "bad_id")
+            self.assertRaises(exception.ProcessExecutionError,
+                self.driver.create_volume_from_snapshot, volume2, snapshot)
+
+        # Succeed
+        if self.USESIM == 1:
+            self.sim.error_injection("lsfcmap", "speed_up")
+        self.driver.create_volume_from_snapshot(volume2, snapshot)
+
+        # Ensure volume is defined
+        is_volume_defined = self.driver._is_volume_defined(volume2["name"])
+        self.assertEqual(is_volume_defined, True)
+
+        self.driver._delete_volume(volume2, True)
         self.driver._delete_snapshot(snapshot, True)
+
+        # Check with target with different size
+        volume3 = {}
+        volume3["name"] = "test_volume%s" % random.randint(10000, 99999)
+        volume3["size"] = 11
+        volume3["id"] = 11
+        self.driver.create_volume(volume3)
+        snapshot["name"] = volume3["name"]
+        self.assertRaises(exception.InvalidSnapshot,
+                self.driver.create_snapshot, snapshot)
         self.driver._delete_volume(volume1, True)
+        self.driver._delete_volume(volume3, True)
+
+        # Snapshot volume that doesn't exist
+        snapshot = {}
+        snapshot["name"] = "snap_volume%s" % random.randint(10000, 99999)
+        snapshot["volume_name"] = "no_exist"
+        self.assertRaises(exception.VolumeNotFound,
+                self.driver.create_snapshot, snapshot)
 
     def test_storwize_svc_volumes(self):
         # Create a first volume
@@ -848,11 +1093,16 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         volume["name"] = "test1_volume%s" % random.randint(10000, 99999)
         volume["size"] = 10
         volume["id"] = 1
+
         self.driver.create_volume(volume)
 
-        # Make sure that the volume has been created
-        is_volume_defined = self.driver._is_volume_defined(volume["name"])
-        self.assertEqual(is_volume_defined, True)
+        self.driver.ensure_export(None, volume)
+
+        # Do nothing
+        self.driver.create_export(None, volume)
+        self.driver.remove_export(None, volume)
+        self.assertRaises(NotImplementedError,
+                self.driver.check_for_export, None, volume["id"])
 
         # Make sure volume attributes are as they should be
         attributes = self.driver._get_volume_attributes(volume["name"])
@@ -870,9 +1120,36 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Try to delete a volume that doesn't exist (should not fail)
         vol_no_exist = {"name": "i_dont_exist"}
         self.driver.delete_volume(vol_no_exist)
+        # Ensure export for volume that doesn't exist (should not fail)
+        self.driver.ensure_export(None, vol_no_exist)
 
         # Delete the volume
         self.driver.delete_volume(volume)
+
+        # Check auto-expand option
+        saved = storwize_svc.FLAGS.storwize_svc_vol_autoexpand
+        storwize_svc.FLAGS.storwize_svc_vol_autoexpand = False
+        self.driver.create_volume(volume)
+        is_volume_defined = self.driver._is_volume_defined(volume["name"])
+        self.assertEqual(is_volume_defined, True)
+        self.driver.delete_volume(volume)
+        storwize_svc.FLAGS.storwize_svc_vol_autoexpand = saved
+
+    def test_storwize_svc_unicode_host_and_volume_names(self):
+        volume1 = {}
+        volume1["name"] = u"unicode1_volume%s" % random.randint(10000, 99999)
+        volume1["size"] = 2
+        volume1["id"] = 1
+        self.driver.create_volume(volume1)
+        # Make sure that the volumes have been created
+        is_volume_defined = self.driver._is_volume_defined(volume1["name"])
+        self.assertEqual(is_volume_defined, True)
+        conn = {}
+        conn["initiator"] = u"unicode:init:%s" % random.randint(10000, 99999)
+        conn["ip"] = "10.10.10.10"  # Bogus ip for testing
+        self.driver.initialize_connection(volume1, conn)
+        self.driver.terminate_connection(volume1, conn)
+        self.driver.delete_volume(volume1)
 
     def test_storwize_svc_host_maps(self):
         # Create two volumes to be used in mappings
@@ -886,6 +1163,13 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         volume2["size"] = 2
         volume2["id"] = 1
         self.driver.create_volume(volume2)
+
+        # Check case where no hosts exist
+        if self.USESIM == 1:
+            ret = self.driver._get_host_from_iscsiname("foo")
+            self.assertEquals(ret, None)
+            ret = self.driver._is_host_defined("foo")
+            self.assertEquals(ret, False)
 
         # Make sure that the volumes have been created
         is_volume_defined = self.driver._is_volume_defined(volume1["name"])
@@ -901,12 +1185,25 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         conn["ip"] = "10.10.10.10"  # Bogus ip for testing
         self.driver.initialize_connection(volume1, conn)
 
-        # Initialize connection from the second volume to the host
-        self.driver.initialize_connection(volume2, conn)
+        # Initialize again, should notice it and do nothing
+        self.driver.initialize_connection(volume1, conn)
 
         # Try to delete the 1st volume (should fail because it is mapped)
         self.assertRaises(exception.ProcessExecutionError,
                 self.driver.delete_volume, volume1)
+
+        # Test no preferred node
+        self.driver.terminate_connection(volume1, conn)
+        if self.USESIM == 1:
+            self.sim.error_injection("lsvdisk", "no_pref_node")
+            self.driver.initialize_connection(volume1, conn)
+
+        # Initialize connection from the second volume to the host with no
+        # preferred node set if in simulation mode, otherwise, just
+        # another initialize connection.
+        if self.USESIM == 1:
+            self.sim.error_injection("lsvdisk", "blank_pref_node")
+        self.driver.initialize_connection(volume2, conn)
 
         # Try to remove connection from host that doesn't exist (should fail)
         conn_no_exist = {"initiator": "i_dont_exist"}

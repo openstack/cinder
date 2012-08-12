@@ -44,8 +44,6 @@ import re
 import string
 import time
 
-import paramiko
-
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
@@ -77,6 +75,9 @@ storwize_svc_opts = [
                default='256',
                help='Storage system grain size parameter for volumes '
                     '(32/64/128/256)'),
+    cfg.BoolOpt('storwize_svc_vol_compression',
+               default=False,
+               help='Storage system compression option for volumes'),
     cfg.StrOpt('storwize_svc_flashcopy_timeout',
                default='120',
                help='Maximum number of seconds to wait for FlashCopy to be'
@@ -95,6 +96,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         self.iscsi_ipv4_conf = None
         self.iscsi_ipv6_conf = None
 
+        # Build cleanup transaltion tables for hosts names to follow valid
+        # host names for Storwizew V7000 and SVC storage systems.
         invalid_ch_in_host = ''
         for num in range(0, 128):
             ch = chr(num)
@@ -155,7 +158,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         storage_nodes = {}
         # Get the iSCSI names of the Storwize/SVC nodes
-        ssh_cmd = 'lsnodecanister -delim !'
+        ssh_cmd = 'svcinfo lsnode -delim !'
         out, err = self._run_ssh(ssh_cmd)
         self._driver_assert(len(out) > 0,
             _('check_for_setup_error: failed with unexpected CLI output.\n '
@@ -196,7 +199,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                     storage_nodes[node['id']] = node
             except KeyError as e:
                 LOG.error(_('Did not find expected column name in '
-                            'lsnodecanister: %s') % str(e))
+                            'svcinfo lsnode: %s') % str(e))
                 exception_message = (
                     _('check_for_setup_error: Unexpected CLI output.\n '
                       'Details: %(msg)s\n'
@@ -294,8 +297,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                 'node %s has no IP addresses configured')
                                 % node['id'])
 
-        #Make sure we have at least one IPv4 address with a iSCSI name
-        #TODO(ronenkat) need to expand this to support IPv6
+        # Make sure we have at least one IPv4 address with a iSCSI name
+        # TODO(ronenkat) need to expand this to support IPv6
         self._driver_assert(len(iscsi_ipv4_conf) > 0,
             _('could not obtain IP address and iSCSI name from the storage. '
               'Please verify that the storage is configured for iSCSI.\n '
@@ -379,6 +382,14 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                          'valid values are between 0 and 600')
                                          % flashcopy_timeout)
 
+        # Check that compression is a boolean
+        volume_compression = getattr(FLAGS, 'storwize_svc_vol_compression')
+        if type(volume_compression) != type(True):
+            raise exception.InvalidInput(
+                reason=_('Illegal value specified for '
+                         'storwize_svc_vol_compression: set to either '
+                         'True or False'))
+
     def do_setup(self, context):
         """Validate the flags."""
         LOG.debug(_('enter: do_setup'))
@@ -404,16 +415,18 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         else:
             autoexpand = ''
 
-        #Set space-efficient options
+        # Set space-efficient options
         if getattr(FLAGS, 'storwize_svc_vol_rsize').strip() == '-1':
             ssh_cmd_se_opt = ''
         else:
-            ssh_cmd_se_opt = ('-rsize %(rsize)s %(autoexpand)s '
-                        '-grainsize %(grain)s' %
+            ssh_cmd_se_opt = ('-rsize %(rsize)s %(autoexpand)s ' %
                         {'rsize': getattr(FLAGS, 'storwize_svc_vol_rsize'),
-                         'autoexpand': autoexpand,
-                         'grain':
-                            getattr(FLAGS, 'storwize_svc_vol_grainsize')})
+                         'autoexpand': autoexpand})
+            if getattr(FLAGS, 'storwize_svc_vol_compression'):
+                ssh_cmd_se_opt = ssh_cmd_se_opt + '-compressed'
+            else:
+                ssh_cmd_se_opt = ssh_cmd_se_opt + ('-grainsize %(grain)s' %
+                       {'grain': getattr(FLAGS, 'storwize_svc_vol_grainsize')})
 
         ssh_cmd = ('mkvdisk -name %(name)s -mdiskgrp %(mdiskgrp)s '
                     '-iogrp 0 -vtype %(vtype)s -size %(size)s -unit '
@@ -623,6 +636,23 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                     'connector %(conn)s') % {'vol': str(volume),
                     'conn': str(connector)})
 
+    def _flashcopy_cleanup(self, fc_map_id, source, target):
+        """Clean up a failed FlashCopy operation."""
+
+        try:
+            out, err = self._run_ssh('stopfcmap -force %s' % fc_map_id)
+            out, err = self._run_ssh('rmfcmap -force %s' % fc_map_id)
+        except exception.ProcessExecutionError as e:
+            LOG.error(_('_run_flashcopy: fail to cleanup failed FlashCopy '
+                        'mapping %(fc_map_id)% '
+                        'from %(source)s to %(target)s.\n'
+                        'stdout: %(out)s\n stderr: %(err)s')
+                        % {'fc_map_id': fc_map_id,
+                           'source': source,
+                           'target': target,
+                           'out': e.stdout,
+                           'err': e.stderr})
+
     def _run_flashcopy(self, source, target):
         """Create a FlashCopy mapping from the source to the target."""
 
@@ -686,15 +716,11 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                'target': target,
                                'out': e.stdout,
                                'err': e.stderr})
+                self._flashcopy_cleanup(fc_map_id, source, target)
 
         mapping_ready = False
         wait_time = 5
         # Allow waiting of up to timeout (set as parameter)
-        exception_msg = (_('mapping %(id)s prepare failed to complete '
-                            'within the alloted %(to)s seconds timeout. '
-                            'Terminating') % {'id': fc_map_id,
-                            'to': getattr(
-                                FLAGS, 'storwize_svc_flashcopy_timeout')})
         max_retries = (int(getattr(FLAGS,
                         'storwize_svc_flashcopy_timeout')) / wait_time) + 1
         for try_number in range(1, max_retries):
@@ -714,17 +740,24 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                  % {'status': mapping_attributes['status'],
                                     'id': fc_map_id,
                                     'attr': mapping_attributes})
-                break
+                raise exception.VolumeBackendAPIException(
+                        data=exception_msg)
             # Need to wait for mapping to be prepared, wait a few seconds
             time.sleep(wait_time)
 
         if not mapping_ready:
+            exception_msg = (_('mapping %(id)s prepare failed to complete '
+                               'within the alloted %(to)s seconds timeout. '
+                               'Terminating') % {'id': fc_map_id,
+                               'to': getattr(
+                                FLAGS, 'storwize_svc_flashcopy_timeout')})
             LOG.error(_('_run_flashcopy: fail to start FlashCopy '
                         'from %(source)s to %(target)s with '
                         'exception %(ex)s')
                         % {'source': source,
                            'target': target,
                            'ex': exception_msg})
+            self._flashcopy_cleanup(fc_map_id, source, target)
             raise exception.InvalidSnapshot(
                 reason=_('_run_flashcopy: %s') % exception_msg)
 
@@ -739,6 +772,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                'target': target,
                                'out': e.stdout,
                                'err': e.stderr})
+                self._flashcopy_cleanup(fc_map_id, source, target)
 
         LOG.debug(_('leave: _run_flashcopy: FlashCopy started from '
                     '%(source)s to %(target)s') % {'source': source,
@@ -747,8 +781,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a new snapshot from volume."""
 
-        source_volume = volume['name']
-        tgt_volume = snapshot['name']
+        source_volume = snapshot['name']
+        tgt_volume = volume['name']
 
         LOG.debug(_('enter: create_volume_from_snapshot: snapshot %(tgt)s '
                     'from volume %(src)s') % {'tgt': tgt_volume,
@@ -759,16 +793,14 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             exception_msg = (_('create_volume_from_snapshot: source volume %s '
                                'does not exist') % source_volume)
             LOG.error(exception_msg)
-            raise exception.VolumeNotFound(exception_msg,
+            raise exception.SnapshotNotFound(exception_msg,
                                            volume_id=source_volume)
-        if 'capacity' not in src_volume_attributes:
-            exception_msg = (
+
+        self._driver_assert('capacity' in src_volume_attributes,
                 _('create_volume_from_snapshot: cannot get source '
                   'volume %(src)s capacity from volume attributes '
                   '%(attr)s') % {'src': source_volume,
                                  'attr': src_volume_attributes})
-            LOG.error(exception_msg)
-            raise exception.VolumeBackendAPIException(data=exception_msg)
         src_volume_size = src_volume_attributes['capacity']
 
         tgt_volume_attributes = self._get_volume_attributes(tgt_volume)
@@ -783,9 +815,14 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         snapshot_volume['name'] = tgt_volume
         snapshot_volume['size'] = src_volume_size
 
-        self.create_volume(snapshot_volume)
+        self._create_volume(snapshot_volume, units='b')
 
-        self._run_flashcopy(source_volume, tgt_volume)
+        try:
+            self._run_flashcopy(source_volume, tgt_volume)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # Clean up newly-created snapshot if the FlashCopy failed
+                self._delete_volume(snapshot_volume, True)
 
         LOG.debug(
             _('leave: create_volume_from_snapshot: %s created successfully')
@@ -796,6 +833,9 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         src_volume = snapshot['volume_name']
         tgt_volume = snapshot['name']
+
+        # Flag to keep track of created volumes in case FlashCopy
+        tgt_volume_created = False
 
         LOG.debug(_('enter: create_snapshot: snapshot %(tgt)s from '
                     'volume %(src)s') % {'tgt': tgt_volume,
@@ -809,34 +849,31 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             LOG.error(exception_msg)
             raise exception.VolumeNotFound(exception_msg,
                                            volume_id=src_volume)
-        if 'capacity' not in src_volume_attributes:
-            exception_msg = (
-                _('create_snapshot: cannot get source volume %(src)s '
-                  'capacity from volume attributes %(attr)s')
-                    % {'src': src_volume,
-                       'attr': src_volume_attributes})
-            LOG.error(exception_msg)
-            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        self._driver_assert('capacity' in src_volume_attributes,
+                _('create_volume_from_snapshot: cannot get source '
+                  'volume %(src)s capacity from volume attributes '
+                  '%(attr)s') % {'src': src_volume,
+                                 'attr': src_volume_attributes})
+
         source_volume_size = src_volume_attributes['capacity']
 
         tgt_volume_attributes = self._get_volume_attributes(tgt_volume)
         # Does the snapshot target exist?
+        snapshot_volume = {}
         if tgt_volume_attributes is None:
             # No, create a new snapshot volume
-            snapshot_volume = {}
             snapshot_volume['name'] = tgt_volume
             snapshot_volume['size'] = source_volume_size
             self._create_volume(snapshot_volume, units='b')
+            tgt_volume_created = True
         else:
             # Yes, target exists, verify exact same size as source
-            if 'capacity' not in src_volume_attributes:
-                exception_msg = (
-                    _('create_snapshot: cannot get target volume '
-                      '%(tgt)s capacity from volume attributes '
-                      '%(attr)s') % {'tgt': tgt_volume,
+            self._driver_assert('capacity' in tgt_volume_attributes,
+                    _('create_volume_from_snapshot: cannot get source '
+                      'volume %(src)s capacity from volume attributes '
+                      '%(attr)s') % {'src': tgt_volume,
                                      'attr': tgt_volume_attributes})
-                LOG.error(exception_msg)
-                raise exception.VolumeBackendAPIException(data=exception_msg)
             target_volume_size = tgt_volume_attributes['capacity']
             if target_volume_size != source_volume_size:
                 exception_msg = (
@@ -850,7 +887,13 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                 LOG.error(exception_msg)
                 raise exception.InvalidSnapshot(reason=exception_msg)
 
-        self._run_flashcopy(src_volume, tgt_volume)
+        try:
+            self._run_flashcopy(src_volume, tgt_volume)
+        except exception.InvalidSnapshot:
+            with excutils.save_and_reraise_exception():
+                # Clean up newly-created snapshot if the FlashCopy failed
+                if tgt_volume_created:
+                    self._delete_volume(snapshot_volume, True)
 
         LOG.debug(_('leave: create_snapshot: %s created successfully')
                   % tgt_volume)
@@ -915,7 +958,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                            'out': str(out),
                            'err': str(err)})
             for attrib_line in out.split('\n'):
-                #If '!' not found, will return the string and two empty strings
+                # If '!' not found, return the string and two empty strings
                 attrib_name, foo, attrib_value = attrib_line.partition('!')
                 if attrib_name == 'iscsi_name':
                     if iscsi_name == attrib_value:
@@ -1051,8 +1094,6 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         return_data = {}
         ssh_cmd = 'lshostvdiskmap -delim ! %s' % host_name
         out, err = self._run_ssh(ssh_cmd)
-        if len(out.strip()) == 0:
-            return return_data
 
         mappings = out.strip().split('\n')
         if len(mappings) > 0:
@@ -1175,7 +1216,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             ssh_cmd = 'lsvdisk -bytes -delim ! %s ' % volume_name
             out, err = self._run_ssh(ssh_cmd)
         except exception.ProcessExecutionError as e:
-            #Didn't get details from the storage, return None
+            # Didn't get details from the storage, return None
             LOG.error(_('CLI Exception output:\n command: %(cmd)s\n '
                         'stdout: %(out)s\n stderr: %(err)s') %
                       {'cmd': ssh_cmd,
@@ -1192,7 +1233,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                            'err': str(err)})
         attributes = {}
         for attrib_line in out.split('\n'):
-            #If '!' not found, will return the string and two empty strings
+            # If '!' not found, return the string and two empty strings
             attrib_name, foo, attrib_value = attrib_line.partition('!')
             if attrib_name is not None and attrib_name.strip() > 0:
                 attributes[attrib_name] = attrib_value

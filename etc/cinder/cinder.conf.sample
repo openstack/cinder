@@ -665,7 +665,9 @@
 # storwize_svc_vol_autoexpand=True
 ##### (StrOpt) Storage system grain size parameter for volumes (32/64/128/256)
 # storwize_svc_vol_grainsize=256
+##### (BoolOpt) Storage system compression option for volumes
+# storwize_svc_vol_compression=False
 ##### (StrOpt) Maximum number of seconds to wait for FlashCopy to be prepared. Maximum value is 600 seconds (10 minutes).
 # storwize_svc_flashcopy_timeout=120
 
-# Total option count: 474
+# Total option count: 475
