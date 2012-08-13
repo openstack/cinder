@@ -549,6 +549,10 @@ class RBDDriver(VolumeDriver):
         """Removes an export for a logical volume"""
         pass
 
+    def check_for_export(self, context, volume_id):
+        """Make sure volume is exported."""
+        pass
+
     def initialize_connection(self, volume, connector):
         return {
             'driver_volume_type': 'rbd',
@@ -624,6 +628,10 @@ class SheepdogDriver(VolumeDriver):
 
     def remove_export(self, context, volume):
         """Removes an export for a logical volume"""
+        pass
+
+    def check_for_export(self, context, volume_id):
+        """Make sure volume is exported."""
         pass
 
     def initialize_connection(self, volume, connector):
