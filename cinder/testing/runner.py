@@ -73,9 +73,7 @@ reldir = os.path.join(os.path.dirname(__file__), '..', '..')
 absdir = os.path.abspath(reldir)
 sys.path.insert(0, absdir)
 
-from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import cfg
 
 
 class _AnsiColorizer(object):

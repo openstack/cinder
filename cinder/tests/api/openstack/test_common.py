@@ -19,15 +19,11 @@
 Test suites for 'common' code used throughout the OpenStack HTTP API.
 """
 
-from lxml import etree
 import webob
 import webob.exc
-import xml.dom.minidom as minidom
 
-from cinder import exception
 from cinder import test
 from cinder.api.openstack import common
-from cinder.api.openstack import xmlutil
 
 
 NS = "{http://docs.openstack.org/compute/api/v1.1}"

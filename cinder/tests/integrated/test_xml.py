@@ -20,7 +20,6 @@ from lxml import etree
 from cinder.openstack.common import log as logging
 from cinder.tests.integrated import integrated_helpers
 from cinder.api.openstack import common
-from cinder.api.openstack import xmlutil
 
 
 LOG = logging.getLogger(__name__)

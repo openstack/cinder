@@ -19,10 +19,8 @@
 
 import copy
 import logging
-import sys
 import traceback
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils

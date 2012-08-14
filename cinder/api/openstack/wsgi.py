@@ -18,8 +18,6 @@
 import inspect
 from xml.dom import minidom
 from xml.parsers import expat
-import math
-import time
 
 from lxml import etree
 import webob

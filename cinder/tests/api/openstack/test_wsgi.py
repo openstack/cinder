@@ -1,15 +1,12 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 import inspect
-import json
 import webob
 
 from cinder import exception
 from cinder import test
-from cinder import utils
 from cinder.api.openstack import wsgi
 from cinder.tests.api.openstack import fakes
-import cinder.context
 
 
 class RequestTest(test.TestCase):

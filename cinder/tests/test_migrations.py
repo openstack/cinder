@@ -27,7 +27,6 @@ if possible.
 import ConfigParser
 import commands
 import os
-import unittest
 import urlparse
 
 from migrate.versioning import repository
