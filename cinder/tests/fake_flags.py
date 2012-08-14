@@ -35,3 +35,4 @@ def set_defaults(conf):
     conf.set_default('sql_connection', "sqlite://")
     conf.set_default('sqlite_synchronous', False)
     conf.set_default('policy_file', 'cinder/tests/policy.json')
+    conf.set_default('xiv_proxy', 'cinder.tests.test_xiv.XIVFakeProxyDriver')
