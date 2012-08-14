@@ -30,6 +30,9 @@ LOG = logging.getLogger(__name__)
 
 
 class FakeController(object):
+    def __init__(self, ext_mgr=None):
+        self.ext_mgr = ext_mgr
+
     def index(self, req):
         return {}
 
@@ -41,12 +44,16 @@ def create_resource():
     return wsgi.Resource(FakeController())
 
 
+def create_volume_resource(ext_mgr):
+    return wsgi.Resource(FakeController(ext_mgr))
+
+
 class VolumeRouterTestCase(test.TestCase):
     def setUp(self):
         super(VolumeRouterTestCase, self).setUp()
         # NOTE(vish): versions is just returning text so, no need to stub.
         self.stubs.Set(snapshots, 'create_resource', create_resource)
-        self.stubs.Set(volumes, 'create_resource', create_resource)
+        self.stubs.Set(volumes, 'create_resource', create_volume_resource)
         self.app = volume.APIRouter()
 
     def test_versions(self):

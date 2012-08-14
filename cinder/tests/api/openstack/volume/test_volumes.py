@@ -20,21 +20,43 @@ import webob
 
 from cinder.api.openstack.volume import volumes
 from cinder import db
+from cinder.api.openstack.volume import extensions
 from cinder import exception
 from cinder import flags
 from cinder import test
 from cinder.tests.api.openstack import fakes
+from cinder.tests.image import fake as fake_image
 from cinder.volume import api as volume_api
 
 
 FLAGS = flags.FLAGS
 NS = '{http://docs.openstack.org/volume/api/v1}'
 
+TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
+
+
+def stub_snapshot_get(self, context, snapshot_id):
+    if snapshot_id != TEST_SNAPSHOT_UUID:
+        raise exception.NotFound
+
+    return {
+            'id': snapshot_id,
+            'volume_id': 12,
+            'status': 'available',
+            'volume_size': 100,
+            'created_at': None,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            }
+
 
 class VolumeApiTest(test.TestCase):
     def setUp(self):
         super(VolumeApiTest, self).setUp()
-        self.controller = volumes.VolumeController()
+        self.ext_mgr = extensions.ExtensionManager()
+        self.ext_mgr.extensions = {}
+        fake_image.stub_out_image_service(self.stubs)
+        self.controller = volumes.VolumeController(self.ext_mgr)
 
         self.stubs.Set(db, 'volume_get_all', fakes.stub_volume_get_all)
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -91,6 +113,82 @@ class VolumeApiTest(test.TestCase):
         body = {}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_id(self):
+        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "display_name": "Volume Test Name",
+               "display_description": "Volume Test Desc",
+               "availability_zone": "cinder",
+               "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
+        expected = {'volume': {'status': 'fakestatus',
+                           'display_description': 'Volume Test Desc',
+                           'availability_zone': 'cinder',
+                           'display_name': 'Volume Test Name',
+                           'attachments': [{'device': '/',
+                                            'server_id': 'fakeuuid',
+                                            'id': '1',
+                                            'volume_id': '1'}],
+                            'volume_type': 'vol_type_name',
+                            'image_id': 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
+                            'snapshot_id': None,
+                            'metadata': {},
+                            'id': '1',
+                            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                            'size': 1}
+                    }
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(res_dict, expected)
+
+    def test_volume_create_with_image_id_and_snapshot_id(self):
+        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.stubs.Set(volume_api.API, "get_snapshot", stub_snapshot_get)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+                "display_name": "Volume Test Name",
+                "display_description": "Volume Test Desc",
+                "availability_zone": "cinder",
+                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
+                "snapshot_id": TEST_SNAPSHOT_UUID}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_id_is_integer(self):
+        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+                "display_name": "Volume Test Name",
+                "display_description": "Volume Test Desc",
+                "availability_zone": "cinder",
+                "imageRef": 1234}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_id_not_uuid_format(self):
+        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+                "display_name": "Volume Test Name",
+                "display_description": "Volume Test Desc",
+                "availability_zone": "cinder",
+                "imageRef": '12345'}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
                           body)

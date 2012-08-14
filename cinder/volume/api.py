@@ -27,12 +27,12 @@ from eventlet import greenthread
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
+from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 import cinder.policy
 from cinder.openstack.common import timeutils
 from cinder import quota
-from cinder import utils
 from cinder.db import base
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
@@ -41,8 +41,10 @@ volume_host_opt = cfg.BoolOpt('snapshot_same_host',
 
 FLAGS = flags.FLAGS
 FLAGS.register_opt(volume_host_opt)
+flags.DECLARE('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
+GB = 1048576 * 1024
 
 
 def wrap_check_policy(func):
@@ -72,8 +74,14 @@ def check_policy(context, action, target_obj=None):
 class API(base.Base):
     """API for interacting with the volume manager."""
 
+    def __init__(self, db_driver=None, image_service=None):
+        self.image_service = (image_service or
+                              glance.get_default_image_service())
+        super(API, self).__init__(db_driver)
+
     def create(self, context, size, name, description, snapshot=None,
-                     volume_type=None, metadata=None, availability_zone=None):
+                image_id=None, volume_type=None, metadata=None,
+                availability_zone=None):
         check_policy(context, 'create')
         if snapshot is not None:
             if snapshot['status'] != "available":
@@ -85,7 +93,6 @@ class API(base.Base):
             snapshot_id = snapshot['id']
         else:
             snapshot_id = None
-
         if not isinstance(size, int) or size <= 0:
             msg = _('Volume size must be an integer and greater than 0')
             raise exception.InvalidInput(reason=msg)
@@ -94,6 +101,15 @@ class API(base.Base):
             LOG.warn(_("Quota exceeded for %(pid)s, tried to create"
                     " %(size)sG volume") % locals())
             raise exception.QuotaError(code="VolumeSizeTooLarge")
+
+        if image_id:
+            # check image existence
+            image_meta = self.image_service.show(context, image_id)
+            image_size_in_gb = image_meta['size'] / GB
+            #check image size is not larger than volume size.
+            if image_size_in_gb > size:
+                msg = _('Size of specified image is larger than volume size.')
+                raise exception.InvalidInput(reason=msg)
 
         if availability_zone is None:
             availability_zone = FLAGS.storage_availability_zone
@@ -116,9 +132,14 @@ class API(base.Base):
             'volume_type_id': volume_type_id,
             'metadata': metadata,
             }
-
         volume = self.db.volume_create(context, options)
-        self._cast_create_volume(context, volume['id'], snapshot_id)
+        rpc.cast(context,
+                 FLAGS.scheduler_topic,
+                 {"method": "create_volume",
+                  "args": {"topic": FLAGS.volume_topic,
+                           "volume_id": volume['id'],
+                           "snapshot_id": volume['snapshot_id'],
+                           "image_id": image_id}})
         return volume
 
     def _cast_create_volume(self, context, volume_id, snapshot_id):
@@ -412,3 +433,40 @@ class API(base.Base):
                 if i['key'] == key:
                     return i['value']
         return None
+
+    def _check_volume_availability(self, context, volume, force):
+        """Check if the volume can be used."""
+        if volume['status'] not in ['available', 'in-use']:
+            msg = _('Volume status must be available/in-use.')
+            raise exception.InvalidVolume(reason=msg)
+        if not force and 'in-use' == volume['status']:
+            msg = _('Volume status is in-use.')
+            raise exception.InvalidVolume(reason=msg)
+
+    @wrap_check_policy
+    def copy_volume_to_image(self, context, volume, metadata, force):
+        """Create a new image from the specified volume."""
+        self._check_volume_availability(context, volume, force)
+
+        recv_metadata = self.image_service.create(context, metadata)
+        self.update(context, volume, {'status': 'uploading'})
+        rpc.cast(context,
+                 rpc.queue_get_for(context,
+                                   FLAGS.volume_topic,
+                                   volume['host']),
+                 {"method": "copy_volume_to_image",
+                  "args": {"volume_id": volume['id'],
+                           "image_id": recv_metadata['id']}})
+
+        response = {"id": volume['id'],
+               "updated_at": volume['updated_at'],
+               "status": 'uploading',
+               "display_description": volume['display_description'],
+               "size": volume['size'],
+               "volume_type": volume['volume_type'],
+               "image_id": recv_metadata['id'],
+               "container_format": recv_metadata['container_format'],
+               "disk_format": recv_metadata['disk_format'],
+               "image_name": recv_metadata.get('name', None)
+        }
+        return response
