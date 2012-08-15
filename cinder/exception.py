@@ -85,54 +85,6 @@ def wrap_db_error(f):
     return _wrap
 
 
-def wrap_exception(notifier=None, publisher_id=None, event_type=None,
-                   level=None):
-    """This decorator wraps a method to catch any exceptions that may
-    get thrown. It logs the exception as well as optionally sending
-    it to the notification system.
-    """
-    # TODO(sandy): Find a way to import cinder.openstackc.common.notifier.api
-    # so we don't have to pass it in as a parameter. Otherwise we get a cyclic
-    # import of cinder.openstack.common.notifier.api -> cinder.utils ->
-    # cinder.exception :(
-    # TODO(johannes): Also, it would be nice to use
-    # utils.save_and_reraise_exception() without an import loop
-    def inner(f):
-        def wrapped(*args, **kw):
-            try:
-                return f(*args, **kw)
-            except Exception, e:
-                # Save exception since it can be clobbered during processing
-                # below before we can re-raise
-                exc_info = sys.exc_info()
-
-                if notifier:
-                    payload = dict(args=args, exception=e)
-                    payload.update(kw)
-
-                    # Use a temp vars so we don't shadow
-                    # our outer definitions.
-                    temp_level = level
-                    if not temp_level:
-                        temp_level = notifier.ERROR
-
-                    temp_type = event_type
-                    if not temp_type:
-                        # If f has multiple decorators, they must use
-                        # functools.wraps to ensure the name is
-                        # propagated.
-                        temp_type = f.__name__
-
-                    notifier.notify(publisher_id, temp_type, temp_level,
-                                    payload)
-
-                # re-raise original exception since it may have been clobbered
-                raise exc_info[0], exc_info[1], exc_info[2]
-
-        return functools.wraps(f)(wrapped)
-    return inner
-
-
 class CinderException(Exception):
     """Base Cinder Exception
 

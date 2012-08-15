@@ -38,5 +38,6 @@ setuptools.setup(name='cinder',
                'bin/cinder-manage',
                'bin/cinder-rootwrap',
                'bin/cinder-scheduler',
+               'bin/volume-usage-audit',
                'bin/cinder-volume'],
         py_modules=[])

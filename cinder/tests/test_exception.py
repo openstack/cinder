@@ -18,6 +18,7 @@
 
 from cinder import test
 from cinder import exception
+from cinder import utils
 
 
 class FakeNotifier(object):
@@ -30,7 +31,7 @@ class FakeNotifier(object):
         self.provided_priority = None
         self.provided_payload = None
 
-    def notify(self, publisher, event, priority, payload):
+    def notify(self, context, publisher, event, priority, payload):
         self.provided_publisher = publisher
         self.provided_event = event
         self.provided_priority = priority
@@ -51,21 +52,21 @@ def bad_function_exception():
 
 class WrapExceptionTestCase(test.TestCase):
     def test_wrap_exception_good_return(self):
-        wrapped = exception.wrap_exception()
+        wrapped = utils.wrap_exception()
         self.assertEquals(99, wrapped(good_function)())
 
     def test_wrap_exception_throws_error(self):
-        wrapped = exception.wrap_exception()
+        wrapped = utils.wrap_exception()
         self.assertRaises(exception.Error, wrapped(bad_function_error))
 
     def test_wrap_exception_throws_exception(self):
-        wrapped = exception.wrap_exception()
+        wrapped = utils.wrap_exception()
         self.assertRaises(test.TestingException,
                           wrapped(bad_function_exception))
 
     def test_wrap_exception_with_notifier(self):
         notifier = FakeNotifier()
-        wrapped = exception.wrap_exception(notifier, "publisher", "event",
+        wrapped = utils.wrap_exception(notifier, "publisher", "event",
                                            "level")
         self.assertRaises(test.TestingException,
                           wrapped(bad_function_exception))
@@ -77,7 +78,7 @@ class WrapExceptionTestCase(test.TestCase):
 
     def test_wrap_exception_with_notifier_defaults(self):
         notifier = FakeNotifier()
-        wrapped = exception.wrap_exception(notifier)
+        wrapped = utils.wrap_exception(notifier)
         self.assertRaises(test.TestingException,
                           wrapped(bad_function_exception))
         self.assertEquals(notifier.provided_publisher, None)

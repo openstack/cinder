@@ -48,6 +48,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
 from cinder import utils
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -103,6 +104,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Creates and exports the volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
+        self._notify_about_volume_usage(context, volume_ref, "create.start")
         LOG.info(_("volume %s: creating"), volume_ref['name'])
 
         self.db.volume_update(context,
@@ -151,6 +153,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if image_id:
             #copy the image onto the volume.
             self._copy_image_to_volume(context, volume_ref, image_id)
+        self._notify_about_volume_usage(context, volume_ref, "create.end")
         return volume_ref['id']
 
     def delete_volume(self, context, volume_id):
@@ -164,6 +167,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.InvalidVolume(
                     reason=_("Volume is not local to this node"))
 
+        self._notify_about_volume_usage(context, volume_ref, "delete.start")
         self._reset_stats()
         try:
             LOG.debug(_("volume %s: removing export"), volume_ref['name'])
@@ -184,6 +188,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.volume_destroy(context, volume_id)
         LOG.debug(_("volume %s: deleted successfully"), volume_ref['name'])
+        self._notify_about_volume_usage(context, volume_ref, "delete.end")
         return True
 
     def create_snapshot(self, context, volume_id, snapshot_id):
@@ -386,3 +391,9 @@ class VolumeManager(manager.SchedulerDependentManager):
     def notification(self, context, event):
         LOG.info(_("Notification {%s} received"), event)
         self._reset_stats()
+
+    def _notify_about_volume_usage(self, context, volume, event_suffix,
+                                     extra_usage_info=None):
+        volume_utils.notify_about_volume_usage(
+                context, volume, event_suffix,
+                extra_usage_info=extra_usage_info, host=self.host)

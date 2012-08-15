@@ -36,6 +36,7 @@ from cinder import flags
 from cinder.tests.image import fake as fake_image
 from cinder.openstack.common import log as os_logging
 from cinder.openstack.common import importutils
+from cinder.openstack.common.notifier import test_notifier
 from cinder.openstack.common import rpc
 import cinder.policy
 from cinder import quota
@@ -56,7 +57,10 @@ class VolumeTestCase(test.TestCase):
                    volumes_dir=vol_tmpdir)
         self.volume = importutils.import_object(FLAGS.volume_manager)
         self.context = context.get_admin_context()
+        self.stubs.Set(cinder.flags.FLAGS, 'notification_driver',
+            'cinder.openstack.common.notifier.test_notifier')
         fake_image.stub_out_image_service(self.stubs)
+        test_notifier.NOTIFICATIONS = []
 
     def tearDown(self):
         try:
@@ -68,6 +72,7 @@ class VolumeTestCase(test.TestCase):
     @staticmethod
     def _create_volume(size='0', snapshot_id=None, image_id=None,
                        metadata=None):
+        #def _create_volume(size=0, snapshot_id=None):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -86,11 +91,14 @@ class VolumeTestCase(test.TestCase):
         """Test volume can be created and deleted."""
         volume = self._create_volume()
         volume_id = volume['id']
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         self.volume.create_volume(self.context, volume_id)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 2)
         self.assertEqual(volume_id, db.volume_get(context.get_admin_context(),
                          volume_id).id)
 
         self.volume.delete_volume(self.context, volume_id)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 4)
         self.assertRaises(exception.NotFound,
                           db.volume_get,
                           self.context,
@@ -586,6 +594,30 @@ class VolumeTestCase(test.TestCase):
                           '2Gb',
                           'name',
                           'description')
+
+    def test_create_volume_usage_notification(self):
+        """Ensure create volume generates appropriate usage notification"""
+        volume = self._create_volume()
+        volume_id = volume['id']
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
+        self.volume.create_volume(self.context, volume_id)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 2)
+        msg = test_notifier.NOTIFICATIONS[0]
+        self.assertEquals(msg['event_type'], 'volume.create.start')
+        msg = test_notifier.NOTIFICATIONS[1]
+        self.assertEquals(msg['priority'], 'INFO')
+        self.assertEquals(msg['event_type'], 'volume.create.end')
+        payload = msg['payload']
+        self.assertEquals(payload['tenant_id'], volume['project_id'])
+        self.assertEquals(payload['user_id'], volume['user_id'])
+        self.assertEquals(payload['volume_id'], volume['id'])
+        self.assertEquals(payload['status'], 'creating')
+        self.assertEquals(payload['size'], volume['size'])
+        self.assertTrue('display_name' in payload)
+        self.assertTrue('snapshot_id' in payload)
+        self.assertTrue('launched_at' in payload)
+        self.assertTrue('created_at' in payload)
+        self.volume.delete_volume(self.context, volume_id)
 
 
 class DriverTestCase(test.TestCase):
