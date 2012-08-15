@@ -38,6 +38,7 @@ from cinder.openstack.common import log as os_logging
 from cinder.openstack.common import importutils
 from cinder.openstack.common import rpc
 import cinder.policy
+from cinder import quota
 from cinder import test
 import cinder.volume.api
 
@@ -548,6 +549,43 @@ class VolumeTestCase(test.TestCase):
             # cleanup
             db.volume_destroy(self.context, volume_id)
             os.unlink(dst_path)
+
+    def _do_test_create_volume_with_size(self, size):
+        def fake_allowed_volumes(context, requested_volumes, size):
+            return requested_volumes
+
+        self.stubs.Set(quota, 'allowed_volumes', fake_allowed_volumes)
+
+        volume_api = cinder.volume.api.API()
+
+        volume = volume_api.create(self.context,
+                                   size,
+                                   'name',
+                                   'description')
+        self.assertEquals(volume['size'], int(size))
+
+    def test_create_volume_int_size(self):
+        """Test volume creation with int size."""
+        self._do_test_create_volume_with_size(2)
+
+    def test_create_volume_string_size(self):
+        """Test volume creation with string size."""
+        self._do_test_create_volume_with_size('2')
+
+    def test_create_volume_with_bad_size(self):
+        def fake_allowed_volumes(context, requested_volumes, size):
+            return requested_volumes
+
+        self.stubs.Set(quota, 'allowed_volumes', fake_allowed_volumes)
+
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          '2Gb',
+                          'name',
+                          'description')
 
 
 class DriverTestCase(test.TestCase):
