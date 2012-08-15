@@ -142,6 +142,9 @@ class CinderException(Exception):
 
     """
     message = _("An unknown exception occurred.")
+    code = 500
+    headers = {}
+    safe = False
 
     def __init__(self, message=None, **kwargs):
         self.kwargs = kwargs
@@ -411,6 +414,7 @@ class InvalidUUID(Invalid):
 class NotFound(CinderException):
     message = _("Resource could not be found.")
     code = 404
+    safe = True
 
 
 class FlagNotSet(NotFound):
@@ -870,6 +874,9 @@ class WillNotSchedule(CinderException):
 
 class QuotaError(CinderException):
     message = _("Quota exceeded") + ": code=%(code)s"
+    code = 413
+    headers = {'Retry-After': 0}
+    safe = True
 
 
 class AggregateError(CinderException):

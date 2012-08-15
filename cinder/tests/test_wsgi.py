@@ -22,8 +22,11 @@ import os.path
 import tempfile
 
 import unittest
+import webob.dec
 
-import cinder.exception
+from cinder.api import openstack as openstack_api
+from cinder import exception
+from cinder.volume import xiv
 from cinder import test
 import cinder.wsgi
 
@@ -90,3 +93,78 @@ class TestWSGIServer(unittest.TestCase):
         self.assertNotEqual(0, server.port)
         server.stop()
         server.wait()
+
+
+class ExceptionTest(test.TestCase):
+
+    def _wsgi_app(self, inner_app):
+        return openstack_api.FaultWrapper(inner_app)
+
+    def _do_test_exception_safety_reflected_in_faults(self, expose):
+        class ExceptionWithSafety(exception.CinderException):
+            safe = expose
+
+        @webob.dec.wsgify
+        def fail(req):
+            raise ExceptionWithSafety('some explanation')
+
+        api = self._wsgi_app(fail)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertTrue('{"computeFault' in resp.body, resp.body)
+        expected = ('ExceptionWithSafety: some explanation' if expose else
+                    'The server has either erred or is incapable '
+                    'of performing the requested operation.')
+        self.assertTrue(expected in resp.body, resp.body)
+        self.assertEqual(resp.status_int, 500, resp.body)
+
+    def test_safe_exceptions_are_described_in_faults(self):
+        self._do_test_exception_safety_reflected_in_faults(True)
+
+    def test_unsafe_exceptions_are_not_described_in_faults(self):
+        self._do_test_exception_safety_reflected_in_faults(False)
+
+    def _do_test_exception_mapping(self, exception_type, msg):
+        @webob.dec.wsgify
+        def fail(req):
+            raise exception_type(msg)
+
+        api = self._wsgi_app(fail)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertTrue(msg in resp.body, resp.body)
+        self.assertEqual(resp.status_int, exception_type.code, resp.body)
+
+        if hasattr(exception_type, 'headers'):
+            for (key, value) in exception_type.headers.iteritems():
+                self.assertTrue(key in resp.headers)
+                self.assertEquals(resp.headers[key], value)
+
+    def test_quota_error_mapping(self):
+        self._do_test_exception_mapping(exception.QuotaError, 'too many used')
+
+    def test_non_cinder_notfound_exception_mapping(self):
+        class ExceptionWithCode(Exception):
+            code = 404
+
+        self._do_test_exception_mapping(ExceptionWithCode,
+                                        'NotFound')
+
+    def test_non_cinder_exception_mapping(self):
+        class ExceptionWithCode(Exception):
+            code = 417
+
+        self._do_test_exception_mapping(ExceptionWithCode,
+                                        'Expectation failed')
+
+    def test_exception_with_none_code_throws_500(self):
+        class ExceptionWithNoneCode(Exception):
+            code = None
+
+        msg = 'Internal Server Error'
+
+        @webob.dec.wsgify
+        def fail(req):
+            raise ExceptionWithNoneCode()
+
+        api = self._wsgi_app(fail)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertEqual(500, resp.status_int)
