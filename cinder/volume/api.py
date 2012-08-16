@@ -116,7 +116,7 @@ class API(base.Base):
         if image_id:
             # check image existence
             image_meta = self.image_service.show(context, image_id)
-            image_size_in_gb = image_meta['size'] / GB
+            image_size_in_gb = int(image_meta['size']) / GB
             #check image size is not larger than volume size.
             if image_size_in_gb > size:
                 msg = _('Size of specified image is larger than volume size.')
