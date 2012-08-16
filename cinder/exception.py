@@ -198,6 +198,10 @@ class InvalidRequest(Invalid):
     message = _("The request is invalid.")
 
 
+class InvalidResults(Invalid):
+    message = _("The results are invalid.")
+
+
 class InvalidSignature(Invalid):
     message = _("Invalid signature %(signature)s for user %(user)s.")
 
