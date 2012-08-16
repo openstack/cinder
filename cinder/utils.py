@@ -48,6 +48,7 @@ from eventlet import greenthread
 from eventlet.green import subprocess
 import netaddr
 
+from cinder.common import deprecated
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
@@ -60,12 +61,6 @@ LOG = logging.getLogger(__name__)
 ISO_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 PERFECT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 FLAGS = flags.FLAGS
-
-if FLAGS.rootwrap_config is None or FLAGS.root_helper != 'sudo':
-    LOG.warn(_('The root_helper option (which lets you specify a root '
-               'wrapper different from cinder-rootwrap, and defaults to '
-               'using sudo) is now deprecated. You should use the '
-               'rootwrap_config option instead.'))
 
 
 def find_config(config_path):
@@ -189,6 +184,14 @@ def execute(*cmd, **kwargs):
                                 'to utils.execute: %r') % kwargs)
 
     if run_as_root:
+
+        if FLAGS.rootwrap_config is None or FLAGS.root_helper != 'sudo':
+            deprecated.warn(_('The root_helper option (which lets you specify '
+                              'a root wrapper different from cinder-rootwrap, '
+                              'and defaults to using sudo) is now deprecated. '
+                              'You should use the rootwrap_config option '
+                              'instead.'))
+
         if (FLAGS.rootwrap_config is not None):
             cmd = ['sudo', 'cinder-rootwrap',
                    FLAGS.rootwrap_config] + list(cmd)
