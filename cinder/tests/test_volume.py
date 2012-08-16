@@ -40,6 +40,7 @@ from cinder import quota
 from cinder import test
 import cinder.volume.api
 
+QUOTAS = quota.QUOTAS
 FLAGS = flags.FLAGS
 
 
@@ -85,6 +86,20 @@ class VolumeTestCase(test.TestCase):
 
     def test_create_delete_volume(self):
         """Test volume can be created and deleted."""
+        # Need to stub out reserve, commit, and rollback
+        def fake_reserve(context, expire=None, **deltas):
+            return ["RESERVATION"]
+
+        def fake_commit(context, reservations):
+            pass
+
+        def fake_rollback(context, reservations):
+            pass
+
+        self.stubs.Set(QUOTAS, "reserve", fake_reserve)
+        self.stubs.Set(QUOTAS, "commit", fake_commit)
+        self.stubs.Set(QUOTAS, "rollback", fake_rollback)
+
         volume = self._create_volume()
         volume_id = volume['id']
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
@@ -554,10 +569,18 @@ class VolumeTestCase(test.TestCase):
             os.unlink(dst_path)
 
     def _do_test_create_volume_with_size(self, size):
-        def fake_allowed_volumes(context, requested_volumes, size):
-            return requested_volumes
+        def fake_reserve(context, expire=None, **deltas):
+            return ["RESERVATION"]
 
-        self.stubs.Set(quota, 'allowed_volumes', fake_allowed_volumes)
+        def fake_commit(context, reservations):
+            pass
+
+        def fake_rollback(context, reservations):
+            pass
+
+        self.stubs.Set(QUOTAS, "reserve", fake_reserve)
+        self.stubs.Set(QUOTAS, "commit", fake_commit)
+        self.stubs.Set(QUOTAS, "rollback", fake_rollback)
 
         volume_api = cinder.volume.api.API()
 
@@ -576,10 +599,18 @@ class VolumeTestCase(test.TestCase):
         self._do_test_create_volume_with_size('2')
 
     def test_create_volume_with_bad_size(self):
-        def fake_allowed_volumes(context, requested_volumes, size):
-            return requested_volumes
+        def fake_reserve(context, expire=None, **deltas):
+            return ["RESERVATION"]
 
-        self.stubs.Set(quota, 'allowed_volumes', fake_allowed_volumes)
+        def fake_commit(context, reservations):
+            pass
+
+        def fake_rollback(context, reservations):
+            pass
+
+        self.stubs.Set(QUOTAS, "reserve", fake_reserve)
+        self.stubs.Set(QUOTAS, "commit", fake_commit)
+        self.stubs.Set(QUOTAS, "rollback", fake_rollback)
 
         volume_api = cinder.volume.api.API()
 

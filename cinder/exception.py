@@ -295,8 +295,21 @@ class HostBinaryNotFound(NotFound):
     message = _("Could not find binary %(binary)s on host %(host)s.")
 
 
+class InvalidReservationExpiration(Invalid):
+    message = _("Invalid reservation expiration %(expire)s.")
+
+
+class InvalidQuotaValue(Invalid):
+    message = _("Change would make usage less than 0 for the following "
+                "resources: %(unders)s")
+
+
 class QuotaNotFound(NotFound):
     message = _("Quota could not be found")
+
+
+class QuotaResourceUnknown(QuotaNotFound):
+    message = _("Unknown quota resources %(unknown)s.")
 
 
 class ProjectQuotaNotFound(QuotaNotFound):
@@ -305,6 +318,18 @@ class ProjectQuotaNotFound(QuotaNotFound):
 
 class QuotaClassNotFound(QuotaNotFound):
     message = _("Quota class %(class_name)s could not be found.")
+
+
+class QuotaUsageNotFound(QuotaNotFound):
+    message = _("Quota usage for project %(project_id)s could not be found.")
+
+
+class ReservationNotFound(QuotaNotFound):
+    message = _("Quota reservation %(uuid)s could not be found.")
+
+
+class OverQuota(CinderException):
+    message = _("Quota exceeded for resources: %(overs)s")
 
 
 class MigrationNotFound(NotFound):
@@ -370,6 +395,18 @@ class QuotaError(CinderException):
     code = 413
     headers = {'Retry-After': 0}
     safe = True
+
+
+class VolumeSizeExceedsAvailableQuota(QuotaError):
+    message = _("Requested volume exceeds allowed volume size quota")
+
+
+class VolumeSizeExceedsQuota(QuotaError):
+    message = _("Maximum volume size exceeded")
+
+
+class VolumeLimitExceeded(QuotaError):
+    message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
 
 
 class DuplicateSfVolumeNames(Duplicate):
