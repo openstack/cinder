@@ -24,7 +24,6 @@ from cinder import quota
 from cinder.openstack.common import rpc
 from cinder import test
 from cinder import volume
-from cinder.scheduler import driver as scheduler_driver
 
 
 FLAGS = flags.FLAGS

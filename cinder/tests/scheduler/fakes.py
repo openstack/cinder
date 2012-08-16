@@ -16,9 +16,7 @@
 Fakes For Scheduler tests.
 """
 
-import mox
 
-from cinder import db
 from cinder.scheduler import host_manager
 
 

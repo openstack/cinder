@@ -19,15 +19,9 @@ import datetime
 import hashlib
 import os
 import os.path
-import socket
-import shutil
 import StringIO
 import tempfile
 
-import eventlet
-from eventlet import greenpool
-import iso8601
-import lockfile
 import mox
 
 import cinder

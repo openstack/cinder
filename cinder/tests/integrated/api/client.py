@@ -15,7 +15,6 @@
 #    under the License.
 
 import httplib
-import urllib
 import urlparse
 
 from cinder.openstack.common import log as logging

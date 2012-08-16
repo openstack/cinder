@@ -14,19 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import commands
-import errno
 import glob
 import os
-import select
 
-from eventlet import greenpool
-from eventlet import greenthread
-import lockfile
 
 from cinder import exception
 from cinder import test
-from cinder import utils
 
 
 class ExceptionTestCase(test.TestCase):

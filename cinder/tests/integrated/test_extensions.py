@@ -15,7 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.api.openstack.volume import extensions
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.tests.integrated import integrated_helpers

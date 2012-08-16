@@ -15,8 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import webob
-
 
 def compare_links(actual, expected):
     """Compare xml atom links."""

@@ -19,7 +19,6 @@
 """Stubouts, mocks and fixtures for the test suite"""
 
 from cinder import db
-from cinder import exception
 
 
 class FakeModel(object):

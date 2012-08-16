@@ -21,7 +21,6 @@ Request Body limiting middleware.
 import webob.dec
 import webob.exc
 
-from cinder import context
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg

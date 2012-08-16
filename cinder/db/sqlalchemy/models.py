@@ -31,7 +31,6 @@ from cinder.db.sqlalchemy.session import get_session
 
 from cinder import exception
 from cinder import flags
-from cinder import utils
 from cinder.openstack.common import timeutils
 
 

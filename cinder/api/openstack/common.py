@@ -15,19 +15,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import functools
 import os
 import re
 import urlparse
 
 import webob
-from xml.dom import minidom
 
-from cinder.api.openstack import wsgi
-from cinder.api.openstack import xmlutil
 from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder import quota
 
 
 LOG = logging.getLogger(__name__)

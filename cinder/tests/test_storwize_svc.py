@@ -31,7 +31,6 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder import utils
 from cinder.volume import storwize_svc
 
 LOG = logging.getLogger(__name__)

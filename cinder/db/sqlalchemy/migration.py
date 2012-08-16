@@ -18,7 +18,6 @@
 
 import distutils.version as dist_version
 import os
-import sys
 
 from cinder.db import migration
 from cinder.db.sqlalchemy.session import get_engine

@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder import db
 from cinder import test
 from cinder.tests import utils as test_utils
 
