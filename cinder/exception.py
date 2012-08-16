@@ -894,6 +894,42 @@ class DuplicateVlan(Duplicate):
     message = _("Detected existing vlan with id %(vlan)d")
 
 
+class UnknownCmd(Invalid):
+    message = _("Unknown or unsupported command %(cmd)s")
+
+
+class MalformedResponse(Invalid):
+    message = _("Malformed response to command %(cmd)s: %(reason)s")
+
+
+class BadHTTPResponseStatus(CinderException):
+    message = _("Bad HTTP response status %(status)s")
+
+
+class FailedCmdWithDump(CinderException):
+    message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
+
+
+class ZadaraServerCreateFailure(CinderException):
+    message = _("Unable to create server object for initiator %(name)s")
+
+
+class ZadaraServerNotFound(NotFound):
+    message = _("Unable to find server object for initiator %(name)s")
+
+
+class ZadaraVPSANoActiveController(CinderException):
+    message = _("Unable to find any active VPSA controller")
+
+
+class ZadaraAttachmentsNotFound(NotFound):
+    message = _("Failed to retrieve attachments for volume %(name)s")
+
+
+class ZadaraInvalidAttachmentInfo(Invalid):
+    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
+
+
 class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
 
