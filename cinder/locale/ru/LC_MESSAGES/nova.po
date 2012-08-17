@@ -3436,7 +3436,7 @@ msgstr ""
 "безопасно пропущена."
 
 #: cinder/compute/manager.py:2090
-msgid "Post operation of migraton started"
+msgid "Post operation of migration started"
 msgstr ""
 
 #: cinder/compute/manager.py:2226
