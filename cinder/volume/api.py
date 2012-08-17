@@ -180,15 +180,6 @@ class API(base.Base):
                                "volume_id": volume_id,
                                "snapshot_id": snapshot_id}})
 
-    # TODO(yamahata): eliminate dumb polling
-    def wait_creation(self, context, volume):
-        volume_id = volume['id']
-        while True:
-            volume = self.get(context, volume_id)
-            if volume['status'] != 'creating':
-                return
-            greenthread.sleep(1)
-
     @wrap_check_policy
     def delete(self, context, volume):
         volume_id = volume['id']
