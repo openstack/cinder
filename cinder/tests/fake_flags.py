@@ -23,6 +23,7 @@ FLAGS = flags.FLAGS
 flags.DECLARE('iscsi_num_targets', 'cinder.volume.driver')
 flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
+flags.DECLARE('xiv_proxy', 'cinder.volume.xiv')
 
 
 def set_defaults(conf):

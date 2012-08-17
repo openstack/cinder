@@ -27,6 +27,7 @@ from cinder.volume import xiv
 
 
 FLAGS = flags.FLAGS
+
 FAKE = "fake"
 VOLUME = {
         'size': 16,
@@ -68,7 +69,7 @@ class XIVFakeProxyDriver(object):
         self.volumes[volume['name']] = volume
 
     def volume_exists(self, volume):
-        return self.volumes.get(volume['name'], None) != None
+        return self.volumes.get(volume['name'], None) is not None
 
     def delete_volume(self, volume):
         if self.volumes.get(volume['name'], None) is not None:
