@@ -257,6 +257,17 @@ class VolumeManager(manager.SchedulerDependentManager):
         if not utils.is_uuid_like(instance_uuid):
             raise exception.InvalidUUID(instance_uuid)
 
+        try:
+            self.driver.attach_volume(context,
+                                      volume_id,
+                                      instance_uuid,
+                                      mountpoint)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.volume_update(context,
+                                      volume_id,
+                                      {'status': 'error_attaching'})
+
         self.db.volume_attached(context.elevated(),
                                 volume_id,
                                 instance_uuid,
@@ -266,6 +277,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Updates db to show volume is detached"""
         # TODO(vish): refactor this into a more general "unreserve"
         # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
+        try:
+            self.driver.detach_volume(context, volume_id)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.volume_update(context,
+                                      volume_id,
+                                      {'status': 'error_detaching'})
+
         self.db.volume_detached(context.elevated(), volume_id)
 
     def _copy_image_to_volume(self, context, volume, image_id):
