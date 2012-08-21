@@ -6,6 +6,7 @@ mox==0.5.3
 nose
 nosexcover
 openstack.nose_plugin
+nosehtmloutput
 pep8==1.1
 sphinx>=1.1.2
 MySQL-python
