@@ -3527,7 +3527,7 @@ msgstr "Добавление консоли"
 
 #: cinder/console/manager.py:97
 #, python-format
-msgid "Tried to remove non-existant console %(console_id)s."
+msgid "Tried to remove non-existent console %(console_id)s."
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
 #: cinder/console/vmrc_manager.py:122
