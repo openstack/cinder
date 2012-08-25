@@ -68,7 +68,7 @@ document_root = /tmp
         self.assertRaises(
             cinder.exception.PasteAppNotFound,
             self.loader.load_app,
-            "non-existant app",
+            "non-existent app",
         )
 
     def test_app_found(self):

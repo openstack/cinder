@@ -3482,8 +3482,8 @@ msgstr "Ajout de console"
 
 #: cinder/console/manager.py:97
 #, python-format
-msgid "Tried to remove non-existant console %(console_id)s."
-msgstr "Tentative de suppression d'une console non existante %(console_id)s."
+msgid "Tried to remove non-existent console %(console_id)s."
+msgstr "Tentative de suppression d'une console non existente %(console_id)s."
 
 #: cinder/console/vmrc_manager.py:122
 #, python-format

@@ -80,7 +80,7 @@ class VolumeTypeTestCase(test.TestCase):
         vol_types = volume_types.get_all_types(self.ctxt)
         self.assertEqual(total_volume_types, len(vol_types))
 
-    def test_non_existant_vol_type_shouldnt_delete(self):
+    def test_non_existent_vol_type_shouldnt_delete(self):
         """Ensures that volume type creation fails with invalid args"""
         self.assertRaises(exception.VolumeTypeNotFoundByName,
                           volume_types.destroy, self.ctxt, "sfsfsdfdfs")
