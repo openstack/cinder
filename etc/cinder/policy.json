@@ -17,6 +17,9 @@
     "volume_extension:quotas:show": [],
     "volume_extension:quotas:update_for_project": [["rule:admin_api"]],
     "volume_extension:quotas:update_for_user": [["rule:admin_or_projectadmin"]],
-    "volume_extension:quota_classes": []
+    "volume_extension:quota_classes": [],
 
+    "volume_extension:volume_admin_actions:reset_status": [["rule:admin_api"]],
+    "volume_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],
+    "volume_extension:volume_admin_actions:force_delete": [["rule:admin_api"]]
 }

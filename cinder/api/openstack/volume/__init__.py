@@ -58,10 +58,11 @@ class APIRouter(cinder.api.openstack.APIRouter):
         mapper.resource("type", "types",
                         controller=self.resources['types'])
 
-        self.resources['snapshots'] = snapshots.create_resource()
+        self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
         mapper.resource("snapshot", "snapshots",
                         controller=self.resources['snapshots'],
-                        collection={'detail': 'GET'})
+                        collection={'detail': 'GET'},
+                        member={'action': 'POST'})
 
         self.resources['limits'] = limits.create_resource()
         mapper.resource("limit", "limits",
