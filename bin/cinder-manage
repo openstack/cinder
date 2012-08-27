@@ -279,6 +279,11 @@ class ImportCommands(object):
                       'volume_metadata',
                       'volume_type_extra_specs']
 
+        quota_table_list = ['quota_classes',
+                            'quota_usages',
+                            'quotas',
+                            'reservations']
+
         if backup_db > 0:
             if 'mysql:' not in dest_db:
                 print (_('Sorry, only mysql backups are supported!'))
@@ -300,6 +305,18 @@ class ImportCommands(object):
                     for column in columns])
                 dest.add(new_row(**data))
             dest.commit()
+
+        for table_name in quota_table_list:
+            print (_('Importing table %s...' % table_name))
+            table = Table(table_name, src_meta, autoload=True)
+            new_row = self._map_table(table)
+            columns = table.columns.keys()
+            for row in src.query(table).all():
+                if row.resource == 'gigabytes' or row.resource == 'volumes':
+                    data = dict([(str(column), getattr(row, column))
+                        for column in columns])
+                    dest.add(new_row(**data))
+                dest.commit()
 
     @args('--src', dest='src_db', metavar='<Nova DB>',
           help='db-engine://db_user[:passwd]@db_host[:port]\t\t'
