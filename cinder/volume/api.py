@@ -440,6 +440,10 @@ class API(base.Base):
                   "args": {"snapshot_id": snapshot['id']}})
 
     @wrap_check_policy
+    def update_snapshot(self, context, snapshot, fields):
+        self.db.snapshot_update(context, snapshot['id'], fields)
+
+    @wrap_check_policy
     def get_volume_metadata(self, context, volume):
         """Get all metadata associated with a volume."""
         rv = self.db.volume_metadata_get(context, volume['id'])

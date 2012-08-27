@@ -173,6 +173,39 @@ class SnapshotsController(object):
 
         return {'snapshot': retval}
 
+    @wsgi.serializers(xml=SnapshotTemplate)
+    def update(self, req, id, body):
+        """Update a snapshot."""
+        context = req.environ['cinder.context']
+
+        if not body:
+            raise exc.HTTPUnprocessableEntity()
+
+        if not 'snapshot' in body:
+            raise exc.HTTPUnprocessableEntity()
+
+        snapshot = body['snapshot']
+        update_dict = {}
+
+        valid_update_keys = (
+            'display_name',
+            'display_description',
+        )
+
+        for key in valid_update_keys:
+            if key in snapshot:
+                update_dict[key] = snapshot[key]
+
+        try:
+            snapshot = self.volume_api.get_snapshot(context, id)
+            self.volume_api.update_snapshot(context, snapshot, update_dict)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+
+        snapshot.update(update_dict)
+
+        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
+
 
 def create_resource(ext_mgr):
     return wsgi.Resource(SnapshotsController(ext_mgr))

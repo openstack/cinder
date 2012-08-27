@@ -187,6 +187,59 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
+    def test_volume_update(self):
+        self.stubs.Set(volume_api.API, "update", fakes.stub_volume_update)
+        updates = {
+            "display_name": "Updated Test Name",
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        res_dict = self.controller.update(req, '1', body)
+        expected = {'volume': {
+            'status': 'fakestatus',
+            'display_description': 'displaydesc',
+            'availability_zone': 'fakeaz',
+            'display_name': 'Updated Test Name',
+            'attachments': [{
+                'id': '1',
+                'volume_id': '1',
+                'server_id': 'fakeuuid',
+                'device': '/',
+            }],
+            'volume_type': 'vol_type_name',
+            'snapshot_id': None,
+            'metadata': {},
+            'id': '1',
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'size': 1,
+        }}
+        self.assertEquals(res_dict, expected)
+
+    def test_update_empty_body(self):
+        body = {}
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.update,
+                          req, '1', body)
+
+    def test_update_invalid_body(self):
+        body = {'display_name': 'missing top level volume key'}
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.update,
+                          req, '1', body)
+
+    def test_update_not_found(self):
+        self.stubs.Set(volume_api.API, "get", fakes.stub_volume_get_notfound)
+        updates = {
+            "display_name": "Updated Test Name",
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.update,
+                          req, '1', body)
+
     def test_volume_list(self):
         self.stubs.Set(volume_api.API, 'get_all',
                        fakes.stub_volume_get_all_by_project)
