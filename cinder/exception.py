@@ -24,9 +24,6 @@ SHOULD include dedicated exception logging.
 
 """
 
-import functools
-import sys
-
 import webob.exc
 
 from cinder.openstack.common import log as logging
@@ -222,6 +219,10 @@ class NotFound(CinderException):
     safe = True
 
 
+class PersistentVolumeFileNotFound(NotFound):
+    message = _("Volume %(volume_id)s persistence file could not be found.")
+
+
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 
@@ -269,6 +270,14 @@ class SnapshotIsBusy(CinderException):
 
 class ISCSITargetNotFoundForVolume(NotFound):
     message = _("No target id found for volume %(volume_id)s.")
+
+
+class ISCSITargetCreateFailed(CinderException):
+    message = _("Failed to create iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetRemoveFailed(CinderException):
+    message = _("Failed to remove iscsi target for volume %(volume_id)s.")
 
 
 class DiskNotFound(NotFound):

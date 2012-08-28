@@ -38,7 +38,7 @@ from cinder.openstack.common import rpc
 import cinder.policy
 from cinder import quota
 from cinder import test
-import cinder.volume.api
+from cinder.volume import iscsi
 
 FLAGS = flags.FLAGS
 
@@ -55,6 +55,7 @@ class VolumeTestCase(test.TestCase):
         self.context = context.get_admin_context()
         self.stubs.Set(cinder.flags.FLAGS, 'notification_driver',
             'cinder.openstack.common.notifier.test_notifier')
+        self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         fake_image.stub_out_image_service(self.stubs)
         test_notifier.NOTIFICATIONS = []
 
@@ -64,6 +65,9 @@ class VolumeTestCase(test.TestCase):
         except OSError:
             pass
         super(VolumeTestCase, self).tearDown()
+
+    def fake_get_target(obj, iqn):
+        return 1
 
     @staticmethod
     def _create_volume(size='0', snapshot_id=None, image_id=None,
@@ -168,23 +172,6 @@ class VolumeTestCase(test.TestCase):
         except TypeError:
             pass
 
-    def test_too_many_volumes(self):
-        """Ensure that NoMoreTargets is raised when we run out of volumes."""
-        vols = []
-        total_slots = FLAGS.iscsi_num_targets
-        for _index in xrange(total_slots):
-            volume = self._create_volume()
-            self.volume.create_volume(self.context, volume['id'])
-            vols.append(volume['id'])
-        volume = self._create_volume()
-        self.assertRaises(db.NoMoreTargets,
-                          self.volume.create_volume,
-                          self.context,
-                          volume['id'])
-        db.volume_destroy(context.get_admin_context(), volume['id'])
-        for volume_id in vols:
-            self.volume.delete_volume(self.context, volume_id)
-
     def test_run_attach_detach_volume(self):
         """Make sure volume can be attached and detached from instance."""
         instance_uuid = '12345678-1234-5678-1234-567812345678'
@@ -239,11 +226,10 @@ class VolumeTestCase(test.TestCase):
                                                           volume_id)
             self.assert_(iscsi_target not in targets)
             targets.append(iscsi_target)
+
         total_slots = FLAGS.iscsi_num_targets
         for _index in xrange(total_slots):
-            volume = self._create_volume()
-            d = self.volume.create_volume(self.context, volume['id'])
-            _check(d)
+            self._create_volume()
         for volume_id in volume_ids:
             self.volume.delete_volume(self.context, volume_id)
 
@@ -638,6 +624,7 @@ class DriverTestCase(test.TestCase):
         self.volume = importutils.import_object(FLAGS.volume_manager)
         self.context = context.get_admin_context()
         self.output = ""
+        self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
 
         def _fake_execute(_command, *_args, **_kwargs):
             """Fake _execute."""
@@ -650,6 +637,9 @@ class DriverTestCase(test.TestCase):
         except OSError:
             pass
         super(DriverTestCase, self).tearDown()
+
+    def fake_get_target(obj, iqn):
+        return 1
 
     def _attach_volume(self):
         """Attach volumes to an instance. """
@@ -710,41 +700,6 @@ class ISCSITestCase(DriverTestCase):
     def test_check_for_export_with_no_volume(self):
         instance_uuid = '12345678-1234-5678-1234-567812345678'
         self.volume.check_for_export(self.context, instance_uuid)
-
-    def test_check_for_export_with_all_volume_exported(self):
-        volume_id_list = self._attach_volume()
-
-        self.mox.StubOutWithMock(self.volume.driver.tgtadm, 'show_target')
-        for i in volume_id_list:
-            tid = db.volume_get_iscsi_target_num(self.context, i)
-            self.volume.driver.tgtadm.show_target(tid)
-
-        self.mox.ReplayAll()
-        instance_uuid = '12345678-1234-5678-1234-567812345678'
-        self.volume.check_for_export(self.context, instance_uuid)
-        self.mox.UnsetStubs()
-
-        self._detach_volume(volume_id_list)
-
-    def test_check_for_export_with_some_volume_missing(self):
-        """Output a warning message when some volumes are not recognied
-           by ietd."""
-        volume_id_list = self._attach_volume()
-        instance_uuid = '12345678-1234-5678-1234-567812345678'
-
-        tid = db.volume_get_iscsi_target_num(self.context, volume_id_list[0])
-        self.mox.StubOutWithMock(self.volume.driver.tgtadm, 'show_target')
-        self.volume.driver.tgtadm.show_target(tid).AndRaise(
-            exception.ProcessExecutionError())
-
-        self.mox.ReplayAll()
-        self.assertRaises(exception.ProcessExecutionError,
-                          self.volume.check_for_export,
-                          self.context,
-                          instance_uuid)
-        self.mox.UnsetStubs()
-
-        self._detach_volume(volume_id_list)
 
 
 class VolumePolicyTestCase(test.TestCase):
