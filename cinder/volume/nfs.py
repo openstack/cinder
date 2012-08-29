@@ -107,7 +107,7 @@ class NfsDriver(driver.VolumeDriver):
         if not volume['provider_location']:
             LOG.warn(_('Volume %s does not have provider_location specified, '
                      'skipping'), volume['name'])
-            return True
+            return
 
         self._ensure_share_mounted(volume['provider_location'])
 
@@ -118,10 +118,8 @@ class NfsDriver(driver.VolumeDriver):
 
             LOG.warn(_('Trying to delete non-existing volume %(volume)s at '
                      'path %(mounted_path)s') % locals())
-            return True
+            return
 
-#        self._execute('dd', 'if=/dev/zero', 'of=%s' % mounted_volume_path,
-#                      'bs=1M', run_as_root=True)
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
     def ensure_export(self, ctx, volume):
