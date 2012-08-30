@@ -110,6 +110,22 @@ class VolumeActionsController(wsgi.Controller):
         self.volume_api.unreserve_volume(context, volume)
         return webob.Response(status_int=202)
 
+    @wsgi.action('os-begin_detaching')
+    def _begin_detaching(self, req, id, body):
+        """Update volume status to 'detaching'."""
+        context = req.environ['cinder.context']
+        volume = self.volume_api.get(context, id)
+        self.volume_api.begin_detaching(context, volume)
+        return webob.Response(status_int=202)
+
+    @wsgi.action('os-roll_detaching')
+    def _roll_detaching(self, req, id, body):
+        """Roll back volume status to 'in-use'."""
+        context = req.environ['cinder.context']
+        volume = self.volume_api.get(context, id)
+        self.volume_api.roll_detaching(context, volume)
+        return webob.Response(status_int=202)
+
     @wsgi.action('os-initialize_connection')
     def _initialize_connection(self, req, id, body):
         """Initialize volume attachment."""
