@@ -48,18 +48,6 @@ FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
 
 
-class NfsException(exception.CinderException):
-    pass
-
-
-class NfsNoSharesMounted(NfsException):
-    pass
-
-
-class NfsNoSuitableShareFound(NfsException):
-    pass
-
-
 class NfsDriver(driver.VolumeDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
     as block device on hypervisor."""
@@ -74,13 +62,13 @@ class NfsDriver(driver.VolumeDriver):
         if not config or not os.path.exists(config):
             msg = _("NFS config file doesn't exist")
             LOG.warn(msg)
-            raise NfsException(msg)
+            raise exception.NfsException(msg)
 
         try:
             self._execute('mount.nfs', check_exit_code=False)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
-                raise NfsException('mount.nfs is not installed')
+                raise exception.NfsException('mount.nfs is not installed')
             else:
                 raise
 
@@ -229,8 +217,7 @@ class NfsDriver(driver.VolumeDriver):
         """
 
         if not self._mounted_shares:
-            raise NfsNoSharesMounted(
-                _("There is no any mounted NFS share found"))
+            raise exception.NfsNoSharesMounted()
 
         greatest_size = 0
         greatest_share = None
@@ -242,8 +229,8 @@ class NfsDriver(driver.VolumeDriver):
                 greatest_size = capacity
 
         if volume_size_for * 1024 * 1024 * 1024 > greatest_size:
-            raise NfsNoSuitableShareFound(
-                _('There is no share which can host %sG') % volume_size_for)
+            raise exception.NfsNoSuitableShareFound(
+                    volume_size=volume_size_for)
         return greatest_share
 
     def _get_mount_point_for_share(self, nfs_share):

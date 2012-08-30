@@ -26,6 +26,7 @@ from mox import IgnoreArg
 from mox import stubout
 
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.exception import ProcessExecutionError
 
@@ -374,7 +375,7 @@ class NfsDriverTestCase(test.TestCase):
 
         nfs.FLAGS.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
-        self.assertRaises(nfs.NfsException,
+        self.assertRaises(exception.NfsException,
                           drv.do_setup, IsA(context.RequestContext))
 
     def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
@@ -392,7 +393,7 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertRaises(nfs.NfsException,
+        self.assertRaises(exception.NfsException,
                           drv.do_setup, IsA(context.RequestContext))
 
         mox.VerifyAll()
@@ -403,7 +404,7 @@ class NfsDriverTestCase(test.TestCase):
 
         drv._mounted_shares = []
 
-        self.assertRaises(nfs.NfsException, drv._find_share,
+        self.assertRaises(exception.NotFound, drv._find_share,
                           self.TEST_SIZE_IN_GB)
 
     def test_find_share(self):
@@ -441,7 +442,7 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertRaises(nfs.NfsNoSuitableShareFound, drv._find_share,
+        self.assertRaises(exception.NfsNoSuitableShareFound, drv._find_share,
                           self.TEST_SIZE_IN_GB)
 
         mox.VerifyAll()

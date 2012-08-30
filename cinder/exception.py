@@ -478,3 +478,15 @@ class InstanceNotFound(NotFound):
 class VolumeBackendAPIException(CinderException):
     message = _("Bad or unexpected response from the storage volume "
                 "backend API: %(data)s")
+
+
+class NfsException(CinderException):
+    message = _("Unknown NFS exception")
+
+
+class NfsNoSharesMounted(NotFound):
+    message = _("No mounted NFS shares found")
+
+
+class NfsNoSuitableShareFound(NotFound):
+    message = _("There is no share which can host %(volume_size)sG")
