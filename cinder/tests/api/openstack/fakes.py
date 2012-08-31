@@ -25,6 +25,7 @@ import webob.request
 from cinder.api import auth as api_auth
 from cinder.api import openstack as openstack_api
 from cinder.api.openstack import auth
+from cinder.api.openstack.volume import limits
 from cinder.api.openstack import urlmap
 from cinder.api.openstack import volume
 from cinder.api.openstack.volume import versions

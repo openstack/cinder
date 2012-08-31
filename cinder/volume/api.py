@@ -22,18 +22,17 @@ Handles all requests relating to volumes.
 
 import functools
 
-from eventlet import greenthread
-
+from cinder.db import base
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
-import cinder.policy
 from cinder.openstack.common import timeutils
+import cinder.policy
 from cinder import quota
-from cinder.db import base
+
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
         default=True,
@@ -45,6 +44,7 @@ flags.DECLARE('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
 GB = 1048576 * 1024
+QUOTAS = quota.QUOTAS
 
 
 def wrap_check_policy(func):
@@ -107,11 +107,30 @@ class API(base.Base):
             msg = (_("Volume size '%s' must be an integer and greater than 0")
                    % size)
             raise exception.InvalidInput(reason=msg)
-        if quota.allowed_volumes(context, 1, size) < 1:
+        try:
+            reservations = QUOTAS.reserve(context, volumes=1, gigabytes=size)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
             pid = context.project_id
-            LOG.warn(_("Quota exceeded for %(pid)s, tried to create"
-                    " %(size)sG volume") % locals())
-            raise exception.QuotaError(code="VolumeSizeTooLarge")
+            if 'gigabytes' in overs:
+                consumed = _consumed('gigabytes')
+                quota = quotas['gigabytes']
+                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
+                           "%(size)sG volume (%(consumed)dG of %(quota)dG "
+                           "already consumed)") % locals())
+                raise exception.VolumeSizeExceedsAvailableQuota()
+            elif 'volumes' in overs:
+                consumed = _consumed('volumes')
+                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
+                           "volume (%(consumed)d volumes already consumed)")
+                           % locals())
+                raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
 
         if image_id:
             # check image existence
@@ -143,6 +162,7 @@ class API(base.Base):
             'volume_type_id': volume_type_id,
             'metadata': metadata,
             }
+
         volume = self.db.volume_create(context, options)
         rpc.cast(context,
                  FLAGS.scheduler_topic,
@@ -153,7 +173,8 @@ class API(base.Base):
                            "image_id": image_id}})
         return volume
 
-    def _cast_create_volume(self, context, volume_id, snapshot_id):
+    def _cast_create_volume(self, context, volume_id,
+                            snapshot_id, reservations):
 
         # NOTE(Rongze Zhu): It is a simple solution for bug 1008866
         # If snapshot_id is set, make the call create volume directly to
@@ -178,7 +199,8 @@ class API(base.Base):
                      {"method": "create_volume",
                       "args": {"topic": FLAGS.volume_topic,
                                "volume_id": volume_id,
-                               "snapshot_id": snapshot_id}})
+                               "snapshot_id": snapshot_id,
+                               "reservations": reservations}})
 
     @wrap_check_policy
     def delete(self, context, volume):
@@ -416,7 +438,7 @@ class API(base.Base):
 
     @wrap_check_policy
     def delete_volume_metadata(self, context, volume, key):
-        """Delete the given metadata item from an volume."""
+        """Delete the given metadata item from a volume."""
         self.db.volume_metadata_delete(context, volume['id'], key)
 
     @wrap_check_policy

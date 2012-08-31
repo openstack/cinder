@@ -15,8 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import unittest
 import time
+import unittest
 
 from cinder import service
 from cinder.openstack.common import log as logging

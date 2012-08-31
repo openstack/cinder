@@ -12,5 +12,11 @@
 
     "volume_extension:types_manage": [["rule:admin_api"]],
     "volume_extension:types_extra_specs": [["rule:admin_api"]],
-    "volume_extension:extended_snapshot_attributes": []
+    "volume_extension:extended_snapshot_attributes": [],
+
+    "volume_extension:quotas:show": [],
+    "volume_extension:quotas:update_for_project": [["rule:admin_api"]],
+    "volume_extension:quotas:update_for_user": [["rule:admin_or_projectadmin"]],
+    "volume_extension:quota_classes": []
+
 }
