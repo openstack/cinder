@@ -268,18 +268,19 @@ class API(base.Base):
             filter_mapping = {'metadata': _check_metadata_match}
 
             result = []
+            not_found = object()
             for volume in volumes:
                 # go over all filters in the list
                 for opt, values in search_opts.iteritems():
                     try:
                         filter_func = filter_mapping[opt]
                     except KeyError:
-                        # no such filter - ignore it, go to next filter
-                        continue
-                    else:
-                        if filter_func(volume, values):
-                            result.append(volume)
-                            break
+                        def filter_func(volume, value):
+                            return volume.get(opt, not_found) == value
+                    if not filter_func(volume, values):
+                        break  # volume doesn't match this filter
+                else:  # did not break out loop
+                    result.append(volume)  # volume matches all filters
             volumes = result
         return volumes
 
@@ -296,10 +297,24 @@ class API(base.Base):
         if (context.is_admin and 'all_tenants' in search_opts):
             # Need to remove all_tenants to pass the filtering below.
             del search_opts['all_tenants']
-            return self.db.snapshot_get_all(context)
+            snapshots = self.db.snapshot_get_all(context)
         else:
-            return self.db.snapshot_get_all_by_project(context,
-                                                       context.project_id)
+            snapshots = self.db.snapshot_get_all_by_project(
+                context, context.project_id)
+
+        if search_opts:
+            LOG.debug(_("Searching by: %s") % str(search_opts))
+
+            results = []
+            not_found = object()
+            for snapshot in snapshots:
+                for opt, value in search_opts.iteritems():
+                    if snapshot.get(opt, not_found) != value:
+                        break
+                else:
+                    results.append(snapshot)
+            snapshots = results
+        return snapshots
 
     @wrap_check_policy
     def check_attach(self, context, volume):
