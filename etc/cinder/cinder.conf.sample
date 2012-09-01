@@ -6,22 +6,12 @@
 
 ######### defined in cinder.flags #########
 
-###### (BoolOpt) Allow destination machine to match source for resize. Useful when testing in single-host environments.
-# allow_resize_to_same_host=false
 ###### (StrOpt) File name for the paste.deploy config for cinder-api
 # api_paste_config="api-paste.ini"
 ###### (BoolOpt) whether to rate limit the api
 # api_rate_limit=true
 ###### (StrOpt) The strategy to use for auth. Supports noauth, keystone, and deprecated.
 # auth_strategy="noauth"
-###### (IntOpt) Seconds for auth tokens to linger
-# auth_token_ttl=3600
-###### (StrOpt) AWS Access ID
-# aws_access_key_id="admin"
-###### (StrOpt) AWS Access Key
-# aws_secret_access_key="admin"
-###### (IntOpt) interval to pull bandwidth usage info
-# bandwith_poll_interval=600
 ###### (StrOpt) Directory where cinder binaries are installed
 # bindir="$pybasedir/bin"
 ###### (BoolOpt) Cache glance images locally
@@ -41,14 +31,6 @@
 # debug=false
 ###### (StrOpt) Name of network to use to set access ips for instances
 # default_access_ip_network_name=<None>
-###### (StrOpt) The default format a ephemeral_volume will be formatted with on creation.
-# default_ephemeral_format=<None>
-###### (StrOpt) default image to use, testing only
-# default_image="ami-11111"
-###### (StrOpt) default instance type to use, testing only
-# default_instance_type="m1.small"
-###### (StrOpt) the default project to use for openstack
-# default_project="openstack"
 ###### (StrOpt) availability zone to use when user doesn't specify one
 # default_schedule_zone=<None>
 ###### (StrOpt) the internal ip of the ec2 api server
@@ -89,10 +71,6 @@
 # instance_dns_manager="cinder.network.dns_driver.DNSDriver"
 ###### (StrOpt) time period to generate instance usages for.  Time period must be hour, day, month or year
 # instance_usage_audit_period="month"
-###### (ListOpt) Host reserved for specific images
-# isolated_hosts=""
-###### (ListOpt) Images to run on isolated host
-# isolated_images=""
 ###### (StrOpt) If this option is specified, the logging configuration file specified is used and overrides any other logging options specified. Please see the Python logging module documentation for details on logging configuration files.
 # log-config=<None>
 ###### (StrOpt) Format string for %(asctime)s in log records. Default: %default
@@ -111,10 +89,6 @@
 # logfile_mode="0644"
 ###### (ListOpt) Memcached servers or None for in process cache.
 # memcached_servers=<None>
-###### (StrOpt) the ip for the metadata api server
-# metadata_host="$my_ip"
-###### (IntOpt) the port for the metadata api port
-# metadata_port=8775
 ###### (BoolOpt) Whether to log monkey patching
 # monkey_patch=false
 ###### (ListOpt) List of modules/decorators to monkey patch
@@ -137,10 +111,6 @@
 # osapi_glance_link_prefix=<None>
 ###### (IntOpt) the maximum number of items returned in a single response from a collection resource
 # osapi_max_limit=1000
-###### (StrOpt) the path prefix used to call the openstack api server
-# osapi_path="/v1.1/"
-###### (StrOpt) the protocol to use when connecting to the openstack api server (http, https)
-# osapi_scheme="http"
 ###### (ListOpt) Specify list of extensions to load when using osapi_volume_extension option with cinder.api.openstack.volume.contrib.select_extensions
 # osapi_volume_ext_list=""
 ###### (MultiStrOpt) osapi volume extension to load
@@ -171,10 +141,6 @@
 # rabbit_virtual_host="/"
 ###### (IntOpt) Interval in seconds for reclaiming deleted instances
 # reclaim_instance_interval=0
-###### (ListOpt) list of region=fqdn pairs separated by commas
-# region_list=""
-###### (BoolOpt) Whether to start guests that were running before the host rebooted
-# resume_guests_state_on_host_boot=false
 ###### (StrOpt) Command prefix to use for running commands as root
 # root_helper="sudo"
 ###### (StrOpt) hostname or ip for the instances to use when accessing the s3 api
@@ -203,8 +169,6 @@
 # sqlite_db="cinder.sqlite"
 ###### (BoolOpt) If passed, use synchronous mode for sqlite
 # sqlite_synchronous=true
-###### (BoolOpt) Whether to restart guests when the host reboots
-# start_guests_on_host_boot=false
 ###### (StrOpt) Top-level directory for maintaining cinder's state
 # state_path="$pybasedir"
 ###### (StrOpt) Stub network related code
@@ -213,8 +177,6 @@
 # syslog-log-facility="LOG_USER"
 ###### (BoolOpt) Whether to use cow images
 # use_cow_images=true
-###### (BoolOpt) use ipv6
-# use_ipv6=false
 ###### (BoolOpt) Log output to standard error
 # use_stderr=true
 ###### (BoolOpt) Use syslog for logging.
@@ -227,12 +189,6 @@
 # volume_manager="cinder.volume.manager.VolumeManager"
 ###### (StrOpt) the topic volume nodes listen on
 # volume_topic="volume"
-###### (StrOpt) image id used when starting up a cloudpipe vpn server
-# vpn_image_id="0"
-###### (StrOpt) Suffix to add to project name for vpn key and secgroups
-# vpn_key_suffix="-vpn"
-###### (IntOpt) Number of seconds zombie instances are cleaned up.
-# zombie_instance_updated_at_window=172800
 
 ######### defined in cinder.log #########
 
