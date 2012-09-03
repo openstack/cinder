@@ -40,7 +40,7 @@ ibm_xiv_opts = [
 FLAGS = flags.FLAGS
 FLAGS.register_opts(ibm_xiv_opts)
 
-LOG = logging.getLogger('nova.volume.xiv')
+LOG = logging.getLogger('cinder.volume.xiv')
 
 
 class XIVDriver(san.SanISCSIDriver):
