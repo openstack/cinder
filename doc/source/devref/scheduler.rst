@@ -1,6 +1,6 @@
 ..
       Copyright 2010-2011 United States Government as represented by the
-      Administrator of the National Aeronautics and Space Administration. 
+      Administrator of the National Aeronautics and Space Administration.
       All Rights Reserved.
 
       Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -32,16 +32,6 @@ The :mod:`cinder.scheduler.driver` Module
 ---------------------------------------
 
 .. automodule:: cinder.scheduler.driver
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`cinder.scheduler.chance` Driver
----------------------------------------
-
-.. automodule:: cinder.scheduler.chance
     :noindex:
     :members:
     :undoc-members:

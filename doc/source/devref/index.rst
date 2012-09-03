@@ -39,8 +39,6 @@ Background Concepts for Cinder
    architecture
    threading
    il8n
-   filter_scheduler
-   multinic
    rpc
 
 Other Resources
@@ -68,8 +66,6 @@ Module Reference
    database
    volume
    xensmvolume
-   compute
-   network
    auth
    api
    scheduler

@@ -1,6 +1,6 @@
 ..
       Copyright 2010-2011 United States Government as represented by the
-      Administrator of the National Aeronautics and Space Administration. 
+      Administrator of the National Aeronautics and Space Administration.
       All Rights Reserved.
 
       Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -61,54 +61,6 @@ The :mod:`auth` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`backup_schedules` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.backup_schedules
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`faults` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.faults
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`flavors` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.flavors
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`images` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.images
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`servers` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.servers
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`sharedipgroups` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.sharedipgroups
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 EC2 API
 -------
 
@@ -121,28 +73,10 @@ The :mod:`cinder.api.ec2` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`apirequest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.ec2.apirequest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 The :mod:`cloud` Module
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.api.ec2.cloud
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`images` Module
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.ec2.images
     :noindex:
     :members:
     :undoc-members:
@@ -231,40 +165,3 @@ The :mod:`test_faults` Module
     :members:
     :undoc-members:
     :show-inheritance:
-
-The :mod:`test_flavors` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.api.openstack.test_flavors
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_images` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.api.openstack.test_images
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_servers` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.api.openstack.test_servers
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_sharedipgroups` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.api.openstack.test_sharedipgroups
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

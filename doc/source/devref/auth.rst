@@ -53,25 +53,6 @@ The :mod:`cinder.auth.manager` Module
     :show-inheritance:
 
 
-The :mod:`cinder.auth.ldapdriver` Driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.auth.ldapdriver
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`cinder.auth.dbdriver` Driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.auth.dbdriver
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Tests
 -----
 
