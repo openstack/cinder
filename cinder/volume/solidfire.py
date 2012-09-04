@@ -276,7 +276,7 @@ class SolidFire(SanISCSIDriver):
             if len(presets) > 0:
                 if len(presets) > 1:
                     LOG.warning(_('More than one valid preset was '
-                                  'detected, using %s' % presets[0]))
+                                  'detected, using %s') % presets[0])
                 qos = self.sf_qos_dict[presets[0]]
             else:
                 #if there was no preset, look for explicit settings
