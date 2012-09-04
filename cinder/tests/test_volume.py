@@ -554,6 +554,49 @@ class VolumeTestCase(test.TestCase):
             db.volume_destroy(self.context, volume_id)
             os.unlink(dst_path)
 
+    def test_create_volume_from_exact_sized_image(self):
+        """Verify that an image which is exactly the same size as the
+        volume, will work correctly."""
+        class _FakeImageService:
+            def __init__(self, db_driver=None, image_service=None):
+                pass
+
+            def show(self, context, image_id):
+                return {'size': 2 * 1024 * 1024 * 1024}
+
+        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
+
+        try:
+            volume_id = None
+            volume_api = cinder.volume.api.API(
+                                            image_service=_FakeImageService())
+            volume = volume_api.create(self.context, 2, 'name', 'description',
+                                       image_id=1)
+            volume_id = volume['id']
+            self.assertEqual(volume['status'], 'creating')
+
+        finally:
+            # cleanup
+            db.volume_destroy(self.context, volume_id)
+
+    def test_create_volume_from_oversized_image(self):
+        """Verify that an image which is too big will fail correctly."""
+        class _FakeImageService:
+            def __init__(self, db_driver=None, image_service=None):
+                pass
+
+            def show(self, context, image_id):
+                return {'size': 2 * 1024 * 1024 * 1024 + 1}
+
+        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
+
+        volume_api = cinder.volume.api.API(image_service=_FakeImageService())
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context, 2,
+                          'name', 'description', image_id=1)
+
     def _do_test_create_volume_with_size(self, size):
         def fake_reserve(context, expire=None, **deltas):
             return ["RESERVATION"]
