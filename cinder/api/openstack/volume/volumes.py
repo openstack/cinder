@@ -17,6 +17,7 @@
 
 from webob import exc
 import webob
+from xml.dom import minidom
 
 from cinder.api.openstack import common
 from cinder.api.openstack import wsgi
@@ -104,10 +105,8 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     LOG.audit(_("vol=%s"), vol, context=context)
 
     if vol.get('volume_metadata'):
-        meta_dict = {}
-        for i in vol['volume_metadata']:
-            meta_dict[i['key']] = i['value']
-        d['metadata'] = meta_dict
+        metadata = vol.get('volume_metadata')
+        d['metadata'] = dict((item['key'], item['value']) for item in metadata)
     else:
         d['metadata'] = {}
 
@@ -137,8 +136,8 @@ def make_volume(elem):
                                             selector='attachments')
     make_attachment(attachment)
 
-    metadata = xmlutil.make_flat_dict('metadata')
-    elem.append(metadata)
+    # Attach metadata node
+    elem.append(common.MetadataTemplate())
 
 
 volume_nsmap = {None: xmlutil.XMLNS_VOLUME_V1, 'atom': xmlutil.XMLNS_ATOM}
@@ -157,6 +156,47 @@ class VolumesTemplate(xmlutil.TemplateBuilder):
         elem = xmlutil.SubTemplateElement(root, 'volume', selector='volumes')
         make_volume(elem)
         return xmlutil.MasterTemplate(root, 1, nsmap=volume_nsmap)
+
+
+class CommonDeserializer(wsgi.MetadataXMLDeserializer):
+    """Common deserializer to handle xml-formatted volume requests.
+
+       Handles standard volume attributes as well as the optional metadata
+       attribute
+    """
+
+    metadata_deserializer = common.MetadataXMLDeserializer()
+
+    def _extract_volume(self, node):
+        """Marshal the volume attribute of a parsed request."""
+        volume = {}
+        volume_node = self.find_first_child_named(node, 'volume')
+
+        attributes = ['display_name', 'display_description', 'size',
+                      'volume_type', 'availability_zone']
+        for attr in attributes:
+            if volume_node.getAttribute(attr):
+                volume[attr] = volume_node.getAttribute(attr)
+
+        metadata_node = self.find_first_child_named(volume_node, 'metadata')
+        if metadata_node is not None:
+            volume['metadata'] = self.extract_metadata(metadata_node)
+
+        return volume
+
+
+class CreateDeserializer(CommonDeserializer):
+    """Deserializer to handle xml-formatted create volume requests.
+
+       Handles standard volume attributes as well as the optional metadata
+       attribute
+    """
+
+    def default(self, string):
+        """Deserialize an xml-formatted volume create request."""
+        dom = minidom.parseString(string)
+        volume = self._extract_volume(dom)
+        return {'body': {'volume': volume}}
 
 
 class VolumeController(object):
@@ -233,6 +273,7 @@ class VolumeController(object):
         return image_uuid
 
     @wsgi.serializers(xml=VolumeTemplate)
+    @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Creates a new volume."""
         context = req.environ['cinder.context']

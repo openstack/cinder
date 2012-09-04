@@ -22,6 +22,8 @@ import urlparse
 import webob
 
 from cinder import flags
+from cinder.api.openstack import wsgi
+from cinder.api.openstack import xmlutil
 from cinder.openstack.common import log as logging
 
 
@@ -241,3 +243,75 @@ class ViewBuilder(object):
         prefix_parts = list(urlparse.urlsplit(prefix))
         url_parts[0:2] = prefix_parts[0:2]
         return urlparse.urlunsplit(url_parts)
+
+
+class MetadataDeserializer(wsgi.MetadataXMLDeserializer):
+    def deserialize(self, text):
+        dom = minidom.parseString(text)
+        metadata_node = self.find_first_child_named(dom, "metadata")
+        metadata = self.extract_metadata(metadata_node)
+        return {'body': {'metadata': metadata}}
+
+
+class MetaItemDeserializer(wsgi.MetadataXMLDeserializer):
+    def deserialize(self, text):
+        dom = minidom.parseString(text)
+        metadata_item = self.extract_metadata(dom)
+        return {'body': {'meta': metadata_item}}
+
+
+class MetadataXMLDeserializer(wsgi.XMLDeserializer):
+
+    def extract_metadata(self, metadata_node):
+        """Marshal the metadata attribute of a parsed request"""
+        if metadata_node is None:
+            return {}
+        metadata = {}
+        for meta_node in self.find_children_named(metadata_node, "meta"):
+            key = meta_node.getAttribute("key")
+            metadata[key] = self.extract_text(meta_node)
+        return metadata
+
+    def _extract_metadata_container(self, datastring):
+        dom = minidom.parseString(datastring)
+        metadata_node = self.find_first_child_named(dom, "metadata")
+        metadata = self.extract_metadata(metadata_node)
+        return {'body': {'metadata': metadata}}
+
+    def create(self, datastring):
+        return self._extract_metadata_container(datastring)
+
+    def update_all(self, datastring):
+        return self._extract_metadata_container(datastring)
+
+    def update(self, datastring):
+        dom = minidom.parseString(datastring)
+        metadata_item = self.extract_metadata(dom)
+        return {'body': {'meta': metadata_item}}
+
+
+metadata_nsmap = {None: xmlutil.XMLNS_V11}
+
+
+class MetaItemTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        sel = xmlutil.Selector('meta', xmlutil.get_items, 0)
+        root = xmlutil.TemplateElement('meta', selector=sel)
+        root.set('key', 0)
+        root.text = 1
+        return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
+
+
+class MetadataTemplateElement(xmlutil.TemplateElement):
+    def will_render(self, datum):
+        return True
+
+
+class MetadataTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        root = MetadataTemplateElement('metadata', selector='metadata')
+        elem = xmlutil.SubTemplateElement(root, 'meta',
+                                          selector=xmlutil.get_items)
+        elem.set('key', 0)
+        elem.text = 1
+        return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
