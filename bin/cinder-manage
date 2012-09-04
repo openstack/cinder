@@ -296,7 +296,7 @@ class ImportCommands(object):
         (dest, dest_engine) = self._open_session(dest_db)
 
         for table_name in table_list:
-            print (_('Importing table %s...' % table_name))
+            print (_('Importing table %s...') % table_name)
             table = Table(table_name, src_meta, autoload=True)
             new_row = self._map_table(table)
             columns = table.columns.keys()
@@ -307,7 +307,7 @@ class ImportCommands(object):
             dest.commit()
 
         for table_name in quota_table_list:
-            print (_('Importing table %s...' % table_name))
+            print (_('Importing table %s...') % table_name)
             table = Table(table_name, src_meta, autoload=True)
             new_row = self._map_table(table)
             columns = table.columns.keys()
@@ -362,7 +362,7 @@ class ImportCommands(object):
         if dest_tgts is None:
             try:
                 dest_tgts = FLAGS.volumes_dir
-            except:
+            except Exception:
                 dest_tgts = '%s/volumes' % FLAGS.state_path
 
         utils.execute('rsync', '-avz', src_tgts, dest_tgts)
