@@ -151,10 +151,6 @@ global_opts = [
                default=1000,
                help='the maximum number of items returned in a single '
                     'response from a collection resource'),
-    cfg.StrOpt('null_kernel',
-               default='nokernel',
-               help='kernel image that indicates not to use a kernel, but to '
-                    'use a raw disk image instead'),
     cfg.StrOpt('sqlite_db',
                default='cinder.sqlite',
                help='the filename to use with sqlite'),

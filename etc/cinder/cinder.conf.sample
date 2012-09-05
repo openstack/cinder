@@ -109,10 +109,6 @@
 #### (IntOpt) the maximum number of items returned in a single response
 ####          from a collection resource
 
-# null_kernel=nokernel
-#### (StrOpt) kernel image that indicates not to use a kernel, but to use
-####          a raw disk image instead
-
 # sqlite_db=cinder.sqlite
 #### (StrOpt) the filename to use with sqlite
 
@@ -494,4 +490,4 @@
 #### (IntOpt) maximum number of volume gigabytes to allow per host
 
 
-# Total option count: 131
+# Total option count: 130
