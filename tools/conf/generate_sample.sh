@@ -16,10 +16,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-pushd $(cd $(dirname "$0") && pwd) >/dev/null
+FILES=$(find cinder -type f -name "*.py" ! -path "cinder/tests/*" -exec \
+    grep -l "Opt(" {} \; | sort -u)
 
-find ../../cinder -type f -name "*.py" ! -path "../../cinder/tests/*" -exec \
-    grep -l "Opt(" {} \; | sort -u | xargs python create_conf.py > \
-    ../../etc/cinder/cinder.conf.sample
-
-popd >/dev/null
+PYTHONPATH=./:${PYTHONPATH} \
+    python $(dirname "$0")/extract_opts.py ${FILES} > \
+    etc/cinder/cinder.conf.sample
