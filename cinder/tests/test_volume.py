@@ -33,6 +33,7 @@ from cinder import db
 from cinder import flags
 from cinder.tests.image import fake as fake_image
 from cinder.openstack.common import importutils
+from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
 from cinder.openstack.common import rpc
 import cinder.policy
@@ -51,11 +52,10 @@ class VolumeTestCase(test.TestCase):
         super(VolumeTestCase, self).setUp()
         vol_tmpdir = tempfile.mkdtemp()
         self.flags(connection_type='fake',
-                   volumes_dir=vol_tmpdir)
+                   volumes_dir=vol_tmpdir,
+                   notification_driver=[test_notifier.__name__])
         self.volume = importutils.import_object(FLAGS.volume_manager)
         self.context = context.get_admin_context()
-        self.stubs.Set(cinder.flags.FLAGS, 'notification_driver',
-            'cinder.openstack.common.notifier.test_notifier')
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         fake_image.stub_out_image_service(self.stubs)
         test_notifier.NOTIFICATIONS = []
@@ -65,6 +65,7 @@ class VolumeTestCase(test.TestCase):
             shutil.rmtree(FLAGS.volumes_dir)
         except OSError:
             pass
+        notifier_api._reset_drivers()
         super(VolumeTestCase, self).tearDown()
 
     def fake_get_target(obj, iqn):
