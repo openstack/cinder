@@ -292,7 +292,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_id = volume['id']
         payload = {'volume_id': volume_id, 'image_id': image_id}
         try:
-            self.driver.ensure_export(context.elevated(), volume)
             image_service, image_id = glance.get_remote_image_service(context,
                                                                       image_id)
             self.driver.copy_image_to_volume(context, volume, image_service,
