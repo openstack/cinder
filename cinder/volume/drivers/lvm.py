@@ -39,6 +39,13 @@ volume_opts = [
     cfg.StrOpt('volume_group',
                default='cinder-volumes',
                help='Name for the VG that will contain exported volumes'),
+    cfg.StrOpt('volume_clear',
+               default='zero',
+               help='Method used to wipe old volumes (valid options are: '
+                    'none, zero, shred)'),
+    cfg.IntOpt('volume_clear_size',
+               default=0,
+               help='Size in MiB to wipe at start of old volumes. 0 => all'),
     cfg.IntOpt('lvm_mirrors',
                default=0,
                help='If set, create lvms with multiple mirrors. Note that '
@@ -119,10 +126,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # zero out old volumes to prevent data leaking between users
         # TODO(ja): reclaiming space should be done lazy and low priority
         dev_path = self.local_path(volume)
-        if FLAGS.secure_delete and os.path.exists(dev_path):
-            LOG.info(_("Performing secure delete on volume: %s")
-                     % volume['id'])
-            self._copy_volume('/dev/zero', dev_path, size_in_g)
+        if os.path.exists(dev_path):
+            self.clear_volume(volume)
 
         self._try_execute('lvremove', '-f', "%s/%s" %
                           (FLAGS.volume_group,
@@ -172,6 +177,38 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume, volume['size'])
+
+    def clear_volume(self, volume):
+        """unprovision old volumes to prevent data leaking between users."""
+
+        vol_path = self.local_path(volume)
+        size_in_g = volume.get('size')
+        size_in_m = FLAGS.volume_clear_size
+
+        if not size_in_g:
+            return
+
+        if FLAGS.volume_clear == 'none':
+            return
+
+        LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
+
+        if FLAGS.volume_clear == 'zero':
+            if size_in_m == 0:
+                return self._copy_volume('/dev/zero', vol_path, size_in_g)
+            else:
+                clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
+        elif FLAGS.volume_clear == 'shred':
+            clear_cmd = ['shred', '-n3']
+            if size_in_m:
+                clear_cmd.append('-s%dMiB' % size_in_m)
+        else:
+            LOG.error(_("Error unrecognized volume_clear option: %s"),
+                      FLAGS.volume_clear)
+            return
+
+        clear_cmd.append(vol_path)
+        self._execute(*clear_cmd, run_as_root=True)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""

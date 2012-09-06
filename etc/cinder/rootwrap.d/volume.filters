@@ -28,6 +28,10 @@ lvdisplay: CommandFilter, /sbin/lvdisplay, root
 iscsiadm: CommandFilter, /sbin/iscsiadm, root
 iscsiadm_usr: CommandFilter, /usr/bin/iscsiadm, root
 
+# cinder/volume/drivers/lvm.py: 'shred', '-n3'
+# cinder/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
+shred: CommandFilter, /usr/bin/shred, root
+
 #cinder/volume/.py: utils.temporary_chown(path, 0), ...
 chown: CommandFilter, /bin/chown, root
 

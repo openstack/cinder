@@ -56,7 +56,11 @@ class LoggingVolumeDriver(driver.VolumeDriver):
         self.log_action('create_volume', volume)
 
     def delete_volume(self, volume):
+        self.clear_volume(volume)
         self.log_action('delete_volume', volume)
+
+    def clear_volume(self, volume):
+        self.log_action('clear_volume', volume)
 
     def local_path(self, volume):
         print "local_path not implemented"

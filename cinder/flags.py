@@ -229,9 +229,6 @@ global_opts = [
                     'and deprecated.'),
     cfg.StrOpt('control_exchange',
                default='cinder',
-               help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
-    cfg.BoolOpt('secure_delete',
-                default=True,
-                help='Whether to perform secure delete'), ]
+               help='AMQP exchange to connect to if using RabbitMQ or Qpid'), ]
 
 FLAGS.register_opts(global_opts)
