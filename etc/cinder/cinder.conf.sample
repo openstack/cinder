@@ -168,9 +168,6 @@
 # service_down_time=60
 #### (IntOpt) maximum time since last check-in for up service
 
-# default_schedule_zone=<None>
-#### (StrOpt) availability zone to use when user doesn't specify one
-
 # volume_api_class=cinder.volume.api.API
 #### (StrOpt) The full class name of the volume API class to use
 
@@ -497,4 +494,4 @@
 #### (IntOpt) maximum number of volume gigabytes to allow per host
 
 
-# Total option count: 132
+# Total option count: 131
