@@ -145,9 +145,6 @@
 # notification_driver=cinder.openstack.common.notifier.no_op_notifier
 #### (StrOpt) Default driver for sending notifications
 
-# memcached_servers=<None>
-#### (ListOpt) Memcached servers or None for in process cache.
-
 # instance_usage_audit_period=month
 #### (StrOpt) time period to generate instance usages for.  Time period
 ####          must be hour, day, month or year
@@ -500,4 +497,4 @@
 #### (IntOpt) maximum number of volume gigabytes to allow per host
 
 
-# Total option count: 133
+# Total option count: 132
