@@ -50,42 +50,6 @@ def bad_function_exception():
     raise test.TestingException()
 
 
-class WrapExceptionTestCase(test.TestCase):
-    def test_wrap_exception_good_return(self):
-        wrapped = utils.wrap_exception()
-        self.assertEquals(99, wrapped(good_function)())
-
-    def test_wrap_exception_throws_error(self):
-        wrapped = utils.wrap_exception()
-        self.assertRaises(exception.Error, wrapped(bad_function_error))
-
-    def test_wrap_exception_throws_exception(self):
-        wrapped = utils.wrap_exception()
-        self.assertRaises(test.TestingException,
-                          wrapped(bad_function_exception))
-
-    def test_wrap_exception_with_notifier(self):
-        notifier = FakeNotifier()
-        wrapped = utils.wrap_exception(notifier, "publisher", "event",
-                                           "level")
-        self.assertRaises(test.TestingException,
-                          wrapped(bad_function_exception))
-        self.assertEquals(notifier.provided_publisher, "publisher")
-        self.assertEquals(notifier.provided_event, "event")
-        self.assertEquals(notifier.provided_priority, "level")
-        for key in ['exception', 'args']:
-            self.assertTrue(key in notifier.provided_payload.keys())
-
-    def test_wrap_exception_with_notifier_defaults(self):
-        notifier = FakeNotifier()
-        wrapped = utils.wrap_exception(notifier)
-        self.assertRaises(test.TestingException,
-                          wrapped(bad_function_exception))
-        self.assertEquals(notifier.provided_publisher, None)
-        self.assertEquals(notifier.provided_event, "bad_function_exception")
-        self.assertEquals(notifier.provided_priority, notifier.ERROR)
-
-
 class CinderExceptionTestCase(test.TestCase):
     def test_default_error_msg(self):
         class FakeCinderException(exception.CinderException):
