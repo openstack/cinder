@@ -675,7 +675,7 @@ def main():
             except Exception:
                 print _('sudo failed, continuing as if nothing happened')
 
-        print _('Please re-run nova-manage as root.')
+        print _('Please re-run cinder-manage as root.')
         sys.exit(2)
 
     script_name = argv.pop(0)
