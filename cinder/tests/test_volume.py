@@ -194,14 +194,7 @@ class VolumeTestCase(test.TestCase):
         volume = self._create_volume()
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
-        if FLAGS.fake_tests:
-            db.volume_attached(self.context, volume_id, instance_uuid,
-                                mountpoint)
-        else:
-            self.compute.attach_volume(self.context,
-                                       instance_uuid,
-                                       volume_id,
-                                       mountpoint)
+        db.volume_attached(self.context, volume_id, instance_uuid, mountpoint)
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(vol['status'], "in-use")
         self.assertEqual(vol['attach_status'], "attached")
@@ -212,13 +205,7 @@ class VolumeTestCase(test.TestCase):
                           self.volume.delete_volume,
                           self.context,
                           volume_id)
-        if FLAGS.fake_tests:
-            db.volume_detached(self.context, volume_id)
-        else:
-            pass
-            self.compute.detach_volume(self.context,
-                                       instance_uuid,
-                                       volume_id)
+        db.volume_detached(self.context, volume_id)
         vol = db.volume_get(self.context, volume_id)
         self.assertEqual(vol['status'], "available")
 
