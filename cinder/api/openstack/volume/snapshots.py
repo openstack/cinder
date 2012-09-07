@@ -21,6 +21,7 @@ import webob
 from cinder.api.openstack import common
 from cinder.api.openstack import wsgi
 from cinder.api.openstack import xmlutil
+from cinder.api.openstack.volume import volumes
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
@@ -132,6 +133,9 @@ class SnapshotsController(object):
 
         search_opts = {}
         search_opts.update(req.GET)
+        allowed_search_options = ('status', 'volume_id', 'display_name')
+        volumes.remove_invalid_options(context, search_opts,
+                                       allowed_search_options)
 
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)

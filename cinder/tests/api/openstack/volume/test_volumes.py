@@ -232,6 +232,67 @@ class VolumeApiTest(test.TestCase):
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
 
+    def test_volume_list_by_name(self):
+        def stub_volume_get_all_by_project(context, project_id):
+            return [
+                fakes.stub_volume(1, display_name='vol1'),
+                fakes.stub_volume(2, display_name='vol2'),
+                fakes.stub_volume(3, display_name='vol3'),
+            ]
+        self.stubs.Set(db, 'volume_get_all_by_project',
+                       stub_volume_get_all_by_project)
+
+        # no display_name filter
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 3)
+        # filter on display_name
+        req = fakes.HTTPRequest.blank('/v1/volumes?display_name=vol2')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 1)
+        self.assertEqual(resp['volumes'][0]['display_name'], 'vol2')
+        # filter no match
+        req = fakes.HTTPRequest.blank('/v1/volumes?display_name=vol4')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 0)
+
+    def test_volume_list_by_status(self):
+        def stub_volume_get_all_by_project(context, project_id):
+            return [
+                fakes.stub_volume(1, display_name='vol1', status='available'),
+                fakes.stub_volume(2, display_name='vol2', status='available'),
+                fakes.stub_volume(3, display_name='vol3', status='in-use'),
+            ]
+        self.stubs.Set(db, 'volume_get_all_by_project',
+                       stub_volume_get_all_by_project)
+        # no status filter
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 3)
+        # single match
+        req = fakes.HTTPRequest.blank('/v1/volumes?status=in-use')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 1)
+        self.assertEqual(resp['volumes'][0]['status'], 'in-use')
+        # multiple match
+        req = fakes.HTTPRequest.blank('/v1/volumes?status=available')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 2)
+        for volume in resp['volumes']:
+            self.assertEqual(volume['status'], 'available')
+        # multiple filters
+        req = fakes.HTTPRequest.blank('/v1/volumes?status=available&'
+                                      'display_name=vol1')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 1)
+        self.assertEqual(resp['volumes'][0]['display_name'], 'vol1')
+        self.assertEqual(resp['volumes'][0]['status'], 'available')
+        # no match
+        req = fakes.HTTPRequest.blank('/v1/volumes?status=in-use&'
+                                      'display_name=vol1')
+        resp = self.controller.index(req)
+        self.assertEqual(len(resp['volumes']), 0)
+
     def test_volume_show(self):
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
         res_dict = self.controller.show(req, '1')

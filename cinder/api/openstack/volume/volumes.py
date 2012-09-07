@@ -337,7 +337,7 @@ class VolumeController(object):
 
     def _get_volume_search_options(self):
         """Return volume search options allowed by non-admin."""
-        return ('name', 'status')
+        return ('display_name', 'status')
 
 
 def create_resource(ext_mgr):
@@ -356,4 +356,4 @@ def remove_invalid_options(context, search_options, allowed_search_options):
     log_msg = _("Removing options '%(bad_options)s' from query") % locals()
     LOG.debug(log_msg)
     for opt in unknown_options:
-        search_options.pop(opt, None)
+        del search_options[opt]
