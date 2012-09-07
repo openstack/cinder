@@ -109,20 +109,6 @@ def service_get_all_by_host(context, host):
     return IMPL.service_get_all_by_host(context, host)
 
 
-def service_get_all_compute_by_host(context, host):
-    """Get all compute services for a given host."""
-    return IMPL.service_get_all_compute_by_host(context, host)
-
-
-def service_get_all_compute_sorted(context):
-    """Get all compute services sorted by instance count.
-
-    :returns: a list of (Service, instance_count) tuples.
-
-    """
-    return IMPL.service_get_all_compute_sorted(context)
-
-
 def service_get_all_volume_sorted(context):
     """Get all volume services sorted by volume count.
 
