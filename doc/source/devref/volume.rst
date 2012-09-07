@@ -1,6 +1,6 @@
 ..
       Copyright 2010-2011 United States Government as represented by the
-      Administrator of the National Aeronautics and Space Administration. 
+      Administrator of the National Aeronautics and Space Administration.
       All Rights Reserved.
 
       Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -55,12 +55,10 @@ The :mod:`volume_unittest` Module
 Old Docs
 --------
 
-Cinder uses ata-over-ethernet (AoE) to export storage volumes from multiple storage nodes. These AoE exports are attached (using libvirt) directly to running instances.
+Cinder uses iSCSI to export storage volumes from multiple storage nodes. These iSCSI exports are attached (using libvirt) directly to running instances.
 
 Cinder volumes are exported over the primary system VLAN (usually VLAN 1), and not over individual VLANs.
 
-AoE exports are numbered according to a "shelf and blade" syntax. In order to avoid collisions, we currently perform an AoE-discover of existing exports, and then grab the next unused number. (This obviously has race condition problems, and should be replaced by allocating a shelf-id to each storage node.)
-
-The underlying volumes are LVM logical volumes, created on demand within a single large volume group. 
+The underlying volumes by default are LVM logical volumes, created on demand within a single large volume group.
 
 
