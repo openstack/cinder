@@ -20,6 +20,7 @@ from cinder import flags
 from cinder import utils
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import timeutils
 
 
 FLAGS = flags.FLAGS
@@ -35,7 +36,7 @@ def notify_usage_exists(context, volume_ref, current_period=False):
     begin, end = utils.last_completed_audit_period()
     if current_period:
         audit_start = end
-        audit_end = utils.utcnow()
+        audit_end = timeutils.utcnow()
     else:
         audit_start = begin
         audit_end = end

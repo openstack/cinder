@@ -1014,18 +1014,6 @@ def _volume_get_query(context, session=None, project_only=False):
 
 
 @require_context
-def _ec2_volume_get_query(context, session=None, project_only=False):
-    return model_query(context, models.VolumeIdMapping, session=session,
-                       project_only=project_only)
-
-
-@require_context
-def _ec2_snapshot_get_query(context, session=None, project_only=False):
-    return model_query(context, models.SnapshotIdMapping, session=session,
-                       project_only=project_only)
-
-
-@require_context
 def volume_get(context, volume_id, session=None):
     result = _volume_get_query(context, session=session, project_only=True).\
                     filter_by(id=volume_id).\
