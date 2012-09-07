@@ -228,7 +228,7 @@ class SolidFire(SanISCSIDriver):
         iqn = None
         for v in volume_list:
             if v['volumeID'] == volume_id:
-                iqn = 'iqn.2010-01.com.solidfire:' + v['iqn']
+                iqn = v['iqn']
                 break
 
         model_update = {}
