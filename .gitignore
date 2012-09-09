@@ -11,16 +11,13 @@ keys
 build/*
 build-stamp
 cinder.egg-info
-nova.egg-info
 .cinder-venv
-.nova-venv
 .venv
 .tox
 *.sqlite
 *.log
 *.mo
 tools/conf/cinder.conf*
-tools/conf/nova.conf*
 cover/*
 dist/*
 .coverage
