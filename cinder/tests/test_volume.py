@@ -767,17 +767,17 @@ class VolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, '_volume_not_present',
                        lambda x: False)
         self.stubs.Set(self.volume.driver, '_delete_volume',
-                       lambda x, y: False)
+                       lambda x: False)
         # Want DriverTestCase._fake_execute to return 'o' so that
         # volume.driver.delete_volume() raises the VolumeIsBusy exception.
         self.output = 'o'
         self.assertRaises(exception.VolumeIsBusy,
                           self.volume.driver.delete_volume,
-                          {'name': 'test1', 'size': 1024})
+                          {'name': 'test1'})
         # when DriverTestCase._fake_execute returns something other than
         # 'o' volume.driver.delete_volume() does not raise an exception.
         self.output = 'x'
-        self.volume.driver.delete_volume({'name': 'test1', 'size': 1024})
+        self.volume.driver.delete_volume({'name': 'test1'})
 
 
 class ISCSITestCase(DriverTestCase):
