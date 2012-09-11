@@ -143,8 +143,11 @@ class VolumeDriver(object):
             return True
         return False
 
-    def _delete_volume(self, volume):
+    def _delete_volume(self, volume, size_in_g):
         """Deletes a logical volume."""
+        # zero out old volumes to prevent data leaking between users
+        # TODO(ja): reclaiming space should be done lazy and low priority
+        self._copy_volume('/dev/zero', self.local_path(volume), size_in_g)
         self._try_execute('lvremove', '-f', "%s/%s" %
                           (FLAGS.volume_group,
                            self._escape_snapshot(volume['name'])),
@@ -166,15 +169,6 @@ class VolumeDriver(object):
         """Creates a logical volume. Can optionally return a Dictionary of
         changes to the volume object to be persisted."""
         self._create_volume(volume['name'], self._sizestr(volume['size']))
-
-        # NOTE(jdg): As per BUG 1023755 zeroing out snapshot volume
-        # is extremely slow and on 12.04 has a tendency to hang the kernel
-        # We're going to work around this by dropping the zero out process
-        # on snapshot delete, but we need to protect form data leakage still
-        # so we'll zero out newly created volumes to hack around this.
-        self._copy_volume('/dev/zero',
-                          self.local_path(volume),
-                          volume['size'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -201,7 +195,7 @@ class VolumeDriver(object):
             if (out[0] == 'o') or (out[0] == 'O'):
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
 
-        self._delete_volume(volume)
+        self._delete_volume(volume, volume['size'])
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -217,7 +211,9 @@ class VolumeDriver(object):
             # If the snapshot isn't present, then don't attempt to delete
             return True
 
-        self._delete_volume(snapshot)
+        # TODO(yamahata): zeroing out the whole snapshot triggers COW.
+        # it's quite slow.
+        self._delete_volume(snapshot, snapshot['volume_size'])
 
     def local_path(self, volume):
         # NOTE(vish): stops deprecation warning
@@ -354,6 +350,7 @@ class ISCSIDriver(VolumeDriver):
 
     def create_export(self, context, volume):
         """Creates an export for a logical volume."""
+        #BOOKMARK(jdg)
 
         iscsi_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
         volume_path = "/dev/%s/%s" % (FLAGS.volume_group, volume['name'])
@@ -383,7 +380,6 @@ class ISCSIDriver(VolumeDriver):
 
     def remove_export(self, context, volume):
         """Removes an export for a logical volume."""
-
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
         # cooresponding target admin class
