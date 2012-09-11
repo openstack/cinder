@@ -28,9 +28,9 @@ Notes:
    key file only.
 2. When using a key file for authentication, it is up to the user or
    system administrator to store the private key in a safe manner.
-3. The defaults for creating volumes are "-vtype striped -rsize 2% -autoexpand
-   -grainsize 256 -warning 0".  These can be changed in the configuration file
-   (recommended only for advanced users).
+3. The defaults for creating volumes are "-rsize 2% -autoexpand
+   -grainsize 256 -warning 0".  These can be changed in the configuration
+   file or by using volume types(recommended only for advanced users).
 
 Limitations:
 1. The driver was not tested with SVC or clustered configurations of Storwize
@@ -57,9 +57,6 @@ storwize_svc_opts = [
     cfg.StrOpt('storwize_svc_volpool_name',
                default='volpool',
                help='Storage system storage pool for volumes'),
-    cfg.StrOpt('storwize_svc_vol_vtype',
-               default='striped',
-               help='Storage system volume type for volumes'),
     cfg.StrOpt('storwize_svc_vol_rsize',
                default='2%',
                help='Storage system space-efficiency parameter for volumes'),
@@ -77,6 +74,9 @@ storwize_svc_opts = [
     cfg.BoolOpt('storwize_svc_vol_compression',
                default=False,
                help='Storage system compression option for volumes'),
+    cfg.BoolOpt('storwize_svc_vol_easytier',
+               default=True,
+               help='Enable Easy Tier for volumes'),
     cfg.StrOpt('storwize_svc_flashcopy_timeout',
                default='120',
                help='Maximum number of seconds to wait for FlashCopy to be'
@@ -333,16 +333,9 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                          'authentication: set either san_password or '
                          'san_private_key option'))
 
-        # vtype should either be 'striped' or 'seq'
-        vtype = getattr(FLAGS, 'storwize_svc_vol_vtype')
-        if vtype not in ['striped', 'seq']:
-            raise exception.InvalidInput(
-                reason=_('Illegal value specified for storwize_svc_vol_vtype: '
-                         'set to either \'striped\' or \'seq\''))
-
         # Check that rsize is a number or percentage
         rsize = getattr(FLAGS, 'storwize_svc_vol_rsize')
-        if not self._check_num_perc(rsize) and (rsize not in ['auto', '-1']):
+        if not self._check_num_perc(rsize) and (rsize != '-1'):
             raise exception.InvalidInput(
                 reason=_('Illegal value specified for storwize_svc_vol_rsize: '
                          'set to either a number or a percentage'))
@@ -381,12 +374,25 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                          'valid values are between 0 and 600')
                                          % flashcopy_timeout)
 
-        # Check that compression is a boolean
+        # Check that compression is a boolean and that rsize is set
         volume_compression = getattr(FLAGS, 'storwize_svc_vol_compression')
         if type(volume_compression) != type(True):
             raise exception.InvalidInput(
                 reason=_('Illegal value specified for '
                          'storwize_svc_vol_compression: set to either '
+                         'True or False'))
+        if ((volume_compression == True) and
+                (getattr(FLAGS, 'storwize_svc_vol_rsize') == '-1')):
+            raise exception.InvalidInput(
+                reason=_('If compression is set to True, rsize must '
+                         'also be set (not equal to -1)'))
+
+        # Check that easytier is a boolean
+        volume_easytier = getattr(FLAGS, 'storwize_svc_vol_easytier')
+        if type(volume_easytier) != type(True):
+            raise exception.InvalidInput(
+                reason=_('Illegal value specified for '
+                         'storwize_svc_vol_easytier: set to either '
                          'True or False'))
 
     def do_setup(self, context):
@@ -410,30 +416,35 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         size = int(volume['size'])
 
         if getattr(FLAGS, 'storwize_svc_vol_autoexpand') == True:
-            autoexpand = '-autoexpand'
+            autoex = '-autoexpand'
         else:
-            autoexpand = ''
+            autoex = ''
+
+        if getattr(FLAGS, 'storwize_svc_vol_easytier') == True:
+            easytier = '-easytier on'
+        else:
+            easytier = '-easytier off'
 
         # Set space-efficient options
         if getattr(FLAGS, 'storwize_svc_vol_rsize').strip() == '-1':
             ssh_cmd_se_opt = ''
         else:
-            ssh_cmd_se_opt = ('-rsize %(rsize)s %(autoexpand)s ' %
+            ssh_cmd_se_opt = ('-rsize %(rsize)s %(autoex)s -warning %(warn)s' %
                         {'rsize': getattr(FLAGS, 'storwize_svc_vol_rsize'),
-                         'autoexpand': autoexpand})
+                         'autoex': autoex,
+                         'warn': getattr(FLAGS, 'storwize_svc_vol_warning')})
             if getattr(FLAGS, 'storwize_svc_vol_compression'):
-                ssh_cmd_se_opt = ssh_cmd_se_opt + '-compressed'
+                ssh_cmd_se_opt = ssh_cmd_se_opt + ' -compressed'
             else:
-                ssh_cmd_se_opt = ssh_cmd_se_opt + ('-grainsize %(grain)s' %
+                ssh_cmd_se_opt = ssh_cmd_se_opt + (' -grainsize %(grain)s' %
                        {'grain': getattr(FLAGS, 'storwize_svc_vol_grainsize')})
 
         ssh_cmd = ('mkvdisk -name %(name)s -mdiskgrp %(mdiskgrp)s '
-                    '-iogrp 0 -vtype %(vtype)s -size %(size)s -unit '
-                    '%(unit)s %(ssh_cmd_se_opt)s'
+                    '-iogrp 0 -size %(size)s -unit '
+                    '%(unit)s %(easytier)s %(ssh_cmd_se_opt)s'
                     % {'name': name,
                     'mdiskgrp': getattr(FLAGS, 'storwize_svc_volpool_name'),
-                    'vtype': getattr(FLAGS, 'storwize_svc_vol_vtype'),
-                    'size': size, 'unit': units,
+                    'size': size, 'unit': units, 'easytier': easytier,
                     'ssh_cmd_se_opt': ssh_cmd_se_opt})
         out, err = self._run_ssh(ssh_cmd)
         self._driver_assert(len(out.strip()) > 0,
