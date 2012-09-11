@@ -225,6 +225,15 @@
 #### (IntOpt) port for os volume api to listen
 
 
+######## defined in cinder.test ########
+
+# sqlite_clean_db=clean.sqlite
+#### (StrOpt) File name of clean sqlite db
+
+# fake_tests=true
+#### (BoolOpt) should we use everything for testing
+
+
 ######## defined in cinder.api.auth ########
 
 # use_forwarded_for=false
@@ -235,7 +244,7 @@
 ######## defined in cinder.api.sizelimit ########
 
 # osapi_max_request_body_size=114688
-#### (IntOpt) 
+#### (IntOpt) Max size for body of a request
 
 
 ######## defined in cinder.common.deprecated ########
@@ -282,13 +291,13 @@
 # logging_context_format_string=%(asctime)s %(levelname)s %(name)s [%(request_id)s %(user_id)s %(project_id)s] %(instance)s%(message)s
 #### (StrOpt) format string to use for log messages with context
 
-# logging_default_format_string=%(asctime)s %(levelname)s %(name)s [-] %(instance)s%(message)s
+# logging_default_format_string=%(asctime)s %(process)d %(levelname)s %(name)s [-] %(instance)s%(message)s
 #### (StrOpt) format string to use for log messages without context
 
-# logging_debug_format_suffix=from (pid=%(process)d) %(funcName)s %(pathname)s:%(lineno)d
+# logging_debug_format_suffix=%(funcName)s %(pathname)s:%(lineno)d
 #### (StrOpt) data to append to log format when level is DEBUG
 
-# logging_exception_prefix=%(asctime)s TRACE %(name)s %(instance)s
+# logging_exception_prefix=%(asctime)s %(process)d TRACE %(name)s %(instance)s
 #### (StrOpt) prefix each line of exception output with this format
 
 # default_log_levels=amqplib=WARN,sqlalchemy=WARN,boto=WARN,suds=INFO,keystone=INFO,eventlet.wsgi.server=WARN
@@ -490,4 +499,309 @@
 #### (IntOpt) maximum number of volume gigabytes to allow per host
 
 
-# Total option count: 130
+######## defined in cinder.volume.api ########
+
+# snapshot_same_host=true
+#### (BoolOpt) Create volume from snapshot at the host where snapshot
+####           resides
+
+
+######## defined in cinder.volume.driver ########
+
+# volume_group=cinder-volumes
+#### (StrOpt) Name for the VG that will contain exported volumes
+
+# num_shell_tries=3
+#### (IntOpt) number of times to attempt to run flakey shell commands
+
+# num_iscsi_scan_tries=3
+#### (IntOpt) number of times to rescan iSCSI target to find volume
+
+# iscsi_num_targets=100
+#### (IntOpt) Number of iscsi target ids per host
+
+# iscsi_target_prefix=iqn.2010-10.org.openstack:
+#### (StrOpt) prefix for iscsi volumes
+
+# iscsi_ip_address=$my_ip
+#### (StrOpt) use this ip for iscsi
+
+# iscsi_port=3260
+#### (IntOpt) The port that the iSCSI daemon is listening on
+
+# rbd_pool=rbd
+#### (StrOpt) the RADOS pool in which rbd volumes are stored
+
+# rbd_user=<None>
+#### (StrOpt) the RADOS client name for accessing rbd volumes
+
+# rbd_secret_uuid=<None>
+#### (StrOpt) the libvirt uuid of the secret for the rbd_uservolumes
+
+# volume_tmp_dir=<None>
+#### (StrOpt) where to store temporary image files if the volume driver
+####          does not write them directly to the volume
+
+
+######## defined in cinder.volume.iscsi ########
+
+# iscsi_helper=tgtadm
+#### (StrOpt) iscsi target user-land tool to use
+
+# volumes_dir=$state_path/volumes
+#### (StrOpt) Volume configfuration file storage directory
+
+
+######## defined in cinder.volume.manager ########
+
+# volume_driver=cinder.volume.driver.ISCSIDriver
+#### (StrOpt) Driver to use for volume creation
+
+# use_local_volumes=true
+#### (BoolOpt) if True, will not discover local volumes
+
+# volume_force_update_capabilities=false
+#### (BoolOpt) if True will force update capabilities on each check
+
+
+######## defined in cinder.volume.netapp ########
+
+# netapp_wsdl_url=<None>
+#### (StrOpt) URL of the WSDL file for the DFM server
+
+# netapp_login=<None>
+#### (StrOpt) User name for the DFM server
+
+# netapp_password=<None>
+#### (StrOpt) Password for the DFM server
+
+# netapp_server_hostname=<None>
+#### (StrOpt) Hostname for the DFM server
+
+# netapp_server_port=8088
+#### (IntOpt) Port number for the DFM server
+
+# netapp_storage_service=<None>
+#### (StrOpt) Storage service to use for provisioning (when
+####          volume_type=None)
+
+# netapp_storage_service_prefix=<None>
+#### (StrOpt) Prefix of storage service name to use for provisioning
+####          (volume_type name will be appended)
+
+# netapp_vfiler=<None>
+#### (StrOpt) Vfiler to use for provisioning
+
+
+######## defined in cinder.volume.netapp_nfs ########
+
+# synchronous_snapshot_create=0
+#### (IntOpt) Does snapshot creation call returns immediately
+
+# netapp_wsdl_url=<None>
+#### (StrOpt) URL of the WSDL file for the DFM server
+
+# netapp_login=<None>
+#### (StrOpt) User name for the DFM server
+
+# netapp_password=<None>
+#### (StrOpt) Password for the DFM server
+
+# netapp_server_hostname=<None>
+#### (StrOpt) Hostname for the DFM server
+
+# netapp_server_port=8088
+#### (IntOpt) Port number for the DFM server
+
+# netapp_storage_service=<None>
+#### (StrOpt) Storage service to use for provisioning (when
+####          volume_type=None)
+
+# netapp_storage_service_prefix=<None>
+#### (StrOpt) Prefix of storage service name to use for provisioning
+####          (volume_type name will be appended)
+
+# netapp_vfiler=<None>
+#### (StrOpt) Vfiler to use for provisioning
+
+
+######## defined in cinder.volume.nexenta.volume ########
+
+# nexenta_host=
+#### (StrOpt) IP address of Nexenta SA
+
+# nexenta_rest_port=2000
+#### (IntOpt) HTTP port to connect to Nexenta REST API server
+
+# nexenta_rest_protocol=auto
+#### (StrOpt) Use http or https for REST connection (default auto)
+
+# nexenta_user=admin
+#### (StrOpt) User name to connect to Nexenta SA
+
+# nexenta_password=nexenta
+#### (StrOpt) Password to connect to Nexenta SA
+
+# nexenta_iscsi_target_portal_port=3260
+#### (IntOpt) Nexenta target portal port
+
+# nexenta_volume=cinder
+#### (StrOpt) pool on SA that will hold all volumes
+
+# nexenta_target_prefix=iqn.1986-03.com.sun:02:cinder-
+#### (StrOpt) IQN prefix for iSCSI targets
+
+# nexenta_target_group_prefix=cinder/
+#### (StrOpt) prefix for iSCSI target groups on SA
+
+# nexenta_blocksize=
+#### (StrOpt) block size for volumes (blank=default,8KB)
+
+# nexenta_sparse=false
+#### (BoolOpt) flag to create sparse volumes
+
+
+######## defined in cinder.volume.nfs ########
+
+# nfs_shares_config=<None>
+#### (StrOpt) File with the list of available nfs shares
+
+# nfs_mount_point_base=$state_path/mnt
+#### (StrOpt) Base dir where nfs expected to be mounted
+
+# nfs_disk_util=df
+#### (StrOpt) Use du or df for free space calculation
+
+# nfs_sparsed_volumes=true
+#### (BoolOpt) Create volumes as sparsed files which take no space.If set
+####           to False volume is created as regular file.In such case
+####           volume creation takes a lot of time.
+
+
+######## defined in cinder.volume.san ########
+
+# san_thin_provision=true
+#### (BoolOpt) Use thin provisioning for SAN volumes?
+
+# san_ip=
+#### (StrOpt) IP address of SAN controller
+
+# san_login=admin
+#### (StrOpt) Username for SAN controller
+
+# san_password=
+#### (StrOpt) Password for SAN controller
+
+# san_private_key=
+#### (StrOpt) Filename of private key to use for SSH authentication
+
+# san_clustername=
+#### (StrOpt) Cluster name to use for creating volumes
+
+# san_ssh_port=22
+#### (IntOpt) SSH port to use with SAN
+
+# san_is_local=false
+#### (BoolOpt) Execute commands locally instead of over SSH; use if the
+####           volume service is running on the SAN device
+
+# san_zfs_volume_base=rpool/
+#### (StrOpt) The ZFS path under which to create zvols for volumes.
+
+
+######## defined in cinder.volume.solidfire ########
+
+# sf_emulate_512=true
+#### (BoolOpt) Set 512 byte emulation on volume creation;
+
+# sf_mvip=
+#### (StrOpt) IP address of SolidFire MVIP
+
+# sf_login=admin
+#### (StrOpt) Username for SF Cluster Admin
+
+# sf_password=
+#### (StrOpt) Password for SF Cluster Admin
+
+# sf_allow_tenant_qos=true
+#### (BoolOpt) Allow tenants to specify QOS on create
+
+
+######## defined in cinder.volume.storwize_svc ########
+
+# storwize_svc_volpool_name=volpool
+#### (StrOpt) Storage system storage pool for volumes
+
+# storwize_svc_vol_rsize=2%
+#### (StrOpt) Storage system space-efficiency parameter for volumes
+
+# storwize_svc_vol_warning=0
+#### (StrOpt) Storage system threshold for volume capacity warnings
+
+# storwize_svc_vol_autoexpand=true
+#### (BoolOpt) Storage system autoexpand parameter for volumes (True/False)
+
+# storwize_svc_vol_grainsize=256
+#### (StrOpt) Storage system grain size parameter for volumes
+####          (32/64/128/256)
+
+# storwize_svc_vol_compression=false
+#### (BoolOpt) Storage system compression option for volumes
+
+# storwize_svc_vol_easytier=true
+#### (BoolOpt) Enable Easy Tier for volumes
+
+# storwize_svc_flashcopy_timeout=120
+#### (StrOpt) Maximum number of seconds to wait for FlashCopy to
+####          beprepared. Maximum value is 600 seconds (10 minutes).
+
+
+######## defined in cinder.volume.xiv ########
+
+# xiv_proxy=xiv_openstack.nova_proxy.XIVNovaProxy
+#### (StrOpt) Proxy driver
+
+
+######## defined in cinder.volume.zadara ########
+
+# zadara_vpsa_ip=<None>
+#### (StrOpt) Management IP of Zadara VPSA
+
+# zadara_vpsa_port=<None>
+#### (StrOpt) Zadara VPSA port number
+
+# zadara_vpsa_use_ssl=false
+#### (BoolOpt) Use SSL connection
+
+# zadara_user=<None>
+#### (StrOpt) User name for the VPSA
+
+# zadara_password=<None>
+#### (StrOpt) Password for the VPSA
+
+# zadara_vpsa_poolname=<None>
+#### (StrOpt) Name of VPSA storage pool for volumes
+
+# zadara_default_cache_policy=write-through
+#### (StrOpt) Default cache policy for volumes
+
+# zadara_default_encryption=NO
+#### (StrOpt) Default encryption policy for volumes
+
+# zadara_default_striping_mode=simple
+#### (StrOpt) Default striping mode for volumes
+
+# zadara_default_stripesize=64
+#### (StrOpt) Default stripe size for volumes
+
+# zadara_vol_name_template=OS_%s
+#### (StrOpt) Default template for VPSA volume names
+
+# zadara_vpsa_auto_detach_on_delete=true
+#### (BoolOpt) Automatically detach from servers on volume delete
+
+# zadara_vpsa_allow_nonexistent_delete=true
+#### (BoolOpt) Don't halt on deletion of non-existing volumes
+
+
+# Total option count: 217
