@@ -47,11 +47,14 @@ from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
+from cinder import quota
 from cinder import utils
 from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
+
+QUOTAS = quota.QUOTAS
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -100,7 +103,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.info(_("volume %s: skipping export"), volume['name'])
 
     def create_volume(self, context, volume_id, snapshot_id=None,
-                      image_id=None):
+                      image_id=None, reservations=None):
         """Creates and exports the volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
@@ -147,8 +150,14 @@ class VolumeManager(manager.SchedulerDependentManager):
             model_update = self.driver.create_export(context, volume_ref)
             if model_update:
                 self.db.volume_update(context, volume_ref['id'], model_update)
+
+            # Commit the reservation
+            if reservations:
+                QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
+                if reservations:
+                    QUOTAS.rollback(context, reservations)
                 self.db.volume_update(context,
                                       volume_ref['id'], {'status': 'error'})
 
@@ -195,9 +204,22 @@ class VolumeManager(manager.SchedulerDependentManager):
                                       volume_ref['id'],
                                       {'status': 'error_deleting'})
 
+        # Get reservations
+        try:
+            reservations = QUOTAS.reserve(context, volumes=-1,
+                                          gigabytes=-volume_ref['size'])
+        except Exception:
+            reservations = None
+            LOG.exception(_("Failed to update usages deleting volume"))
+
         self.db.volume_destroy(context, volume_id)
         LOG.debug(_("volume %s: deleted successfully"), volume_ref['name'])
         self._notify_about_volume_usage(context, volume_ref, "delete.end")
+
+        # Commit the reservations
+        if reservations:
+            QUOTAS.commit(context, reservations)
+
         return True
 
     def create_snapshot(self, context, volume_id, snapshot_id):
