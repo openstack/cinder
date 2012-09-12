@@ -164,10 +164,12 @@ class API(base.Base):
             }
 
         volume = self.db.volume_create(context, options)
-        self._cast_create_volume(context, volume['id'], snapshot_id, image_id)
+        self._cast_create_volume(context, volume['id'], snapshot_id,
+                                 image_id, reservations)
         return volume
 
-    def _cast_create_volume(self, context, volume_id, snapshot_id, image_id):
+    def _cast_create_volume(self, context, volume_id, snapshot_id,
+                            image_id, reservations):
 
         # NOTE(Rongze Zhu): It is a simple solution for bug 1008866
         # If snapshot_id is set, make the call create volume directly to
@@ -186,7 +188,8 @@ class API(base.Base):
                      {"method": "create_volume",
                       "args": {"volume_id": volume_id,
                                "snapshot_id": snapshot_id,
-                               "image_id": image_id}})
+                               "image_id": image_id,
+                               "reservations": reservations}})
         else:
             rpc.cast(context,
                      FLAGS.scheduler_topic,
@@ -194,7 +197,8 @@ class API(base.Base):
                       "args": {"topic": FLAGS.volume_topic,
                                "volume_id": volume_id,
                                "snapshot_id": snapshot_id,
-                               "image_id": image_id}})
+                               "image_id": image_id,
+                               "reservations": reservations}})
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):
