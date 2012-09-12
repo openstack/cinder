@@ -103,14 +103,6 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_create_no_body(self):
-        body = {}
-        req = fakes.HTTPRequest.blank('/v1/volumes')
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
-                          self.controller.create,
-                          req,
-                          body)
-
     def test_volume_create_with_image_id(self):
         self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
@@ -625,3 +617,34 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
             },
         }
         self.assertEquals(request['body'], expected)
+
+
+class VolumesUnprocessableEntityTestCase(test.TestCase):
+
+    """
+    Tests of places we throw 422 Unprocessable Entity from
+    """
+
+    def setUp(self):
+        super(VolumesUnprocessableEntityTestCase, self).setUp()
+        self.ext_mgr = extensions.ExtensionManager()
+        self.ext_mgr.extensions = {}
+        self.controller = volumes.VolumeController(self.ext_mgr)
+
+    def _unprocessable_volume_create(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req.method = 'POST'
+
+        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.create, req, body)
+
+    def test_create_no_body(self):
+        self._unprocessable_volume_create(body=None)
+
+    def test_create_missing_volume(self):
+        body = {'foo': {'a': 'b'}}
+        self._unprocessable_volume_create(body=body)
+
+    def test_create_malformed_entity(self):
+        body = {'volume': 'string'}
+        self._unprocessable_volume_create(body=body)
