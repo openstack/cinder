@@ -104,6 +104,7 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
             shutil.rmtree(self.persist_tempdir)
         except OSError:
             pass
+        super(TgtAdmTestCase, self).tearDown()
 
 
 class IetAdmTestCase(test.TestCase, TargetAdminTestCase):
