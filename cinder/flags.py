@@ -213,6 +213,9 @@ global_opts = [
                default='noauth',
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),
+    cfg.StrOpt('control_exchange',
+               default='cinder',
+               help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
 ]
 
 FLAGS.register_opts(global_opts)
