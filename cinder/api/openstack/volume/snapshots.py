@@ -84,7 +84,7 @@ class SnapshotsTemplate(xmlutil.TemplateBuilder):
         return xmlutil.MasterTemplate(root, 1)
 
 
-class SnapshotsController(object):
+class SnapshotsController(wsgi.Controller):
     """The Volumes API controller for the OpenStack API."""
 
     def __init__(self, ext_mgr=None):
@@ -148,8 +148,8 @@ class SnapshotsController(object):
         """Creates a new snapshot."""
         context = req.environ['cinder.context']
 
-        if not body:
-            return exc.HTTPUnprocessableEntity()
+        if not self.is_valid_body(body, 'snapshot'):
+            raise exc.HTTPUnprocessableEntity()
 
         snapshot = body['snapshot']
         volume_id = snapshot['volume_id']
