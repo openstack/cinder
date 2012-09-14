@@ -180,9 +180,9 @@ global_opts = [
     cfg.StrOpt('storage_availability_zone',
                default='cinder',
                help='availability zone of this node'),
-    cfg.StrOpt('notification_driver',
-               default='cinder.openstack.common.notifier.no_op_notifier',
-               help='Default driver for sending notifications'),
+    cfg.ListOpt('memcached_servers',
+                default=None,
+                help='Memcached servers or None for in process cache.'),
     cfg.StrOpt('instance_usage_audit_period',
                default='month',
                help='time period to generate instance usages for.  '

@@ -246,10 +246,9 @@ class JSONFormatter(logging.Formatter):
 
 class PublishErrorsHandler(logging.Handler):
     def emit(self, record):
-        if 'list_notifier_drivers' in CONF:
-            if ('cinder.openstack.common.notifier.log_notifier' in
-                CONF.list_notifier_drivers):
-                return
+        if ('cinder.openstack.common.notifier.log_notifier' in
+            CONF.notification_driver):
+            return
         notifier.api.notify(None, 'error.publisher',
                             'error_notification',
                             notifier.api.ERROR,

@@ -24,6 +24,7 @@ from cinder import test
 from cinder.volume import utils as volume_utils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
 
 
@@ -36,10 +37,8 @@ class UsageInfoTestCase(test.TestCase):
     def setUp(self):
         super(UsageInfoTestCase, self).setUp()
         self.flags(connection_type='fake',
-         host='fake',
-         notification_driver='cinder.openstack.common.notifier.test_notifier')
-        self.stubs.Set(flags.FLAGS, 'notification_driver',
-                'cinder.openstack.common.notifier.test_notifier')
+                   host='fake',
+                   notification_driver=[test_notifier.__name__])
         self.volume = importutils.import_object(FLAGS.volume_manager)
         self.user_id = 'fake'
         self.project_id = 'fake'
@@ -47,6 +46,10 @@ class UsageInfoTestCase(test.TestCase):
         self.volume_size = 0
         self.context = context.RequestContext(self.user_id, self.project_id)
         test_notifier.NOTIFICATIONS = []
+
+    def tearDown(self):
+        notifier_api._reset_drivers()
+        super(UsageInfoTestCase, self).tearDown()
 
     def _create_volume(self, params={}):
         """Create a test volume"""
