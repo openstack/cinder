@@ -105,11 +105,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.debug(_('Resuming any in progress delete operations'))
         for volume in volumes:
             if volume['status'] == 'deleting':
-                LOG.info(_('Resuming delete on volume: %s' % volume['id']))
+                LOG.info(_('Resuming delete on volume: %s') % volume['id'])
                 self.delete_volume(ctxt, volume['id'])
 
     def create_volume(self, context, volume_id, snapshot_id=None,
-                      image_id=None, reservations=None):
+                      image_id=None):
         """Creates and exports the volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
@@ -157,13 +157,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             if model_update:
                 self.db.volume_update(context, volume_ref['id'], model_update)
 
-            # Commit the reservation
-            if reservations:
-                QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
-                if reservations:
-                    QUOTAS.rollback(context, reservations)
                 self.db.volume_update(context,
                                       volume_ref['id'], {'status': 'error'})
 
