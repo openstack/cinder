@@ -16,7 +16,7 @@
 
 CINDER_VERSION = ['2012', '2', None]
 YEAR, COUNT, REVISION = CINDER_VERSION
-FINAL = False   # This becomes true at Release Candidate time
+FINAL = True   # This becomes true at Release Candidate time
 
 
 def canonical_version_string():
