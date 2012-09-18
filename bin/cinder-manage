@@ -251,9 +251,11 @@ class ImportCommands(object):
         return Mapper
 
     def _open_session(self, con_info):
+        # Note(jdg): The echo option below sets whether to dispaly db command
+        # debug info.
         engine = create_engine(con_info,
                                convert_unicode=True,
-                               echo=True)
+                               echo=False)
         session = sessionmaker(bind=engine)
         return (session(), engine)
 
@@ -294,6 +296,14 @@ class ImportCommands(object):
         (src, src_engine) = self._open_session(src_db)
         src_meta = MetaData(bind=src_engine)
         (dest, dest_engine) = self._open_session(dest_db)
+
+        # First make sure nova is at Folsom
+        table = Table('migrate_version', src_meta, autoload=True)
+        if src.query(table).first().version < 132:
+            print (_('ERROR: Specified Nova DB is not at a compatible '
+                     'migration version!\nNova must be at Folsom or newer '
+                     'to import into Cinder database.'))
+            sys.exit(2)
 
         for table_name in table_list:
             print (_('Importing table %s...') % table_name)
