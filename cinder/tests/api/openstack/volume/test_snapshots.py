@@ -118,6 +118,49 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(resp_dict['snapshot']['display_description'],
                         snapshot['display_description'])
 
+    def test_snapshot_update(self):
+        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
+        self.stubs.Set(volume.api.API, "update_snapshot",
+                       fakes.stub_snapshot_update)
+        updates = {
+            "display_name": "Updated Test Name",
+        }
+        body = {"snapshot": updates}
+        req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
+        res_dict = self.controller.update(req, UUID, body)
+        expected = {'snapshot': {
+            'id': UUID,
+            'volume_id': 12,
+            'status': 'available',
+            'size': 100,
+            'created_at': None,
+            'display_name': 'Updated Test Name',
+            'display_description': 'Default description',
+        }}
+        self.assertEquals(expected, res_dict)
+
+    def test_snapshot_update_missing_body(self):
+        body = {}
+        req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
+        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.update, req, UUID, body)
+
+    def test_snapshot_update_invalid_body(self):
+        body = {'display_name': 'missing top level snapshot key'}
+        req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
+        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.update, req, UUID, body)
+
+    def test_snapshot_update_not_found(self):
+        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
+        updates = {
+            "display_name": "Updated Test Name",
+        }
+        body = {"snapshot": updates}
+        req = fakes.HTTPRequest.blank('/v1/snapshots/not-the-uuid')
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.update, req,
+                          'not-the-uuid', body)
+
     def test_snapshot_delete(self):
         self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
         self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)

@@ -277,3 +277,7 @@ def stub_snapshot_get_all(self):
 
 def stub_snapshot_get_all_by_project(self, context):
     return [stub_snapshot(1)]
+
+
+def stub_snapshot_update(self, context, *args, **param):
+    pass

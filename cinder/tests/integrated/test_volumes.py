@@ -177,5 +177,22 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         self.assertEqual(created_volume_id, found_volume['id'])
         self.assertEqual(availability_zone, found_volume['availability_zone'])
 
+    def test_create_and_update_volume(self):
+        # Create vol1
+        created_volume = self.api.post_volume({'volume': {
+            'size': 1, 'display_name': 'vol1'}})
+        self.assertEqual(created_volume['display_name'], 'vol1')
+        created_volume_id = created_volume['id']
+
+        # update volume
+        body = {'volume': {'display_name': 'vol-one'}}
+        updated_volume = self.api.put_volume(created_volume_id, body)
+        self.assertEqual(updated_volume['display_name'], 'vol-one')
+
+        # check for update
+        found_volume = self.api.get_volume(created_volume_id)
+        self.assertEqual(created_volume_id, found_volume['id'])
+        self.assertEqual(found_volume['display_name'], 'vol-one')
+
 if __name__ == "__main__":
     unittest.main()

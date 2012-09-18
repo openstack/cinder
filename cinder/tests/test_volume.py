@@ -158,7 +158,7 @@ class VolumeTestCase(test.TestCase):
         """Test volume can be created from a snapshot."""
         volume_src = self._create_volume()
         self.volume.create_volume(self.context, volume_src['id'])
-        snapshot_id = self._create_snapshot(volume_src['id'])
+        snapshot_id = self._create_snapshot(volume_src['id'])['id']
         self.volume.create_snapshot(self.context, volume_src['id'],
                                     snapshot_id)
         volume_dst = self._create_volume(0, snapshot_id)
@@ -250,13 +250,13 @@ class VolumeTestCase(test.TestCase):
         snap['project_id'] = 'fake'
         snap['volume_id'] = volume_id
         snap['status'] = "creating"
-        return db.snapshot_create(context.get_admin_context(), snap)['id']
+        return db.snapshot_create(context.get_admin_context(), snap)
 
     def test_create_delete_snapshot(self):
         """Test snapshot can be created and deleted."""
         volume = self._create_volume()
         self.volume.create_volume(self.context, volume['id'])
-        snapshot_id = self._create_snapshot(volume['id'])
+        snapshot_id = self._create_snapshot(volume['id'])['id']
         self.volume.create_snapshot(self.context, volume['id'], snapshot_id)
         self.assertEqual(snapshot_id,
                          db.snapshot_get(context.get_admin_context(),
@@ -318,7 +318,7 @@ class VolumeTestCase(test.TestCase):
         """Test volume can't be deleted with dependent snapshots."""
         volume = self._create_volume()
         self.volume.create_volume(self.context, volume['id'])
-        snapshot_id = self._create_snapshot(volume['id'])
+        snapshot_id = self._create_snapshot(volume['id'])['id']
         self.volume.create_snapshot(self.context, volume['id'], snapshot_id)
         self.assertEqual(snapshot_id,
                          db.snapshot_get(context.get_admin_context(),
@@ -340,7 +340,7 @@ class VolumeTestCase(test.TestCase):
         """Test snapshot can be created and deleted."""
         volume = self._create_volume()
         self.volume.create_volume(self.context, volume['id'])
-        snapshot_id = self._create_snapshot(volume['id'])
+        snapshot_id = self._create_snapshot(volume['id'])['id']
         self.volume.create_snapshot(self.context, volume['id'], snapshot_id)
         snapshot = db.snapshot_get(context.get_admin_context(),
                                    snapshot_id)
@@ -388,7 +388,7 @@ class VolumeTestCase(test.TestCase):
         volume = self._create_volume()
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
-        snapshot_id = self._create_snapshot(volume_id)
+        snapshot_id = self._create_snapshot(volume_id)['id']
         self.volume.create_snapshot(self.context, volume_id, snapshot_id)
 
         self.mox.StubOutWithMock(self.volume.driver, 'delete_snapshot')
@@ -716,6 +716,30 @@ class VolumeTestCase(test.TestCase):
         volume_api.roll_detaching(self.context, volume)
         volume = db.volume_get(self.context, volume['id'])
         self.assertEqual(volume['status'], "in-use")
+
+    def test_volume_api_update(self):
+        # create a raw vol
+        volume = self._create_volume()
+        # use volume.api to update name
+        volume_api = cinder.volume.api.API()
+        update_dict = {'display_name': 'test update name'}
+        volume_api.update(self.context, volume, update_dict)
+        # read changes from db
+        vol = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEquals(vol['display_name'], 'test update name')
+
+    def test_volume_api_update_snapshot(self):
+        # create raw snapshot
+        volume = self._create_volume()
+        snapshot = self._create_snapshot(volume['id'])
+        self.assertEquals(snapshot['display_name'], None)
+        # use volume.api to update name
+        volume_api = cinder.volume.api.API()
+        update_dict = {'display_name': 'test update name'}
+        volume_api.update_snapshot(self.context, snapshot, update_dict)
+        # read changes from db
+        snap = db.snapshot_get(context.get_admin_context(), snapshot['id'])
+        self.assertEquals(snap['display_name'], 'test update name')
 
 
 class DriverTestCase(test.TestCase):

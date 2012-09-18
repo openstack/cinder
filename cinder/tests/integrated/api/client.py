@@ -214,3 +214,6 @@ class TestOpenStackClient(object):
 
     def delete_volume(self, volume_id):
         return self.api_delete('/volumes/%s' % volume_id)
+
+    def put_volume(self, volume_id, volume):
+        return self.api_put('/volumes/%s' % volume_id, volume)['volume']

@@ -23,6 +23,7 @@
     "volume:delete_snapshot": [],
     "volume:get_snapshot": [],
     "volume:get_all_snapshots": [],
+    "volume:update_snapshot": [],
 
     "volume_extension:volume_admin_actions:reset_status": [["rule:admin_api"]],
     "volume_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],
