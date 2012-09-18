@@ -72,9 +72,8 @@ class VolumeTestCase(test.TestCase):
         return 1
 
     @staticmethod
-    def _create_volume(size='0', snapshot_id=None, image_id=None,
+    def _create_volume(size=0, snapshot_id=None, image_id=None,
                        metadata=None):
-        #def _create_volume(size=0, snapshot_id=None):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -123,7 +122,7 @@ class VolumeTestCase(test.TestCase):
     def test_create_delete_volume_with_metadata(self):
         """Test volume can be created with metadata and deleted."""
         test_meta = {'fake_key': 'fake_value'}
-        volume = self._create_volume('0', None, metadata=test_meta)
+        volume = self._create_volume(0, None, metadata=test_meta)
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
         result_meta = {
@@ -182,7 +181,7 @@ class VolumeTestCase(test.TestCase):
         #              volume_create
         return True
         try:
-            volume = self._create_volume('1001')
+            volume = self._create_volume(1001)
             self.volume.create_volume(self.context, volume)
             self.fail("Should have thrown TypeError")
         except TypeError:
