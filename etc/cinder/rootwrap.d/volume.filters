@@ -30,3 +30,7 @@ iscsiadm_usr: CommandFilter, /usr/bin/iscsiadm, root
 
 #cinder/volume/.py: utils.temporary_chown(path, 0), ...
 chown: CommandFilter, /bin/chown, root
+
+# cinder/volume/driver.py
+dmsetup: CommandFilter, /sbin/dmsetup, root
+dmsetup_usr: CommandFilter, /usr/sbin/dmsetup, root
