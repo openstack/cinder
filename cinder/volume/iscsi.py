@@ -109,8 +109,7 @@ class TgtAdm(TargetAdmin):
         # Note(jdg) tid and lun aren't used by TgtAdm but remain for
         # compatibility
 
-        if not os.path.exists(FLAGS.volumes_dir):
-            os.makedirs(FLAGS.volumes_dir)
+        utils.ensure_tree(FLAGS.volumes_dir)
 
         vol_id = name.split(':')[1]
         volume_conf = """
@@ -194,8 +193,8 @@ class IetAdm(TargetAdmin):
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
         LOG.info(_('Removing volume: %s') % vol_id)
-        self._delete_target(tid, **kwargs)
         self._delete_logicalunit(tid, lun, **kwargs)
+        self._delete_target(tid, **kwargs)
 
     def _new_target(self, name, tid, **kwargs):
         self._run('--op', 'new',
