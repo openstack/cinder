@@ -72,7 +72,7 @@ san_opts = [
     cfg.StrOpt('san_zfs_volume_base',
                default='rpool/',
                help='The ZFS path under which to create zvols for volumes.'),
-    ]
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(san_opts)
@@ -86,8 +86,8 @@ class SanISCSIDriver(cinder.volume.driver.ISCSIDriver):
     remote protocol.
     """
 
-    def __init__(self):
-        super(SanISCSIDriver, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(SanISCSIDriver, self).__init__(*args, **kwargs)
         self.run_local = FLAGS.san_is_local
 
     def _build_iscsi_target_name(self, volume):
@@ -120,7 +120,7 @@ class SanISCSIDriver(cinder.volume.driver.ISCSIDriver):
             return utils.execute(*cmd, **kwargs)
         else:
             check_exit_code = kwargs.pop('check_exit_code', None)
-            command = ' '.join(*cmd)
+            command = ' '.join(cmd)
             return self._run_ssh(command, check_exit_code)
 
     def _run_ssh(self, command, check_exit_code=True):
@@ -208,12 +208,15 @@ class SolarisISCSIDriver(SanISCSIDriver):
 
     Also make sure you can login using san_login & san_password/san_private_key
     """
+    def __init__(self, *cmd, **kwargs):
+        super(SolarisISCSIDriver, self).__init__(*cmd,
+                                                 execute=self._execute,
+                                                 **kwargs)
 
     def _execute(self, *cmd, **kwargs):
         new_cmd = ['pfexec']
-        new_cmd.extend(*cmd)
-        return super(SolarisISCSIDriver, self)._execute(self,
-                                                        *new_cmd,
+        new_cmd.extend(cmd)
+        return super(SolarisISCSIDriver, self)._execute(*new_cmd,
                                                         **kwargs)
 
     def _view_exists(self, luid):
