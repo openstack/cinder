@@ -56,7 +56,7 @@ def _usage_from_volume(context, volume_ref, **kw):
           tenant_id=volume_ref['project_id'],
           user_id=volume_ref['user_id'],
           volume_id=volume_ref['id'],
-          volume_type=volume_ref['volume_type'],
+          volume_type=volume_ref['volume_type_id'],
           display_name=volume_ref['display_name'],
           launched_at=null_safe_str(volume_ref['launched_at']),
           created_at=null_safe_str(volume_ref['created_at']),
