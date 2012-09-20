@@ -33,6 +33,7 @@ import random
 import re
 import shlex
 import shutil
+import signal
 import socket
 import struct
 import sys
@@ -88,6 +89,12 @@ def find_config(config_path):
 def fetchfile(url, target):
     LOG.debug(_('Fetching %s') % url)
     execute('curl', '--fail', url, '-o', target)
+
+
+def _subprocess_setup():
+    # Python installs a SIGPIPE handler by default. This is usually not what
+    # non-Python subprocesses expect.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 def execute(*cmd, **kwargs):
@@ -160,6 +167,7 @@ def execute(*cmd, **kwargs):
                                    stdout=_PIPE,
                                    stderr=_PIPE,
                                    close_fds=True,
+                                   preexec_fn=_subprocess_setup,
                                    shell=shell)
             result = None
             if process_input is not None:
