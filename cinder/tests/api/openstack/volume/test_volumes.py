@@ -109,11 +109,11 @@ class VolumeApiTest(test.TestCase):
         vol = {"size": '1',
                "display_name": "Volume Test Name",
                "display_description": "Volume Test Desc",
-               "availability_zone": "cinder",
+               "availability_zone": "nova",
                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
         expected = {'volume': {'status': 'fakestatus',
                            'display_description': 'Volume Test Desc',
-                           'availability_zone': 'cinder',
+                           'availability_zone': 'nova',
                            'display_name': 'Volume Test Name',
                            'attachments': [{'device': '/',
                                             'server_id': 'fakeuuid',
