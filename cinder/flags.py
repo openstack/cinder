@@ -177,8 +177,9 @@ global_opts = [
                default=socket.gethostname(),
                help='Name of this node.  This can be an opaque identifier.  '
                     'It is not necessarily a hostname, FQDN, or IP address.'),
+    # NOTE(vish): default to nova for compatibility with nova installs
     cfg.StrOpt('storage_availability_zone',
-               default='cinder',
+               default='nova',
                help='availability zone of this node'),
     cfg.ListOpt('memcached_servers',
                 default=None,

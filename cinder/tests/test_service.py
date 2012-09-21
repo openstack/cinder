@@ -129,12 +129,12 @@ class ServiceTestCase(test.TestCase):
                           'binary': binary,
                           'topic': topic,
                           'report_count': 0,
-                          'availability_zone': 'cinder'}
+                          'availability_zone': 'nova'}
         service_ref = {'host': host,
                           'binary': binary,
                           'topic': topic,
                           'report_count': 0,
-                          'availability_zone': 'cinder',
+                          'availability_zone': 'nova',
                           'id': 1}
 
         service.db.service_get_by_args(mox.IgnoreArg(),
@@ -162,12 +162,12 @@ class ServiceTestCase(test.TestCase):
                           'binary': binary,
                           'topic': topic,
                           'report_count': 0,
-                          'availability_zone': 'cinder'}
+                          'availability_zone': 'nova'}
         service_ref = {'host': host,
                           'binary': binary,
                           'topic': topic,
                           'report_count': 0,
-                          'availability_zone': 'cinder',
+                          'availability_zone': 'nova',
                           'id': 1}
 
         service.db.service_get_by_args(mox.IgnoreArg(),
