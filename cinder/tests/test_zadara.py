@@ -411,7 +411,6 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.create_export(context, volume)
         self.driver.ensure_export(context, volume)
         self.driver.remove_export(context, volume)
-        self.driver.check_for_export(context, 0)
 
         self.assertRaises(NotImplementedError,
                           self.driver.create_volume_from_snapshot,

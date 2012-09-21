@@ -993,9 +993,6 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         self._refresh_dfm_luns(lun.HostId)
         self._discover_dataset_luns(dataset, clone_name)
 
-    def check_for_export(self, context, volume_id):
-        raise NotImplementedError()
-
 
 class NetAppLun(object):
     """Represents a LUN on NetApp storage."""
@@ -1233,9 +1230,6 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         extra_args['Description'] = volume['display_description']
         extra_args['SpaceReserved'] = True
         self._clone_lun(lun.handle, new_name, extra_args)
-
-    def check_for_export(self, context, volume_id):
-        raise NotImplementedError()
 
     def _get_qos_type(self, volume):
         """Get the storage service type for a volume."""

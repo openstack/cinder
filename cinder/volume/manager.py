@@ -399,13 +399,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.terminate_connection(volume_ref, connector)
 
-    def check_for_export(self, context, instance_uuid):
-        """Make sure whether volume is exported."""
-        volumes = self.db.volume_get_all_by_instance_uuid(context,
-                                                          instance_uuid)
-        for volume in volumes:
-            self.driver.check_for_export(context, volume['id'])
-
     def _volume_stats_changed(self, stat1, stat2):
         if FLAGS.volume_force_update_capabilities:
             return True
