@@ -319,9 +319,6 @@ class VolumeController(wsgi.Controller):
                 kwargs['image_id'] = image_uuid
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
-        # NOTE(vish): Temporary hack to work around gating issues
-        if kwargs['availability_zone'] == 'cinder':
-            kwargs['availability_zone'] = 'nova'
 
         new_volume = self.volume_api.create(context,
                                             size,
