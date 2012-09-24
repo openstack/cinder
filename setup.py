@@ -21,17 +21,20 @@ import setuptools
 from cinder.openstack.common import setup as common_setup
 from cinder import version
 
+requires = common_setup.parse_requirements()
+
 setuptools.setup(name='cinder',
       version=version.canonical_version_string(),
-      description='cloud computing fabric controller',
+      description='block storage service',
       author='OpenStack',
       author_email='cinder@lists.launchpad.net',
       url='http://www.openstack.org/',
       cmdclass=common_setup.get_cmdclass(),
       packages=setuptools.find_packages(exclude=['bin', 'smoketests']),
+      install_requires=requires,
       include_package_data=True,
       test_suite='nose.collector',
-      setup_requires=['setuptools-git>=0.4'],
+      setup_requires=['setuptools_git>=0.4'],
       scripts=['bin/cinder-all',
                'bin/cinder-api',
                'bin/cinder-clear-rabbit-queues',
@@ -39,5 +42,6 @@ setuptools.setup(name='cinder',
                'bin/cinder-rootwrap',
                'bin/cinder-scheduler',
                'bin/cinder-volume',
-               'bin/cinder-volume-usage-audit'],
+               'bin/cinder-volume-usage-audit',
+              ],
         py_modules=[])
