@@ -1,10 +1,10 @@
 SQLAlchemy>=0.7.3
 amqplib==0.6.1
 anyjson==0.2.4
-eventlet
+eventlet>=0.9.17
 kombu==1.0.4
 lockfile==0.8
-lxml==2.3
+lxml>=2.3,<=2.3.5
 python-daemon==1.5.5
 routes==1.12.3
 WebOb==1.0.8
@@ -17,4 +17,5 @@ suds==0.4
 paramiko
 Babel>=0.9.6
 iso8601>=0.1.4
-python-glanceclient<2
+setuptools_git>=0.4
+python-glanceclient>=0.5.0,<2
