@@ -21,11 +21,11 @@ import os.path
 import StringIO
 import urllib2
 
-from cinder.common import policy as common_policy
 from cinder import context
 from cinder import exception
 from cinder import flags
-import cinder.common.policy
+import cinder.openstack.common.policy
+from cinder.openstack.common import policy as common_policy
 from cinder import policy
 from cinder import test
 from cinder import utils
@@ -169,8 +169,9 @@ class DefaultPolicyTestCase(test.TestCase):
         self.context = context.RequestContext('fake', 'fake')
 
     def _set_brain(self, default_rule):
-        brain = cinder.common.policy.HttpBrain(self.rules, default_rule)
-        cinder.common.policy.set_brain(brain)
+        brain = cinder.openstack.common.policy.HttpBrain(self.rules,
+                                                         default_rule)
+        cinder.openstack.common.policy.set_brain(brain)
 
     def tearDown(self):
         super(DefaultPolicyTestCase, self).tearDown()

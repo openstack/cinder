@@ -17,10 +17,10 @@
 
 """Policy Engine For Cinder"""
 
-from cinder.common import policy
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
+from cinder.openstack.common import policy
 from cinder import utils
 
 
@@ -84,7 +84,5 @@ def enforce(context, action, target):
     match_list = ('rule:%s' % action,)
     credentials = context.to_dict()
 
-    try:
-        policy.enforce(match_list, target, credentials)
-    except policy.NotAuthorized:
-        raise exception.PolicyNotAuthorized(action=action)
+    policy.enforce(match_list, target, credentials,
+                   exception.PolicyNotAuthorized, action=action)
