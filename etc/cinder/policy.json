@@ -1,8 +1,9 @@
 {
-    "admin_or_owner":  [["role:admin"], ["project_id:%(project_id)s"]],
+    "context_is_admin": [["role:admin"]],
+    "admin_or_owner":  [["is_admin:True"], ["project_id:%(project_id)s"]],
     "default": [["rule:admin_or_owner"]],
 
-    "admin_api": [["role:admin"]],
+    "admin_api": [["is_admin:True"]],
 
     "volume:create": [],
     "volume:get_all": [],

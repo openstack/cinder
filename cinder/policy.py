@@ -86,3 +86,21 @@ def enforce(context, action, target):
 
     policy.enforce(match_list, target, credentials,
                    exception.PolicyNotAuthorized, action=action)
+
+
+def check_is_admin(roles):
+    """Whether or not roles contains 'admin' role according to policy setting.
+
+    """
+    init()
+
+    action = 'context_is_admin'
+    match_list = ('rule:%s' % action,)
+    # include project_id on target to avoid KeyError if context_is_admin
+    # policy definition is missing, and default admin_or_owner rule
+    # attempts to apply.  Since our credentials dict does not include a
+    # project_id, this target can never match as a generic rule.
+    target = {'project_id': ''}
+    credentials = {'roles': roles}
+
+    return policy.enforce(match_list, target, credentials)
