@@ -184,6 +184,9 @@ global_opts = [
     cfg.ListOpt('memcached_servers',
                 default=None,
                 help='Memcached servers or None for in process cache.'),
+    cfg.StrOpt('default_volume_type',
+               default=None,
+               help='default volume type to use'),
     cfg.StrOpt('volume_usage_audit_period',
                default='month',
                help='time period to generate volume usages for.  '

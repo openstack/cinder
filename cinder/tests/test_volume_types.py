@@ -26,6 +26,7 @@ from cinder import test
 from cinder.volume import volume_types
 from cinder.db.sqlalchemy import session as sql_session
 from cinder.db.sqlalchemy import models
+from cinder.tests import fake_flags
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
@@ -79,6 +80,22 @@ class VolumeTypeTestCase(test.TestCase):
         total_volume_types = session.query(models.VolumeTypes).count()
         vol_types = volume_types.get_all_types(self.ctxt)
         self.assertEqual(total_volume_types, len(vol_types))
+
+    def test_get_default_volume_type(self):
+        """ Ensures default volume type can be retrieved """
+        volume_types.create(self.ctxt,
+                            fake_flags.def_vol_type,
+                            {})
+        default_vol_type = volume_types.get_default_volume_type()
+        self.assertEqual(default_vol_type.get('name'),
+                         fake_flags.def_vol_type)
+
+    def test_default_volume_type_missing_in_db(self):
+        """ Ensures proper exception raised if default volume type
+        is not in database. """
+        session = sql_session.get_session()
+        default_vol_type = volume_types.get_default_volume_type()
+        self.assertEqual(default_vol_type, {})
 
     def test_non_existent_vol_type_shouldnt_delete(self):
         """Ensures that volume type creation fails with invalid args"""

@@ -31,6 +31,7 @@ from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
+from cinder.volume import volume_types
 import cinder.policy
 from cinder import quota
 
@@ -146,10 +147,10 @@ class API(base.Base):
         if availability_zone is None:
             availability_zone = FLAGS.storage_availability_zone
 
-        if volume_type is None:
-            volume_type_id = None
-        else:
-            volume_type_id = volume_type.get('id', None)
+        if not volume_type:
+            volume_type = volume_types.get_default_volume_type()
+
+        volume_type_id = volume_type.get('id')
 
         options = {
             'size': size,

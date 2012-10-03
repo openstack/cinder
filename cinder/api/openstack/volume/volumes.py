@@ -289,8 +289,9 @@ class VolumeController(wsgi.Controller):
             try:
                 kwargs['volume_type'] = volume_types.get_volume_type_by_name(
                         context, req_volume_type)
-            except exception.NotFound:
-                raise exc.HTTPNotFound()
+            except exception.VolumeTypeNotFound:
+                explanation = 'Volume type not found.'
+                raise exc.HTTPNotFound(explanation=explanation)
 
         kwargs['metadata'] = volume.get('metadata', None)
 

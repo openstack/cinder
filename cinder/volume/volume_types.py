@@ -111,6 +111,25 @@ def get_volume_type_by_name(context, name):
     return db.volume_type_get_by_name(context, name)
 
 
+def get_default_volume_type():
+    """Get the default volume type."""
+    name = FLAGS.default_volume_type
+    vol_type = {}
+
+    if name is not None:
+        ctxt = context.get_admin_context()
+        try:
+            vol_type = get_volume_type_by_name(ctxt, name)
+        except exception.VolumeTypeNotFoundByName, e:
+            # Couldn't find volume type with the name in default_volume_type
+            # flag, record this issue and move on
+            #TODO(zhiteng) consider add notification to warn admin
+            LOG.exception(_('Default volume type is not found, '
+                            'please check default_volume_type config: %s'), e)
+
+    return vol_type
+
+
 def is_key_value_present(volume_type_id, key, value, volume_type=None):
     if volume_type_id is None:
         return False

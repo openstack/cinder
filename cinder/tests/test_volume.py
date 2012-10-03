@@ -40,6 +40,7 @@ import cinder.policy
 from cinder import quota
 from cinder import test
 from cinder.volume import iscsi
+from cinder.tests import fake_flags
 
 QUOTAS = quota.QUOTAS
 FLAGS = flags.FLAGS
@@ -137,6 +138,60 @@ class VolumeTestCase(test.TestCase):
                           db.volume_get,
                           self.context,
                           volume_id)
+
+    def test_create_volume_with_volume_type(self):
+        """Test volume creation with default volume type."""
+        def fake_reserve(context, expire=None, **deltas):
+            return ["RESERVATION"]
+
+        def fake_commit(context, reservations):
+            pass
+
+        def fake_rollback(context, reservations):
+            pass
+
+        self.stubs.Set(QUOTAS, "reserve", fake_reserve)
+        self.stubs.Set(QUOTAS, "commit", fake_commit)
+        self.stubs.Set(QUOTAS, "rollback", fake_rollback)
+
+        volume_api = cinder.volume.api.API()
+
+        # Create volume with default volume type while default
+        # volume type doesn't exist, volume_type_id should be NULL
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description')
+        self.assertEquals(volume['volume_type_id'], None)
+
+        # Create default volume type
+        vol_type = fake_flags.def_vol_type
+        db.volume_type_create(context.get_admin_context(),
+                              dict(name=vol_type, extra_specs={}))
+
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 vol_type)
+
+        # Create volume with default volume type
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description')
+        self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
+
+        # Create volume with specific volume type
+        vol_type = 'test'
+        db.volume_type_create(context.get_admin_context(),
+                              dict(name=vol_type, extra_specs={}))
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 vol_type)
+
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description',
+                                   volume_type=db_vol_type)
+        self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
 
     def test_delete_busy_volume(self):
         """Test volume survives deletion if driver reports it as busy."""

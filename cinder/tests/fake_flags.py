@@ -25,8 +25,11 @@ flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
 flags.DECLARE('xiv_proxy', 'cinder.volume.xiv')
 
+def_vol_type = 'fake_vol_type'
+
 
 def set_defaults(conf):
+    conf.set_default('default_volume_type', def_vol_type)
     conf.set_default('volume_driver', 'cinder.volume.driver.FakeISCSIDriver')
     conf.set_default('connection_type', 'fake')
     conf.set_default('fake_rabbit', True)
