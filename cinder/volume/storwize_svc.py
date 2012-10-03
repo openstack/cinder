@@ -495,9 +495,6 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
     def remove_export(self, context, volume):
         pass
 
-    def check_for_export(self, context, volume_id):
-        raise NotImplementedError()
-
     def initialize_connection(self, volume, connector):
         """Perform the necessary work so that an iSCSI connection can be made.
 

@@ -389,10 +389,6 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         """Irrelevant for VPSA volumes. Export removed during detach."""
         pass
 
-    def check_for_export(self, context, volume_id):
-        """Irrelevant for VPSA volumes. Export created during attachment."""
-        pass
-
     def initialize_connection(self, volume, connector):
         """
         Attach volume to initiator/host.

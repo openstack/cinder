@@ -827,10 +827,6 @@ class ISCSITestCase(DriverTestCase):
 
         return volume_id_list
 
-    def test_check_for_export_with_no_volume(self):
-        instance_uuid = '12345678-1234-5678-1234-567812345678'
-        self.volume.check_for_export(self.context, instance_uuid)
-
 
 class VolumePolicyTestCase(test.TestCase):
 

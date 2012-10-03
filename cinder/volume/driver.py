@@ -238,10 +238,6 @@ class VolumeDriver(object):
         """Removes an export for a logical volume."""
         raise NotImplementedError()
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
-        raise NotImplementedError()
-
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         raise NotImplementedError()
@@ -538,33 +534,6 @@ class ISCSIDriver(VolumeDriver):
     def terminate_connection(self, volume, connector):
         pass
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
-        vol_uuid_file = 'volume-%s' % volume_id
-        volume_path = os.path.join(FLAGS.volumes_dir, vol_uuid_file)
-        if os.path.isfile(volume_path):
-            iqn = '%s%s' % (FLAGS.iscsi_target_prefix,
-                            vol_uuid_file)
-        else:
-            raise exception.PersistentVolumeFileNotFound(volume_id=volume_id)
-
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
-        if not isinstance(self.tgtadm, iscsi.TgtAdm):
-            tid = self.db.volume_get_iscsi_target_num(context, volume_id)
-        else:
-            tid = 0
-
-        try:
-            self.tgtadm.show_target(tid, iqn=iqn)
-        except exception.ProcessExecutionError, e:
-            # Instances remount read-only in this case.
-            # /etc/init.d/iscsitarget restart and rebooting cinder-volume
-            # is better since ensure_export() works at boot time.
-            LOG.error(_("Cannot confirm exported volume "
-                        "id:%(volume_id)s.") % locals())
-            raise
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         volume_path = self.local_path(volume)
@@ -714,10 +683,6 @@ class RBDDriver(VolumeDriver):
         """Removes an export for a logical volume"""
         pass
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
-        pass
-
     def initialize_connection(self, volume, connector):
         return {
             'driver_volume_type': 'rbd',
@@ -861,10 +826,6 @@ class SheepdogDriver(VolumeDriver):
         """Removes an export for a logical volume"""
         pass
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
-        pass
-
     def initialize_connection(self, volume, connector):
         return {
             'driver_volume_type': 'sheepdog',
@@ -907,9 +868,6 @@ class LoggingVolumeDriver(VolumeDriver):
 
     def terminate_connection(self, volume, connector):
         self.log_action('terminate_connection', volume)
-
-    def check_for_export(self, context, volume_id):
-        self.log_action('check_for_export', volume_id)
 
     _LOGS = []
 
