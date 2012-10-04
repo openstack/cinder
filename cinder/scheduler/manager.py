@@ -45,7 +45,7 @@ FLAGS.register_opt(scheduler_driver_opt)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes"""
 
-    RPC_API_VERSION = '1.0'
+    RPC_API_VERSION = '1.1'
 
     def __init__(self, scheduler_driver=None, *args, **kwargs):
         if not scheduler_driver:

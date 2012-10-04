@@ -31,6 +31,7 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     API version history:
 
         1.0 - Initial version.
+        1.1 - Add create_volume() method
     '''
 
     RPC_API_VERSION = '1.0'
@@ -38,6 +39,16 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     def __init__(self):
         super(SchedulerAPI, self).__init__(topic=FLAGS.scheduler_topic,
                 default_version=self.RPC_API_VERSION)
+
+    def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
+                      image_id=None):
+        return self.cast(ctxt, self.make_msg('create_volume',
+                                    topic=topic,
+                                    volume_id=volume_id,
+                                    snapshot_id=snapshot_id,
+                                    image_id=image_id),
+                         topic=None,
+                         version='1.1')
 
     def update_service_capabilities(self, ctxt, service_name, host,
             capabilities):
