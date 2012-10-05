@@ -24,6 +24,7 @@ import copy
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import local
 from cinder.openstack.common import timeutils
+from cinder import policy
 from cinder import utils
 
 
@@ -65,7 +66,7 @@ class RequestContext(object):
         self.roles = roles or []
         self.is_admin = is_admin
         if self.is_admin is None:
-            self.is_admin = 'admin' in [x.lower() for x in self.roles]
+            self.is_admin = policy.check_is_admin(self.roles)
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
         self.read_deleted = read_deleted

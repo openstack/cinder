@@ -1,5 +1,6 @@
 {
-    "admin_api": [["role:admin"]],
+    "context_is_admin": [["role:admin"]],
+    "admin_api": [["is_admin:True"]],
 
     "volume:create": [],
     "volume:get": [],
