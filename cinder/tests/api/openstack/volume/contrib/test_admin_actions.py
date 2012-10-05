@@ -18,6 +18,10 @@ def app():
 
 class AdminActionsTest(test.TestCase):
 
+    def setUp(self):
+        super(AdminActionsTest, self).setUp()
+        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+
     def test_reset_status_as_admin(self):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
@@ -113,6 +117,53 @@ class AdminActionsTest(test.TestCase):
         self.assertRaises(exception.NotFound, db.volume_get, ctx,
                           'missing-volume-id')
 
+    def test_reset_attached_status(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available',
+                                        'attach_status': 'attached'})
+        req = webob.Request.blank('/v1/fake/volumes/%s/action' % volume['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        # request update attach_status to detached
+        body = {'os-reset_status': {'status': 'available',
+                                    'attach_status': 'detached'}}
+        req.body = jsonutils.dumps(body)
+        # attach admin context to request
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        # request is accepted
+        self.assertEquals(resp.status_int, 202)
+        volume = db.volume_get(ctx, volume['id'])
+        # attach_status changed to 'detached'
+        self.assertEquals(volume['attach_status'], 'detached')
+        # status un-modified
+        self.assertEquals(volume['status'], 'available')
+
+    def test_invalid_reset_attached_status(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available',
+                                        'attach_status': 'detached'})
+        req = webob.Request.blank('/v1/fake/volumes/%s/action' % volume['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        # 'invalid' is not a valid attach_status
+        body = {'os-reset_status': {'status': 'available',
+                                    'attach_status': 'invalid'}}
+        req.body = jsonutils.dumps(body)
+        # attach admin context to request
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        # bad request
+        self.assertEquals(resp.status_int, 400)
+        volume = db.volume_get(ctx, volume['id'])
+        # status and attach_status un-modified
+        self.assertEquals(volume['status'], 'available')
+        self.assertEquals(volume['attach_status'], 'detached')
+
     def test_snapshot_reset_status(self):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
@@ -174,3 +225,28 @@ class AdminActionsTest(test.TestCase):
         self.assertEquals(resp.status_int, 202)
         # volume is deleted
         self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
+
+    def test_force_delete_snapshot(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is creating
+        volume = db.volume_create(ctx, {'host': 'test'})
+        snapshot = db.snapshot_create(ctx, {'status': 'creating',
+                                            'volume_size': 1,
+                                            'volume_id': volume['id']})
+        path = '/v1/fake/snapshots/%s/action' % snapshot['id']
+        req = webob.Request.blank(path)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = jsonutils.dumps({'os-force_delete': {}})
+        # attach admin context to request
+        req.environ['cinder.context'] = ctx
+        # start service to handle rpc.cast for 'delete snapshot'
+        self.start_service('volume', host='test')
+        # make request
+        resp = req.get_response(app())
+        # request is accepted
+        self.assertEquals(resp.status_int, 202)
+        # snapshot is deleted
+        self.assertRaises(exception.NotFound, db.snapshot_get, ctx,
+                          snapshot['id'])

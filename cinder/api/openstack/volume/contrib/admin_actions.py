@@ -50,9 +50,21 @@ class AdminController(wsgi.Controller):
     def _update(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def _validate_status(self, status):
-        if status not in self.valid_status:
+    def _get(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _delete(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def validate_update(self, body):
+        update = {}
+        try:
+            update['status'] = body['status']
+        except (TypeError, KeyError):
+            raise exc.HTTPBadRequest("Must specify 'status'")
+        if update['status'] not in self.valid_status:
             raise exc.HTTPBadRequest("Must specify a valid status")
+        return update
 
     def authorize(self, context, action_name):
         # e.g. "snapshot_admin_actions:reset_status"
@@ -64,18 +76,26 @@ class AdminController(wsgi.Controller):
         """Reset status on the resource."""
         context = req.environ['cinder.context']
         self.authorize(context, 'reset_status')
-        try:
-            new_status = body['os-reset_status']['status']
-        except (TypeError, KeyError):
-            raise exc.HTTPBadRequest("Must specify 'status'")
-        self._validate_status(new_status)
-        msg = _("Updating status of %(resource)s '%(id)s' to '%(status)s'")
+        update = self.validate_update(body['os-reset_status'])
+        msg = _("Updating %(resource)s '%(id)s' with '%(update)r'")
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
-                        'status': new_status})
+                        'update': update})
         try:
-            self._update(context, id, {'status': new_status})
+            self._update(context, id, update)
         except exception.NotFound, e:
             raise exc.HTTPNotFound(e)
+        return webob.Response(status_int=202)
+
+    @wsgi.action('os-force_delete')
+    def _force_delete(self, req, id, body):
+        """Delete a resource, bypassing the check that it must be available."""
+        context = req.environ['cinder.context']
+        self.authorize(context, 'force_delete')
+        try:
+            resource = self._get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        self._delete(context, resource, force=True)
         return webob.Response(status_int=202)
 
 
@@ -89,17 +109,19 @@ class VolumeAdminController(AdminController):
     def _update(self, *args, **kwargs):
         db.volume_update(*args, **kwargs)
 
-    @wsgi.action('os-force_delete')
-    def _force_delete(self, req, id, body):
-        """Delete a resource, bypassing the check that it must be available."""
-        context = req.environ['cinder.context']
-        self.authorize(context, 'force_delete')
-        try:
-            volume = self.volume_api.get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
-        self.volume_api.delete(context, volume, force=True)
-        return webob.Response(status_int=202)
+    def _get(self, *args, **kwargs):
+        return self.volume_api.get(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.volume_api.delete(*args, **kwargs)
+
+    def validate_update(self, body):
+        update = super(VolumeAdminController, self).validate_update(body)
+        if 'attach_status' in body:
+            if body['attach_status'] not in ('detached', 'attached'):
+                raise exc.HTTPBadRequest("Must specify a valid attach_status")
+            update['attach_status'] = body['attach_status']
+        return update
 
 
 class SnapshotAdminController(AdminController):
@@ -109,6 +131,12 @@ class SnapshotAdminController(AdminController):
 
     def _update(self, *args, **kwargs):
         db.snapshot_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.volume_api.get_snapshot(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.volume_api.delete_snapshot(*args, **kwargs)
 
 
 class Admin_actions(extensions.ExtensionDescriptor):
