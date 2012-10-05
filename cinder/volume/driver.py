@@ -30,6 +30,7 @@ from cinder import flags
 from cinder.image import image_utils
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import iscsi
 
@@ -61,7 +62,11 @@ volume_opts = [
                help='use this ip for iscsi'),
     cfg.IntOpt('iscsi_port',
                default=3260,
-               help='The port that the iSCSI daemon is listening on'), ]
+               help='The port that the iSCSI daemon is listening on'),
+    cfg.IntOpt('reserved_percentage',
+               default=0,
+               help='The percentage of backend capacity is reserved'),
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
@@ -73,6 +78,7 @@ class VolumeDriver(object):
         # NOTE(vish): db is set by Manager
         self.db = None
         self.set_execute(execute)
+        self._stats = {}
 
     def set_execute(self, execute):
         self._execute = execute
@@ -618,6 +624,49 @@ class ISCSIDriver(VolumeDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status.
+
+        If 'refresh' is True, run update the stats first."""
+        if refresh:
+            self._update_volume_status()
+
+        return self._stats
+
+    def _update_volume_status(self):
+        """Retrieve status info from volume group."""
+
+        LOG.debug(_("Updating volume status"))
+        data = {}
+
+        # Note(zhiteng): These information are driver/backend specific,
+        # each driver may define these values in its own config options
+        # or fetch from driver specific configuration file.
+        data["volume_backend_name"] = 'LVM_iSCSI'
+        data["vendor_name"] = 'Open Source'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'iSCSI'
+
+        data['total_capacity_gb'] = 0
+        data['free_capacity_gb'] = 0
+        data['reserved_percentage'] = FLAGS.reserved_percentage
+        data['QoS_support'] = False
+
+        try:
+            out, err = self._execute('vgs', '--noheadings', '--nosuffix',
+                                     '--unit=G', '-o', 'name,size,free',
+                                     FLAGS.volume_group, run_as_root=True)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_("Error retrieving volume status: "), exc.stderr)
+            out = False
+
+        if out:
+            volume = out.split()
+            data['total_capacity_gb'] = float(volume[1])
+            data['free_capacity_gb'] = float(volume[2])
+
+        self._stats = data
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
