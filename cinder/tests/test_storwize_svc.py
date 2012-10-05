@@ -937,6 +937,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
+        self.stubs.Set(storwize_svc.time, 'sleep', lambda s: None)
 
     def test_storwize_svc_volume_tests(self):
         self.flags(storwize_svc_vol_rsize="-1")

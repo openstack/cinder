@@ -103,6 +103,7 @@ class TestGlanceImageService(test.TestCase):
         client = glance_stubs.StubGlanceClient()
         self.service = self._create_image_service(client)
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
+        self.stubs.Set(glance.time, 'sleep', lambda s: None)
 
     def _create_image_service(self, client):
         def _fake_create_glance_client(context, host, port, version):
