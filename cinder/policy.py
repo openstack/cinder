@@ -76,7 +76,7 @@ def enforce(context, action, target):
            for object creation this should be a dictionary representing the
            location of the object e.g. ``{'project_id': context.project_id}``
 
-       :raises cinder.exception.PolicyNotAllowed: if verification fails.
+       :raises cinder.exception.PolicyNotAuthorized: if verification fails.
 
     """
     init()
