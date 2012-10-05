@@ -61,9 +61,7 @@ volume_manager_opts = [
     cfg.StrOpt('volume_driver',
                default='cinder.volume.driver.ISCSIDriver',
                help='Driver to use for volume creation'),
-    cfg.BoolOpt('volume_force_update_capabilities',
-                default=False,
-                help='if True will force update capabilities on each check'), ]
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_manager_opts)
@@ -103,7 +101,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.1'
+    RPC_API_VERSION = '1.2'
 
     def __init__(self, volume_driver=None, *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
@@ -120,7 +118,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         # NOTE(vish): Implementation specific db handling is done
         #             by the driver.
         self.driver.db = self.db
-        self._last_volume_stats = []
 
     def init_host(self):
         """Do any initialization that needs to be run if this is a
@@ -143,6 +140,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             if volume['status'] == 'deleting':
                 LOG.info(_('Resuming delete on volume: %s') % volume['id'])
                 self.delete_volume(ctxt, volume['id'])
+
+        # collect and publish service capabilities
+        self.publish_service_capabilities(ctxt)
 
     def create_volume(self, context, volume_id, snapshot_id=None,
                       image_id=None, source_volid=None):
@@ -490,33 +490,19 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.terminate_connection(volume_ref, connector, force=force)
 
-    def _volume_stats_changed(self, stat1, stat2):
-        if FLAGS.volume_force_update_capabilities:
-            return True
-        if len(stat1) != len(stat2):
-            return True
-        for (k, v) in stat1.iteritems():
-            if (k, v) not in stat2.iteritems():
-                return True
-        return False
-
     @manager.periodic_task
     def _report_driver_status(self, context):
+        LOG.info(_("Updating volume status"))
         volume_stats = self.driver.get_volume_stats(refresh=True)
         if volume_stats:
-            LOG.info(_("Checking volume capabilities"))
+            # This will grab info about the host and queue it
+            # to be sent to the Schedulers.
+            self.update_service_capabilities(volume_stats)
 
-            if self._volume_stats_changed(self._last_volume_stats,
-                                          volume_stats):
-                LOG.info(_("New capabilities found: %s"), volume_stats)
-                self._last_volume_stats = volume_stats
-
-                # This will grab info about the host and queue it
-                # to be sent to the Schedulers.
-                self.update_service_capabilities(self._last_volume_stats)
-            else:
-                # avoid repeating fanouts
-                self.update_service_capabilities(None)
+    def publish_service_capabilities(self, context):
+        """ Collect driver status and then publish """
+        self._report_driver_status(context)
+        self._publish_service_capabilities(context)
 
     def _reset_stats(self):
         LOG.info(_("Clear capabilities"))
