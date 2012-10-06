@@ -24,7 +24,11 @@ Chance (Random) Scheduler implementation
 import random
 
 from cinder import exception
+from cinder import flags
 from cinder.scheduler import driver
+
+
+FLAGS = flags.FLAGS
 
 
 class ChanceScheduler(driver.Scheduler):
@@ -54,8 +58,16 @@ class ChanceScheduler(driver.Scheduler):
 
         return hosts[int(random.random() * len(hosts))]
 
-    def schedule(self, context, topic, method, *_args, **kwargs):
+    def schedule_create_volume(self, context, request_spec, filter_properties):
         """Picks a host that is up at random."""
+        topic = FLAGS.volume_topic
+        host = self._schedule(context, topic, request_spec,
+                              filter_properties=filter_properties)
+        volume_id = request_spec['volume_id']
+        snapshot_id = request_spec['snapshot_id']
+        image_id = request_spec['image_id']
 
-        host = self._schedule(context, topic, None, **kwargs)
-        driver.cast_to_host(context, topic, host, method, **kwargs)
+        driver.cast_to_host(context, topic, host, 'create_volume',
+                            volume_id=volume_id,
+                            snapshot_id=snapshot_id,
+                            image_id=image_id)

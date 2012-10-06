@@ -107,3 +107,7 @@ class Scheduler(object):
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement a fallback schedule"))
+
+    def schedule_create_volume(self, context, request_spec, filter_properties):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_("Must implement schedule_create_volume"))

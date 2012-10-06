@@ -69,8 +69,8 @@ class SchedulerRpcAPITestCase(test.TestCase):
 
     def test_create_volume(self):
         self._test_scheduler_api('create_volume',
-                rpc_method='cast', topic='fake_topic',
-                volume_id='fake_volume_id',
-                snapshot_id='fake_snapshot_id',
-                image_id='fake_image_id',
-                version='1.1')
+                rpc_method='cast', topic='topic', volume_id='volume_id',
+                snapshot_id='snapshot_id', image_id='image_id',
+                request_spec='fake_request_spec',
+                filter_properties='filter_properties',
+                version='1.2')
