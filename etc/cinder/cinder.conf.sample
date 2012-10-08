@@ -135,15 +135,15 @@
 #### (StrOpt) Name of this node.  This can be an opaque identifier.  It is
 ####          not necessarily a hostname, FQDN, or IP address.
 
-# storage_availability_zone=cinder
+# storage_availability_zone=nova
 #### (StrOpt) availability zone of this node
 
-# notification_driver=cinder.openstack.common.notifier.no_op_notifier
-#### (StrOpt) Default driver for sending notifications
+# memcached_servers=<None>
+#### (ListOpt) Memcached servers or None for in process cache.
 
-# instance_usage_audit_period=month
-#### (StrOpt) time period to generate instance usages for.  Time period
-####          must be hour, day, month or year
+# volume_usage_audit_period=month
+#### (StrOpt) time period to generate volume usages for.  Time period must
+####          be hour, day, month or year
 
 # root_helper=sudo
 #### (StrOpt) Deprecated: command to use for running commands as root
@@ -157,9 +157,6 @@
 
 # monkey_patch_modules=
 #### (ListOpt) List of modules/decorators to monkey patch
-
-# reclaim_instance_interval=0
-#### (IntOpt) Interval in seconds for reclaiming deleted instances
 
 # service_down_time=60
 #### (IntOpt) maximum time since last check-in for up service
@@ -262,7 +259,7 @@
 #### (BoolOpt) Services to be added to the available pool on create
 
 # volume_name_template=volume-%s
-#### (StrOpt) Template string to be used to generate instance names
+#### (StrOpt) Template string to be used to generate volume names
 
 # snapshot_name_template=snapshot-%s
 #### (StrOpt) Template string to be used to generate snapshot names
@@ -317,8 +314,7 @@
 
 ######## defined in cinder.openstack.common.notifier.api ########
 
-# notification_driver=cinder.openstack.common.notifier.no_op_notifier
-#### (StrOpt) Default driver for sending notifications
+#### (MultiStrOpt) Driver or drivers to handle sending notifications
 
 # default_notification_level=INFO
 #### (StrOpt) Default notification level for outgoing notifications
@@ -327,10 +323,10 @@
 #### (StrOpt) Default publisher_id for outgoing notifications
 
 
-######## defined in cinder.openstack.common.notifier.list_notifier ########
+######## defined in cinder.openstack.common.notifier.rabbit_notifier ########
 
-# list_notifier_drivers=cinder.openstack.common.notifier.no_op_notifier
-#### (MultiStrOpt) List of drivers to send notifications
+# notification_topics=notifications
+#### (ListOpt) AMQP topic used for openstack notifications
 
 
 ######## defined in cinder.openstack.common.rpc ########
@@ -374,10 +370,13 @@
 #### (StrOpt) SSL certification authority file (valid only if SSL enabled)
 
 # rabbit_host=localhost
-#### (StrOpt) the RabbitMQ host
+#### (StrOpt) The RabbitMQ broker address where a single node is used
 
 # rabbit_port=5672
-#### (IntOpt) the RabbitMQ port
+#### (IntOpt) The RabbitMQ broker port where a single node is used
+
+# rabbit_hosts=$rabbit_host:$rabbit_port
+#### (ListOpt) RabbitMQ HA cluster host:port pairs
 
 # rabbit_use_ssl=false
 #### (BoolOpt) connect over SSL for RabbitMQ
@@ -404,6 +403,10 @@
 
 # rabbit_durable_queues=false
 #### (BoolOpt) use durable queues in RabbitMQ
+
+# rabbit_ha_queues=false
+#### (BoolOpt) use H/A queues in RabbitMQ (x-ha-policy: all).You need to
+####           wipe RabbitMQ database when changing this option.
 
 
 ######## defined in cinder.openstack.common.rpc.impl_qpid ########
@@ -441,7 +444,7 @@
 # qpid_reconnect_interval=0
 #### (IntOpt) Equivalent to setting max and min to the same value
 
-# qpid_heartbeat=5
+# qpid_heartbeat=60
 #### (IntOpt) Seconds between connection keepalive heartbeats
 
 # qpid_protocol=tcp
@@ -463,6 +466,9 @@
 
 # rpc_zmq_port=9501
 #### (IntOpt) ZeroMQ receiver listening port
+
+# rpc_zmq_port_pub=9502
+#### (IntOpt) ZeroMQ fanout publisher port
 
 # rpc_zmq_contexts=1
 #### (IntOpt) Number of ZeroMQ contexts, defaults to 1
@@ -752,8 +758,8 @@
 #### (BoolOpt) Enable Easy Tier for volumes
 
 # storwize_svc_flashcopy_timeout=120
-#### (StrOpt) Maximum number of seconds to wait for FlashCopy to
-####          beprepared. Maximum value is 600 seconds (10 minutes).
+#### (StrOpt) Maximum number of seconds to wait for FlashCopy to be
+####          prepared. Maximum value is 600 seconds (10 minutes).
 
 
 ######## defined in cinder.volume.xiv ########
@@ -804,4 +810,4 @@
 #### (BoolOpt) Don't halt on deletion of non-existing volumes
 
 
-# Total option count: 217
+# Total option count: 219

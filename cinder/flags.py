@@ -184,9 +184,9 @@ global_opts = [
     cfg.ListOpt('memcached_servers',
                 default=None,
                 help='Memcached servers or None for in process cache.'),
-    cfg.StrOpt('instance_usage_audit_period',
+    cfg.StrOpt('volume_usage_audit_period',
                default='month',
-               help='time period to generate instance usages for.  '
+               help='time period to generate volume usages for.  '
                     'Time period must be hour, day, month or year'),
     cfg.StrOpt('root_helper',
                default='sudo',
@@ -201,9 +201,6 @@ global_opts = [
     cfg.ListOpt('monkey_patch_modules',
                 default=[],
                 help='List of modules/decorators to monkey patch'),
-    cfg.IntOpt('reclaim_instance_interval',
-               default=0,
-               help='Interval in seconds for reclaiming deleted instances'),
     cfg.IntOpt('service_down_time',
                default=60,
                help='maximum time since last check-in for up service'),

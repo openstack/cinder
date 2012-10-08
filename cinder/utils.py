@@ -312,7 +312,7 @@ def last_completed_audit_period(unit=None):
               The begin timestamp of this audit period is the same as the
               end of the previous."""
     if not unit:
-        unit = FLAGS.instance_usage_audit_period
+        unit = FLAGS.volume_usage_audit_period
 
     offset = 0
     if '@' in unit:
