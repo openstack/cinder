@@ -58,7 +58,7 @@ db_opts = [
                 help='Services to be added to the available pool on create'),
     cfg.StrOpt('volume_name_template',
                default='volume-%s',
-               help='Template string to be used to generate instance names'),
+               help='Template string to be used to generate volume names'),
     cfg.StrOpt('snapshot_name_template',
                default='snapshot-%s',
                help='Template string to be used to generate snapshot names'),
