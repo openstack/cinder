@@ -74,6 +74,11 @@ def is_older_than(before, seconds):
     return utcnow() - before > datetime.timedelta(seconds=seconds)
 
 
+def is_newer_than(after, seconds):
+    """Return True if after is newer than seconds."""
+    return after - utcnow() > datetime.timedelta(seconds=seconds)
+
+
 def utcnow_ts():
     """Timestamp version of our utcnow function."""
     return calendar.timegm(utcnow().timetuple())
