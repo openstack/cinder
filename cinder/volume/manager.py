@@ -71,6 +71,12 @@ volume_manager_opts = [
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_manager_opts)
 
+MAPPING = {
+    'cinder.volume.driver.RBDDriver': 'cinder.volume.drivers.rbd.RBDDriver',
+    'cinder.volume.driver.SheepdogDriver':
+                            'cinder.volume.drivers.sheepdog.SheepdogDriver',
+    }
+
 
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
@@ -78,7 +84,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Load the driver from the one specified in args, or from flags."""
         if not volume_driver:
             volume_driver = FLAGS.volume_driver
-        self.driver = importutils.import_object(volume_driver)
+        if volume_driver in MAPPING:
+            self.driver = importutils.import_object(MAPPING[volume_driver])
+        else:
+            self.driver = importutils.import_object(volume_driver)
         super(VolumeManager, self).__init__(service_name='volume',
                                                     *args, **kwargs)
         # NOTE(vish): Implementation specific db handling is done
