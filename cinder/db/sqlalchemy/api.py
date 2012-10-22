@@ -566,35 +566,6 @@ def quota_usage_create(context, project_id, resource, in_use, reserved,
     return quota_usage_ref
 
 
-@require_admin_context
-def quota_usage_update(context, project_id, resource, in_use, reserved,
-                       until_refresh, session=None):
-    def do_update(session):
-        quota_usage_ref = quota_usage_get(context, project_id, resource,
-                                          session=session)
-        quota_usage_ref.in_use = in_use
-        quota_usage_ref.reserved = reserved
-        quota_usage_ref.until_refresh = until_refresh
-        quota_usage_ref.save(session=session)
-
-    if session:
-        # Assume caller started a transaction
-        do_update(session)
-    else:
-        session = get_session()
-        with session.begin():
-            do_update(session)
-
-
-@require_admin_context
-def quota_usage_destroy(context, project_id, resource):
-    session = get_session()
-    with session.begin():
-        quota_usage_ref = quota_usage_get(context, project_id, resource,
-                                          session=session)
-        quota_usage_ref.delete(session=session)
-
-
 ###################
 
 
