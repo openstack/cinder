@@ -113,6 +113,9 @@ class VolumeTestCase(test.TestCase):
                          volume_id).id)
 
         self.volume.delete_volume(self.context, volume_id)
+        vol = db.volume_get(context.get_admin_context(read_deleted='yes'),
+                            volume_id)
+        self.assertEquals(vol['status'], 'deleted')
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 4)
         self.assertRaises(exception.NotFound,
                           db.volume_get,
@@ -263,6 +266,9 @@ class VolumeTestCase(test.TestCase):
                                          snapshot_id).id)
 
         self.volume.delete_snapshot(self.context, snapshot_id)
+        snap = db.snapshot_get(context.get_admin_context(read_deleted='yes'),
+                               snapshot_id)
+        self.assertEquals(snap['status'], 'deleted')
         self.assertRaises(exception.NotFound,
                           db.snapshot_get,
                           self.context,

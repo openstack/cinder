@@ -971,7 +971,8 @@ def volume_destroy(context, volume_id):
     with session.begin():
         session.query(models.Volume).\
                 filter_by(id=volume_id).\
-                update({'deleted': True,
+                update({'status': 'deleted',
+                        'deleted': True,
                         'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
         session.query(models.IscsiTarget).\
@@ -1173,7 +1174,8 @@ def snapshot_destroy(context, snapshot_id):
     with session.begin():
         session.query(models.Snapshot).\
                 filter_by(id=snapshot_id).\
-                update({'deleted': True,
+                update({'status': 'deleted',
+                        'deleted': True,
                         'deleted_at': timeutils.utcnow(),
                         'updated_at': literal_column('updated_at')})
 
