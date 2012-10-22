@@ -368,14 +368,22 @@ class ISCSIDriver(VolumeDriver):
             lun = 1  # For tgtadm the controller is lun 0, dev starts at lun 1
             iscsi_target = 0  # NOTE(jdg): Not used by tgtadm
 
+        # Use the same method to generate the username and the password.
+        chap_username = utils.generate_username()
+        chap_password = utils.generate_password()
+        chap_auth = _iscsi_authentication('IncomingUser', chap_username,
+                                          chap_password)
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
         tid = self.tgtadm.create_iscsi_target(iscsi_name,
                                               iscsi_target,
                                               0,
-                                              volume_path)
+                                              volume_path,
+                                              chap_auth)
         model_update['provider_location'] = _iscsi_location(
             FLAGS.iscsi_ip_address, tid, iscsi_name, lun)
+        model_update['provider_auth'] = _iscsi_authentication(
+            'CHAP', chap_username, chap_password)
         return model_update
 
     def remove_export(self, context, volume):
@@ -908,3 +916,7 @@ class LoggingVolumeDriver(VolumeDriver):
 
 def _iscsi_location(ip, target, iqn, lun=None):
     return "%s:%s,%s %s %s" % (ip, FLAGS.iscsi_port, target, iqn, lun)
+
+
+def _iscsi_authentication(chap, name, password):
+    return "%s %s %s" % (chap, name, password)

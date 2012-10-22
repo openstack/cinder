@@ -413,6 +413,11 @@ def generate_password(length=20, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
     return ''.join(password)
 
 
+def generate_username(length=20, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
+    # Use the same implementation as the password generation.
+    return generate_password(length, symbolgroups)
+
+
 def last_octet(address):
     return int(address.split('.')[-1])
 
