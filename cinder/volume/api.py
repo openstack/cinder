@@ -26,6 +26,7 @@ from cinder.db import base
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
+from cinder.openstack.common import excutils
 from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
@@ -107,6 +108,16 @@ class API(base.Base):
             msg = (_("Volume size '%s' must be an integer and greater than 0")
                    % size)
             raise exception.InvalidInput(reason=msg)
+
+        if image_id:
+            # check image existence
+            image_meta = self.image_service.show(context, image_id)
+            image_size_in_gb = (int(image_meta['size']) + GB - 1) / GB
+            #check image size is not larger than volume size.
+            if image_size_in_gb > size:
+                msg = _('Size of specified image is larger than volume size.')
+                raise exception.InvalidInput(reason=msg)
+
         try:
             reservations = QUOTAS.reserve(context, volumes=1, gigabytes=size)
         except exception.OverQuota as e:
@@ -132,15 +143,6 @@ class API(base.Base):
                            % locals())
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
 
-        if image_id:
-            # check image existence
-            image_meta = self.image_service.show(context, image_id)
-            image_size_in_gb = (int(image_meta['size']) + GB - 1) / GB
-            #check image size is not larger than volume size.
-            if image_size_in_gb > size:
-                msg = _('Size of specified image is larger than volume size.')
-                raise exception.InvalidInput(reason=msg)
-
         if availability_zone is None:
             availability_zone = FLAGS.storage_availability_zone
 
@@ -163,9 +165,15 @@ class API(base.Base):
             'metadata': metadata,
             }
 
-        volume = self.db.volume_create(context, options)
-
-        QUOTAS.commit(context, reservations)
+        try:
+            volume = self.db.volume_create(context, options)
+            QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.db.volume_destroy(context, volume['id'])
+                finally:
+                    QUOTAS.rollback(context, reservations)
 
         self._cast_create_volume(context, volume['id'], snapshot_id,
                                  image_id)
