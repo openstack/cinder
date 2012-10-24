@@ -541,18 +541,6 @@ def quota_usage_get_all_by_project(context, project_id):
     return IMPL.quota_usage_get_all_by_project(context, project_id)
 
 
-def quota_usage_update(context, class_name, resource, in_use, reserved,
-                       until_refresh):
-    """Update a quota usage or raise if it does not exist."""
-    return IMPL.quota_usage_update(context, project_id, resource,
-                                   in_use, reserved, until_refresh)
-
-
-def quota_usage_destroy(context, project_id, resource):
-    """Destroy the quota usage or raise if it does not exist."""
-    return IMPL.quota_usage_destroy(context, project_id, resource)
-
-
 ###################
 
 
