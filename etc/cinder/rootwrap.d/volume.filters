@@ -34,3 +34,4 @@ chown: CommandFilter, /bin/chown, root
 # cinder/volume/driver.py
 dmsetup: CommandFilter, /sbin/dmsetup, root
 dmsetup_usr: CommandFilter, /usr/sbin/dmsetup, root
+ln: CommandFilter, /bin/ln, root
