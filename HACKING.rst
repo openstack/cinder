@@ -10,6 +10,8 @@ General
 -------
 - Put two newlines between top-level code (funcs, classes, etc)
 - Put one newline between methods in classes and anywhere else
+- Long lines should be wrapped in parentheses
+  in preference to using a backslash for line continuation.
 - Do not write "except:", use "except Exception:" at the very least
 - Include your name with TODOs as in "#TODO(termie)"
 - Do not shadow a built-in or reserved word. Example::
@@ -211,3 +213,44 @@ with the help of openstack-common's update.py script. See:
 The copy of the code should never be directly modified here. Please
 always update openstack-common first and then run the script to copy
 the changes across.
+
+OpenStack Trademark
+-------------------
+
+OpenStack is a registered trademark of OpenStack, LLC, and uses the
+following capitalization:
+
+   OpenStack
+
+
+Commit Messages
+---------------
+Using a common format for commit messages will help keep our git history
+readable. Follow these guidelines:
+
+  First, provide a brief summary (it is recommended to keep the commit title
+  under 50 chars).
+
+  The first line of the commit message should provide an accurate
+  description of the change, not just a reference to a bug or
+  blueprint. It must be followed by a single blank line.
+
+  If the change relates to a specific driver (libvirt, xenapi, qpid, etc...),
+  begin the first line of the commit message with the driver name, lowercased,
+  followed by a colon.
+
+  Following your brief summary, provide a more detailed description of
+  the patch, manually wrapping the text at 72 characters. This
+  description should provide enough detail that one does not have to
+  refer to external resources to determine its high-level functionality.
+
+  Once you use 'git review', two lines will be appended to the commit
+  message: a blank line followed by a 'Change-Id'. This is important
+  to correlate this commit with a specific review in Gerrit, and it
+  should not be modified.
+
+For further information on constructing high quality commit messages,
+and how to split up commits into a series of changes, consult the
+project wiki:
+
+   http://wiki.openstack.org/GitCommitMessages
