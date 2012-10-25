@@ -407,14 +407,14 @@ class API(base.Base):
                                   "connector": connector}})
 
     @wrap_check_policy
-    def terminate_connection(self, context, volume, connector):
+    def terminate_connection(self, context, volume, connector, force=False):
         self.unreserve_volume(context, volume)
         host = volume['host']
         queue = rpc.queue_get_for(context, FLAGS.volume_topic, host)
         return rpc.call(context, queue,
                         {"method": "terminate_connection",
                          "args": {"volume_id": volume['id'],
-                                  "connector": connector}})
+                                  "connector": connector, 'force': force}})
 
     def _create_snapshot(self, context, volume, name, description,
                          force=False):

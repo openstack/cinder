@@ -111,7 +111,7 @@ class WindowsDriver(driver.ISCSIDriver):
             'data': properties,
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
 
         Unmask the LUN on the storage system so the given intiator can no

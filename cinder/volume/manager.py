@@ -405,13 +405,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         return self.driver.initialize_connection(volume_ref, connector)
 
-    def terminate_connection(self, context, volume_id, connector):
+    def terminate_connection(self, context, volume_id, connector, force=False):
         """Cleanup connection from host represented by connector.
 
         The format of connector is the same as for initialize_connection.
         """
         volume_ref = self.db.volume_get(context, volume_id)
-        self.driver.terminate_connection(volume_ref, connector)
+        self.driver.terminate_connection(volume_ref, connector, force=force)
 
     def _volume_stats_changed(self, stat1, stat2):
         if FLAGS.volume_force_update_capabilities:

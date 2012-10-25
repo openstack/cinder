@@ -96,5 +96,5 @@ class SheepdogDriver(driver.VolumeDriver):
             }
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         pass

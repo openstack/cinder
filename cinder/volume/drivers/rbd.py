@@ -169,7 +169,7 @@ class RBDDriver(driver.VolumeDriver):
                 }
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         pass
 
     def _parse_location(self, location):

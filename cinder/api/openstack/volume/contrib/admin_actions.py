@@ -123,6 +123,23 @@ class VolumeAdminController(AdminController):
             update['attach_status'] = body['attach_status']
         return update
 
+    @wsgi.action('os-force_detach')
+    def _force_detach(self, req, id, body):
+        """
+        Roll back a bad detach after the volume been disconnected from
+        the hypervisor.
+        """
+        context = req.environ['cinder.context']
+        self.authorize(context, 'force_detach')
+        try:
+            volume = self._get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        self.volume_api.terminate_connection(context, volume,
+                                             {}, force=True)
+        self.volume_api.detach(context, volume)
+        return webob.Response(status_int=202)
+
 
 class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""

@@ -4,6 +4,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import test
+from cinder.volume import api as volume_api
 from cinder.openstack.common import jsonutils
 from cinder.tests.api.openstack import fakes
 
@@ -21,6 +22,7 @@ class AdminActionsTest(test.TestCase):
     def setUp(self):
         super(AdminActionsTest, self).setUp()
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+        self.volume_api = volume_api.API()
 
     def test_reset_status_as_admin(self):
         # admin context
@@ -250,3 +252,40 @@ class AdminActionsTest(test.TestCase):
         # snapshot is deleted
         self.assertRaises(exception.NotFound, db.snapshot_get, ctx,
                           snapshot['id'])
+
+    def test_force_detach_volume(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': ''})
+        # start service to handle rpc messages for attach requests
+        self.start_service('volume', host='test')
+        self.volume_api.reserve_volume(ctx, volume)
+        self.volume_api.initialize_connection(ctx, volume, {})
+        mountpoint = '/dev/vbd'
+        self.volume_api.attach(ctx, volume, fakes.FAKE_UUID, mountpoint)
+        # volume is attached
+        volume = db.volume_get(ctx, volume['id'])
+        self.assertEquals(volume['status'], 'in-use')
+        self.assertEquals(volume['instance_uuid'], fakes.FAKE_UUID)
+        self.assertEquals(volume['mountpoint'], mountpoint)
+        self.assertEquals(volume['attach_status'], 'attached')
+        # build request to force detach
+        req = webob.Request.blank('/v1/fake/volumes/%s/action' % volume['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        # request status of 'error'
+        req.body = jsonutils.dumps({'os-force_detach': None})
+        # attach admin context to request
+        req.environ['cinder.context'] = ctx
+        # make request
+        resp = req.get_response(app())
+        # request is accepted
+        self.assertEquals(resp.status_int, 202)
+        volume = db.volume_get(ctx, volume['id'])
+        # status changed to 'available'
+        self.assertEquals(volume['status'], 'available')
+        self.assertEquals(volume['instance_uuid'], None)
+        self.assertEquals(volume['mountpoint'], None)
+        self.assertEquals(volume['attach_status'], 'detached')

@@ -260,7 +260,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
             'data': iscsi_properties
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Unassign the volume from the host."""
         cliq_args = {}
         cliq_args['volumeName'] = volume['name']

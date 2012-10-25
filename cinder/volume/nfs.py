@@ -132,7 +132,7 @@ class NfsDriver(driver.VolumeDriver):
             'data': data
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
         pass
 

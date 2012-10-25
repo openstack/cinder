@@ -255,8 +255,23 @@ class IetAdm(TargetAdmin):
                   **kwargs)
 
 
+class FakeIscsiHelper(object):
+
+    def __init__(self):
+        self.tid = 1
+
+    def set_execute(self, execute):
+        self._execute = execute
+
+    def create_iscsi_target(self, *args, **kwargs):
+        self.tid += 1
+        return self.tid
+
+
 def get_target_admin():
     if FLAGS.iscsi_helper == 'tgtadm':
         return TgtAdm()
+    elif FLAGS.iscsi_helper == 'fake':
+        return FakeIscsiHelper()
     else:
         return IetAdm()

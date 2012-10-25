@@ -98,7 +98,7 @@ class XIVDriver(san.SanISCSIDriver):
                 volume,
                 connector)
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume."""
 
         return self.xiv_proxy.terminate_connection(

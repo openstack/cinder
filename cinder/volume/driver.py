@@ -226,7 +226,7 @@ class VolumeDriver(object):
         """Allow connection to connector and return connection info."""
         raise NotImplementedError()
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Disallow connection from connector"""
         raise NotImplementedError()
 
@@ -580,7 +580,7 @@ class ISCSIDriver(VolumeDriver):
             'data': iscsi_properties
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
@@ -596,6 +596,32 @@ class ISCSIDriver(VolumeDriver):
         with utils.temporary_chown(volume_path):
             with utils.file_open(volume_path) as volume_file:
                 image_service.update(context, image_id, {}, volume_file)
+
+
+class FakeISCSIDriver(ISCSIDriver):
+    """Logs calls instead of executing."""
+    def __init__(self, *args, **kwargs):
+        super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
+                                              *args, **kwargs)
+
+    def check_for_setup_error(self):
+        """No setup necessary in fake mode."""
+        pass
+
+    def initialize_connection(self, volume, connector):
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': {}
+        }
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        pass
+
+    @staticmethod
+    def fake_execute(cmd, *_args, **_kwargs):
+        """Execute that simply logs the command."""
+        LOG.debug(_("FAKE ISCSI: %s"), cmd)
+        return (None, None)
 
 
 def _iscsi_location(ip, target, iqn, lun=None):

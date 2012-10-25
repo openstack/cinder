@@ -35,7 +35,7 @@ class FakeISCSIDriver(driver.ISCSIDriver):
             'data': {}
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         pass
 
     @staticmethod

@@ -32,6 +32,7 @@ def set_defaults(conf):
     conf.set_default('default_volume_type', def_vol_type)
     conf.set_default('volume_driver',
                      'cinder.tests.fake_driver.FakeISCSIDriver')
+    conf.set_default('iscsi_helper', 'fake')
     conf.set_default('connection_type', 'fake')
     conf.set_default('fake_rabbit', True)
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')

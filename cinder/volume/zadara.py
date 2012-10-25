@@ -449,7 +449,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         return {'driver_volume_type': 'iscsi',
                 'data': properties}
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         """
         Detach volume from the initiator.
         """

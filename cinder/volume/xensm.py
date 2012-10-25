@@ -243,5 +243,5 @@ class XenSMDriver(cinder.volume.driver.VolumeDriver):
             'data': xensm_properties
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         pass

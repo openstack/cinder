@@ -569,7 +569,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         return {'driver_volume_type': 'iscsi', 'data': properties, }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an iSCSI connection has been terminated.
 
         When we clean up a terminated connection between a given iSCSI name
