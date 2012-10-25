@@ -15,6 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
+import os
+import tempfile
+
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -25,6 +29,11 @@ from cinder.tests.test_volume import DriverTestCase
 from cinder.volume.driver import RBDDriver
 
 LOG = logging.getLogger(__name__)
+
+
+class FakeImageService:
+    def download(self, context, image_id, path):
+        pass
 
 
 class RBDTestCase(test.TestCase):
@@ -76,6 +85,26 @@ class RBDTestCase(test.TestCase):
         self.stubs.Set(self.driver, '_execute', fake_exc)
         location = 'rbd://abc/pool/image/snap'
         self.assertFalse(self.driver._is_cloneable(location))
+
+    def _copy_image(self):
+        @contextlib.contextmanager
+        def fake_temp_file(dir):
+            class FakeTmp:
+                def __init__(self, name):
+                    self.name = name
+            yield FakeTmp('test')
+        self.stubs.Set(tempfile, 'NamedTemporaryFile', fake_temp_file)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
+        self.driver.copy_image_to_volume(None, {'name': 'test'},
+                                         FakeImageService(), None)
+
+    def test_copy_image_no_volume_tmp(self):
+        self.flags(volume_tmp_dir=None)
+        self._copy_image()
+
+    def test_copy_image_volume_tmp(self):
+        self.flags(volume_tmp_dir='/var/run/cinder/tmp')
+        self._copy_image()
 
 
 class FakeRBDDriver(RBDDriver):
