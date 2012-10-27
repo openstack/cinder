@@ -33,5 +33,6 @@
     "volume_extension:volume_actions:upload_image": [],
     "volume_extension:types_manage": [],
     "volume_extension:types_extra_specs": [],
-    "volume_extension:extended_snapshot_attributes": []
+    "volume_extension:extended_snapshot_attributes": [],
+    "volume_extension:volume_host_attribute": [["rule:admin_api"]]
 }
