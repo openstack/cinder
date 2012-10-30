@@ -14,7 +14,7 @@
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume import san
+from cinder.volume.san.hp_lefthand import HpSanISCSIDriver
 
 LOG = logging.getLogger(__name__)
 
@@ -23,11 +23,11 @@ class HpSanISCSITestCase(test.TestCase):
 
     def setUp(self):
         super(HpSanISCSITestCase, self).setUp()
-        self.stubs.Set(san.HpSanISCSIDriver, "_cliq_run",
+        self.stubs.Set(HpSanISCSIDriver, "_cliq_run",
                        self._fake_cliq_run)
-        self.stubs.Set(san.HpSanISCSIDriver, "_get_iscsi_properties",
+        self.stubs.Set(HpSanISCSIDriver, "_get_iscsi_properties",
                        self._fake_get_iscsi_properties)
-        self.driver = san.HpSanISCSIDriver()
+        self.driver = HpSanISCSIDriver()
         self.volume_name = "fakevolume"
         self.connector = {'ip': '10.0.0.2',
                           'initiator': 'iqn.1993-08.org.debian:01:222',

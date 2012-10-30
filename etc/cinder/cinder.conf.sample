@@ -711,6 +711,9 @@
 #### (BoolOpt) Execute commands locally instead of over SSH; use if the
 ####           volume service is running on the SAN device
 
+
+######## defined in cinder.volume.solaris ########
+
 # san_zfs_volume_base=rpool/
 #### (StrOpt) The ZFS path under which to create zvols for volumes.
 

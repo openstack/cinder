@@ -29,7 +29,7 @@ from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
-from cinder.volume import san
+from cinder.volume.san import san
 
 ibm_xiv_opts = [
     cfg.StrOpt('xiv_proxy',
