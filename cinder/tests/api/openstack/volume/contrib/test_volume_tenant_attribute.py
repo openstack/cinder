@@ -24,6 +24,8 @@ from cinder import utils
 from cinder import volume
 from cinder.tests.api.openstack import fakes
 
+PROJECT_ID = '88fd1da4-f464-4a87-9ce5-26f2f40743b9'
+
 
 def fake_volume_get(*args, **kwargs):
     return {
@@ -38,7 +40,7 @@ def fake_volume_get(*args, **kwargs):
         'display_description': 'Just another volume!',
         'volume_type_id': None,
         'snapshot_id': None,
-        'project_id': 'fake',
+        'project_id': PROJECT_ID,
     }
 
 
@@ -54,10 +56,10 @@ def app():
     return mapper
 
 
-class VolumeHostAttributeTest(test.TestCase):
+class VolumeTenantAttributeTest(test.TestCase):
 
     def setUp(self):
-        super(VolumeHostAttributeTest, self).setUp()
+        super(VolumeTenantAttributeTest, self).setUp()
         self.stubs.Set(volume.API, 'get', fake_volume_get)
         self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
         self.UUID = utils.gen_uuid()
@@ -69,7 +71,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volume']
-        self.assertEqual(vol['os-vol-host-attr:host'], 'host001')
+        self.assertEqual(vol['os-vol-tenant-attr:tenant_id'], PROJECT_ID)
 
     def test_get_volume_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -78,7 +80,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volume']
-        self.assertFalse('os-vol-host-attr:host' in vol)
+        self.assertFalse('os-vol-tenant-attr:tenant_id' in vol)
 
     def test_list_detail_volumes_allowed(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -87,7 +89,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertEqual(vol[0]['os-vol-host-attr:host'], 'host001')
+        self.assertEqual(vol[0]['os-vol-tenant-attr:tenant_id'], PROJECT_ID)
 
     def test_list_detail_volumes_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -96,16 +98,16 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertFalse('os-vol-host-attr:host' in vol[0])
+        self.assertFalse('os-vol-tenant-attr:tenant_id' in vol[0])
 
-    def test_list_simple_volumes_no_host(self):
+    def test_list_simple_volumes_no_tenant_id(self):
         ctx = context.RequestContext('admin', 'fake', True)
         req = webob.Request.blank('/v1/fake/volumes')
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertFalse('os-vol-host-attr:host' in vol[0])
+        self.assertFalse('os-vol-tenant-attr:tenant_id' in vol[0])
 
     def test_get_volume_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -115,9 +117,9 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = etree.XML(res.body)
-        host_key = ('{http://docs.openstack.org/volume/ext/'
-                    'volume_host_attribute/api/v1}host')
-        self.assertEqual(vol.get(host_key), 'host001')
+        tenant_key = ('{http://docs.openstack.org/volume/ext/'
+                    'volume_tenant_attribute/api/v1}tenant_id')
+        self.assertEqual(vol.get(tenant_key), PROJECT_ID)
 
     def test_list_volumes_detail_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -127,6 +129,6 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = list(etree.XML(res.body))[0]
-        host_key = ('{http://docs.openstack.org/volume/ext/'
-                    'volume_host_attribute/api/v1}host')
-        self.assertEqual(vol.get(host_key), 'host001')
+        tenant_key = ('{http://docs.openstack.org/volume/ext/'
+                       'volume_tenant_attribute/api/v1}tenant_id')
+        self.assertEqual(vol.get(tenant_key), PROJECT_ID)
