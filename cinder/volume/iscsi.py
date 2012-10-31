@@ -127,6 +127,7 @@ class TgtAdm(TargetAdmin):
                     %s
                 </target>
             """ % (name, path, chap_auth)
+
         LOG.info(_('Creating volume: %s') % vol_id)
         volumes_dir = FLAGS.volumes_dir
         volume_path = os.path.join(volumes_dir, vol_id)
@@ -134,6 +135,11 @@ class TgtAdm(TargetAdmin):
         f = open(volume_path, 'w+')
         f.write(volume_conf)
         f.close()
+
+        old_persist_file = None
+        old_name = kwargs.get('old_name', None)
+        if old_name is not None:
+            old_persist_file = os.path.join(volumes_dir, old_name)
 
         try:
             (out, err) = self._execute('tgt-admin',
@@ -156,6 +162,9 @@ class TgtAdm(TargetAdmin):
                         "contains 'include %(volumes_dir)s/*'") % locals())
             raise exception.NotFound()
 
+        if old_persist_file is not None and os.path.exists(old_persist_file):
+            os.unlink(old_persist_file)
+
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
@@ -173,7 +182,7 @@ class TgtAdm(TargetAdmin):
                           iqn,
                           run_as_root=True)
         except exception.ProcessExecutionError, e:
-            LOG.error(_("Failed to create iscsi target for volume "
+            LOG.error(_("Failed to delete iscsi target for volume "
                         "id:%(vol_id)s.") % locals())
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
