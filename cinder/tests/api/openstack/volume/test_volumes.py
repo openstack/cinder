@@ -19,6 +19,7 @@ from lxml import etree
 import webob
 
 from cinder.api.openstack.volume import volumes
+from cinder import context
 from cinder import db
 from cinder.api.openstack.volume import extensions
 from cinder import exception
@@ -90,6 +91,26 @@ class VolumeApiTest(test.TestCase):
                                                               1, 1, 1),
                                'size': 100}}
         self.assertEqual(res_dict, expected)
+
+    def test_volume_create_with_type(self):
+        vol_type = FLAGS.default_volume_type
+        db.volume_type_create(context.get_admin_context(),
+                              dict(name=vol_type, extra_specs={}))
+
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 vol_type)
+
+        vol = {"size": 100,
+               "display_name": "Volume Test Name",
+               "display_description": "Volume Test Desc",
+               "availability_zone": "zone1:host1",
+               "volume_type": db_vol_type['name'],
+              }
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v1/volumes')
+        res_dict = self.controller.create(req, body)
+        self.assertEquals(res_dict['volume']['volume_type'],
+                          db_vol_type['name'])
 
     def test_volume_creation_fails_with_bad_size(self):
         vol = {"size": '',
