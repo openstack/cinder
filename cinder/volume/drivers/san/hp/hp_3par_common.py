@@ -492,7 +492,6 @@ exit
         persona_id = persona_value.split(' ')
         return persona_id[0]
 
-    @lockutils.synchronized('3par', 'cinder-', True)
     def create_volume(self, volume, client):
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
                   (volume['display_name'], volume['name'],
@@ -575,11 +574,9 @@ exit
                     'snapCPG': extras['snapCPG']}
         return metadata
 
-    @lockutils.synchronized('3parcopy', 'cinder-', True)
     def _copy_volume(self, src_name, dest_name):
         self._cli_run('createvvcopy -p %s %s' % (src_name, dest_name), None)
 
-    @lockutils.synchronized('3parstate', 'cinder-', True)
     def _get_volume_state(self, vol_name):
         out = self._cli_run('showvv -state %s' % vol_name, None)
         status = None
@@ -633,7 +630,6 @@ exit
 
         return None
 
-    @lockutils.synchronized('3par', 'cinder-', True)
     def delete_volume(self, volume, client):
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
@@ -649,7 +645,6 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
-    @lockutils.synchronized('3par', 'cinder-', True)
     def create_volume_from_snapshot(self, volume, snapshot, client):
         """
         Creates a volume from a snapshot.
@@ -689,7 +684,6 @@ exit
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
 
-    @lockutils.synchronized('3par', 'cinder-', True)
     def create_snapshot(self, snapshot, client):
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
 
@@ -728,7 +722,6 @@ exit
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
 
-    @lockutils.synchronized('3par', 'cinder-', True)
     def delete_snapshot(self, snapshot, client):
         LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))
 
