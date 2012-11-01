@@ -207,6 +207,34 @@ class VolumeApiTest(test.TestCase):
         }}
         self.assertEquals(res_dict, expected)
 
+    def test_volume_update_metadata(self):
+        self.stubs.Set(volume_api.API, "update", fakes.stub_volume_update)
+        updates = {
+            "metadata": {"qos_max_iops": 2000}
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        res_dict = self.controller.update(req, '1', body)
+        expected = {'volume': {
+            'status': 'fakestatus',
+            'display_description': 'displaydesc',
+            'availability_zone': 'fakeaz',
+            'display_name': 'displayname',
+            'attachments': [{
+                'id': '1',
+                'volume_id': '1',
+                'server_id': 'fakeuuid',
+                'device': '/',
+            }],
+            'volume_type': 'vol_type_name',
+            'snapshot_id': None,
+            'metadata': {"qos_max_iops": 2000},
+            'id': '1',
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'size': 1,
+        }}
+        self.assertEquals(res_dict, expected)
+
     def test_update_empty_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')

@@ -1036,9 +1036,9 @@ def volume_update(context, volume_id, values):
     metadata = values.get('metadata')
     if metadata is not None:
         volume_metadata_update(context,
-                                volume_id,
-                                values.pop('metadata'),
-                                delete=True)
+                               volume_id,
+                               values.pop('metadata'),
+                               delete=True)
     with session.begin():
         volume_ref = volume_get(context, volume_id, session=session)
         volume_ref.update(values)
@@ -1105,15 +1105,15 @@ def volume_metadata_update(context, volume_id, metadata, delete):
     meta_ref = None
 
     # Now update all existing items with new values, or create new meta objects
-    for meta_key, meta_value in metadata.iteritems():
+    for meta_key, meta_value in metadata.items():
 
         # update the value whether it exists or not
         item = {"value": meta_value}
 
         try:
             meta_ref = volume_metadata_get_item(context, volume_id,
-                                                  meta_key, session)
-        except exception.VolumeMetadataNotFound, e:
+                                                meta_key, session)
+        except exception.VolumeMetadataNotFound as e:
             meta_ref = models.VolumeMetadata()
             item.update({"key": meta_key, "volume_id": volume_id})
 
