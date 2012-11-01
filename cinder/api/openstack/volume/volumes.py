@@ -333,7 +333,8 @@ class VolumeController(wsgi.Controller):
         # TODO(vish): Instance should be None at db layer instead of
         #             trying to lazy load, but for now we turn it into
         #             a dict to avoid an error.
-        retval = _translate_volume_detail_view(context, dict(new_volume),
+        retval = _translate_volume_detail_view(context,
+                                               dict(new_volume.iteritems()),
                                                image_uuid)
 
         return {'volume': retval}
