@@ -911,6 +911,7 @@ class Resource(wsgi.Application):
             # OK, it's an action; figure out which action...
             mtype = _MEDIA_TYPE_MAP.get(content_type)
             action_name = self.action_peek[mtype](body)
+            LOG.debug("Action body: %s" % body)
         else:
             action_name = action
 
