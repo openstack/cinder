@@ -19,6 +19,7 @@ import datetime
 import hashlib
 import os
 import os.path
+import paramiko
 import StringIO
 import tempfile
 
@@ -667,3 +668,88 @@ class AuditPeriodTest(test.TestCase):
                                            day=1,
                                            month=6,
                                            year=2011))
+
+
+class FakeSSHClient(object):
+
+    def __init__(self):
+        self.id = utils.gen_uuid()
+        self.transport = FakeTransport()
+
+    def set_missing_host_key_policy(self, policy):
+        pass
+
+    def connect(self, ip, port=22, username=None, password=None,
+                pkey=None, timeout=10):
+        pass
+
+    def get_transport(self):
+        return self.transport
+
+    def close(self):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        pass
+
+
+class FakeSock(object):
+    def settimeout(self, timeout):
+        pass
+
+
+class FakeTransport(object):
+
+    def __init__(self):
+        self.active = True
+        self.sock = FakeSock()
+
+    def set_keepalive(self, timeout):
+        pass
+
+    def is_active(self):
+        return self.active
+
+
+class SSHPoolTestCase(test.TestCase):
+    """Unit test for SSH Connection Pool."""
+
+    def setup(self):
+        self.mox.StubOutWithMock(paramiko, "SSHClient")
+        paramiko.SSHClient().AndReturn(FakeSSHClient())
+        self.mox.ReplayAll()
+
+    def test_single_ssh_connect(self):
+        self.setup()
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
+                                min_size=1, max_size=1)
+        with sshpool.item() as ssh:
+            first_id = ssh.id
+
+        with sshpool.item() as ssh:
+            second_id = ssh.id
+
+        self.assertEqual(first_id, second_id)
+
+    def test_closed_reopend_ssh_connections(self):
+        self.setup()
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
+                                min_size=1, max_size=2)
+        with sshpool.item() as ssh:
+            first_id = ssh.id
+        with sshpool.item() as ssh:
+            second_id = ssh.id
+            # Close the connection and test for a new connection
+            ssh.get_transport().active = False
+
+        self.assertEqual(first_id, second_id)
+
+        # The mox items are not getting setup in a new pool connection,
+        # so had to reset and set again.
+        self.mox.UnsetStubs()
+        self.setup()
+
+        with sshpool.item() as ssh:
+            third_id = ssh.id
+
+        self.assertNotEqual(first_id, third_id)

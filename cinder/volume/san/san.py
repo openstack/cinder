@@ -21,8 +21,10 @@ The unique thing about a SAN is that we don't expect that we can run the volume
 controller on the SAN hardware.  We expect to access it over SSH or some API.
 """
 
-import os
 import paramiko
+import random
+
+from eventlet import greenthread
 
 from cinder import exception
 from cinder import flags
@@ -60,6 +62,15 @@ san_opts = [
                 default=False,
                 help='Execute commands locally instead of over SSH; '
                      'use if the volume service is running on the SAN device'),
+    cfg.IntOpt('ssh_conn_timeout',
+               default=30,
+               help="SSH connection timeout in seconds"),
+    cfg.IntOpt('ssh_min_pool_conn',
+               default=1,
+               help='Minimum ssh connections in the pool'),
+    cfg.IntOpt('ssh_max_pool_conn',
+               default=5,
+               help='Maximum ssh connections in the pool'),
 ]
 
 FLAGS = flags.FLAGS
@@ -77,31 +88,10 @@ class SanISCSIDriver(ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(SanISCSIDriver, self).__init__(*args, **kwargs)
         self.run_local = FLAGS.san_is_local
+        self.sshpool = None
 
     def _build_iscsi_target_name(self, volume):
         return "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
-
-    def _connect_to_ssh(self):
-        ssh = paramiko.SSHClient()
-        #TODO(justinsb): We need a better SSH key policy
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        if FLAGS.san_password:
-            ssh.connect(FLAGS.san_ip,
-                        port=FLAGS.san_ssh_port,
-                        username=FLAGS.san_login,
-                        password=FLAGS.san_password)
-        elif FLAGS.san_private_key:
-            privatekeyfile = os.path.expanduser(FLAGS.san_private_key)
-            # It sucks that paramiko doesn't support DSA keys
-            privatekey = paramiko.RSAKey.from_private_key_file(privatekeyfile)
-            ssh.connect(FLAGS.san_ip,
-                        port=FLAGS.san_ssh_port,
-                        username=FLAGS.san_login,
-                        pkey=privatekey)
-        else:
-            msg = _("Specify san_password or san_private_key")
-            raise exception.InvalidInput(reason=msg)
-        return ssh
 
     def _execute(self, *cmd, **kwargs):
         if self.run_local:
@@ -111,16 +101,33 @@ class SanISCSIDriver(ISCSIDriver):
             command = ' '.join(cmd)
             return self._run_ssh(command, check_exit_code)
 
-    def _run_ssh(self, command, check_exit_code=True):
-        #TODO(justinsb): SSH connection caching (?)
-        ssh = self._connect_to_ssh()
-
-        #TODO(justinsb): Reintroduce the retry hack
-        ret = utils.ssh_execute(ssh, command, check_exit_code=check_exit_code)
-
-        ssh.close()
-
-        return ret
+    def _run_ssh(self, command, check_exit_code=True, attempts=1):
+        if not self.sshpool:
+            self.sshpool = utils.SSHPool(FLAGS.san_ip,
+                                         FLAGS.san_ssh_port,
+                                         FLAGS.ssh_conn_timeout,
+                                         FLAGS.san_login,
+                                         password=FLAGS.san_password,
+                                         privatekey=FLAGS.san_private_key,
+                                         min_size=FLAGS.ssh_min_pool_conn,
+                                         max_size=FLAGS.ssh_max_pool_conn)
+        try:
+            total_attempts = attempts
+            with self.sshpool.item() as ssh:
+                while attempts > 0:
+                    attempts -= 1
+                    try:
+                        return utils.ssh_execute(ssh, command,
+                                               check_exit_code=check_exit_code)
+                    except Exception as e:
+                        LOG.error(e)
+                        greenthread.sleep(random.randint(20, 500) / 100.0)
+                raise paramiko.SSHException(_("SSH Command failed after '%r' "
+                                              "attempts: '%s'"
+                                              % (total_attempts, command)))
+        except Exception as e:
+            LOG.error(_("Error running ssh command: %s" % command))
+            raise e
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
