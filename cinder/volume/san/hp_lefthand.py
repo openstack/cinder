@@ -54,6 +54,10 @@ class HpSanISCSIDriver(SanISCSIDriver):
     compute layer.
     """
 
+    def __init__(self, *args, **kwargs):
+        super(HpSanISCSIDriver, self).__init__(*args, **kwargs)
+        self.cluster_vip = None
+
     def _cliq_run(self, verb, cliq_args):
         """Runs a CLIQ command over SSH, without doing any result parsing"""
         cliq_arg_strings = []
@@ -173,7 +177,6 @@ class HpSanISCSIDriver(SanISCSIDriver):
         """Creates a volume."""
         cliq_args = {}
         cliq_args['clusterName'] = FLAGS.san_clustername
-        #TODO(justinsb): Should we default to inheriting thinProvision?
         cliq_args['thinProvision'] = '1' if FLAGS.san_thin_provision else '0'
         cliq_args['volumeName'] = volume['name']
         if int(volume['size']) == 0:
@@ -190,8 +193,9 @@ class HpSanISCSIDriver(SanISCSIDriver):
         #TODO(justinsb): Is this always 1? Does it matter?
         cluster_interface = '1'
 
-        cluster_vip = self._cliq_get_cluster_vip(cluster_name)
-        iscsi_portal = cluster_vip + ":3260," + cluster_interface
+        if not self.cluster_vip:
+            self.cluster_vip = self._cliq_get_cluster_vip(cluster_name)
+        iscsi_portal = self.cluster_vip + ":3260," + cluster_interface
 
         model_update = {}
 
@@ -220,7 +224,6 @@ class HpSanISCSIDriver(SanISCSIDriver):
         self._cliq_run_xml("deleteVolume", cliq_args)
 
     def local_path(self, volume):
-        # TODO(justinsb): Is this needed here?
         msg = _("local_path not supported")
         raise exception.VolumeBackendAPIException(data=msg)
 
