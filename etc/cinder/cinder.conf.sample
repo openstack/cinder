@@ -711,6 +711,15 @@
 #### (BoolOpt) Execute commands locally instead of over SSH; use if the
 ####           volume service is running on the SAN device
 
+# ssh_conn_timeout=30
+#### (IntOpt) SSH connection timeout in seconds
+
+# ssh_min_pool_conn=1
+#### (IntOpt) Minimum ssh connections in the pool
+
+# ssh_max_pool_conn=5
+#### (IntOpt) Maximum ssh connections in the pool
+
 
 ######## defined in cinder.volume.solaris ########
 
