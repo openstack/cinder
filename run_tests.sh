@@ -16,6 +16,7 @@ function usage {
   echo "  -p, --pep8               Just run PEP8 and HACKING compliance check"
   echo "  -P, --no-pep8            Don't run static code checks"
   echo "  -c, --coverage           Generate coverage report"
+  echo "  -X, --coverage-xml       Generate XML coverage report."
   echo "  -h, --help               Print this usage message"
   echo "  --hide-elapsed           Don't print the elapsed time for each test along with slow test list"
   echo ""
@@ -39,7 +40,7 @@ function process_option {
     -p|--pep8) just_pep8=1;;
     -P|--no-pep8) no_pep8=1;;
     -c|--coverage) coverage=1;;
-    -x|--coverage-xml) coverage_xml=1;;
+    -X|--coverage-xml) coverage_xml=1;;
     -*) noseopts="$noseopts $1";;
     *) noseargs="$noseargs $1"
   esac
