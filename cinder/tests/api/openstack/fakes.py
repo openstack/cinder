@@ -23,9 +23,8 @@ import webob
 import webob.dec
 import webob.request
 
-from cinder.api import auth as api_auth
-from cinder.api import openstack as openstack_api
-from cinder.api.openstack import auth
+from cinder.api.middleware import auth
+from cinder.api.middleware import fault
 from cinder.api.openstack import volume
 from cinder.api.openstack.volume import limits
 from cinder.api.openstack import wsgi as os_wsgi
@@ -72,18 +71,18 @@ def wsgi_app(inner_app_v1=None, fake_auth=True, fake_auth_context=None,
             ctxt = fake_auth_context
         else:
             ctxt = context.RequestContext('fake', 'fake', auth_token=True)
-        api_v1 = openstack_api.FaultWrapper(api_auth.InjectContext(ctxt,
+        api_v1 = fault.FaultWrapper(auth.InjectContext(ctxt,
               inner_app_v1))
     elif use_no_auth:
-        api_v1 = openstack_api.FaultWrapper(auth.NoAuthMiddleware(
+        api_v1 = fault.FaultWrapper(auth.NoAuthMiddleware(
               limits.RateLimitingMiddleware(inner_app_v1)))
     else:
-        api_v1 = openstack_api.FaultWrapper(auth.AuthMiddleware(
+        api_v1 = fault.FaultWrapper(auth.AuthMiddleware(
               limits.RateLimitingMiddleware(inner_app_v1)))
 
     mapper = urlmap.URLMap()
     mapper['/v1'] = api_v1
-    mapper['/'] = openstack_api.FaultWrapper(versions.Versions())
+    mapper['/'] = fault.FaultWrapper(versions.Versions())
     return mapper
 
 

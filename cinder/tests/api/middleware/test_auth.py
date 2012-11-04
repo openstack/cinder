@@ -14,7 +14,7 @@
 
 import webob
 
-import cinder.api.auth
+import cinder.api.middleware.auth
 from cinder import test
 
 
@@ -29,7 +29,8 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
             return webob.Response()
 
         self.context = None
-        self.middleware = cinder.api.auth.CinderKeystoneContext(fake_app)
+        self.middleware = (cinder.api.middleware.auth
+                           .CinderKeystoneContext(fake_app))
         self.request = webob.Request.blank('/')
         self.request.headers['X_TENANT_ID'] = 'testtenantid'
         self.request.headers['X_AUTH_TOKEN'] = 'testauthtoken'

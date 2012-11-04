@@ -14,7 +14,7 @@
 
 import webob
 
-import cinder.api.sizelimit
+import cinder.api.middleware.sizelimit
 from cinder import flags
 from cinder import test
 
@@ -31,7 +31,8 @@ class TestRequestBodySizeLimiter(test.TestCase):
         def fake_app(req):
             return webob.Response()
 
-        self.middleware = cinder.api.sizelimit.RequestBodySizeLimiter(fake_app)
+        self.middleware = (cinder.api.middleware.sizelimit
+                           .RequestBodySizeLimiter(fake_app))
         self.request = webob.Request.blank('/', method='POST')
 
     def test_content_length_acceptable(self):

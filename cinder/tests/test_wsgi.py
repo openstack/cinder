@@ -24,7 +24,7 @@ import tempfile
 import unittest
 import webob.dec
 
-from cinder.api import openstack as openstack_api
+from cinder.api.middleware import fault
 from cinder import exception
 from cinder import test
 import cinder.wsgi
@@ -97,7 +97,7 @@ class TestWSGIServer(unittest.TestCase):
 class ExceptionTest(test.TestCase):
 
     def _wsgi_app(self, inner_app):
-        return openstack_api.FaultWrapper(inner_app)
+        return fault.FaultWrapper(inner_app)
 
     def _do_test_exception_safety_reflected_in_faults(self, expose):
         class ExceptionWithSafety(exception.CinderException):
