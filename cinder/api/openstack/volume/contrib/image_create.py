@@ -19,7 +19,7 @@
 """The Create Volume from Image extension."""
 
 
-from cinder.api.openstack import extensions
+from cinder.api import extensions
 
 
 class Image_create(extensions.ExtensionDescriptor):

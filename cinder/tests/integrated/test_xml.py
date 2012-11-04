@@ -17,7 +17,7 @@
 
 from lxml import etree
 
-from cinder.api.openstack import common
+from cinder.api import common
 from cinder.openstack.common import log as logging
 from cinder.tests.integrated import integrated_helpers
 

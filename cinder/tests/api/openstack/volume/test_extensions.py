@@ -21,7 +21,7 @@ from lxml import etree
 import webob
 
 from cinder.api.openstack import volume
-from cinder.api.openstack import xmlutil
+from cinder.api import xmlutil
 from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder import test

@@ -15,9 +15,9 @@
 import webob
 from xml.dom import minidom
 
-from cinder.api.openstack import extensions
+from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.openstack import xmlutil
+from cinder.api import xmlutil
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging

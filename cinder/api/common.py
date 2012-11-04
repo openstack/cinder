@@ -22,7 +22,7 @@ import urlparse
 import webob
 
 from cinder.api.openstack import wsgi
-from cinder.api.openstack import xmlutil
+from cinder.api import xmlutil
 from cinder import flags
 from cinder.openstack.common import log as logging
 

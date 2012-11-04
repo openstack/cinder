@@ -23,7 +23,7 @@ import webob.exc
 
 import cinder.api.openstack
 from cinder.api.openstack import wsgi
-from cinder.api.openstack import xmlutil
+from cinder.api import xmlutil
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import exception as common_exception

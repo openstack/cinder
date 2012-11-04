@@ -15,7 +15,7 @@
 import webob
 from webob import exc
 
-from cinder.api.openstack import extensions
+from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception

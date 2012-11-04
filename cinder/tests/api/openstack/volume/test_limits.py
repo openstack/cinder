@@ -25,8 +25,8 @@ from lxml import etree
 import webob
 
 from cinder.api.openstack.volume import limits
-from cinder.api.openstack.volume import views
-from cinder.api.openstack import xmlutil
+from cinder.api import views
+from cinder.api import xmlutil
 import cinder.context
 from cinder.openstack.common import jsonutils
 from cinder import test

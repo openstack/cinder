@@ -25,8 +25,8 @@ from cinder.api.openstack.volume import extensions
 from cinder.api.openstack.volume import limits
 from cinder.api.openstack.volume import snapshots
 from cinder.api.openstack.volume import types
-from cinder.api.openstack.volume import versions
 from cinder.api.openstack.volume import volumes
+from cinder.api import versions
 from cinder.openstack.common import log as logging
 
 

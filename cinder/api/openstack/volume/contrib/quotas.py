@@ -17,9 +17,9 @@
 
 import webob
 
-from cinder.api.openstack import extensions
+from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.openstack import xmlutil
+from cinder.api import xmlutil
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception

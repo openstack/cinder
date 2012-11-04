@@ -21,7 +21,7 @@ import webob
 import webob.dec
 import webob.exc
 
-from cinder.api.openstack import common
+from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.openstack.common import jsonutils
 from cinder import test

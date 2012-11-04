@@ -32,9 +32,9 @@ XMLNS_VOLUME_V1 = 'http://docs.openstack.org/volume/api/v1'
 def validate_schema(xml, schema_name):
     if isinstance(xml, str):
         xml = etree.fromstring(xml)
-    base_path = 'cinder/api/openstack/volume/schemas/v1.1/'
+    base_path = 'cinder/api/schemas/v1.1/'
     if schema_name in ('atom', 'atom-link'):
-        base_path = 'cinder/api/openstack/volume/schemas/'
+        base_path = 'cinder/api/schemas/'
     schema_path = os.path.join(utils.cinderdir(),
                                '%s%s.rng' % (base_path, schema_name))
     schema_doc = etree.parse(schema_path)

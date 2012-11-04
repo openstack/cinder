@@ -22,7 +22,7 @@ Test suites for 'common' code used throughout the OpenStack HTTP API.
 import webob
 import webob.exc
 
-from cinder.api.openstack import common
+from cinder.api import common
 from cinder import test
 
 
@@ -32,7 +32,7 @@ ATOMNS = "{http://www.w3.org/2005/Atom}"
 
 class LimiterTest(test.TestCase):
     """
-    Unit tests for the `cinder.api.openstack.common.limited` method which takes
+    Unit tests for the `cinder.api.common.limited` method which takes
     in a list of items and, depending on the 'offset' and 'limit' GET params,
     returns a subset or complete set of the given items.
     """
@@ -156,7 +156,7 @@ class LimiterTest(test.TestCase):
 
 class PaginationParamsTest(test.TestCase):
     """
-    Unit tests for the `cinder.api.openstack.common.get_pagination_params`
+    Unit tests for the `cinder.api.common.get_pagination_params`
     method which takes in a request object and returns 'marker' and 'limit'
     GET params.
     """

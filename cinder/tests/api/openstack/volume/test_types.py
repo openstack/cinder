@@ -17,7 +17,7 @@ from lxml import etree
 import webob
 
 from cinder.api.openstack.volume import types
-from cinder.api.openstack.volume.views import types as views_types
+from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.openstack.common import timeutils
 from cinder import test

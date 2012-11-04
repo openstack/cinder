@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.api.openstack import common
+from cinder.api import common
 
 
 class ViewBuilder(common.ViewBuilder):

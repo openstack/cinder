@@ -17,7 +17,7 @@
 
 import webob.exc
 
-from cinder.api.openstack import extensions
+from cinder.api import extensions
 from cinder.api.openstack import wsgi
 
 

@@ -17,7 +17,7 @@
 
 from lxml import etree
 
-from cinder.api.openstack import xmlutil
+from cinder.api import xmlutil
 from cinder import test
 
 

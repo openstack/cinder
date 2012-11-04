@@ -16,12 +16,11 @@
 #    under the License.
 
 import datetime
-
 from lxml import etree
 
-from cinder.api.openstack.volume.views import versions as views_versions
 from cinder.api.openstack import wsgi
-from cinder.api.openstack import xmlutil
+from cinder.api.views import versions as views_versions
+from cinder.api import xmlutil
 
 
 VERSIONS = {

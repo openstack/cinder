@@ -16,9 +16,9 @@
 
 from cinder.api.openstack import volume
 from cinder.api.openstack.volume import snapshots
-from cinder.api.openstack.volume import versions
 from cinder.api.openstack.volume import volumes
 from cinder.api.openstack import wsgi
+from cinder.api import versions
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
