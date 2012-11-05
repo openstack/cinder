@@ -47,8 +47,8 @@ from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import uuidutils
 from cinder import quota
-from cinder import utils
 from cinder.volume import utils as volume_utils
 
 
@@ -277,7 +277,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Updates db to show volume is attached"""
         # TODO(vish): refactor this into a more general "reserve"
         # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
-        if not utils.is_uuid_like(instance_uuid):
+        if not uuidutils.is_uuid_like(instance_uuid):
             raise exception.InvalidUUID(instance_uuid)
 
         try:

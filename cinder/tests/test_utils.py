@@ -29,6 +29,7 @@ import cinder
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import uuidutils
 from cinder import test
 from cinder import utils
 
@@ -436,29 +437,9 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertEquals(h1, h2)
 
 
-class IsUUIDLikeTestCase(test.TestCase):
-    def assertUUIDLike(self, val, expected):
-        result = utils.is_uuid_like(val)
-        self.assertEqual(result, expected)
-
-    def test_good_uuid(self):
-        val = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-        self.assertUUIDLike(val, True)
-
-    def test_integer_passed(self):
-        val = 1
-        self.assertUUIDLike(val, False)
-
-    def test_non_uuid_string_passed(self):
-        val = 'foo-fooo'
-        self.assertUUIDLike(val, False)
-
-    def test_non_uuid_string_passed2(self):
-        val = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-        self.assertUUIDLike(val, False)
-
+class GenUUIDTestCase(test.TestCase):
     def test_gen_valid_uuid(self):
-        self.assertUUIDLike(str(utils.gen_uuid()), True)
+        self.assertTrue(uuidutils.is_uuid_like(str(utils.gen_uuid())))
 
 
 class MonkeyPatchTestCase(test.TestCase):
