@@ -152,8 +152,6 @@ class VolumeDriver(object):
         if os.path.exists(dev_path):
             if FLAGS.secure_delete:
                 self._copy_volume('/dev/zero', dev_path, size_in_g)
-            self._try_execute('dmsetup', 'remove', '-f', dev_path,
-                              run_as_root=True)
         self._try_execute('lvremove', '-f', "%s/%s" %
                           (FLAGS.volume_group,
                            self._escape_snapshot(volume['name'])),
