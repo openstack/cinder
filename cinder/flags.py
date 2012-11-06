@@ -217,6 +217,9 @@ global_opts = [
     cfg.StrOpt('control_exchange',
                default='cinder',
                help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
+    cfg.BoolOpt('secure_delete',
+                default=True,
+                help='Whether to perform secure delete'),
 ]
 
 FLAGS.register_opts(global_opts)
