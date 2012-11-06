@@ -150,7 +150,7 @@ class VolumeDriver(object):
         # TODO(ja): reclaiming space should be done lazy and low priority
         dev_path = self.local_path(volume)
         if os.path.exists(dev_path):
-            self._copy_volume('/dev/zero', dev_path, size_in_g)
+            #self._copy_volume('/dev/zero', dev_path, size_in_g)
             self._try_execute('dmsetup', 'remove', '-f', dev_path,
                               run_as_root=True)
         self._try_execute('lvremove', '-f', "%s/%s" %
