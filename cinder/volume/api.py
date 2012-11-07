@@ -34,7 +34,8 @@ from cinder.openstack.common import timeutils
 from cinder.volume import volume_types
 import cinder.policy
 from cinder import quota
-
+from cinder.scheduler import rpcapi as scheduler_rpcapi
+from cinder.volume import volume_types
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
         default=True,
@@ -79,6 +80,7 @@ class API(base.Base):
     def __init__(self, db_driver=None, image_service=None):
         self.image_service = (image_service or
                               glance.get_default_image_service())
+        self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         super(API, self).__init__(db_driver)
 
     def create(self, context, size, name, description, snapshot=None,
@@ -195,6 +197,7 @@ class API(base.Base):
             topic = rpc.queue_get_for(context,
                                       FLAGS.volume_topic,
                                       src_volume_ref['host'])
+            # bypass scheduler and send request directly to volume
             rpc.cast(context,
                      topic,
                      {"method": "create_volume",
@@ -202,13 +205,11 @@ class API(base.Base):
                                "snapshot_id": snapshot_id,
                                "image_id": image_id}})
         else:
-            rpc.cast(context,
-                     FLAGS.scheduler_topic,
-                     {"method": "create_volume",
-                      "args": {"topic": FLAGS.volume_topic,
-                               "volume_id": volume_id,
-                               "snapshot_id": snapshot_id,
-                               "image_id": image_id}})
+            self.scheduler_rpcapi.create_volume(context,
+                FLAGS.volume_topic,
+                volume_id,
+                snapshot_id=snapshot_id,
+                image_id=image_id)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):

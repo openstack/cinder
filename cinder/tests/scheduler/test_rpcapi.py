@@ -40,8 +40,9 @@ class SchedulerRpcAPITestCase(test.TestCase):
         ctxt = context.RequestContext('fake_user', 'fake_project')
         rpcapi = scheduler_rpcapi.SchedulerAPI()
         expected_retval = 'foo' if method == 'call' else None
+        expected_version = kwargs.pop('version', rpcapi.RPC_API_VERSION)
         expected_msg = rpcapi.make_msg(method, **kwargs)
-        expected_msg['version'] = rpcapi.RPC_API_VERSION
+        expected_msg['version'] = expected_version
 
         self.fake_args = None
         self.fake_kwargs = None
@@ -65,3 +66,11 @@ class SchedulerRpcAPITestCase(test.TestCase):
         self._test_scheduler_api('update_service_capabilities',
                 rpc_method='fanout_cast', service_name='fake_name',
                 host='fake_host', capabilities='fake_capabilities')
+
+    def test_create_volume(self):
+        self._test_scheduler_api('create_volume',
+                rpc_method='cast', topic='fake_topic',
+                volume_id='fake_volume_id',
+                snapshot_id='fake_snapshot_id',
+                image_id='fake_image_id',
+                version='1.1')
