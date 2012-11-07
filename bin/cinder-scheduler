@@ -20,7 +20,7 @@
 """Starter script for Cinder Scheduler."""
 
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(os=False)
 
 import gettext
 import os
