@@ -26,7 +26,7 @@ from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.image import fake as fake_image
 from cinder.tests.test_volume import DriverTestCase
-from cinder.volume.driver import RBDDriver
+from cinder.volume.drivers.rbd import RBDDriver
 
 LOG = logging.getLogger(__name__)
 

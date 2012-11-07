@@ -535,6 +535,9 @@
 # iscsi_port=3260
 #### (IntOpt) The port that the iSCSI daemon is listening on
 
+
+######## defined in cinder.volume.drivers.rbd ########
+
 # rbd_pool=rbd
 #### (StrOpt) the RADOS pool in which rbd volumes are stored
 
