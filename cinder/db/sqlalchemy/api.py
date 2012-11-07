@@ -31,6 +31,7 @@ from cinder.openstack.common import log as logging
 from cinder.db.sqlalchemy import models
 from cinder.db.sqlalchemy.session import get_session
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import uuidutils
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -893,7 +894,7 @@ def volume_allocate_iscsi_target(context, volume_id, host):
 
 @require_admin_context
 def volume_attached(context, volume_id, instance_uuid, mountpoint):
-    if not utils.is_uuid_like(instance_uuid):
+    if not uuidutils.is_uuid_like(instance_uuid):
         raise exception.InvalidUUID(instance_uuid)
 
     session = get_session()

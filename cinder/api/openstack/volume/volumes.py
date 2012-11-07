@@ -25,7 +25,7 @@ from cinder.api.openstack import xmlutil
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder import utils
+from cinder.openstack.common import uuidutils
 from cinder import volume
 from cinder.volume import volume_types
 
@@ -269,7 +269,7 @@ class VolumeController(wsgi.Controller):
             msg = _("Invalid imageRef provided.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        if not utils.is_uuid_like(image_uuid):
+        if not uuidutils.is_uuid_like(image_uuid):
             msg = _("Invalid imageRef provided.")
             raise exc.HTTPBadRequest(explanation=msg)
 
