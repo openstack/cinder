@@ -19,9 +19,9 @@
 
 from webob import exc
 
+from cinder.api.openstack.volume.views import types as views_types
 from cinder.api.openstack import wsgi
 from cinder.api.openstack import xmlutil
-from cinder.api.openstack.volume.views import types as views_types
 from cinder import exception
 from cinder.volume import volume_types
 

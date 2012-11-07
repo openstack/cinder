@@ -15,15 +15,15 @@
 import datetime
 import webob
 
+from cinder.api.openstack.volume.contrib import volume_actions
 from cinder import exception
 from cinder import flags
-from cinder import test
-from cinder import utils
-from cinder import volume
-from cinder.api.openstack.volume.contrib import volume_actions
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common.rpc import common as rpc_common
+from cinder import test
 from cinder.tests.api.openstack import fakes
+from cinder import utils
+from cinder import volume
 from cinder.volume import api as volume_api
 
 

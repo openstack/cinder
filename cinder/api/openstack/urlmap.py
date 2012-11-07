@@ -19,8 +19,8 @@ import paste.urlmap
 import re
 import urllib2
 
-from cinder.openstack.common import log as logging
 from cinder.api.openstack import wsgi
+from cinder.openstack.common import log as logging
 
 
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'

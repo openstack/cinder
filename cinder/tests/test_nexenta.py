@@ -25,8 +25,8 @@ import urllib2
 import cinder.flags
 import cinder.test
 from cinder.volume import nexenta
-from cinder.volume.nexenta import volume
 from cinder.volume.nexenta import jsonrpc
+from cinder.volume.nexenta import volume
 
 FLAGS = cinder.flags.FLAGS
 

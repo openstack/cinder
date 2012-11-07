@@ -15,8 +15,8 @@
 
 """The volumes api."""
 
-from webob import exc
 import webob
+from webob import exc
 from xml.dom import minidom
 
 from cinder.api.openstack import common

@@ -18,8 +18,8 @@ import webob
 from cinder.api.openstack.volume.contrib import types_manage
 from cinder import exception
 from cinder import test
-from cinder.volume import volume_types
 from cinder.tests.api.openstack import fakes
+from cinder.volume import volume_types
 
 
 def stub_volume_type(id):

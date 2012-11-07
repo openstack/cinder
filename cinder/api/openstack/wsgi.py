@@ -21,9 +21,9 @@ import time
 import webob
 
 from cinder import exception
-from cinder import wsgi
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import log as logging
+from cinder import wsgi
 
 from lxml import etree
 from xml.dom import minidom

@@ -22,8 +22,8 @@ Test suites for 'common' code used throughout the OpenStack HTTP API.
 import webob
 import webob.exc
 
-from cinder import test
 from cinder.api.openstack import common
+from cinder import test
 
 
 NS = "{http://docs.openstack.org/compute/api/v1.1}"

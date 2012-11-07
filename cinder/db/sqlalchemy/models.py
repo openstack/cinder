@@ -21,11 +21,11 @@
 SQLAlchemy models for cinder data.
 """
 
-from sqlalchemy.orm import relationship, backref, object_mapper
 from sqlalchemy import Column, Integer, String, schema
-from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import ForeignKey, DateTime, Boolean
+from sqlalchemy.orm import relationship, backref, object_mapper
 
 from cinder.db.sqlalchemy.session import get_session
 

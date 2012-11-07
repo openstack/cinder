@@ -19,14 +19,14 @@ Unit Tests for volume types code
 import time
 
 from cinder import context
+from cinder.db.sqlalchemy import models
+from cinder.db.sqlalchemy import session as sql_session
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume import volume_types
-from cinder.db.sqlalchemy import session as sql_session
-from cinder.db.sqlalchemy import models
 from cinder.tests import fake_flags
+from cinder.volume import volume_types
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)

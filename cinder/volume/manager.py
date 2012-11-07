@@ -41,11 +41,11 @@ from cinder import context
 from cinder import exception
 from cinder import flags
 from cinder.image import glance
-from cinder.openstack.common import log as logging
 from cinder import manager
 from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 from cinder import quota

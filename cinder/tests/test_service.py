@@ -26,10 +26,10 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
-from cinder import test
-from cinder import service
 from cinder import manager
+from cinder.openstack.common import cfg
+from cinder import service
+from cinder import test
 from cinder import wsgi
 
 

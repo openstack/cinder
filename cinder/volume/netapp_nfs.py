@@ -19,16 +19,16 @@ Volume driver for NetApp NFS storage.
 """
 
 import os
-import time
 import suds
 from suds.sax import text
+import time
 
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
-from cinder.volume import nfs
 from cinder.volume.netapp import netapp_opts
+from cinder.volume import nfs
 
 LOG = logging.getLogger("cinder.volume.driver")
 

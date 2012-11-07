@@ -24,9 +24,9 @@ import routes
 import webob.dec
 import webob.exc
 
-from cinder import utils
 from cinder.api.openstack import wsgi
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder import wsgi as base_wsgi
 
 

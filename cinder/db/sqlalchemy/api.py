@@ -23,15 +23,6 @@ import datetime
 import functools
 import warnings
 
-from cinder import db
-from cinder import exception
-from cinder import flags
-from cinder import utils
-from cinder.openstack.common import log as logging
-from cinder.db.sqlalchemy import models
-from cinder.db.sqlalchemy.session import get_session
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import uuidutils
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -39,8 +30,19 @@ from sqlalchemy.orm import joinedload_all
 from sqlalchemy.sql.expression import asc
 from sqlalchemy.sql.expression import desc
 from sqlalchemy.sql.expression import literal_column
-from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import literal_column
+from sqlalchemy.sql import func
+
+from cinder import db
+from cinder.db.sqlalchemy import models
+from cinder.db.sqlalchemy.session import get_session
+from cinder import exception
+from cinder import flags
+from cinder.openstack.common import log as logging
+from cinder.openstack.common import timeutils
+from cinder.openstack.common import uuidutils
+from cinder import utils
+
 
 FLAGS = flags.FLAGS
 

@@ -12,17 +12,17 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import json
 import datetime
+import json
 
 from lxml import etree
 import webob
 
 from cinder import context
 from cinder import test
+from cinder.tests.api.openstack import fakes
 from cinder import utils
 from cinder import volume
-from cinder.tests.api.openstack import fakes
 
 
 def fake_volume_get(*args, **kwargs):

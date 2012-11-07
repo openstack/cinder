@@ -24,16 +24,16 @@ inline callbacks.
 """
 
 import functools
-import uuid
 import unittest
+import uuid
 
 import mox
 import nose.plugins.skip
 import stubout
 
 from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import service
 from cinder import tests

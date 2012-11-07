@@ -31,9 +31,9 @@ import kombu.messaging
 
 from cinder.openstack.common import cfg
 from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common import network_utils
 from cinder.openstack.common.rpc import amqp as rpc_amqp
 from cinder.openstack.common.rpc import common as rpc_common
-from cinder.openstack.common import network_utils
 
 kombu_opts = [
     cfg.StrOpt('kombu_ssl_version',

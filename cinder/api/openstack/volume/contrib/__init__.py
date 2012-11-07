@@ -21,9 +21,9 @@ It can't be called 'extensions' because that causes namespacing problems.
 
 """
 
+from cinder.api.openstack import extensions
 from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder.api.openstack import extensions
 
 
 FLAGS = flags.FLAGS

@@ -18,10 +18,10 @@
 TestCase for MockProxy based tests and related classes.
 """
 
+import cinder.test
 import gzip
 import os
 import pickle
-import cinder.test
 
 from cinder.tests.windows import mockproxy
 

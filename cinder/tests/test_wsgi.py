@@ -26,8 +26,8 @@ import webob.dec
 
 from cinder.api import openstack as openstack_api
 from cinder import exception
-from cinder.volume import xiv
 from cinder import test
+from cinder.volume import xiv
 import cinder.wsgi
 
 

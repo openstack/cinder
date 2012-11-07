@@ -23,8 +23,8 @@ import webob.exc
 
 from cinder import context
 from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import log as logging
 from cinder import wsgi
 
 

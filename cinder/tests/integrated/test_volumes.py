@@ -18,11 +18,11 @@
 import time
 import unittest
 
-from cinder import service
 from cinder.openstack.common import log as logging
-from cinder.tests.integrated import integrated_helpers
-from cinder.tests.integrated.api import client
+from cinder import service
 from cinder.tests import fake_driver
+from cinder.tests.integrated.api import client
+from cinder.tests.integrated import integrated_helpers
 from cinder.volume import driver
 
 

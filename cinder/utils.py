@@ -46,16 +46,16 @@ import warnings
 from xml.sax import saxutils
 
 from eventlet import event
+from eventlet.green import subprocess
 from eventlet import greenthread
 from eventlet import pools
-from eventlet.green import subprocess
 
 from cinder.common import deprecated
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 
 

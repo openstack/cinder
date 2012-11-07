@@ -3,9 +3,9 @@
 import inspect
 import webob
 
+from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder import test
-from cinder.api.openstack import wsgi
 from cinder.tests.api.openstack import fakes
 
 

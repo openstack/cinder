@@ -26,8 +26,8 @@ import time
 
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import iscsi
 

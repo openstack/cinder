@@ -17,14 +17,14 @@
 """Unit tests for the NetApp-specific NFS driver module (netapp_nfs)"""
 
 from cinder import context
-from cinder import test
 from cinder import exception
+from cinder import test
 
-from cinder.volume import netapp_nfs
 from cinder.volume import netapp
+from cinder.volume import netapp_nfs
 from cinder.volume import nfs
-from mox import IsA
 from mox import IgnoreArg
+from mox import IsA
 from mox import MockObject
 
 import mox

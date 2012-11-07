@@ -20,18 +20,17 @@ Tests for Volume Code.
 
 """
 
-import os
 import datetime
+import os
 
 import mox
 import shutil
 import tempfile
 
 from cinder import context
-from cinder import exception
 from cinder import db
+from cinder import exception
 from cinder import flags
-from cinder.tests.image import fake as fake_image
 from cinder.openstack.common import importutils
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
@@ -39,8 +38,9 @@ from cinder.openstack.common import rpc
 import cinder.policy
 from cinder import quota
 from cinder import test
-from cinder.volume import iscsi
 from cinder.tests import fake_flags
+from cinder.tests.image import fake as fake_image
+from cinder.volume import iscsi
 
 QUOTAS = quota.QUOTAS
 FLAGS = flags.FLAGS

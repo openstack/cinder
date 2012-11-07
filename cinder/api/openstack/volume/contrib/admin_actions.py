@@ -19,8 +19,8 @@ from cinder.api.openstack import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
-from cinder import volume
 from cinder.openstack.common import log as logging
+from cinder import volume
 
 
 LOG = logging.getLogger(__name__)

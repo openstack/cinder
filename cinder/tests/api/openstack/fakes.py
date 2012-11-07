@@ -25,16 +25,16 @@ import webob.request
 from cinder.api import auth as api_auth
 from cinder.api import openstack as openstack_api
 from cinder.api.openstack import auth
-from cinder.api.openstack.volume import limits
 from cinder.api.openstack import urlmap
 from cinder.api.openstack import volume
+from cinder.api.openstack.volume import limits
 from cinder.api.openstack.volume import versions
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder import context
 from cinder import exception as exc
+from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder import wsgi
-from cinder.openstack.common import timeutils
 
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'

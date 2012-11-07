@@ -17,15 +17,15 @@
 
 """Tests For miscellaneous util methods used with volume."""
 
+from cinder import context
 from cinder import db
 from cinder import flags
-from cinder import context
-from cinder import test
-from cinder.volume import utils as volume_utils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
+from cinder import test
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)

@@ -24,16 +24,16 @@ properly both upgrading and downgrading, and that no data loss occurs
 if possible.
 """
 
-import ConfigParser
 import commands
+import ConfigParser
 import os
 import urlparse
 
 from migrate.versioning import repository
 import sqlalchemy
 
-import cinder.db.sqlalchemy.migrate_repo
 import cinder.db.migration as migration
+import cinder.db.sqlalchemy.migrate_repo
 from cinder.db.sqlalchemy.migration import versioning_api as migration_api
 from cinder.openstack.common import log as logging
 from cinder import test

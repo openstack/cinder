@@ -26,9 +26,9 @@ from cinder.api.openstack import wsgi
 from cinder.api.openstack import xmlutil
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import exception as common_exception
 from cinder.openstack.common import importutils
+from cinder.openstack.common import log as logging
 import cinder.policy
 
 

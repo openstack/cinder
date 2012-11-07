@@ -15,15 +15,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
 import errno
 import hashlib
+import os
 
+from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder import exception
 
 LOG = logging.getLogger("cinder.volume.driver")
 

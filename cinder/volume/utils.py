@@ -17,10 +17,10 @@
 """Volume-related Utilities and helpers."""
 
 from cinder import flags
-from cinder import utils
-from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import log as logging
+from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import timeutils
+from cinder import utils
 
 
 FLAGS = flags.FLAGS

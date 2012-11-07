@@ -17,8 +17,8 @@
 
 from lxml import etree
 
-from cinder import test
 from cinder.api.openstack import xmlutil
+from cinder import test
 
 
 class SelectorTest(test.TestCase):

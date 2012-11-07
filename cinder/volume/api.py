@@ -25,16 +25,16 @@ import functools
 from cinder.db import base
 from cinder import exception
 from cinder import flags
+from cinder.image import glance
 from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
-from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
-from cinder.volume import volume_types
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
+from cinder.volume import volume_types
 from cinder.volume import volume_types
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',

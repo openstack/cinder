@@ -3,10 +3,10 @@ import webob
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import test
-from cinder.volume import api as volume_api
 from cinder.openstack.common import jsonutils
+from cinder import test
 from cinder.tests.api.openstack import fakes
+from cinder.volume import api as volume_api
 
 
 def app():
