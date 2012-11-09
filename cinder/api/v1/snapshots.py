@@ -19,8 +19,8 @@ import webob
 from webob import exc
 
 from cinder.api import common
-from cinder.api.openstack.volume import volumes
 from cinder.api.openstack import wsgi
+from cinder.api.v1 import volumes
 from cinder.api import xmlutil
 from cinder import exception
 from cinder import flags

@@ -20,8 +20,8 @@
 import webob
 
 from cinder.api import extensions
-from cinder.api.openstack.volume import types
 from cinder.api.openstack import wsgi
+from cinder.api.v1 import types
 from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.volume import volume_types

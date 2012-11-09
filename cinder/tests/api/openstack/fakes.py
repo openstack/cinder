@@ -25,10 +25,10 @@ import webob.request
 
 from cinder.api.middleware import auth
 from cinder.api.middleware import fault
-from cinder.api.openstack import volume
-from cinder.api.openstack.volume import limits
 from cinder.api.openstack import wsgi as os_wsgi
 from cinder.api import urlmap
+from cinder.api.v1 import limits
+from cinder.api.v1 import router
 from cinder.api import versions
 from cinder import context
 from cinder import exception as exc
@@ -64,7 +64,7 @@ def fake_wsgi(self, req):
 def wsgi_app(inner_app_v1=None, fake_auth=True, fake_auth_context=None,
         use_no_auth=False, ext_mgr=None):
     if not inner_app_v1:
-        inner_app_v1 = volume.APIRouter(ext_mgr)
+        inner_app_v1 = router.APIRouter(ext_mgr)
 
     if fake_auth:
         if fake_auth_context is not None:

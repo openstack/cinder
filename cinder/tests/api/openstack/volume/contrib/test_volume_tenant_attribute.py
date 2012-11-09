@@ -53,7 +53,7 @@ def fake_volume_get_all(*args, **kwargs):
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.volume.APIRouter()
+    api = fakes.router.APIRouter()
     mapper = fakes.urlmap.URLMap()
     mapper['/v1'] = api
     return mapper

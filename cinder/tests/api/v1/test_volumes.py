@@ -18,8 +18,8 @@ import datetime
 from lxml import etree
 import webob
 
-from cinder.api.openstack.volume import extensions
-from cinder.api.openstack.volume import volumes
+from cinder.api import extensions
+from cinder.api.v1 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception

@@ -11,7 +11,7 @@ from cinder.volume import api as volume_api
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.volume.APIRouter()
+    api = fakes.router.APIRouter()
     mapper = fakes.urlmap.URLMap()
     mapper['/v1'] = api
     return mapper

@@ -20,7 +20,7 @@ import iso8601
 from lxml import etree
 import webob
 
-from cinder.api.openstack import volume
+from cinder.api.v1 import router
 from cinder.api import xmlutil
 from cinder import flags
 from cinder.openstack.common import jsonutils
@@ -51,7 +51,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         self.ext_list.sort()
 
     def test_list_extensions_json(self):
-        app = volume.APIRouter()
+        app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions")
         response = request.get_response(app)
         self.assertEqual(200, response.status_int)
@@ -88,7 +88,7 @@ class ExtensionControllerTest(ExtensionTestCase):
             self.assertEqual(output['extension']['alias'], ext['alias'])
 
     def test_get_extension_json(self):
-        app = volume.APIRouter()
+        app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions/FOXNSOX")
         response = request.get_response(app)
         self.assertEqual(200, response.status_int)
@@ -103,13 +103,13 @@ class ExtensionControllerTest(ExtensionTestCase):
                 "links": []})
 
     def test_get_non_existing_extension_json(self):
-        app = volume.APIRouter()
+        app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions/4")
         response = request.get_response(app)
         self.assertEqual(404, response.status_int)
 
     def test_list_extensions_xml(self):
-        app = volume.APIRouter()
+        app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions")
         request.accept = "application/xml"
         response = request.get_response(app)
@@ -134,7 +134,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         xmlutil.validate_schema(root, 'extensions')
 
     def test_get_extension_xml(self):
-        app = volume.APIRouter()
+        app = router.APIRouter()
         request = webob.Request.blank("/fake/extensions/FOXNSOX")
         request.accept = "application/xml"
         response = request.get_response(app)

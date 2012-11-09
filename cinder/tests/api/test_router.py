@@ -14,10 +14,10 @@
 #    under the License.
 
 
-from cinder.api.openstack import volume
-from cinder.api.openstack.volume import snapshots
-from cinder.api.openstack.volume import volumes
 from cinder.api.openstack import wsgi
+from cinder.api.v1 import router
+from cinder.api.v1 import snapshots
+from cinder.api.v1 import volumes
 from cinder.api import versions
 from cinder import flags
 from cinder.openstack.common import log as logging
@@ -50,7 +50,7 @@ class VolumeRouterTestCase(test.TestCase):
         # NOTE(vish): versions is just returning text so, no need to stub.
         self.stubs.Set(snapshots, 'create_resource', create_resource)
         self.stubs.Set(volumes, 'create_resource', create_resource)
-        self.app = volume.APIRouter()
+        self.app = router.APIRouter()
 
     def test_versions(self):
         req = fakes.HTTPRequest.blank('')

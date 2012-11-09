@@ -18,7 +18,7 @@ import datetime
 from lxml import etree
 import webob
 
-from cinder.api.openstack.volume import snapshots
+from cinder.api.v1 import snapshots
 from cinder import db
 from cinder import exception
 from cinder import flags
