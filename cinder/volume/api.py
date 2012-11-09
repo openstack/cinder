@@ -178,17 +178,30 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        self._cast_create_volume(context, volume['id'], snapshot_id,
-                                 image_id)
+        request_spec = {
+            'volume_properties': options,
+            'volume_type': volume_type,
+            'volume_id': volume['id'],
+            'snapshot_id': volume['snapshot_id'],
+            'image_id': image_id
+        }
+
+        filter_properties = {}
+
+        self._cast_create_volume(context, request_spec, filter_properties)
+
         return volume
 
-    def _cast_create_volume(self, context, volume_id, snapshot_id,
-                            image_id):
+    def _cast_create_volume(self, context, request_spec, filter_properties):
 
         # NOTE(Rongze Zhu): It is a simple solution for bug 1008866
         # If snapshot_id is set, make the call create volume directly to
         # the volume host where the snapshot resides instead of passing it
-        # through the scheduer. So snapshot can be copy to new volume.
+        # through the scheduler. So snapshot can be copy to new volume.
+
+        volume_id = request_spec['volume_id']
+        snapshot_id = request_spec['snapshot_id']
+        image_id = request_spec['image_id']
 
         if snapshot_id and FLAGS.snapshot_same_host:
             snapshot_ref = self.db.snapshot_get(context, snapshot_id)
@@ -208,8 +221,10 @@ class API(base.Base):
             self.scheduler_rpcapi.create_volume(context,
                 FLAGS.volume_topic,
                 volume_id,
-                snapshot_id=snapshot_id,
-                image_id=image_id)
+                snapshot_id,
+                image_id,
+                request_spec=request_spec,
+                filter_properties=filter_properties)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):

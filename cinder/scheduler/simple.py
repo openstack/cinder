@@ -43,22 +43,28 @@ FLAGS.register_opts(simple_scheduler_opts)
 class SimpleScheduler(chance.ChanceScheduler):
     """Implements Naive Scheduler that tries to find least loaded host."""
 
-    def schedule_create_volume(self, context, volume_id, **_kwargs):
+    def schedule_create_volume(self, context, request_spec, filter_properties):
         """Picks a host that is up and has the fewest volumes."""
         elevated = context.elevated()
 
-        volume_ref = db.volume_get(context, volume_id)
-        availability_zone = volume_ref.get('availability_zone')
+        volume_id = request_spec.get('volume_id')
+        snapshot_id = request_spec.get('snapshot_id')
+        image_id = request_spec.get('image_id')
+        volume_properties = request_spec.get('volume_properties')
+        volume_size = volume_properties.get('size')
+        availability_zone = volume_properties.get('availability_zone')
 
         zone, host = None, None
         if availability_zone:
             zone, _x, host = availability_zone.partition(':')
         if host and context.is_admin:
-            service = db.service_get_by_args(elevated, host, 'cinder-volume')
+            topic = FLAGS.volume_topic
+            service = db.service_get_by_args(elevated, host, topic)
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
             driver.cast_to_volume_host(context, host, 'create_volume',
-                    volume_id=volume_id, **_kwargs)
+                    volume_id=volume_id, snapshot_id=snapshot_id,
+                    image_id=image_id)
             return None
 
         results = db.service_get_all_volume_sorted(elevated)
@@ -67,12 +73,13 @@ class SimpleScheduler(chance.ChanceScheduler):
                        if service['availability_zone'] == zone]
         for result in results:
             (service, volume_gigabytes) = result
-            if volume_gigabytes + volume_ref['size'] > FLAGS.max_gigabytes:
+            if volume_gigabytes + volume_size > FLAGS.max_gigabytes:
                 msg = _("Not enough allocatable volume gigabytes remaining")
                 raise exception.NoValidHost(reason=msg)
             if utils.service_is_up(service) and not service['disabled']:
                 driver.cast_to_volume_host(context, service['host'],
-                        'create_volume', volume_id=volume_id, **_kwargs)
+                        'create_volume', volume_id=volume_id,
+                        snapshot_id=snapshot_id, image_id=image_id)
                 return None
         msg = _("Is the appropriate service running?")
         raise exception.NoValidHost(reason=msg)
