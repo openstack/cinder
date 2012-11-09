@@ -65,7 +65,6 @@ Module Reference
    services
    database
    volume
-   xensmvolume
    auth
    api
    scheduler
