@@ -368,14 +368,6 @@ class API(base.Base):
             msg = _("already detached")
             raise exception.InvalidVolume(reason=msg)
 
-    def remove_from_compute(self, context, volume, instance_id, host):
-        """Remove volume from specified compute host."""
-        rpc.call(context,
-                 rpc.queue_get_for(context, FLAGS.compute_topic, host),
-                 {"method": "remove_volume_connection",
-                  "args": {'instance_id': instance_id,
-                           'volume_id': volume['id']}})
-
     @wrap_check_policy
     def reserve_volume(self, context, volume):
         self.update(context, volume, {"status": "attaching"})
