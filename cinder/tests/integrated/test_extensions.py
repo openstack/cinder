@@ -29,8 +29,7 @@ class ExtensionsTest(integrated_helpers._IntegratedTestBase):
         f = super(ExtensionsTest, self)._get_flags()
         f['osapi_volume_extension'] = FLAGS.osapi_volume_extension[:]
         f['osapi_volume_extension'].append(
-            'cinder.tests.api.openstack.volume.extensions.'
-            'foxinsocks.Foxinsocks')
+            'cinder.tests.api.extensions.foxinsocks.Foxinsocks')
         return f
 
     def test_get_foxnsocks(self):

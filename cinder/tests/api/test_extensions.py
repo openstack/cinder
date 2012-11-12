@@ -34,8 +34,7 @@ class ExtensionTestCase(test.TestCase):
     def setUp(self):
         super(ExtensionTestCase, self).setUp()
         ext_list = FLAGS.osapi_volume_extension[:]
-        fox = ('cinder.tests.api.openstack.volume.extensions.'
-               'foxinsocks.Foxinsocks')
+        fox = ('cinder.tests.api.extensions.foxinsocks.Foxinsocks')
         if fox not in ext_list:
             ext_list.append(fox)
             self.flags(osapi_volume_extension=ext_list)

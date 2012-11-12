@@ -20,8 +20,8 @@
 WSGI middleware for OpenStack Volume API.
 """
 
+from cinder.api import extensions
 import cinder.api.openstack
-from cinder.api.openstack.volume import extensions
 from cinder.api.openstack.volume import limits
 from cinder.api.openstack.volume import snapshots
 from cinder.api.openstack.volume import types

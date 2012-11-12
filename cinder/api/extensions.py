@@ -175,10 +175,17 @@ class ExtensionsResource(wsgi.Resource):
 class ExtensionManager(object):
     """Load extensions from the configured extension path.
 
-    See cinder/tests/api/openstack/extensions/foxinsocks/extension.py for an
+    See cinder/tests/api/extensions/foxinsocks/extension.py for an
     example extension implementation.
 
     """
+
+    def __init__(self):
+        LOG.audit(_('Initializing extension manager.'))
+
+        self.cls_list = FLAGS.osapi_volume_extension
+        self.extensions = {}
+        self._load_extensions()
 
     def is_loaded(self, alias):
         return alias in self.extensions
