@@ -566,9 +566,6 @@
 # volume_driver=cinder.volume.driver.ISCSIDriver
 #### (StrOpt) Driver to use for volume creation
 
-# use_local_volumes=true
-#### (BoolOpt) if True, will not discover local volumes
-
 # volume_force_update_capabilities=false
 #### (BoolOpt) if True will force update capabilities on each check
 

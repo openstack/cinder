@@ -42,7 +42,6 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
 
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()
-        f['use_local_volumes'] = False  # Avoids calling local_path
         f['volume_driver'] = 'cinder.tests.fake_driver.LoggingVolumeDriver'
         return f
 
