@@ -26,5 +26,6 @@
     "volume_extension:snapshot_admin_actions:force_delete": [["rule:admin_api"]],
 
     "volume_extension:volume_host_attribute": [["rule:admin_api"]],
-    "volume_extension:volume_tenant_attribute": [["rule:admin_api"]]
+    "volume_extension:volume_tenant_attribute": [["rule:admin_api"]],
+    "volume_extension:hosts": [["rule:admin_api"]]
 }

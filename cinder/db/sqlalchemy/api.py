@@ -257,11 +257,14 @@ def service_get_all_by_topic(context, topic):
 
 @require_admin_context
 def service_get_by_host_and_topic(context, host, topic):
-    return model_query(context, models.Service, read_deleted="no").\
+    result = model_query(context, models.Service, read_deleted="no").\
                 filter_by(disabled=False).\
                 filter_by(host=host).\
                 filter_by(topic=topic).\
                 first()
+    if not result:
+        raise exception.ServiceNotFound(host=host, topic=topic)
+    return result
 
 
 @require_admin_context
@@ -926,6 +929,20 @@ def volume_create(context, values):
 
 
 @require_admin_context
+def volume_data_get_for_host(context, host, session=None):
+    result = model_query(context,
+                         func.count(models.Volume.id),
+                         func.sum(models.Volume.size),
+                         read_deleted="no",
+                         session=session).\
+                     filter_by(host=host).\
+                     first()
+
+    # NOTE(vish): convert None to 0
+    return (result[0] or 0, result[1] or 0)
+
+
+@require_admin_context
 def volume_data_get_for_project(context, project_id, session=None):
     result = model_query(context,
                          func.count(models.Volume.id),
@@ -1186,6 +1203,21 @@ def snapshot_get_all_by_project(context, project_id):
     return model_query(context, models.Snapshot).\
                    filter_by(project_id=project_id).\
                    all()
+
+
+@require_context
+def snapshot_data_get_for_project(context, project_id, session=None):
+    authorize_project_context(context, project_id)
+    result = model_query(context,
+                         func.count(models.Snapshot.id),
+                         func.sum(models.Snapshot.volume_size),
+                         read_deleted="no",
+                         session=session).\
+                     filter_by(project_id=project_id).\
+                     first()
+
+    # NOTE(vish): convert None to 0
+    return (result[0] or 0, result[1] or 0)
 
 
 @require_context
