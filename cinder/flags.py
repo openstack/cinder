@@ -140,12 +140,15 @@ global_opts = [
     cfg.ListOpt('osapi_volume_ext_list',
                 default=[],
                 help='Specify list of extensions to load when using osapi_'
-                     'volume_extension option with cinder.api.openstack.'
-                     'volume.contrib.select_extensions'),
+                     'volume_extension option with cinder.api.contrib.'
+                     'select_extensions'),
+    # NOTE(thingee): default contrib for old and new location for compatibility
     cfg.MultiStrOpt('osapi_volume_extension',
                     default=[
-                      'cinder.api.openstack.volume.contrib.standard_extensions'
-                      ],
+                        'cinder.api.openstack.volume.contrib.'
+                        'standard_extensions',
+                        'cinder.api.contrib.standard_extensions',
+                    ],
                     help='osapi volume extension to load'),
     cfg.StrOpt('osapi_compute_link_prefix',
                default=None,

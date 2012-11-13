@@ -15,7 +15,7 @@
 
 import webob
 
-from cinder.api.openstack.volume.contrib import types_manage
+from cinder.api.contrib import types_manage
 from cinder import exception
 from cinder import test
 from cinder.tests.api.openstack import fakes

@@ -18,7 +18,7 @@ import datetime
 import uuid
 import webob
 
-from cinder.api.openstack.volume.contrib import volume_actions
+from cinder.api.contrib import volume_actions
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import jsonutils

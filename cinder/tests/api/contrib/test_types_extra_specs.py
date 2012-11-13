@@ -20,7 +20,7 @@
 from lxml import etree
 import webob
 
-from cinder.api.openstack.volume.contrib import types_extra_specs
+from cinder.api.contrib import types_extra_specs
 from cinder import test
 from cinder.tests.api.openstack import fakes
 import cinder.wsgi

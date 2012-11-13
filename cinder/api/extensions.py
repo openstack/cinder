@@ -269,6 +269,20 @@ class ExtensionManager(object):
 
         extensions = list(self.cls_list)
 
+        # NOTE(thingee): Until we update devstack to have the new location,
+        # we'll just set replace the old contrib path with the new and preserve
+        # any other extensions that need to be loaded
+        old_contrib_path = ('cinder.api.openstack.volume.contrib.'
+                            'standard_extensions')
+        new_contrib_path = 'cinder.api.contrib.standard_extensions'
+        if old_contrib_path in extensions:
+            LOG.warn(_('osapi_volume_extension is set to deprecated path: %s'),
+                     old_contrib_path)
+            LOG.warn(_('Please set your flag or cinder.conf settings for '
+                       'osapi_volume_extension to: %s'), new_contrib_path)
+            extensions = [e.replace(old_contrib_path, new_contrib_path)
+                          for e in extensions]
+
         for ext_factory in extensions:
             try:
                 self.load_extension(ext_factory)

@@ -16,7 +16,7 @@
 from lxml import etree
 import webob
 
-from cinder.api.openstack.volume.contrib import extended_snapshot_attributes
+from cinder.api.contrib import extended_snapshot_attributes
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import jsonutils
