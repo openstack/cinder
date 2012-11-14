@@ -267,8 +267,6 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     def local_path(self, volume):
         """Return local path to existing local volume."""
-        LOG.error(_("Call to local_path should not happen."
-                    " Verify that use_local_volumes flag is turned off."))
         raise NotImplementedError()
 
     def _xml_parse_helper(self, xml_tree, first_level, search_tuple,

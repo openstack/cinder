@@ -177,8 +177,6 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :raise: :py:exc:`NotImplementedError`
         """
-        LOG.error(_("Call to local_path should not happen."
-                        " Verify that use_local_volumes flag is turned off."))
         raise NotImplementedError
 
     def _do_export(self, _ctx, volume, ensure=False):

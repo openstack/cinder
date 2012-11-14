@@ -7522,12 +7522,6 @@ msgstr "响应 %s"
 msgid "Volume %s does not exist in Nexenta SA"
 msgstr "卷组 %s 不存在"
 
-#: cinder/volume/nexenta/volume.py:180
-msgid ""
-"Call to local_path should not happen. Verify that use_local_volumes flag "
-"is turned off."
-msgstr ""
-
 #: cinder/volume/nexenta/volume.py:202
 #, python-format
 msgid "Ignored target creation error \"%s\" while ensuring export"
