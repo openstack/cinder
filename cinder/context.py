@@ -20,19 +20,19 @@
 """RequestContext: context for requests that persist through all of cinder."""
 
 import copy
+import uuid
 
 from cinder.openstack.common import local
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import policy
-from cinder import utils
 
 
 LOG = logging.getLogger(__name__)
 
 
 def generate_request_id():
-    return 'req-' + str(utils.gen_uuid())
+    return 'req-' + str(uuid.uuid4())
 
 
 class RequestContext(object):

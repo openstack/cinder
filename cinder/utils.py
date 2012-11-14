@@ -1,5 +1,4 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
@@ -41,7 +40,6 @@ import sys
 import tempfile
 import time
 import types
-import uuid
 import warnings
 from xml.sax import saxutils
 
@@ -752,10 +750,6 @@ def check_isinstance(obj, cls):
     raise Exception(_('Expected object of type: %s') % (str(cls)))
     # TODO(justinsb): Can we make this better??
     return cls()  # Ugly PyLint hack
-
-
-def gen_uuid():
-    return uuid.uuid4()
 
 
 def bool_from_str(val):
