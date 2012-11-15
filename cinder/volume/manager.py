@@ -134,6 +134,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         status = 'available'
         model_update = False
+        image_meta = None
 
         try:
             vol_name = volume_ref['name']
@@ -153,6 +154,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                glance.get_remote_image_service(context,
                                                                image_id)
                 image_location = image_service.get_location(context, image_id)
+                image_meta = image_service.show(context, image_id)
                 cloned = self.driver.clone_image(volume_ref, image_location)
                 if not cloned:
                     model_update = self.driver.create_volume(volume_ref)
@@ -171,6 +173,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.db.volume_update(context,
                                       volume_ref['id'], {'status': 'error'})
 
+        if snapshot_id:
+            # Copy any Glance metadata from the original volume
+            self.db.volume_glance_metadata_copy_to_volume(context,
+                                               volume_ref['id'], snapshot_id)
+
         now = timeutils.utcnow()
         self.db.volume_update(context,
                               volume_ref['id'], {'status': status,
@@ -179,6 +186,23 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._reset_stats()
 
         if image_id and not cloned:
+            if image_meta:
+                # Copy all of the Glance image properties to the
+                # volume_glance_metadata table for future reference.
+                self.db.volume_glance_metadata_create(context,
+                                                      volume_ref['id'],
+                                                      'image_id', image_id)
+                name = image_meta.get('name', None)
+                if name:
+                    self.db.volume_glance_metadata_create(context,
+                                                          volume_ref['id'],
+                                                          'image_name', name)
+                image_properties = image_meta.get('properties', {})
+                for key, value in image_properties.items():
+                    self.db.volume_glance_metadata_create(context,
+                                                          volume_ref['id'],
+                                                          key, value)
+
             #copy the image onto the volume.
             self._copy_image_to_volume(context, volume_ref, image_id)
         self._notify_about_volume_usage(context, volume_ref, "create.end")
@@ -222,6 +246,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             reservations = None
             LOG.exception(_("Failed to update usages deleting volume"))
 
+        self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
         self.db.volume_destroy(context, volume_id)
         LOG.debug(_("volume %s: deleted successfully"), volume_ref['name'])
         self._notify_about_volume_usage(context, volume_ref, "delete.end")
@@ -255,6 +280,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.snapshot_update(context,
                                 snapshot_ref['id'], {'status': 'available',
                                                      'progress': '100%'})
+        self.db.volume_glance_metadata_copy_to_snapshot(context,
+                                                snapshot_ref['id'], volume_id)
         LOG.debug(_("snapshot %s: created successfully"), snapshot_ref['name'])
         return snapshot_id
 
@@ -278,6 +305,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                         snapshot_ref['id'],
                                         {'status': 'error_deleting'})
 
+        self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
         self.db.snapshot_destroy(context, snapshot_id)
         LOG.debug(_("snapshot %s: deleted successfully"), snapshot_ref['name'])
         return True

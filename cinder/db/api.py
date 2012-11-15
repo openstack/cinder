@@ -375,6 +375,55 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
 ###################
 
 
+def volume_glance_metadata_create(context, volume_id, key, value):
+    """Update the Glance metadata for the specified volume."""
+    return IMPL.volume_glance_metadata_create(context, volume_id,
+                                              key, value)
+
+
+def volume_glance_metadata_get(context, volume_id):
+    """Return the glance metadata for a volume."""
+    return IMPL.volume_glance_metadata_get(context, volume_id)
+
+
+def volume_snapshot_glance_metadata_get(context, snapshot_id):
+    """Return the Glance metadata for the specified snapshot."""
+    return IMPL.volume_snapshot_glance_metadata_get(context, snapshot_id)
+
+
+def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
+    """
+    Update the Glance metadata for a snapshot by copying all of the key:value
+    pairs from the originating volume. This is so that a volume created from
+    the snapshot will retain the original metadata.
+    """
+    return IMPL.volume_glance_metadata_copy_to_snapshot(context, snapshot_id,
+                                                        volume_id)
+
+
+def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
+    """
+    Update the Glance metadata from a volume (created from a snapshot) by
+    copying all of the key:value pairs from the originating snapshot. This is
+    so that the Glance metadata from the original volume is retained.
+    """
+    return IMPL.volume_glance_metadata_copy_to_volume(context, volume_id,
+                                                      snapshot_id)
+
+
+def volume_glance_metadata_delete_by_volume(context, volume_id):
+    """Delete the glance metadata for a volume."""
+    return IMPL.volume_glance_metadata_delete_by_volume(context, volume_id)
+
+
+def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
+    """Delete the glance metadata for a snapshot."""
+    return IMPL.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
+
+
+###################
+
+
 def sm_backend_conf_create(context, values):
     """Create a new SM Backend Config entry."""
     return IMPL.sm_backend_conf_create(context, values)
