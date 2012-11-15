@@ -21,6 +21,7 @@
 
 import datetime
 import functools
+import uuid
 import warnings
 
 from sqlalchemy.exc import IntegrityError
@@ -41,7 +42,6 @@ from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
-from cinder import utils
 
 
 FLAGS = flags.FLAGS
@@ -736,7 +736,7 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             reservations = []
             for resource, delta in deltas.items():
                 reservation = reservation_create(elevated,
-                                                 str(utils.gen_uuid()),
+                                                 str(uuid.uuid4()),
                                                  usages[resource],
                                                  context.project_id,
                                                  resource, delta, expire,
@@ -915,7 +915,7 @@ def volume_create(context, values):
                                                models.VolumeMetadata)
     volume_ref = models.Volume()
     if not values.get('id'):
-        values['id'] = str(utils.gen_uuid())
+        values['id'] = str(uuid.uuid4())
     volume_ref.update(values)
 
     session = get_session()
@@ -1133,7 +1133,7 @@ def volume_metadata_update(context, volume_id, metadata, delete):
 def snapshot_create(context, values):
     snapshot_ref = models.Snapshot()
     if not values.get('id'):
-        values['id'] = str(utils.gen_uuid())
+        values['id'] = str(uuid.uuid4())
     snapshot_ref.update(values)
 
     session = get_session()

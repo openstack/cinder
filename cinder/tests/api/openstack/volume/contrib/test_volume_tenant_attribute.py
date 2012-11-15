@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 #   Copyright 2012 OpenStack LLC.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,6 +16,7 @@
 
 import datetime
 import json
+import uuid
 
 from lxml import etree
 import webob
@@ -21,8 +24,8 @@ import webob
 from cinder import context
 from cinder import test
 from cinder.tests.api.openstack import fakes
-from cinder import utils
 from cinder import volume
+
 
 PROJECT_ID = '88fd1da4-f464-4a87-9ce5-26f2f40743b9'
 
@@ -62,7 +65,7 @@ class VolumeTenantAttributeTest(test.TestCase):
         super(VolumeTenantAttributeTest, self).setUp()
         self.stubs.Set(volume.API, 'get', fake_volume_get)
         self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
-        self.UUID = utils.gen_uuid()
+        self.UUID = uuid.uuid4()
 
     def test_get_volume_allowed(self):
         ctx = context.RequestContext('admin', 'fake', True)

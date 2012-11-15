@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 #   Copyright 2012 OpenStack LLC.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,6 +15,7 @@
 #   under the License.
 
 import datetime
+import uuid
 import webob
 
 from cinder.api.openstack.volume.contrib import volume_actions
@@ -22,7 +25,6 @@ from cinder.openstack.common import jsonutils
 from cinder.openstack.common.rpc import common as rpc_common
 from cinder import test
 from cinder.tests.api.openstack import fakes
-from cinder import utils
 from cinder import volume
 from cinder.volume import api as volume_api
 
@@ -47,7 +49,7 @@ class VolumeActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeActionsTest, self).setUp()
         self.stubs.Set(volume.API, 'get', fake_volume_api)
-        self.UUID = utils.gen_uuid()
+        self.UUID = uuid.uuid4()
         for _method in self._methods:
             self.stubs.Set(volume.API, _method, fake_volume_api)
 

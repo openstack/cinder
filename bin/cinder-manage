@@ -58,6 +58,7 @@ import gettext
 import optparse
 import os
 import sys
+import uuid
 
 from sqlalchemy import create_engine, MetaData, Table
 from sqlalchemy.orm import sessionmaker
@@ -502,7 +503,7 @@ class StorageManagerCommands(object):
         # TODO(renukaapte) Add backend_introduce.
         ctxt = context.get_admin_context()
         params = dict(map(self._splitfun, args))
-        sr_uuid = utils.gen_uuid()
+        sr_uuid = uuid.uuid4()
 
         if flavor_label is None:
             print "error: backend needs to be associated with flavor"

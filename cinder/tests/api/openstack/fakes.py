@@ -16,6 +16,7 @@
 #    under the License.
 
 import datetime
+import uuid
 
 import routes
 import webob
@@ -33,7 +34,6 @@ from cinder.api.openstack import wsgi as os_wsgi
 from cinder import context
 from cinder import exception as exc
 from cinder.openstack.common import timeutils
-from cinder import utils
 from cinder import wsgi
 
 
@@ -172,7 +172,7 @@ class FakeRateLimiter(object):
 
 def get_fake_uuid(token=0):
     if not token in FAKE_UUIDS:
-        FAKE_UUIDS[token] = str(utils.gen_uuid())
+        FAKE_UUIDS[token] = str(uuid.uuid4())
     return FAKE_UUIDS[token]
 
 

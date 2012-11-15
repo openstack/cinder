@@ -22,6 +22,7 @@ import os.path
 import paramiko
 import StringIO
 import tempfile
+import uuid
 
 import mox
 
@@ -29,7 +30,6 @@ import cinder
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import timeutils
-from cinder.openstack.common import uuidutils
 from cinder import test
 from cinder import utils
 
@@ -437,11 +437,6 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertEquals(h1, h2)
 
 
-class GenUUIDTestCase(test.TestCase):
-    def test_gen_valid_uuid(self):
-        self.assertTrue(uuidutils.is_uuid_like(str(utils.gen_uuid())))
-
-
 class MonkeyPatchTestCase(test.TestCase):
     """Unit test for utils.monkey_patch()."""
     def setUp(self):
@@ -654,7 +649,7 @@ class AuditPeriodTest(test.TestCase):
 class FakeSSHClient(object):
 
     def __init__(self):
-        self.id = utils.gen_uuid()
+        self.id = uuid.uuid4()
         self.transport = FakeTransport()
 
     def set_missing_host_key_policy(self, policy):

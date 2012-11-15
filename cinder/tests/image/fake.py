@@ -20,12 +20,12 @@
 
 import copy
 import datetime
+import uuid
 
 from cinder import exception
 from cinder import flags
 import cinder.image.glance
 from cinder.openstack.common import log as logging
-from cinder import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -178,7 +178,7 @@ class _FakeImageService(object):
         :raises: Duplicate if the image already exist.
 
         """
-        image_id = str(metadata.get('id', utils.gen_uuid()))
+        image_id = str(metadata.get('id', uuid.uuid4()))
         metadata['id'] = image_id
         if image_id in self.images:
             raise exception.Duplicate()
