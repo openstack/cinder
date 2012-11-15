@@ -61,8 +61,8 @@ import sys
 import uuid
 
 from sqlalchemy import create_engine, MetaData, Table
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 
 # If ../cinder/__init__.py exists, add ../ to Python search path, so that
@@ -80,8 +80,8 @@ from cinder import db
 from cinder.db import migration
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import cfg
+from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 from cinder import utils
 from cinder import version
