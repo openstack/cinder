@@ -122,11 +122,11 @@ class SanISCSIDriver(ISCSIDriver):
                     except Exception as e:
                         LOG.error(e)
                         greenthread.sleep(random.randint(20, 500) / 100.0)
-                raise paramiko.SSHException(_("SSH Command failed after '%r' "
-                                              "attempts: '%s'"
-                                              % (total_attempts, command)))
+                raise paramiko.SSHException(_("SSH Command failed after "
+                                              "'%(total_attempts)r' attempts"
+                                              ": '%(command)s'"), locals())
         except Exception as e:
-            LOG.error(_("Error running ssh command: %s" % command))
+            LOG.error(_("Error running ssh command: %s") % command)
             raise e
 
     def ensure_export(self, context, volume):

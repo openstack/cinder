@@ -317,8 +317,8 @@ class SSHPool(pools.Pool):
             transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
-            msg = "Error connecting via ssh: %s" % e
-            LOG.error(_(msg))
+            msg = _("Error connecting via ssh: %s") % e
+            LOG.error(msg)
             raise paramiko.SSHException(msg)
 
     def get(self):
