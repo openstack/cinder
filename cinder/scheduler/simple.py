@@ -62,9 +62,11 @@ class SimpleScheduler(chance.ChanceScheduler):
             service = db.service_get_by_args(elevated, host, topic)
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
-            driver.cast_to_volume_host(context, host, 'create_volume',
-                    volume_id=volume_id, snapshot_id=snapshot_id,
-                    image_id=image_id)
+            updated_volume = driver.volume_update_db(context, volume_id, host)
+            self.volume_rpcapi.create_volume(context, updated_volume,
+                    host,
+                    snapshot_id,
+                    image_id)
             return None
 
         results = db.service_get_all_volume_sorted(elevated)
@@ -77,9 +79,12 @@ class SimpleScheduler(chance.ChanceScheduler):
                 msg = _("Not enough allocatable volume gigabytes remaining")
                 raise exception.NoValidHost(reason=msg)
             if utils.service_is_up(service) and not service['disabled']:
-                driver.cast_to_volume_host(context, service['host'],
-                        'create_volume', volume_id=volume_id,
-                        snapshot_id=snapshot_id, image_id=image_id)
+                updated_volume = driver.volume_update_db(context, volume_id,
+                                                         service['host'])
+                self.volume_rpcapi.create_volume(context, updated_volume,
+                                            service['host'],
+                                            snapshot_id,
+                                            image_id)
                 return None
         msg = _("Is the appropriate service running?")
         raise exception.NoValidHost(reason=msg)

@@ -67,7 +67,6 @@ class ChanceScheduler(driver.Scheduler):
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
 
-        driver.cast_to_host(context, topic, host, 'create_volume',
-                            volume_id=volume_id,
-                            snapshot_id=snapshot_id,
-                            image_id=image_id)
+        updated_volume = driver.volume_update_db(context, volume_id, host)
+        self.volume_rpcapi.create_volume(context, updated_volume, host,
+                                    snapshot_id, image_id)

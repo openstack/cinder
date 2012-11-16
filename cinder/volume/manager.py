@@ -77,6 +77,9 @@ MAPPING = {
 
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
+
+    RPC_API_VERSION = '1.0'
+
     def __init__(self, volume_driver=None, *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
         if not volume_driver:

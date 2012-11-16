@@ -25,13 +25,10 @@ from cinder import db
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
 from cinder import utils
+from cinder.volume import rpcapi as volume_rpcapi
 
-
-LOG = logging.getLogger(__name__)
 
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',
@@ -43,36 +40,14 @@ FLAGS = flags.FLAGS
 FLAGS.register_opts(scheduler_driver_opts)
 
 
-def cast_to_volume_host(context, host, method, update_db=True, **kwargs):
-    """Cast request to a volume host queue"""
+def volume_update_db(context, volume_id, host):
+    '''Set the host and set the scheduled_at field of a volume.
 
-    if update_db:
-        volume_id = kwargs.get('volume_id', None)
-        if volume_id is not None:
-            now = timeutils.utcnow()
-            db.volume_update(context, volume_id,
-                    {'host': host, 'scheduled_at': now})
-    rpc.cast(context,
-             rpc.queue_get_for(context, FLAGS.volume_topic, host),
-             {"method": method, "args": kwargs})
-    LOG.debug(_("Casted '%(method)s' to host '%(host)s'") % locals())
-
-
-def cast_to_host(context, topic, host, method, update_db=True, **kwargs):
-    """Generic cast to host"""
-
-    topic_mapping = {
-            "volume": cast_to_volume_host}
-
-    func = topic_mapping.get(topic)
-    if func:
-        func(context, host, method, update_db=update_db, **kwargs)
-    else:
-        rpc.cast(context,
-                 rpc.queue_get_for(context, topic, host),
-                 {"method": method, "args": kwargs})
-        LOG.debug(_("Casted '%(method)s' to %(topic)s '%(host)s'")
-                % locals())
+    :returns: A Volume with the updated fields set properly.
+    '''
+    now = timeutils.utcnow()
+    values = {'host': host, 'scheduled_at': now}
+    return db.volume_update(context, volume_id, values)
 
 
 class Scheduler(object):
@@ -81,6 +56,7 @@ class Scheduler(object):
     def __init__(self):
         self.host_manager = importutils.import_object(
                 FLAGS.scheduler_host_manager)
+        self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
     def get_host_list(self):
         """Get a list of hosts from the HostManager."""
