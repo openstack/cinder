@@ -113,6 +113,11 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     else:
         d['metadata'] = {}
 
+    if vol.get('volume_glance_metadata'):
+        d['bootable'] = 'true'
+    else:
+        d['bootable'] = 'false'
+
     return d
 
 
