@@ -199,7 +199,6 @@ class API(base.Base):
         # If snapshot_id is set, make the call create volume directly to
         # the volume host where the snapshot resides instead of passing it
         # through the scheduler. So snapshot can be copy to new volume.
-
         volume_id = request_spec['volume_id']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
@@ -208,9 +207,11 @@ class API(base.Base):
             snapshot_ref = self.db.snapshot_get(context, snapshot_id)
             src_volume_ref = self.db.volume_get(context,
                                                 snapshot_ref['volume_id'])
+            volume_ref = self.db.volume_get(context,
+                                            volume_id)
             # bypass scheduler and send request directly to volume
             self.volume_rpcapi.create_volume(context,
-                                            src_volume_ref,
+                                            volume_ref,
                                             src_volume_ref['host'],
                                             snapshot_id,
                                             image_id)
