@@ -85,6 +85,7 @@ class VolumeTestCase(test.TestCase):
         vol['availability_zone'] = FLAGS.storage_availability_zone
         vol['status'] = "creating"
         vol['attach_status'] = "detached"
+        vol['host'] = FLAGS.host
         if metadata is not None:
             vol['metadata'] = metadata
         return db.volume_create(context.get_admin_context(), vol)

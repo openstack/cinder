@@ -125,9 +125,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_volume_usage(context, volume_ref, "create.start")
         LOG.info(_("volume %s: creating"), volume_ref['name'])
 
-        self.db.volume_update(context,
-                              volume_id,
-                              {'host': self.host})
         # NOTE(vish): so we don't have to get volume from db again
         #             before passing it to the driver.
         volume_ref['host'] = self.host

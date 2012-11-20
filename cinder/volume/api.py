@@ -207,12 +207,14 @@ class API(base.Base):
             snapshot_ref = self.db.snapshot_get(context, snapshot_id)
             src_volume_ref = self.db.volume_get(context,
                                                 snapshot_ref['volume_id'])
-            volume_ref = self.db.volume_get(context,
-                                            volume_id)
+            now = timeutils.utcnow()
+            values = {'host': src_volume_ref['host'], 'scheduled_at': now}
+            volume_ref = self.db.volume_update(context, volume_id, values)
+
             # bypass scheduler and send request directly to volume
             self.volume_rpcapi.create_volume(context,
                                             volume_ref,
-                                            src_volume_ref['host'],
+                                            volume_ref['host'],
                                             snapshot_id,
                                             image_id)
         else:
