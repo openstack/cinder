@@ -16,10 +16,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-import webob
-from lxml import etree
 import iso8601
+from lxml import etree
+import webob
 
 from cinder.api.openstack import volume
 from cinder.api.openstack import xmlutil
