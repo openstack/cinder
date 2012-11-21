@@ -16,8 +16,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.volume.xenapi import lib
-from cinder.volume import xenapi_sm as driver
+from cinder.volume.drivers.xenapi import lib
+from cinder.volume.drivers.xenapi import sm as driver
 import mox
 import unittest
 

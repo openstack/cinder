@@ -570,7 +570,7 @@
 #### (BoolOpt) if True will force update capabilities on each check
 
 
-######## defined in cinder.volume.netapp ########
+######## defined in cinder.volume.drivers.netapp ########
 
 # netapp_wsdl_url=<None>
 #### (StrOpt) URL of the WSDL file for the DFM server
@@ -599,7 +599,7 @@
 #### (StrOpt) Vfiler to use for provisioning
 
 
-######## defined in cinder.volume.netapp_nfs ########
+######## defined in cinder.volume.drivers.netapp_nfs ########
 
 # synchronous_snapshot_create=0
 #### (IntOpt) Does snapshot creation call returns immediately
@@ -631,7 +631,7 @@
 #### (StrOpt) Vfiler to use for provisioning
 
 
-######## defined in cinder.volume.nexenta.volume ########
+######## defined in cinder.volume.drivers.nexenta.volume ########
 
 # nexenta_host=
 #### (StrOpt) IP address of Nexenta SA
@@ -667,7 +667,7 @@
 #### (BoolOpt) flag to create sparse volumes
 
 
-######## defined in cinder.volume.nfs ########
+######## defined in cinder.volume.drivers.nfs ########
 
 # nfs_shares_config=<None>
 #### (StrOpt) File with the list of available nfs shares
@@ -684,7 +684,7 @@
 ####           volume creation takes a lot of time.
 
 
-######## defined in cinder.volume.san ########
+######## defined in cinder.volume.drivers.san.san ########
 
 # san_thin_provision=true
 #### (BoolOpt) Use thin provisioning for SAN volumes?
@@ -721,13 +721,13 @@
 #### (IntOpt) Maximum ssh connections in the pool
 
 
-######## defined in cinder.volume.solaris ########
+######## defined in cinder.volume.drivers.san.solaris ########
 
 # san_zfs_volume_base=rpool/
 #### (StrOpt) The ZFS path under which to create zvols for volumes.
 
 
-######## defined in cinder.volume.solidfire ########
+######## defined in cinder.volume.drivers.solidfire ########
 
 # sf_emulate_512=true
 #### (BoolOpt) Set 512 byte emulation on volume creation;
@@ -745,7 +745,7 @@
 #### (BoolOpt) Allow tenants to specify QOS on create
 
 
-######## defined in cinder.volume.storwize_svc ########
+######## defined in cinder.volume.drivers.storwize_svc ########
 
 # storwize_svc_volpool_name=volpool
 #### (StrOpt) Storage system storage pool for volumes
@@ -774,13 +774,13 @@
 ####          prepared. Maximum value is 600 seconds (10 minutes).
 
 
-######## defined in cinder.volume.xiv ########
+######## defined in cinder.volume.drivers.xiv ########
 
 # xiv_proxy=xiv_openstack.nova_proxy.XIVNovaProxy
 #### (StrOpt) Proxy driver
 
 
-######## defined in cinder.volume.zadara ########
+######## defined in cinder.volume.drivers.zadara ########
 
 # zadara_vpsa_ip=<None>
 #### (StrOpt) Management IP of Zadara VPSA

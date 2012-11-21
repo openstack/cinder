@@ -23,7 +23,7 @@ FLAGS = flags.FLAGS
 flags.DECLARE('iscsi_num_targets', 'cinder.volume.driver')
 flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
-flags.DECLARE('xiv_proxy', 'cinder.volume.xiv')
+flags.DECLARE('xiv_proxy', 'cinder.volume.drivers.xiv')
 
 def_vol_type = 'fake_vol_type'
 

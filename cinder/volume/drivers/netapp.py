@@ -36,7 +36,7 @@ from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume import volume_types
 
-LOG = logging.getLogger("cinder.volume.driver")
+LOG = logging.getLogger(__name__)
 
 netapp_opts = [
     cfg.StrOpt('netapp_wsdl_url',

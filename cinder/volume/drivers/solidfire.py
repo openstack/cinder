@@ -33,7 +33,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
-from cinder.volume.san.san import SanISCSIDriver
+from cinder.volume.drivers.san.san import SanISCSIDriver
 
 
 LOG = logging.getLogger(__name__)

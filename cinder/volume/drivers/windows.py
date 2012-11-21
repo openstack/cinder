@@ -34,7 +34,7 @@ if os.name == 'nt':
     import wmi
 
 
-LOG = logging.getLogger("cinder.volume.windows.volume")
+LOG = logging.getLogger(__name__)
 
 FLAGS = flags.FLAGS
 

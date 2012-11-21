@@ -72,6 +72,32 @@ MAPPING = {
     'cinder.volume.driver.RBDDriver': 'cinder.volume.drivers.rbd.RBDDriver',
     'cinder.volume.driver.SheepdogDriver':
                             'cinder.volume.drivers.sheepdog.SheepdogDriver',
+    'cinder.volume.nexenta.volume.NexentaDriver':
+                        'cinder.volume.drivers.nexenta.volume.NexentaDriver',
+    'cinder.volume.san.SanISCSIDriver':
+                        'cinder.volume.drivers.san.san.SanISCSIDriver',
+    'cinder.volume.san.SolarisISCSIDriver':
+                        'cinder.volume.drivers.san.solaris.SolarisISCSIDriver',
+    'cinder.volume.san.HpSanISCSIDriver':
+                    'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver',
+    'cinder.volume.netapp.NetAppISCSIDriver':
+                        'cinder.volume.drivers.netapp.NetAppISCSIDriver',
+    'cinder.volume.netapp.NetAppCmodeISCSIDriver':
+                    'cinder.volume.drivers.netapp.NetAppCmodeISCSIDriver',
+    'cinder.volume.netapp_nfs.NetAppNFSDriver':
+                    'cinder.volume.drivers.netapp_nfs.NetAppNFSDriver',
+    'cinder.volume.nfs.NfsDriver':
+                        'cinder.volume.drivers.nfs.NfsDriver',
+    'cinder.volume.solidfire.SolidFire':
+                        'cinder.volume.drivers.solidfire.SolidFire',
+    'cinder.volume.storwize_svc.StorwizeSVCDriver':
+                        'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver',
+    'cinder.volume.windows.WindowsDriver':
+                        'cinder.volume.drivers.windows.WindowsDriver',
+    'cinder.volume.xiv.XIVDriver':
+                            'cinder.volume.drivers.xiv.XIVDriver',
+    'cinder.volume.zadara.ZadaraVPSAISCSIDriver':
+                        'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver'
     }
 
 
@@ -85,6 +111,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         if not volume_driver:
             volume_driver = FLAGS.volume_driver
         if volume_driver in MAPPING:
+            LOG.warn(_("Driver path %s is deprecated, update your "
+                       "configuration to the new path."), volume_driver)
             self.driver = importutils.import_object(MAPPING[volume_driver])
         else:
             self.driver = importutils.import_object(volume_driver)

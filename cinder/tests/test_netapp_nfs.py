@@ -20,9 +20,9 @@ from cinder import context
 from cinder import exception
 from cinder import test
 
-from cinder.volume import netapp
-from cinder.volume import netapp_nfs
-from cinder.volume import nfs
+from cinder.volume.drivers import netapp
+from cinder.volume.drivers import netapp_nfs
+from cinder.volume.drivers import nfs
 from mox import IgnoreArg
 from mox import IsA
 from mox import MockObject

@@ -26,9 +26,9 @@ import urllib2
 
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
-from cinder.volume import nexenta
+from cinder.volume.drivers import nexenta
 
-LOG = logging.getLogger("cinder.volume.nexenta.jsonrpc")
+LOG = logging.getLogger(__name__)
 
 
 class NexentaJSONException(nexenta.NexentaException):

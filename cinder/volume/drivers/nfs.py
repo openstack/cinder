@@ -25,7 +25,7 @@ from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
-LOG = logging.getLogger("cinder.volume.driver")
+LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('nfs_shares_config',

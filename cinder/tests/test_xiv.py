@@ -23,7 +23,7 @@
 from cinder import exception
 from cinder import flags
 from cinder import test
-from cinder.volume import xiv
+from cinder.volume.drivers import xiv
 
 
 FLAGS = flags.FLAGS
