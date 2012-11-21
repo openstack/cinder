@@ -24,6 +24,36 @@ from cinder.api import xmlutil
 
 
 VERSIONS = {
+    "v2.0": {
+        "id": "v2.0",
+        "status": "CURRENT",
+        "updated": "2012-11-21T11:33:21Z",
+        "links": [
+            {
+                "rel": "describedby",
+                "type": "application/pdf",
+                "href": "http://jorgew.github.com/block-storage-api/"
+                        "content/os-block-storage-1.0.pdf",
+            },
+            {
+                "rel": "describedby",
+                "type": "application/vnd.sun.wadl+xml",
+                #(anthony) FIXME
+                "href": "http://docs.rackspacecloud.com/"
+                        "servers/api/v1.1/application.wadl",
+            },
+        ],
+        "media-types": [
+            {
+                "base": "application/xml",
+                "type": "application/vnd.openstack.volume+xml;version=1",
+            },
+            {
+                "base": "application/json",
+                "type": "application/vnd.openstack.volume+json;version=1",
+            }
+        ],
+    },
     "v1.0": {
         "id": "v1.0",
         "status": "CURRENT",
@@ -54,6 +84,7 @@ VERSIONS = {
             }
         ],
     }
+
 }
 
 
