@@ -240,7 +240,7 @@ def upgrade(migrate_engine):
             table.create()
         except Exception:
             LOG.info(repr(table))
-            LOG.exception('Exception while creating table.')
+            LOG.exception(_('Exception while creating table.'))
             raise
 
     if migrate_engine.name == "mysql":
@@ -269,4 +269,4 @@ def upgrade(migrate_engine):
 
 
 def downgrade(migrate_engine):
-    LOG.exception('Downgrade from initial Cinder install is unsupported.')
+    LOG.exception(_('Downgrade from initial Cinder install is unsupported.'))
