@@ -519,3 +519,25 @@ class API(base.Base):
                "image_name": recv_metadata.get('name', None)
         }
         return response
+
+
+class HostAPI(base.Base):
+    def __init__(self):
+        super(HostAPI, self).__init__()
+
+    """Sub-set of the Volume Manager API for managing host operations."""
+    def set_host_enabled(self, context, host, enabled):
+        """Sets the specified host's ability to accept new volumes."""
+        raise NotImplementedError()
+
+    def get_host_uptime(self, context, host):
+        """Returns the result of calling "uptime" on the target host."""
+        raise NotImplementedError()
+
+    def host_power_action(self, context, host, action):
+        raise NotImplementedError()
+
+    def set_host_maintenance(self, context, host, mode):
+        """Start/Stop host maintenance window. On start, it triggers
+        volume evacuation."""
+        raise NotImplementedError()
