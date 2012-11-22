@@ -83,6 +83,7 @@ class VolumeApiTest(test.TestCase):
                                                 'server_id': 'fakeuuid',
                                                 'id': '1',
                                                 'volume_id': '1'}],
+                               'bootable': 'false',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'metadata': {},
@@ -140,6 +141,7 @@ class VolumeApiTest(test.TestCase):
                                             'server_id': 'fakeuuid',
                                             'id': '1',
                                             'volume_id': '1'}],
+                            'bootable': 'false',
                             'volume_type': 'vol_type_name',
                             'image_id': 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
                             'snapshot_id': None,
@@ -219,6 +221,7 @@ class VolumeApiTest(test.TestCase):
                 'server_id': 'fakeuuid',
                 'device': '/',
             }],
+            'bootable': 'false',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
             'metadata': {},
@@ -247,6 +250,7 @@ class VolumeApiTest(test.TestCase):
                 'server_id': 'fakeuuid',
                 'device': '/',
             }],
+            'bootable': 'false',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
             'metadata': {"qos_max_iops": 2000},
@@ -295,6 +299,7 @@ class VolumeApiTest(test.TestCase):
                                                   'server_id': 'fakeuuid',
                                                   'id': '1',
                                                   'volume_id': '1'}],
+                                 'bootable': 'false',
                                  'volume_type': 'vol_type_name',
                                  'snapshot_id': None,
                                  'metadata': {},
@@ -317,6 +322,7 @@ class VolumeApiTest(test.TestCase):
                                                   'server_id': 'fakeuuid',
                                                   'id': '1',
                                                   'volume_id': '1'}],
+                                 'bootable': 'false',
                                  'volume_type': 'vol_type_name',
                                  'snapshot_id': None,
                                  'metadata': {},
@@ -398,6 +404,7 @@ class VolumeApiTest(test.TestCase):
                                                 'server_id': 'fakeuuid',
                                                 'id': '1',
                                                 'volume_id': '1'}],
+                               'bootable': 'false',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'metadata': {},
@@ -420,6 +427,34 @@ class VolumeApiTest(test.TestCase):
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
                                'attachments': [],
+                               'bootable': 'false',
+                               'volume_type': 'vol_type_name',
+                               'snapshot_id': None,
+                               'metadata': {},
+                               'id': '1',
+                               'created_at': datetime.datetime(1, 1, 1,
+                                                              1, 1, 1),
+                               'size': 1}}
+        self.assertEqual(res_dict, expected)
+
+    def test_volume_show_bootable(self):
+        def stub_volume_get(self, context, volume_id):
+            return (fakes.stub_volume(volume_id,
+                    volume_glance_metadata=dict(foo='bar')))
+
+        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
+
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        res_dict = self.controller.show(req, '1')
+        expected = {'volume': {'status': 'fakestatus',
+                               'display_description': 'displaydesc',
+                               'availability_zone': 'fakeaz',
+                               'display_name': 'displayname',
+                               'attachments': [{'device': '/',
+                                                'server_id': 'fakeuuid',
+                                                'id': '1',
+                                                'volume_id': '1'}],
+                               'bootable': 'true',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'metadata': {},

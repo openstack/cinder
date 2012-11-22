@@ -188,6 +188,7 @@ def stub_volume(id, **kwargs):
         'mountpoint': '/',
         'status': 'fakestatus',
         'attach_status': 'attached',
+        'bootable': 'false',
         'name': 'vol name',
         'display_name': 'displayname',
         'display_description': 'displaydesc',

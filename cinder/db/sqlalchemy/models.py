@@ -213,6 +213,11 @@ class VolumeGlanceMetadata(BASE, CinderBase):
     snapshot_id = Column(String(36), ForeignKey('snapshots.id'))
     key = Column(String(255))
     value = Column(Text)
+    volume = relationship(Volume, backref="volume_glance_metadata",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'VolumeGlanceMetadata.volume_id == Volume.id,'
+                          'VolumeGlanceMetadata.deleted == False)')
 
 
 class Quota(BASE, CinderBase):
