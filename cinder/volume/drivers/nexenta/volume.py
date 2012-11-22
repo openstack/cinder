@@ -27,10 +27,10 @@ from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume import nexenta
-from cinder.volume.nexenta import jsonrpc
+from cinder.volume.drivers import nexenta
+from cinder.volume.drivers.nexenta import jsonrpc
 
-LOG = logging.getLogger("cinder.volume.nexenta.volume")
+LOG = logging.getLogger(__name__)
 FLAGS = flags.FLAGS
 
 nexenta_opts = [

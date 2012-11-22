@@ -30,7 +30,7 @@ from cinder import exception
 from cinder.exception import ProcessExecutionError
 from cinder import test
 
-from cinder.volume import nfs
+from cinder.volume.drivers import nfs
 
 
 class DumbVolume(object):

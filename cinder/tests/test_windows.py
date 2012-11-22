@@ -24,7 +24,7 @@ import cinder.flags
 from cinder.tests.windows import basetestcase
 from cinder.tests.windows import db_fakes
 from cinder.tests.windows import windowsutils
-from cinder.volume import windows
+from cinder.volume.drivers import windows
 
 FLAGS = cinder.flags.FLAGS
 

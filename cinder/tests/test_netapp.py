@@ -27,7 +27,7 @@ from lxml import etree
 
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume import netapp
+from cinder.volume.drivers import netapp
 
 LOG = logging.getLogger("cinder.volume.driver")
 

@@ -19,7 +19,7 @@
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.volume import driver
-from cinder.volume.xenapi import lib as xenapi_lib
+from cinder.volume.drivers.xenapi import lib as xenapi_lib
 
 
 xenapi_opts = [

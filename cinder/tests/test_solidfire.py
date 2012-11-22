@@ -18,7 +18,7 @@
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume.solidfire import SolidFire
+from cinder.volume.drivers.solidfire import SolidFire
 
 LOG = logging.getLogger(__name__)
 

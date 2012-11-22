@@ -32,7 +32,7 @@ from cinder import flags
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume import storwize_svc
+from cinder.volume.drivers import storwize_svc
 
 FLAGS = flags.FLAGS
 

@@ -27,10 +27,10 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
-from cinder.volume.netapp import netapp_opts
-from cinder.volume import nfs
+from cinder.volume.drivers.netapp import netapp_opts
+from cinder.volume.drivers import nfs
 
-LOG = logging.getLogger("cinder.volume.driver")
+LOG = logging.getLogger(__name__)
 
 netapp_nfs_opts = [
     cfg.IntOpt('synchronous_snapshot_create',
