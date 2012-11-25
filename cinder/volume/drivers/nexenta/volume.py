@@ -35,8 +35,8 @@ FLAGS = flags.FLAGS
 
 nexenta_opts = [
     cfg.StrOpt('nexenta_host',
-              default='',
-              help='IP address of Nexenta SA'),
+               default='',
+               help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
                default=2000,
                help='HTTP port to connect to Nexenta REST API server'),
@@ -94,7 +94,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         if not self.nms.volume.object_exists(FLAGS.nexenta_volume):
             raise LookupError(_("Volume %s does not exist in Nexenta SA"),
-                                    FLAGS.nexenta_volume)
+                              FLAGS.nexenta_volume)
 
     @staticmethod
     def _get_zvol_name(volume_name):
@@ -198,7 +198,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise
             else:
                 LOG.info(_('Ignored target creation error "%s"'
-                                             ' while ensuring export'), exc)
+                           ' while ensuring export'), exc)
         try:
             self.nms.stmf.create_targetgroup(target_group_name)
         except nexenta.NexentaException as exc:
@@ -206,7 +206,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise
             else:
                 LOG.info(_('Ignored target group creation error "%s"'
-                                             ' while ensuring export'), exc)
+                           ' while ensuring export'), exc)
         try:
             self.nms.stmf.add_targetgroup_member(target_group_name,
                                                  target_name)
@@ -215,7 +215,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise
             else:
                 LOG.info(_('Ignored target group member addition error "%s"'
-                                             ' while ensuring export'), exc)
+                           ' while ensuring export'), exc)
         try:
             self.nms.scsidisk.create_lu(zvol_name, {})
         except nexenta.NexentaException as exc:
@@ -223,7 +223,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise
             else:
                 LOG.info(_('Ignored LU creation error "%s"'
-                                             ' while ensuring export'), exc)
+                           ' while ensuring export'), exc)
         try:
             self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
                 'target_group': target_group_name,
@@ -233,7 +233,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise
             else:
                 LOG.info(_('Ignored LUN mapping entry addition error "%s"'
-                                             ' while ensuring export'), exc)
+                           ' while ensuring export'), exc)
         return '%s:%s,1 %s' % (FLAGS.nexenta_host,
                                FLAGS.nexenta_iscsi_target_portal_port,
                                target_name)
@@ -269,12 +269,13 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             # We assume that target group is already gone
             LOG.warn(_('Got error trying to destroy target group'
-                ' %(target_group)s, assuming it is already gone: %(exc)s'),
-                {'target_group': target_group_name, 'exc': exc})
+                       ' %(target_group)s, assuming it is '
+                       'already gone: %(exc)s'),
+                     {'target_group': target_group_name, 'exc': exc})
         try:
             self.nms.iscsitarget.delete_target(target_name)
         except nexenta.NexentaException as exc:
             # We assume that target is gone as well
             LOG.warn(_('Got error trying to delete target %(target)s,'
-                ' assuming it is already gone: %(exc)s'),
-                {'target': target_name, 'exc': exc})
+                       ' assuming it is already gone: %(exc)s'),
+                     {'target': target_name, 'exc': exc})

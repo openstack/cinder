@@ -52,7 +52,7 @@ class VolumeToImageSerializer(xmlutil.TemplateBuilder):
 
 
 class VolumeToImageDeserializer(wsgi.XMLDeserializer):
-    """Deserializer to handle xml-formatted requests"""
+    """Deserializer to handle xml-formatted requests."""
     def default(self, string):
         dom = minidom.parseString(string)
         action_node = dom.childNodes[0]

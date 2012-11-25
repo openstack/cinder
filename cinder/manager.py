@@ -214,5 +214,8 @@ class SchedulerDependentManager(Manager):
         """Pass data back to the scheduler at a periodic interval."""
         if self.last_capabilities:
             LOG.debug(_('Notifying Schedulers of capabilities ...'))
-            self.scheduler_rpcapi.update_service_capabilities(context,
-                    self.service_name, self.host, self.last_capabilities)
+            self.scheduler_rpcapi.update_service_capabilities(
+                context,
+                self.service_name,
+                self.host,
+                self.last_capabilities)

@@ -109,56 +109,56 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     def test_create_volume(self):
         self._test_volume_api('create_volume',
-                            rpc_method='cast',
-                            volume=self.fake_volume,
-                            host='fake_host1',
-                            snapshot_id='fake_snapshot_id',
-                            image_id='fake_image_id')
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              host='fake_host1',
+                              snapshot_id='fake_snapshot_id',
+                              image_id='fake_image_id')
 
     def test_delete_volume(self):
         self._test_volume_api('delete_volume',
-                            rpc_method='cast',
-                            volume=self.fake_volume)
+                              rpc_method='cast',
+                              volume=self.fake_volume)
 
     def test_create_snapshot(self):
         self._test_volume_api('create_snapshot',
-                            rpc_method='cast',
-                            volume=self.fake_volume,
-                            snapshot=self.fake_snapshot)
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              snapshot=self.fake_snapshot)
 
     def test_delete_snapshot(self):
         self._test_volume_api('delete_snapshot',
-                            rpc_method='cast',
-                            snapshot=self.fake_snapshot,
-                            host='fake_host')
+                              rpc_method='cast',
+                              snapshot=self.fake_snapshot,
+                              host='fake_host')
 
     def test_attach_volume(self):
         self._test_volume_api('attach_volume',
-                            rpc_method='call',
-                            volume=self.fake_volume,
-                            instance_uuid='fake_uuid',
-                            mountpoint='fake_mountpoint')
+                              rpc_method='call',
+                              volume=self.fake_volume,
+                              instance_uuid='fake_uuid',
+                              mountpoint='fake_mountpoint')
 
     def test_detach_volume(self):
         self._test_volume_api('detach_volume',
-                            rpc_method='call',
-                            volume=self.fake_volume)
+                              rpc_method='call',
+                              volume=self.fake_volume)
 
     def test_copy_volume_to_image(self):
         self._test_volume_api('copy_volume_to_image',
-                            rpc_method='cast',
-                            volume=self.fake_volume,
-                            image_id='fake_image_id')
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              image_id='fake_image_id')
 
     def test_initialize_connection(self):
         self._test_volume_api('initialize_connection',
-                            rpc_method='call',
-                            volume=self.fake_volume,
-                            connector='fake_connector')
+                              rpc_method='call',
+                              volume=self.fake_volume,
+                              connector='fake_connector')
 
     def test_terminate_connection(self):
         self._test_volume_api('terminate_connection',
-                            rpc_method='call',
-                            volume=self.fake_volume,
-                            connector='fake_connector',
-                            force=False)
+                              rpc_method='call',
+                              volume=self.fake_volume,
+                              connector='fake_connector',
+                              force=False)

@@ -85,7 +85,7 @@ class CinderBase(object):
         return n, getattr(self, n)
 
     def update(self, values):
-        """Make the model object behave like a dict"""
+        """Make the model object behave like a dict."""
         for k, v in values.iteritems():
             setattr(self, k, v)
 
@@ -159,7 +159,7 @@ class Volume(BASE, CinderBase):
 
 
 class VolumeMetadata(BASE, CinderBase):
-    """Represents a metadata key/value pair for a volume"""
+    """Represents a metadata key/value pair for a volume."""
     __tablename__ = 'volume_metadata'
     id = Column(Integer, primary_key=True)
     key = Column(String(255))
@@ -173,7 +173,7 @@ class VolumeMetadata(BASE, CinderBase):
 
 
 class VolumeTypes(BASE, CinderBase):
-    """Represent possible volume_types of volumes offered"""
+    """Represent possible volume_types of volumes offered."""
     __tablename__ = "volume_types"
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
@@ -187,7 +187,7 @@ class VolumeTypes(BASE, CinderBase):
 
 
 class VolumeTypeExtraSpecs(BASE, CinderBase):
-    """Represents additional specs as key/value pairs for a volume_type"""
+    """Represents additional specs as key/value pairs for a volume_type."""
     __tablename__ = 'volume_type_extra_specs'
     id = Column(Integer, primary_key=True)
     key = Column(String(255))
@@ -206,7 +206,7 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
 
 
 class VolumeGlanceMetadata(BASE, CinderBase):
-    """Glance metadata for a bootable volume"""
+    """Glance metadata for a bootable volume."""
     __tablename__ = 'volume_glance_metadata'
     id = Column(Integer, primary_key=True, nullable=False)
     volume_id = Column(String(36), ForeignKey('volumes.id'))
@@ -317,7 +317,7 @@ class Snapshot(BASE, CinderBase):
 
 
 class IscsiTarget(BASE, CinderBase):
-    """Represents an iscsi target for a given host"""
+    """Represents an iscsi target for a given host."""
     __tablename__ = 'iscsi_targets'
     __table_args__ = (schema.UniqueConstraint("target_num", "host"),
                       {'mysql_engine': 'InnoDB'})

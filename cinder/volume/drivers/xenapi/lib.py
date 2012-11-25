@@ -68,8 +68,8 @@ class SrOperations(OperationsBase):
         self.call_xenapi('SR.scan', sr_ref)
 
     def create(self, host_ref, device_config, name_label, name_description,
-                  sr_type, physical_size=None, content_type=None,
-                  shared=False, sm_config=None):
+               sr_type, physical_size=None, content_type=None,
+               shared=False, sm_config=None):
         return self.call_xenapi(
             'SR.create',
             host_ref,
@@ -84,7 +84,7 @@ class SrOperations(OperationsBase):
         )
 
     def introduce(self, sr_uuid, name_label, name_description, sr_type,
-                     content_type=None, shared=False, sm_config=None):
+                  content_type=None, shared=False, sm_config=None):
         return self.call_xenapi(
             'SR.introduce',
             sr_uuid,
@@ -123,17 +123,14 @@ class VdiOperations(OperationsBase):
         return self.get_record(vdi_ref)['uuid']
 
     def create(self, sr_ref, size, vdi_type,
-                   sharable=False, read_only=False, other_config=None):
+               sharable=False, read_only=False, other_config=None):
         return self.call_xenapi('VDI.create',
-            dict(
-                SR=sr_ref,
-                virtual_size=str(size),
-                type=vdi_type,
-                sharable=sharable,
-                read_only=read_only,
-                other_config=other_config or dict()
-            )
-        )
+                                dict(SR=sr_ref,
+                                     virtual_size=str(size),
+                                     type=vdi_type,
+                                     sharable=sharable,
+                                     read_only=read_only,
+                                     other_config=other_config or dict()))
 
     def destroy(self, vdi_ref):
         self.call_xenapi('VDI.destroy', vdi_ref)
@@ -184,11 +181,9 @@ class CompoundOperations(object):
         self.SR.forget(sr_ref)
 
     def create_new_vdi(self, sr_ref, size_in_gigabytes):
-        return self.VDI.create(
-                sr_ref,
-                to_bytes(size_in_gigabytes),
-                'User',
-        )
+        return self.VDI.create(sr_ref,
+                               to_bytes(size_in_gigabytes),
+                               'User', )
 
 
 def to_bytes(size_in_gigs):

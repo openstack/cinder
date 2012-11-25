@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Test of Policy Engine For Cinder"""
+"""Test of Policy Engine For Cinder."""
 
 import os.path
 import StringIO
@@ -147,8 +147,8 @@ class PolicyTestCase(test.TestCase):
         # NOTE(dprince) we mix case in the Admin role here to ensure
         # case is ignored
         admin_context = context.RequestContext('admin',
-                                                'fake',
-                                                roles=['AdMiN'])
+                                               'fake',
+                                               roles=['AdMiN'])
         policy.enforce(admin_context, lowercase_action, self.target)
         policy.enforce(admin_context, uppercase_action, self.target)
 
@@ -180,7 +180,7 @@ class DefaultPolicyTestCase(test.TestCase):
 
     def test_policy_called(self):
         self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
-                self.context, "example:exist", {})
+                          self.context, "example:exist", {})
 
     def test_not_found_policy_calls_default(self):
         policy.enforce(self.context, "example:noexist", {})
@@ -188,7 +188,7 @@ class DefaultPolicyTestCase(test.TestCase):
     def test_default_not_found(self):
         self._set_brain("default_noexist")
         self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
-                self.context, "example:noexist", {})
+                          self.context, "example:noexist", {})
 
 
 class ContextIsAdminPolicyTestCase(test.TestCase):

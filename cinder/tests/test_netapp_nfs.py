@@ -14,7 +14,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""Unit tests for the NetApp-specific NFS driver module (netapp_nfs)"""
+"""Unit tests for the NetApp-specific NFS driver module (netapp_nfs)."""
 
 from cinder import context
 from cinder import exception
@@ -67,7 +67,7 @@ class FakeResponce(object):
 
 
 class NetappNfsDriverTestCase(test.TestCase):
-    """Test case for NetApp specific NFS clone driver"""
+    """Test case for NetApp specific NFS clone driver."""
 
     def setUp(self):
         self._driver = netapp_nfs.NetAppNFSDriver()
@@ -79,13 +79,11 @@ class NetappNfsDriverTestCase(test.TestCase):
     def test_check_for_setup_error(self):
         mox = self._mox
         drv = self._driver
-        required_flags = [
-                'netapp_wsdl_url',
-                'netapp_login',
-                'netapp_password',
-                'netapp_server_hostname',
-                'netapp_server_port'
-            ]
+        required_flags = ['netapp_wsdl_url',
+                          'netapp_login',
+                          'netapp_password',
+                          'netapp_server_hostname',
+                          'netapp_server_port']
 
         # check exception raises when flags are not set
         self.assertRaises(exception.CinderException,
@@ -124,7 +122,7 @@ class NetappNfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_create_snapshot(self):
-        """Test snapshot can be created and deleted"""
+        """Test snapshot can be created and deleted."""
         mox = self._mox
         drv = self._driver
 
@@ -137,7 +135,7 @@ class NetappNfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_create_volume_from_snapshot(self):
-        """Tests volume creation from snapshot"""
+        """Tests volume creation from snapshot."""
         drv = self._driver
         mox = self._mox
         volume = FakeVolume(1)
@@ -177,8 +175,8 @@ class NetappNfsDriverTestCase(test.TestCase):
             mox.StubOutWithMock(drv, '_get_volume_path')
 
         drv._get_provider_location(IgnoreArg())
-        drv._volume_not_present(IgnoreArg(), IgnoreArg())\
-                                        .AndReturn(not snapshot_exists)
+        drv._volume_not_present(IgnoreArg(),
+                                IgnoreArg()).AndReturn(not snapshot_exists)
 
         if snapshot_exists:
             drv._get_volume_path(IgnoreArg(), IgnoreArg())

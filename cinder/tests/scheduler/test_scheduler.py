@@ -35,7 +35,7 @@ FLAGS = flags.FLAGS
 
 
 class SchedulerManagerTestCase(test.TestCase):
-    """Test case for scheduler manager"""
+    """Test case for scheduler manager."""
 
     manager_cls = manager.SchedulerManager
     driver_cls = driver.Scheduler
@@ -63,29 +63,34 @@ class SchedulerManagerTestCase(test.TestCase):
         host = 'fake_host'
 
         self.mox.StubOutWithMock(self.manager.driver,
-                'update_service_capabilities')
+                                 'update_service_capabilities')
 
         # Test no capabilities passes empty dictionary
         self.manager.driver.update_service_capabilities(service_name,
-                host, {})
+                                                        host, {})
         self.mox.ReplayAll()
-        result = self.manager.update_service_capabilities(self.context,
-                service_name=service_name, host=host)
+        result = self.manager.update_service_capabilities(
+            self.context,
+            service_name=service_name,
+            host=host)
         self.mox.VerifyAll()
 
         self.mox.ResetAll()
         # Test capabilities passes correctly
         capabilities = {'fake_capability': 'fake_value'}
-        self.manager.driver.update_service_capabilities(
-                service_name, host, capabilities)
+        self.manager.driver.update_service_capabilities(service_name,
+                                                        host,
+                                                        capabilities)
         self.mox.ReplayAll()
-        result = self.manager.update_service_capabilities(self.context,
-                service_name=service_name, host=host,
-                capabilities=capabilities)
+        result = self.manager.update_service_capabilities(
+            self.context,
+            service_name=service_name, host=host,
+            capabilities=capabilities)
 
     def test_create_volume_exception_puts_volume_in_error_state(self):
-        """ Test that a NoValideHost exception for create_volume puts
-        the volume in 'error' state and eats the exception.
+        """Test that a NoValideHost exception for create_volume.
+
+        Puts the volume in 'error' state and eats the exception.
         """
         fake_volume_id = 1
         self._mox_schedule_method_helper('schedule_create_volume')
@@ -95,7 +100,8 @@ class SchedulerManagerTestCase(test.TestCase):
         volume_id = fake_volume_id
         request_spec = {'volume_id': fake_volume_id}
 
-        self.manager.driver.schedule_create_volume(self.context,
+        self.manager.driver.schedule_create_volume(
+            self.context,
             request_spec, {}).AndRaise(exception.NoValidHost(reason=""))
         db.volume_update(self.context, fake_volume_id, {'status': 'error'})
 
@@ -112,11 +118,11 @@ class SchedulerManagerTestCase(test.TestCase):
         setattr(self.manager.driver, method_name, stub_method)
 
         self.mox.StubOutWithMock(self.manager.driver,
-                method_name)
+                                 method_name)
 
 
 class SchedulerTestCase(test.TestCase):
-    """Test case for base scheduler driver class"""
+    """Test case for base scheduler driver class."""
 
     # So we can subclass this test and re-use tests if we need.
     driver_cls = driver.Scheduler
@@ -132,14 +138,16 @@ class SchedulerTestCase(test.TestCase):
         host = 'fake_host'
 
         self.mox.StubOutWithMock(self.driver.host_manager,
-                'update_service_capabilities')
+                                 'update_service_capabilities')
 
         capabilities = {'fake_capability': 'fake_value'}
-        self.driver.host_manager.update_service_capabilities(
-                service_name, host, capabilities)
+        self.driver.host_manager.update_service_capabilities(service_name,
+                                                             host,
+                                                             capabilities)
         self.mox.ReplayAll()
         result = self.driver.update_service_capabilities(service_name,
-                host, capabilities)
+                                                         host,
+                                                         capabilities)
 
     def test_hosts_up(self):
         service1 = {'host': 'host1'}
@@ -150,7 +158,7 @@ class SchedulerTestCase(test.TestCase):
         self.mox.StubOutWithMock(utils, 'service_is_up')
 
         db.service_get_all_by_topic(self.context,
-                self.topic).AndReturn(services)
+                                    self.topic).AndReturn(services)
         utils.service_is_up(service1).AndReturn(False)
         utils.service_is_up(service2).AndReturn(True)
 
@@ -168,12 +176,12 @@ class SchedulerDriverBaseTestCase(SchedulerTestCase):
         fake_kwargs = {'cat': 'meow'}
 
         self.assertRaises(NotImplementedError, self.driver.schedule,
-                         self.context, self.topic, 'schedule_something',
-                         *fake_args, **fake_kwargs)
+                          self.context, self.topic, 'schedule_something',
+                          *fake_args, **fake_kwargs)
 
 
 class SchedulerDriverModuleTestCase(test.TestCase):
-    """Test case for scheduler driver module methods"""
+    """Test case for scheduler driver module methods."""
 
     def setUp(self):
         super(SchedulerDriverModuleTestCase, self).setUp()
@@ -185,7 +193,8 @@ class SchedulerDriverModuleTestCase(test.TestCase):
 
         timeutils.utcnow().AndReturn('fake-now')
         db.volume_update(self.context, 31337,
-                {'host': 'fake_host', 'scheduled_at': 'fake-now'})
+                         {'host': 'fake_host',
+                          'scheduled_at': 'fake-now'})
 
         self.mox.ReplayAll()
         driver.volume_update_db(self.context, 31337, 'fake_host')

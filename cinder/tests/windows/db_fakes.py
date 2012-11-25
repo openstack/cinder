@@ -20,23 +20,17 @@ Stubouts, mocks and fixtures for windows volume test suite
 
 
 def get_fake_volume_info(name):
-    return {
-        'name': name,
-        'size': 1,
-        'provider_location': 'iqn.2010-10.org.openstack:' + name,
-        'id': 1,
-        'provider_auth': None
-        }
+    return {'name': name,
+            'size': 1,
+            'provider_location': 'iqn.2010-10.org.openstack:' + name,
+            'id': 1,
+            'provider_auth': None}
 
 
 def get_fake_snapshot_info(volume_name, snapshot_name):
-    return {
-        'name': snapshot_name,
-        'volume_name': volume_name,
-    }
+    return {'name': snapshot_name,
+            'volume_name': volume_name, }
 
 
 def get_fake_connector_info(initiator):
-    return {
-        'initiator': initiator,
-    }
+    return {'initiator': initiator, }

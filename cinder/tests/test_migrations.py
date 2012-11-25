@@ -76,7 +76,7 @@ def _have_mysql():
 
 
 class TestMigrations(test.TestCase):
-    """Test sqlalchemy-migrate migrations"""
+    """Test sqlalchemy-migrate migrations."""
 
     TEST_DATABASES = {}
     DEFAULT_CONFIG_FILE = os.path.join(os.path.dirname(__file__),
@@ -87,7 +87,7 @@ class TestMigrations(test.TestCase):
                                       DEFAULT_CONFIG_FILE)
     MIGRATE_FILE = cinder.db.sqlalchemy.migrate_repo.__file__
     REPOSITORY = repository.Repository(
-                                os.path.abspath(os.path.dirname(MIGRATE_FILE)))
+        os.path.abspath(os.path.dirname(MIGRATE_FILE)))
 
     def setUp(self):
         super(TestMigrations, self).setUp()
@@ -256,11 +256,12 @@ class TestMigrations(test.TestCase):
         # upgrades successfully.
 
         # Place the database under version control
-        migration_api.version_control(engine, TestMigrations.REPOSITORY,
-                                     migration.INIT_VERSION)
+        migration_api.version_control(engine,
+                                      TestMigrations.REPOSITORY,
+                                      migration.INIT_VERSION)
         self.assertEqual(migration.INIT_VERSION,
-                migration_api.db_version(engine,
-                                         TestMigrations.REPOSITORY))
+                         migration_api.db_version(engine,
+                                                  TestMigrations.REPOSITORY))
 
         migration_api.upgrade(engine, TestMigrations.REPOSITORY,
                               migration.INIT_VERSION + 1)
@@ -268,7 +269,7 @@ class TestMigrations(test.TestCase):
         LOG.debug('latest version is %s' % TestMigrations.REPOSITORY.latest)
 
         for version in xrange(migration.INIT_VERSION + 2,
-                               TestMigrations.REPOSITORY.latest + 1):
+                              TestMigrations.REPOSITORY.latest + 1):
             # upgrade -> downgrade -> upgrade
             self._migrate_up(engine, version)
             if snake_walk:
@@ -300,5 +301,5 @@ class TestMigrations(test.TestCase):
                               TestMigrations.REPOSITORY,
                               version)
         self.assertEqual(version,
-                migration_api.db_version(engine,
-                                         TestMigrations.REPOSITORY))
+                         migration_api.db_version(engine,
+                                                  TestMigrations.REPOSITORY))

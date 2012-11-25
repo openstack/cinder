@@ -64,13 +64,18 @@ class SchedulerRpcAPITestCase(test.TestCase):
 
     def test_update_service_capabilities(self):
         self._test_scheduler_api('update_service_capabilities',
-                rpc_method='fanout_cast', service_name='fake_name',
-                host='fake_host', capabilities='fake_capabilities')
+                                 rpc_method='fanout_cast',
+                                 service_name='fake_name',
+                                 host='fake_host',
+                                 capabilities='fake_capabilities')
 
     def test_create_volume(self):
         self._test_scheduler_api('create_volume',
-                rpc_method='cast', topic='topic', volume_id='volume_id',
-                snapshot_id='snapshot_id', image_id='image_id',
-                request_spec='fake_request_spec',
-                filter_properties='filter_properties',
-                version='1.2')
+                                 rpc_method='cast',
+                                 topic='topic',
+                                 volume_id='volume_id',
+                                 snapshot_id='snapshot_id',
+                                 image_id='image_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='1.2')

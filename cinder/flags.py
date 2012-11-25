@@ -98,8 +98,7 @@ core_opts = [
                help='Directory where cinder binaries are installed'),
     cfg.StrOpt('state_path',
                default='$pybasedir',
-               help="Top-level directory for maintaining cinder's state"),
-    ]
+               help="Top-level directory for maintaining cinder's state"), ]
 
 debug_opts = [
 ]
@@ -122,8 +121,8 @@ global_opts = [
                 help='A list of the glance api servers available to cinder '
                      '([hostname|ip]:port)'),
     cfg.IntOpt('glance_num_retries',
-                default=0,
-                help='Number retries when downloading an image from glance'),
+               default=0,
+               help='Number retries when downloading an image from glance'),
     cfg.StrOpt('scheduler_topic',
                default='cinder-scheduler',
                help='the topic scheduler nodes listen on'),
@@ -217,8 +216,8 @@ global_opts = [
                default=60,
                help='maximum time since last check-in for up service'),
     cfg.StrOpt('volume_api_class',
-                default='cinder.volume.api.API',
-                help='The full class name of the volume API class to use'),
+               default='cinder.volume.api.API',
+               help='The full class name of the volume API class to use'),
     cfg.StrOpt('auth_strategy',
                default='noauth',
                help='The strategy to use for auth. Supports noauth, keystone, '
@@ -228,7 +227,6 @@ global_opts = [
                help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
     cfg.BoolOpt('secure_delete',
                 default=True,
-                help='Whether to perform secure delete'),
-]
+                help='Whether to perform secure delete'), ]
 
 FLAGS.register_opts(global_opts)

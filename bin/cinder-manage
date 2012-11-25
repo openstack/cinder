@@ -127,8 +127,9 @@ class ShellCommands(object):
         Falls back to Python shell if unavailable"""
         self.run('python')
 
-    @args('--shell', dest="shell", metavar='<bpython|ipython|python >',
-            help='Python shell')
+    @args('--shell', dest="shell",
+          metavar='<bpython|ipython|python >',
+          help='Python shell')
     def run(self, shell=None):
         """Runs a Python interactive interpreter."""
         if not shell:
@@ -180,7 +181,7 @@ def _db_error(caught_exception):
 
 
 class HostCommands(object):
-    """List hosts"""
+    """List hosts."""
 
     def list(self, zone=None):
         """Show a list of all physical hosts. Filter by zone.
@@ -206,8 +207,9 @@ class DbCommands(object):
     def __init__(self):
         pass
 
-    @args('--version', dest='version', metavar='<version>',
-            help='Database version')
+    @args('--version', dest='version',
+          metavar='<version>',
+          help='Database version')
     def sync(self, version=None):
         """Sync the database up to the most recent version."""
         return migration.db_sync(version)
@@ -224,9 +226,10 @@ class VersionCommands(object):
         pass
 
     def list(self):
-        print _("%(version)s (%(vcs)s)") % \
-                {'version': version.version_string(),
-                 'vcs': version.version_string_with_vcs()}
+        print(
+            _("%(version)s (%(vcs)s)") %
+            {'version': version.version_string(),
+             'vcs': version.version_string_with_vcs()})
 
     def __call__(self):
         self.list()
@@ -313,7 +316,7 @@ class ImportCommands(object):
             columns = table.columns.keys()
             for row in src.query(table).all():
                 data = dict([(str(column), getattr(row, column))
-                    for column in columns])
+                             for column in columns])
                 dest.add(new_row(**data))
             dest.commit()
 
@@ -325,7 +328,7 @@ class ImportCommands(object):
             for row in src.query(table).all():
                 if row.resource == 'gigabytes' or row.resource == 'volumes':
                     data = dict([(str(column), getattr(row, column))
-                        for column in columns])
+                                 for column in columns])
                     dest.add(new_row(**data))
                 dest.commit()
 
@@ -352,10 +355,14 @@ class ImportCommands(object):
         dest_db = '%s/cinder' % dest_db
         self._import_db(src_db, dest_db, backup_db)
 
-    @args('--src', dest='src_tgts', metavar='<src tgts>',
-        help='[login@src_host:]/opt/stack/nova/volumes/')
-    @args('--dest', dest='dest_tgts', metavar='<dest tgts>',
-        help='[login@src_host:/opt/stack/cinder/volumes/]')
+    @args('--src',
+          dest='src_tgts',
+          metavar='<src tgts>',
+          help='[login@src_host:]/opt/stack/nova/volumes/')
+    @args('--dest',
+          dest='dest_tgts',
+          metavar='<dest tgts>',
+          help='[login@src_host:/opt/stack/cinder/volumes/]')
     def copy_ptgt_files(self, src_tgts, dest_tgts=None):
         """Copy persistent scsi tgt files from nova to cinder.
 
@@ -380,10 +387,12 @@ class ImportCommands(object):
 
 
 class VolumeCommands(object):
-    """Methods for dealing with a cloud in an odd state"""
+    """Methods for dealing with a cloud in an odd state."""
 
-    @args('--volume', dest='volume_id', metavar='<volume id>',
-            help='Volume ID')
+    @args('--volume',
+          dest='volume_id',
+          metavar='<volume id>',
+          help='Volume ID')
     def delete(self, volume_id):
         """Delete a volume, bypassing the check that it
         must be available."""
@@ -407,8 +416,10 @@ class VolumeCommands(object):
                  {"method": "delete_volume",
                   "args": {"volume_id": volume['id']}})
 
-    @args('--volume', dest='volume_id', metavar='<volume id>',
-            help='Volume ID')
+    @args('--volume',
+          dest='volume_id',
+          metavar='<volume id>',
+          help='Volume ID')
     def reattach(self, volume_id):
         """Re-attach a volume that has previously been attached
         to an instance.  Typically called after a compute host
@@ -429,7 +440,7 @@ class VolumeCommands(object):
 
 
 class StorageManagerCommands(object):
-    """Class for mangaging Storage Backends and Flavors"""
+    """Class for mangaging Storage Backends and Flavors."""
 
     def flavor_list(self, flavor=None):
         ctxt = context.get_admin_context()
@@ -449,9 +460,9 @@ class StorageManagerCommands(object):
 
         for flav in flavors:
             print "%-18s\t%-20s\t%s" % (
-                    flav['id'],
-                    flav['label'],
-                    flav['description'])
+                flav['id'],
+                flav['label'],
+                flav['description'])
 
     def flavor_create(self, label, desc):
         # TODO(renukaapte) flavor name must be unique
@@ -487,10 +498,10 @@ class StorageManagerCommands(object):
             sys.exit(2)
 
         print "%-5s\t%-10s\t%-40s\t%-10s\t%s" % (_('id'),
-                                                      _('Flavor id'),
-                                                      _('SR UUID'),
-                                                      _('SR Type'),
-                                                      _('Config Parameters'),)
+                                                 _('Flavor id'),
+                                                 _('SR UUID'),
+                                                 _('SR Type'),
+                                                 _('Config Parameters'),)
 
         for b in backends:
             print "%-5s\t%-10s\t%-40s\t%-10s\t%s" % (b['id'],
@@ -516,8 +527,8 @@ class StorageManagerCommands(object):
             print "error: %s" % ex
             sys.exit(2)
 
-        config_params = " ".join(['%s=%s' %
-                               (key, params[key]) for key in params])
+        config_params = " ".join(
+            ['%s=%s' % (key, params[key]) for key in params])
 
         if 'sr_uuid' in params:
             sr_uuid = params['sr_uuid']
@@ -532,11 +543,12 @@ class StorageManagerCommands(object):
                 c = raw_input('Proceed? (y/n) ')
                 if c == 'y' or c == 'Y':
                     try:
-                        db.sm_backend_conf_update(ctxt, backend['id'],
-                                        dict(created=False,
-                                             flavor_id=flavors['id'],
-                                             sr_type=sr_type,
-                                             config_params=config_params))
+                        db.sm_backend_conf_update(
+                            ctxt, backend['id'],
+                            dict(created=False,
+                                 flavor_id=flavors['id'],
+                                 sr_type=sr_type,
+                                 config_params=config_params))
                     except exception.DBError, e:
                         _db_error(e)
                 return
@@ -578,10 +590,10 @@ class ConfigCommands(object):
 
 
 class GetLogCommands(object):
-    """Get logging information"""
+    """Get logging information."""
 
     def errors(self):
-        """Get all of the errors from the log files"""
+        """Get all of the errors from the log files."""
         error_found = 0
         if FLAGS.logdir:
             logs = [x for x in os.listdir(FLAGS.logdir) if x.endswith('.log')]
@@ -601,7 +613,7 @@ class GetLogCommands(object):
             print "No errors in logfiles!"
 
     def syslog(self, num_entries=10):
-        """Get <num_entries> of the cinder syslog events"""
+        """Get <num_entries> of the cinder syslog events."""
         entries = int(num_entries)
         count = 0
         log_file = ''
@@ -692,8 +704,8 @@ def main():
     script_name = argv.pop(0)
     if len(argv) < 1:
         print _("\nOpenStack Cinder version: %(version)s (%(vcs)s)\n") % \
-                {'version': version.version_string(),
-                 'vcs': version.version_string_with_vcs()}
+            {'version': version.version_string(),
+             'vcs': version.version_string_with_vcs()}
         print script_name + " category action [<args>]"
         print _("Available categories:")
         for k, _v in CATEGORIES:

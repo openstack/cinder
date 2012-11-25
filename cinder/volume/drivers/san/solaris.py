@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 solaris_opts = [
     cfg.StrOpt('san_zfs_volume_base',
                default='rpool/',
-               help='The ZFS path under which to create zvols for volumes.'),
-    ]
+               help='The ZFS path under which to create zvols for volumes.'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(solaris_opts)

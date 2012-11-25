@@ -36,15 +36,13 @@ INVALID_UUID = '00000000-0000-0000-0000-000000000002'
 
 
 def _get_default_snapshot_param():
-    return {
-        'id': UUID,
-        'volume_id': 12,
-        'status': 'available',
-        'volume_size': 100,
-        'created_at': None,
-        'display_name': 'Default name',
-        'display_description': 'Default description',
-        }
+    return {'id': UUID,
+            'volume_id': 12,
+            'status': 'available',
+            'volume_size': 100,
+            'created_at': None,
+            'display_name': 'Default name',
+            'display_description': 'Default description', }
 
 
 def stub_snapshot_create(self, context, volume_id, name, description):
@@ -81,47 +79,48 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(db, 'snapshot_get_all_by_project',
                        fakes.stub_snapshot_get_all_by_project)
         self.stubs.Set(db, 'snapshot_get_all',
-                      fakes.stub_snapshot_get_all)
+                       fakes.stub_snapshot_get_all)
 
     def test_snapshot_create(self):
         self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', fakes.stub_volume_get)
         snapshot = {"volume_id": '12',
-                "force": False,
-                "display_name": "Snapshot Test Name",
-                "display_description": "Snapshot Test Desc"}
+                    "force": False,
+                    "display_name": "Snapshot Test Name",
+                    "display_description": "Snapshot Test Desc"}
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v1/snapshots')
         resp_dict = self.controller.create(req, body)
 
         self.assertTrue('snapshot' in resp_dict)
         self.assertEqual(resp_dict['snapshot']['display_name'],
-                        snapshot['display_name'])
+                         snapshot['display_name'])
         self.assertEqual(resp_dict['snapshot']['display_description'],
-                        snapshot['display_description'])
+                         snapshot['display_description'])
 
     def test_snapshot_create_force(self):
-        self.stubs.Set(volume.api.API, "create_snapshot_force",
-            stub_snapshot_create)
+        self.stubs.Set(volume.api.API,
+                       "create_snapshot_force",
+                       stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', fakes.stub_volume_get)
         snapshot = {"volume_id": '12',
-                "force": True,
-                "display_name": "Snapshot Test Name",
-                "display_description": "Snapshot Test Desc"}
+                    "force": True,
+                    "display_name": "Snapshot Test Name",
+                    "display_description": "Snapshot Test Desc"}
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v1/snapshots')
         resp_dict = self.controller.create(req, body)
 
         self.assertTrue('snapshot' in resp_dict)
         self.assertEqual(resp_dict['snapshot']['display_name'],
-                        snapshot['display_name'])
+                         snapshot['display_name'])
         self.assertEqual(resp_dict['snapshot']['display_description'],
-                        snapshot['display_description'])
+                         snapshot['display_description'])
 
         snapshot = {"volume_id": "12",
-                "force": "**&&^^%%$$##@@",
-                "display_name": "Snapshot Test Name",
-                "display_description": "Snapshot Test Desc"}
+                    "force": "**&&^^%%$$##@@",
+                    "display_name": "Snapshot Test Name",
+                    "display_description": "Snapshot Test Desc"}
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v1/snapshots')
         self.assertRaises(exception.InvalidParameterValue,
@@ -133,9 +132,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
         self.stubs.Set(volume.api.API, "update_snapshot",
                        fakes.stub_snapshot_update)
-        updates = {
-            "display_name": "Updated Test Name",
-        }
+        updates = {"display_name": "Updated Test Name", }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
         res_dict = self.controller.update(req, UUID, body)
@@ -207,8 +204,9 @@ class SnapshotApiTest(test.TestCase):
                           snapshot_id)
 
     def test_snapshot_detail(self):
-        self.stubs.Set(volume.api.API, "get_all_snapshots",
-            stub_snapshot_get_all)
+        self.stubs.Set(volume.api.API,
+                       "get_all_snapshots",
+                       stub_snapshot_get_all)
         req = fakes.HTTPRequest.blank('/v1/snapshots/detail')
         resp_dict = self.controller.detail(req)
 
@@ -350,8 +348,7 @@ class SnapshotSerializerTest(test.TestCase):
             created_at=datetime.datetime.now(),
             display_name='snap_name',
             display_description='snap_desc',
-            volume_id='vol_id',
-            )
+            volume_id='vol_id', )
         text = serializer.serialize(dict(snapshot=raw_snapshot))
 
         print text
@@ -361,24 +358,20 @@ class SnapshotSerializerTest(test.TestCase):
 
     def test_snapshot_index_detail_serializer(self):
         serializer = snapshots.SnapshotsTemplate()
-        raw_snapshots = [dict(
-                id='snap1_id',
-                status='snap1_status',
-                size=1024,
-                created_at=datetime.datetime.now(),
-                display_name='snap1_name',
-                display_description='snap1_desc',
-                volume_id='vol1_id',
-                ),
-                       dict(
-                id='snap2_id',
-                status='snap2_status',
-                size=1024,
-                created_at=datetime.datetime.now(),
-                display_name='snap2_name',
-                display_description='snap2_desc',
-                volume_id='vol2_id',
-                )]
+        raw_snapshots = [dict(id='snap1_id',
+                              status='snap1_status',
+                              size=1024,
+                              created_at=datetime.datetime.now(),
+                              display_name='snap1_name',
+                              display_description='snap1_desc',
+                              volume_id='vol1_id', ),
+                         dict(id='snap2_id',
+                              status='snap2_status',
+                              size=1024,
+                              created_at=datetime.datetime.now(),
+                              display_name='snap2_name',
+                              display_description='snap2_desc',
+                              volume_id='vol2_id', )]
         text = serializer.serialize(dict(snapshots=raw_snapshots))
 
         print text

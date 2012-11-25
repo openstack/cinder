@@ -113,26 +113,21 @@ class TestNexentaDriver(cinder.test.TestCase):
         ('iscsitarget', 'create_target', ({'target_name': 'iqn:volume1'},),
             u'Unable to create iscsi target\n'
             u' iSCSI target iqn.1986-03.com.sun:02:cinder-volume1 already'
-                                                               u' configured\n'
-            u' itadm create-target failed with error 17\n',
-        ),
+            u' configured\n'
+            u' itadm create-target failed with error 17\n', ),
         ('stmf', 'create_targetgroup', ('cinder/volume1',),
             u'Unable to create targetgroup: stmfadm: cinder/volume1:'
-                                                          u' already exists\n',
-        ),
+            u' already exists\n', ),
         ('stmf', 'add_targetgroup_member', ('cinder/volume1', 'iqn:volume1'),
             u'Unable to add member to targetgroup: stmfadm:'
-                u' iqn.1986-03.com.sun:02:cinder-volume1: already exists\n',
-        ),
+            u' iqn.1986-03.com.sun:02:cinder-volume1: already exists\n', ),
         ('scsidisk', 'create_lu', ('cinder/volume1', {}),
             u"Unable to create lu with zvol 'cinder/volume1':\n"
-            u" sbdadm: filename /dev/zvol/rdsk/cinder/volume1: in use\n",
-        ),
+            u" sbdadm: filename /dev/zvol/rdsk/cinder/volume1: in use\n", ),
         ('scsidisk', 'add_lun_mapping_entry', ('cinder/volume1', {
-                'target_group': 'cinder/volume1', 'lun': '0'}),
+            'target_group': 'cinder/volume1', 'lun': '0'}),
             u"Unable to add view to zvol 'cinder/volume1' (LUNs in use: ):\n"
-            u" stmfadm: view entry exists\n",
-        ),
+            u" stmfadm: view entry exists\n", ),
     ]
 
     def _stub_export_method(self, module, method, args, error, fail=False):
@@ -150,7 +145,8 @@ class TestNexentaDriver(cinder.test.TestCase):
         self._stub_all_export_methods()
         self.mox.ReplayAll()
         retval = self.drv.create_export({}, self.TEST_VOLUME_REF)
-        self.assertEquals(retval,
+        self.assertEquals(
+            retval,
             {'provider_location':
                 '%s:%s,1 %s%s' % (FLAGS.nexenta_host,
                                   FLAGS.nexenta_iscsi_target_portal_port,
@@ -165,7 +161,9 @@ class TestNexentaDriver(cinder.test.TestCase):
                                      fail=True)
             self.mox.ReplayAll()
             self.assertRaises(nexenta.NexentaException,
-                        self.drv.create_export, {}, self.TEST_VOLUME_REF)
+                              self.drv.create_export,
+                              {},
+                              self.TEST_VOLUME_REF)
         return _test_create_export_fail
 
     for i in range(len(_CREATE_EXPORT_METHODS)):
@@ -185,8 +183,8 @@ class TestNexentaDriver(cinder.test.TestCase):
 
     def test_remove_export_fail_0(self):
         self.nms_mock.scsidisk.delete_lu('cinder/volume1')
-        self.nms_mock.stmf.destroy_targetgroup('cinder/volume1').AndRaise(
-                                                    nexenta.NexentaException())
+        self.nms_mock.stmf.destroy_targetgroup(
+            'cinder/volume1').AndRaise(nexenta.NexentaException())
         self.nms_mock.iscsitarget.delete_target('iqn:volume1')
         self.mox.ReplayAll()
         self.drv.remove_export({}, self.TEST_VOLUME_REF)
@@ -194,8 +192,8 @@ class TestNexentaDriver(cinder.test.TestCase):
     def test_remove_export_fail_1(self):
         self.nms_mock.scsidisk.delete_lu('cinder/volume1')
         self.nms_mock.stmf.destroy_targetgroup('cinder/volume1')
-        self.nms_mock.iscsitarget.delete_target('iqn:volume1').AndRaise(
-                                                    nexenta.NexentaException())
+        self.nms_mock.iscsitarget.delete_target(
+            'iqn:volume1').AndRaise(nexenta.NexentaException())
         self.mox.ReplayAll()
         self.drv.remove_export({}, self.TEST_VOLUME_REF)
 
@@ -205,9 +203,9 @@ class TestNexentaJSONRPC(cinder.test.TestCase):
     URL_S = 'https://example.com/'
     USER = 'user'
     PASSWORD = 'password'
-    HEADERS = {'Authorization': 'Basic %s' % (base64.b64encode(
-                                                ':'.join((USER, PASSWORD))),),
-               'Content-Type': 'application/json'}
+    HEADERS = {'Authorization': 'Basic %s' % (
+        base64.b64encode(':'.join((USER, PASSWORD))),),
+        'Content-Type': 'application/json'}
     REQUEST = 'the request'
 
     def setUp(self):
@@ -222,21 +220,23 @@ class TestNexentaJSONRPC(cinder.test.TestCase):
         urllib2.urlopen(self.REQUEST).AndReturn(self.resp_mock)
 
     def test_call(self):
-        urllib2.Request(self.URL,
-                '{"object": null, "params": ["arg1", "arg2"], "method": null}',
-                self.HEADERS).AndReturn(self.REQUEST)
+        urllib2.Request(
+            self.URL,
+            '{"object": null, "params": ["arg1", "arg2"], "method": null}',
+            self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = ''
         self.resp_mock.read().AndReturn(
-                '{"error": null, "result": "the result"}')
+            '{"error": null, "result": "the result"}')
         self.mox.ReplayAll()
         result = self.proxy('arg1', 'arg2')
         self.assertEquals("the result", result)
 
     def test_call_deep(self):
-        urllib2.Request(self.URL,
-              '{"object": "obj1.subobj", "params": ["arg1", "arg2"],'
-                                                          ' "method": "meth"}',
-              self.HEADERS).AndReturn(self.REQUEST)
+        urllib2.Request(
+            self.URL,
+            '{"object": "obj1.subobj", "params": ["arg1", "arg2"],'
+            ' "method": "meth"}',
+            self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = ''
         self.resp_mock.read().AndReturn(
             '{"error": null, "result": "the result"}')
@@ -245,12 +245,14 @@ class TestNexentaJSONRPC(cinder.test.TestCase):
         self.assertEquals("the result", result)
 
     def test_call_auto(self):
-        urllib2.Request(self.URL,
-                '{"object": null, "params": ["arg1", "arg2"], "method": null}',
-                self.HEADERS).AndReturn(self.REQUEST)
-        urllib2.Request(self.URL_S,
-                '{"object": null, "params": ["arg1", "arg2"], "method": null}',
-                self.HEADERS).AndReturn(self.REQUEST)
+        urllib2.Request(
+            self.URL,
+            '{"object": null, "params": ["arg1", "arg2"], "method": null}',
+            self.HEADERS).AndReturn(self.REQUEST)
+        urllib2.Request(
+            self.URL_S,
+            '{"object": null, "params": ["arg1", "arg2"], "method": null}',
+            self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = 'EOF in headers'
         self.resp_mock.read().AndReturn(
             '{"error": null, "result": "the result"}')
@@ -260,9 +262,10 @@ class TestNexentaJSONRPC(cinder.test.TestCase):
         self.assertEquals("the result", result)
 
     def test_call_error(self):
-        urllib2.Request(self.URL,
-                '{"object": null, "params": ["arg1", "arg2"], "method": null}',
-                self.HEADERS).AndReturn(self.REQUEST)
+        urllib2.Request(
+            self.URL,
+            '{"object": null, "params": ["arg1", "arg2"], "method": null}',
+            self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = ''
         self.resp_mock.read().AndReturn(
             '{"error": {"message": "the error"}, "result": "the result"}')
@@ -271,9 +274,10 @@ class TestNexentaJSONRPC(cinder.test.TestCase):
                           self.proxy, 'arg1', 'arg2')
 
     def test_call_fail(self):
-        urllib2.Request(self.URL,
-                '{"object": null, "params": ["arg1", "arg2"], "method": null}',
-                self.HEADERS).AndReturn(self.REQUEST)
+        urllib2.Request(
+            self.URL,
+            '{"object": null, "params": ["arg1", "arg2"], "method": null}',
+            self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = 'EOF in headers'
         self.proxy.auto = False
         self.mox.ReplayAll()

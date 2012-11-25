@@ -23,8 +23,8 @@ class ViewBuilder(common.ViewBuilder):
     def show(self, request, volume_type, brief=False):
         """Trim away extraneous volume type attributes."""
         trimmed = dict(id=volume_type.get('id'),
-                          name=volume_type.get('name'),
-                          extra_specs=volume_type.get('extra_specs'))
+                       name=volume_type.get('name'),
+                       extra_specs=volume_type.get('extra_specs'))
         return trimmed if brief else dict(volume_type=trimmed)
 
     def index(self, request, volume_types):

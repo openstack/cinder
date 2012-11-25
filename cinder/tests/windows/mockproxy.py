@@ -44,7 +44,7 @@ def serialize_obj(obj):
 
 
 def serialize_args(*args, **kwargs):
-    """Workaround for float string conversion issues in Python 2.6"""
+    """Workaround for float string conversion issues in Python 2.6."""
     return serialize_obj((args, kwargs))
 
 
@@ -113,8 +113,10 @@ class MockProxy(object):
         self._recorded_values = {}
 
     def _get_proxy_object(self, obj):
-        if hasattr(obj, '__dict__') or isinstance(obj, tuple) or \
-            isinstance(obj, list) or isinstance(obj, dict):
+        if (hasattr(obj, '__dict__') or
+                isinstance(obj, tuple) or
+                isinstance(obj, list) or
+                isinstance(obj, dict)):
             p = MockProxy(obj)
         else:
             p = obj
@@ -125,8 +127,9 @@ class MockProxy(object):
             return object.__getattribute__(self, name)
         else:
             attr = getattr(self._wrapped, name)
-            if inspect.isfunction(attr) or inspect.ismethod(attr) or \
-                inspect.isbuiltin(attr):
+            if (inspect.isfunction(attr) or
+                    inspect.ismethod(attr) or
+                    inspect.isbuiltin(attr)):
                 def newfunc(*args, **kwargs):
                     result = attr(*args, **kwargs)
                     p = self._get_proxy_object(result)
@@ -134,8 +137,9 @@ class MockProxy(object):
                     self._add_recorded_ret_value(name, params, p)
                     return p
                 return newfunc
-            elif hasattr(attr, '__dict__') or (hasattr(attr, '__getitem__')
-                and not (isinstance(attr, str) or isinstance(attr, unicode))):
+            elif (hasattr(attr, '__dict__') or
+                  (hasattr(attr, '__getitem__') and not
+                  (isinstance(attr, str) or isinstance(attr, unicode)))):
                 p = MockProxy(attr)
             else:
                 p = attr

@@ -38,60 +38,75 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     BASE_RPC_API_VERSION = '1.0'
 
     def __init__(self):
-        super(VolumeAPI, self).__init__(topic=FLAGS.volume_topic,
+        super(VolumeAPI, self).__init__(
+            topic=FLAGS.volume_topic,
             default_version=self.BASE_RPC_API_VERSION)
 
     def create_volume(self, ctxt, volume, host,
                       snapshot_id=None, image_id=None):
-        self.cast(ctxt, self.make_msg('create_volume',
-                                      volume_id=volume['id'],
-                                      snapshot_id=snapshot_id,
-                                      image_id=image_id),
-                topic=rpc.queue_get_for(ctxt, self.topic, host))
+        self.cast(ctxt,
+                  self.make_msg('create_volume',
+                                volume_id=volume['id'],
+                                snapshot_id=snapshot_id,
+                                image_id=image_id),
+                  topic=rpc.queue_get_for(ctxt,
+                                          self.topic,
+                                          host))
 
     def delete_volume(self, ctxt, volume):
-        self.cast(ctxt, self.make_msg('delete_volume',
-                                      volume_id=volume['id']),
-                topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+        self.cast(ctxt,
+                  self.make_msg('delete_volume',
+                                volume_id=volume['id']),
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
 
     def create_snapshot(self, ctxt, volume, snapshot):
         self.cast(ctxt, self.make_msg('create_snapshot',
                                       volume_id=volume['id'],
                                       snapshot_id=snapshot['id']),
-                topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
 
     def delete_snapshot(self, ctxt, snapshot, host):
         self.cast(ctxt, self.make_msg('delete_snapshot',
                                       snapshot_id=snapshot['id']),
-                topic=rpc.queue_get_for(ctxt, self.topic, host))
+                  topic=rpc.queue_get_for(ctxt, self.topic, host))
 
     def attach_volume(self, ctxt, volume, instance_uuid, mountpoint):
         return self.call(ctxt, self.make_msg('attach_volume',
-                                      volume_id=volume['id'],
-                                      instance_uuid=instance_uuid,
-                                      mountpoint=mountpoint),
-                    topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                                             volume_id=volume['id'],
+                                             instance_uuid=instance_uuid,
+                                             mountpoint=mountpoint),
+                         topic=rpc.queue_get_for(ctxt,
+                                                 self.topic,
+                                                 volume['host']))
 
     def detach_volume(self, ctxt, volume):
         return self.call(ctxt, self.make_msg('detach_volume',
-                                      volume_id=volume['id']),
-                    topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                                             volume_id=volume['id']),
+                         topic=rpc.queue_get_for(ctxt,
+                                                 self.topic,
+                                                 volume['host']))
 
     def copy_volume_to_image(self, ctxt, volume, image_id):
         self.cast(ctxt, self.make_msg('copy_volume_to_image',
                                       volume_id=volume['id'],
                                       image_id=image_id),
-                topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                  topic=rpc.queue_get_for(ctxt,
+                                          self.topic,
+                                          volume['host']))
 
     def initialize_connection(self, ctxt, volume, connector):
         return self.call(ctxt, self.make_msg('initialize_connection',
-                                      volume_id=volume['id'],
-                                      connector=connector),
-                    topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                                             volume_id=volume['id'],
+                                             connector=connector),
+                         topic=rpc.queue_get_for(ctxt,
+                                                 self.topic,
+                                                 volume['host']))
 
     def terminate_connection(self, ctxt, volume, connector, force=False):
         return self.call(ctxt, self.make_msg('terminate_connection',
-                                      volume_id=volume['id'],
-                                      connector=connector,
-                                      force=force),
-                    topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                                             volume_id=volume['id'],
+                                             connector=connector,
+                                             force=force),
+                         topic=rpc.queue_get_for(ctxt,
+                                                 self.topic,
+                                                 volume['host']))

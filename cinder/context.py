@@ -59,7 +59,7 @@ class RequestContext(object):
         """
         if kwargs:
             LOG.warn(_('Arguments dropped when creating context: %s') %
-                    str(kwargs))
+                     str(kwargs))
 
         self.user_id = user_id
         self.project_id = project_id

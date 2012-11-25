@@ -56,8 +56,7 @@ volume_opts = [
                help='use this ip for iscsi'),
     cfg.IntOpt('iscsi_port',
                default=3260,
-               help='The port that the iSCSI daemon is listening on'),
-    ]
+               help='The port that the iSCSI daemon is listening on'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
@@ -93,11 +92,11 @@ class VolumeDriver(object):
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
         out, err = self._execute('vgs', '--noheadings', '-o', 'name',
-                                run_as_root=True)
+                                 run_as_root=True)
         volume_groups = out.split()
         if not FLAGS.volume_group in volume_groups:
             exception_message = (_("volume group %s doesn't exist")
-                                  % FLAGS.volume_group)
+                                 % FLAGS.volume_group)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
     def _create_volume(self, volume_name, sizestr):
@@ -307,8 +306,9 @@ class ISCSIDriver(VolumeDriver):
         # cooresponding target admin class
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
-                iscsi_target = self.db.volume_get_iscsi_target_num(context,
-                                                               volume['id'])
+                iscsi_target = self.db.volume_get_iscsi_target_num(
+                    context,
+                    volume['id'])
             except exception.NotFound:
                 LOG.info(_("Skipping ensure_export. No iscsi_target "
                            "provisioned for volume: %s"), volume['id'])
@@ -320,7 +320,7 @@ class ISCSIDriver(VolumeDriver):
         old_name = None
         volume_name = volume['name']
         if (volume['provider_location'] is not None and
-            volume['name'] not in volume['provider_location']):
+                volume['name'] not in volume['provider_location']):
 
             msg = _('Detected inconsistency in provider_location id')
             LOG.debug(msg)
@@ -443,8 +443,9 @@ class ISCSIDriver(VolumeDriver):
         # cooresponding target admin class
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
-                iscsi_target = self.db.volume_get_iscsi_target_num(context,
-                                                               volume['id'])
+                iscsi_target = self.db.volume_get_iscsi_target_num(
+                    context,
+                    volume['id'])
             except exception.NotFound:
                 LOG.info(_("Skipping remove_export. No iscsi_target "
                            "provisioned for volume: %s"), volume['id'])

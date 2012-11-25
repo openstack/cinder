@@ -118,8 +118,8 @@ class Quotas(extensions.ExtensionDescriptor):
         resources = []
 
         res = extensions.ResourceExtension('os-quota-sets',
-                                            QuotaSetsController(),
-                                            member_actions={'defaults': 'GET'})
+                                           QuotaSetsController(),
+                                           member_actions={'defaults': 'GET'})
         resources.append(res)
 
         return resources

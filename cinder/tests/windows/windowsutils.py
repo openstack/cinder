@@ -48,13 +48,13 @@ class WindowsUtils(object):
         return self.__conn_wmi
 
     def find_vhd_by_name(self, name):
-        ''' Finds a volume by its name.'''
+        '''Finds a volume by its name.'''
 
         wt_disks = self._conn_wmi.WT_Disk(Description=name)
         return wt_disks
 
     def volume_exists(self, name):
-        ''' Checks if a volume exists.'''
+        '''Checks if a volume exists.'''
 
         wt_disks = self.find_vhd_by_name(name)
         if len(wt_disks) > 0:
@@ -62,7 +62,7 @@ class WindowsUtils(object):
         return False
 
     def snapshot_exists(self, name):
-        ''' Checks if a snapshot exists.'''
+        '''Checks if a snapshot exists.'''
 
         wt_snapshots = self.find_snapshot_by_name(name)
         if len(wt_snapshots) > 0:
@@ -70,47 +70,47 @@ class WindowsUtils(object):
         return False
 
     def find_snapshot_by_name(self, name):
-        ''' Finds a snapshot by its name.'''
+        '''Finds a snapshot by its name.'''
 
         wt_snapshots = self._conn_wmi.WT_Snapshot(Description=name)
         return wt_snapshots
 
     def delete_volume(self, name):
-        ''' Deletes a volume.'''
+        '''Deletes a volume.'''
 
         wt_disk = self._conn_wmi.WT_Disk(Description=name)[0]
         wt_disk.Delete_()
         vhdfiles = self._conn_cimv2.query(
-        "Select * from CIM_DataFile where Name = '" +
-        self._get_vhd_path(name) + "'")
+            "Select * from CIM_DataFile where Name = '" +
+            self._get_vhd_path(name) + "'")
         if len(vhdfiles) > 0:
             vhdfiles[0].Delete()
 
     def _get_vhd_path(self, volume_name):
-        ''' Gets the path disk of the volume'''
+        '''Gets the path disk of the volume.'''
 
         base_vhd_folder = FLAGS.windows_iscsi_lun_path
         return os.path.join(base_vhd_folder, volume_name + ".vhd")
 
     def delete_snapshot(self, name):
-        ''' Deletes a snapshot.'''
+        '''Deletes a snapshot.'''
 
         wt_snapshot = self._conn_wmi.WT_Snapshot(Description=name)[0]
         wt_snapshot.Delete_()
         vhdfile = self._conn_cimv2.query(
-        "Select * from CIM_DataFile where Name = '" +
-        self._get_vhd_path(name) + "'")[0]
+            "Select * from CIM_DataFile where Name = '" +
+            self._get_vhd_path(name) + "'")[0]
         vhdfile.Delete()
 
     def find_initiator_ids(self, target_name, initiator_name):
-        ''' Finds a initiator id by its name.'''
+        '''Finds a initiator id by its name.'''
         wt_idmethod = self._conn_wmi.WT_IDMethod(HostName=target_name,
                                                  Method=4,
                                                  Value=initiator_name)
         return wt_idmethod
 
     def initiator_id_exists(self, target_name, initiator_name):
-        ''' Checks if  a initiatorId exists.'''
+        '''Checks if  a initiatorId exists.'''
 
         wt_idmethod = self.find_initiator_ids(target_name, initiator_name)
         if len(wt_idmethod) > 0:
@@ -118,13 +118,13 @@ class WindowsUtils(object):
         return False
 
     def find_exports(self, target_name):
-        ''' Finds a export id by its name.'''
+        '''Finds a export id by its name.'''
 
         wt_host = self._conn_wmi.WT_Host(HostName=target_name)
         return wt_host
 
     def export_exists(self, target_name):
-        ''' Checks if  a export exists.'''
+        '''Checks if  a export exists.'''
 
         wt_host = self.find_exports(target_name)
         if len(wt_host) > 0:
@@ -132,13 +132,13 @@ class WindowsUtils(object):
         return False
 
     def delete_initiator_id(self, target_name, initiator_name):
-        ''' Deletes a initiatorId.'''
+        '''Deletes a initiatorId.'''
 
         wt_init_id = self.find_initiator_ids(target_name, initiator_name)[0]
         wt_init_id.Delete_()
 
     def delete_export(self, target_name):
-        ''' Deletes an export.'''
+        '''Deletes an export.'''
 
         wt_host = self.find_exports(target_name)[0]
         wt_host.RemoveAllWTDisks()

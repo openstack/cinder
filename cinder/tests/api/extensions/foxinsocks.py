@@ -74,7 +74,7 @@ class Foxinsocks(extensions.ExtensionDescriptor):
     def get_resources(self):
         resources = []
         resource = extensions.ResourceExtension('foxnsocks',
-                                               FoxInSocksController())
+                                                FoxInSocksController())
         resources.append(resource)
         return resources
 
@@ -84,8 +84,7 @@ class Foxinsocks(extensions.ExtensionDescriptor):
         extension_set = [
             (FoxInSocksServerControllerExtension, 'servers'),
             (FoxInSocksFlavorGooseControllerExtension, 'flavors'),
-            (FoxInSocksFlavorBandsControllerExtension, 'flavors'),
-            ]
+            (FoxInSocksFlavorBandsControllerExtension, 'flavors'), ]
         for klass, collection in extension_set:
             controller = klass()
             ext = extensions.ControllerExtension(self, collection, controller)

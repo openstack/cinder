@@ -43,9 +43,9 @@ class BaseTestCase(cinder.test.TestCase):
         super(BaseTestCase, self).tearDown()
 
         has_errors = len([test for (test, msgs) in self._currentResult.errors
-            if test.id() == self.id()]) > 0
+                          if test.id() == self.id()]) > 0
         failed = len([test for (test, msgs) in self._currentResult.failures
-            if test.id() == self.id()]) > 0
+                      if test.id() == self.id()]) > 0
 
         if not has_errors and not failed:
             self._save_mock_proxies()
@@ -61,7 +61,7 @@ class BaseTestCase(cinder.test.TestCase):
             test_name = test_name[len(prefix):]
         file_name = '{0}_{1}.p.gz'.format(test_name, mock_name)
         return os.path.join(os.path.dirname(mockproxy.__file__),
-                "stubs", file_name)
+                            "stubs", file_name)
 
     def _load_mock(self, name):
         path = self._get_stub_file_path(self.id(), name)
@@ -72,9 +72,9 @@ class BaseTestCase(cinder.test.TestCase):
 
     def _load_mock_or_create_proxy(self, module_name):
         m = None
-        if not gen_test_mocks_key in os.environ or \
-                os.environ[gen_test_mocks_key].lower() \
-                    not in ['true', 'yes', '1']:
+        if (not gen_test_mocks_key in os.environ or
+                os.environ[gen_test_mocks_key].lower()
+                not in ['true', 'yes', '1']):
             m = self._load_mock(module_name)
         else:
             module = __import__(module_name)

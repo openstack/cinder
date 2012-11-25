@@ -49,9 +49,10 @@ class ProjectMapper(APIMapper):
             p_member = parent_resource['member_name']
             kwargs['path_prefix'] = '{project_id}/%s/:%s_id' % (p_collection,
                                                                 p_member)
-        routes.Mapper.resource(self, member_name,
-                                     collection_name,
-                                     **kwargs)
+        routes.Mapper.resource(self,
+                               member_name,
+                               collection_name,
+                               **kwargs)
 
 
 class APIRouter(base_wsgi.Router):

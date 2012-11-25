@@ -15,17 +15,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from lxml import etree
+import datetime
 import webob.exc
 
 from cinder.api.openstack.volume.contrib import hosts as os_hosts
 from cinder import context
-import datetime
 from cinder import db
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
+from lxml import etree
 
 
 FLAGS = flags.FLAGS
@@ -34,18 +34,18 @@ created_time = datetime.datetime(2012, 11, 14, 1, 20, 41, 95099)
 curr_time = timeutils.utcnow()
 
 SERVICE_LIST = [
-        {'created_at': created_time, 'updated_at': curr_time,
-         'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
-         'availability_zone': 'cinder'},
-        {'created_at': created_time, 'updated_at': curr_time,
-         'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
-         'availability_zone': 'cinder'},
-        {'created_at': created_time, 'updated_at': curr_time,
-         'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
-         'availability_zone': 'cinder'},
-        {'created_at': created_time, 'updated_at': curr_time,
-         'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
-         'availability_zone': 'cinder'}]
+    {'created_at': created_time, 'updated_at': curr_time,
+     'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
+     'availability_zone': 'cinder'},
+    {'created_at': created_time, 'updated_at': curr_time,
+     'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
+     'availability_zone': 'cinder'},
+    {'created_at': created_time, 'updated_at': curr_time,
+     'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
+     'availability_zone': 'cinder'},
+    {'created_at': created_time, 'updated_at': curr_time,
+     'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
+     'availability_zone': 'cinder'}]
 
 LIST_RESPONSE = [{'service-status': 'available', 'service': 'cinder-volume',
                   'zone': 'cinder', 'service-state': 'enabled',
@@ -97,7 +97,7 @@ class HostTestCase(test.TestCase):
 
         cinder_hosts = os_hosts._list_hosts(self.req, 'cinder-volume')
         expected = [host for host in LIST_RESPONSE
-                if host['service'] == 'cinder-volume']
+                    if host['service'] == 'cinder-volume']
         self.assertEqual(cinder_hosts, expected)
 
     def test_list_hosts_with_zone(self):
@@ -107,19 +107,22 @@ class HostTestCase(test.TestCase):
 
     def test_bad_status_value(self):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                self.req, 'test.host.1', body={'status': 'bad'})
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                self.req, 'test.host.1', body={'status': 'disablabc'})
+                          self.req, 'test.host.1', body={'status': 'bad'})
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update,
+                          self.req,
+                          'test.host.1',
+                          body={'status': 'disablabc'})
 
     def test_bad_update_key(self):
         bad_body = {'crazy': 'bad'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                self.req, 'test.host.1', body=bad_body)
+                          self.req, 'test.host.1', body=bad_body)
 
     def test_bad_update_key_and_correct_udpate_key(self):
         bad_body = {'status': 'disable', 'crazy': 'bad'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                self.req, 'test.host.1', body=bad_body)
+                          self.req, 'test.host.1', body=bad_body)
 
     def test_good_udpate_keys(self):
         body = {'status': 'disable'}
@@ -127,8 +130,11 @@ class HostTestCase(test.TestCase):
                           self.req, 'test.host.1', body=body)
 
     def test_bad_host(self):
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.update,
-                self.req, 'bogus_host_name', body={'disabled': 0})
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.update,
+                          self.req,
+                          'bogus_host_name',
+                          body={'disabled': 0})
 
     def test_show_forbidden(self):
         self.req.environ['cinder.context'].is_admin = False

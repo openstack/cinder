@@ -441,10 +441,9 @@ class ResourceTest(test.TestCase):
 
         extended = ControllerExtended()
         resource.register_actions(extended)
-        self.assertEqual({
-                'fooAction': extended._action_foo,
-                'barAction': extended._action_bar,
-                }, resource.wsgi_actions)
+        self.assertEqual({'fooAction': extended._action_foo,
+                          'barAction': extended._action_bar, },
+                         resource.wsgi_actions)
 
     def test_register_extensions(self):
         class Controller(object):

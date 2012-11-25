@@ -14,7 +14,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""Unit tests for the NFS driver module"""
+"""Unit tests for the NFS driver module."""
 
 import __builtin__
 import errno
@@ -44,7 +44,7 @@ class DumbVolume(object):
 
 
 class NfsDriverTestCase(test.TestCase):
-    """Test case for NFS driver"""
+    """Test case for NFS driver."""
 
     TEST_NFS_EXPORT1 = 'nfs-host1:/export'
     TEST_NFS_EXPORT2 = 'nfs-host2:/export'
@@ -71,7 +71,7 @@ class NfsDriverTestCase(test.TestCase):
         self.stubs.Set(obj, attr_name, stub)
 
     def test_path_exists_should_return_true(self):
-        """_path_exists should return True if stat returns 0"""
+        """_path_exists should return True if stat returns 0."""
         mox = self._mox
         drv = self._driver
 
@@ -85,14 +85,17 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_path_exists_should_return_false(self):
-        """_path_exists should return True if stat doesn't return 0"""
+        """_path_exists should return True if stat doesn't return 0."""
         mox = self._mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, '_execute')
-        drv._execute('stat', self.TEST_FILE_NAME, run_as_root=True).\
+        drv._execute(
+            'stat',
+            self.TEST_FILE_NAME, run_as_root=True).\
             AndRaise(ProcessExecutionError(
-            stderr="stat: cannot stat `test.txt': No such file or directory"))
+                stderr="stat: cannot stat `test.txt': No such file "
+                       "or directory"))
 
         mox.ReplayAll()
 
@@ -101,7 +104,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_local_path(self):
-        """local_path common use case"""
+        """local_path common use case."""
         nfs.FLAGS.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         drv = self._driver
 
@@ -114,7 +117,7 @@ class NfsDriverTestCase(test.TestCase):
             drv.local_path(volume))
 
     def test_mount_nfs_should_mount_correctly(self):
-        """_mount_nfs common case usage"""
+        """_mount_nfs common case usage."""
         mox = self._mox
         drv = self._driver
 
@@ -144,7 +147,7 @@ class NfsDriverTestCase(test.TestCase):
         drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
                      self.TEST_MNT_POINT, run_as_root=True).\
             AndRaise(ProcessExecutionError(
-                        stderr='is busy or already mounted'))
+                     stderr='is busy or already mounted'))
 
         mox.ReplayAll()
 
@@ -162,9 +165,13 @@ class NfsDriverTestCase(test.TestCase):
         drv._path_exists(self.TEST_MNT_POINT).AndReturn(True)
 
         mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
-                     self.TEST_MNT_POINT, run_as_root=True).\
-        AndRaise(ProcessExecutionError(stderr='is busy or already mounted'))
+        drv._execute(
+            'mount',
+            '-t',
+            'nfs',
+            self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT, run_as_root=True).\
+            AndRaise(ProcessExecutionError(stderr='is busy or '
+                                                  'already mounted'))
 
         mox.ReplayAll()
 
@@ -175,7 +182,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_mount_nfs_should_create_mountpoint_if_not_yet(self):
-        """_mount_nfs should create mountpoint if it doesn't exist"""
+        """_mount_nfs should create mountpoint if it doesn't exist."""
         mox = self._mox
         drv = self._driver
 
@@ -193,7 +200,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_mount_nfs_should_not_create_mountpoint_if_already(self):
-        """_mount_nfs should not create mountpoint if it already exists"""
+        """_mount_nfs should not create mountpoint if it already exists."""
         mox = self._mox
         drv = self._driver
 
@@ -210,14 +217,14 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_get_hash_str(self):
-        """_get_hash_str should calculation correct value"""
+        """_get_hash_str should calculation correct value."""
         drv = self._driver
 
         self.assertEqual('2f4f60214cf43c595666dd815f0360a4',
                          drv._get_hash_str(self.TEST_NFS_EXPORT1))
 
     def test_get_mount_point_for_share(self):
-        """_get_mount_point_for_share should calculate correct value"""
+        """_get_mount_point_for_share should calculate correct value."""
         drv = self._driver
 
         nfs.FLAGS.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
@@ -226,7 +233,7 @@ class NfsDriverTestCase(test.TestCase):
                          drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1))
 
     def test_get_available_capacity_with_df(self):
-        """_get_available_capacity should calculate correct value"""
+        """_get_available_capacity should calculate correct value."""
         mox = self._mox
         drv = self._driver
 
@@ -255,7 +262,7 @@ class NfsDriverTestCase(test.TestCase):
         delattr(nfs.FLAGS, 'nfs_disk_util')
 
     def test_get_available_capacity_with_du(self):
-        """_get_available_capacity should calculate correct value"""
+        """_get_available_capacity should calculate correct value."""
         mox = self._mox
         drv = self._driver
 
@@ -316,7 +323,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_ensure_share_mounted(self):
-        """_ensure_share_mounted simple use case"""
+        """_ensure_share_mounted simple use case."""
         mox = self._mox
         drv = self._driver
 
@@ -334,7 +341,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_ensure_shares_mounted_should_save_mounting_successfully(self):
-        """_ensure_shares_mounted should save share if mounted with success"""
+        """_ensure_shares_mounted should save share if mounted with success."""
         mox = self._mox
         drv = self._driver
 
@@ -353,7 +360,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_ensure_shares_mounted_should_not_save_mounting_with_error(self):
-        """_ensure_shares_mounted should not save share if failed to mount"""
+        """_ensure_shares_mounted should not save share if failed to mount."""
         mox = self._mox
         drv = self._driver
 
@@ -371,7 +378,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_setup_should_throw_error_if_shares_config_not_configured(self):
-        """do_setup should throw error if shares config is not configured """
+        """do_setup should throw error if shares config is not configured."""
         drv = self._driver
 
         nfs.FLAGS.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
@@ -380,7 +387,7 @@ class NfsDriverTestCase(test.TestCase):
                           drv.do_setup, IsA(context.RequestContext))
 
     def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
-        """do_setup should throw error if nfs client is not installed """
+        """do_setup should throw error if nfs client is not installed."""
         mox = self._mox
         drv = self._driver
 
@@ -400,7 +407,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_find_share_should_throw_error_if_there_is_no_mounted_shares(self):
-        """_find_share should throw error if there is no mounted shares"""
+        """_find_share should throw error if there is no mounted shares."""
         drv = self._driver
 
         drv._mounted_shares = []
@@ -409,7 +416,7 @@ class NfsDriverTestCase(test.TestCase):
                           self.TEST_SIZE_IN_GB)
 
     def test_find_share(self):
-        """_find_share simple use case"""
+        """_find_share simple use case."""
         mox = self._mox
         drv = self._driver
 
@@ -429,7 +436,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_find_share_should_throw_error_if_there_is_no_enough_place(self):
-        """_find_share should throw error if there is no share to host vol"""
+        """_find_share should throw error if there is no share to host vol."""
         mox = self._mox
         drv = self._driver
 
@@ -499,7 +506,7 @@ class NfsDriverTestCase(test.TestCase):
         delattr(nfs.FLAGS, 'nfs_sparsed_volumes')
 
     def test_create_volume_should_ensure_nfs_mounted(self):
-        """create_volume should ensure shares provided in config are mounted"""
+        """create_volume ensures shares provided in config are mounted."""
         mox = self._mox
         drv = self._driver
 
@@ -519,7 +526,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_create_volume_should_return_provider_location(self):
-        """create_volume should return provider_location with found share """
+        """create_volume should return provider_location with found share."""
         mox = self._mox
         drv = self._driver
 
@@ -540,7 +547,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_delete_volume(self):
-        """delete_volume simple test case"""
+        """delete_volume simple test case."""
         mox = self._mox
         drv = self._driver
 
@@ -566,7 +573,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_delete_should_ensure_share_mounted(self):
-        """delete_volume should ensure that corresponding share is mounted"""
+        """delete_volume should ensure that corresponding share is mounted."""
         mox = self._mox
         drv = self._driver
 
@@ -586,7 +593,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_delete_should_not_delete_if_provider_location_not_provided(self):
-        """delete_volume shouldn't try to delete if provider_location missed"""
+        """delete_volume shouldn't delete if provider_location missed."""
         mox = self._mox
         drv = self._driver
 
@@ -605,7 +612,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_delete_should_not_delete_if_there_is_no_file(self):
-        """delete_volume should not try to delete if file missed"""
+        """delete_volume should not try to delete if file missed."""
         mox = self._mox
         drv = self._driver
 

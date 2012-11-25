@@ -33,17 +33,15 @@ UUID2 = '00000000-0000-0000-0000-000000000002'
 
 
 def _get_default_snapshot_param():
-    return {
-        'id': UUID1,
-        'volume_id': 12,
-        'status': 'available',
-        'volume_size': 100,
-        'created_at': None,
-        'display_name': 'Default name',
-        'display_description': 'Default description',
-        'project_id': 'fake',
-        'progress': '0%'
-        }
+    return {'id': UUID1,
+            'volume_id': 12,
+            'status': 'available',
+            'volume_size': 100,
+            'created_at': None,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            'project_id': 'fake',
+            'progress': '0%'}
 
 
 def fake_snapshot_get(self, context, snapshot_id):
@@ -80,7 +78,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
 
     def assertSnapshotAttributes(self, snapshot, project_id, progress):
         self.assertEqual(snapshot.get('%sproject_id' % self.prefix),
-                                      project_id)
+                         project_id)
         self.assertEqual(snapshot.get('%sprogress' % self.prefix), progress)
 
     def test_show(self):
@@ -89,8 +87,8 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
 
         self.assertEqual(res.status_int, 200)
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
-                                project_id='fake',
-                                progress='0%')
+                                      project_id='fake',
+                                      progress='0%')
 
     def test_detail(self):
         url = '/v1/fake/snapshots/detail'
@@ -99,8 +97,8 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         self.assertEqual(res.status_int, 200)
         for i, snapshot in enumerate(self._get_snapshots(res.body)):
             self.assertSnapshotAttributes(snapshot,
-                                    project_id='fake',
-                                    progress='0%')
+                                          project_id='fake',
+                                          progress='0%')
 
     def test_no_instance_passthrough_404(self):
 

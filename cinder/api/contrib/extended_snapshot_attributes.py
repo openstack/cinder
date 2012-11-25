@@ -27,14 +27,15 @@ from cinder import volume
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
-authorize = extensions.soft_extension_authorizer('volume',
-                                                'extended_snapshot_attributes')
+authorize = extensions.soft_extension_authorizer(
+    'volume',
+    'extended_snapshot_attributes')
 
 
 class ExtendedSnapshotAttributesController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(ExtendedSnapshotAttributesController, self).__init__(*args,
-                                                                 **kwargs)
+                                                                   **kwargs)
         self.volume_api = volume.API()
 
     def _get_snapshots(self, context):

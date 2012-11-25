@@ -39,7 +39,7 @@ class FaultWrapper(base_wsgi.Middleware):
             for clazz in utils.walk_class_hierarchy(webob.exc.HTTPError):
                 FaultWrapper._status_to_type[clazz.code] = clazz
         return FaultWrapper._status_to_type.get(
-                                  status, webob.exc.HTTPInternalServerError)()
+            status, webob.exc.HTTPInternalServerError)()
 
     def _error(self, inner, req):
         LOG.exception(_("Caught error: %s"), unicode(inner))

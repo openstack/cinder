@@ -24,8 +24,9 @@ from cinder.openstack.common import log as logging
 
 
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'
-_option_header_piece_re = re.compile(r';\s*([^\s;=]+|%s)\s*'
-                                     r'(?:=\s*([^;]+|%s))?\s*' %
+_option_header_piece_re = re.compile(
+    r';\s*([^\s;=]+|%s)\s*'
+    r'(?:=\s*([^;]+|%s))?\s*' %
     (_quoted_string_re, _quoted_string_re))
 
 LOG = logging.getLogger(__name__)
@@ -171,8 +172,7 @@ class URLMap(paste.urlmap.URLMap):
         for (domain, app_url), app in self.applications:
             if domain and domain != host and domain != host + ':' + port:
                 continue
-            if (path_info == app_url
-                or path_info.startswith(app_url + '/')):
+            if (path_info == app_url or path_info.startswith(app_url + '/')):
                 return app, app_url
 
         return None, None
@@ -274,7 +274,7 @@ class URLMap(paste.urlmap.URLMap):
 
         if not mime_type or not app:
             possible_mime_type, possible_app = self._accept_strategy(
-                    host, port, environ, supported_content_types)
+                host, port, environ, supported_content_types)
             if possible_mime_type and not mime_type:
                 mime_type = possible_mime_type
             if possible_app and not app:

@@ -63,10 +63,8 @@ class QuotaClassSetsController(object):
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
-        return self._format_quota_set(
-            id,
-            QUOTAS.get_class_quotas(context, id)
-            )
+        return self._format_quota_set(id,
+                                      QUOTAS.get_class_quotas(context, id))
 
     @wsgi.serializers(xml=QuotaClassTemplate)
     def update(self, req, id, body):

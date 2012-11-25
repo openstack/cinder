@@ -33,21 +33,20 @@ LOG = logging.getLogger(__name__)
 
 
 class VolumeTypeTestCase(test.TestCase):
-    """Test cases for volume type code"""
+    """Test cases for volume type code."""
     def setUp(self):
         super(VolumeTypeTestCase, self).setUp()
 
         self.ctxt = context.get_admin_context()
         self.vol_type1_name = str(int(time.time()))
-        self.vol_type1_specs = dict(
-                    type="physical drive",
-                    drive_type="SAS",
-                    size="300",
-                    rpm="7200",
-                    visible="True")
+        self.vol_type1_specs = dict(type="physical drive",
+                                    drive_type="SAS",
+                                    size="300",
+                                    rpm="7200",
+                                    visible="True")
 
     def test_volume_type_create_then_destroy(self):
-        """Ensure volume types can be created and deleted"""
+        """Ensure volume types can be created and deleted."""
         prev_all_vtypes = volume_types.get_all_types(self.ctxt)
 
         volume_types.create(self.ctxt,
@@ -75,14 +74,14 @@ class VolumeTypeTestCase(test.TestCase):
                          'drive type was not deleted')
 
     def test_get_all_volume_types(self):
-        """Ensures that all volume types can be retrieved"""
+        """Ensures that all volume types can be retrieved."""
         session = sql_session.get_session()
         total_volume_types = session.query(models.VolumeTypes).count()
         vol_types = volume_types.get_all_types(self.ctxt)
         self.assertEqual(total_volume_types, len(vol_types))
 
     def test_get_default_volume_type(self):
-        """ Ensures default volume type can be retrieved """
+        """Ensures default volume type can be retrieved."""
         volume_types.create(self.ctxt,
                             fake_flags.def_vol_type,
                             {})
@@ -91,26 +90,26 @@ class VolumeTypeTestCase(test.TestCase):
                          fake_flags.def_vol_type)
 
     def test_default_volume_type_missing_in_db(self):
-        """ Ensures proper exception raised if default volume type
-        is not in database. """
+        """Ensures proper exception raised if default volume type
+        is not in database."""
         session = sql_session.get_session()
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type, {})
 
     def test_non_existent_vol_type_shouldnt_delete(self):
-        """Ensures that volume type creation fails with invalid args"""
+        """Ensures that volume type creation fails with invalid args."""
         self.assertRaises(exception.VolumeTypeNotFoundByName,
                           volume_types.destroy, self.ctxt, "sfsfsdfdfs")
 
     def test_repeated_vol_types_shouldnt_raise(self):
-        """Ensures that volume duplicates don't raise"""
+        """Ensures that volume duplicates don't raise."""
         new_name = self.vol_type1_name + "dup"
         volume_types.create(self.ctxt, new_name)
         volume_types.destroy(self.ctxt, new_name)
         volume_types.create(self.ctxt, new_name)
 
     def test_invalid_volume_types_params(self):
-        """Ensures that volume type creation fails with invalid args"""
+        """Ensures that volume type creation fails with invalid args."""
         self.assertRaises(exception.InvalidVolumeType,
                           volume_types.destroy, self.ctxt, None)
         self.assertRaises(exception.InvalidVolumeType,
@@ -120,7 +119,7 @@ class VolumeTypeTestCase(test.TestCase):
                           self.ctxt, None)
 
     def test_volume_type_get_by_id_and_name(self):
-        """Ensure volume types get returns same entry"""
+        """Ensure volume types get returns same entry."""
         volume_types.create(self.ctxt,
                             self.vol_type1_name,
                             self.vol_type1_specs)
@@ -131,7 +130,7 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(new, new2)
 
     def test_volume_type_search_by_extra_spec(self):
-        """Ensure volume types get by extra spec returns correct type"""
+        """Ensure volume types get by extra spec returns correct type."""
         volume_types.create(self.ctxt, "type1", {"key1": "val1",
                                                  "key2": "val2"})
         volume_types.create(self.ctxt, "type2", {"key2": "val2",
@@ -139,29 +138,32 @@ class VolumeTypeTestCase(test.TestCase):
         volume_types.create(self.ctxt, "type3", {"key3": "another_value",
                                                  "key4": "val4"})
 
-        vol_types = volume_types.get_all_types(self.ctxt,
-                        search_opts={'extra_specs': {"key1": "val1"}})
+        vol_types = volume_types.get_all_types(
+            self.ctxt,
+            search_opts={'extra_specs': {"key1": "val1"}})
         LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 1)
         self.assertTrue("type1" in vol_types.keys())
         self.assertEqual(vol_types['type1']['extra_specs'],
                          {"key1": "val1", "key2": "val2"})
 
-        vol_types = volume_types.get_all_types(self.ctxt,
-                        search_opts={'extra_specs': {"key2": "val2"}})
+        vol_types = volume_types.get_all_types(
+            self.ctxt,
+            search_opts={'extra_specs': {"key2": "val2"}})
         LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 2)
         self.assertTrue("type1" in vol_types.keys())
         self.assertTrue("type2" in vol_types.keys())
 
-        vol_types = volume_types.get_all_types(self.ctxt,
-                        search_opts={'extra_specs': {"key3": "val3"}})
+        vol_types = volume_types.get_all_types(
+            self.ctxt,
+            search_opts={'extra_specs': {"key3": "val3"}})
         LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 1)
         self.assertTrue("type2" in vol_types.keys())
 
     def test_volume_type_search_by_extra_spec_multiple(self):
-        """Ensure volume types get by extra spec returns correct type"""
+        """Ensure volume types get by extra spec returns correct type."""
         volume_types.create(self.ctxt, "type1", {"key1": "val1",
                                                  "key2": "val2",
                                                  "key3": "val3"})
@@ -171,9 +173,10 @@ class VolumeTypeTestCase(test.TestCase):
                                                  "key3": "val3",
                                                  "key4": "val4"})
 
-        vol_types = volume_types.get_all_types(self.ctxt,
-                        search_opts={'extra_specs': {"key1": "val1",
-                                                     "key3": "val3"}})
+        vol_types = volume_types.get_all_types(
+            self.ctxt,
+            search_opts={'extra_specs': {"key1": "val1",
+                                         "key3": "val3"}})
         LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 2)
         self.assertTrue("type1" in vol_types.keys())

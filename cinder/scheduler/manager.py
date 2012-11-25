@@ -36,16 +36,17 @@ from cinder.openstack.common.notifier import api as notifier
 
 LOG = logging.getLogger(__name__)
 
-scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
-        default='cinder.scheduler.simple.SimpleScheduler',
-        help='Default driver to use for the scheduler')
+scheduler_driver_opt = cfg.StrOpt(
+    'scheduler_driver',
+    default='cinder.scheduler.simple.SimpleScheduler',
+    help='Default driver to use for the scheduler')
 
 FLAGS = flags.FLAGS
 FLAGS.register_opt(scheduler_driver_opt)
 
 
 class SchedulerManager(manager.Manager):
-    """Chooses a host to create volumes"""
+    """Chooses a host to create volumes."""
 
     RPC_API_VERSION = '1.2'
 
@@ -64,12 +65,13 @@ class SchedulerManager(manager.Manager):
         return self.driver.get_service_capabilities()
 
     def update_service_capabilities(self, context, service_name=None,
-            host=None, capabilities=None, **kwargs):
+                                    host=None, capabilities=None, **kwargs):
         """Process a capability update from a service node."""
         if capabilities is None:
             capabilities = {}
-        self.driver.update_service_capabilities(service_name, host,
-                capabilities)
+        self.driver.update_service_capabilities(service_name,
+                                                host,
+                                                capabilities)
 
     def create_volume(self, context, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
@@ -86,11 +88,12 @@ class SchedulerManager(manager.Manager):
                 volume_properties = {'size': size,
                                      'availability_zone': availability_zone,
                                      'volume_type_id': volume_type_id}
-                request_spec.update({'volume_id': volume_id,
-                                 'snapshot_id': snapshot_id,
-                                 'image_id': image_id,
-                                 'volume_properties': volume_properties,
-                                 'volume_type': dict(vol_type).iteritems()})
+                request_spec.update(
+                    {'volume_id': volume_id,
+                     'snapshot_id': snapshot_id,
+                     'image_id': image_id,
+                     'volume_properties': volume_properties,
+                     'volume_type': dict(vol_type).iteritems()})
 
             self.driver.schedule_create_volume(context, request_spec,
                                                filter_properties)

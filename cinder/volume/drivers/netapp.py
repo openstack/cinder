@@ -57,15 +57,14 @@ netapp_opts = [
     cfg.StrOpt('netapp_storage_service',
                default=None,
                help=('Storage service to use for provisioning '
-                    '(when volume_type=None)')),
+                     '(when volume_type=None)')),
     cfg.StrOpt('netapp_storage_service_prefix',
                default=None,
                help=('Prefix of storage service name to use for '
-                    'provisioning (volume_type name will be appended)')),
+                     'provisioning (volume_type name will be appended)')),
     cfg.StrOpt('netapp_vfiler',
                default=None,
-               help='Vfiler to use for provisioning'),
-    ]
+               help='Vfiler to use for provisioning'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(netapp_opts)
@@ -148,15 +147,17 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
     def _check_flags(self):
         """Ensure that the flags we care about are set."""
         required_flags = ['netapp_wsdl_url', 'netapp_login', 'netapp_password',
-                'netapp_server_hostname', 'netapp_server_port']
+                          'netapp_server_hostname', 'netapp_server_port']
         for flag in required_flags:
             if not getattr(FLAGS, flag, None):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
         if not (FLAGS.netapp_storage_service or
                 FLAGS.netapp_storage_service_prefix):
-            raise exception.InvalidInput(reason=_('Either '
-                'netapp_storage_service or netapp_storage_service_prefix must '
-                'be set'))
+            raise exception.InvalidInput(
+                reason=_('Either '
+                         'netapp_storage_service or '
+                         'netapp_storage_service_prefix must '
+                         'be set'))
 
     def do_setup(self, context):
         """Setup the NetApp Volume driver.
@@ -166,7 +167,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         client.
         """
         self._check_flags()
-        self._create_client(wsdl_url=FLAGS.netapp_wsdl_url,
+        self._create_client(
+            wsdl_url=FLAGS.netapp_wsdl_url,
             login=FLAGS.netapp_login, password=FLAGS.netapp_password,
             hostname=FLAGS.netapp_server_hostname,
             port=FLAGS.netapp_server_port, cache=True)
@@ -204,10 +206,10 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         """Discover all of the LUNs in a dataset."""
         server = self.client.service
         res = server.DatasetMemberListInfoIterStart(
-                DatasetNameOrId=dataset.id,
-                IncludeExportsInfo=True,
-                IncludeIndirect=True,
-                MemberType='lun_path')
+            DatasetNameOrId=dataset.id,
+            IncludeExportsInfo=True,
+            IncludeIndirect=True,
+            MemberType='lun_path')
         tag = res.Tag
         suffix = None
         if volume:
@@ -217,7 +219,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
                 res = server.DatasetMemberListInfoIterNext(Tag=tag,
                                                            Maximum=100)
                 if (not hasattr(res, 'DatasetMembers') or
-                            not res.DatasetMembers):
+                        not res.DatasetMembers):
                     break
                 for member in res.DatasetMembers.DatasetMemberInfo:
                     if suffix and not member.MemberName.endswith(suffix):
@@ -324,11 +326,11 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         """
         if ss_type and not self.storage_service_prefix:
             msg = _('Attempt to use volume_type without specifying '
-                'netapp_storage_service_prefix flag.')
+                    'netapp_storage_service_prefix flag.')
             raise exception.VolumeBackendAPIException(data=msg)
         if not (ss_type or self.storage_service):
             msg = _('You must set the netapp_storage_service flag in order to '
-                'create volumes with no volume_type.')
+                    'create volumes with no volume_type.')
             raise exception.VolumeBackendAPIException(data=msg)
         storage_service = self.storage_service
         if ss_type:
@@ -358,11 +360,11 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         metadata.DfmMetadataField = [field1, field2]
 
         res = self.client.service.StorageServiceDatasetProvision(
-                StorageServiceNameOrId=storage_service,
-                DatasetName=dataset_name,
-                AssumeConfirmation=True,
-                StorageSetDetails=details,
-                DatasetMetadata=metadata)
+            StorageServiceNameOrId=storage_service,
+            DatasetName=dataset_name,
+            AssumeConfirmation=True,
+            StorageSetDetails=details,
+            DatasetMetadata=metadata)
 
         ds = DfmDataset(res.DatasetId, dataset_name, project, ss_type)
         self.discovered_datasets.append(ds)
@@ -627,7 +629,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         igroup_infos = igroups[0]['initiator-group-info']
         for igroup_info in igroup_infos:
             if ('iscsi' != igroup_info['initiator-group-type'][0] or
-                'linux' != igroup_info['initiator-group-os-type'][0]):
+                    'linux' != igroup_info['initiator-group-os-type'][0]):
                 continue
             igroup_name = igroup_info['initiator-group-name'][0]
             if not igroup_name.startswith(self.IGROUP_PREFIX):
@@ -678,7 +680,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         request.Name = 'lun-map-list-info'
         request.Args = text.Raw('<path>%s</path>' % (lunpath))
         response = self.client.service.ApiProxy(Target=host_id,
-                                                 Request=request)
+                                                Request=request)
         self._check_fail(request, response)
         igroups = response.Results['initiator-groups']
         if self._api_elem_is_empty(igroups):
@@ -830,7 +832,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
             '<volume-uuid>%s</volume-uuid>'
             '</clone-id-info></clone-id>')
         request.Args = text.Raw(clone_list_status_xml % (clone_op_id,
-                                                          volume_uuid))
+                                                         volume_uuid))
         response = self.client.service.ApiProxy(Target=host_id,
                                                 Request=request)
         self._check_fail(request, response)
@@ -856,7 +858,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         else:
             no_snap = 'true'
         request.Args = text.Raw(clone_start_xml % (src_path, no_snap,
-                                                    dest_path))
+                                                   dest_path))
         response = self.client.service.ApiProxy(Target=host_id,
                                                 Request=request)
         self._check_fail(request, response)
@@ -966,7 +968,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         snap_size = snapshot['volume_size']
         if vol_size != snap_size:
             msg = _('Cannot create volume of size %(vol_size)s from '
-                'snapshot of size %(snap_size)s')
+                    'snapshot of size %(snap_size)s')
             raise exception.VolumeBackendAPIException(data=msg % locals())
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
@@ -978,7 +980,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         new_type = self._get_ss_type(volume)
         if new_type != old_type:
             msg = _('Cannot create volume of type %(new_type)s from '
-                'snapshot of type %(old_type)s')
+                    'snapshot of type %(old_type)s')
             raise exception.VolumeBackendAPIException(data=msg % locals())
         lun = self._get_lun_details(lun_id)
         extra_gb = vol_size
@@ -1039,7 +1041,7 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
     def _check_flags(self):
         """Ensure that the flags we care about are set."""
         required_flags = ['netapp_wsdl_url', 'netapp_login', 'netapp_password',
-                'netapp_server_hostname', 'netapp_server_port']
+                          'netapp_server_hostname', 'netapp_server_port']
         for flag in required_flags:
             if not getattr(FLAGS, flag, None):
                 msg = _('%s is not set') % flag
@@ -1053,7 +1055,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         client.
         """
         self._check_flags()
-        self._create_client(wsdl_url=FLAGS.netapp_wsdl_url,
+        self._create_client(
+            wsdl_url=FLAGS.netapp_wsdl_url,
             login=FLAGS.netapp_login, password=FLAGS.netapp_password,
             hostname=FLAGS.netapp_server_hostname,
             port=FLAGS.netapp_server_port, cache=True)
@@ -1069,8 +1072,10 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
             meta_dict = {}
             if hasattr(lun, 'Metadata'):
                 meta_dict = self._create_dict_from_meta(lun.Metadata)
-            discovered_lun = NetAppLun(lun.Handle, lun.Name, lun.Size,
-                meta_dict)
+            discovered_lun = NetAppLun(lun.Handle,
+                                       lun.Name,
+                                       lun.Size,
+                                       meta_dict)
             self._add_lun_to_table(discovered_lun)
         LOG.debug(_("Success getting LUN list from server"))
 
@@ -1095,8 +1100,11 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         lun = server.ProvisionLun(Name=name, Size=size,
                                   Metadata=metadata)
         LOG.debug(_("Created LUN with name %s") % name)
-        self._add_lun_to_table(NetAppLun(lun.Handle, lun.Name,
-             lun.Size, self._create_dict_from_meta(lun.Metadata)))
+        self._add_lun_to_table(
+            NetAppLun(lun.Handle,
+                      lun.Name,
+                      lun.Size,
+                      self._create_dict_from_meta(lun.Metadata)))
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
@@ -1143,8 +1151,10 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         msg = _("Mapped LUN %(handle)s to the initiator %(initiator_name)s")
         LOG.debug(msg % locals())
 
-        target_details_list = server.GetLunTargetDetails(Handle=handle,
-                InitiatorType="iscsi", InitiatorName=initiator_name)
+        target_details_list = server.GetLunTargetDetails(
+            Handle=handle,
+            InitiatorType="iscsi",
+            InitiatorName=initiator_name)
         msg = _("Succesfully fetched target details for LUN %(handle)s and "
                 "initiator %(initiator_name)s")
         LOG.debug(msg % locals())
@@ -1255,8 +1265,11 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         lun = server.CloneLun(Handle=handle, NewName=new_name,
                               Metadata=metadata)
         LOG.debug(_("Cloned LUN with new name %s") % new_name)
-        self._add_lun_to_table(NetAppLun(lun.Handle, lun.Name,
-             lun.Size, self._create_dict_from_meta(lun.Metadata)))
+        self._add_lun_to_table(
+            NetAppLun(lun.Handle,
+                      lun.Name,
+                      lun.Size,
+                      self._create_dict_from_meta(lun.Metadata)))
 
     def _create_metadata_list(self, extra_args):
         """Creates metadata from kwargs."""

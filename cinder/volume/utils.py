@@ -44,40 +44,38 @@ def notify_usage_exists(context, volume_ref, current_period=False):
     extra_usage_info = dict(audit_period_beginning=str(audit_start),
                             audit_period_ending=str(audit_end))
 
-    notify_about_volume_usage(
-            context, volume_ref, 'exists', extra_usage_info=extra_usage_info)
+    notify_about_volume_usage(context, volume_ref,
+                              'exists', extra_usage_info=extra_usage_info)
 
 
 def _usage_from_volume(context, volume_ref, **kw):
     def null_safe_str(s):
         return str(s) if s else ''
 
-    usage_info = dict(
-          tenant_id=volume_ref['project_id'],
-          user_id=volume_ref['user_id'],
-          volume_id=volume_ref['id'],
-          volume_type=volume_ref['volume_type_id'],
-          display_name=volume_ref['display_name'],
-          launched_at=null_safe_str(volume_ref['launched_at']),
-          created_at=null_safe_str(volume_ref['created_at']),
-          status=volume_ref['status'],
-          snapshot_id=volume_ref['snapshot_id'],
-          size=volume_ref['size'])
+    usage_info = dict(tenant_id=volume_ref['project_id'],
+                      user_id=volume_ref['user_id'],
+                      volume_id=volume_ref['id'],
+                      volume_type=volume_ref['volume_type_id'],
+                      display_name=volume_ref['display_name'],
+                      launched_at=null_safe_str(volume_ref['launched_at']),
+                      created_at=null_safe_str(volume_ref['created_at']),
+                      status=volume_ref['status'],
+                      snapshot_id=volume_ref['snapshot_id'],
+                      size=volume_ref['size'])
 
     usage_info.update(kw)
     return usage_info
 
 
 def notify_about_volume_usage(context, volume, event_suffix,
-                                extra_usage_info=None, host=None):
+                              extra_usage_info=None, host=None):
     if not host:
         host = FLAGS.host
 
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_volume(
-            context, volume, **extra_usage_info)
+    usage_info = _usage_from_volume(context, volume, **extra_usage_info)
 
     notifier_api.notify(context, 'volume.%s' % host,
                         'volume.%s' % event_suffix,

@@ -59,7 +59,7 @@ class VolumeActionsTest(test.TestCase):
         app = fakes.wsgi_app()
         for _action in self._actions:
             req = webob.Request.blank('/v1/fake/volumes/%s/action' %
-                    self.UUID)
+                                      self.UUID)
             req.method = 'POST'
             req.body = jsonutils.dumps({_action: None})
             req.content_type = 'application/json'
@@ -153,15 +153,15 @@ class VolumeImageActionsTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/tenant1/volumes/%s/action' % id)
         res_dict = self.controller._volume_upload_image(req, id, body)
         expected = {'os-volume_upload_image': {'id': id,
-                           'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                           'status': 'uploading',
-                           'display_description': 'displaydesc',
-                           'size': 1,
-                           'volume_type': {'name': 'vol_type_name'},
-                           'image_id': 1,
-                           'container_format': 'bare',
-                           'disk_format': 'raw',
-                           'image_name': 'image_name'}}
+                    'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'status': 'uploading',
+                    'display_description': 'displaydesc',
+                    'size': 1,
+                    'volume_type': {'name': 'vol_type_name'},
+                    'image_id': 1,
+                    'container_format': 'bare',
+                    'disk_format': 'raw',
+                    'image_name': 'image_name'}}
         self.assertDictMatch(res_dict, expected)
 
     def test_copy_volume_to_image_volumenotfound(self):
@@ -185,7 +185,7 @@ class VolumeImageActionsTest(test.TestCase):
 
     def test_copy_volume_to_image_invalidvolume(self):
         def stub_upload_volume_to_image_service_raise(self, context, volume,
-                                               metadata, force):
+                                                      metadata, force):
             raise exception.InvalidVolume
         self.stubs.Set(volume_api.API,
                        "copy_volume_to_image",
@@ -206,7 +206,7 @@ class VolumeImageActionsTest(test.TestCase):
 
     def test_copy_volume_to_image_valueerror(self):
         def stub_upload_volume_to_image_service_raise(self, context, volume,
-                                               metadata, force):
+                                                      metadata, force):
             raise ValueError
         self.stubs.Set(volume_api.API,
                        "copy_volume_to_image",
@@ -227,7 +227,7 @@ class VolumeImageActionsTest(test.TestCase):
 
     def test_copy_volume_to_image_remoteerror(self):
         def stub_upload_volume_to_image_service_raise(self, context, volume,
-                                               metadata, force):
+                                                      metadata, force):
             raise rpc_common.RemoteError
         self.stubs.Set(volume_api.API,
                        "copy_volume_to_image",

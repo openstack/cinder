@@ -33,8 +33,7 @@ from cinder.volume import rpcapi as volume_rpcapi
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',
                default='cinder.scheduler.host_manager.HostManager',
-               help='The scheduler host manager class to use'),
-    ]
+               help='The scheduler host manager class to use'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(scheduler_driver_opts)
@@ -55,7 +54,7 @@ class Scheduler(object):
 
     def __init__(self):
         self.host_manager = importutils.import_object(
-                FLAGS.scheduler_host_manager)
+            FLAGS.scheduler_host_manager)
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
     def get_host_list(self):
@@ -70,7 +69,8 @@ class Scheduler(object):
     def update_service_capabilities(self, service_name, host, capabilities):
         """Process a capability update from a service node."""
         self.host_manager.update_service_capabilities(service_name,
-                host, capabilities)
+                                                      host,
+                                                      capabilities)
 
     def hosts_up(self, context, topic):
         """Return the list of hosts that have a running service for topic."""
