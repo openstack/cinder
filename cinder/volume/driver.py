@@ -22,6 +22,7 @@ Drivers for volumes.
 
 import os
 import re
+import stat
 import time
 
 from cinder import exception
@@ -105,7 +106,15 @@ class VolumeDriver(object):
 
     def _copy_volume(self, srcstr, deststr, size_in_g):
         # Use O_DIRECT to avoid thrashing the system buffer cache
-        direct_flags = ('iflag=direct', 'oflag=direct')
+        direct_flags = ['oflag=direct']
+        try:
+            # Avoid trying O_DIRECT on virtual inputs like /dev/zero
+            # as it's not supported with such devices.
+            if not stat.S_ISCHR(os.stat(srcstr).st_mode):
+                direct_flags += ['iflag=direct']
+        except OSError:
+            # Deal with any access issues below
+            pass
 
         # Check whether O_DIRECT is supported
         try:
