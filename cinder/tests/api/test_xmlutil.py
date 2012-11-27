@@ -22,17 +22,11 @@ from cinder import test
 
 
 class SelectorTest(test.TestCase):
-    obj_for_test = {
-        'test': {
-            'name': 'test',
-            'values': [1, 2, 3],
-            'attrs': {
-                'foo': 1,
-                'bar': 2,
-                'baz': 3,
-                },
-            },
-        }
+    obj_for_test = {'test': {'name': 'test',
+                             'values': [1, 2, 3],
+                             'attrs': {'foo': 1,
+                                       'bar': 2,
+                                       'baz': 3, }, }, }
 
     def test_empty_selector(self):
         sel = xmlutil.Selector()
@@ -217,11 +211,9 @@ class TemplateElementTest(test.TestCase):
         self.assertEqual(len(elem), 0)
 
         # Create a few children
-        children = [
-            xmlutil.TemplateElement('child1'),
-            xmlutil.TemplateElement('child2'),
-            xmlutil.TemplateElement('child3'),
-            ]
+        children = [xmlutil.TemplateElement('child1'),
+                    xmlutil.TemplateElement('child2'),
+                    xmlutil.TemplateElement('child3'), ]
 
         # Extend the parent by those children
         elem.extend(children)
@@ -234,10 +226,8 @@ class TemplateElementTest(test.TestCase):
             self.assertEqual(elem[children[idx].tag], children[idx])
 
         # Ensure that multiple children of the same name are rejected
-        children2 = [
-            xmlutil.TemplateElement('child4'),
-            xmlutil.TemplateElement('child1'),
-            ]
+        children2 = [xmlutil.TemplateElement('child4'),
+                     xmlutil.TemplateElement('child1'), ]
         self.assertRaises(KeyError, elem.extend, children2)
 
         # Also ensure that child4 was not added
@@ -252,11 +242,9 @@ class TemplateElementTest(test.TestCase):
         self.assertEqual(len(elem), 0)
 
         # Create a few children
-        children = [
-            xmlutil.TemplateElement('child1'),
-            xmlutil.TemplateElement('child2'),
-            xmlutil.TemplateElement('child3'),
-            ]
+        children = [xmlutil.TemplateElement('child1'),
+                    xmlutil.TemplateElement('child2'),
+                    xmlutil.TemplateElement('child3'), ]
 
         # Extend the parent by those children
         elem.extend(children)
@@ -287,11 +275,9 @@ class TemplateElementTest(test.TestCase):
         self.assertEqual(len(elem), 0)
 
         # Create a few children
-        children = [
-            xmlutil.TemplateElement('child1'),
-            xmlutil.TemplateElement('child2'),
-            xmlutil.TemplateElement('child3'),
-            ]
+        children = [xmlutil.TemplateElement('child1'),
+                    xmlutil.TemplateElement('child2'),
+                    xmlutil.TemplateElement('child3'), ]
 
         # Extend the parent by those children
         elem.extend(children)
@@ -384,10 +370,8 @@ class TemplateElementTest(test.TestCase):
         master_elem = xmlutil.TemplateElement('test', attr1=attrs['attr1'])
 
         # Create a couple of slave template element
-        slave_elems = [
-            xmlutil.TemplateElement('test', attr2=attrs['attr2']),
-            xmlutil.TemplateElement('test', attr3=attrs['attr3']),
-            ]
+        slave_elems = [xmlutil.TemplateElement('test', attr2=attrs['attr2']),
+                       xmlutil.TemplateElement('test', attr3=attrs['attr3']), ]
 
         # Try the render
         elem = master_elem._render(None, None, slave_elems, None)
@@ -589,22 +573,13 @@ class TemplateTest(test.TestCase):
 
     def test__serialize(self):
         # Our test object to serialize
-        obj = {
-            'test': {
-                'name': 'foobar',
-                'values': [1, 2, 3, 4],
-                'attrs': {
-                    'a': 1,
-                    'b': 2,
-                    'c': 3,
-                    'd': 4,
-                    },
-                'image': {
-                    'name': 'image_foobar',
-                    'id': 42,
-                    },
-                },
-            }
+        obj = {'test': {'name': 'foobar',
+                        'values': [1, 2, 3, 4],
+                        'attrs': {'a': 1,
+                                  'b': 2,
+                                  'c': 3,
+                                  'd': 4, },
+                        'image': {'name': 'image_foobar', 'id': 42, }, }, }
 
         # Set up our master template
         root = xmlutil.TemplateElement('test', selector='test',

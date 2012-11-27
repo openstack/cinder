@@ -61,8 +61,7 @@ db_opts = [
                help='Template string to be used to generate volume names'),
     cfg.StrOpt('snapshot_name_template',
                default='snapshot-%s',
-               help='Template string to be used to generate snapshot names'),
-    ]
+               help='Template string to be used to generate snapshot names'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(db_opts)
@@ -155,8 +154,9 @@ def migration_get(context, migration_id):
 
 def migration_get_by_instance_and_status(context, instance_uuid, status):
     """Finds a migration by the instance uuid its migrating."""
-    return IMPL.migration_get_by_instance_and_status(context, instance_uuid,
-            status)
+    return IMPL.migration_get_by_instance_and_status(context,
+                                                     instance_uuid,
+                                                     status)
 
 
 def migration_get_all_unconfirmed(context, confirm_window):
@@ -378,12 +378,14 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
     IMPL.volume_type_extra_specs_delete(context, volume_type_id, key)
 
 
-def volume_type_extra_specs_update_or_create(context, volume_type_id,
-                                               extra_specs):
+def volume_type_extra_specs_update_or_create(context,
+                                             volume_type_id,
+                                             extra_specs):
     """Create or update volume type extra specs. This adds or modifies the
     key/value pairs specified in the extra specs dict argument"""
-    IMPL.volume_type_extra_specs_update_or_create(context, volume_type_id,
-                                                    extra_specs)
+    IMPL.volume_type_extra_specs_update_or_create(context,
+                                                  volume_type_id,
+                                                  extra_specs)
 
 
 ###################
@@ -391,8 +393,10 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
 
 def volume_glance_metadata_create(context, volume_id, key, value):
     """Update the Glance metadata for the specified volume."""
-    return IMPL.volume_glance_metadata_create(context, volume_id,
-                                              key, value)
+    return IMPL.volume_glance_metadata_create(context,
+                                              volume_id,
+                                              key,
+                                              value)
 
 
 def volume_glance_metadata_get(context, volume_id):

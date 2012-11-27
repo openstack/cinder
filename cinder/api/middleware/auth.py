@@ -31,10 +31,11 @@ from cinder.openstack.common import log as logging
 from cinder import wsgi as base_wsgi
 
 
-use_forwarded_for_opt = cfg.BoolOpt('use_forwarded_for',
-        default=False,
-        help='Treat X-Forwarded-For as the canonical remote address. '
-             'Only enable this if you have a sanitizing proxy.')
+use_forwarded_for_opt = cfg.BoolOpt(
+    'use_forwarded_for',
+    default=False,
+    help='Treat X-Forwarded-For as the canonical remote address. '
+         'Only enable this if you have a sanitizing proxy.')
 
 FLAGS = flags.FLAGS
 FLAGS.register_opt(use_forwarded_for_opt)

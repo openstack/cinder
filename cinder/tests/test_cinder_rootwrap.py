@@ -31,15 +31,14 @@ class RootwrapTestCase(test.TestCase):
             filters.CommandFilter("/usr/bin/foo_bar_not_exist", "root"),
             filters.RegExpFilter("/bin/cat", "root", 'cat', '/[a-z]+'),
             filters.CommandFilter("/nonexistent/cat", "root"),
-            filters.CommandFilter("/bin/cat", "root")  # Keep this one last
-            ]
+            filters.CommandFilter("/bin/cat", "root")]  # Keep this one last
 
     def test_RegExpFilter_match(self):
         usercmd = ["ls", "/root"]
         filtermatch = wrapper.match_filter(self.filters, usercmd)
         self.assertFalse(filtermatch is None)
         self.assertEqual(filtermatch.get_command(usercmd),
-            ["/bin/ls", "/root"])
+                         ["/bin/ls", "/root"])
 
     def test_RegExpFilter_reject(self):
         usercmd = ["ls", "root"]
@@ -92,7 +91,7 @@ class RootwrapTestCase(test.TestCase):
         self.assertTrue(f.match(usercmd) or f2.match(usercmd))
 
     def test_KillFilter_no_raise(self):
-        """Makes sure ValueError from bug 926412 is gone"""
+        """Makes sure ValueError from bug 926412 is gone."""
         f = filters.KillFilter("root", "")
         # Providing anything other than kill should be False
         usercmd = ['notkill', 999999]
@@ -102,7 +101,7 @@ class RootwrapTestCase(test.TestCase):
         self.assertFalse(f.match(usercmd))
 
     def test_KillFilter_deleted_exe(self):
-        """Makes sure deleted exe's are killed correctly"""
+        """Makes sure deleted exe's are killed correctly."""
         # See bug #967931.
         def fake_readlink(blah):
             return '/bin/commandddddd (deleted)'

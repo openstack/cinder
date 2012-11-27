@@ -62,7 +62,7 @@ def fake_wsgi(self, req):
 
 
 def wsgi_app(inner_app_v1=None, fake_auth=True, fake_auth_context=None,
-        use_no_auth=False, ext_mgr=None):
+             use_no_auth=False, ext_mgr=None):
     if not inner_app_v1:
         inner_app_v1 = router.APIRouter(ext_mgr)
 
@@ -72,13 +72,13 @@ def wsgi_app(inner_app_v1=None, fake_auth=True, fake_auth_context=None,
         else:
             ctxt = context.RequestContext('fake', 'fake', auth_token=True)
         api_v1 = fault.FaultWrapper(auth.InjectContext(ctxt,
-              inner_app_v1))
+                                                       inner_app_v1))
     elif use_no_auth:
         api_v1 = fault.FaultWrapper(auth.NoAuthMiddleware(
-              limits.RateLimitingMiddleware(inner_app_v1)))
+            limits.RateLimitingMiddleware(inner_app_v1)))
     else:
         api_v1 = fault.FaultWrapper(auth.AuthMiddleware(
-              limits.RateLimitingMiddleware(inner_app_v1)))
+            limits.RateLimitingMiddleware(inner_app_v1)))
 
     mapper = urlmap.URLMap()
     mapper['/v1'] = api_v1
@@ -125,8 +125,10 @@ class HTTPRequest(webob.Request):
         kwargs['base_url'] = 'http://localhost/v1'
         use_admin_context = kwargs.pop('use_admin_context', False)
         out = webob.Request.blank(*args, **kwargs)
-        out.environ['cinder.context'] = FakeRequestContext('fake_user', 'fake',
-                is_admin=use_admin_context)
+        out.environ['cinder.context'] = FakeRequestContext(
+            'fake_user',
+            'fake',
+            is_admin=use_admin_context)
         return out
 
 
@@ -254,16 +256,14 @@ def stub_volume_get_all_by_project(self, context, search_opts=None):
 
 
 def stub_snapshot(id, **kwargs):
-    snapshot = {
-        'id': id,
-        'volume_id': 12,
-        'status': 'available',
-        'volume_size': 100,
-        'created_at': None,
-        'display_name': 'Default name',
-        'display_description': 'Default description',
-        'project_id': 'fake'
-        }
+    snapshot = {'id': id,
+                'volume_id': 12,
+                'status': 'available',
+                'volume_size': 100,
+                'created_at': None,
+                'display_name': 'Default name',
+                'display_description': 'Default description',
+                'project_id': 'fake'}
 
     snapshot.update(kwargs)
     return snapshot

@@ -26,8 +26,7 @@ LOG = logging.getLogger(__name__)
 deprecate_opts = [
     cfg.BoolOpt('fatal_deprecations',
                 default=False,
-                help='make deprecations fatal')
-    ]
+                help='make deprecations fatal')]
 FLAGS = flags.FLAGS
 FLAGS.register_opts(deprecate_opts)
 

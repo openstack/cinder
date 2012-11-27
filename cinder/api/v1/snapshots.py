@@ -164,15 +164,17 @@ class SnapshotsController(wsgi.Controller):
             raise exception.InvalidParameterValue(err=msg)
 
         if utils.bool_from_str(force):
-            new_snapshot = self.volume_api.create_snapshot_force(context,
-                                        volume,
-                                        snapshot.get('display_name'),
-                                        snapshot.get('display_description'))
+            new_snapshot = self.volume_api.create_snapshot_force(
+                context,
+                volume,
+                snapshot.get('display_name'),
+                snapshot.get('display_description'))
         else:
-            new_snapshot = self.volume_api.create_snapshot(context,
-                                        volume,
-                                        snapshot.get('display_name'),
-                                        snapshot.get('display_description'))
+            new_snapshot = self.volume_api.create_snapshot(
+                context,
+                volume,
+                snapshot.get('display_name'),
+                snapshot.get('display_description'))
 
         retval = _translate_snapshot_detail_view(context, new_snapshot)
 

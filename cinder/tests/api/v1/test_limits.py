@@ -159,10 +159,8 @@ class LimitsControllerTest(BaseLimitTestSuite):
                     },
 
                 ],
-                "absolute": {
-                    "maxTotalVolumeGigabytes": 512,
-                    "maxTotalVolumes": 5,
-                    },
+                "absolute": {"maxTotalVolumeGigabytes": 512,
+                             "maxTotalVolumes": 5, },
             },
         }
         body = jsonutils.loads(response.body)
@@ -776,26 +774,26 @@ class LimitsViewBuilderTest(test.TestCase):
                                 "injected_file_content_bytes": 5}
 
     def test_build_limits(self):
-        expected_limits = {"limits": {
-                "rate": [{
-                      "uri": "*",
-                      "regex": ".*",
-                      "limit": [{"value": 10,
-                                 "verb": "POST",
-                                 "remaining": 2,
-                                 "unit": "MINUTE",
-                                 "next-available": "2011-07-21T18:17:06Z"}]},
-                   {"uri": "*/volumes",
-                    "regex": "^/volumes",
-                    "limit": [{"value": 50,
-                               "verb": "POST",
-                               "remaining": 10,
-                               "unit": "DAY",
-                               "next-available": "2011-07-21T18:17:06Z"}]}],
-                "absolute": {"maxServerMeta": 1,
-                             "maxImageMeta": 1,
-                             "maxPersonality": 5,
-                             "maxPersonalitySize": 5}}}
+        tdate = "2011-07-21T18:17:06Z"
+        expected_limits = \
+            {"limits": {"rate": [{"uri": "*",
+                                  "regex": ".*",
+                                  "limit": [{"value": 10,
+                                             "verb": "POST",
+                                             "remaining": 2,
+                                             "unit": "MINUTE",
+                                             "next-available": tdate}]},
+                                 {"uri": "*/volumes",
+                                  "regex": "^/volumes",
+                                  "limit": [{"value": 50,
+                                             "verb": "POST",
+                                             "remaining": 10,
+                                             "unit": "DAY",
+                                             "next-available": tdate}]}],
+                        "absolute": {"maxServerMeta": 1,
+                                     "maxImageMeta": 1,
+                                     "maxPersonality": 5,
+                                     "maxPersonalitySize": 5}}}
 
         output = self.view_builder.build(self.rate_limits,
                                          self.absolute_limits)
@@ -827,27 +825,27 @@ class LimitsXMLSerializationTest(test.TestCase):
         serializer = limits.LimitsTemplate()
         fixture = {
             "limits": {
-                   "rate": [{
-                         "uri": "*",
-                         "regex": ".*",
-                         "limit": [{
-                              "value": 10,
-                              "verb": "POST",
-                              "remaining": 2,
-                              "unit": "MINUTE",
-                              "next-available": "2011-12-15T22:42:45Z"}]},
-                          {"uri": "*/servers",
-                           "regex": "^/servers",
-                           "limit": [{
-                              "value": 50,
-                              "verb": "POST",
-                              "remaining": 10,
-                              "unit": "DAY",
-                              "next-available": "2011-12-15T22:42:45Z"}]}],
-                    "absolute": {"maxServerMeta": 1,
-                                 "maxImageMeta": 1,
-                                 "maxPersonality": 5,
-                                 "maxPersonalitySize": 10240}}}
+                "rate": [{
+                    "uri": "*",
+                    "regex": ".*",
+                    "limit": [{
+                        "value": 10,
+                        "verb": "POST",
+                        "remaining": 2,
+                        "unit": "MINUTE",
+                        "next-available": "2011-12-15T22:42:45Z"}]},
+                    {"uri": "*/servers",
+                     "regex": "^/servers",
+                     "limit": [{
+                         "value": 50,
+                         "verb": "POST",
+                         "remaining": 10,
+                         "unit": "DAY",
+                         "next-available": "2011-12-15T22:42:45Z"}]}],
+                "absolute": {"maxServerMeta": 1,
+                             "maxImageMeta": 1,
+                             "maxPersonality": 5,
+                             "maxPersonalitySize": 10240}}}
 
         output = serializer.serialize(fixture)
         root = etree.XML(output)
@@ -873,8 +871,9 @@ class LimitsXMLSerializationTest(test.TestCase):
             for j, limit in enumerate(rate_limits):
                 for key in ['verb', 'value', 'remaining', 'unit',
                             'next-available']:
-                    self.assertEqual(limit.get(key),
-                         str(fixture['limits']['rate'][i]['limit'][j][key]))
+                    self.assertEqual(
+                        limit.get(key),
+                        str(fixture['limits']['rate'][i]['limit'][j][key]))
 
     def test_index_no_limits(self):
         serializer = limits.LimitsTemplate()

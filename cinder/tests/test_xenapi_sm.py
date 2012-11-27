@@ -83,9 +83,7 @@ class DriverTestCase(unittest.TestCase):
             size=1, display_name='name', display_description='desc'))
         mock.VerifyAll()
 
-        self.assertEquals(dict(
-                provider_location='sr_uuid/vdi_uuid'
-            ), result)
+        self.assertEquals(dict(provider_location='sr_uuid/vdi_uuid'), result)
 
     def test_delete_volume(self):
         mock = mox.Mox()

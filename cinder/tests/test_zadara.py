@@ -105,7 +105,7 @@ class FakeRequest(object):
                        ('/api/vcontrollers.xml', self._list_controllers),
                        ('/api/servers.xml', self._list_servers),
                        ('/api/volumes/*/servers.xml',
-                                    self._list_vol_attachments)]
+                        self._list_vol_attachments)]
                }
 
         ops_list = ops[self.method]
@@ -139,8 +139,8 @@ class FakeRequest(object):
 
     def _login(self):
         params = self._get_parameters(self.body)
-        if params['user'] == RUNTIME_VARS['user'] and\
-           params['password'] == RUNTIME_VARS['password']:
+        if (params['user'] == RUNTIME_VARS['user'] and
+                params['password'] == RUNTIME_VARS['password']):
             return RUNTIME_VARS['login'] % RUNTIME_VARS['access_key']
         else:
             return RUNTIME_VARS['bad_login']
@@ -246,8 +246,10 @@ class FakeRequest(object):
                     <created-at type='datetime'>2012-01-28...</created-at>
                     <modified-at type='datetime'>2012-01-28...</modified-at>
                 </volume>"""
-        return self._generate_list_resp(header, footer, body,
-                        RUNTIME_VARS['volumes'])
+        return self._generate_list_resp(header,
+                                        footer,
+                                        body,
+                                        RUNTIME_VARS['volumes'])
 
     def _list_controllers(self):
         header = """<show-vcontrollers-response>
@@ -267,8 +269,10 @@ class FakeRequest(object):
                     <chap-username>test_chap_user</chap-username>
                     <chap-target-secret>test_chap_secret</chap-target-secret>
                 </vcontroller>"""
-        return self._generate_list_resp(header, footer, body,
-                        RUNTIME_VARS['controllers'])
+        return self._generate_list_resp(header,
+                                        footer,
+                                        body,
+                                        RUNTIME_VARS['controllers'])
 
     def _list_servers(self):
         header = """<show-servers-response>
@@ -317,7 +321,8 @@ class FakeRequest(object):
                 for server in attachments:
                     srv_params = self._get_server_obj(server)
                     resp += body % (server,
-                        srv_params['display_name'], srv_params['iqn'])
+                                    srv_params['display_name'],
+                                    srv_params['iqn'])
                 resp += footer
                 return resp
 
@@ -353,7 +358,7 @@ class FakeHTTPSConnection(FakeHTTPConnection):
 
 
 class ZadaraVPSADriverTestCase(test.TestCase):
-    """Test case for Zadara VPSA volume driver"""
+    """Test case for Zadara VPSA volume driver."""
 
     def setUp(self):
         LOG.debug('Enter: setUp')
@@ -428,7 +433,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.check_for_setup_error()
 
     def test_volume_attach_detach(self):
-        """Test volume attachment and detach"""
+        """Test volume attachment and detach."""
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
         connector = dict(initiator='test_iqn.1')
 
@@ -450,7 +455,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
 
     def test_volume_attach_multiple_detach(self):
-        """Test multiple volume attachment and detach"""
+        """Test multiple volume attachment and detach."""
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
         connector1 = dict(initiator='test_iqn.1')
         connector2 = dict(initiator='test_iqn.2')
@@ -467,7 +472,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
 
     def test_wrong_attach_params(self):
-        """Test different wrong attach scenarios"""
+        """Test different wrong attach scenarios."""
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
         volume2 = {'name': 'test_volume_02', 'size': 1, 'id': 102}
         volume3 = {'name': 'test_volume_03', 'size': 1, 'id': 103}
@@ -480,7 +485,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           volume1, connector1)
 
     def test_wrong_detach_params(self):
-        """Test different wrong detachment scenarios"""
+        """Test different wrong detachment scenarios."""
 
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
         volume2 = {'name': 'test_volume_02', 'size': 1, 'id': 102}
@@ -505,7 +510,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           volume1, connector2)
 
     def test_wrong_login_reply(self):
-        """Test wrong login reply"""
+        """Test wrong login reply."""
 
         RUNTIME_VARS['login'] = """<hash>
                     <access-key>%s</access-key>
@@ -530,13 +535,13 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.do_setup, None)
 
     def test_ssl_use(self):
-        """Coverage test for SSL connection"""
+        """Coverage test for SSL connection."""
         self.flags(zadara_vpsa_use_ssl=True)
         self.driver.do_setup(None)
         self.flags(zadara_vpsa_use_ssl=False)
 
     def test_bad_http_response(self):
-        """Coverage test for non-good HTTP response"""
+        """Coverage test for non-good HTTP response."""
         RUNTIME_VARS['status'] = 400
 
         volume = {'name': 'test_volume_01', 'size': 1}
@@ -544,7 +549,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.create_volume, volume)
 
     def test_delete_without_detach(self):
-        """Test volume deletion without detach"""
+        """Test volume deletion without detach."""
 
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
         connector1 = dict(initiator='test_iqn.1')

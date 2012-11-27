@@ -31,7 +31,7 @@ authorize = extensions.extension_authorizer('volume', 'types_manage')
 
 
 class VolumeTypesManageController(wsgi.Controller):
-    """ The volume types API controller for the OpenStack API """
+    """The volume types API controller for the OpenStack API."""
 
     _view_builder_class = views_types.ViewBuilder
 
@@ -64,7 +64,7 @@ class VolumeTypesManageController(wsgi.Controller):
 
     @wsgi.action("delete")
     def _delete(self, req, id):
-        """ Deletes an existing volume type """
+        """Deletes an existing volume type."""
         context = req.environ['cinder.context']
         authorize(context)
 
@@ -78,7 +78,7 @@ class VolumeTypesManageController(wsgi.Controller):
 
 
 class Types_manage(extensions.ExtensionDescriptor):
-    """Types manage support"""
+    """Types manage support."""
 
     name = "TypesManage"
     alias = "os-types-manage"

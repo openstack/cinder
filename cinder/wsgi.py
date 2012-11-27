@@ -45,7 +45,7 @@ class Server(object):
     default_pool_size = 1000
 
     def __init__(self, name, app, host=None, port=None, pool_size=None,
-                       protocol=eventlet.wsgi.HttpProtocol):
+                 protocol=eventlet.wsgi.HttpProtocol):
         """Initialize, but do not start, a WSGI server.
 
         :param name: Pretty name for logging.
@@ -89,7 +89,7 @@ class Server(object):
         """
         if backlog < 1:
             raise exception.InvalidInput(
-                    reason='The backlog must be more than 1')
+                reason='The backlog must be more than 1')
         self._socket = eventlet.listen((self.host, self.port), backlog=backlog)
         self._server = eventlet.spawn(self._start)
         (self.host, self.port) = self._socket.getsockname()

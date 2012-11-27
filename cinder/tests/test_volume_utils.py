@@ -52,7 +52,7 @@ class UsageInfoTestCase(test.TestCase):
         super(UsageInfoTestCase, self).tearDown()
 
     def _create_volume(self, params={}):
-        """Create a test volume"""
+        """Create a test volume."""
         vol = {}
         vol['snapshot_id'] = self.snapshot_id
         vol['user_id'] = self.user_id

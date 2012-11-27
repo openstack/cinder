@@ -44,8 +44,8 @@ class APIRouter(cinder.api.openstack.APIRouter):
     def _setup_routes(self, mapper, ext_mgr):
         self.resources['versions'] = versions.create_resource()
         mapper.connect("versions", "/",
-                    controller=self.resources['versions'],
-                    action='show')
+                       controller=self.resources['versions'],
+                       action='show')
 
         mapper.redirect("", "/")
 

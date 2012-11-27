@@ -111,8 +111,8 @@ class GlanceClientWrapper(object):
         retry the request according to FLAGS.glance_num_retries.
         """
         retry_excs = (glanceclient.exc.ServiceUnavailable,
-                glanceclient.exc.InvalidEndpoint,
-                glanceclient.exc.CommunicationError)
+                      glanceclient.exc.InvalidEndpoint,
+                      glanceclient.exc.CommunicationError)
         num_attempts = 1 + FLAGS.glance_num_retries
 
         for attempt in xrange(1, num_attempts + 1):
@@ -125,12 +125,14 @@ class GlanceClientWrapper(object):
                 port = self.port
                 extra = "retrying"
                 error_msg = _("Error contacting glance server "
-                        "'%(host)s:%(port)s' for '%(method)s', %(extra)s.")
+                              "'%(host)s:%(port)s' for '%(method)s', "
+                              "%(extra)s.")
                 if attempt == num_attempts:
                     extra = 'done trying'
                     LOG.exception(error_msg, locals())
-                    raise exception.GlanceConnectionFailed(
-                            host=host, port=port, reason=str(e))
+                    raise exception.GlanceConnectionFailed(host=host,
+                                                           port=port,
+                                                           reason=str(e))
                 LOG.exception(error_msg, locals())
                 time.sleep(1)
 
@@ -220,8 +222,8 @@ class GlanceImageService(object):
 
         return self._translate_from_glance(recv_service_image_meta)
 
-    def update(self, context, image_id, image_meta, data=None,
-            purge_props=True):
+    def update(self, context, image_id,
+               image_meta, data=None, purge_props=True):
         """Modify the given image with the new data."""
         image_meta = self._translate_to_glance(image_meta)
         image_meta['purge_props'] = purge_props
@@ -378,7 +380,7 @@ def _reraise_translated_exception():
 
 def _translate_image_exception(image_id, exc_value):
     if isinstance(exc_value, (glanceclient.exc.Forbidden,
-                    glanceclient.exc.Unauthorized)):
+                              glanceclient.exc.Unauthorized)):
         return exception.ImageNotAuthorized(image_id=image_id)
     if isinstance(exc_value, glanceclient.exc.NotFound):
         return exception.ImageNotFound(image_id=image_id)
@@ -389,7 +391,7 @@ def _translate_image_exception(image_id, exc_value):
 
 def _translate_plain_exception(exc_value):
     if isinstance(exc_value, (glanceclient.exc.Forbidden,
-                    glanceclient.exc.Unauthorized)):
+                              glanceclient.exc.Unauthorized)):
         return exception.NotAuthorized(exc_value)
     if isinstance(exc_value, glanceclient.exc.NotFound):
         return exception.NotFound(exc_value)
@@ -419,7 +421,8 @@ def get_remote_image_service(context, image_href):
     try:
         (image_id, glance_host, glance_port) = _parse_image_ref(image_href)
         glance_client = GlanceClientWrapper(context=context,
-                host=glance_host, port=glance_port)
+                                            host=glance_host,
+                                            port=glance_port)
     except ValueError:
         raise exception.InvalidImageRef(image_href=image_href)
 

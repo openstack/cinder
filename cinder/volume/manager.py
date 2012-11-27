@@ -62,8 +62,7 @@ volume_manager_opts = [
                help='Driver to use for volume creation'),
     cfg.BoolOpt('volume_force_update_capabilities',
                 default=False,
-                help='if True will force update capabilities on each check'),
-    ]
+                help='if True will force update capabilities on each check'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_manager_opts)
@@ -71,34 +70,33 @@ FLAGS.register_opts(volume_manager_opts)
 MAPPING = {
     'cinder.volume.driver.RBDDriver': 'cinder.volume.drivers.rbd.RBDDriver',
     'cinder.volume.driver.SheepdogDriver':
-                            'cinder.volume.drivers.sheepdog.SheepdogDriver',
+    'cinder.volume.drivers.sheepdog.SheepdogDriver',
     'cinder.volume.nexenta.volume.NexentaDriver':
-                        'cinder.volume.drivers.nexenta.volume.NexentaDriver',
+    'cinder.volume.drivers.nexenta.volume.NexentaDriver',
     'cinder.volume.san.SanISCSIDriver':
-                        'cinder.volume.drivers.san.san.SanISCSIDriver',
+    'cinder.volume.drivers.san.san.SanISCSIDriver',
     'cinder.volume.san.SolarisISCSIDriver':
-                        'cinder.volume.drivers.san.solaris.SolarisISCSIDriver',
+    'cinder.volume.drivers.san.solaris.SolarisISCSIDriver',
     'cinder.volume.san.HpSanISCSIDriver':
-                    'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver',
+    'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver',
     'cinder.volume.netapp.NetAppISCSIDriver':
-                        'cinder.volume.drivers.netapp.NetAppISCSIDriver',
+    'cinder.volume.drivers.netapp.NetAppISCSIDriver',
     'cinder.volume.netapp.NetAppCmodeISCSIDriver':
-                    'cinder.volume.drivers.netapp.NetAppCmodeISCSIDriver',
+    'cinder.volume.drivers.netapp.NetAppCmodeISCSIDriver',
     'cinder.volume.netapp_nfs.NetAppNFSDriver':
-                    'cinder.volume.drivers.netapp_nfs.NetAppNFSDriver',
+    'cinder.volume.drivers.netapp_nfs.NetAppNFSDriver',
     'cinder.volume.nfs.NfsDriver':
-                        'cinder.volume.drivers.nfs.NfsDriver',
+    'cinder.volume.drivers.nfs.NfsDriver',
     'cinder.volume.solidfire.SolidFire':
-                        'cinder.volume.drivers.solidfire.SolidFire',
+    'cinder.volume.drivers.solidfire.SolidFire',
     'cinder.volume.storwize_svc.StorwizeSVCDriver':
-                        'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver',
+    'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver',
     'cinder.volume.windows.WindowsDriver':
-                        'cinder.volume.drivers.windows.WindowsDriver',
+    'cinder.volume.drivers.windows.WindowsDriver',
     'cinder.volume.xiv.XIVDriver':
-                            'cinder.volume.drivers.xiv.XIVDriver',
+    'cinder.volume.drivers.xiv.XIVDriver',
     'cinder.volume.zadara.ZadaraVPSAISCSIDriver':
-                        'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver'
-    }
+    'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver'}
 
 
 class VolumeManager(manager.SchedulerDependentManager):
@@ -117,7 +115,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             self.driver = importutils.import_object(volume_driver)
         super(VolumeManager, self).__init__(service_name='volume',
-                                                    *args, **kwargs)
+                                            *args, **kwargs)
         # NOTE(vish): Implementation specific db handling is done
         #             by the driver.
         self.driver.db = self.db
@@ -165,7 +163,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             vol_name = volume_ref['name']
             vol_size = volume_ref['size']
             LOG.debug(_("volume %(vol_name)s: creating lv of"
-                    " size %(vol_size)sG") % locals())
+                        " size %(vol_size)sG") % locals())
             if snapshot_id is None and image_id is None:
                 model_update = self.driver.create_volume(volume_ref)
             elif snapshot_id is not None:
@@ -176,8 +174,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             else:
                 # create the volume from an image
                 image_service, image_id = \
-                               glance.get_remote_image_service(context,
-                                                               image_id)
+                    glance.get_remote_image_service(context,
+                                                    image_id)
                 image_location = image_service.get_location(context, image_id)
                 image_meta = image_service.show(context, image_id)
                 cloned = self.driver.clone_image(volume_ref, image_location)
@@ -201,7 +199,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         if snapshot_id:
             # Copy any Glance metadata from the original volume
             self.db.volume_glance_metadata_copy_to_volume(context,
-                                               volume_ref['id'], snapshot_id)
+                                                          volume_ref['id'],
+                                                          snapshot_id)
 
         now = timeutils.utcnow()
         self.db.volume_update(context,
@@ -242,7 +241,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.VolumeAttached(volume_id=volume_id)
         if volume_ref['host'] != self.host:
             raise exception.InvalidVolume(
-                    reason=_("Volume is not local to this node"))
+                reason=_("Volume is not local to this node"))
 
         self._notify_about_volume_usage(context, volume_ref, "delete.start")
         self._reset_stats()
@@ -306,7 +305,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                 snapshot_ref['id'], {'status': 'available',
                                                      'progress': '100%'})
         self.db.volume_glance_metadata_copy_to_snapshot(context,
-                                                snapshot_ref['id'], volume_id)
+                                                        snapshot_ref['id'],
+                                                        volume_id)
         LOG.debug(_("snapshot %s: created successfully"), snapshot_ref['name'])
         return snapshot_id
 
@@ -502,8 +502,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_("Notification {%s} received"), event)
         self._reset_stats()
 
-    def _notify_about_volume_usage(self, context, volume, event_suffix,
-                                     extra_usage_info=None):
+    def _notify_about_volume_usage(self,
+                                   context,
+                                   volume,
+                                   event_suffix,
+                                   extra_usage_info=None):
         volume_utils.notify_about_volume_usage(
-                context, volume, event_suffix,
-                extra_usage_info=extra_usage_info, host=self.host)
+            context, volume, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)

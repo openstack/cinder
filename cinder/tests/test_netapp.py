@@ -578,21 +578,21 @@ RESPONSE_PREFIX = """<?xml version="1.0" encoding="UTF-8"?>
 RESPONSE_SUFFIX = """</env:Body></env:Envelope>"""
 
 APIS = ['ApiProxy', 'DatasetListInfoIterStart', 'DatasetListInfoIterNext',
-    'DatasetListInfoIterEnd', 'DatasetEditBegin', 'DatasetEditCommit',
-    'DatasetProvisionMember', 'DatasetRemoveMember', 'DfmAbout',
-    'DpJobProgressEventListIterStart', 'DpJobProgressEventListIterNext',
-    'DpJobProgressEventListIterEnd', 'DatasetMemberListInfoIterStart',
-    'DatasetMemberListInfoIterNext', 'DatasetMemberListInfoIterEnd',
-    'HostListInfoIterStart', 'HostListInfoIterNext', 'HostListInfoIterEnd',
-    'LunListInfoIterStart', 'LunListInfoIterNext', 'LunListInfoIterEnd',
-    'StorageServiceDatasetProvision']
+        'DatasetListInfoIterEnd', 'DatasetEditBegin', 'DatasetEditCommit',
+        'DatasetProvisionMember', 'DatasetRemoveMember', 'DfmAbout',
+        'DpJobProgressEventListIterStart', 'DpJobProgressEventListIterNext',
+        'DpJobProgressEventListIterEnd', 'DatasetMemberListInfoIterStart',
+        'DatasetMemberListInfoIterNext', 'DatasetMemberListInfoIterEnd',
+        'HostListInfoIterStart', 'HostListInfoIterNext', 'HostListInfoIterEnd',
+        'LunListInfoIterStart', 'LunListInfoIterNext', 'LunListInfoIterEnd',
+        'StorageServiceDatasetProvision']
 
 iter_count = 0
 iter_table = {}
 
 
 class FakeDfmServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    """HTTP handler that fakes enough stuff to allow the driver to run"""
+    """HTTP handler that fakes enough stuff to allow the driver to run."""
 
     def do_GET(s):
         """Respond to a GET request."""
@@ -622,7 +622,7 @@ class FakeDfmServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         out.write('</portType>')
         out.write('<binding name="DfmBinding" type="na:DfmInterface">')
         out.write('<soap:binding style="document" ' +
-            'transport="http://schemas.xmlsoap.org/soap/http"/>')
+                  'transport="http://schemas.xmlsoap.org/soap/http"/>')
         for api in APIS:
             out.write('<operation name="%s">' % api)
             out.write('<soap:operation soapAction="urn:%s"/>' % api)
@@ -641,7 +641,7 @@ class FakeDfmServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         request_xml = s.rfile.read(int(s.headers['Content-Length']))
         ntap_ns = 'http://www.netapp.com/management/v1'
         nsmap = {'env': 'http://schemas.xmlsoap.org/soap/envelope/',
-            'na': ntap_ns}
+                 'na': ntap_ns}
         root = etree.fromstring(request_xml)
 
         body = root.xpath('/env:Envelope/env:Body', namespaces=nsmap)[0]
@@ -977,7 +977,7 @@ class NetAppDriverTestCase(test.TestCase):
         self.driver._provision(self.VOLUME_NAME, None, self.PROJECT_ID,
                                self.VOLUME_TYPE, self.VOLUME_SIZE)
         volume = {'name': self.VOLUME_NAME, 'project_id': self.PROJECT_ID,
-            'id': 0, 'provider_auth': None}
+                  'id': 0, 'provider_auth': None}
         updates = self.driver._get_export(volume)
         self.assertTrue(updates['provider_location'])
         volume['provider_location'] = updates['provider_location']
@@ -1193,7 +1193,7 @@ class FakeCMODEServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         out.write('<binding name="CloudStorageBinding" '
                   'type="na:CloudStorage">')
         out.write('<soap:binding style="document" ' +
-            'transport="http://schemas.xmlsoap.org/soap/http"/>')
+                  'transport="http://schemas.xmlsoap.org/soap/http"/>')
         for api in CMODE_APIS:
             out.write('<operation name="%s">' % api)
             out.write('<soap:operation soapAction=""/>')
@@ -1212,7 +1212,7 @@ class FakeCMODEServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         request_xml = s.rfile.read(int(s.headers['Content-Length']))
         ntap_ns = 'http://cloud.netapp.com/'
         nsmap = {'soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
-            'na': ntap_ns}
+                 'na': ntap_ns}
         root = etree.fromstring(request_xml)
 
         body = root.xpath('/soapenv:Envelope/soapenv:Body',
@@ -1322,24 +1322,18 @@ class FakeCmodeHTTPConnection(object):
 
 class NetAppCmodeISCSIDriverTestCase(test.TestCase):
     """Test case for NetAppISCSIDriver"""
-    volume = {
-            'name': 'lun1', 'size': 1, 'volume_name': 'lun1',
-            'os_type': 'linux', 'provider_location': 'lun1',
-            'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
-            'display_name': None, 'display_description': 'lun1',
-            'volume_type_id': None
-            }
-    snapshot = {
-            'name': 'lun2', 'size': 1, 'volume_name': 'lun1',
-            'volume_size': 1, 'project_id': 'project'
-            }
-    volume_sec = {
-            'name': 'vol_snapshot', 'size': 1, 'volume_name': 'lun1',
-            'os_type': 'linux', 'provider_location': 'lun1',
-            'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
-            'display_name': None, 'display_description': 'lun1',
-            'volume_type_id': None
-            }
+    volume = {'name': 'lun1', 'size': 1, 'volume_name': 'lun1',
+              'os_type': 'linux', 'provider_location': 'lun1',
+              'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
+              'display_name': None, 'display_description': 'lun1',
+              'volume_type_id': None}
+    snapshot = {'name': 'lun2', 'size': 1, 'volume_name': 'lun1',
+                'volume_size': 1, 'project_id': 'project'}
+    volume_sec = {'name': 'vol_snapshot', 'size': 1, 'volume_name': 'lun1',
+                  'os_type': 'linux', 'provider_location': 'lun1',
+                  'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
+                  'display_name': None, 'display_description': 'lun1',
+                  'volume_type_id': None}
 
     def setUp(self):
         super(NetAppCmodeISCSIDriverTestCase, self).setUp()
@@ -1371,7 +1365,7 @@ class NetAppCmodeISCSIDriverTestCase(test.TestCase):
         self.volume['provider_location'] = updates['provider_location']
         connector = {'initiator': 'init1'}
         connection_info = self.driver.initialize_connection(self.volume,
-                                                             connector)
+                                                            connector)
         self.assertEqual(connection_info['driver_volume_type'], 'iscsi')
         properties = connection_info['data']
         self.driver.terminate_connection(self.volume, connector)

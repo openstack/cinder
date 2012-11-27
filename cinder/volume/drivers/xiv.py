@@ -51,14 +51,12 @@ class XIVDriver(san.SanISCSIDriver):
 
         proxy = importutils.import_class(FLAGS.xiv_proxy)
 
-        self.xiv_proxy = proxy({
-                "xiv_user": FLAGS.san_login,
-                "xiv_pass": FLAGS.san_password,
-                "xiv_address": FLAGS.san_ip,
-                "xiv_vol_pool": FLAGS.san_clustername
-                },
-                LOG,
-                exception)
+        self.xiv_proxy = proxy({"xiv_user": FLAGS.san_login,
+                                "xiv_pass": FLAGS.san_password,
+                                "xiv_address": FLAGS.san_ip,
+                                "xiv_vol_pool": FLAGS.san_clustername},
+                               LOG,
+                               exception)
         san.SanISCSIDriver.__init__(self, *args, **kwargs)
 
     def do_setup(self, context):
@@ -94,23 +92,18 @@ class XIVDriver(san.SanISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Map the created volume."""
 
-        return self.xiv_proxy.initialize_connection(
-                volume,
-                connector)
+        return self.xiv_proxy.initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume."""
 
-        return self.xiv_proxy.terminate_connection(
-                volume,
-                connector)
+        return self.xiv_proxy.terminate_connection(volume, connector)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
 
-        return self.xiv_proxy.create_volume_from_snapshot(
-                volume,
-                snapshot)
+        return self.xiv_proxy.create_volume_from_snapshot(volume,
+                                                          snapshot)
 
     def create_snapshot(self, snapshot):
         """Create a snapshot."""

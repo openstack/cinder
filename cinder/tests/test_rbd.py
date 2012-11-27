@@ -46,22 +46,18 @@ class RBDTestCase(test.TestCase):
         self.driver = RBDDriver(execute=fake_execute)
 
     def test_good_locations(self):
-        locations = [
-            'rbd://fsid/pool/image/snap',
-            'rbd://%2F/%2F/%2F/%2F',
-            ]
+        locations = ['rbd://fsid/pool/image/snap',
+                     'rbd://%2F/%2F/%2F/%2F', ]
         map(self.driver._parse_location, locations)
 
     def test_bad_locations(self):
-        locations = [
-            'rbd://image',
-            'http://path/to/somewhere/else',
-            'rbd://image/extra',
-            'rbd://image/',
-            'rbd://fsid/pool/image/',
-            'rbd://fsid/pool/image/snap/',
-            'rbd://///',
-            ]
+        locations = ['rbd://image',
+                     'http://path/to/somewhere/else',
+                     'rbd://image/extra',
+                     'rbd://image/',
+                     'rbd://fsid/pool/image/',
+                     'rbd://fsid/pool/image/snap/',
+                     'rbd://///', ]
         for loc in locations:
             self.assertRaises(exception.ImageUnacceptable,
                               self.driver._parse_location,
@@ -142,13 +138,14 @@ class ManagedRBDTestCase(DriverTestCase):
         image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
         volume_id = 1
         # creating volume testdata
-        db.volume_create(self.context, {'id': volume_id,
-                            'updated_at': timeutils.utcnow(),
-                            'display_description': 'Test Desc',
-                            'size': 20,
-                            'status': 'creating',
-                            'instance_uuid': None,
-                            'host': 'dummy'})
+        db.volume_create(self.context,
+                         {'id': volume_id,
+                          'updated_at': timeutils.utcnow(),
+                          'display_description': 'Test Desc',
+                          'size': 20,
+                          'status': 'creating',
+                          'instance_uuid': None,
+                          'host': 'dummy'})
         try:
             if clone_works:
                 self.volume.create_volume(self.context,

@@ -29,15 +29,11 @@ from cinder.volume.drivers import xiv
 FLAGS = flags.FLAGS
 
 FAKE = "fake"
-VOLUME = {
-        'size': 16,
-        'name': FAKE,
-        'id': 1
-        }
+VOLUME = {'size': 16,
+          'name': FAKE,
+          'id': 1}
 
-CONNECTOR = {
-        'initiator': "iqn.2012-07.org.fake:01:948f189c4695",
-        }
+CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 
 
 class XIVFakeProxyDriver(object):
@@ -82,21 +78,18 @@ class XIVFakeProxyDriver(object):
 
         self.volumes[volume['name']]['attached'] = connector
 
-        return {
-                'driver_volume_type': 'iscsi',
-                'data': {
-                    'target_discovered': True,
-                    'target_portal': self.xiv_portal,
-                    'target_iqn': self.xiv_iqn,
-                    'target_lun': lun_id,
-                    'volume_id': volume['id'],
-                    'multipath': True,
-                    # part of a patch to nova-compute to enable iscsi multipath
-                    'provider_location': "%s,1 %s %s" % (
-                        self.xiv_portal,
-                        self.xiv_iqn,
-                        lun_id),
-                    },
+        return {'driver_volume_type': 'iscsi',
+                'data': {'target_discovered': True,
+                         'target_discovered': True,
+                         'target_portal': self.xiv_portal,
+                         'target_iqn': self.xiv_iqn,
+                         'target_lun': lun_id,
+                         'volume_id': volume['id'],
+                         'multipath': True,
+                         'provider_location': "%s,1 %s %s" % (
+                             self.xiv_portal,
+                             self.xiv_iqn,
+                             lun_id), },
                 }
 
     def terminate_connection(self, volume, connector):
@@ -110,8 +103,8 @@ class XIVFakeProxyDriver(object):
         if not self.volume_exists(volume):
             raise self.exception.VolumeNotFound()
 
-        return self.volumes[volume['name']].get('attached', None) \
-                == connector
+        return (self.volumes[volume['name']].get('attached', None)
+                == connector)
 
 
 class XIVVolumeDriverTest(test.TestCase):
@@ -126,18 +119,14 @@ class XIVVolumeDriverTest(test.TestCase):
     def test_initialized_should_set_xiv_info(self):
         """Test that the san flags are passed to the XIV proxy."""
 
-        self.assertEquals(
-                self.driver.xiv_proxy.xiv_info['xiv_user'],
-                FLAGS.san_login)
-        self.assertEquals(
-                self.driver.xiv_proxy.xiv_info['xiv_pass'],
-                FLAGS.san_password)
-        self.assertEquals(
-                self.driver.xiv_proxy.xiv_info['xiv_address'],
-                FLAGS.san_ip)
-        self.assertEquals(
-                self.driver.xiv_proxy.xiv_info['xiv_vol_pool'],
-                FLAGS.san_clustername)
+        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_user'],
+                          FLAGS.san_login)
+        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_pass'],
+                          FLAGS.san_password)
+        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_address'],
+                          FLAGS.san_ip)
+        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_vol_pool'],
+                          FLAGS.san_clustername)
 
     def test_setup_should_fail_if_credentials_are_invalid(self):
         """Test that the xiv_proxy validates credentials."""
@@ -186,8 +175,10 @@ class XIVVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeBackendAPIException,
-                self.driver.create_volume,
-                    {'name': FAKE, 'id': 1, 'size': 12000})
+                          self.driver.create_volume,
+                          {'name': FAKE,
+                           'id': 1,
+                           'size': 12000})
 
     def test_initialize_connection(self):
         """Test that inititialize connection attaches volume to host."""
@@ -197,7 +188,7 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.initialize_connection(VOLUME, CONNECTOR)
 
         self.assertTrue(
-                self.driver.xiv_proxy.is_volume_attached(VOLUME, CONNECTOR))
+            self.driver.xiv_proxy.is_volume_attached(VOLUME, CONNECTOR))
 
         self.driver.terminate_connection(VOLUME, CONNECTOR)
         self.driver.delete_volume(VOLUME)
@@ -207,7 +198,9 @@ class XIVVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeNotFound,
-                self.driver.initialize_connection, VOLUME, CONNECTOR)
+                          self.driver.initialize_connection,
+                          VOLUME,
+                          CONNECTOR)
 
     def test_terminate_connection(self):
         """Test terminating a connection."""
@@ -217,10 +210,8 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.initialize_connection(VOLUME, CONNECTOR)
         self.driver.terminate_connection(VOLUME, CONNECTOR)
 
-        self.assertFalse(
-                self.driver.xiv_proxy.is_volume_attached(
-                    VOLUME,
-                    CONNECTOR))
+        self.assertFalse(self.driver.xiv_proxy.is_volume_attached(VOLUME,
+                                                                  CONNECTOR))
 
         self.driver.delete_volume(VOLUME)
 
@@ -229,7 +220,9 @@ class XIVVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeNotFound,
-                self.driver.terminate_connection, VOLUME, CONNECTOR)
+                          self.driver.terminate_connection,
+                          VOLUME,
+                          CONNECTOR)
 
     def test_terminate_connection_should_fail_on_non_attached_volume(self):
         """Test that terminate won't work for volumes that are not attached."""
@@ -238,6 +231,8 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.create_volume(VOLUME)
 
         self.assertRaises(exception.VolumeNotFoundForInstance,
-                self.driver.terminate_connection, VOLUME, CONNECTOR)
+                          self.driver.terminate_connection,
+                          VOLUME,
+                          CONNECTOR)
 
         self.driver.delete_volume(VOLUME)

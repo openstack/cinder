@@ -40,15 +40,13 @@ def stub_snapshot_get(self, context, snapshot_id):
     if snapshot_id != TEST_SNAPSHOT_UUID:
         raise exception.NotFound
 
-    return {
-            'id': snapshot_id,
+    return {'id': snapshot_id,
             'volume_id': 12,
             'status': 'available',
             'volume_size': 100,
             'created_at': None,
             'display_name': 'Default name',
-            'display_description': 'Default description',
-            }
+            'display_description': 'Default description', }
 
 
 class VolumeApiTest(test.TestCase):
@@ -89,7 +87,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
-                                                              1, 1, 1),
+                                                               1, 1, 1),
                                'size': 100}}
         self.assertEqual(res_dict, expected)
 
@@ -105,8 +103,7 @@ class VolumeApiTest(test.TestCase):
                "display_name": "Volume Test Name",
                "display_description": "Volume Test Desc",
                "availability_zone": "zone1:host1",
-               "volume_type": db_vol_type['name'],
-              }
+               "volume_type": db_vol_type['name'], }
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         res_dict = self.controller.create(req, body)
@@ -128,28 +125,29 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_id(self):
         self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        test_id = "c905cedb-7281-47e4-8a62-f26bc5fc4c77"
         vol = {"size": '1',
                "display_name": "Volume Test Name",
                "display_description": "Volume Test Desc",
                "availability_zone": "nova",
-               "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
+               "imageRef": test_id}
         expected = {'volume': {'status': 'fakestatus',
-                           'display_description': 'Volume Test Desc',
-                           'availability_zone': 'nova',
-                           'display_name': 'Volume Test Name',
-                           'attachments': [{'device': '/',
-                                            'server_id': 'fakeuuid',
-                                            'id': '1',
-                                            'volume_id': '1'}],
-                            'bootable': 'false',
-                            'volume_type': 'vol_type_name',
-                            'image_id': 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
-                            'snapshot_id': None,
-                            'metadata': {},
-                            'id': '1',
-                            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                            'size': '1'}
-                    }
+                               'display_description': 'Volume Test Desc',
+                               'availability_zone': 'nova',
+                               'display_name': 'Volume Test Name',
+                               'attachments': [{'device': '/',
+                                                'server_id': 'fakeuuid',
+                                                'id': '1',
+                                                'volume_id': '1'}],
+                               'bootable': 'false',
+                               'volume_type': 'vol_type_name',
+                               'image_id': test_id,
+                               'snapshot_id': None,
+                               'metadata': {},
+                               'id': '1',
+                               'created_at': datetime.datetime(1, 1, 1,
+                                                               1, 1, 1),
+                               'size': '1'}}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         res_dict = self.controller.create(req, body)
@@ -160,11 +158,11 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "get_snapshot", stub_snapshot_get)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {"size": '1',
-                "display_name": "Volume Test Name",
-                "display_description": "Volume Test Desc",
-                "availability_zone": "cinder",
-                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
-                "snapshot_id": TEST_SNAPSHOT_UUID}
+               "display_name": "Volume Test Name",
+               "display_description": "Volume Test Desc",
+               "availability_zone": "cinder",
+               "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
+               "snapshot_id": TEST_SNAPSHOT_UUID}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -176,10 +174,10 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {"size": '1',
-                "display_name": "Volume Test Name",
-                "display_description": "Volume Test Desc",
-                "availability_zone": "cinder",
-                "imageRef": 1234}
+               "display_name": "Volume Test Name",
+               "display_description": "Volume Test Desc",
+               "availability_zone": "cinder",
+               "imageRef": 1234}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -191,10 +189,10 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {"size": '1',
-                "display_name": "Volume Test Name",
-                "display_description": "Volume Test Desc",
-                "availability_zone": "cinder",
-                "imageRef": '12345'}
+               "display_name": "Volume Test Name",
+               "display_description": "Volume Test Desc",
+               "availability_zone": "cinder",
+               "imageRef": '12345'}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -305,7 +303,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {},
                                  'id': '1',
                                  'created_at': datetime.datetime(1, 1, 1,
-                                                                1, 1, 1),
+                                                                 1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
 
@@ -328,7 +326,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {},
                                  'id': '1',
                                  'created_at': datetime.datetime(1, 1, 1,
-                                                                1, 1, 1),
+                                                                 1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
 
@@ -410,7 +408,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
-                                                              1, 1, 1),
+                                                               1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
 
@@ -433,7 +431,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
-                                                              1, 1, 1),
+                                                               1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
 
@@ -460,7 +458,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
-                                                              1, 1, 1),
+                                                               1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
 
@@ -552,20 +550,16 @@ class VolumeSerializerTest(test.TestCase):
             size=1024,
             availability_zone='vol_availability',
             created_at=datetime.datetime.now(),
-            attachments=[dict(
-                    id='vol_id',
-                    volume_id='vol_id',
-                    server_id='instance_uuid',
-                    device='/foo')],
+            attachments=[dict(id='vol_id',
+                              volume_id='vol_id',
+                              server_id='instance_uuid',
+                              device='/foo')],
             display_name='vol_name',
             display_description='vol_desc',
             volume_type='vol_type',
             snapshot_id='snap_id',
-            metadata=dict(
-                foo='bar',
-                baz='quux',
-                ),
-            )
+            metadata=dict(foo='bar',
+                          baz='quux', ), )
         text = serializer.serialize(dict(volume=raw_volume))
 
         print text
@@ -575,46 +569,36 @@ class VolumeSerializerTest(test.TestCase):
 
     def test_volume_index_detail_serializer(self):
         serializer = volumes.VolumesTemplate()
-        raw_volumes = [dict(
-                id='vol1_id',
-                status='vol1_status',
-                size=1024,
-                availability_zone='vol1_availability',
-                created_at=datetime.datetime.now(),
-                attachments=[dict(
-                        id='vol1_id',
-                        volume_id='vol1_id',
-                        server_id='instance_uuid',
-                        device='/foo1')],
-                display_name='vol1_name',
-                display_description='vol1_desc',
-                volume_type='vol1_type',
-                snapshot_id='snap1_id',
-                metadata=dict(
-                    foo='vol1_foo',
-                    bar='vol1_bar',
-                    ),
-                ),
-                       dict(
-                id='vol2_id',
-                status='vol2_status',
-                size=1024,
-                availability_zone='vol2_availability',
-                created_at=datetime.datetime.now(),
-                attachments=[dict(
-                        id='vol2_id',
-                        volume_id='vol2_id',
-                        server_id='instance_uuid',
-                        device='/foo2')],
-                display_name='vol2_name',
-                display_description='vol2_desc',
-                volume_type='vol2_type',
-                snapshot_id='snap2_id',
-                metadata=dict(
-                    foo='vol2_foo',
-                    bar='vol2_bar',
-                    ),
-                )]
+        raw_volumes = [dict(id='vol1_id',
+                            status='vol1_status',
+                            size=1024,
+                            availability_zone='vol1_availability',
+                            created_at=datetime.datetime.now(),
+                            attachments=[dict(id='vol1_id',
+                                              volume_id='vol1_id',
+                                              server_id='instance_uuid',
+                                              device='/foo1')],
+                            display_name='vol1_name',
+                            display_description='vol1_desc',
+                            volume_type='vol1_type',
+                            snapshot_id='snap1_id',
+                            metadata=dict(foo='vol1_foo',
+                                          bar='vol1_bar', ), ),
+                       dict(id='vol2_id',
+                            status='vol2_status',
+                            size=1024,
+                            availability_zone='vol2_availability',
+                            created_at=datetime.datetime.now(),
+                            attachments=[dict(id='vol2_id',
+                                              volume_id='vol2_id',
+                                              server_id='instance_uuid',
+                                              device='/foo2')],
+                            display_name='vol2_name',
+                            display_description='vol2_desc',
+                            volume_type='vol2_type',
+                            snapshot_id='snap2_id',
+                            metadata=dict(foo='vol2_foo',
+                                          bar='vol2_bar', ), )]
         text = serializer.serialize(dict(volumes=raw_volumes))
 
         print text
@@ -637,11 +621,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
 <volume xmlns="http://docs.openstack.org/compute/api/v1.1"
         size="1"></volume>"""
         request = self.deserializer.deserialize(self_request)
-        expected = {
-            "volume": {
-                    "size": "1",
-            },
-        }
+        expected = {"volume": {"size": "1", }, }
         self.assertEquals(request['body'], expected)
 
     def test_display_name(self):

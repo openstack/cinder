@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-""" The volume type & volume types extra specs extension"""
+"""The volume type & volume types extra specs extension."""
 
 from webob import exc
 
@@ -50,20 +50,20 @@ class VolumeTypesTemplate(xmlutil.TemplateBuilder):
 
 
 class VolumeTypesController(wsgi.Controller):
-    """ The volume types API controller for the OpenStack API """
+    """The volume types API controller for the OpenStack API."""
 
     _view_builder_class = views_types.ViewBuilder
 
     @wsgi.serializers(xml=VolumeTypesTemplate)
     def index(self, req):
-        """ Returns the list of volume types """
+        """Returns the list of volume types."""
         context = req.environ['cinder.context']
         vol_types = volume_types.get_all_types(context).values()
         return self._view_builder.index(req, vol_types)
 
     @wsgi.serializers(xml=VolumeTypeTemplate)
     def show(self, req, id):
-        """ Return a single volume type item """
+        """Return a single volume type item."""
         context = req.environ['cinder.context']
 
         try:

@@ -35,8 +35,7 @@ LOG = logging.getLogger(__name__)
 netapp_nfs_opts = [
     cfg.IntOpt('synchronous_snapshot_create',
                default=0,
-               help='Does snapshot creation call returns immediately')
-    ]
+               help='Does snapshot creation call returns immediately')]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(netapp_opts)
@@ -71,7 +70,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
         if vol_size != snap_size:
             msg = _('Cannot create volume of size %(vol_size)s from '
-                'snapshot of size %(snap_size)s')
+                    'snapshot of size %(snap_size)s')
             raise exception.CinderException(msg % locals())
 
         self._clone_volume(snapshot.name, volume.name, snapshot.volume_id)
@@ -114,9 +113,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
         client = suds.client.Client(FLAGS.netapp_wsdl_url,
                                     username=FLAGS.netapp_login,
                                     password=FLAGS.netapp_password)
-        soap_url = 'http://%s:%s/apis/soap/v1' % (
-                                          FLAGS.netapp_server_hostname,
-                                          FLAGS.netapp_server_port)
+        soap_url = 'http://%s:%s/apis/soap/v1' % (FLAGS.netapp_server_hostname,
+                                                  FLAGS.netapp_server_port)
         client.set_options(location=soap_url)
 
         return client
@@ -144,7 +142,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                                                     clone_name))
 
         resp = self._client.service.ApiProxy(Target=host_id,
-                                            Request=request)
+                                             Request=request)
 
         if resp.Status == 'passed' and FLAGS.synchronous_snapshot_create:
             clone_id = resp.Results['clone-id'][0]
@@ -161,10 +159,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         :param clone_operation_id: Identifier of ONTAP clone operation
         """
         clone_list_options = ('<clone-id>'
-                                '<clone-id-info>'
-                                  '<clone-op-id>%d</clone-op-id>'
-                                  '<volume-uuid></volume-uuid>'
-                                '</clone-id>'
+                              '<clone-id-info>'
+                              '<clone-op-id>%d</clone-op-id>'
+                              '<volume-uuid></volume-uuid>'
+                              '</clone-id>'
                               '</clone-id-info>')
 
         request = self._client.factory.create('Request')
@@ -176,7 +174,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         while resp.Status != 'passed':
             time.sleep(1)
             resp = self._client.service.ApiProxy(Target=host_id,
-                                                Request=request)
+                                                 Request=request)
 
     def _get_provider_location(self, volume_id):
         """
@@ -219,7 +217,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         request.Args = text.Raw(command_args % export_path)
 
         resp = self._client.service.ApiProxy(Target=host_id,
-                                            Request=request)
+                                             Request=request)
 
         if resp.Status == 'passed':
             return resp.Results['actual-pathname'][0]

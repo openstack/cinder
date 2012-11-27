@@ -29,27 +29,31 @@ def upgrade(migrate_engine):
     # Just for the ForeignKey and column creation to succeed, these are not the
     # actual definitions of tables .
     #
-    volumes = Table('volumes', meta,
-           Column('id', Integer(), primary_key=True, nullable=False),
-           mysql_engine='InnoDB'
-           )
-    snapshots = Table('snapshots', meta,
-           Column('id', Integer(), primary_key=True, nullable=False),
-           mysql_engine='InnoDB'
-           )
+    volumes = Table('volumes',
+                    meta,
+                    Column('id', Integer(),
+                           primary_key=True, nullable=False),
+                    mysql_engine='InnoDB')
+    snapshots = Table('snapshots',
+                      meta,
+                      Column('id', Integer(),
+                             primary_key=True, nullable=False),
+                      mysql_engine='InnoDB')
     # Create new table
-    volume_glance_metadata = Table('volume_glance_metadata', meta,
-            Column('created_at', DateTime(timezone=False)),
-            Column('updated_at', DateTime(timezone=False)),
-            Column('deleted_at', DateTime(timezone=False)),
-            Column('deleted', Boolean(create_constraint=True, name=None)),
-            Column('id', Integer(), primary_key=True, nullable=False),
-            Column('volume_id', String(length=36), ForeignKey('volumes.id')),
-            Column('snapshot_id', String(length=36),
-                   ForeignKey('snapshots.id')),
-            Column('key', String(255)),
-            Column('value', Text),
-            mysql_engine='InnoDB'
+    volume_glance_metadata = Table(
+        'volume_glance_metadata',
+        meta,
+        Column('created_at', DateTime(timezone=False)),
+        Column('updated_at', DateTime(timezone=False)),
+        Column('deleted_at', DateTime(timezone=False)),
+        Column('deleted', Boolean(create_constraint=True, name=None)),
+        Column('id', Integer(), primary_key=True, nullable=False),
+        Column('volume_id', String(length=36), ForeignKey('volumes.id')),
+        Column('snapshot_id', String(length=36),
+               ForeignKey('snapshots.id')),
+        Column('key', String(255)),
+        Column('value', Text),
+        mysql_engine='InnoDB'
     )
 
     try:

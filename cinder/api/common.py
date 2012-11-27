@@ -181,14 +181,10 @@ class ViewBuilder(object):
     _collection_name = None
 
     def _get_links(self, request, identifier):
-        return [{
-            "rel": "self",
-            "href": self._get_href_link(request, identifier),
-        },
-        {
-            "rel": "bookmark",
-            "href": self._get_bookmark_link(request, identifier),
-        }]
+        return [{"rel": "self",
+                 "href": self._get_href_link(request, identifier), },
+                {"rel": "bookmark",
+                 "href": self._get_bookmark_link(request, identifier), }]
 
     def _get_next_link(self, request, identifier):
         """Return href string with proper limit and marker params."""

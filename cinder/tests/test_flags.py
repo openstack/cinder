@@ -62,8 +62,8 @@ class FlagsTestCase(test.TestCase):
     def test_long_vs_short_flags(self):
         FLAGS.clear()
         FLAGS.register_cli_opt(cfg.StrOpt('duplicate_answer_long',
-                                               default='val',
-                                               help='desc'))
+                                          default='val',
+                                          help='desc'))
         argv = ['flags_test', '--duplicate_answer=60', 'extra_arg']
         args = flags.parse_args(argv, default_config_files=[])
 
@@ -72,8 +72,8 @@ class FlagsTestCase(test.TestCase):
 
         FLAGS.clear()
         FLAGS.register_cli_opt(cfg.IntOpt('duplicate_answer',
-                                               default=60,
-                                               help='desc'))
+                                          default=60,
+                                          help='desc'))
         args = flags.parse_args(argv, default_config_files=[])
         self.assertEqual(FLAGS.duplicate_answer, 60)
         self.assertEqual(FLAGS.duplicate_answer_long, 'val')

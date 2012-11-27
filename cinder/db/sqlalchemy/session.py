@@ -138,8 +138,8 @@ def get_engine():
                     _ENGINE.connect()
                     break
                 except OperationalError, e:
-                    if (remaining != 'infinite' and remaining == 0) or \
-                       not is_db_connection_error(e.args[0]):
+                    if ((remaining != 'infinite' and remaining == 0) or
+                            not is_db_connection_error(e.args[0])):
                         raise
     return _ENGINE
 

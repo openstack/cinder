@@ -140,10 +140,10 @@ class Types_extra_specs(extensions.ExtensionDescriptor):
     def get_resources(self):
         resources = []
         res = extensions.ResourceExtension('extra_specs',
-                            VolumeTypeExtraSpecsController(),
-                            parent=dict(
-                                member_name='type',
-                                collection_name='types'))
+                                           VolumeTypeExtraSpecsController(),
+                                           parent=dict(member_name='type',
+                                                       collection_name='types')
+                                           )
         resources.append(res)
 
         return resources

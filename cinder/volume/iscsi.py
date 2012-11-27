@@ -30,17 +30,16 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
-iscsi_helper_opt = [
-        cfg.StrOpt('iscsi_helper',
-                    default='tgtadm',
-                    help='iscsi target user-land tool to use'),
-        cfg.StrOpt('volumes_dir',
-                   default='$state_path/volumes',
-                   help='Volume configuration file storage directory'),
-        cfg.StrOpt('iet_conf',
-                   default='/etc/iet/ietd.conf',
-                   help='IET configuration file'),
-]
+iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
+                               default='tgtadm',
+                               help='iscsi target user-land tool to use'),
+                    cfg.StrOpt('volumes_dir',
+                               default='$state_path/volumes',
+                               help='Volume configuration file storage '
+                                    'directory'),
+                    cfg.StrOpt('iet_conf',
+                               default='/etc/iet/ietd.conf',
+                               help='IET configuration file'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(iscsi_helper_opt)
@@ -232,7 +231,7 @@ class IetAdm(TargetAdmin):
             except exception.ProcessExecutionError, e:
                 vol_id = name.split(':')[1]
                 LOG.error(_("Failed to create iscsi target for volume "
-                        "id:%(vol_id)s.") % locals())
+                            "id:%(vol_id)s.") % locals())
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
         return tid
 

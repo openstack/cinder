@@ -20,7 +20,7 @@ from cinder.tests import utils as test_utils
 
 class TestUtilsTestCase(test.TestCase):
     def test_get_test_admin_context(self):
-        """get_test_admin_context's return value behaves like admin context"""
+        """get_test_admin_context's return value behaves like admin context."""
         ctxt = test_utils.get_test_admin_context()
 
         # TODO(soren): This should verify the full interface context

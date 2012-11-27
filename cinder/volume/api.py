@@ -38,8 +38,9 @@ from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_types
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
-        default=True,
-        help='Create volume from snapshot at the host where snapshot resides')
+                              default=True,
+                              help='Create volume from snapshot at the host '
+                                   'where snapshot resides')
 
 FLAGS = flags.FLAGS
 FLAGS.register_opt(volume_host_opt)
@@ -85,8 +86,8 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def create(self, context, size, name, description, snapshot=None,
-                image_id=None, volume_type=None, metadata=None,
-                availability_zone=None):
+               image_id=None, volume_type=None, metadata=None,
+               availability_zone=None):
         check_policy(context, 'create')
         if snapshot is not None:
             if snapshot['status'] != "available":
@@ -143,8 +144,8 @@ class API(base.Base):
             elif 'volumes' in overs:
                 consumed = _consumed('volumes')
                 LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
-                           "volume (%(consumed)d volumes already consumed)")
-                           % locals())
+                           "volume (%(consumed)d volumes "
+                           "already consumed)") % locals())
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
 
         if availability_zone is None:
@@ -155,19 +156,17 @@ class API(base.Base):
 
         volume_type_id = volume_type.get('id')
 
-        options = {
-            'size': size,
-            'user_id': context.user_id,
-            'project_id': context.project_id,
-            'snapshot_id': snapshot_id,
-            'availability_zone': availability_zone,
-            'status': "creating",
-            'attach_status': "detached",
-            'display_name': name,
-            'display_description': description,
-            'volume_type_id': volume_type_id,
-            'metadata': metadata,
-            }
+        options = {'size': size,
+                   'user_id': context.user_id,
+                   'project_id': context.project_id,
+                   'snapshot_id': snapshot_id,
+                   'availability_zone': availability_zone,
+                   'status': "creating",
+                   'attach_status': "detached",
+                   'display_name': name,
+                   'display_description': description,
+                   'volume_type_id': volume_type_id,
+                   'metadata': metadata, }
 
         try:
             volume = self.db.volume_create(context, options)
@@ -179,13 +178,11 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        request_spec = {
-            'volume_properties': options,
-            'volume_type': volume_type,
-            'volume_id': volume['id'],
-            'snapshot_id': volume['snapshot_id'],
-            'image_id': image_id
-        }
+        request_spec = {'volume_properties': options,
+                        'volume_type': volume_type,
+                        'volume_id': volume['id'],
+                        'snapshot_id': volume['snapshot_id'],
+                        'image_id': image_id}
 
         filter_properties = {}
 
@@ -213,18 +210,19 @@ class API(base.Base):
 
             # bypass scheduler and send request directly to volume
             self.volume_rpcapi.create_volume(context,
-                                            volume_ref,
-                                            volume_ref['host'],
-                                            snapshot_id,
-                                            image_id)
+                                             volume_ref,
+                                             volume_ref['host'],
+                                             snapshot_id,
+                                             image_id)
         else:
-            self.scheduler_rpcapi.create_volume(context,
-                                    FLAGS.volume_topic,
-                                    volume_id,
-                                    snapshot_id,
-                                    image_id,
-                                    request_spec=request_spec,
-                                    filter_properties=filter_properties)
+            self.scheduler_rpcapi.create_volume(
+                context,
+                FLAGS.volume_topic,
+                volume_id,
+                snapshot_id,
+                image_id,
+                request_spec=request_spec,
+                filter_properties=filter_properties)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):
@@ -292,7 +290,7 @@ class API(base.Base):
 
                 for k, v in searchdict.iteritems():
                     if (k not in volume_metadata.keys() or
-                        volume_metadata[k] != v):
+                            volume_metadata[k] != v):
                         return False
                 return True
 
@@ -386,9 +384,9 @@ class API(base.Base):
     @wrap_check_policy
     def attach(self, context, volume, instance_uuid, mountpoint):
         return self.volume_rpcapi.attach_volume(context,
-                                        volume,
-                                        instance_uuid,
-                                        mountpoint)
+                                                volume,
+                                                instance_uuid,
+                                                mountpoint)
 
     @wrap_check_policy
     def detach(self, context, volume):
@@ -397,16 +395,16 @@ class API(base.Base):
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
         return self.volume_rpcapi.initialize_connection(context,
-                                                volume,
-                                                connector)
+                                                        volume,
+                                                        connector)
 
     @wrap_check_policy
     def terminate_connection(self, context, volume, connector, force=False):
         self.unreserve_volume(context, volume)
         return self.volume_rpcapi.terminate_connection(context,
-                                                volume,
-                                                connector,
-                                                force)
+                                                       volume,
+                                                       connector,
+                                                       force)
 
     def _create_snapshot(self, context, volume, name, description,
                          force=False):
@@ -416,15 +414,14 @@ class API(base.Base):
             msg = _("must be available")
             raise exception.InvalidVolume(reason=msg)
 
-        options = {
-            'volume_id': volume['id'],
-            'user_id': context.user_id,
-            'project_id': context.project_id,
-            'status': "creating",
-            'progress': '0%',
-            'volume_size': volume['size'],
-            'display_name': name,
-            'display_description': description}
+        options = {'volume_id': volume['id'],
+                   'user_id': context.user_id,
+                   'project_id': context.project_id,
+                   'status': "creating",
+                   'progress': '0%',
+                   'volume_size': volume['size'],
+                   'display_name': name,
+                   'display_description': description}
 
         snapshot = self.db.snapshot_create(context, options)
         self.volume_rpcapi.create_snapshot(context, volume, snapshot)
@@ -506,20 +503,20 @@ class API(base.Base):
 
         recv_metadata = self.image_service.create(context, metadata)
         self.update(context, volume, {'status': 'uploading'})
-        self.volume_rpcapi.copy_volume_to_image(context, volume,
-                                            recv_metadata['id'])
+        self.volume_rpcapi.copy_volume_to_image(context,
+                                                volume,
+                                                recv_metadata['id'])
 
         response = {"id": volume['id'],
-               "updated_at": volume['updated_at'],
-               "status": 'uploading',
-               "display_description": volume['display_description'],
-               "size": volume['size'],
-               "volume_type": volume['volume_type'],
-               "image_id": recv_metadata['id'],
-               "container_format": recv_metadata['container_format'],
-               "disk_format": recv_metadata['disk_format'],
-               "image_name": recv_metadata.get('name', None)
-        }
+                    "updated_at": volume['updated_at'],
+                    "status": 'uploading',
+                    "display_description": volume['display_description'],
+                    "size": volume['size'],
+                    "volume_type": volume['volume_type'],
+                    "image_id": recv_metadata['id'],
+                    "container_format": recv_metadata['container_format'],
+                    "disk_format": recv_metadata['disk_format'],
+                    "image_name": recv_metadata.get('name', None)}
         return response
 
 

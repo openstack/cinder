@@ -74,32 +74,34 @@ class TestWindowsDriver(basetestcase.BaseTestCase):
 
     def tearDown(self):
         try:
-            if self._volume_data_2 and \
-            self._wutils.volume_exists(
-                    self._volume_data_2['name']):
+            if (self._volume_data_2 and
+                    self._wutils.volume_exists(self._volume_data_2['name'])):
                 self._wutils.delete_volume(self._volume_data_2['name'])
-            if self._volume_data and \
-            self._wutils.volume_exists(
-                    self._volume_data['name']):
+
+            if (self._volume_data and
+                    self._wutils.volume_exists(
+                        self._volume_data['name'])):
                 self._wutils.delete_volume(self._volume_data['name'])
-            if self._snapshot_data and \
-            self._wutils.snapshot_exists(
-                    self._snapshot_data['name']):
+            if (self._snapshot_data and
+                    self._wutils.snapshot_exists(
+                        self._snapshot_data['name'])):
                 self._wutils.delete_snapshot(self._snapshot_data['name'])
-            if self._connector_data and \
-            self._wutils.initiator_id_exists(
-                    "%s%s" % (FLAGS.iscsi_target_prefix,
-                              self._volume_data['name']),
-                              self._connector_data['initiator']):
+            if (self._connector_data and
+                    self._wutils.initiator_id_exists(
+                        "%s%s" % (FLAGS.iscsi_target_prefix,
+                                  self._volume_data['name']),
+                        self._connector_data['initiator'])):
                 target_name = "%s%s" % (FLAGS.iscsi_target_prefix,
                                         self._volume_data['name'])
                 initiator_name = self._connector_data['initiator']
                 self._wutils.delete_initiator_id(target_name, initiator_name)
-            if self._volume_data and \
-            self._wutils.export_exists("%s%s" % (FLAGS.iscsi_target_prefix,
-                                                 self._volume_data['name'])):
-                self._wutils.delete_export("%s%s" % (FLAGS.iscsi_target_prefix,
-                                                   self._volume_data['name']))
+            if (self._volume_data and
+                    self._wutils.export_exists("%s%s" %
+                                               (FLAGS.iscsi_target_prefix,
+                                                self._volume_data['name']))):
+                self._wutils.delete_export(
+                    "%s%s" % (FLAGS.iscsi_target_prefix,
+                              self._volume_data['name']))
 
         finally:
             super(TestWindowsDriver, self).tearDown()
@@ -178,9 +180,10 @@ class TestWindowsDriver(basetestcase.BaseTestCase):
         retval = self._drv.create_export({}, self._volume_data)
 
         volume_name = self._volume_data['name']
-        self.assertEquals(retval,
-            {'provider_location':
-                "%s%s" % (FLAGS.iscsi_target_prefix, volume_name)})
+        self.assertEquals(
+            retval,
+            {'provider_location': "%s%s" % (FLAGS.iscsi_target_prefix,
+                                            volume_name)})
 
     def test_initialize_connection(self):
         #Create a volume

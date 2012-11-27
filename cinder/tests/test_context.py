@@ -63,8 +63,10 @@ class ContextTestCase(test.TestCase):
 
         self.stubs.Set(context.LOG, 'warn', fake_warn)
 
-        c = context.RequestContext('user', 'project',
-                extra_arg1='meow', extra_arg2='wuff')
+        c = context.RequestContext('user',
+                                   'project',
+                                   extra_arg1='meow',
+                                   extra_arg2='wuff')
         self.assertTrue(c)
         self.assertIn("'extra_arg1': 'meow'", info['log_msg'])
         self.assertIn("'extra_arg2': 'wuff'", info['log_msg'])

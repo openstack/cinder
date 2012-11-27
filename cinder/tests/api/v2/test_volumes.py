@@ -614,33 +614,24 @@ class VolumeSerializerTest(test.TestCase):
                 display_description='vol1_desc',
                 volume_type='vol1_type',
                 snapshot_id='snap1_id',
-                metadata=dict(
-                            foo='vol1_foo',
-                            bar='vol1_bar',
-                ),
-            ),
+                metadata=dict(foo='vol1_foo',
+                              bar='vol1_bar', ), ),
             dict(
                 id='vol2_id',
                 status='vol2_status',
                 size=1024,
                 availability_zone='vol2_availability',
                 created_at=datetime.datetime.now(),
-                attachments=[
-                    dict(
-                        id='vol2_id',
-                        volume_id='vol2_id',
-                        server_id='instance_uuid',
-                        device='/foo2')],
+                attachments=[dict(id='vol2_id',
+                                  volume_id='vol2_id',
+                                  server_id='instance_uuid',
+                                  device='/foo2')],
                 display_name='vol2_name',
                 display_description='vol2_desc',
                 volume_type='vol2_type',
                 snapshot_id='snap2_id',
-                metadata=dict(
-                            foo='vol2_foo',
-                            bar='vol2_bar',
-                ),
-            )
-        ]
+                metadata=dict(foo='vol2_foo',
+                              bar='vol2_bar', ), )]
         text = serializer.serialize(dict(volumes=raw_volumes))
 
         print text

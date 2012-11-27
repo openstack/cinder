@@ -56,8 +56,8 @@ class NexentaJSONProxy(object):
 
     def __call__(self, *args):
         data = jsonutils.dumps({'object': self.obj,
-                           'method': self.method,
-                           'params': args})
+                                'method': self.method,
+                                'params': args})
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
         headers = {'Content-Type': 'application/json',
                    'Authorization': 'Basic %s' % (auth,)}
@@ -67,7 +67,7 @@ class NexentaJSONProxy(object):
         if response_obj.info().status == 'EOF in headers':
             if self.auto and self.url.startswith('http://'):
                 LOG.info(_('Auto switching to HTTPS connection to %s'),
-                                                                      self.url)
+                         self.url)
                 self.url = 'https' + self.url[4:]
                 request = urllib2.Request(self.url, data, headers)
                 response_obj = urllib2.urlopen(request)

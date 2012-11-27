@@ -42,8 +42,7 @@ rbd_opts = [
     cfg.StrOpt('volume_tmp_dir',
                default=None,
                help='where to store temporary image files if the volume '
-                    'driver does not write them directly to the volume'),
-    ]
+                    'driver does not write them directly to the volume'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(rbd_opts)
@@ -165,8 +164,7 @@ class RBDDriver(driver.VolumeDriver):
                 'auth_enabled': FLAGS.rbd_secret_uuid is not None,
                 'auth_username': FLAGS.rbd_user,
                 'secret_type': 'ceph',
-                'secret_uuid': FLAGS.rbd_secret_uuid,
-                }
+                'secret_uuid': FLAGS.rbd_secret_uuid, }
         }
 
     def terminate_connection(self, volume, connector, **kwargs):

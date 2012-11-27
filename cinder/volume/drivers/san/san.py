@@ -117,8 +117,10 @@ class SanISCSIDriver(ISCSIDriver):
                 while attempts > 0:
                     attempts -= 1
                     try:
-                        return utils.ssh_execute(ssh, command,
-                                               check_exit_code=check_exit_code)
+                        return utils.ssh_execute(
+                            ssh,
+                            command,
+                            check_exit_code=check_exit_code)
                     except Exception as e:
                         LOG.error(e)
                         greenthread.sleep(random.randint(20, 500) / 100.0)

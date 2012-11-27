@@ -16,19 +16,19 @@
 """The hosts admin extension."""
 
 import webob.exc
-from xml.dom import minidom
-from xml.parsers import expat
 
 from cinder.api.openstack import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.openstack import xmlutil
-from cinder.volume import api as volume_api
 from cinder import db
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import utils
+from cinder.volume import api as volume_api
+from xml.dom import minidom
+from xml.parsers import expat
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
@@ -176,8 +176,9 @@ class HostController(object):
         context = req.environ['cinder.context']
         state = "enabled" if enabled else "disabled"
         LOG.audit(_("Setting host %(host)s to %(state)s.") % locals())
-        result = self.api.set_host_enabled(context, host=host,
-                enabled=enabled)
+        result = self.api.set_host_enabled(context,
+                                           host=host,
+                                           enabled=enabled)
         if result not in ("enabled", "disabled"):
             # An error message was returned
             raise webob.exc.HTTPBadRequest(explanation=result)
@@ -230,13 +231,14 @@ class HostController(object):
             (snap_count, snap_sum) = db.snapshot_data_get_for_project(
                 context,
                 project_id)
-            resources.append({'resource':
-                                 {'host': host,
-                                  'project': project_id,
-                                  'volume_count': str(count),
-                                  'total_volume_gb': str(sum),
-                                  'snapshot_count': str(snap_count),
-                                  'total_snapshot_gb': str(snap_sum)}})
+            resources.append(
+                {'resource':
+                    {'host': host,
+                     'project': project_id,
+                     'volume_count': str(count),
+                     'total_volume_gb': str(sum),
+                     'snapshot_count': str(snap_count),
+                     'total_snapshot_gb': str(snap_sum)}})
             snap_count_total += int(snap_count)
             snap_sum_total += int(snap_sum)
         resources[0]['resource']['snapshot_count'] = str(snap_count_total)
@@ -254,8 +256,11 @@ class Hosts(extensions.ExtensionDescriptor):
 
     def get_resources(self):
         resources = [extensions.ResourceExtension('os-hosts',
-                HostController(),
-                collection_actions={'update': 'PUT'},
-                member_actions={"startup": "GET", "shutdown": "GET",
-                        "reboot": "GET"})]
+                                                  HostController(),
+                                                  collection_actions={
+                                                      'update': 'PUT'},
+                                                  member_actions={
+                                                      'startup': 'GET',
+                                                      'shutdown': 'GET',
+                                                      'reboot': 'GET'})]
         return resources

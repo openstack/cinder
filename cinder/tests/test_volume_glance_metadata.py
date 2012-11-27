@@ -50,12 +50,13 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
                                                         'value1')
         vol_metadata = db.volume_glance_metadata_create(ctxt, 2, 'key1',
                                                         'value1')
-        vol_metadata = db.volume_glance_metadata_create(ctxt, 2, 'key2',
+        vol_metadata = db.volume_glance_metadata_create(ctxt, 2,
+                                                        'key2',
                                                         'value2')
 
         expected_metadata_1 = {'volume_id': '1',
-                              'key': 'key1',
-                              'value': 'value1'}
+                               'key': 'key1',
+                               'value': 'value1'}
 
         metadata = db.volume_glance_metadata_get(ctxt, 1)
         self.assertEqual(len(metadata), 1)
@@ -106,8 +107,8 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         db.volume_glance_metadata_copy_to_snapshot(ctxt, 100, 1)
 
         expected_meta = {'snapshot_id': '100',
-                          'key': 'key1',
-                          'value': 'value1'}
+                         'key': 'key1',
+                         'value': 'value1'}
 
         for meta in db.volume_snapshot_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():

@@ -131,8 +131,10 @@ class _Win32Colorizer(object):
     """
     def __init__(self, stream):
         import win32console as win
-        red, green, blue, bold = (win.FOREGROUND_RED, win.FOREGROUND_GREEN,
-                                 win.FOREGROUND_BLUE, win.FOREGROUND_INTENSITY)
+        red, green, blue, bold = (win.FOREGROUND_RED,
+                                  win.FOREGROUND_GREEN,
+                                  win.FOREGROUND_BLUE,
+                                  win.FOREGROUND_INTENSITY)
         self.stream = stream
         self.screenBuffer = win.GetStdHandle(win.STD_OUT_HANDLE)
         self._colors = {
@@ -143,8 +145,7 @@ class _Win32Colorizer(object):
             'yellow': red | green | bold,
             'magenta': red | blue | bold,
             'cyan': green | blue | bold,
-            'white': red | green | blue | bold
-            }
+            'white': red | green | blue | bold}
 
     def supported(cls, stream=sys.stdout):
         try:
@@ -314,10 +315,10 @@ class CinderTestRunner(core.TextTestRunner):
 
     def _makeResult(self):
         return CinderTestResult(self.stream,
-                              self.descriptions,
-                              self.verbosity,
-                              self.config,
-                              show_elapsed=self.show_elapsed)
+                                self.descriptions,
+                                self.verbosity,
+                                self.config,
+                                show_elapsed=self.show_elapsed)
 
     def _writeSlowTests(self, result_):
         # Pare out 'fast' tests
@@ -359,9 +360,9 @@ def run():
                       plugins=core.DefaultPluginManager())
 
     runner = CinderTestRunner(stream=c.stream,
-                            verbosity=c.verbosity,
-                            config=c,
-                            show_elapsed=not hide_elapsed)
+                              verbosity=c.verbosity,
+                              config=c,
+                              show_elapsed=not hide_elapsed)
     sys.exit(not core.run(config=c, testRunner=runner, argv=argv))
 
 

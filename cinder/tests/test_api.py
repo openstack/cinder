@@ -16,7 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Unit tests for the API endpoint"""
+"""Unit tests for the API endpoint."""
 
 import httplib
 import StringIO
@@ -25,18 +25,18 @@ import webob
 
 
 class FakeHttplibSocket(object):
-    """a fake socket implementation for httplib.HTTPResponse, trivial"""
+    """A fake socket implementation for httplib.HTTPResponse, trivial."""
     def __init__(self, response_string):
         self.response_string = response_string
         self._buffer = StringIO.StringIO(response_string)
 
     def makefile(self, _mode, _other):
-        """Returns the socket's internal buffer"""
+        """Returns the socket's internal buffer."""
         return self._buffer
 
 
 class FakeHttplibConnection(object):
-    """A fake httplib.HTTPConnection for boto to use
+    """A fake httplib.HTTPConnection for boto.
 
     requests made via this connection actually get translated and routed into
     our WSGI app, we then wait for the response and turn it back into
@@ -71,5 +71,5 @@ class FakeHttplibConnection(object):
         return self.sock.response_string
 
     def close(self):
-        """Required for compatibility with boto/tornado"""
+        """Required for compatibility with boto/tornado."""
         pass

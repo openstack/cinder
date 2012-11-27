@@ -49,8 +49,7 @@ quota_opts = [
                help='number of seconds between subsequent usage refreshes'),
     cfg.StrOpt('quota_driver',
                default='cinder.quota.DbQuotaDriver',
-               help='default driver to use for quota checks'),
-    ]
+               help='default driver to use for quota checks'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(quota_opts)
@@ -156,9 +155,9 @@ class DbQuotaDriver(object):
                 continue
 
             quotas[resource.name] = dict(
-                limit=project_quotas.get(resource.name, class_quotas.get(
-                        resource.name, resource.default)),
-                )
+                limit=project_quotas.get(resource.name,
+                                         class_quotas.get(resource.name,
+                                                          resource.default)), )
 
             # Include usages if desired.  This is optional because one
             # internal consumer of this interface wants to access the
@@ -167,8 +166,7 @@ class DbQuotaDriver(object):
                 usage = project_usages.get(resource.name, {})
                 quotas[resource.name].update(
                     in_use=usage.get('in_use', 0),
-                    reserved=usage.get('reserved', 0),
-                    )
+                    reserved=usage.get('reserved', 0), )
 
         return quotas
 
@@ -577,10 +575,10 @@ class QuotaEngine(object):
         """
 
         return self._driver.get_project_quotas(context, self._resources,
-                                              project_id,
-                                              quota_class=quota_class,
-                                              defaults=defaults,
-                                              usages=usages)
+                                               project_id,
+                                               quota_class=quota_class,
+                                               defaults=defaults,
+                                               usages=usages)
 
     def count(self, context, resource, *args, **kwargs):
         """Count a resource.
@@ -729,14 +727,16 @@ class QuotaEngine(object):
 
 def _sync_instances(context, project_id, session):
     return dict(zip(('instances', 'cores', 'ram'),
-                    db.instance_data_get_for_project(
-                context, project_id, session=session)))
+                    db.instance_data_get_for_project(context,
+                                                     project_id,
+                                                     session=session)))
 
 
 def _sync_volumes(context, project_id, session):
     return dict(zip(('volumes', 'gigabytes'),
-                    db.volume_data_get_for_project(
-                context, project_id, session=session)))
+                db.volume_data_get_for_project(context,
+                                               project_id,
+                                               session=session)))
 
 
 QUOTAS = QuotaEngine()
@@ -744,8 +744,7 @@ QUOTAS = QuotaEngine()
 
 resources = [
     ReservableResource('volumes', _sync_volumes, 'quota_volumes'),
-    ReservableResource('gigabytes', _sync_volumes, 'quota_gigabytes'),
-    ]
+    ReservableResource('gigabytes', _sync_volumes, 'quota_gigabytes'), ]
 
 
 QUOTAS.register_resources(resources)

@@ -296,7 +296,7 @@ class VolumeController(wsgi.Controller):
         if req_volume_type:
             try:
                 kwargs['volume_type'] = volume_types.get_volume_type_by_name(
-                        context, req_volume_type)
+                    context, req_volume_type)
             except exception.VolumeTypeNotFound:
                 explanation = 'Volume type not found.'
                 raise exc.HTTPNotFound(explanation=explanation)
@@ -394,7 +394,7 @@ def remove_invalid_options(context, search_options, allowed_search_options):
         return
     # Otherwise, strip out all unknown options
     unknown_options = [opt for opt in search_options
-            if opt not in allowed_search_options]
+                       if opt not in allowed_search_options]
     bad_options = ", ".join(unknown_options)
     log_msg = _("Removing options '%(bad_options)s' from query") % locals()
     LOG.debug(log_msg)

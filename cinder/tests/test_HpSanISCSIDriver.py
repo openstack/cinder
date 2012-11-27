@@ -32,11 +32,12 @@ class HpSanISCSITestCase(test.TestCase):
         self.connector = {'ip': '10.0.0.2',
                           'initiator': 'iqn.1993-08.org.debian:01:222',
                           'host': 'fakehost'}
-        self.properties = {'target_discoverd': True,
-                           'target_portal': '10.0.1.6:3260',
-                           'target_iqn':
-                        'iqn.2003-10.com.lefthandnetworks:group01:25366:fakev',
-                           'volume_id': 1}
+        self.properties = {
+            'target_discoverd': True,
+            'target_portal': '10.0.1.6:3260',
+            'target_iqn':
+            'iqn.2003-10.com.lefthandnetworks:group01:25366:fakev',
+            'volume_id': 1}
 
     def tearDown(self):
         super(HpSanISCSITestCase, self).tearDown()

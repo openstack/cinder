@@ -44,8 +44,8 @@ zadara_opts = [
                default=None,
                help='Zadara VPSA port number'),
     cfg.BoolOpt('zadara_vpsa_use_ssl',
-               default=False,
-               help='Use SSL connection'),
+                default=False,
+                help='Use SSL connection'),
     cfg.StrOpt('zadara_user',
                default=None,
                help='User name for the VPSA'),
@@ -73,12 +73,11 @@ zadara_opts = [
                default='OS_%s',
                help='Default template for VPSA volume names'),
     cfg.BoolOpt('zadara_vpsa_auto_detach_on_delete',
-               default=True,
-               help="Automatically detach from servers on volume delete"),
+                default=True,
+                help="Automatically detach from servers on volume delete"),
     cfg.BoolOpt('zadara_vpsa_allow_nonexistent_delete',
-               default=True,
-               help="Don't halt on deletion of non-existing volumes"),
-    ]
+                default=True,
+                help="Don't halt on deletion of non-existing volumes"), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(zadara_opts)
@@ -139,12 +138,12 @@ class ZadaraVPSAConnection(object):
             # Attach/Detach operations
             'attach_volume': ('POST',
                               '/api/servers/%s/volumes.xml'
-                                    % kwargs.get('vpsa_srv'),
+                              % kwargs.get('vpsa_srv'),
                               {'volume_name[]': kwargs.get('vpsa_vol'),
                                'force': 'NO'}),
             'detach_volume': ('POST',
                               '/api/volumes/%s/detach.xml'
-                                    % kwargs.get('vpsa_vol'),
+                              % kwargs.get('vpsa_vol'),
                               {'server_name[]': kwargs.get('vpsa_srv'),
                                'force': 'NO'}),
 
@@ -160,9 +159,8 @@ class ZadaraVPSAConnection(object):
                              {}),
             'list_vol_attachments': ('GET',
                                      '/api/volumes/%s/servers.xml'
-                                            % kwargs.get('vpsa_vol'),
-                                     {}),
-            }
+                                     % kwargs.get('vpsa_vol'),
+                                     {}), }
 
         if cmd not in vpsa_commands.keys():
             raise exception.UnknownCmd(cmd=cmd)
@@ -203,12 +201,12 @@ class ZadaraVPSAConnection(object):
         user = xml_tree.find('user')
         if user is None:
             raise exception.MalformedResponse(cmd=cmd,
-                                        reason='no "user" field')
+                                              reason='no "user" field')
 
         access_key = user.findtext('access-key')
         if access_key is None:
             raise exception.MalformedResponse(cmd=cmd,
-                                        reason='no "access-key" field')
+                                              reason='no "access-key" field')
 
         self.access_key = access_key
 
@@ -219,7 +217,7 @@ class ZadaraVPSAConnection(object):
 
         (method, url, body) = self._generate_vpsa_cmd(cmd, **kwargs)
         LOG.debug(_('Sending %(method)s to %(url)s. Body "%(body)s"')
-                        % locals())
+                  % locals())
 
         if self.use_ssl:
             connection = httplib.HTTPSConnection(self.host, self.port)
@@ -308,7 +306,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         """Return details of VPSA's active controller."""
         xml_tree = self.vpsa.send_cmd('list_controllers')
         ctrl = self._xml_parse_helper(xml_tree, 'vcontrollers',
-                                        ('state', 'active'))
+                                      ('state', 'active'))
         if ctrl is not None:
             return dict(target=ctrl.findtext('target'),
                         ip=ctrl.findtext('iscsi-ip'),
@@ -335,9 +333,10 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     def create_volume(self, volume):
         """Create volume."""
-        self.vpsa.send_cmd('create_volume',
-                    name=FLAGS.zadara_vol_name_template % volume['name'],
-                    size=volume['size'])
+        self.vpsa.send_cmd(
+            'create_volume',
+            name=FLAGS.zadara_vol_name_template % volume['name'],
+            size=volume['size'])
 
     def delete_volume(self, volume):
         """
@@ -350,7 +349,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             msg = _('Volume %(name)s could not be found. '
-                'It might be already deleted') % locals()
+                    'It might be already deleted') % locals()
             LOG.warning(msg)
             if FLAGS.zadara_vpsa_allow_nonexistent_delete:
                 return
@@ -361,7 +360,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         xml_tree = self.vpsa.send_cmd('list_vol_attachments',
                                       vpsa_vol=vpsa_vol)
         servers = self._xml_parse_helper(xml_tree, 'servers',
-                                ('iqn', None), first=False)
+                                         ('iqn', None), first=False)
         if servers:
             if not FLAGS.zadara_vpsa_auto_detach_on_delete:
                 raise exception.VolumeAttached(volume_id=name)
@@ -370,7 +369,8 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                 vpsa_srv = server.findtext('name')
                 if vpsa_srv:
                     self.vpsa.send_cmd('detach_volume',
-                                vpsa_srv=vpsa_srv, vpsa_vol=vpsa_vol)
+                                       vpsa_srv=vpsa_srv,
+                                       vpsa_vol=vpsa_vol)
 
         # Delete volume
         self.vpsa.send_cmd('delete_volume', vpsa_vol=vpsa_vol)
@@ -417,7 +417,8 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
         # Attach volume to server
         self.vpsa.send_cmd('attach_volume',
-                            vpsa_srv=vpsa_srv, vpsa_vol=vpsa_vol)
+                           vpsa_srv=vpsa_srv,
+                           vpsa_vol=vpsa_vol)
 
         # Get connection info
         xml_tree = self.vpsa.send_cmd('list_vol_attachments',
@@ -429,8 +430,9 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         target = server.findtext('target')
         lun = server.findtext('lun')
         if target is None or lun is None:
-            raise exception.ZadaraInvalidAttachmentInfo(name=name,
-                            reason='target=%s, lun=%s' % (target, lun))
+            raise exception.ZadaraInvalidAttachmentInfo(
+                name=name,
+                reason='target=%s, lun=%s' % (target, lun))
 
         properties = {}
         properties['target_discovered'] = False
@@ -465,7 +467,8 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
         # Detach volume from server
         self.vpsa.send_cmd('detach_volume',
-                            vpsa_srv=vpsa_srv, vpsa_vol=vpsa_vol)
+                           vpsa_srv=vpsa_srv,
+                           vpsa_vol=vpsa_vol)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         raise NotImplementedError()

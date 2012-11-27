@@ -46,8 +46,7 @@ test_opts = [
                help='File name of clean sqlite db'),
     cfg.BoolOpt('fake_tests',
                 default=True,
-                help='should we use everything for testing'),
-    ]
+                help='should we use everything for testing'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(test_opts)

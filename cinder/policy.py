@@ -30,8 +30,7 @@ policy_opts = [
                help=_('JSON file representing policy')),
     cfg.StrOpt('policy_default_rule',
                default='default',
-               help=_('Rule checked when requested rule is not found')),
-    ]
+               help=_('Rule checked when requested rule is not found')), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(policy_opts)

@@ -53,7 +53,7 @@ class OpenStackApiAuthorizationException(OpenStackApiException):
         if not message:
             message = _("Authorization error")
         super(OpenStackApiAuthorizationException, self).__init__(message,
-                                                                  response)
+                                                                 response)
 
 
 class OpenStackApiNotFoundException(OpenStackApiException):
@@ -157,8 +157,8 @@ class TestOpenStackClient(object):
                     raise OpenStackApiAuthorizationException(response=response)
                 else:
                     raise OpenStackApiException(
-                                        message=_("Unexpected status code"),
-                                        response=response)
+                        message=_("Unexpected status code"),
+                        response=response)
 
         return response
 
