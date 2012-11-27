@@ -102,7 +102,7 @@ class API(base.Base):
         def as_int(s):
             try:
                 return int(s)
-            except ValueError:
+            except ValueError, TypeError:
                 return s
 
         # tolerate size as stringified int
