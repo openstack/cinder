@@ -16,6 +16,8 @@
 """The hosts admin extension."""
 
 import webob.exc
+from xml.dom import minidom
+from xml.parsers import expat
 
 from cinder.api.openstack import extensions
 from cinder.api.openstack import wsgi
@@ -27,8 +29,6 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import api as volume_api
-from xml.dom import minidom
-from xml.parsers import expat
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
