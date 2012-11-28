@@ -190,7 +190,7 @@ class NfsDriver(driver.VolumeDriver):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception, exc:
-                LOG.warning('Exception during mounting %s' % (exc,))
+                LOG.warning(_('Exception during mounting %s') % (exc,))
 
         LOG.debug('Available shares %s' % str(self._mounted_shares))
 

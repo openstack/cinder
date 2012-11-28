@@ -59,8 +59,8 @@ def upgrade(migrate_engine):
     try:
         volume_glance_metadata.create()
     except Exception:
-        LOG.exception("Exception while creating table "
-                      "'volume_glance_metedata'")
+        LOG.exception(_("Exception while creating table "
+                        "'volume_glance_metedata'"))
         meta.drop_all(tables=[volume_glance_metadata])
         raise
 
