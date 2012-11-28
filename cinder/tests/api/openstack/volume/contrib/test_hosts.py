@@ -16,6 +16,8 @@
 #    under the License.
 
 import datetime
+
+from lxml import etree
 import webob.exc
 
 from cinder.api.openstack.volume.contrib import hosts as os_hosts
@@ -25,7 +27,6 @@ from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
-from lxml import etree
 
 
 FLAGS = flags.FLAGS
