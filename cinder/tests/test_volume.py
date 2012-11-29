@@ -274,6 +274,23 @@ class VolumeTestCase(test.TestCase):
                           self.context,
                           volume_id)
 
+    def test_preattach_status_volume(self):
+        """Ensure volume goes into pre-attaching state"""
+
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        mountpoint = "/dev/sdf"
+        volume = db.volume_create(self.context, {'size': 1,
+                                                 'status': 'available'})
+        volume_id = volume['id']
+
+        volume_api = cinder.volume.api.API()
+        volume_api.attach(self.context, volume, instance_uuid, mountpoint)
+
+        vol = db.volume_get(self.context, volume_id)
+        self.assertEqual(vol['status'], "attaching")
+        self.assertEqual(vol['attach_status'], None)
+        self.assertEqual(vol['instance_uuid'], instance_uuid)
+
     def test_concurrent_volumes_get_different_targets(self):
         """Ensure multiple concurrent volumes get different targets."""
         volume_ids = []

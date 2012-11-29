@@ -383,6 +383,8 @@ class API(base.Base):
 
     @wrap_check_policy
     def attach(self, context, volume, instance_uuid, mountpoint):
+        self.update(context, volume, {"instance_uuid": instance_uuid,
+                                      "status": "attaching"})
         return self.volume_rpcapi.attach_volume(context,
                                                 volume,
                                                 instance_uuid,
