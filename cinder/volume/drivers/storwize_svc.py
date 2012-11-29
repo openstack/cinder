@@ -49,6 +49,7 @@ from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -536,6 +537,10 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                 host_name is not None,
                 _('_create_new_host failed to return the host name.'))
 
+        chap_secret = self._get_chap_secret_for_host(host_name)
+        if chap_secret is None:
+            chap_secret = self._add_chapsecret_to_host(host_name)
+
         lun_id = self._map_vol_to_host(volume_name, host_name)
 
         # Get preferred path
@@ -573,6 +578,9 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         properties['target_iqn'] = preferred_node_entry['iscsi_name']
         properties['target_lun'] = lun_id
         properties['volume_id'] = volume['id']
+        properties['auth_method'] = 'CHAP'
+        properties['auth_username'] = initiator_name
+        properties['auth_password'] = chap_secret
 
         LOG.debug(_('leave: initialize_connection:\n volume: %(vol)s\n '
                     'connector %(conn)s\n properties: %(prop)s')
@@ -986,6 +994,23 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         return hostname
 
+    def _add_chapsecret_to_host(self, host_name):
+        """Generate and store a randomly-generated CHAP secret for the host."""
+
+        chap_secret = utils.generate_password()
+        out, err = self._run_ssh('chhost -chapsecret "%s" %s'
+                                 % (chap_secret, host_name))
+        # No output should be returned from chhost
+        self._driver_assert(
+            len(out.strip()) == 0,
+            _('change host %(name)s - non empty output from CLI.\n '
+              'stdout: %(out)s\n stderr: %(err)s')
+            % {'name': host_name,
+               'out': str(out),
+               'err': str(err)})
+
+        return chap_secret
+
     def _create_new_host(self, host_name, initiator_name):
         """Create a new host on the storage system.
 
@@ -1041,6 +1066,14 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         if is_defined:
             # Delete host
             out, err = self._run_ssh('rmhost %s ' % host_name)
+            # No output should be returned from rmhost
+            self._driver_assert(
+                len(out.strip()) == 0,
+                _('delete host %(name)s - non empty output from CLI.\n '
+                  'stdout: %(out)s\n stderr: %(err)s')
+                % {'name': host_name,
+                   'out': str(out),
+                   'err': str(err)})
         else:
             LOG.info(_('warning: tried to delete host %(name)s but '
                        'it does not exist.') % {'name': host_name})
@@ -1268,3 +1301,50 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                      'attr': str(attributes)})
 
         return attributes
+
+    def _get_chap_secret_for_host(self, host_name):
+        """Return the CHAP secret for the given host."""
+
+        LOG.debug(_('enter: _get_chap_secret_for_host: host name %s')
+                  % host_name)
+
+        ssh_cmd = 'lsiscsiauth -delim !'
+        out, err = self._run_ssh(ssh_cmd)
+
+        if (len(out.strip()) == 0):
+            return None
+
+        err_msg = _('_get_chap_secret_for_host: '
+                    'failed with unexpected CLI output.\n'
+                    ' command: %(cmd)s\n stdout: %(out)s\n '
+                    'stderr: %(err)s') % {'cmd': ssh_cmd,
+                                          'out': str(out),
+                                          'err': str(err)}
+
+        host_lines = out.strip().split('\n')
+        self._driver_assert(len(host_lines) > 0, err_msg)
+
+        header = host_lines.pop(0).split('!')
+        self._driver_assert('name' in header, err_msg)
+        self._driver_assert('iscsi_auth_method' in header, err_msg)
+        self._driver_assert('iscsi_chap_secret' in header, err_msg)
+        name_index = header.index('name')
+        method_index = header.index('iscsi_auth_method')
+        secret_index = header.index('iscsi_chap_secret')
+
+        chap_secret = None
+        host_found = False
+        for line in host_lines:
+            info = line.split('!')
+            if info[name_index] == host_name:
+                host_found = True
+                if info[method_index] == 'chap':
+                    chap_secret = info[secret_index]
+
+        self._driver_assert(host_found is not False, err_msg)
+
+        LOG.debug(_('leave: _get_chap_secret_for_host: host name %(host)s '
+                    'with secret %(secret)s')
+                  % {'host': host_name, 'secret': chap_secret})
+
+        return chap_secret
