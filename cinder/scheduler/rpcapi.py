@@ -19,6 +19,7 @@ Client side of the scheduler manager RPC API.
 """
 
 from cinder import flags
+from cinder.openstack.common import jsonutils
 import cinder.openstack.common.rpc.proxy
 
 
@@ -46,13 +47,14 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None):
+        request_spec_p = jsonutils.to_primitive(request_spec)
         return self.cast(ctxt, self.make_msg(
             'create_volume',
             topic=topic,
             volume_id=volume_id,
             snapshot_id=snapshot_id,
             image_id=image_id,
-            request_spec=request_spec,
+            request_spec=request_spec_p,
             filter_properties=filter_properties),
             version='1.2')
 
