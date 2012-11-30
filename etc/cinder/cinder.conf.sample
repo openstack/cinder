@@ -101,9 +101,9 @@
 # osapi_volume_extension=cinder.api.openstack.volume.contrib.standard_extensions
 #### (MultiStrOpt) osapi volume extension to load
 
-# osapi_compute_link_prefix=<None>
+# osapi_volume_base_URL=<None>
 #### (StrOpt) Base URL that will be presented to users in links to the
-####          OpenStack Compute API
+####          OpenStack Volume API
 
 # osapi_max_limit=1000
 #### (IntOpt) the maximum number of items returned in a single response
