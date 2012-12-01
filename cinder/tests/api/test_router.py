@@ -22,7 +22,7 @@ from cinder.api import versions
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 
 FLAGS = flags.FLAGS
 

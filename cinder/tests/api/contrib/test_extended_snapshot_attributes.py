@@ -21,7 +21,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 from cinder import volume
 
 
@@ -82,7 +82,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         self.assertEqual(snapshot.get('%sprogress' % self.prefix), progress)
 
     def test_show(self):
-        url = '/v1/fake/snapshots/%s' % UUID2
+        url = '/v2/fake/snapshots/%s' % UUID2
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 200)
@@ -91,7 +91,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
                                       progress='0%')
 
     def test_detail(self):
-        url = '/v1/fake/snapshots/detail'
+        url = '/v2/fake/snapshots/detail'
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 200)
@@ -106,7 +106,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
             raise exception.InstanceNotFound()
 
         self.stubs.Set(volume.api.API, 'get_snapshot', fake_snapshot_get)
-        url = '/v1/fake/snapshots/70f6db34-de8d-4fbd-aafb-4065bdfa6115'
+        url = '/v2/fake/snapshots/70f6db34-de8d-4fbd-aafb-4065bdfa6115'
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 404)

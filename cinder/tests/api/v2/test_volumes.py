@@ -25,7 +25,8 @@ from cinder import db
 from cinder import exception
 from cinder import flags
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
+from cinder.tests.api.v2 import stubs
 from cinder.tests.image import fake as fake_image
 from cinder.volume import api as volume_api
 
@@ -59,14 +60,14 @@ class VolumeApiTest(test.TestCase):
         fake_image.stub_out_image_service(self.stubs)
         self.controller = volumes.VolumeController(self.ext_mgr)
 
-        self.stubs.Set(db, 'volume_get_all', fakes.stub_volume_get_all)
+        self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)
         self.stubs.Set(db, 'volume_get_all_by_project',
-                       fakes.stub_volume_get_all_by_project)
-        self.stubs.Set(volume_api.API, 'get', fakes.stub_volume_get)
-        self.stubs.Set(volume_api.API, 'delete', fakes.stub_volume_delete)
+                       stubs.stub_volume_get_all_by_project)
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+        self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
 
     def test_volume_create(self):
-        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
         vol = {
             "size": 100,
@@ -135,7 +136,7 @@ class VolumeApiTest(test.TestCase):
                           body)
 
     def test_volume_create_with_image_id(self):
-        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {"size": '1',
                "display_name": "Volume Test Name",
@@ -170,7 +171,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_create_with_image_id_and_snapshot_id(self):
-        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.stubs.Set(volume_api.API, "get_snapshot", stub_snapshot_get)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
@@ -189,7 +190,7 @@ class VolumeApiTest(test.TestCase):
                           body)
 
     def test_volume_create_with_image_id_is_integer(self):
-        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
             "size": '1',
@@ -206,7 +207,7 @@ class VolumeApiTest(test.TestCase):
                           body)
 
     def test_volume_create_with_image_id_not_uuid_format(self):
-        self.stubs.Set(volume_api.API, "create", fakes.stub_volume_create)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
             "size": '1',
@@ -223,7 +224,7 @@ class VolumeApiTest(test.TestCase):
                           body)
 
     def test_volume_update(self):
-        self.stubs.Set(volume_api.API, "update", fakes.stub_volume_update)
+        self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
         updates = {
             "display_name": "Updated Test Name",
         }
@@ -255,7 +256,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEquals(res_dict, expected)
 
     def test_volume_update_metadata(self):
-        self.stubs.Set(volume_api.API, "update", fakes.stub_volume_update)
+        self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
         updates = {
             "metadata": {"qos_max_iops": 2000}
         }
@@ -299,7 +300,7 @@ class VolumeApiTest(test.TestCase):
                           req, '1', body)
 
     def test_update_not_found(self):
-        self.stubs.Set(volume_api.API, "get", fakes.stub_volume_get_notfound)
+        self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
         updates = {
             "display_name": "Updated Test Name",
         }
@@ -311,7 +312,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_list(self):
         self.stubs.Set(volume_api.API, 'get_all',
-                       fakes.stub_volume_get_all_by_project)
+                       stubs.stub_volume_get_all_by_project)
 
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.index(req)
@@ -343,7 +344,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_list_detail(self):
         self.stubs.Set(volume_api.API, 'get_all',
-                       fakes.stub_volume_get_all_by_project)
+                       stubs.stub_volume_get_all_by_project)
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         res_dict = self.controller.index(req)
         expected = {
@@ -375,9 +376,9 @@ class VolumeApiTest(test.TestCase):
     def test_volume_list_by_name(self):
         def stub_volume_get_all_by_project(context, project_id):
             return [
-                fakes.stub_volume(1, display_name='vol1'),
-                fakes.stub_volume(2, display_name='vol2'),
-                fakes.stub_volume(3, display_name='vol3'),
+                stubs.stub_volume(1, display_name='vol1'),
+                stubs.stub_volume(2, display_name='vol2'),
+                stubs.stub_volume(3, display_name='vol3'),
             ]
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
@@ -399,9 +400,9 @@ class VolumeApiTest(test.TestCase):
     def test_volume_list_by_status(self):
         def stub_volume_get_all_by_project(context, project_id):
             return [
-                fakes.stub_volume(1, display_name='vol1', status='available'),
-                fakes.stub_volume(2, display_name='vol2', status='available'),
-                fakes.stub_volume(3, display_name='vol3', status='in-use'),
+                stubs.stub_volume(1, display_name='vol1', status='available'),
+                stubs.stub_volume(2, display_name='vol2', status='available'),
+                stubs.stub_volume(3, display_name='vol3', status='in-use'),
             ]
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
@@ -462,7 +463,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_show_no_attachments(self):
         def stub_volume_get(self, context, volume_id):
-            return fakes.stub_volume(volume_id, attach_status='detached')
+            return stubs.stub_volume(volume_id, attach_status='detached')
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
 
@@ -486,7 +487,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_show_no_volume(self):
-        self.stubs.Set(volume_api.API, "get", fakes.stub_volume_get_notfound)
+        self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
@@ -498,7 +499,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(resp.status_int, 202)
 
     def test_volume_delete_no_volume(self):
-        self.stubs.Set(volume_api.API, "get", fakes.stub_volume_get_notfound)
+        self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,

@@ -18,7 +18,7 @@ import webob
 from cinder.api.contrib import types_manage
 from cinder import exception
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 from cinder.volume import volume_types
 
 
@@ -65,7 +65,7 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'destroy',
                        return_volume_types_destroy)
 
-        req = fakes.HTTPRequest.blank('/v1/fake/types/1')
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         self.controller._delete(req, 1)
 
     def test_volume_types_delete_not_found(self):
@@ -74,7 +74,7 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'destroy',
                        return_volume_types_destroy)
 
-        req = fakes.HTTPRequest.blank('/v1/fake/types/777')
+        req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
                           req, '777')
 
@@ -86,7 +86,7 @@ class VolumeTypesManageApiTest(test.TestCase):
 
         body = {"volume_type": {"name": "vol_type_1",
                                 "extra_specs": {"key1": "value1"}}}
-        req = fakes.HTTPRequest.blank('/v1/fake/types')
+        req = fakes.HTTPRequest.blank('/v2/fake/types')
         res_dict = self.controller._create(req, body)
 
         self.assertEqual(1, len(res_dict))

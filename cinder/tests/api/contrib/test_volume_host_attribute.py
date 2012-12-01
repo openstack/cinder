@@ -23,7 +23,7 @@ import webob
 
 from cinder import context
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 from cinder import volume
 
 
@@ -52,7 +52,7 @@ def app():
     # no auth, just let environ['cinder.context'] pass through
     api = fakes.router.APIRouter()
     mapper = fakes.urlmap.URLMap()
-    mapper['/v1'] = api
+    mapper['/v2'] = api
     return mapper
 
 
@@ -66,7 +66,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_get_volume_allowed(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v1/fake/volumes/%s' % self.UUID)
+        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -75,7 +75,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_get_volume_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
-        req = webob.Request.blank('/v1/fake/volumes/%s' % self.UUID)
+        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -84,7 +84,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_list_detail_volumes_allowed(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v1/fake/volumes/detail')
+        req = webob.Request.blank('/v2/fake/volumes/detail')
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -93,7 +93,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_list_detail_volumes_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
-        req = webob.Request.blank('/v1/fake/volumes/detail')
+        req = webob.Request.blank('/v2/fake/volumes/detail')
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -102,7 +102,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_list_simple_volumes_no_host(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v1/fake/volumes')
+        req = webob.Request.blank('/v2/fake/volumes')
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -111,7 +111,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_get_volume_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v1/fake/volumes/%s' % self.UUID)
+        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
         req.method = 'GET'
         req.accept = 'application/xml'
         req.environ['cinder.context'] = ctx
@@ -123,7 +123,7 @@ class VolumeHostAttributeTest(test.TestCase):
 
     def test_list_volumes_detail_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v1/fake/volumes/detail')
+        req = webob.Request.blank('/v2/fake/volumes/detail')
         req.method = 'GET'
         req.accept = 'application/xml'
         req.environ['cinder.context'] = ctx

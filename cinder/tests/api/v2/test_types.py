@@ -21,7 +21,7 @@ from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.openstack.common import timeutils
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 from cinder.volume import volume_types
 
 

@@ -6,7 +6,7 @@ import webob
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 
 
 class RequestTest(test.TestCase):

@@ -22,7 +22,7 @@ import webob
 
 from cinder.api.contrib import types_extra_specs
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
 import cinder.wsgi
 
 
@@ -62,7 +62,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesExtraSpecsTest, self).setUp()
         self.stubs.Set(cinder.db, 'volume_type_get', volume_type_get)
-        self.api_path = '/v1/fake/os-volume-types/1/extra_specs'
+        self.api_path = '/v2/fake/os-volume-types/1/extra_specs'
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
 
     def test_index(self):

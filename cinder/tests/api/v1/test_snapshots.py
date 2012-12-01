@@ -24,7 +24,8 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.tests.api.openstack import fakes
+from cinder.tests.api import fakes
+from cinder.tests.api.v1 import stubs
 from cinder import volume
 
 
@@ -77,13 +78,13 @@ class SnapshotApiTest(test.TestCase):
         self.controller = snapshots.SnapshotsController()
 
         self.stubs.Set(db, 'snapshot_get_all_by_project',
-                       fakes.stub_snapshot_get_all_by_project)
+                       stubs.stub_snapshot_get_all_by_project)
         self.stubs.Set(db, 'snapshot_get_all',
-                       fakes.stub_snapshot_get_all)
+                       stubs.stub_snapshot_get_all)
 
     def test_snapshot_create(self):
         self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', fakes.stub_volume_get)
+        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
         snapshot = {"volume_id": '12',
                     "force": False,
                     "display_name": "Snapshot Test Name",
@@ -102,7 +103,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API,
                        "create_snapshot_force",
                        stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', fakes.stub_volume_get)
+        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
         snapshot = {"volume_id": '12',
                     "force": True,
                     "display_name": "Snapshot Test Name",
@@ -131,7 +132,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_update(self):
         self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
         self.stubs.Set(volume.api.API, "update_snapshot",
-                       fakes.stub_snapshot_update)
+                       stubs.stub_snapshot_update)
         updates = {"display_name": "Updated Test Name", }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
@@ -220,11 +221,11 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_list_by_status(self):
         def stub_snapshot_get_all_by_project(context, project_id):
             return [
-                fakes.stub_snapshot(1, display_name='backup1',
+                stubs.stub_snapshot(1, display_name='backup1',
                                     status='available'),
-                fakes.stub_snapshot(2, display_name='backup2',
+                stubs.stub_snapshot(2, display_name='backup2',
                                     status='available'),
-                fakes.stub_snapshot(3, display_name='backup3',
+                stubs.stub_snapshot(3, display_name='backup3',
                                     status='creating'),
             ]
         self.stubs.Set(db, 'snapshot_get_all_by_project',
@@ -253,9 +254,9 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_list_by_volume(self):
         def stub_snapshot_get_all_by_project(context, project_id):
             return [
-                fakes.stub_snapshot(1, volume_id='vol1', status='creating'),
-                fakes.stub_snapshot(2, volume_id='vol1', status='available'),
-                fakes.stub_snapshot(3, volume_id='vol2', status='available'),
+                stubs.stub_snapshot(1, volume_id='vol1', status='creating'),
+                stubs.stub_snapshot(2, volume_id='vol1', status='available'),
+                stubs.stub_snapshot(3, volume_id='vol2', status='available'),
             ]
         self.stubs.Set(db, 'snapshot_get_all_by_project',
                        stub_snapshot_get_all_by_project)
@@ -282,9 +283,9 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_list_by_name(self):
         def stub_snapshot_get_all_by_project(context, project_id):
             return [
-                fakes.stub_snapshot(1, display_name='backup1'),
-                fakes.stub_snapshot(2, display_name='backup2'),
-                fakes.stub_snapshot(3, display_name='backup3'),
+                stubs.stub_snapshot(1, display_name='backup1'),
+                stubs.stub_snapshot(2, display_name='backup2'),
+                stubs.stub_snapshot(3, display_name='backup3'),
             ]
         self.stubs.Set(db, 'snapshot_get_all_by_project',
                        stub_snapshot_get_all_by_project)

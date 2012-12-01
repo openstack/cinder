@@ -26,7 +26,6 @@ from cinder import context
 from cinder import exception
 from cinder.image import glance
 from cinder import test
-from cinder.tests.api.openstack import fakes
 from cinder.tests.glance import stubs as glance_stubs
 
 
