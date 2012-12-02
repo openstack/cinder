@@ -45,9 +45,9 @@ class VolumeTypeExtraSpecsTestCase(test.TestCase):
     def tearDown(self):
         # Remove the volume type from the database
         db.volume_type_destroy(context.get_admin_context(),
-                               self.vol_type1['name'])
+                               self.vol_type1['id'])
         db.volume_type_destroy(context.get_admin_context(),
-                               self.vol_type2_noextra['name'])
+                               self.vol_type2_noextra['id'])
         super(VolumeTypeExtraSpecsTestCase, self).tearDown()
 
     def test_volume_type_specs_get(self):

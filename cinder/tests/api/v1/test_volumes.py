@@ -95,7 +95,6 @@ class VolumeApiTest(test.TestCase):
         vol_type = FLAGS.default_volume_type
         db.volume_type_create(context.get_admin_context(),
                               dict(name=vol_type, extra_specs={}))
-
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  vol_type)
 

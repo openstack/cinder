@@ -1313,12 +1313,20 @@ def volume_type_create(context, values):
     {'extra_specs' : {'k1': 'v1', 'k2': 'v2', ...}}
 
     """
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+
     session = get_session()
     with session.begin():
         try:
             volume_type_get_by_name(context, values['name'], session)
-            raise exception.VolumeTypeExists(name=values['name'])
+            raise exception.VolumeTypeExists(id=values['name'])
         except exception.VolumeTypeNotFoundByName:
+            pass
+        try:
+            volume_type_get(context, values['id'], session)
+            raise exception.VolumeTypeExists(id=values['id'])
+        except exception.VolumeTypeNotFound:
             pass
         try:
             values['extra_specs'] = _metadata_refs(values.get('extra_specs'),
@@ -1383,19 +1391,18 @@ def volume_type_get_by_name(context, name, session=None):
 
 
 @require_admin_context
-def volume_type_destroy(context, name):
+def volume_type_destroy(context, id):
+    volume_type_get(context, id)
+
     session = get_session()
     with session.begin():
-        volume_type_ref = volume_type_get_by_name(context, name,
-                                                  session=session)
-        volume_type_id = volume_type_ref['id']
         session.query(models.VolumeTypes).\
-            filter_by(id=volume_type_id).\
+            filter_by(id=id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})
         session.query(models.VolumeTypeExtraSpecs).\
-            filter_by(volume_type_id=volume_type_id).\
+            filter_by(volume_type_id=id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})

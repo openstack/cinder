@@ -49,9 +49,9 @@ class VolumeTypeTestCase(test.TestCase):
         """Ensure volume types can be created and deleted."""
         prev_all_vtypes = volume_types.get_all_types(self.ctxt)
 
-        volume_types.create(self.ctxt,
-                            self.vol_type1_name,
-                            self.vol_type1_specs)
+        type_ref = volume_types.create(self.ctxt,
+                                       self.vol_type1_name,
+                                       self.vol_type1_specs)
         new = volume_types.get_volume_type_by_name(self.ctxt,
                                                    self.vol_type1_name)
 
@@ -67,7 +67,7 @@ class VolumeTypeTestCase(test.TestCase):
                          len(new_all_vtypes),
                          'drive type was not created')
 
-        volume_types.destroy(self.ctxt, self.vol_type1_name)
+        volume_types.destroy(self.ctxt, type_ref['id'])
         new_all_vtypes = volume_types.get_all_types(self.ctxt)
         self.assertEqual(prev_all_vtypes,
                          new_all_vtypes,
@@ -82,9 +82,9 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_get_default_volume_type(self):
         """Ensures default volume type can be retrieved."""
-        volume_types.create(self.ctxt,
-                            fake_flags.def_vol_type,
-                            {})
+        type_ref = volume_types.create(self.ctxt,
+                                       fake_flags.def_vol_type,
+                                       {})
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type.get('name'),
                          fake_flags.def_vol_type)
@@ -98,15 +98,15 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_non_existent_vol_type_shouldnt_delete(self):
         """Ensures that volume type creation fails with invalid args."""
-        self.assertRaises(exception.VolumeTypeNotFoundByName,
+        self.assertRaises(exception.VolumeTypeNotFound,
                           volume_types.destroy, self.ctxt, "sfsfsdfdfs")
 
     def test_repeated_vol_types_shouldnt_raise(self):
         """Ensures that volume duplicates don't raise."""
         new_name = self.vol_type1_name + "dup"
-        volume_types.create(self.ctxt, new_name)
-        volume_types.destroy(self.ctxt, new_name)
-        volume_types.create(self.ctxt, new_name)
+        type_ref = volume_types.create(self.ctxt, new_name)
+        volume_types.destroy(self.ctxt, type_ref['id'])
+        type_ref = volume_types.create(self.ctxt, new_name)
 
     def test_invalid_volume_types_params(self):
         """Ensures that volume type creation fails with invalid args."""

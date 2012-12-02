@@ -353,9 +353,9 @@ def volume_type_get_by_name(context, name):
     return IMPL.volume_type_get_by_name(context, name)
 
 
-def volume_type_destroy(context, name):
+def volume_type_destroy(context, id):
     """Delete a volume type."""
-    return IMPL.volume_type_destroy(context, name)
+    return IMPL.volume_type_destroy(context, id)
 
 
 def volume_get_active_by_window(context, begin, end=None, project_id=None):

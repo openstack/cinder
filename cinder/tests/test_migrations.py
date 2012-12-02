@@ -303,3 +303,33 @@ class TestMigrations(test.TestCase):
         self.assertEqual(version,
                          migration_api.db_version(engine,
                                                   TestMigrations.REPOSITORY))
+
+    def test_migration_004(self):
+        """Test that volume_type_id migration works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 3)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 4)
+            volumes = sqlalchemy.Table('volumes',
+                                       metadata,
+                                       autoload=True)
+            volume_types = sqlalchemy.Table('volume_types',
+                                            metadata,
+                                            autoload=True)
+            extra_specs = sqlalchemy.Table('volume_type_extra_specs',
+                                           metadata,
+                                           autoload=True)
+
+            self.assertTrue(isinstance(volumes.c.volume_type_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(volume_types.c.id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(extra_specs.c.volume_type_id.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            self.assertTrue(extra_specs.c.volume_type_id.foreign_keys)

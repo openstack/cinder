@@ -155,7 +155,7 @@ class Volume(BASE, CinderBase):
     provider_location = Column(String(255))
     provider_auth = Column(String(255))
 
-    volume_type_id = Column(Integer)
+    volume_type_id = Column(String(36))
 
 
 class VolumeMetadata(BASE, CinderBase):
@@ -175,7 +175,7 @@ class VolumeMetadata(BASE, CinderBase):
 class VolumeTypes(BASE, CinderBase):
     """Represent possible volume_types of volumes offered."""
     __tablename__ = "volume_types"
-    id = Column(Integer, primary_key=True)
+    id = Column(String(36), primary_key=True)
     name = Column(String(255))
 
     volumes = relationship(Volume,
@@ -192,7 +192,7 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
     id = Column(Integer, primary_key=True)
     key = Column(String(255))
     value = Column(String(255))
-    volume_type_id = Column(Integer,
+    volume_type_id = Column(String(36),
                             ForeignKey('volume_types.id'),
                             nullable=False)
     volume_type = relationship(

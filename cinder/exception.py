@@ -372,7 +372,7 @@ class KeyPairExists(Duplicate):
 
 
 class VolumeTypeExists(Duplicate):
-    message = _("Volume Type %(name)s already exists.")
+    message = _("Volume Type %(id)s already exists.")
 
 
 class MigrationError(CinderException):
