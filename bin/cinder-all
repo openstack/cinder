@@ -28,7 +28,7 @@ continue attempting to launch the rest of the services.
 """
 
 import eventlet
-eventlet.monkey_patch(os=False)
+eventlet.monkey_patch()
 
 import os
 import sys
