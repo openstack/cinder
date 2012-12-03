@@ -65,6 +65,7 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
+        self.maxDiff = None
 
     def test_volume_create(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
@@ -80,24 +81,18 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.create(req, body)
         expected = {
             'volume': {
-                'status': 'fakestatus',
-                'display_description': 'Volume Test Desc',
-                'availability_zone': 'zone1:host1',
                 'display_name': 'Volume Test Name',
-                'attachments': [
+                'id': '1',
+                'links': [
                     {
-                        'device': '/',
-                        'server_id': 'fakeuuid',
-                        'id': '1',
-                        'volume_id': '1'
+                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
                     }
                 ],
-                'volume_type': 'vol_type_name',
-                'snapshot_id': None,
-                'metadata': {},
-                'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                'size': 100
             }
         }
         self.assertEqual(res_dict, expected)
@@ -120,8 +115,15 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
-        self.assertEquals(res_dict['volume']['volume_type'],
-                          db_vol_type['name'])
+        volume_id = res_dict['volume']['id']
+        self.assertEquals(len(res_dict), 1)
+
+        self.stubs.Set(volume_api.API, 'get_all',
+                       lambda *args, **kwargs:
+                       [stubs.stub_volume(volume_id,
+                                          volume_type={'name': vol_type})])
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail')
+        res_dict = self.controller.detail(req)
 
     def test_volume_creation_fails_with_bad_size(self):
         vol = {"size": '',
@@ -145,25 +147,19 @@ class VolumeApiTest(test.TestCase):
                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
         expected = {
             'volume': {
-                'status': 'fakestatus',
-                'display_description': 'Volume Test Desc',
-                'availability_zone': 'nova',
                 'display_name': 'Volume Test Name',
-                'attachments': [
+                'id': '1',
+                'links': [
                     {
-                        'device': '/',
-                        'server_id': 'fakeuuid',
-                        'id': '1',
-                        'volume_id': '1'
+                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
                     }
                 ],
-                'volume_type': 'vol_type_name',
-                'image_id': 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
-                'snapshot_id': None,
-                'metadata': {},
-                'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                'size': '1'}
+            }
         }
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
@@ -251,6 +247,16 @@ class VolumeApiTest(test.TestCase):
                 'id': '1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'size': 1,
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
+                    }
+                ],
             }
         }
         self.assertEquals(res_dict, expected)
@@ -280,6 +286,16 @@ class VolumeApiTest(test.TestCase):
             'id': '1',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'size': 1,
+            'links': [
+                {
+                    'href': 'http://localhost/v1/fake/volumes/1',
+                    'rel': 'self'
+                },
+                {
+                    'href': 'http://localhost/fake/volumes/1',
+                    'rel': 'bookmark'
+                }
+            ],
         }}
         self.assertEquals(res_dict, expected)
 
@@ -310,33 +326,26 @@ class VolumeApiTest(test.TestCase):
                           self.controller.update,
                           req, '1', body)
 
-    def test_volume_list(self):
+    def test_volume_list_summary(self):
         self.stubs.Set(volume_api.API, 'get_all',
                        stubs.stub_volume_get_all_by_project)
-
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.index(req)
         expected = {
             'volumes': [
                 {
-                    'status': 'fakestatus',
-                    'display_description': 'displaydesc',
-                    'availability_zone': 'fakeaz',
                     'display_name': 'displayname',
-                    'attachments': [
+                    'id': '1',
+                    'links': [
                         {
-                            'device': '/',
-                            'server_id': 'fakeuuid',
-                            'id': '1',
-                            'volume_id': '1'
+                            'href': 'http://localhost/v1/fake/volumes/1',
+                            'rel': 'self'
+                        },
+                        {
+                            'href': 'http://localhost/fake/volumes/1',
+                            'rel': 'bookmark'
                         }
                     ],
-                    'volume_type': 'vol_type_name',
-                    'snapshot_id': None,
-                    'metadata': {},
-                    'id': '1',
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                    'size': 1
                 }
             ]
         }
@@ -346,7 +355,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get_all',
                        stubs.stub_volume_get_all_by_project)
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
-        res_dict = self.controller.index(req)
+        res_dict = self.controller.detail(req)
         expected = {
             'volumes': [
                 {
@@ -367,7 +376,17 @@ class VolumeApiTest(test.TestCase):
                     'metadata': {},
                     'id': '1',
                     'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                    'size': 1
+                    'size': 1,
+                    'links': [
+                        {
+                            'href': 'http://localhost/v1/fake/volumes/1',
+                            'rel': 'self'
+                        },
+                        {
+                            'href': 'http://localhost/fake/volumes/1',
+                            'rel': 'bookmark'
+                        }
+                    ],
                 }
             ]
         }
@@ -407,31 +426,31 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
         # no status filter
-        req = fakes.HTTPRequest.blank('/v2/volumes')
-        resp = self.controller.index(req)
+        req = fakes.HTTPRequest.blank('/v2/volumes/details')
+        resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 3)
         # single match
-        req = fakes.HTTPRequest.blank('/v2/volumes?status=in-use')
-        resp = self.controller.index(req)
+        req = fakes.HTTPRequest.blank('/v2/volumes/details?status=in-use')
+        resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 1)
         self.assertEqual(resp['volumes'][0]['status'], 'in-use')
         # multiple match
-        req = fakes.HTTPRequest.blank('/v2/volumes?status=available')
-        resp = self.controller.index(req)
+        req = fakes.HTTPRequest.blank('/v2/volumes/details/?status=available')
+        resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 2)
         for volume in resp['volumes']:
             self.assertEqual(volume['status'], 'available')
         # multiple filters
-        req = fakes.HTTPRequest.blank('/v2/volumes?status=available&'
+        req = fakes.HTTPRequest.blank('/v2/volumes/details/?status=available&'
                                       'display_name=vol1')
-        resp = self.controller.index(req)
+        resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 1)
         self.assertEqual(resp['volumes'][0]['display_name'], 'vol1')
         self.assertEqual(resp['volumes'][0]['status'], 'available')
         # no match
-        req = fakes.HTTPRequest.blank('/v2/volumes?status=in-use&'
+        req = fakes.HTTPRequest.blank('/v2/volumes/details?status=in-use&'
                                       'display_name=vol1')
-        resp = self.controller.index(req)
+        resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 0)
 
     def test_volume_show(self):
@@ -456,7 +475,17 @@ class VolumeApiTest(test.TestCase):
                 'metadata': {},
                 'id': '1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                'size': 1
+                'size': 1,
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
+                    }
+                ],
             }
         }
         self.assertEqual(res_dict, expected)
@@ -481,9 +510,20 @@ class VolumeApiTest(test.TestCase):
                 'metadata': {},
                 'id': '1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                'size': 1
+                'size': 1,
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
+                    }
+                ],
             }
         }
+
         self.assertEqual(res_dict, expected)
 
     def test_volume_show_no_volume(self):
