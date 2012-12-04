@@ -26,6 +26,7 @@ import time
 
 from cinder import exception
 from cinder import flags
+from cinder.image import image_utils
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -586,10 +587,10 @@ class ISCSIDriver(VolumeDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        volume_path = self.local_path(volume)
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path, "wb") as image_file:
-                image_service.download(context, image_id, image_file)
+        image_utils.fetch_to_raw(context,
+                                 image_service,
+                                 image_id,
+                                 self.local_path(volume))
 
     def copy_volume_to_image(self, context, volume, image_service, image_id):
         """Copy the volume to the specified image."""

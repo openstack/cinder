@@ -35,3 +35,5 @@ chown: CommandFilter, /bin/chown, root
 dmsetup: CommandFilter, /sbin/dmsetup, root
 dmsetup_usr: CommandFilter, /usr/sbin/dmsetup, root
 ln: CommandFilter, /bin/ln, root
+qemu-img: CommandFilter, /usr/bin/qemu-img, root
+env: CommandFilter, /usr/bin/env, root

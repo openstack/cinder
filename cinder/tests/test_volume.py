@@ -31,6 +31,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flags
+from cinder.image import image_utils
 from cinder.openstack.common import importutils
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
@@ -493,9 +494,13 @@ class VolumeTestCase(test.TestCase):
         def fake_copy_image_to_volume(context, volume, image_id):
             pass
 
+        def fake_fetch_to_raw(context, image_service, image_id, vol_path):
+            pass
+
         dst_fd, dst_path = tempfile.mkstemp()
         os.close(dst_fd)
         self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
+        self.stubs.Set(image_utils, 'fetch_to_raw', fake_fetch_to_raw)
         if fakeout_copy_image_to_volume:
             self.stubs.Set(self.volume, '_copy_image_to_volume',
                            fake_copy_image_to_volume)
