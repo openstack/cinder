@@ -35,3 +35,11 @@ chown: CommandFilter, /bin/chown, root
 dmsetup: CommandFilter, /sbin/dmsetup, root
 dmsetup_usr: CommandFilter, /usr/sbin/dmsetup, root
 ln: CommandFilter, /bin/ln, root
+
+# cinder/volume/nfs.py
+stat: CommandFilter, /usr/bin/stat, root
+mount: CommandFilter, /bin/mount, root
+df: CommandFilter, /bin/df, root
+truncate: CommandFilter, /usr/bin/truncate, root
+chmod: CommandFilter, /bin/chmod, root
+rm: CommandFilter, /bin/rm, root
