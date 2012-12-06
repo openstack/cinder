@@ -70,7 +70,7 @@ class VolumeTypesManageController(wsgi.Controller):
 
         try:
             vol_type = volume_types.get_volume_type(context, id)
-            volume_types.destroy(context, vol_type['name'])
+            volume_types.destroy(context, vol_type['id'])
         except exception.NotFound:
             raise webob.exc.HTTPNotFound()
 
