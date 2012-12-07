@@ -35,6 +35,7 @@
     "volume_extension:types_manage": [],
     "volume_extension:types_extra_specs": [],
     "volume_extension:extended_snapshot_attributes": [],
+    "volume_extension:volume_image_metadata": [],
     "volume_extension:volume_host_attribute": [["rule:admin_api"]],
     "volume_extension:volume_tenant_attribute": [["rule:admin_api"]],
     "volume_extension:hosts": [["rule:admin_api"]]

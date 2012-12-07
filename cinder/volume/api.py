@@ -489,6 +489,13 @@ class API(base.Base):
                     return i['value']
         return None
 
+    @wrap_check_policy
+    def get_volume_image_metadata(self, context, volume):
+        db_data = self.db.volume_glance_metadata_get(context, volume['id'])
+        return dict(
+            (meta_entry.key, meta_entry.value) for meta_entry in db_data
+        )
+
     def _check_volume_availability(self, context, volume, force):
         """Check if the volume can be used."""
         if volume['status'] not in ['available', 'in-use']:
