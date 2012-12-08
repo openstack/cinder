@@ -47,7 +47,7 @@ def stub_snapshot_get(self, context, snapshot_id):
         'status': 'available',
         'volume_size': 100,
         'created_at': None,
-        'display_name': 'Default name',
+        'name': 'Default name',
         'display_description': 'Default description',
     }
 
@@ -72,7 +72,7 @@ class VolumeApiTest(test.TestCase):
 
         vol = {
             "size": 100,
-            "display_name": "Volume Test Name",
+            "name": "Volume Test Name",
             "display_description": "Volume Test Desc",
             "availability_zone": "zone1:host1"
         }
@@ -81,7 +81,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.create(req, body)
         expected = {
             'volume': {
-                'display_name': 'Volume Test Name',
+                'name': 'Volume Test Name',
                 'id': '1',
                 'links': [
                     {
@@ -107,7 +107,7 @@ class VolumeApiTest(test.TestCase):
 
         vol = {
             "size": 100,
-            "display_name": "Volume Test Name",
+            "name": "Volume Test Name",
             "display_description": "Volume Test Desc",
             "availability_zone": "zone1:host1",
             "volume_type": db_vol_type['name'],
@@ -127,7 +127,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_creation_fails_with_bad_size(self):
         vol = {"size": '',
-               "display_name": "Volume Test Name",
+               "name": "Volume Test Name",
                "display_description": "Volume Test Desc",
                "availability_zone": "zone1:host1"}
         body = {"volume": vol}
@@ -141,13 +141,13 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {"size": '1',
-               "display_name": "Volume Test Name",
+               "name": "Volume Test Name",
                "display_description": "Volume Test Desc",
                "availability_zone": "nova",
                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
         expected = {
             'volume': {
-                'display_name': 'Volume Test Name',
+                'name': 'Volume Test Name',
                 'id': '1',
                 'links': [
                     {
@@ -172,7 +172,7 @@ class VolumeApiTest(test.TestCase):
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
             "size": '1',
-            "display_name": "Volume Test Name",
+            "name": "Volume Test Name",
             "display_description": "Volume Test Desc",
             "availability_zone": "cinder",
             "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
@@ -190,7 +190,7 @@ class VolumeApiTest(test.TestCase):
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
             "size": '1',
-            "display_name": "Volume Test Name",
+            "name": "Volume Test Name",
             "display_description": "Volume Test Desc",
             "availability_zone": "cinder",
             "imageRef": 1234,
@@ -207,7 +207,7 @@ class VolumeApiTest(test.TestCase):
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
             "size": '1',
-            "display_name": "Volume Test Name",
+            "name": "Volume Test Name",
             "display_description": "Volume Test Desc",
             "availability_zone": "cinder",
             "imageRef": '12345'
@@ -222,7 +222,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_update(self):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
         updates = {
-            "display_name": "Updated Test Name",
+            "name": "Updated Test Name",
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
@@ -232,7 +232,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'display_description': 'displaydesc',
                 'availability_zone': 'fakeaz',
-                'display_name': 'Updated Test Name',
+                'name': 'Updated Test Name',
                 'attachments': [
                     {
                         'id': '1',
@@ -273,7 +273,7 @@ class VolumeApiTest(test.TestCase):
             'status': 'fakestatus',
             'display_description': 'displaydesc',
             'availability_zone': 'fakeaz',
-            'display_name': 'displayname',
+            'name': 'displayname',
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -308,7 +308,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_update_invalid_body(self):
         body = {
-            'display_name': 'missing top level volume key'
+            'name': 'missing top level volume key'
         }
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
@@ -318,7 +318,7 @@ class VolumeApiTest(test.TestCase):
     def test_update_not_found(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
         updates = {
-            "display_name": "Updated Test Name",
+            "name": "Updated Test Name",
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
@@ -334,7 +334,7 @@ class VolumeApiTest(test.TestCase):
         expected = {
             'volumes': [
                 {
-                    'display_name': 'displayname',
+                    'name': 'displayname',
                     'id': '1',
                     'links': [
                         {
@@ -362,7 +362,7 @@ class VolumeApiTest(test.TestCase):
                     'status': 'fakestatus',
                     'display_description': 'displaydesc',
                     'availability_zone': 'fakeaz',
-                    'display_name': 'displayname',
+                    'name': 'displayname',
                     'attachments': [
                         {
                             'device': '/',
@@ -402,17 +402,18 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
 
-        # no display_name filter
+        # no name filter
         req = fakes.HTTPRequest.blank('/v2/volumes')
         resp = self.controller.index(req)
         self.assertEqual(len(resp['volumes']), 3)
-        # filter on display_name
-        req = fakes.HTTPRequest.blank('/v2/volumes?display_name=vol2')
+        # filter on name
+        req = fakes.HTTPRequest.blank('/v2/volumes?name=vol2')
+        #import pdb; pdb.set_trace()
         resp = self.controller.index(req)
         self.assertEqual(len(resp['volumes']), 1)
-        self.assertEqual(resp['volumes'][0]['display_name'], 'vol2')
+        self.assertEqual(resp['volumes'][0]['name'], 'vol2')
         # filter no match
-        req = fakes.HTTPRequest.blank('/v2/volumes?display_name=vol4')
+        req = fakes.HTTPRequest.blank('/v2/volumes?name=vol4')
         resp = self.controller.index(req)
         self.assertEqual(len(resp['volumes']), 0)
 
@@ -442,14 +443,14 @@ class VolumeApiTest(test.TestCase):
             self.assertEqual(volume['status'], 'available')
         # multiple filters
         req = fakes.HTTPRequest.blank('/v2/volumes/details/?status=available&'
-                                      'display_name=vol1')
+                                      'name=vol1')
         resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 1)
-        self.assertEqual(resp['volumes'][0]['display_name'], 'vol1')
+        self.assertEqual(resp['volumes'][0]['name'], 'vol1')
         self.assertEqual(resp['volumes'][0]['status'], 'available')
         # no match
         req = fakes.HTTPRequest.blank('/v2/volumes/details?status=in-use&'
-                                      'display_name=vol1')
+                                      'name=vol1')
         resp = self.controller.detail(req)
         self.assertEqual(len(resp['volumes']), 0)
 
@@ -461,7 +462,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'display_description': 'displaydesc',
                 'availability_zone': 'fakeaz',
-                'display_name': 'displayname',
+                'name': 'displayname',
                 'attachments': [
                     {
                         'device': '/',
@@ -503,7 +504,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'display_description': 'displaydesc',
                 'availability_zone': 'fakeaz',
-                'display_name': 'displayname',
+                'name': 'displayname',
                 'attachments': [],
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -582,7 +583,7 @@ class VolumeSerializerTest(test.TestCase):
         self.assertEqual(tree.tag, NS + 'volume')
 
         for attr in ('id', 'status', 'size', 'availability_zone', 'created_at',
-                     'display_name', 'display_description', 'volume_type',
+                     'name', 'display_description', 'volume_type',
                      'snapshot_id'):
             self.assertEqual(str(vol[attr]), tree.get(attr))
 
@@ -618,7 +619,7 @@ class VolumeSerializerTest(test.TestCase):
                     device='/foo'
                 )
             ],
-            display_name='vol_name',
+            name='vol_name',
             display_description='vol_desc',
             volume_type='vol_type',
             snapshot_id='snap_id',
@@ -651,7 +652,7 @@ class VolumeSerializerTest(test.TestCase):
                         device='/foo1'
                     )
                 ],
-                display_name='vol1_name',
+                name='vol1_name',
                 display_description='vol1_desc',
                 volume_type='vol1_type',
                 snapshot_id='snap1_id',
@@ -667,7 +668,7 @@ class VolumeSerializerTest(test.TestCase):
                                   volume_id='vol2_id',
                                   server_id='instance_uuid',
                                   device='/foo2')],
-                display_name='vol2_name',
+                name='vol2_name',
                 display_description='vol2_desc',
                 volume_type='vol2_type',
                 snapshot_id='snap2_id',
@@ -702,16 +703,16 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         }
         self.assertEquals(request['body'], expected)
 
-    def test_display_name(self):
+    def test_name(self):
         self_request = """
 <volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
         size="1"
-        display_name="Volume-xml"></volume>"""
+        name="Volume-xml"></volume>"""
         request = self.deserializer.deserialize(self_request)
         expected = {
             "volume": {
                 "size": "1",
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
             },
         }
         self.assertEquals(request['body'], expected)
@@ -720,13 +721,13 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         self_request = """
 <volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
         size="1"
-        display_name="Volume-xml"
+        name="Volume-xml"
         display_description="description"></volume>"""
         request = self.deserializer.deserialize(self_request)
         expected = {
             "volume": {
                 "size": "1",
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
                 "display_description": "description",
             },
         }
@@ -736,15 +737,15 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         self_request = """
 <volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
         size="1"
-        display_name="Volume-xml"
+        name="Volume-xml"
         display_description="description"
         volume_type="289da7f8-6440-407c-9fb4-7db01ec49164"></volume>"""
         request = self.deserializer.deserialize(self_request)
         expected = {
             "volume": {
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
                 "size": "1",
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
                 "display_description": "description",
                 "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
             },
@@ -755,7 +756,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         self_request = """
 <volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
         size="1"
-        display_name="Volume-xml"
+        name="Volume-xml"
         display_description="description"
         volume_type="289da7f8-6440-407c-9fb4-7db01ec49164"
         availability_zone="us-east1"></volume>"""
@@ -763,7 +764,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         expected = {
             "volume": {
                 "size": "1",
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
                 "display_description": "description",
                 "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
                 "availability_zone": "us-east1",
@@ -774,13 +775,13 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
     def test_metadata(self):
         self_request = """
 <volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
-        display_name="Volume-xml"
+        name="Volume-xml"
         size="1">
         <metadata><meta key="Type">work</meta></metadata></volume>"""
         request = self.deserializer.deserialize(self_request)
         expected = {
             "volume": {
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
                 "size": "1",
                 "metadata": {
                     "Type": "work",
@@ -793,7 +794,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         self_request = """
 <volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
         size="1"
-        display_name="Volume-xml"
+        name="Volume-xml"
         display_description="description"
         volume_type="289da7f8-6440-407c-9fb4-7db01ec49164"
         availability_zone="us-east1">
@@ -802,7 +803,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         expected = {
             "volume": {
                 "size": "1",
-                "display_name": "Volume-xml",
+                "name": "Volume-xml",
                 "display_description": "description",
                 "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
                 "availability_zone": "us-east1",

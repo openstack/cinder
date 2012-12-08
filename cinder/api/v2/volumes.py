@@ -50,7 +50,7 @@ def make_volume(elem):
     elem.set('size')
     elem.set('availability_zone')
     elem.set('created_at')
-    elem.set('display_name')
+    elem.set('name')
     elem.set('display_description')
     elem.set('volume_type')
     elem.set('snapshot_id')
@@ -96,7 +96,7 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
         volume = {}
         volume_node = self.find_first_child_named(node, 'volume')
 
-        attributes = ['display_name', 'display_description', 'size',
+        attributes = ['name', 'display_description', 'size',
                       'volume_type', 'availability_zone']
         for attr in attributes:
             if volume_node.getAttribute(attr):
@@ -178,6 +178,11 @@ class VolumeController(wsgi.Controller):
         remove_invalid_options(context,
                                search_opts, self._get_volume_search_options())
 
+        # NOTE(thingee): v2 API allows name instead of display_name
+        if 'name' in search_opts:
+            search_opts['display_name'] = search_opts['name']
+            del search_opts['name']
+
         volumes = self.volume_api.get_all(context, search_opts=search_opts)
         limited_list = common.limited(volumes, req)
         if is_detail:
@@ -212,6 +217,11 @@ class VolumeController(wsgi.Controller):
         volume = body['volume']
 
         kwargs = {}
+
+        # NOTE(thingee): v2 API allows name instead of display_name
+        if volume.get('name'):
+            volume['display_name'] = volume.get('name')
+            del volume['name']
 
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
@@ -265,7 +275,7 @@ class VolumeController(wsgi.Controller):
 
     def _get_volume_search_options(self):
         """Return volume search options allowed by non-admin."""
-        return ('display_name', 'status')
+        return ('name', 'status')
 
     @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):
@@ -282,7 +292,7 @@ class VolumeController(wsgi.Controller):
         update_dict = {}
 
         valid_update_keys = (
-            'display_name',
+            'name',
             'display_description',
             'metadata',
         )
@@ -290,6 +300,11 @@ class VolumeController(wsgi.Controller):
         for key in valid_update_keys:
             if key in volume:
                 update_dict[key] = volume[key]
+
+        # NOTE(thingee): v2 API allows name instead of display_name
+        if 'name' in update_dict:
+            update_dict['display_name'] = update_dict['name']
+            del update_dict['name']
 
         try:
             volume = self.volume_api.get(context, id)
