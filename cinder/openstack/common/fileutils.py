@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2012 Red Hat, Inc.
+# Copyright 2011 OpenStack LLC.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,19 +15,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-gettext for openstack-common modules.
 
-Usual usage in an openstack.common module:
-
-    from cinder.openstack.common.gettextutils import _
-"""
-
-import gettext
+import errno
+import os
 
 
-t = gettext.translation('openstack-common', 'locale', fallback=True)
+def ensure_tree(path):
+    """Create a directory (and any ancestor directories required)
 
-
-def _(msg):
-    return t.ugettext(msg)
+    :param path: Directory to create
+    """
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST:
+            if not os.path.isdir(path):
+                raise
+        else:
+            raise
