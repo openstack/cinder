@@ -105,7 +105,7 @@ class TestGlanceImageService(test.TestCase):
         self.stubs.Set(glance.time, 'sleep', lambda s: None)
 
     def _create_image_service(self, client):
-        def _fake_create_glance_client(context, host, port, version):
+        def _fake_create_glance_client(context, host, port, use_ssl, version):
             return client
 
         self.stubs.Set(glance,
