@@ -75,6 +75,9 @@ class NfsDriver(driver.VolumeDriver):
         """Just to override parent behavior"""
         pass
 
+    def create_cloned_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
     def create_volume(self, volume):
         """Creates a volume"""
 

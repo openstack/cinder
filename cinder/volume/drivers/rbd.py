@@ -64,6 +64,9 @@ class RBDDriver(driver.VolumeDriver):
         stdout, _ = self._execute('rbd', '--help')
         return 'clone' in stdout
 
+    def create_cloned_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
     def create_volume(self, volume):
         """Creates a logical volume."""
         if int(volume['size']) == 0:

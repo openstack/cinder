@@ -58,6 +58,9 @@ class XenAPINFSDriver(driver.VolumeDriver):
         )
         self.nfs_ops = xenapi_lib.NFSBasedVolumeOperations(session_factory)
 
+    def create_cloned_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
     def create_volume(self, volume):
         volume_details = self.nfs_ops.create_volume(
             FLAGS.xenapi_nfs_server,

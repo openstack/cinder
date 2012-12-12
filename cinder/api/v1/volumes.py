@@ -98,6 +98,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
         d['volume_type'] = str(vol['volume_type_id'])
 
     d['snapshot_id'] = vol['snapshot_id']
+    d['source_volid'] = vol['source_volid']
 
     if image_id:
         d['image_id'] = image_id
@@ -138,6 +139,7 @@ def make_volume(elem):
     elem.set('display_description')
     elem.set('volume_type')
     elem.set('snapshot_id')
+    elem.set('source_volid')
 
     attachments = xmlutil.SubTemplateElement(elem, 'attachments')
     attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
@@ -319,9 +321,18 @@ class VolumeController(wsgi.Controller):
         else:
             kwargs['snapshot'] = None
 
+        source_volid = volume.get('source_volid')
+        if source_volid is not None:
+            kwargs['source_volume'] = self.volume_api.get_volume(context,
+                                                                 source_volid)
+        else:
+            kwargs['source_volume'] = None
+
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:
             size = kwargs['snapshot']['volume_size']
+        elif size is None and kwargs['source_volume'] is not None:
+            size = kwargs['source_volume']['size']
 
         LOG.audit(_("Create volume of %s GB"), size, context=context)
 

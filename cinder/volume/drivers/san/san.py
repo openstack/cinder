@@ -161,3 +161,7 @@ class SanISCSIDriver(ISCSIDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_id):
         """Copy the volume to the specified image."""
         raise NotImplementedError()
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Create a cloen of the specified volume."""
+        raise NotImplementedError()
