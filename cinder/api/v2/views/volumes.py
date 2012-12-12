@@ -44,7 +44,7 @@ class ViewBuilder(common.ViewBuilder):
         return {
             'volume': {
                 'id': volume['id'],
-                'display_name': volume['display_name'],
+                'name': volume['display_name'],
                 'links': self._get_links(request,
                                          volume['id']),
             },
@@ -60,7 +60,7 @@ class ViewBuilder(common.ViewBuilder):
                 'availability_zone': volume.get('availability_zone'),
                 'created_at': volume.get('created_at'),
                 'attachments': self._get_attachments(volume),
-                'display_name': volume.get('display_name'),
+                'name': volume.get('display_name'),
                 'display_description': volume.get('display_description'),
                 'volume_type': self._get_volume_type(volume),
                 'snapshot_id': volume.get('snapshot_id'),
