@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-CINDER_VERSION = ['2012', '2', '2']
+CINDER_VERSION = ['2012', '2', '3']
 YEAR, COUNT, REVISION = CINDER_VERSION
 FINAL = False   # This becomes true at Release Candidate time
 
