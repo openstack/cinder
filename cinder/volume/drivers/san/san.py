@@ -153,3 +153,11 @@ class SanISCSIDriver(ISCSIDriver):
         # The san_ip must always be set, because we use it for the target
         if not FLAGS.san_ip:
             raise exception.InvalidInput(reason=_("san_ip must be set"))
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        raise NotImplementedError()
+
+    def copy_volume_to_image(self, context, volume, image_service, image_id):
+        """Copy the volume to the specified image."""
+        raise NotImplementedError()

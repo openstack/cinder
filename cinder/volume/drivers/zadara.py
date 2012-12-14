@@ -478,3 +478,11 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     def delete_snapshot(self, snapshot):
         raise NotImplementedError()
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        raise NotImplementedError()
+
+    def copy_volume_to_image(self, context, volume, image_service, image_id):
+        """Copy the volume to the specified image."""
+        raise NotImplementedError()
