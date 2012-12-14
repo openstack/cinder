@@ -123,6 +123,10 @@ global_opts = [
     cfg.IntOpt('glance_num_retries',
                default=0,
                help='Number retries when downloading an image from glance'),
+    cfg.BoolOpt('glance_api_insecure',
+                default=False,
+                help='Allow to perform insecure SSL (https) requests to '
+                'glance'),
     cfg.StrOpt('scheduler_topic',
                default='cinder-scheduler',
                help='the topic scheduler nodes listen on'),
