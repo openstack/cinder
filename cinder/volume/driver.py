@@ -20,6 +20,7 @@ Drivers for volumes.
 
 """
 
+import math
 import os
 import re
 import time
@@ -39,6 +40,10 @@ volume_opts = [
     cfg.StrOpt('volume_group',
                default='cinder-volumes',
                help='Name for the VG that will contain exported volumes'),
+    cfg.IntOpt('lvm_mirrors',
+               default=0,
+               help='If set, create lvms with multiple mirrors. Note that '
+                    'this requires lvm_mirrors + 2 pvs with available space'),
     cfg.IntOpt('num_shell_tries',
                default=3,
                help='number of times to attempt to run flakey shell commands'),
@@ -100,8 +105,18 @@ class VolumeDriver(object):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
     def _create_volume(self, volume_name, sizestr):
-        self._try_execute('lvcreate', '-L', sizestr, '-n',
-                          volume_name, FLAGS.volume_group, run_as_root=True)
+        cmd = ['lvcreate', '-L', sizestr, '-n', volume_name,
+               FLAGS.volume_group]
+        if FLAGS.lvm_mirrors:
+            cmd += ['-m', FLAGS.lvm_mirrors, '--nosync']
+            terras = int(sizestr[:-1]) / 1024.0
+            if terras >= 1.5:
+                rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
+                # NOTE(vish): Next power of two for region size. See:
+                #             http://red.ht/U2BPOD
+                cmd += ['-R', str(rsize)]
+
+        self._try_execute(*cmd, run_as_root=True)
 
     def _copy_volume(self, srcstr, deststr, size_in_g):
         # Use O_DIRECT to avoid thrashing the system buffer cache

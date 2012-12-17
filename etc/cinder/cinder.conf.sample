@@ -517,6 +517,10 @@
 # volume_group=cinder-volumes
 #### (StrOpt) Name for the VG that will contain exported volumes
 
+# lvm_mirrors=0
+#### (IntOpt) If set, create lvms with multiple mirrors. Note that
+####          this requires lvm_mirrors + 2 pvs with available space
+
 # num_shell_tries=3
 #### (IntOpt) number of times to attempt to run flakey shell commands
 
