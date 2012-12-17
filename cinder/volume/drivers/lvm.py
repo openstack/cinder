@@ -281,6 +281,31 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
         # cooresponding target admin class
+
+        if isinstance(self.tgtadm, iscsi.LioAdm):
+            try:
+                volume_info = self.db.volume_get(context, volume['id'])
+                (auth_method,
+                 auth_user,
+                 auth_pass) = volume_info['provider_auth'].split(' ', 3)
+                chap_auth = self._iscsi_authentication(auth_method,
+                                                       auth_user,
+                                                       auth_pass)
+            except exception.NotFound:
+                LOG.debug("volume_info:", volume_info)
+                LOG.info(_("Skipping ensure_export. No iscsi_target "
+                           "provision for volume: %s"), volume['id'])
+                return
+
+            iscsi_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
+            volume_path = "/dev/%s/%s" % (FLAGS.volume_group, volume['name'])
+            iscsi_target = 1
+
+            self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
+                                            0, volume_path, chap_auth,
+                                            check_exit_code=False)
+            return
+
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
                 iscsi_target = self.db.volume_get_iscsi_target_num(
@@ -292,6 +317,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 return
         else:
             iscsi_target = 1  # dummy value when using TgtAdm
+
+        chap_auth = None
 
         # Check for https://bugs.launchpad.net/cinder/+bug/1065702
         old_name = None
@@ -312,7 +339,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
         self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
-                                        0, volume_path,
+                                        0, volume_path, chap_auth,
                                         check_exit_code=False,
                                         old_name=old_name)
 
@@ -418,7 +445,22 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
         # cooresponding target admin class
-        if not isinstance(self.tgtadm, iscsi.TgtAdm):
+
+        if isinstance(self.tgtadm, iscsi.LioAdm):
+            try:
+                iscsi_target = self.db.volume_get_iscsi_target_num(
+                    context,
+                    volume['id'])
+            except exception.NotFound:
+                LOG.info(_("Skipping remove_export. No iscsi_target "
+                           "provisioned for volume: %s"), volume['id'])
+                return
+
+            self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'])
+
+            return
+
+        elif not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
                 iscsi_target = self.db.volume_get_iscsi_target_num(
                     context,

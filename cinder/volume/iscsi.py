@@ -315,10 +315,99 @@ class FakeIscsiHelper(object):
         return self.tid
 
 
+class LioAdm(TargetAdmin):
+    """iSCSI target administration for LIO using python-rtslib."""
+    def __init__(self, execute=utils.execute):
+        super(LioAdm, self).__init__('cinder-rtstool', execute)
+
+        try:
+            self._execute('cinder-rtstool', 'verify')
+        except (OSError, exception.ProcessExecutionError):
+            LOG.error(_('cinder-rtstool is not installed correctly'))
+            raise
+
+    def _get_target(self, iqn):
+        (out, err) = self._execute('cinder-rtstool',
+                                   'get-targets',
+                                   run_as_root=True)
+        lines = out.split('\n')
+        for line in lines:
+            if iqn in line:
+                return line
+
+        return None
+
+    def create_iscsi_target(self, name, tid, lun, path,
+                            chap_auth=None, **kwargs):
+        # tid and lun are not used
+
+        vol_id = name.split(':')[1]
+
+        LOG.info(_('Creating volume: %s') % vol_id)
+
+        # cinder-rtstool requires chap_auth, but unit tests don't provide it
+        chap_auth_userid = 'test_id'
+        chap_auth_password = 'test_pass'
+
+        if chap_auth != None:
+            (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
+
+        try:
+            self._execute('cinder-rtstool',
+                          'create',
+                          path,
+                          name,
+                          chap_auth_userid,
+                          chap_auth_password,
+                          run_as_root=True)
+        except exception.ProcessExecutionError as e:
+                LOG.error(_("Failed to create iscsi target for volume "
+                            "id:%(vol_id)s.") % locals())
+                LOG.error("%s" % str(e))
+
+                raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+
+        iqn = '%s%s' % (FLAGS.iscsi_target_prefix, vol_id)
+        tid = self._get_target(iqn)
+        if tid is None:
+            LOG.error(_("Failed to create iscsi target for volume "
+                        "id:%(vol_id)s.") % locals())
+            raise exception.NotFound()
+
+        return tid
+
+    def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
+        LOG.info(_('Removing volume: %s') % vol_id)
+        vol_uuid_name = 'volume-%s' % vol_id
+        iqn = '%s%s' % (FLAGS.iscsi_target_prefix, vol_uuid_name)
+
+        try:
+            self._execute('cinder-rtstool',
+                          'delete',
+                          iqn,
+                          run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            LOG.error(_("Failed to remove iscsi target for volume "
+                        "id:%(vol_id)s.") % locals())
+            LOG.error("%s" % str(e))
+            raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
+
+    def show_target(self, tid, iqn=None, **kwargs):
+        if iqn is None:
+            raise exception.InvalidParameterValue(
+                err=_('valid iqn needed for show_target'))
+
+        tid = self._get_target(iqn)
+        if tid is None:
+            raise exception.NotFound()
+
+
 def get_target_admin():
     if FLAGS.iscsi_helper == 'tgtadm':
         return TgtAdm()
     elif FLAGS.iscsi_helper == 'fake':
         return FakeIscsiHelper()
+    elif FLAGS.iscsi_helper == 'lioadm':
+        return LioAdm()
     else:
         return IetAdm()

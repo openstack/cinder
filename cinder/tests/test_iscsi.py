@@ -38,6 +38,11 @@ class TargetAdminTestCase(object):
         self.stubs.Set(os.path, 'isfile', lambda _: True)
         self.stubs.Set(os, 'unlink', lambda _: '')
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
+        self.stubs.Set(iscsi.LioAdm, '_get_target', self.fake_get_target)
+        self.stubs.Set(iscsi.LioAdm, '__init__', self.fake_init)
+
+    def fake_init(obj):
+        return
 
     def fake_get_target(obj, iqn):
         return 1
@@ -119,3 +124,16 @@ class IetAdmTestCase(test.TestCase, TargetAdminTestCase):
             'ietadm --op show --tid=%(tid)s',
             'ietadm --op delete --tid=%(tid)s --lun=%(lun)s',
             'ietadm --op delete --tid=%(tid)s'])
+
+
+class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
+
+    def setUp(self):
+        super(LioAdmTestCase, self).setUp()
+        TargetAdminTestCase.setUp(self)
+        self.persist_tempdir = tempfile.mkdtemp()
+        self.flags(iscsi_helper='lioadm')
+        self.script_template = "\n".join([
+            'cinder-rtstool create '
+                '/foo iqn.2011-09.org.foo.bar:blaa test_id test_pass',
+            'cinder-rtstool delete iqn.2010-10.org.openstack:volume-blaa'])

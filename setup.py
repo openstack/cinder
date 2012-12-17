@@ -72,6 +72,7 @@ setuptools.setup(
              'bin/cinder-clear-rabbit-queues',
              'bin/cinder-manage',
              'bin/cinder-rootwrap',
+             'bin/cinder-rtstool',
              'bin/cinder-scheduler',
              'bin/cinder-volume',
              'bin/cinder-volume-usage-audit'],
