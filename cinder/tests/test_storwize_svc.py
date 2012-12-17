@@ -134,6 +134,7 @@ class StorwizeSVCManagementSimulator:
             "nohdr",
         ]
         one_param_args = [
+            "chapsecret",
             "cleanrate",
             "delim",
             "filtervalue",
@@ -551,6 +552,22 @@ class StorwizeSVCManagementSimulator:
         return ("Host, id [%s], successfully created" %
                 (host_info["id"]), "")
 
+    # Change host properties
+    def _cmd_chhost(self, **kwargs):
+        if "chapsecret" not in kwargs:
+            return self._errors["CMMVC5707E"]
+        secret = kwargs["obj"].strip('\'\"')
+
+        if "obj" not in kwargs:
+            return self._errors["CMMVC5701E"]
+        host_name = kwargs["obj"].strip('\'\"')
+
+        if host_name not in self._hosts_list:
+            return self._errors["CMMVC5753E"]
+
+        self._hosts_list[host_name]["chapsecret"] = secret
+        return ("", "")
+
     # Remove a host
     def _cmd_rmhost(self, **kwargs):
         if "obj" not in kwargs:
@@ -610,6 +627,22 @@ class StorwizeSVCManagementSimulator:
                     rows[index] = kwargs["delim"].join(rows[index])
 
             return ("%s" % "\n".join(rows), "")
+
+    # List iSCSI authorization information about hosts
+    def _cmd_lsiscsiauth(self, **kwargs):
+        rows = []
+        rows.append(["type", "id", "name", "iscsi_auth_method",
+                     "iscsi_chap_secret"])
+
+        for k, host in self._hosts_list.iteritems():
+            method = "none"
+            secret = ""
+            if "chapsecret" in host:
+                method = "chap"
+                secret = host["chapsecret"]
+            rows.append(["host", host["id"], host["host_name"], method,
+                         secret])
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     # Create a vdisk-host mapping
     def _cmd_mkvdiskhostmap(self, **kwargs):
@@ -850,10 +883,14 @@ class StorwizeSVCManagementSimulator:
             out, err = self._cmd_lsvdisk(**kwargs)
         elif command == "mkhost":
             out, err = self._cmd_mkhost(**kwargs)
+        elif command == "chhost":
+            out, err = self._cmd_chhost(**kwargs)
         elif command == "rmhost":
             out, err = self._cmd_rmhost(**kwargs)
         elif command == "lshost":
             out, err = self._cmd_lshost(**kwargs)
+        elif command == "lsiscsiauth":
+            out, err = self._cmd_lsiscsiauth(**kwargs)
         elif command == "mkvdiskhostmap":
             out, err = self._cmd_mkvdiskhostmap(**kwargs)
         elif command == "rmvdiskhostmap":
