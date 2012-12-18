@@ -260,7 +260,9 @@ class VolumeController(wsgi.Controller):
         remove_invalid_options(context,
                                search_opts, self._get_volume_search_options())
 
-        volumes = self.volume_api.get_all(context, search_opts=search_opts)
+        volumes = self.volume_api.get_all(context, marker=None, limit=None,
+                                          sort_key='created_at',
+                                          sort_dir='desc', filters=search_opts)
         limited_list = common.limited(volumes, req)
         res = [entity_maker(context, vol) for vol in limited_list]
         return {'volumes': res}

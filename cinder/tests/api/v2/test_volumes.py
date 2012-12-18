@@ -392,8 +392,91 @@ class VolumeApiTest(test.TestCase):
         }
         self.assertEqual(res_dict, expected)
 
+    def test_volume_index_with_marker(self):
+        def stub_volume_get_all_by_project(context, project_id, marker, limit,
+                                           sort_key, sort_dir):
+            return [
+                stubs.stub_volume(1, display_name='vol1'),
+                stubs.stub_volume(2, display_name='vol2'),
+            ]
+        self.stubs.Set(db, 'volume_get_all_by_project',
+                       stub_volume_get_all_by_project)
+        req = fakes.HTTPRequest.blank('/v2/volumes?marker=1')
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 2)
+        self.assertEquals(volumes[0]['id'], 1)
+        self.assertEquals(volumes[1]['id'], 2)
+
+    def test_volume_index_limit(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes?limit=1')
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 1)
+
+    def test_volume_index_limit_negative(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index,
+                          req)
+
+    def test_volume_index_limit_non_int(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes?limit=a')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index,
+                          req)
+
+    def test_volume_index_limit_marker(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes?marker=1&limit=1')
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 1)
+        self.assertEquals(volumes[0]['id'], '1')
+
+    def test_volume_detail_with_marker(self):
+        def stub_volume_get_all_by_project(context, project_id, marker, limit,
+                                           sort_key, sort_dir):
+            return [
+                stubs.stub_volume(1, display_name='vol1'),
+                stubs.stub_volume(2, display_name='vol2'),
+            ]
+        self.stubs.Set(db, 'volume_get_all_by_project',
+                       stub_volume_get_all_by_project)
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1')
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 2)
+        self.assertEquals(volumes[0]['id'], 1)
+        self.assertEquals(volumes[1]['id'], 2)
+
+    def test_volume_detail_limit(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=1')
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 1)
+
+    def test_volume_detail_limit_negative(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index,
+                          req)
+
+    def test_volume_detail_limit_non_int(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index,
+                          req)
+
+    def test_volume_detail_limit_marker(self):
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1&limit=1')
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 1)
+        self.assertEquals(volumes[0]['id'], '1')
+
     def test_volume_list_by_name(self):
-        def stub_volume_get_all_by_project(context, project_id):
+        def stub_volume_get_all_by_project(context, project_id, marker, limit,
+                                           sort_key, sort_dir):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
                 stubs.stub_volume(2, display_name='vol2'),
@@ -408,7 +491,6 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(len(resp['volumes']), 3)
         # filter on name
         req = fakes.HTTPRequest.blank('/v2/volumes?name=vol2')
-        #import pdb; pdb.set_trace()
         resp = self.controller.index(req)
         self.assertEqual(len(resp['volumes']), 1)
         self.assertEqual(resp['volumes'][0]['name'], 'vol2')
@@ -418,7 +500,8 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(len(resp['volumes']), 0)
 
     def test_volume_list_by_status(self):
-        def stub_volume_get_all_by_project(context, project_id):
+        def stub_volume_get_all_by_project(context, project_id, marker, limit,
+                                           sort_key, sort_dir):
             return [
                 stubs.stub_volume(1, display_name='vol1', status='available'),
                 stubs.stub_volume(2, display_name='vol2', status='available'),

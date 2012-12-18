@@ -331,7 +331,8 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_list_by_name(self):
-        def stub_volume_get_all_by_project(context, project_id):
+        def stub_volume_get_all_by_project(context, project_id, marker, limit,
+                                           sort_key, sort_dir):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
                 stubs.stub_volume(2, display_name='vol2'),
@@ -355,7 +356,8 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(len(resp['volumes']), 0)
 
     def test_volume_list_by_status(self):
-        def stub_volume_get_all_by_project(context, project_id):
+        def stub_volume_get_all_by_project(context, project_id, marker, limit,
+                                           sort_key, sort_dir):
             return [
                 stubs.stub_volume(1, display_name='vol1', status='available'),
                 stubs.stub_volume(2, display_name='vol2', status='available'),

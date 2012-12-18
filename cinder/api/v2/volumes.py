@@ -171,20 +171,27 @@ class VolumeController(wsgi.Controller):
     def _get_volumes(self, req, is_detail):
         """Returns a list of volumes, transformed through view builder."""
 
-        search_opts = {}
-        search_opts.update(req.GET)
-
         context = req.environ['cinder.context']
+
+        params = req.params.copy()
+        marker = params.pop('marker', None)
+        limit = params.pop('limit', None)
+        sort_key = params.pop('sort_key', 'created_at')
+        sort_dir = params.pop('sort_dir', 'desc')
+        filters = params
+
         remove_invalid_options(context,
-                               search_opts, self._get_volume_search_options())
+                               filters, self._get_volume_filter_options())
 
         # NOTE(thingee): v2 API allows name instead of display_name
-        if 'name' in search_opts:
-            search_opts['display_name'] = search_opts['name']
-            del search_opts['name']
+        if 'name' in filters:
+            filters['display_name'] = filters['name']
+            del filters['name']
 
-        volumes = self.volume_api.get_all(context, search_opts=search_opts)
+        volumes = self.volume_api.get_all(context, marker, limit, sort_key,
+                                          sort_dir, filters)
         limited_list = common.limited(volumes, req)
+
         if is_detail:
             volumes = self._view_builder.detail_list(req, limited_list)
         else:
@@ -273,7 +280,7 @@ class VolumeController(wsgi.Controller):
 
         return retval
 
-    def _get_volume_search_options(self):
+    def _get_volume_filter_options(self):
         """Return volume search options allowed by non-admin."""
         return ('name', 'status')
 
@@ -321,16 +328,16 @@ def create_resource(ext_mgr):
     return wsgi.Resource(VolumeController(ext_mgr))
 
 
-def remove_invalid_options(context, search_options, allowed_search_options):
+def remove_invalid_options(context, filters, allowed_search_options):
     """Remove search options that are not valid for non-admin API/context."""
     if context.is_admin:
         # Allow all options
         return
     # Otherwise, strip out all unknown options
-    unknown_options = [opt for opt in search_options
+    unknown_options = [opt for opt in filters
                        if opt not in allowed_search_options]
     bad_options = ", ".join(unknown_options)
-    log_msg = _("Removing options '%(bad_options)s' from query") % locals()
+    log_msg = _("Removing options '%s' from query") % bad_options
     LOG.debug(log_msg)
     for opt in unknown_options:
-        del search_options[opt]
+        del filters[opt]
