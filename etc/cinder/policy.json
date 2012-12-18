@@ -27,5 +27,7 @@
 
     "volume_extension:volume_host_attribute": [["rule:admin_api"]],
     "volume_extension:volume_tenant_attribute": [["rule:admin_api"]],
-    "volume_extension:hosts": [["rule:admin_api"]]
+    "volume_extension:hosts": [["rule:admin_api"]],
+    "volume_extension:services": [["rule:admin_api"]],
+    "volume:services": [["rule:admin_api"]]
 }

@@ -408,7 +408,6 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(len(resp['volumes']), 3)
         # filter on name
         req = fakes.HTTPRequest.blank('/v2/volumes?name=vol2')
-        #import pdb; pdb.set_trace()
         resp = self.controller.index(req)
         self.assertEqual(len(resp['volumes']), 1)
         self.assertEqual(resp['volumes'][0]['name'], 'vol2')
