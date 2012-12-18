@@ -826,4 +826,34 @@
 #### (BoolOpt) Don't halt on deletion of non-existing volumes
 
 
+######## defined in cinder.volume.drivers.san.hp.hp_3par_common ########
+
+# hp3par_api_url=<None>
+#### (StrOpt)  3PAR WSAPI Server Url like https://<3par ip>:8080/api/v1
+
+# hp3par_username=<None>
+#### (StrOpt) 3PAR username
+
+# hp3par_password=<None>
+#### (StrOpt) 3PAR password
+
+# hp3par_domain=OpenStack
+#### (StrOpt) The 3par domain to use
+
+# hp3par_cpg=OpenStack
+#### (StrOpt) The CPG to use for volume creation
+
+# hp3par_cpg_snap=<None>
+#### (StrOpt) The CPG to use for snapshots for volumes.
+
+# hp3par_snapshot_retention=<None>
+#### (StrOpt) The time in hours to retain a snapshot
+
+# hp3par_snapshot_expiration=<None>
+#### (StrOpt) The time in ours when a snapshot expires
+
+# hp3par_debug=False
+#### (BoolOpt) Enable REST debugging output
+
+
 # Total option count: 219
