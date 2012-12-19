@@ -37,7 +37,7 @@ class TestWindowsDriver(basetestcase.BaseTestCase):
     def setUp(self):
         super(TestWindowsDriver, self).setUp()
         self.flags(
-            windows_iscsi_lun_path='D:\iSCSIVirtualDisks',
+            windows_iscsi_lun_path='C:\iSCSIVirtualDisks',
         )
         self._volume_data = None
         self._volume_data_2 = None
