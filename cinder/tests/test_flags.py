@@ -45,14 +45,6 @@ class FlagsTestCase(test.TestCase):
         flags.DECLARE('answer', 'cinder.tests.declare_flags')
         self.assertEqual(FLAGS.answer, 256)
 
-    def test_getopt_non_interspersed_args(self):
-        self.assert_('runtime_answer' not in FLAGS)
-
-        argv = ['flags_test', 'extra_arg', '--runtime_answer=60']
-        args = flags.parse_args(argv, default_config_files=[])
-        self.assertEqual(len(args), 3)
-        self.assertEqual(argv, args)
-
     def test_runtime_and_unknown_flags(self):
         self.assert_('runtime_answer' not in FLAGS)
         import cinder.tests.runtime_flags
@@ -64,17 +56,12 @@ class FlagsTestCase(test.TestCase):
         FLAGS.register_cli_opt(cfg.StrOpt('duplicate_answer_long',
                                           default='val',
                                           help='desc'))
-        argv = ['flags_test', '--duplicate_answer=60', 'extra_arg']
-        args = flags.parse_args(argv, default_config_files=[])
-
-        self.assert_('duplicate_answer' not in FLAGS)
-        self.assert_(FLAGS.duplicate_answer_long, 60)
-
-        FLAGS.clear()
         FLAGS.register_cli_opt(cfg.IntOpt('duplicate_answer',
-                                          default=60,
+                                          default=50,
                                           help='desc'))
-        args = flags.parse_args(argv, default_config_files=[])
+
+        argv = ['flags_test', '--duplicate_answer=60']
+        flags.parse_args(argv, default_config_files=[])
         self.assertEqual(FLAGS.duplicate_answer, 60)
         self.assertEqual(FLAGS.duplicate_answer_long, 'val')
 

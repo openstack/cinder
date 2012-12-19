@@ -37,10 +37,8 @@ FLAGS = cfg.CONF
 
 
 def parse_args(argv, default_config_files=None):
-    FLAGS.disable_interspersed_args()
-    return argv[:1] + FLAGS(argv[1:],
-                            project='cinder',
-                            default_config_files=default_config_files)
+    FLAGS(argv[1:], project='cinder',
+          default_config_files=default_config_files)
 
 
 class UnrecognizedFlag(Exception):

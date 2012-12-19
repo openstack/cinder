@@ -55,7 +55,6 @@
 """
 
 import gettext
-import optparse
 import os
 import sys
 import uuid
@@ -92,7 +91,7 @@ FLAGS = flags.FLAGS
 # Decorators for actions
 def args(*args, **kwargs):
     def _decorator(func):
-        func.__dict__.setdefault('options', []).insert(0, (args, kwargs))
+        func.__dict__.setdefault('args', []).insert(0, (args, kwargs))
         return func
     return _decorator
 
@@ -128,7 +127,7 @@ class ShellCommands(object):
         self.run('python')
 
     @args('--shell', dest="shell",
-          metavar='<bpython|ipython|python >',
+          metavar='<bpython|ipython|python>',
           help='Python shell')
     def run(self, shell=None):
         """Runs a Python interactive interpreter."""
@@ -165,7 +164,7 @@ class ShellCommands(object):
                 readline.parse_and_bind("tab:complete")
             code.interact()
 
-    @args('--path', dest='path', metavar='<path>', help='Script path')
+    @args('--path', required=True, help='Script path')
     def script(self, path):
         """Runs the script from the specifed path with flags set properly.
         arguments: path"""
@@ -183,6 +182,8 @@ def _db_error(caught_exception):
 class HostCommands(object):
     """List hosts."""
 
+    @args('zone', nargs='?', default=None,
+          help='Availability Zone (default: %(default)s)')
     def list(self, zone=None):
         """Show a list of all physical hosts. Filter by zone.
         args: [zone]"""
@@ -207,8 +208,7 @@ class DbCommands(object):
     def __init__(self):
         pass
 
-    @args('--version', dest='version',
-          metavar='<version>',
+    @args('version', nargs='?', default=None,
           help='Database version')
     def sync(self, version=None):
         """Sync the database up to the most recent version."""
@@ -332,14 +332,15 @@ class ImportCommands(object):
                     dest.add(new_row(**data))
                 dest.commit()
 
-    @args('--src', dest='src_db', metavar='<Nova DB>',
+    @args('src', metavar='<Nova DB>',
           help='db-engine://db_user[:passwd]@db_host[:port]\t\t'
                'example: mysql://root:secrete@192.168.137.1')
-    @args('--dest', dest='dest_db', metavar='<Cinder DB>',
+    @args('dest', metavar='<Cinder DB>',
           help='db-engine://db_user[:passwd]@db_host[:port]\t\t'
                'example: mysql://root:secrete@192.168.137.1')
-    @args('--backup', dest='backup_db', metavar='<0|1>',
-          help='Perform mysqldump of cinder db before writing to it')
+    @args('--backup', metavar='<0|1>', choices=[0, 1], default=1,
+          help='Perform mysqldump of cinder db before writing to it'
+               ' (default: %(default)d)')
     def import_db(self, src_db, dest_db, backup_db=1):
         """Import relevant volume DB entries from Nova into Cinder.
 
@@ -355,14 +356,11 @@ class ImportCommands(object):
         dest_db = '%s/cinder' % dest_db
         self._import_db(src_db, dest_db, backup_db)
 
-    @args('--src',
-          dest='src_tgts',
-          metavar='<src tgts>',
-          help='[login@src_host:]/opt/stack/nova/volumes/')
-    @args('--dest',
-          dest='dest_tgts',
-          metavar='<dest tgts>',
-          help='[login@src_host:/opt/stack/cinder/volumes/]')
+    @args('src',
+          help='e.g. (login@src_host:]/opt/stack/nova/volumes/)')
+    @args('dest', nargs='?', default=None,
+          help='e.g. (login@src_host:/opt/stack/cinder/volumes/) '
+               'optional, if emitted, \'volume_dir\' in config will be used')
     def copy_ptgt_files(self, src_tgts, dest_tgts=None):
         """Copy persistent scsi tgt files from nova to cinder.
 
@@ -389,10 +387,8 @@ class ImportCommands(object):
 class VolumeCommands(object):
     """Methods for dealing with a cloud in an odd state."""
 
-    @args('--volume',
-          dest='volume_id',
-          metavar='<volume id>',
-          help='Volume ID')
+    @args('volume_id',
+          help='Volume ID to be deleted')
     def delete(self, volume_id):
         """Delete a volume, bypassing the check that it
         must be available."""
@@ -416,10 +412,8 @@ class VolumeCommands(object):
                  {"method": "delete_volume",
                   "args": {"volume_id": volume['id']}})
 
-    @args('--volume',
-          dest='volume_id',
-          metavar='<volume id>',
-          help='Volume ID')
+    @args('volume_id',
+          help='Volume ID to be reattached')
     def reattach(self, volume_id):
         """Re-attach a volume that has previously been attached
         to an instance.  Typically called after a compute host
@@ -442,6 +436,8 @@ class VolumeCommands(object):
 class StorageManagerCommands(object):
     """Class for mangaging Storage Backends and Flavors."""
 
+    @args('flavor', nargs='?',
+          help='flavor to be listed')
     def flavor_list(self, flavor=None):
         ctxt = context.get_admin_context()
 
@@ -464,6 +460,8 @@ class StorageManagerCommands(object):
                 flav['label'],
                 flav['description'])
 
+    @args('label', help='flavor label')
+    @args('desc', help='flavor description')
     def flavor_create(self, label, desc):
         # TODO(renukaapte) flavor name must be unique
         try:
@@ -473,6 +471,7 @@ class StorageManagerCommands(object):
         except exception.DBError, e:
             _db_error(e)
 
+    @args('label', help='label of flavor to be deleted')
     def flavor_delete(self, label):
         try:
             db.sm_flavor_delete(context.get_admin_context(), label)
@@ -484,6 +483,7 @@ class StorageManagerCommands(object):
         i = item.split("=")
         return i[0:2]
 
+    @args('backend_conf_id', nargs='?', default=None)
     def backend_list(self, backend_conf_id=None):
         ctxt = context.get_admin_context()
 
@@ -510,6 +510,9 @@ class StorageManagerCommands(object):
                                                      b['sr_type'],
                                                      b['config_params'],)
 
+    @args('flavor_label')
+    @args('sr_type')
+    @args('args', nargs='*')
     def backend_add(self, flavor_label, sr_type, *args):
         # TODO(renukaapte) Add backend_introduce.
         ctxt = context.get_admin_context()
@@ -568,6 +571,7 @@ class StorageManagerCommands(object):
             except exception.DBError, e:
                 _db_error(e)
 
+    @args('backend_conf_id')
     def backend_remove(self, backend_conf_id):
         try:
             db.sm_backend_conf_delete(context.get_admin_context(),
@@ -612,6 +616,8 @@ class GetLogCommands(object):
         if error_found == 0:
             print "No errors in logfiles!"
 
+    @args('num_entries', nargs='?', type=int, default=10,
+          help='Number of entries to list (default: %(default)d)')
     def syslog(self, num_entries=10):
         """Get <num_entries> of the cinder syslog events."""
         entries = int(num_entries)
@@ -638,38 +644,17 @@ class GetLogCommands(object):
             print "No cinder entries in syslog!"
 
 
-CATEGORIES = [
-    ('config', ConfigCommands),
-    ('db', DbCommands),
-    ('host', HostCommands),
-    ('logs', GetLogCommands),
-    ('shell', ShellCommands),
-    ('sm', StorageManagerCommands),
-    ('version', VersionCommands),
-    ('volume', VolumeCommands),
-    ('migrate', ImportCommands),
-]
-
-
-def lazy_match(name, key_value_tuples):
-    """Finds all objects that have a key that case insensitively contains
-    [name] key_value_tuples is a list of tuples of the form (key, value)
-    returns a list of tuples of the form (key, value)"""
-    result = []
-    for (k, v) in key_value_tuples:
-        if k.lower().find(name.lower()) == 0:
-            result.append((k, v))
-    if len(result) == 0:
-        print "%s does not match any options:" % name
-        for k, _v in key_value_tuples:
-            print "\t%s" % k
-        sys.exit(2)
-    if len(result) > 1:
-        print "%s matched multiple options:" % name
-        for k, _v in result:
-            print "\t%s" % k
-        sys.exit(2)
-    return result
+CATEGORIES = {
+    'config': ConfigCommands,
+    'db': DbCommands,
+    'host': HostCommands,
+    'logs': GetLogCommands,
+    'shell': ShellCommands,
+    'sm': StorageManagerCommands,
+    'version': VersionCommands,
+    'volume': VolumeCommands,
+    'migrate': ImportCommands,
+}
 
 
 def methods_of(obj):
@@ -682,11 +667,73 @@ def methods_of(obj):
     return result
 
 
+def add_command_parsers(subparsers):
+    for category in CATEGORIES:
+        command_object = CATEGORIES[category]()
+
+        parser = subparsers.add_parser(category)
+        parser.set_defaults(command_object=command_object)
+
+        category_subparsers = parser.add_subparsers(dest='action')
+
+        for (action, action_fn) in methods_of(command_object):
+            parser = category_subparsers.add_parser(action)
+
+            action_kwargs = []
+            for args, kwargs in getattr(action_fn, 'args', []):
+                parser.add_argument(*args, **kwargs)
+
+            parser.set_defaults(action_fn=action_fn)
+            parser.set_defaults(action_kwargs=action_kwargs)
+
+
+category_opt = cfg.SubCommandOpt('category',
+                                 title='Command categories',
+                                 handler=add_command_parsers)
+
+
+def get_arg_string(args):
+    arg = None
+    if args[0] == '-':
+    # (Note)zhiteng: args starts with FLAGS.oparser.prefix_chars
+    # is optional args. Notice that cfg module takes care of
+    # actual ArgParser so prefix_chars is always '-'.
+        if args[1] == '-':
+            # This is long optional arg
+            arg = args[2:]
+        else:
+            arg = args[3:]
+    else:
+        arg = args
+
+    return arg
+
+
+def fetch_func_args(func):
+    fn_args = []
+    for args, kwargs in getattr(func, 'args', []):
+        arg = get_arg_string(args[0])
+        fn_args.append(getattr(FLAGS.category, arg))
+
+    return fn_args
+
+
 def main():
     """Parse options and call the appropriate class/method."""
+    FLAGS.register_cli_opt(category_opt)
+    script_name = sys.argv[0]
+    if len(sys.argv) < 2:
+        print _("\nOpenStack Cinder version: %(version)s (%(vcs)s)\n") %\
+            {'version': version.version_string(),
+             'vcs': version.version_string_with_vcs()}
+        print script_name + " category action [<args>]"
+        print _("Available categories:")
+        for category in CATEGORIES:
+            print "\t%s" % category
+        sys.exit(2)
 
     try:
-        argv = flags.parse_args(sys.argv)
+        flags.parse_args(sys.argv)
         logging.setup("cinder")
     except cfg.ConfigFilesNotFoundError:
         cfgfile = FLAGS.config_file[-1] if FLAGS.config_file else None
@@ -701,70 +748,10 @@ def main():
         print _('Please re-run cinder-manage as root.')
         sys.exit(2)
 
-    script_name = argv.pop(0)
-    if len(argv) < 1:
-        print _("\nOpenStack Cinder version: %(version)s (%(vcs)s)\n") % \
-            {'version': version.version_string(),
-             'vcs': version.version_string_with_vcs()}
-        print script_name + " category action [<args>]"
-        print _("Available categories:")
-        for k, _v in CATEGORIES:
-            print "\t%s" % k
-        sys.exit(2)
-    category = argv.pop(0)
-    matches = lazy_match(category, CATEGORIES)
-    # instantiate the command group object
-    category, fn = matches[0]
-    command_object = fn()
-    actions = methods_of(command_object)
-    if len(argv) < 1:
-        if hasattr(command_object, '__call__'):
-            action = ''
-            fn = command_object.__call__
-        else:
-            print script_name + " category action [<args>]"
-            print _("Available actions for %s category:") % category
-            for k, _v in actions:
-                print "\t%s" % k
-            sys.exit(2)
-    else:
-        action = argv.pop(0)
-        matches = lazy_match(action, actions)
-        action, fn = matches[0]
+    fn = FLAGS.category.action_fn
 
-    # For not decorated methods
-    options = getattr(fn, 'options', [])
-
-    usage = "%%prog %s %s <args> [options]" % (category, action)
-    parser = optparse.OptionParser(usage=usage)
-    for ar, kw in options:
-        parser.add_option(*ar, **kw)
-    (opts, fn_args) = parser.parse_args(argv)
-    fn_kwargs = vars(opts)
-
-    for k, v in fn_kwargs.items():
-        if v is None:
-            del fn_kwargs[k]
-        elif isinstance(v, basestring):
-            fn_kwargs[k] = v.decode('utf-8')
-        else:
-            fn_kwargs[k] = v
-
-    fn_args = [arg.decode('utf-8') for arg in fn_args]
-
-    # call the action with the remaining arguments
-    try:
-        fn(*fn_args, **fn_kwargs)
-        rpc.cleanup()
-        sys.exit(0)
-    except TypeError:
-        print _("Possible wrong number of arguments supplied")
-        print fn.__doc__
-        parser.print_help()
-        raise
-    except Exception:
-        print _("Command failed, please check log for more info")
-        raise
+    fn_args = fetch_func_args(fn)
+    fn(*fn_args)
 
 if __name__ == '__main__':
     main()
