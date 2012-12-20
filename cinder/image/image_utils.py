@@ -208,34 +208,34 @@ def fetch_to_raw(context, image_service,
             os.path.exists(FLAGS.image_conversion_dir)):
         os.makedirs(FLAGS.image_conversion_dir)
 
-    with tempfile.NamedTemporaryFile(dir=FLAGS.image_conversion_dir) as tmp:
-        fetch(context, image_service, image_id, tmp.name, user_id, project_id)
-        tmp.flush()
+    fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
+    fd.close()
+    with utils.remove_path_on_error(tmp):
+        fetch(context, image_service, image_id, tmp, user_id, project_id)
 
-        data = qemu_img_info(tmp.name)
-        with utils.remove_path_on_error(tmp.name):
-            fmt = data.file_format
-            if fmt is None:
-                raise exception.ImageUnacceptable(
-                    reason=_("'qemu-img info' parsing failed."),
-                    image_id=image_id)
+        data = qemu_img_info(tmp)
+        fmt = data.file_format
+        if fmt is None:
+            raise exception.ImageUnacceptable(
+                reason=_("'qemu-img info' parsing failed."),
+                image_id=image_id)
 
-            backing_file = data.backing_file
-            if backing_file is not None:
-                raise exception.ImageUnacceptable(
-                    image_id=image_id,
-                    reason=_("fmt=%(fmt)s backed by:"
-                             "%(backing_file)s") % locals())
+        backing_file = data.backing_file
+        if backing_file is not None:
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=_("fmt=%(fmt)s backed by:"
+                         "%(backing_file)s") % locals())
 
-            # NOTE(jdg): I'm using qemu-img convert to write
-            # to the volume regardless if it *needs* conversion or not
-            LOG.debug("%s was %s, converting to raw" % (image_id, fmt))
-            convert_image(tmp.name, dest, 'raw')
-            tmp.close()
+        # NOTE(jdg): I'm using qemu-img convert to write
+        # to the volume regardless if it *needs* conversion or not
+        LOG.debug("%s was %s, converting to raw" % (image_id, fmt))
+        convert_image(tmp, dest, 'raw')
 
-            data = qemu_img_info(dest)
-            if data.file_format != "raw":
-                raise exception.ImageUnacceptable(
-                    image_id=image_id,
-                    reason=_("Converted to raw, but format is now %s") %
-                    data.file_format)
+        data = qemu_img_info(dest)
+        if data.file_format != "raw":
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=_("Converted to raw, but format is now %s") %
+                data.file_format)
+        os.unlink(tmp)
