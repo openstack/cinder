@@ -209,7 +209,7 @@ def fetch_to_raw(context, image_service,
         os.makedirs(FLAGS.image_conversion_dir)
 
     fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
-    fd.close()
+    os.close(fd)
     with utils.remove_path_on_error(tmp):
         fetch(context, image_service, image_id, tmp, user_id, project_id)
 
