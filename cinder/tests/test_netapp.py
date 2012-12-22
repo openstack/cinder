@@ -822,7 +822,25 @@ class FakeDfmServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             names = body.xpath('na:ApiProxy/na:Request/na:Name',
                                namespaces=nsmap)
             proxy = names[0].text
-            if 'igroup-list-info' == proxy:
+            if 'clone-list-status' == proxy:
+                op_elem = body.xpath('na:ApiProxy/na:Request/na:Args/'
+                                     'clone-id/clone-id-info/clone-op-id',
+                                     namespaces=nsmap)
+                proxy_body = """<status>
+                        <ops-info>
+                            <clone-state>completed</clone-state>
+                        </ops-info>
+                    </status>"""
+                if '0' == op_elem[0].text:
+                    proxy_body = ''
+            elif 'clone-start' == proxy:
+                proxy_body = """<clone-id>
+                        <clone-id-info>
+                            <clone-op-id>1</clone-op-id>
+                            <volume-uuid>xxx</volume-uuid>
+                        </clone-id-info>
+                    </clone-id>"""
+            elif 'igroup-list-info' == proxy:
                 igroup = 'openstack-iqn.1993-08.org.debian:01:23456789'
                 initiator = 'iqn.1993-08.org.debian:01:23456789'
                 proxy_body = """<initiator-groups>
@@ -987,6 +1005,15 @@ class NetAppDriverTestCase(test.TestCase):
         properties = connection_info['data']
         self.driver.terminate_connection(volume, connector)
         self.driver._remove_destroy(self.VOLUME_NAME, self.PROJECT_ID)
+
+    def test_clone(self):
+        self.driver._discover_luns()
+        self.driver._clone_lun(0, '/vol/vol/qtree/src', '/vol/vol/qtree/dst',
+                               False)
+
+    def test_clone_fail(self):
+        self.driver._discover_luns()
+        self.driver._is_clone_done(0, '0', 'xxx')
 
 
 WSDL_HEADER_CMODE = """<?xml version="1.0" encoding="UTF-8"?>

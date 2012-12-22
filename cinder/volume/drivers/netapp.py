@@ -836,6 +836,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         response = self.client.service.ApiProxy(Target=host_id,
                                                 Request=request)
         self._check_fail(request, response)
+        if isinstance(response.Results, text.Text):
+            return False
         status = response.Results['status']
         if self._api_elem_is_empty(status):
             return False
