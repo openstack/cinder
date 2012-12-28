@@ -290,3 +290,44 @@ class AdminActionsTest(test.TestCase):
         self.assertEquals(volume['instance_uuid'], None)
         self.assertEquals(volume['mountpoint'], None)
         self.assertEquals(volume['attach_status'], 'detached')
+
+    def test_attach_in_use_volume(self):
+        """Test that attaching to an in-use volume fails."""
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': ''})
+        # start service to handle rpc messages for attach requests
+        self.start_service('volume', host='test')
+        self.volume_api.reserve_volume(ctx, volume)
+        self.volume_api.initialize_connection(ctx, volume, {})
+        mountpoint = '/dev/vbd'
+        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, mountpoint)
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attach,
+                          ctx,
+                          volume,
+                          fakes.get_fake_uuid(),
+                          mountpoint)
+
+    def test_attach_attaching_volume_with_different_instance(self):
+        """Test that attaching volume reserved for another instance fails."""
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': ''})
+        # start service to handle rpc messages for attach requests
+        self.start_service('volume', host='test')
+        self.volume_api.initialize_connection(ctx, volume, {})
+        values = {'status': 'attaching',
+                  'instance_uuid': fakes.get_fake_uuid()}
+        db.volume_update(ctx, volume['id'], values)
+        mountpoint = '/dev/vbd'
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attach,
+                          ctx,
+                          volume,
+                          stubs.FAKE_UUID,
+                          mountpoint)

@@ -45,6 +45,7 @@ from cinder import manager
 from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
@@ -337,26 +338,44 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
         """Updates db to show volume is attached"""
-        # TODO(vish): refactor this into a more general "reserve"
-        # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
-        if not uuidutils.is_uuid_like(instance_uuid):
-            raise exception.InvalidUUID(instance_uuid)
 
-        try:
-            self.driver.attach_volume(context,
-                                      volume_id,
-                                      instance_uuid,
-                                      mountpoint)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                self.db.volume_update(context,
-                                      volume_id,
-                                      {'status': 'error_attaching'})
+        @lockutils.synchronized(volume_id, 'cinder-', external=True)
+        def do_attach():
+            # check the volume status before attaching
+            volume = self.db.volume_get(context, volume_id)
+            if volume['status'] == 'attaching':
+                if (volume['instance_uuid'] and volume['instance_uuid'] !=
+                        instance_uuid):
+                    msg = _("being attached by another instance")
+                    raise exception.InvalidVolume(reason=msg)
+            elif volume['status'] != "available":
+                msg = _("status must be available")
+                raise exception.InvalidVolume(reason=msg)
+            self.db.volume_update(context, volume_id,
+                                  {"instance_uuid": instance_uuid,
+                                   "status": "attaching"})
 
-        self.db.volume_attached(context.elevated(),
-                                volume_id,
-                                instance_uuid,
-                                mountpoint)
+            # TODO(vish): refactor this into a more general "reserve"
+            # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
+            if not uuidutils.is_uuid_like(instance_uuid):
+                raise exception.InvalidUUID(instance_uuid)
+
+            try:
+                self.driver.attach_volume(context,
+                                          volume_id,
+                                          instance_uuid,
+                                          mountpoint)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    self.db.volume_update(context,
+                                          volume_id,
+                                          {'status': 'error_attaching'})
+
+            self.db.volume_attached(context.elevated(),
+                                    volume_id,
+                                    instance_uuid,
+                                    mountpoint)
+        return do_attach()
 
     def detach_volume(self, context, volume_id):
         """Updates db to show volume is detached"""

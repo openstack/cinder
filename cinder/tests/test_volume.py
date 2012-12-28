@@ -277,7 +277,6 @@ class VolumeTestCase(test.TestCase):
 
     def test_preattach_status_volume(self):
         """Ensure volume goes into pre-attaching state"""
-
         instance_uuid = '12345678-1234-5678-1234-567812345678'
         mountpoint = "/dev/sdf"
         volume = db.volume_create(self.context, {'size': 1,
@@ -288,9 +287,9 @@ class VolumeTestCase(test.TestCase):
         volume_api.attach(self.context, volume, instance_uuid, mountpoint)
 
         vol = db.volume_get(self.context, volume_id)
-        self.assertEqual(vol['status'], "attaching")
+        self.assertEqual(vol['status'], "available")
         self.assertEqual(vol['attach_status'], None)
-        self.assertEqual(vol['instance_uuid'], instance_uuid)
+        self.assertEqual(vol['instance_uuid'], None)
 
     def test_concurrent_volumes_get_different_targets(self):
         """Ensure multiple concurrent volumes get different targets."""
