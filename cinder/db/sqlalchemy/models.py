@@ -316,6 +316,14 @@ class Snapshot(BASE, CinderBase):
     display_name = Column(String(255))
     display_description = Column(String(255))
 
+    provider_location = Column(String(255))
+
+    volume = relationship(Volume, backref="snapshots",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'Snapshot.volume_id == Volume.id,'
+                          'Snapshot.deleted == False)')
+
 
 class IscsiTarget(BASE, CinderBase):
     """Represents an iscsi target for a given host."""

@@ -16,6 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.db import api as db_api
 from cinder.volume.drivers.xenapi import lib
 from cinder.volume.drivers.xenapi import sm as driver
 import mox
@@ -182,3 +183,72 @@ class DriverTestCase(unittest.TestCase):
             ),
             result
         )
+
+    def _setup_for_snapshots(self, server, serverpath):
+        mock = mox.Mox()
+
+        drv = driver.XenAPINFSDriver()
+        ops = mock.CreateMock(lib.NFSBasedVolumeOperations)
+        db = mock.CreateMock(db_api)
+        drv.nfs_ops = ops
+        drv.db = db
+
+        mock.StubOutWithMock(driver, 'FLAGS')
+        driver.FLAGS.xenapi_nfs_server = server
+        driver.FLAGS.xenapi_nfs_serverpath = serverpath
+
+        return mock, drv
+
+    def test_create_snapshot(self):
+        mock, drv = self._setup_for_snapshots('server', 'serverpath')
+
+        snapshot = dict(
+            volume_id="volume-id",
+            display_name="snapshot-name",
+            display_description="snapshot-desc",
+            volume=dict(provider_location="sr-uuid/vdi-uuid"))
+
+        drv.nfs_ops.copy_volume(
+            "server", "serverpath", "sr-uuid", "vdi-uuid",
+            "snapshot-name", "snapshot-desc"
+        ).AndReturn(dict(sr_uuid="copied-sr", vdi_uuid="copied-vdi"))
+
+        mock.ReplayAll()
+        result = drv.create_snapshot(snapshot)
+        mock.VerifyAll()
+        self.assertEquals(
+            dict(provider_location="copied-sr/copied-vdi"),
+            result)
+
+    def test_create_volume_from_snapshot(self):
+        mock, drv = self._setup_for_snapshots('server', 'serverpath')
+
+        snapshot = dict(
+            provider_location='src-sr-uuid/src-vdi-uuid')
+        volume = dict(
+            display_name='tgt-name', name_description='tgt-desc')
+
+        drv.nfs_ops.copy_volume(
+            "server", "serverpath", "src-sr-uuid", "src-vdi-uuid",
+            "tgt-name", "tgt-desc"
+        ).AndReturn(dict(sr_uuid="copied-sr", vdi_uuid="copied-vdi"))
+
+        mock.ReplayAll()
+        result = drv.create_volume_from_snapshot(volume, snapshot)
+        mock.VerifyAll()
+
+        self.assertEquals(
+            dict(provider_location='copied-sr/copied-vdi'), result)
+
+    def test_delete_snapshot(self):
+        mock, drv = self._setup_for_snapshots('server', 'serverpath')
+
+        snapshot = dict(
+            provider_location='src-sr-uuid/src-vdi-uuid')
+
+        drv.nfs_ops.delete_volume(
+            "server", "serverpath", "src-sr-uuid", "src-vdi-uuid")
+
+        mock.ReplayAll()
+        drv.delete_snapshot(snapshot)
+        mock.VerifyAll()

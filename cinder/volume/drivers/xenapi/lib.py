@@ -135,6 +135,9 @@ class VdiOperations(OperationsBase):
     def destroy(self, vdi_ref):
         self.call_xenapi('VDI.destroy', vdi_ref)
 
+    def copy(self, vdi_ref, sr_ref):
+        return self.call_xenapi('VDI.copy', vdi_ref, sr_ref)
+
 
 class HostOperations(OperationsBase):
     def get_record(self, host_ref):
@@ -255,6 +258,9 @@ class NFSOperationsMixIn(CompoundOperations):
         vdi_ref = self.VDI.get_by_uuid(vdi_uuid)
         return dict(sr_ref=sr_ref, vdi_ref=vdi_ref)
 
+    def copy_vdi_to_sr(self, vdi_ref, sr_ref):
+        return self.VDI.copy(vdi_ref, sr_ref)
+
 
 class ContextAwareSession(XenAPISession):
     def __enter__(self):
@@ -326,3 +332,26 @@ class NFSBasedVolumeOperations(object):
             vdi_rec = session.VDI.get_record(vdi_ref)
             sr_ref = vdi_rec['SR']
             session.unplug_pbds_and_forget_sr(sr_ref)
+
+    def copy_volume(self, server, serverpath, sr_uuid, vdi_uuid,
+                    name=None, description=None):
+        with self._session_factory.get_session() as session:
+            src_refs = session.connect_volume(
+                server, serverpath, sr_uuid, vdi_uuid)
+            try:
+                host_ref = session.get_this_host()
+
+                with session.new_sr_on_nfs(host_ref, server, serverpath,
+                                           name, description) as target_sr_ref:
+                    target_vdi_ref = session.copy_vdi_to_sr(
+                        src_refs['vdi_ref'], target_sr_ref)
+
+                    dst_refs = dict(
+                        sr_uuid=session.SR.get_uuid(target_sr_ref),
+                        vdi_uuid=session.VDI.get_uuid(target_vdi_ref)
+                    )
+
+            finally:
+                session.unplug_pbds_and_forget_sr(src_refs['sr_ref'])
+
+            return dst_refs
