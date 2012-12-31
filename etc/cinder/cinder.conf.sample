@@ -736,16 +736,7 @@
 # sf_emulate_512=true
 #### (BoolOpt) Set 512 byte emulation on volume creation;
 
-# sf_mvip=
-#### (StrOpt) IP address of SolidFire MVIP
-
-# sf_login=admin
-#### (StrOpt) Username for SF Cluster Admin
-
-# sf_password=
-#### (StrOpt) Password for SF Cluster Admin
-
-# sf_allow_tenant_qos=true
+# sf_allow_tenant_qos=false
 #### (BoolOpt) Allow tenants to specify QOS on create
 
 
