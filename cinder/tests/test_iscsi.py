@@ -56,7 +56,7 @@ class TargetAdminTestCase(object):
         return "", None
 
     def clear_cmds(self):
-        cmds = []
+        self.cmds = []
 
     def verify_cmds(self, cmds):
         self.assertEqual(len(cmds), len(self.cmds))
