@@ -25,6 +25,7 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import flags
 from cinder.openstack.common import log as logging
+from xml.dom import minidom
 
 
 LOG = logging.getLogger(__name__)
