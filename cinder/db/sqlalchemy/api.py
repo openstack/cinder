@@ -29,6 +29,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql import func
 
+from cinder.common import sqlalchemyutils
 from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder.db.sqlalchemy.session import get_session
@@ -1022,8 +1023,19 @@ def volume_get(context, volume_id, session=None):
 
 
 @require_admin_context
-def volume_get_all(context):
-    return _volume_get_query(context).all()
+def volume_get_all(context, marker, limit, sort_key, sort_dir):
+    query = _volume_get_query(context)
+
+    marker_volume = None
+    if marker is not None:
+        marker_volume = volume_get(context, marker)
+
+    query = sqlalchemyutils.paginate_query(query, models.Volume, limit,
+                                           [sort_key, 'created_at', 'id'],
+                                           marker=marker_volume,
+                                           sort_dir=sort_dir)
+
+    return query.all()
 
 
 @require_admin_context
@@ -1046,9 +1058,21 @@ def volume_get_all_by_instance_uuid(context, instance_uuid):
 
 
 @require_context
-def volume_get_all_by_project(context, project_id):
+def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
+                              sort_dir):
     authorize_project_context(context, project_id)
-    return _volume_get_query(context).filter_by(project_id=project_id).all()
+    query = _volume_get_query(context).filter_by(project_id=project_id)
+
+    marker_volume = None
+    if marker is not None:
+        marker_volume = volume_get(context, marker)
+
+    query = sqlalchemyutils.paginate_query(query, models.Volume, limit,
+                                           [sort_key, 'created_at', 'id'],
+                                           marker=marker_volume,
+                                           sort_dir=sort_dir)
+
+    return query.all()
 
 
 @require_admin_context

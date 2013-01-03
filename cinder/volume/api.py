@@ -23,6 +23,7 @@ Handles all requests relating to volumes.
 import functools
 
 from cinder.db import base
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import flags
 from cinder.image import glance
@@ -267,21 +268,23 @@ class API(base.Base):
         check_policy(context, 'get', volume)
         return volume
 
-    def get_all(self, context, search_opts=None):
+    def get_all(self, context, marker=None, limit=None, sort_key='created_at',
+                sort_dir='desc', filters={}):
         check_policy(context, 'get_all')
 
-        if search_opts is None:
-            search_opts = {}
-
-        if (context.is_admin and 'all_tenants' in search_opts):
+        if (context.is_admin and 'all_tenants' in filters):
             # Need to remove all_tenants to pass the filtering below.
-            del search_opts['all_tenants']
-            volumes = self.db.volume_get_all(context)
+            del filters['all_tenants']
+            volumes = self.db.volume_get_all(context, marker, limit, sort_key,
+                                             sort_dir)
         else:
             volumes = self.db.volume_get_all_by_project(context,
-                                                        context.project_id)
-        if search_opts:
-            LOG.debug(_("Searching by: %s") % str(search_opts))
+                                                        context.project_id,
+                                                        marker, limit,
+                                                        sort_key, sort_dir)
+
+        if filters:
+            LOG.debug(_("Searching by: %s") % str(filters))
 
             def _check_metadata_match(volume, searchdict):
                 volume_metadata = {}
@@ -301,7 +304,7 @@ class API(base.Base):
             not_found = object()
             for volume in volumes:
                 # go over all filters in the list
-                for opt, values in search_opts.iteritems():
+                for opt, values in filters.iteritems():
                     try:
                         filter_func = filter_mapping[opt]
                     except KeyError:
@@ -312,6 +315,7 @@ class API(base.Base):
                 else:  # did not break out loop
                     result.append(volume)  # volume matches all filters
             volumes = result
+
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
