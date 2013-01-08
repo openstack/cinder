@@ -46,6 +46,9 @@ class SheepdogDriver(driver.VolumeDriver):
             exception_message = _("Sheepdog is not working")
             raise exception.VolumeBackendAPIException(data=exception_message)
 
+    def create_cloned_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
     def create_volume(self, volume):
         """Creates a sheepdog volume"""
         self._try_execute('qemu-img', 'create',

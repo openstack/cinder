@@ -88,7 +88,13 @@ class API(base.Base):
 
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
-               availability_zone=None):
+               availability_zone=None, source_volume=None):
+
+        if ((snapshot is not None) and (source_volume is not None)):
+            msg = (_("May specify either snapshot, "
+                     "or src volume but not both!"))
+            raise exception.InvalidInput(reason=msg)
+
         check_policy(context, 'create')
         if snapshot is not None:
             if snapshot['status'] != "available":
@@ -100,6 +106,21 @@ class API(base.Base):
             snapshot_id = snapshot['id']
         else:
             snapshot_id = None
+
+        if source_volume is not None:
+            if source_volume['status'] == "error":
+                msg = _("Unable to clone volumes that are in an error state")
+                raise exception.InvalidSourceVolume(reason=msg)
+            if not size:
+                size = source_volume['size']
+            else:
+                if size < source_volume['size']:
+                    msg = _("Clones currently must be "
+                            ">= original volume size.")
+                    raise exception.InvalidInput(reason=msg)
+            source_volid = source_volume['id']
+        else:
+            source_volid = None
 
         def as_int(s):
             try:
@@ -115,7 +136,7 @@ class API(base.Base):
                    % size)
             raise exception.InvalidInput(reason=msg)
 
-        if image_id:
+        if (image_id and not (source_volume or snapshot)):
             # check image existence
             image_meta = self.image_service.show(context, image_id)
             image_size_in_gb = (int(image_meta['size']) + GB - 1) / GB
@@ -152,10 +173,13 @@ class API(base.Base):
         if availability_zone is None:
             availability_zone = FLAGS.storage_availability_zone
 
-        if not volume_type:
+        if not volume_type and not source_volume:
             volume_type = volume_types.get_default_volume_type()
 
-        volume_type_id = volume_type.get('id')
+        if not volume_type and source_volume:
+            volume_type_id = source_volume['volume_type_id']
+        else:
+            volume_type_id = volume_type.get('id')
 
         options = {'size': size,
                    'user_id': context.user_id,
@@ -167,7 +191,8 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'volume_type_id': volume_type_id,
-                   'metadata': metadata, }
+                   'metadata': metadata,
+                   'source_volid': source_volid}
 
         try:
             volume = self.db.volume_create(context, options)
@@ -183,7 +208,8 @@ class API(base.Base):
                         'volume_type': volume_type,
                         'volume_id': volume['id'],
                         'snapshot_id': volume['snapshot_id'],
-                        'image_id': image_id}
+                        'image_id': image_id,
+                        'source_volid': volume['source_volid']}
 
         filter_properties = {}
 
@@ -197,16 +223,18 @@ class API(base.Base):
         # If snapshot_id is set, make the call create volume directly to
         # the volume host where the snapshot resides instead of passing it
         # through the scheduler. So snapshot can be copy to new volume.
+
+        source_volid = request_spec['source_volid']
         volume_id = request_spec['volume_id']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
 
         if snapshot_id and FLAGS.snapshot_same_host:
             snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-            src_volume_ref = self.db.volume_get(context,
-                                                snapshot_ref['volume_id'])
+            source_volume_ref = self.db.volume_get(context,
+                                                   snapshot_ref['volume_id'])
             now = timeutils.utcnow()
-            values = {'host': src_volume_ref['host'], 'scheduled_at': now}
+            values = {'host': source_volume_ref['host'], 'scheduled_at': now}
             volume_ref = self.db.volume_update(context, volume_id, values)
 
             # bypass scheduler and send request directly to volume
@@ -215,6 +243,20 @@ class API(base.Base):
                                              volume_ref['host'],
                                              snapshot_id,
                                              image_id)
+        elif source_volid:
+            source_volume_ref = self.db.volume_get(context,
+                                                   source_volid)
+            now = timeutils.utcnow()
+            values = {'host': source_volume_ref['host'], 'scheduled_at': now}
+            volume_ref = self.db.volume_update(context, volume_id, values)
+
+            # bypass scheduler and send request directly to volume
+            self.volume_rpcapi.create_volume(context,
+                                             volume_ref,
+                                             volume_ref['host'],
+                                             snapshot_id,
+                                             image_id,
+                                             source_volid)
         else:
             self.scheduler_rpcapi.create_volume(
                 context,
@@ -321,6 +363,11 @@ class API(base.Base):
     def get_snapshot(self, context, snapshot_id):
         check_policy(context, 'get_snapshot')
         rv = self.db.snapshot_get(context, snapshot_id)
+        return dict(rv.iteritems())
+
+    def get_volume(self, context, volume_id):
+        check_policy(context, 'get_volume')
+        rv = self.db.volume_get(context, volume_id)
         return dict(rv.iteritems())
 
     def get_all_snapshots(self, context, search_opts=None):

@@ -243,6 +243,7 @@ class VolumeApiTest(test.TestCase):
                 ],
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
+                'source_volid': None,
                 'metadata': {},
                 'id': '1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -282,6 +283,7 @@ class VolumeApiTest(test.TestCase):
             }],
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
+            'source_volid': None,
             'metadata': {"qos_max_iops": 2000},
             'id': '1',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -373,6 +375,7 @@ class VolumeApiTest(test.TestCase):
                     ],
                     'volume_type': 'vol_type_name',
                     'snapshot_id': None,
+                    'source_volid': None,
                     'metadata': {},
                     'id': '1',
                     'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -556,6 +559,7 @@ class VolumeApiTest(test.TestCase):
                 ],
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
+                'source_volid': None,
                 'metadata': {},
                 'id': '1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -591,6 +595,7 @@ class VolumeApiTest(test.TestCase):
                 'attachments': [],
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
+                'source_volid': None,
                 'metadata': {},
                 'id': '1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -667,7 +672,7 @@ class VolumeSerializerTest(test.TestCase):
 
         for attr in ('id', 'status', 'size', 'availability_zone', 'created_at',
                      'name', 'display_description', 'volume_type',
-                     'snapshot_id'):
+                     'snapshot_id', 'source_volid'):
             self.assertEqual(str(vol[attr]), tree.get(attr))
 
         for child in tree:
@@ -706,6 +711,7 @@ class VolumeSerializerTest(test.TestCase):
             display_description='vol_desc',
             volume_type='vol_type',
             snapshot_id='snap_id',
+            source_volid='source_volid',
             metadata=dict(
                 foo='bar',
                 baz='quux',
@@ -739,6 +745,7 @@ class VolumeSerializerTest(test.TestCase):
                 display_description='vol1_desc',
                 volume_type='vol1_type',
                 snapshot_id='snap1_id',
+                source_volid=None,
                 metadata=dict(foo='vol1_foo',
                               bar='vol1_bar', ), ),
             dict(
@@ -755,6 +762,7 @@ class VolumeSerializerTest(test.TestCase):
                 display_description='vol2_desc',
                 volume_type='vol2_type',
                 snapshot_id='snap2_id',
+                source_volid=None,
                 metadata=dict(foo='vol2_foo',
                               bar='vol2_bar', ), )]
         text = serializer.serialize(dict(volumes=raw_volumes))

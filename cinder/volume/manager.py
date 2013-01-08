@@ -103,7 +103,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.0'
+    RPC_API_VERSION = '1.1'
 
     def __init__(self, volume_driver=None, *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
@@ -145,7 +145,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.delete_volume(ctxt, volume['id'])
 
     def create_volume(self, context, volume_id, snapshot_id=None,
-                      image_id=None):
+                      image_id=None, source_volid=None):
         """Creates and exports the volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
@@ -165,13 +165,17 @@ class VolumeManager(manager.SchedulerDependentManager):
             vol_size = volume_ref['size']
             LOG.debug(_("volume %(vol_name)s: creating lv of"
                         " size %(vol_size)sG") % locals())
-            if snapshot_id is None and image_id is None:
+            if all(x is None for x in(snapshot_id, image_id, source_volid)):
                 model_update = self.driver.create_volume(volume_ref)
             elif snapshot_id is not None:
                 snapshot_ref = self.db.snapshot_get(context, snapshot_id)
                 model_update = self.driver.create_volume_from_snapshot(
                     volume_ref,
                     snapshot_ref)
+            elif source_volid is not None:
+                src_vref = self.db.volume_get(context, source_volid)
+                model_update = self.driver.create_cloned_volume(volume_ref,
+                                                                src_vref)
             else:
                 # create the volume from an image
                 image_service, image_id = \
@@ -394,7 +398,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Check for https://bugs.launchpad.net/cinder/+bug/1065702
         volume_ref = self.db.volume_get(context, volume_id)
         if (volume_ref['provider_location'] and
-            volume_ref['name'] not in volume_ref['provider_location']):
+                volume_ref['name'] not in volume_ref['provider_location']):
             self.driver.ensure_export(context, volume_ref)
 
     def _copy_image_to_volume(self, context, volume, image_id):

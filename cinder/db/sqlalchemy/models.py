@@ -156,6 +156,7 @@ class Volume(BASE, CinderBase):
     provider_auth = Column(String(255))
 
     volume_type_id = Column(String(36))
+    source_volid = Column(String(36))
 
 
 class VolumeMetadata(BASE, CinderBase):

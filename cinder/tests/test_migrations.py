@@ -333,3 +333,20 @@ class TestMigrations(test.TestCase):
                                        sqlalchemy.types.VARCHAR))
 
             self.assertTrue(extra_specs.c.volume_type_id.foreign_keys)
+
+    def test_migration_005(self):
+        """Test that adding source_volid column works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 4)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 5)
+            volumes = sqlalchemy.Table('volumes',
+                                       metadata,
+                                       autoload=True)
+            self.assertTrue(isinstance(volumes.c.source_volid.type,
+                                       sqlalchemy.types.VARCHAR))
