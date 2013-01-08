@@ -130,7 +130,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.nms.zvol.destroy(self._get_zvol_name(volume['name']), '')
         except nexenta.NexentaException as exc:
             if "zvol has children" in exc.args[1]:
-                raise exception.VolumeIsBusy
+                raise exception.VolumeIsBusy(volume_name=volume['name'])
             else:
                 raise
 
@@ -166,7 +166,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 '')
         except nexenta.NexentaException as exc:
             if "snapshot has dependent clones" in exc.args[1]:
-                raise exception.SnapshotIsBusy
+                raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
             else:
                 raise
 

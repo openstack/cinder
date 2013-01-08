@@ -176,15 +176,15 @@ class RBDDriver(driver.VolumeDriver):
     def _parse_location(self, location):
         prefix = 'rbd://'
         if not location.startswith(prefix):
-            reason = _('Image %s is not stored in rbd') % location
-            raise exception.ImageUnacceptable(reason)
+            reason = _('Not stored in rbd')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
         pieces = map(urllib.unquote, location[len(prefix):].split('/'))
         if any(map(lambda p: p == '', pieces)):
-            reason = _('Image %s has blank components') % location
-            raise exception.ImageUnacceptable(reason)
+            reason = _('Blank components')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
         if len(pieces) != 4:
-            reason = _('Image %s is not an rbd snapshot') % location
-            raise exception.ImageUnacceptable(reason)
+            reason = _('Not an rbd snapshot')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
         return pieces
 
     def _get_fsid(self):

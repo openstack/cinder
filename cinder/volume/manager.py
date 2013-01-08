@@ -362,7 +362,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # TODO(vish): refactor this into a more general "reserve"
             # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
             if not uuidutils.is_uuid_like(instance_uuid):
-                raise exception.InvalidUUID(instance_uuid)
+                raise exception.InvalidUUID(uuid=instance_uuid)
 
             try:
                 self.driver.attach_volume(context,

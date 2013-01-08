@@ -914,7 +914,7 @@ def volume_allocate_iscsi_target(context, volume_id, host):
 @require_admin_context
 def volume_attached(context, volume_id, instance_uuid, mountpoint):
     if not uuidutils.is_uuid_like(instance_uuid):
-        raise exception.InvalidUUID(instance_uuid)
+        raise exception.InvalidUUID(uuid=instance_uuid)
 
     session = get_session()
     with session.begin():
