@@ -137,6 +137,7 @@ class TestCase(unittest.TestCase):
         self.stubs = stubout.StubOutForTesting()
         self.injected = []
         self._services = []
+        FLAGS.set_override('fatal_exception_format_errors', True)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
