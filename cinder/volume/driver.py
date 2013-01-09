@@ -547,9 +547,9 @@ class ISCSIDriver(VolumeDriver):
             location = self._do_iscsi_discovery(volume)
 
             if not location:
-                raise exception.InvalidVolume(_("Could not find iSCSI export "
-                                                " for volume %s") %
-                                              (volume['name']))
+                msg = (_("Could not find iSCSI export for volume %s") %
+                        (volume['name']))
+                raise exception.InvalidVolume(reason=msg)
 
             LOG.debug(_("ISCSI Discovery: Found %s") % (location))
             properties['target_discovered'] = True
