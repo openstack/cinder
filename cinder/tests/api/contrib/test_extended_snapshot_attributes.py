@@ -103,7 +103,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
     def test_no_instance_passthrough_404(self):
 
         def fake_snapshot_get(*args, **kwargs):
-            raise exception.InstanceNotFound()
+            raise exception.InstanceNotFound(instance_id='fake')
 
         self.stubs.Set(volume.api.API, 'get_snapshot', fake_snapshot_get)
         url = '/v2/fake/snapshots/70f6db34-de8d-4fbd-aafb-4065bdfa6115'

@@ -203,7 +203,8 @@ class VolumeTestCase(test.TestCase):
 
         self.mox.StubOutWithMock(self.volume.driver, 'delete_volume')
         self.volume.driver.delete_volume(
-            mox.IgnoreArg()).AndRaise(exception.VolumeIsBusy)
+            mox.IgnoreArg()).AndRaise(exception.VolumeIsBusy(
+                                      volume_name='fake'))
         self.mox.ReplayAll()
         res = self.volume.delete_volume(self.context, volume_id)
         self.assertEqual(True, res)
@@ -472,7 +473,8 @@ class VolumeTestCase(test.TestCase):
 
         self.mox.StubOutWithMock(self.volume.driver, 'delete_snapshot')
         self.volume.driver.delete_snapshot(
-            mox.IgnoreArg()).AndRaise(exception.SnapshotIsBusy)
+            mox.IgnoreArg()).AndRaise(
+                exception.SnapshotIsBusy(snapshot_name='fake'))
         self.mox.ReplayAll()
         self.volume.delete_snapshot(self.context, snapshot_id)
         snapshot_ref = db.snapshot_get(self.context, snapshot_id)

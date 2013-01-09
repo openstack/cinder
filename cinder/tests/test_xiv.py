@@ -57,11 +57,11 @@ class XIVFakeProxyDriver(object):
             raise self.exception.NotAuthorized()
 
         if self.xiv_info['xiv_address'] != FLAGS.san_ip:
-            raise self.exception.HostNotFound()
+            raise self.exception.HostNotFound(host='fake')
 
     def create_volume(self, volume):
         if volume['size'] > 100:
-            raise self.exception.VolumeBackendAPIException()
+            raise self.exception.VolumeBackendAPIException(data='blah')
         self.volumes[volume['name']] = volume
 
     def volume_exists(self, volume):
@@ -73,7 +73,7 @@ class XIVFakeProxyDriver(object):
 
     def initialize_connection(self, volume, connector):
         if not self.volume_exists(volume):
-            raise self.exception.VolumeNotFound()
+            raise self.exception.VolumeNotFound(volume_id=volume['id'])
         lun_id = volume['id']
 
         self.volumes[volume['name']]['attached'] = connector
@@ -94,14 +94,14 @@ class XIVFakeProxyDriver(object):
 
     def terminate_connection(self, volume, connector):
         if not self.volume_exists(volume):
-            raise self.exception.VolumeNotFound()
+            raise self.exception.VolumeNotFound(volume_id=volume['id'])
         if not self.is_volume_attached(volume, connector):
-            raise self.exception.VolumeNotFoundForInstance()
+            raise self.exception.VolumeNotFoundForInstance(instance_id='fake')
         del self.volumes[volume['name']]['attached']
 
     def is_volume_attached(self, volume, connector):
         if not self.volume_exists(volume):
-            raise self.exception.VolumeNotFound()
+            raise self.exception.VolumeNotFound(volume_id=volume['id'])
 
         return (self.volumes[volume['name']].get('attached', None)
                 == connector)

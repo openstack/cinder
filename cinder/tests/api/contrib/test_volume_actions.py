@@ -187,7 +187,7 @@ class VolumeImageActionsTest(test.TestCase):
     def test_copy_volume_to_image_invalidvolume(self):
         def stub_upload_volume_to_image_service_raise(self, context, volume,
                                                       metadata, force):
-            raise exception.InvalidVolume
+            raise exception.InvalidVolume(reason='blah')
         self.stubs.Set(volume_api.API,
                        "copy_volume_to_image",
                        stub_upload_volume_to_image_service_raise)
