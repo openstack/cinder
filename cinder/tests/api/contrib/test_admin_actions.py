@@ -1,3 +1,5 @@
+import shutil
+import tempfile
 import webob
 
 from cinder import context
@@ -21,9 +23,14 @@ def app():
 class AdminActionsTest(test.TestCase):
 
     def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
         super(AdminActionsTest, self).setUp()
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+        self.flags(lock_path=self.tempdir)
         self.volume_api = volume_api.API()
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
 
     def test_reset_status_as_admin(self):
         # admin context
