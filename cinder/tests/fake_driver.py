@@ -14,12 +14,13 @@
 
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
+from cinder.volume.drivers import lvm
 
 
 LOG = logging.getLogger(__name__)
 
 
-class FakeISCSIDriver(driver.ISCSIDriver):
+class FakeISCSIDriver(lvm.LVMISCSIDriver):
     """Logs calls instead of executing."""
     def __init__(self, *args, **kwargs):
         super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,

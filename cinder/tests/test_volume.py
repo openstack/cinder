@@ -873,7 +873,7 @@ class DriverTestCase(test.TestCase):
 
 class VolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""
-    driver_name = "cinder.volume.driver.VolumeDriver"
+    driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
 
     def test_delete_busy_volume(self):
         """Test deleting a busy volume."""
@@ -895,7 +895,7 @@ class VolumeDriverTestCase(DriverTestCase):
 
 class ISCSITestCase(DriverTestCase):
     """Test Case for ISCSIDriver"""
-    driver_name = "cinder.volume.driver.ISCSIDriver"
+    driver_name = "cinder.volume.drivers.lvm.LVMISCSIDriver"
 
     def _attach_volume(self):
         """Attach volumes to an instance. """

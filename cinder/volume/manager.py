@@ -30,7 +30,7 @@ intact.
                   :class:`manager.Manager` (default:
                   :class:`cinder.volume.manager.Manager`).
 :volume_driver:  Used by :class:`Manager`.  Defaults to
-                 :class:`cinder.volume.driver.ISCSIDriver`.
+                 :class:`cinder.volume.drivers.lvm.LVMISCSIDriver`.
 :volume_group:  Name of the group that will contain exported volumes (default:
                 `cinder-volumes`)
 :num_shell_tries:  Number of times to attempt to run commands (default: 3)
@@ -59,7 +59,7 @@ QUOTAS = quota.QUOTAS
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
-               default='cinder.volume.driver.ISCSIDriver',
+               default='cinder.volume.drivers.lvm.LVMISCSIDriver',
                help='Driver to use for volume creation'),
 ]
 
@@ -95,7 +95,9 @@ MAPPING = {
     'cinder.volume.xiv.XIVDriver':
     'cinder.volume.drivers.xiv.XIVDriver',
     'cinder.volume.zadara.ZadaraVPSAISCSIDriver':
-    'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver'}
+    'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver',
+    'cinder.volume.driver.ISCSIDriver':
+    'cinder.volume.drivers.lvm.LVMISCSIDriver'}
 
 
 class VolumeManager(manager.SchedulerDependentManager):

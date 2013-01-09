@@ -20,7 +20,7 @@ from cinder import flags
 
 FLAGS = flags.FLAGS
 
-flags.DECLARE('iscsi_num_targets', 'cinder.volume.driver')
+flags.DECLARE('iscsi_num_targets', 'cinder.volume.drivers.lvm')
 flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
 flags.DECLARE('xiv_proxy', 'cinder.volume.drivers.xiv')

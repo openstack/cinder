@@ -567,7 +567,7 @@
 
 ######## defined in cinder.volume.manager ########
 
-# volume_driver=cinder.volume.driver.ISCSIDriver
+# volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 #### (StrOpt) Driver to use for volume creation
 
 # volume_force_update_capabilities=false
