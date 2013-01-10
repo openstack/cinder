@@ -19,6 +19,7 @@
 
 """Utility methods for working with WSGI servers."""
 
+import socket
 import sys
 
 import eventlet
@@ -58,8 +59,8 @@ class Server(object):
         """
         self.name = name
         self.app = app
-        self.host = host or "0.0.0.0"
-        self.port = port or 0
+        self._host = host or "0.0.0.0"
+        self._port = port or 0
         self._server = None
         self._socket = None
         self._protocol = protocol
@@ -90,10 +91,35 @@ class Server(object):
         if backlog < 1:
             raise exception.InvalidInput(
                 reason='The backlog must be more than 1')
-        self._socket = eventlet.listen((self.host, self.port), backlog=backlog)
+
+        bind_addr = (self._host, self._port)
+        # TODO(dims): eventlet's green dns/socket module does not actually
+        # support IPv6 in getaddrinfo(). We need to get around this in the
+        # future or monitor upstream for a fix
+        try:
+            info = socket.getaddrinfo(bind_addr[0],
+                                      bind_addr[1],
+                                      socket.AF_UNSPEC,
+                                      socket.SOCK_STREAM)[0]
+            family = info[0]
+            bind_addr = info[-1]
+        except Exception:
+            family = socket.AF_INET
+
+        self._socket = eventlet.listen(bind_addr,
+                                       family,
+                                       backlog=backlog)
         self._server = eventlet.spawn(self._start)
-        (self.host, self.port) = self._socket.getsockname()
-        LOG.info(_("Started %(name)s on %(host)s:%(port)s") % self.__dict__)
+        (self._host, self._port) = self._socket.getsockname()[0:2]
+        LOG.info(_("Started %(name)s on %(_host)s:%(_port)s") % self.__dict__)
+
+    @property
+    def host(self):
+        return self._socket.getsockname()[0] if self._socket else self._host
+
+    @property
+    def port(self):
+        return self._socket.getsockname()[1] if self._socket else self._port
 
     def stop(self):
         """Stop this server.
