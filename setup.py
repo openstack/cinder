@@ -23,23 +23,6 @@ from cinder import version
 
 requires = common_setup.parse_requirements()
 
-filters = [
-    "AvailabilityZoneFilter = "
-    "cinder.openstack.common.scheduler.filters."
-    "availability_zone_filter:AvailabilityZoneFilter",
-    "CapabilitiesFilter = "
-    "cinder.openstack.common.scheduler.filters."
-    "capabilities_filter:CapabilitiesFilter",
-    "CapacityFilter = "
-    "cinder.scheduler.filters.capacity_filter:CapacityFilter",
-    "JsonFilter = "
-    "cinder.openstack.common.scheduler.filters.json_filter:JsonFilter",
-]
-
-weights = [
-    "CapacityWeigher = cinder.scheduler.weights.capacity:CapacityWeigher",
-]
-
 setuptools.setup(
     name='cinder',
     version=version.canonical_version_string(),
@@ -60,10 +43,6 @@ setuptools.setup(
     cmdclass=common_setup.get_cmdclass(),
     packages=setuptools.find_packages(exclude=['bin', 'smoketests']),
     install_requires=requires,
-    entry_points={
-        'cinder.scheduler.filters': filters,
-        'cinder.scheduler.weights': weights,
-    },
     include_package_data=True,
     test_suite='nose.collector',
     setup_requires=['setuptools_git>=0.4'],

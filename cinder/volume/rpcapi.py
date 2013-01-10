@@ -34,7 +34,6 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
 
         1.0 - Initial version.
         1.1 - Adds clone volume option to create_volume.
-        1.2 - Add publish_service_capabilities() method.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -115,7 +114,3 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                          topic=rpc.queue_get_for(ctxt,
                                                  self.topic,
                                                  volume['host']))
-
-    def publish_service_capabilities(self, ctxt):
-        self.fanout_cast(ctxt, self.make_msg('publish_service_capabilities'),
-                         version='1.2')
