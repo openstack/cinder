@@ -19,15 +19,23 @@
 """Unit tests for `cinder.wsgi`."""
 
 import os.path
+import ssl
 import tempfile
-
 import unittest
+import urllib2
+import webob
 import webob.dec
 
 from cinder.api.middleware import fault
 from cinder import exception
+from cinder.openstack.common import cfg
 from cinder import test
 import cinder.wsgi
+
+CONF = cfg.CONF
+
+TEST_VAR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                               'var'))
 
 
 class TestLoaderNothingExists(test.TestCase):
@@ -102,6 +110,68 @@ class TestWSGIServer(unittest.TestCase):
         self.assertNotEqual(0, server.port)
         server.stop()
         server.wait()
+
+    def test_app(self):
+        greetings = 'Hello, World!!!'
+
+        def hello_world(env, start_response):
+            if env['PATH_INFO'] != '/':
+                start_response('404 Not Found',
+                               [('Content-Type', 'text/plain')])
+                return ['Not Found\r\n']
+            start_response('200 OK', [('Content-Type', 'text/plain')])
+            return [greetings]
+
+        server = cinder.wsgi.Server("test_app", hello_world)
+        server.start()
+
+        response = urllib2.urlopen('http://127.0.0.1:%d/' % server.port)
+        self.assertEquals(greetings, response.read())
+
+        server.stop()
+
+    def test_app_using_ssl(self):
+        CONF.set_default("ssl_cert_file",
+                         os.path.join(TEST_VAR_DIR, 'certificate.crt'))
+        CONF.set_default("ssl_key_file",
+                         os.path.join(TEST_VAR_DIR, 'privatekey.key'))
+
+        greetings = 'Hello, World!!!'
+
+        @webob.dec.wsgify
+        def hello_world(req):
+            return greetings
+
+        server = cinder.wsgi.Server("test_app", hello_world)
+        server.start()
+
+        response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
+        self.assertEquals(greetings, response.read())
+
+        server.stop()
+
+    def test_app_using_ipv6_and_ssl(self):
+        CONF.set_default("ssl_cert_file",
+                         os.path.join(TEST_VAR_DIR, 'certificate.crt'))
+        CONF.set_default("ssl_key_file",
+                         os.path.join(TEST_VAR_DIR, 'privatekey.key'))
+
+        greetings = 'Hello, World!!!'
+
+        @webob.dec.wsgify
+        def hello_world(req):
+            return greetings
+
+        server = cinder.wsgi.Server("test_app",
+                                    hello_world,
+                                    host="::1",
+                                    port=0)
+        server.start()
+
+        response = urllib2.urlopen('https://[::1]:%d/' % server.port)
+        self.assertEquals(greetings, response.read())
+
+        server.stop()
 
 
 class ExceptionTest(test.TestCase):
