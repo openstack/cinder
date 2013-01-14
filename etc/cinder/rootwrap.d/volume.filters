@@ -54,3 +54,7 @@ truncate: CommandFilter, /usr/bin/truncate, root
 chmod: CommandFilter, /bin/chmod, root
 rm: CommandFilter, /bin/rm, root
 lvs: CommandFilter, /sbin/lvs, root
+
+# cinder/volume/scality.py
+mount: CommandFilter, /bin/mount, root
+dd: CommandFilter, /bin/dd, root
