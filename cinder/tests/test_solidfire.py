@@ -90,8 +90,26 @@ class SolidFireVolumeTestCase(test.TestCase):
                           'message': 'This is a fake error response'},
                 'id': 1}
 
+    def fake_set_qos_by_volume_type(self, type_id, ctxt):
+        return {'minIOPS': 500,
+                'maxIOPS': 1000,
+                'burstIOPS': 1000}
+
     def fake_volume_get(obj, key, default=None):
         return {'qos': 'fast'}
+
+    def test_create_with_qos_type(self):
+        self.stubs.Set(SolidFire, '_issue_api_request',
+                       self.fake_issue_api_request)
+        self.stubs.Set(SolidFire, '_set_qos_by_volume_type',
+                       self.fake_set_qos_by_volume_type)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': 'fast'}
+        sfv = SolidFire()
+        model_update = sfv.create_volume(testvol)
 
     def test_create_volume(self):
         self.stubs.Set(SolidFire, '_issue_api_request',
@@ -99,7 +117,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': None}
         sfv = SolidFire()
         model_update = sfv.create_volume(testvol)
 
@@ -113,7 +132,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'metadata': [preset_qos]}
+                   'metadata': [preset_qos],
+                   'volume_type_id': None}
 
         sfv = SolidFire()
         model_update = sfv.create_volume(testvol)
