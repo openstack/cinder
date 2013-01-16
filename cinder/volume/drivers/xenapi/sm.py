@@ -144,5 +144,5 @@ class XenAPINFSDriver(driver.VolumeDriver):
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         raise NotImplementedError()
 
-    def copy_volume_to_image(self, context, volume, image_service, image_id):
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
         raise NotImplementedError()

@@ -237,12 +237,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  image_id,
                                  self.local_path(volume))
 
-    def copy_volume_to_image(self, context, volume, image_service, image_id):
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        volume_path = self.local_path(volume)
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path) as volume_file:
-                image_service.update(context, image_id, {}, volume_file)
+        image_utils.upload_volume(context,
+                                  image_service,
+                                  image_meta,
+                                  self.local_path(volume))
 
     def clone_image(self, volume, image_location):
         return False

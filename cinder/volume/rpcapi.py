@@ -35,6 +35,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
         1.0 - Initial version.
         1.1 - Adds clone volume option to create_volume.
         1.2 - Add publish_service_capabilities() method.
+        1.3 - Pass all image metadata (not just ID) in copy_volume_to_image
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -91,13 +92,14 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                                                  self.topic,
                                                  volume['host']))
 
-    def copy_volume_to_image(self, ctxt, volume, image_id):
+    def copy_volume_to_image(self, ctxt, volume, image_meta):
         self.cast(ctxt, self.make_msg('copy_volume_to_image',
                                       volume_id=volume['id'],
-                                      image_id=image_id),
+                                      image_meta=image_meta),
                   topic=rpc.queue_get_for(ctxt,
                                           self.topic,
-                                          volume['host']))
+                                          volume['host']),
+                  version='1.3')
 
     def initialize_connection(self, ctxt, volume, connector):
         return self.call(ctxt, self.make_msg('initialize_connection',

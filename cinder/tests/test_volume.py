@@ -594,7 +594,11 @@ class VolumeTestCase(test.TestCase):
 
         self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
 
-        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
+        image_meta = {
+            'id': '70a599e0-31e7-49b7-b260-868f441e862b',
+            'container_format': 'bare',
+            'disk_format': 'raw'}
+
         # creating volume testdata
         volume_id = 1
         db.volume_create(self.context,
@@ -610,7 +614,7 @@ class VolumeTestCase(test.TestCase):
             # start test
             self.volume.copy_volume_to_image(self.context,
                                              volume_id,
-                                             image_id)
+                                             image_meta)
 
             volume = db.volume_get(self.context, volume_id)
             self.assertEqual(volume['status'], 'available')
@@ -628,8 +632,10 @@ class VolumeTestCase(test.TestCase):
 
         self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
 
-        #image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
-        image_id = 'a440c04b-79fa-479c-bed1-0b816eaec379'
+        image_meta = {
+            'id': 'a440c04b-79fa-479c-bed1-0b816eaec379',
+            'container_format': 'bare',
+            'disk_format': 'raw'}
         # creating volume testdata
         volume_id = 1
         db.volume_create(
@@ -646,7 +652,7 @@ class VolumeTestCase(test.TestCase):
             # start test
             self.volume.copy_volume_to_image(self.context,
                                              volume_id,
-                                             image_id)
+                                             image_meta)
 
             volume = db.volume_get(self.context, volume_id)
             self.assertEqual(volume['status'], 'in-use')
@@ -664,7 +670,10 @@ class VolumeTestCase(test.TestCase):
 
         self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
 
-        image_id = 'aaaaaaaa-0000-0000-0000-000000000000'
+        image_meta = {
+            'id': 'aaaaaaaa-0000-0000-0000-000000000000',
+            'container_format': 'bare',
+            'disk_format': 'raw'}
         # creating volume testdata
         volume_id = 1
         db.volume_create(self.context,
@@ -681,7 +690,7 @@ class VolumeTestCase(test.TestCase):
                               self.volume.copy_volume_to_image,
                               self.context,
                               volume_id,
-                              image_id)
+                              image_meta)
 
             volume = db.volume_get(self.context, volume_id)
             self.assertEqual(volume['status'], 'available')
@@ -698,7 +707,9 @@ class VolumeTestCase(test.TestCase):
                 pass
 
             def show(self, context, image_id):
-                return {'size': 2 * 1024 * 1024 * 1024}
+                return {'size': 2 * 1024 * 1024 * 1024,
+                        'disk_format': 'raw',
+                        'container_format': 'bare'}
 
         image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
 
@@ -722,7 +733,9 @@ class VolumeTestCase(test.TestCase):
                 pass
 
             def show(self, context, image_id):
-                return {'size': 2 * 1024 * 1024 * 1024 + 1}
+                return {'size': 2 * 1024 * 1024 * 1024 + 1,
+                        'disk_format': 'raw',
+                        'container_format': 'bare'}
 
         image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
 

@@ -103,7 +103,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.2'
+    RPC_API_VERSION = '1.3'
 
     def __init__(self, volume_driver=None, *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
@@ -234,7 +234,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                           volume_ref['id'],
                                                           key, value)
 
-            #copy the image onto the volume.
+            # Copy the image onto the volume.
             self._copy_image_to_volume(context, volume_ref, image_id)
         self._notify_about_volume_usage(context, volume_ref, "create.end")
         return volume_ref['id']
@@ -421,16 +421,21 @@ class VolumeManager(manager.SchedulerDependentManager):
                 payload['message'] = unicode(error)
                 self.db.volume_update(context, volume_id, {'status': 'error'})
 
-    def copy_volume_to_image(self, context, volume_id, image_id):
-        """Uploads the specified volume to Glance."""
-        payload = {'volume_id': volume_id, 'image_id': image_id}
+    def copy_volume_to_image(self, context, volume_id, image_meta):
+        """Uploads the specified volume to Glance.
+
+        image_meta is a dictionary containing the following keys:
+        'id', 'container_format', 'disk_format'
+
+        """
+        payload = {'volume_id': volume_id, 'image_id': image_meta['id']}
         try:
             volume = self.db.volume_get(context, volume_id)
             self.driver.ensure_export(context.elevated(), volume)
-            image_service, image_id = glance.get_remote_image_service(context,
-                                                                      image_id)
+            image_service, image_id = \
+                glance.get_remote_image_service(context, image_meta['id'])
             self.driver.copy_volume_to_image(context, volume, image_service,
-                                             image_id)
+                                             image_meta)
             LOG.debug(_("Uploaded volume %(volume_id)s to "
                         "image (%(image_id)s) successfully") % locals())
         except Exception, error:
