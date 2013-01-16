@@ -181,6 +181,7 @@ class API(base.Base):
         else:
             volume_type_id = volume_type.get('id')
 
+        self._check_metadata_properties(context, metadata)
         options = {'size': size,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -512,6 +513,24 @@ class API(base.Base):
         """Delete the given metadata item from a volume."""
         self.db.volume_metadata_delete(context, volume['id'], key)
 
+    def _check_metadata_properties(self, context, metadata=None):
+        if not metadata:
+            metadata = {}
+
+        for k, v in metadata.iteritems():
+            if len(k) == 0:
+                msg = _("Metadata property key blank")
+                LOG.warn(msg)
+                raise exception.InvalidVolumeMetadata(reason=msg)
+            if len(k) > 255:
+                msg = _("Metadata property key greater than 255 characters")
+                LOG.warn(msg)
+                raise exception.InvalidVolumeMetadataSize(reason=msg)
+            if len(v) > 255:
+                msg = _("Metadata property value greater than 255 characters")
+                LOG.warn(msg)
+                raise exception.InvalidVolumeMetadataSize(reason=msg)
+
     @wrap_check_policy
     def update_volume_metadata(self, context, volume, metadata, delete=False):
         """Updates or creates volume metadata.
@@ -520,13 +539,19 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
+        orig_meta = self.get_volume_metadata(context, volume)
         if delete:
             _metadata = metadata
         else:
-            _metadata = self.get_volume_metadata(context, volume['id'])
+            _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
+        self._check_metadata_properties(context, _metadata)
+
         self.db.volume_metadata_update(context, volume['id'], _metadata, True)
+
+        # TODO(jdg): Implement an RPC call for drivers that may use this info
+
         return _metadata
 
     def get_volume_metadata_value(self, volume, key):

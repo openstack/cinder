@@ -30,6 +30,7 @@ from cinder.api.v2 import limits
 from cinder.api.v2 import router
 from cinder.api import versions
 from cinder import context
+from cinder import exception as exc
 from cinder.openstack.common import timeutils
 from cinder import wsgi
 
@@ -95,6 +96,20 @@ def stub_out_rate_limiting(stubs):
 
     # stubs.Set(cinder.api.openstack.compute.limits.RateLimitingMiddleware,
     #     '__call__', fake_wsgi)
+
+
+def stub_out_key_pair_funcs(stubs, have_key_pair=True):
+    def key_pair(context, user_id):
+        return [dict(name='key', public_key='public_key')]
+
+    def one_key_pair(context, user_id, name):
+        if name == 'key':
+            return dict(name='key', public_key='public_key')
+        else:
+            raise exc.KeypairNotFound(user_id=user_id, name=name)
+
+    def no_key_pair(context, user_id):
+        return []
 
 
 class FakeToken(object):
