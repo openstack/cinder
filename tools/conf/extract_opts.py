@@ -100,7 +100,10 @@ def _list_opts(obj, name):
         return
     global OPTION_COUNT
     OPTION_COUNT += len(opts)
-    print '######## defined in %s ########\n' % name
+    print '#'
+    print '# Options defined in %s' % name
+    print '#'
+    print
     for opt in opts:
         _print_opt(opt)
     print
@@ -134,10 +137,14 @@ def _sanitize_default(s):
     return s
 
 
-def _wrap(msg, indent):
-    padding = ' ' * indent
-    prefix = "\n%s %s " % (OPTION_HELP_INDENT, padding)
-    return prefix.join(textwrap.wrap(msg, WORDWRAP_WIDTH))
+OPT_TYPES = {
+    'StrOpt': 'string value',
+    'BoolOpt': 'boolean value',
+    'IntOpt': 'integer value',
+    'FloatOpt': 'floating point value',
+    'ListOpt': 'list value',
+    'MultiStrOpt': 'multi valued',
+}
 
 
 def _print_opt(opt):
@@ -150,35 +157,35 @@ def _print_opt(opt):
     except (ValueError, AttributeError), err:
         sys.stderr.write("%s\n" % str(err))
         sys.exit(1)
+    opt_help += ' (' + OPT_TYPES[opt_type] + ')'
+    print '#', "\n# ".join(textwrap.wrap(opt_help, WORDWRAP_WIDTH))
     try:
         if opt_default is None:
-            print '# %s=<None>' % opt_name
+            print '#%s=<None>' % opt_name
         elif opt_type == STROPT:
             assert(isinstance(opt_default, basestring))
-            print '# %s=%s' % (opt_name, _sanitize_default(opt_default))
+            print '#%s=%s' % (opt_name, _sanitize_default(opt_default))
         elif opt_type == BOOLOPT:
             assert(isinstance(opt_default, bool))
-            print '# %s=%s' % (opt_name, str(opt_default).lower())
+            print '#%s=%s' % (opt_name, str(opt_default).lower())
         elif opt_type == INTOPT:
             assert(isinstance(opt_default, int) and
                    not isinstance(opt_default, bool))
-            print '# %s=%s' % (opt_name, opt_default)
+            print '#%s=%s' % (opt_name, opt_default)
         elif opt_type == FLOATOPT:
             assert(isinstance(opt_default, float))
-            print '# %s=%s' % (opt_name, opt_default)
+            print '#%s=%s' % (opt_name, opt_default)
         elif opt_type == LISTOPT:
             assert(isinstance(opt_default, list))
-            print '# %s=%s' % (opt_name, ','.join(opt_default))
+            print '#%s=%s' % (opt_name, ','.join(opt_default))
         elif opt_type == MULTISTROPT:
             assert(isinstance(opt_default, list))
             for default in opt_default:
-                print '# %s=%s' % (opt_name, default)
+                print '#%s=%s' % (opt_name, default)
+        print
     except Exception:
         sys.stderr.write('Error in option "%s"\n' % opt_name)
         sys.exit(1)
-    opt_type_tag = "(%s)" % opt_type
-    print OPTION_HELP_INDENT, opt_type_tag, _wrap(opt_help, len(opt_type_tag))
-    print
 
 
 if __name__ == '__main__':
