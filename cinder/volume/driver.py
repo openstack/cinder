@@ -26,7 +26,6 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import utils
 
 
@@ -42,7 +41,18 @@ volume_opts = [
     cfg.IntOpt('num_iscsi_scan_tries',
                default=3,
                help='number of times to rescan iSCSI target to find volume'),
-]
+    cfg.IntOpt('iscsi_num_targets',
+               default=100,
+               help='Number of iscsi target ids per host'),
+    cfg.StrOpt('iscsi_target_prefix',
+               default='iqn.2010-10.org.openstack:',
+               help='prefix for iscsi volumes'),
+    cfg.StrOpt('iscsi_ip_address',
+               default='$my_ip',
+               help='The port that the iSCSI daemon is listening on'),
+    cfg.IntOpt('iscsi_port',
+               default=3260,
+               help='The port that the iSCSI daemon is listening on'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
