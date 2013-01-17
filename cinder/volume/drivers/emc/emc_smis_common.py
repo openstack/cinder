@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright (c) 2012 EMC Corporation, Inc.
+# Copyright (c) 2012 EMC Corporation.
 # Copyright (c) 2012 OpenStack LLC.
 # All Rights Reserved.
 #
@@ -16,11 +16,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Drivers for EMC volumes.
+Common class for SMI-S based EMC volume drivers.
+
+This common class is for EMC volume drivers based on SMI-S.
+It supports ISCSI and FC protocols on VNX and VMAX/VMAXe arrays.
 
 """
 
-import os
 import time
 from xml.dom.minidom import parseString
 
@@ -28,9 +30,6 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
-from cinder import utils
-from cinder.volume import driver
-from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -39,37 +38,30 @@ FLAGS = flags.FLAGS
 try:
     import pywbem
 except ImportError:
-    LOG.info(_('Module PyWBEM not installed.  PyWBEM can be downloaded '
-               'from http://sourceforge.net/apps/mediawiki/pywbem'))
+    LOG.info(_('Module PyWBEM not installed.  '
+               'Install PyWBEM using the python-pywbem package.'))
 
 CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_emc_config.xml'
 
 
-def get_iscsi_initiator():
-    """Get iscsi initiator name for this machine"""
-    # NOTE openiscsi stores initiator name in a file that
-    #      needs root permission to read.
-    contents = utils.read_file_as_root('/etc/iscsi/initiatorname.iscsi')
-    for l in contents.split('\n'):
-        if l.startswith('InitiatorName='):
-            return l[l.index('=') + 1:].strip()
+class EMCSMISCommon():
+    """Common code used by ISCSI and FC drivers."""
 
+    stats = {'driver_version': '1.0',
+             'free_capacity_gb': 0,
+             'reserved_percentage': 0,
+             'storage_protocol': None,
+             'total_capacity_gb': 0,
+             'vendor_name': 'EMC',
+             'volume_backend_name': None}
 
-class EMCISCSIDriver(driver.ISCSIDriver):
-    """Drivers for VMAX/VMAXe and VNX"""
-
-    def __init__(self, *args, **kwargs):
-
-        super(EMCISCSIDriver, self).__init__(*args, **kwargs)
+    def __init__(self):
 
         opt = cfg.StrOpt('cinder_emc_config_file',
                          default=CINDER_EMC_CONFIG_FILE,
                          help='use this file for cinder emc plugin '
                          'config data')
         FLAGS.register_opt(opt)
-
-    def check_for_setup_error(self):
-        pass
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VMAXe/VNX) volume. """
@@ -316,6 +308,139 @@ class EMCISCSIDriver(driver.ISCSIDriver):
                   'Return code: %(rc)lu.')
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
+                     'rc': rc})
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+        LOG.debug(_('Entering create_cloned_volume.'))
+
+        srcname = src_vref['name']
+        volumename = volume['name']
+
+        LOG.info(_('Create a Clone from Volume: Volume: %(volumename)s  '
+                 'Source Volume: %(srcname)s')
+                 % {'volumename': volumename,
+                    'srcname': srcname})
+
+        conn = self._get_ecom_connection()
+        if conn is None:
+            exception_message = (_('Error Create Cloned Volume: '
+                                 'Volume: %(volumename)s  Source Volume: '
+                                 '%(srcname)s. Cannot connect to'
+                                 ' ECOM server.')
+                                 % {'volumename': volumename,
+                                    'srcname': srcname})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        src_instance = self._find_lun(src_vref)
+        storage_system = src_instance['SystemName']
+
+        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+                  'Source Volume: %(srcname)s  Source Instance: '
+                  '%(src_instance)s  Storage System: %(storage_system)s.')
+                  % {'volumename': volumename,
+                     'srcname': srcname,
+                     'src_instance': str(src_instance.path),
+                     'storage_system': storage_system})
+
+        repservice = self._find_replication_service(storage_system)
+        if repservice is None:
+            exception_message = (_('Error Create Cloned Volume: '
+                                 'Volume: %(volumename)s  Source Volume: '
+                                 '%(srcname)s. Cannot find Replication '
+                                 'Service to create cloned volume.')
+                                 % {'volumename': volumename,
+                                    'srcname': srcname})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+                  'Source Volume: %(srcname)s  Method: CreateElementReplica  '
+                  'ReplicationService: %(service)s  ElementName: '
+                  '%(elementname)s  SyncType: 8  SourceElement: '
+                  '%(sourceelement)s')
+                  % {'volumename': volumename,
+                     'srcname': srcname,
+                     'service': str(repservice),
+                     'elementname': volumename,
+                     'sourceelement': str(src_instance.path)})
+
+        # Create a Clone from snapshot
+        rc, job = conn.InvokeMethod(
+                    'CreateElementReplica', repservice,
+                    ElementName=volumename,
+                    SyncType=self._getnum(8, '16'),
+                    SourceElement=src_instance.path)
+
+        if rc != 0L:
+            rc, errordesc = self._wait_for_job_complete(job)
+            if rc != 0L:
+                exception_message = (_('Error Create Cloned Volume: '
+                                     'Volume: %(volumename)s  Source Volume:'
+                                     '%(srcname)s.  Return code: %(rc)lu.'
+                                     'Error: %(error)s')
+                                     % {'volumename': volumename,
+                                        'srcname': srcname,
+                                        'rc': rc,
+                                        'error': errordesc})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+                  'Source Volume: %(srcname)s.  Successfully cloned volume '
+                  'from source volume.  Finding the clone relationship.')
+                  % {'volumename': volumename,
+                     'srcname': srcname})
+
+        sync_name, storage_system = self._find_storage_sync_sv_sv(
+            volumename, srcname)
+
+        # Remove the Clone relationshop so it can be used as a regular lun
+        # 8 - Detach operation
+        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+                  'Source Volume: %(srcname)s.  Remove the clone '
+                  'relationship. Method: ModifyReplicaSynchronization '
+                  'ReplicationService: %(service)s  Operation: 8  '
+                  'Synchronization: %(sync_name)s')
+                  % {'volumename': volumename,
+                     'srcname': srcname,
+                     'service': str(repservice),
+                     'sync_name': str(sync_name)})
+
+        rc, job = conn.InvokeMethod(
+                    'ModifyReplicaSynchronization',
+                    repservice,
+                    Operation=self._getnum(8, '16'),
+                    Synchronization=sync_name)
+
+        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+                  'Source Volume: %(srcname)s  Return code: %(rc)lu')
+                  % {'volumename': volumename,
+                     'srcname': srcname,
+                     'rc': rc})
+
+        if rc != 0L:
+            rc, errordesc = self._wait_for_job_complete(job)
+            if rc != 0L:
+                exception_message = (_('Error Create Cloned Volume: '
+                                     'Volume: %(volumename)s  '
+                                     'Source Volume: %(srcname)s.  '
+                                     'Return code: %(rc)lu.  Error: %(error)s')
+                                     % {'volumename': volumename,
+                                        'srcname': srcname,
+                                        'rc': rc,
+                                        'error': errordesc})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+        LOG.debug(_('Leaving create_cloned_volume: Volume: '
+                  '%(volumename)s Source Volume: %(srcname)s  '
+                  'Return code: %(rc)lu.')
+                  % {'volumename': volumename,
+                     'srcname': srcname,
                      'rc': rc})
 
     def delete_volume(self, volume):
@@ -568,14 +693,11 @@ class EMCISCSIDriver(driver.ISCSIDriver):
 
         return {'provider_location': device_id}
 
-    def remove_export(self, context, volume):
-        """Driver exntry point to remove an export for a volume.
-        """
-        pass
-
     # Mapping method for VNX
     def _expose_paths(self, conn, configservice, vol_instance, connector):
-        """Adds a volume and initiator to a Storage Group
+        """This method maps a volume to a host.
+
+        It adds a volume and initiator to a Storage Group
         and therefore maps the volume to the host.
         """
         volumename = vol_instance['ElementName']
@@ -703,10 +825,6 @@ class EMCISCSIDriver(driver.ISCSIDriver):
         LOG.debug(_('RemoveMembers for volume %s completed successfully.')
                   % volumename)
 
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
-        pass
-
     def _map_lun(self, volume, connector):
         """Maps a volume to the host."""
         volumename = volume['name']
@@ -746,7 +864,7 @@ class EMCISCSIDriver(driver.ISCSIDriver):
             exception_message = (_("Cannot connect to ECOM server"))
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        device_number = self._find_device_number(volume)
+        device_number = self.find_device_number(volume)
         if device_number is None:
             LOG.info(_("Volume %s is not mapped. No volume to unmap.")
                      % (volumename))
@@ -770,121 +888,16 @@ class EMCISCSIDriver(driver.ISCSIDriver):
             self._hide_paths(conn, configservice, vol_instance, connector)
 
     def initialize_connection(self, volume, connector):
-        """Initializes the connection and returns connection info.
-
-        the iscsi driver returns a driver_volume_type of 'iscsi'.
-        the format of the driver data is defined in _get_iscsi_properties.
-        Example return value::
-
-            {
-                'driver_volume_type': 'iscsi'
-                'data': {
-                    'target_discovered': True,
-                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
-                    'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1,
-                }
-            }
-
-        """
+        """Initializes the connection and returns connection info."""
         volumename = volume['name']
         LOG.info(_('Initialize connection: %(volume)s')
                  % {'volume': volumename})
-        device_number = self._find_device_number(volume)
+        device_number = self.find_device_number(volume)
         if device_number is not None:
             LOG.info(_("Volume %s is already mapped.")
                      % (volumename))
         else:
             self._map_lun(volume, connector)
-
-        iscsi_properties = self._get_iscsi_properties(volume)
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': iscsi_properties
-        }
-
-    def _do_iscsi_discovery(self, volume):
-
-        LOG.warn(_("ISCSI provider_location not stored, using discovery"))
-
-        (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
-                                    '-t', 'sendtargets', '-p',
-                                    FLAGS.iscsi_ip_address,
-                                    run_as_root=True)
-        for target in out.splitlines():
-            return target
-        return None
-
-    def _get_iscsi_properties(self, volume):
-        """Gets iscsi configuration
-
-        We ideally get saved information in the volume entity, but fall back
-        to discovery if need be. Discovery may be completely removed in future
-        The properties are:
-
-        :target_discovered:    boolean indicating whether discovery was used
-
-        :target_iqn:    the IQN of the iSCSI target
-
-        :target_portal:    the portal of the iSCSI target
-
-        :target_lun:    the lun of the iSCSI target
-
-        :volume_id:    the id of the volume (currently used by xen)
-
-        :auth_method:, :auth_username:, :auth_password:
-
-            the authentication details. Right now, either auth_method is not
-            present meaning no authentication, or auth_method == `CHAP`
-            meaning use CHAP with the specified credentials.
-        """
-        properties = {}
-
-        location = self._do_iscsi_discovery(volume)
-        if not location:
-            raise exception.InvalidVolume(_("Could not find iSCSI export "
-                                          " for volume %s") %
-                                          (volume['name']))
-
-        LOG.debug(_("ISCSI Discovery: Found %s") % (location))
-        properties['target_discovered'] = True
-
-        results = location.split(" ")
-        properties['target_portal'] = results[0].split(",")[0]
-        properties['target_iqn'] = results[1]
-
-        device_number = self._find_device_number(volume)
-        if device_number is None:
-            exception_message = (_("Cannot find device number for volume %s")
-                                 % volume['name'])
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        properties['target_lun'] = device_number
-
-        properties['volume_id'] = volume['id']
-
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-
-        LOG.debug(_("ISCSI properties: %s") % (properties))
-
-        return properties
-
-    def _run_iscsiadm(self, iscsi_properties, iscsi_command, **kwargs):
-        check_exit_code = kwargs.pop('check_exit_code', 0)
-        (out, err) = self._execute('iscsiadm', '-m', 'node', '-T',
-                                   iscsi_properties['target_iqn'],
-                                   '-p', iscsi_properties['target_portal'],
-                                   *iscsi_command, run_as_root=True,
-                                   check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
-                  (iscsi_command, out, err))
-        return (out, err)
 
     def terminate_connection(self, volume, connector):
         """Disallow connection from connector"""
@@ -893,78 +906,26 @@ class EMCISCSIDriver(driver.ISCSIDriver):
                  % {'volume': volumename})
         self._unmap_lun(volume, connector)
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
-        initiator = get_iscsi_initiator()
-        connector = {}
-        connector['initiator'] = initiator
+    def update_volume_status(self):
+        """Retrieve status info."""
+        LOG.debug(_("Updating volume status"))
 
-        iscsi_properties, volume_path = self._attach_volume(
-            context, volume, connector)
+        storage_type = self._get_storage_type()
+        if storage_type is None:
+            exception_message = (_("Storage type name not found."))
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path, "wb") as image_file:
-                image_service.download(context, image_id, image_file)
+        pool, storagesystem = self._find_pool(storage_type, True)
+        if pool is None:
+            exception_message = (_("Error finding pool details."))
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
-        self.terminate_connection(volume, connector)
+        self.stats['total_capacity_gb'] = pool['TotalManagedSpace']
+        self.stats['free_capacity_gb'] = pool['RemainingManagedSpace']
 
-    def _attach_volume(self, context, volume, connector):
-        """Attach the volume."""
-        iscsi_properties = None
-        host_device = None
-        init_conn = self.initialize_connection(volume, connector)
-        iscsi_properties = init_conn['data']
-
-        self._run_iscsiadm(iscsi_properties, ("--login",),
-                           check_exit_code=[0, 255])
-
-        self._iscsiadm_update(iscsi_properties, "node.startup", "automatic")
-
-        host_device = ("/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" %
-                       (iscsi_properties['target_portal'],
-                        iscsi_properties['target_iqn'],
-                        iscsi_properties.get('target_lun', 0)))
-
-        tries = 0
-        while not os.path.exists(host_device):
-            if tries >= FLAGS.num_iscsi_scan_tries:
-                raise exception.CinderException(
-                    _("iSCSI device not found at %s") % (host_device))
-
-            LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
-                     "Will rescan & retry.  Try number: %(tries)s") %
-                     locals())
-
-            # The rescan isn't documented as being necessary(?), but it helps
-            self._run_iscsiadm(iscsi_properties, ("--rescan",))
-
-            tries = tries + 1
-            if not os.path.exists(host_device):
-                time.sleep(tries ** 2)
-
-        if tries != 0:
-            LOG.debug(_("Found iSCSI node %(host_device)s "
-                      "(after %(tries)s rescans)") %
-                      locals())
-
-        return iscsi_properties, host_device
-
-    def copy_volume_to_image(self, context, volume, image_service, image_id):
-        """Copy the volume to the specified image."""
-        LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
-        initiator = get_iscsi_initiator()
-        connector = {}
-        connector['initiator'] = initiator
-
-        iscsi_properties, volume_path = self._attach_volume(
-            context, volume, connector)
-
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path) as volume_file:
-                image_service.update(context, image_id, {}, volume_file)
-
-        self.terminate_connection(volume, connector)
+        return self.stats
 
     def _get_storage_type(self, filename=None):
         """Get the storage type from the config file
@@ -1100,13 +1061,20 @@ class EMCISCSIDriver(driver.ISCSIDriver):
 
         return foundConfigService
 
-     # Find pool based on storage_type
-    def _find_pool(self, storage_type):
+    # Find pool based on storage_type
+    def _find_pool(self, storage_type, details=False):
         foundPool = None
         systemname = None
         conn = self._get_ecom_connection()
-        vpools = conn.EnumerateInstanceNames('EMC_VirtualProvisioningPool')
-        upools = conn.EnumerateInstanceNames('EMC_UnifiedStoragePool')
+        # Only get instance names if details flag is False;
+        # Otherwise get the whole instances
+        if details is False:
+            vpools = conn.EnumerateInstanceNames('EMC_VirtualProvisioningPool')
+            upools = conn.EnumerateInstanceNames('EMC_UnifiedStoragePool')
+        else:
+            vpools = conn.EnumerateInstances('EMC_VirtualProvisioningPool')
+            upools = conn.EnumerateInstances('EMC_UnifiedStoragePool')
+
         for upool in upools:
             poolinstance = upool['InstanceID']
             # Example: CLARiiON+APM00115204878+U+Pool 0
@@ -1360,7 +1328,7 @@ class EMCISCSIDriver(driver.ISCSIDriver):
         return out_device_number
 
     # Find a device number that a host can see for a volume
-    def _find_device_number(self, volume):
+    def find_device_number(self, volume):
         out_num_device_number = None
 
         conn = self._get_ecom_connection()
