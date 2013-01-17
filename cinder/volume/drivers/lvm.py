@@ -50,18 +50,7 @@ volume_opts = [
                default=0,
                help='If set, create lvms with multiple mirrors. Note that '
                     'this requires lvm_mirrors + 2 pvs with available space'),
-    cfg.IntOpt('iscsi_num_targets',
-               default=100,
-               help='Number of iscsi target ids per host'),
-    cfg.StrOpt('iscsi_target_prefix',
-               default='iqn.2010-10.org.openstack:',
-               help='prefix for iscsi volumes'),
-    cfg.StrOpt('iscsi_ip_address',
-               default='$my_ip',
-               help='The port that the iSCSI daemon is listening on'),
-    cfg.IntOpt('iscsi_port',
-               default=3260,
-               help='The port that the iSCSI daemon is listening on'), ]
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
