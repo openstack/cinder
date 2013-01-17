@@ -30,6 +30,7 @@ from cinder.api.middleware import fault
 from cinder import exception
 from cinder.openstack.common import cfg
 from cinder import test
+from cinder import utils
 import cinder.wsgi
 
 CONF = cfg.CONF
@@ -102,6 +103,11 @@ class TestWSGIServer(unittest.TestCase):
         server.wait()
 
     def test_start_random_port_with_ipv6(self):
+        #check to see if we have IPV6 configured on this system
+        out, err = utils.execute('cat', '/proc/net/if_inet6')
+        if not out:
+            self.skipTest("No IPV6 interface configured")
+
         server = cinder.wsgi.Server("test_random_port",
                                     None,
                                     host="::1")
@@ -151,6 +157,11 @@ class TestWSGIServer(unittest.TestCase):
         server.stop()
 
     def test_app_using_ipv6_and_ssl(self):
+        #check to see if we have IPV6 configured on this system
+        out, err = utils.execute('cat', '/proc/net/if_inet6')
+        if not out:
+            self.skipTest("No IPV6 interface configured")
+
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
         CONF.set_default("ssl_key_file",
