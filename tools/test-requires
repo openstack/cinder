@@ -2,7 +2,7 @@
 distribute>=0.6.28
 
 coverage
-mox==0.5.3
+mox>=0.5.3
 nose
 nosexcover
 openstack.nose_plugin
