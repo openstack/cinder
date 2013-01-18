@@ -350,3 +350,53 @@ class TestMigrations(test.TestCase):
                                        autoload=True)
             self.assertTrue(isinstance(volumes.c.source_volid.type,
                                        sqlalchemy.types.VARCHAR))
+
+    def _metadatas(self, upgrade_to, downgrade_to=None):
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine,
+                                  TestMigrations.REPOSITORY,
+                                  upgrade_to)
+
+            if downgrade_to is not None:
+                migration_api.downgrade(
+                    engine, TestMigrations.REPOSITORY, downgrade_to)
+
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+            yield metadata
+
+    def metadatas_upgraded_to(self, revision):
+        return self._metadatas(revision)
+
+    def metadatas_downgraded_from(self, revision):
+        return self._metadatas(revision, revision - 1)
+
+    def test_upgrade_006_adds_provider_location(self):
+        for metadata in self.metadatas_upgraded_to(6):
+            snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
+            self.assertTrue(isinstance(snapshots.c.provider_location.type,
+                                       sqlalchemy.types.VARCHAR))
+
+    def test_downgrade_006_removes_provider_location(self):
+        for metadata in self.metadatas_downgraded_from(6):
+            snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
+
+            self.assertTrue('provider_location' not in snapshots.c)
+
+    def test_upgrade_007_adds_fk(self):
+        for metadata in self.metadatas_upgraded_to(7):
+            snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
+            volumes = sqlalchemy.Table('volumes', metadata, autoload=True)
+
+            fkey, = snapshots.c.volume_id.foreign_keys
+
+            self.assertEquals(volumes.c.id, fkey.column)
+
+    def test_downgrade_007_removes_fk(self):
+        for metadata in self.metadatas_downgraded_from(7):
+            snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
+
+            self.assertEquals(0, len(snapshots.c.volume_id.foreign_keys))
