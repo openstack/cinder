@@ -148,7 +148,7 @@ class NfsDriver(driver.VolumeDriver):
 
     def _create_sparsed_file(self, path, size):
         """Creates file with 0 disk usage"""
-        self._execute('truncate', '-s', self._sizestr(size),
+        self._execute('truncate', '-s', '%sG' % size,
                       path, run_as_root=True)
 
     def _create_regular_file(self, path, size):
