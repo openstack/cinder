@@ -149,6 +149,19 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           req, 1, 'bad', body)
 
+    def _extra_specs_empty_update(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
+        req.method = 'POST'
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update, req, '1', body)
+
+    def test_update_no_body(self):
+        self._extra_specs_empty_update(body=None)
+
+    def test_update_empty_body(self):
+        self._extra_specs_empty_update(body={})
+
 
 class VolumeTypeExtraSpecsSerializerTest(test.TestCase):
     def test_index_create_serializer(self):
@@ -211,16 +224,3 @@ class VolumeTypeExtraSpecsUnprocessableEntityTestCase(test.TestCase):
     def test_create_malformed_entity(self):
         body = {'extra_specs': 'string'}
         self._unprocessable_extra_specs_create(body=body)
-
-    def _unprocessable_extra_specs_update(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
-        req.method = 'POST'
-
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
-                          self.controller.update, req, '1', body)
-
-    def test_update_no_body(self):
-        self._unprocessable_extra_specs_update(body=None)
-
-    def test_update_empty_body(self):
-        self._unprocessable_extra_specs_update(body={})
