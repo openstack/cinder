@@ -910,15 +910,42 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
     def _refresh_dfm_luns(self, host_id):
         """Refresh the LUN list for one filer in DFM."""
         server = self.client.service
-        server.DfmObjectRefresh(ObjectNameOrId=host_id, ChildType='lun_path')
+        refresh_started_at = time.time()
+        monitor_names = self.client.factory.create('ArrayOfMonitorName')
+        monitor_names.MonitorName = ['file_system', 'lun']
+        server.DfmObjectRefresh(ObjectNameOrId=host_id,
+                                MonitorNames=monitor_names)
+
+        max_wait = 10 * 60   # 10 minutes
+
         while True:
+            if time.time() - refresh_started_at > max_wait:
+                msg = _('Failed to get LUN list. Is the DFM host'
+                        ' time-synchronized with Cinder host?')
+                raise exception.VolumeBackendAPIException(msg)
+
+            LOG.info('Refreshing LUN list on DFM...')
             time.sleep(15)
             res = server.DfmMonitorTimestampList(HostNameOrId=host_id)
-            for timestamp in res.DfmMonitoringTimestamp:
-                if 'lun' != timestamp.MonitorName:
-                    continue
-                if timestamp.LastMonitoringTimestamp:
-                    return
+            timestamps = dict((t.MonitorName, t.LastMonitoringTimestamp)
+                              for t in res.DfmMonitoringTimestamp)
+            ts_fs = timestamps['file_system']
+            ts_lun = timestamps['lun']
+
+            if ts_fs > refresh_started_at and ts_lun > refresh_started_at:
+                return          # both monitor jobs finished
+            elif ts_fs == 0 or ts_lun == 0:
+                pass            # lun or file_system is still in progress, wait
+            else:
+                monitor_names.MonitorName = []
+                if ts_fs <= refresh_started_at:
+                    monitor_names.MonitorName.append('file_system')
+                if ts_lun <= refresh_started_at:
+                    monitor_names.MonitorName.append('lun')
+                LOG.debug('Rerunning refresh for monitors: ' +
+                          str(monitor_names.MonitorName))
+                server.DfmObjectRefresh(ObjectNameOrId=host_id,
+                                        MonitorNames=monitor_names)
 
     def _destroy_lun(self, host_id, lun_path):
         """Destroy a LUN on the filer."""
