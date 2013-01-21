@@ -48,7 +48,6 @@ from eventlet.green import subprocess
 from eventlet import greenthread
 from eventlet import pools
 
-from cinder.common import deprecated
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import excutils
@@ -144,11 +143,11 @@ def execute(*cmd, **kwargs):
     if run_as_root:
 
         if FLAGS.rootwrap_config is None or FLAGS.root_helper != 'sudo':
-            deprecated.warn(_('The root_helper option (which lets you specify '
-                              'a root wrapper different from cinder-rootwrap, '
-                              'and defaults to using sudo) is now deprecated. '
-                              'You should use the rootwrap_config option '
-                              'instead.'))
+            LOG.deprecated(_('The root_helper option (which lets you specify '
+                             'a root wrapper different from cinder-rootwrap, '
+                             'and defaults to using sudo) is now deprecated. '
+                             'You should use the rootwrap_config option '
+                             'instead.'))
 
         if (FLAGS.rootwrap_config is not None):
             cmd = ['sudo', 'cinder-rootwrap',
