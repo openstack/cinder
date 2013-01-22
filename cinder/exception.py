@@ -255,6 +255,14 @@ class VolumeMetadataNotFound(NotFound):
                 "key %(metadata_key)s.")
 
 
+class InvalidVolumeMetadata(Invalid):
+    message = _("Invalid metadata") + ": %(reason)s"
+
+
+class InvalidVolumeMetadataSize(Invalid):
+    message = _("Invalid metadata size") + ": %(reason)s"
+
+
 class VolumeTypeNotFound(NotFound):
     message = _("Volume type %(volume_type_id)s could not be found.")
 

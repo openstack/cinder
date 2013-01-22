@@ -141,6 +141,21 @@ class VolumeTestCase(test.TestCase):
                           self.context,
                           volume_id)
 
+    def test_create_volume_with_invalid_metadata(self):
+        """Test volume create with too much metadata fails."""
+        volume_api = cinder.volume.api.API()
+        test_meta = {'fake_key': 'fake_value' * 256}
+        self.assertRaises(exception.InvalidVolumeMetadataSize,
+                          volume_api.create,
+                          self.context,
+                          1,
+                          'name',
+                          'description',
+                          None,
+                          None,
+                          None,
+                          test_meta)
+
     def test_create_volume_with_volume_type(self):
         """Test volume creation with default volume type."""
         def fake_reserve(context, expire=None, **deltas):

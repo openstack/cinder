@@ -26,6 +26,7 @@ import cinder.api.openstack
 from cinder.api.v1 import limits
 from cinder.api.v1 import snapshots
 from cinder.api.v1 import types
+from cinder.api.v1 import volume_metadata
 from cinder.api.v1 import volumes
 from cinder.api import versions
 from cinder.openstack.common import log as logging
@@ -68,3 +69,17 @@ class APIRouter(cinder.api.openstack.APIRouter):
         self.resources['limits'] = limits.create_resource()
         mapper.resource("limit", "limits",
                         controller=self.resources['limits'])
+        self.resources['volume_metadata'] = \
+            volume_metadata.create_resource()
+        volume_metadata_controller = self.resources['volume_metadata']
+
+        mapper.resource("volume_metadata", "metadata",
+                        controller=volume_metadata_controller,
+                        parent_resource=dict(member_name='volume',
+                        collection_name='volumes'))
+
+        mapper.connect("metadata",
+                       "/{project_id}/volumes/{volume_id}/metadata",
+                       controller=volume_metadata_controller,
+                       action='update_all',
+                       conditions={"method": ['PUT']})
