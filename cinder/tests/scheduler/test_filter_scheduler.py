@@ -16,16 +16,15 @@
 Tests For Filter Scheduler.
 """
 
-import mox
-
 from cinder import context
 from cinder import exception
+from cinder import test
+
 from cinder.openstack.common.scheduler import weights
-from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
-from cinder.scheduler import host_manager
 from cinder.tests.scheduler import fakes
 from cinder.tests.scheduler import test_scheduler
+from cinder.tests import utils as test_utils
 
 
 def fake_get_filtered_hosts(hosts, filter_properties):
@@ -37,6 +36,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
     driver_cls = filter_scheduler.FilterScheduler
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_no_hosts(self):
         """
         Ensure empty hosts & child_zones result in NoValidHosts exception.
@@ -54,6 +55,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, None)
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_non_admin(self):
         """Test creating an instance locally using run_instance, passing
         a non-admin context.  DB actions should work."""
@@ -78,6 +81,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, request_spec, None)
         self.assertTrue(self.was_admin)
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed (try setup.py develop')
     def test_schedule_happy_day(self):
         """Make sure there's nothing glaringly wrong with _schedule()
         by doing a happy day pass through."""
