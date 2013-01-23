@@ -89,6 +89,15 @@ document_root = /tmp
 
 class TestWSGIServer(unittest.TestCase):
     """WSGI server tests."""
+    def _ipv6_configured():
+        try:
+            out, err = utils.execute('cat', '/proc/net/if_inet6')
+        except exception.ProcessExecutionError:
+            return False
+
+        if not out:
+            return False
+        return True
 
     def test_no_app(self):
         server = cinder.wsgi.Server("test_app", None)
@@ -102,12 +111,9 @@ class TestWSGIServer(unittest.TestCase):
         server.stop()
         server.wait()
 
+    @test.skip_if(not _ipv6_configured(),
+                  "Test requires an IPV6 configured interface")
     def test_start_random_port_with_ipv6(self):
-        #check to see if we have IPV6 configured on this system
-        out, err = utils.execute('cat', '/proc/net/if_inet6')
-        if not out:
-            self.skipTest("No IPV6 interface configured")
-
         server = cinder.wsgi.Server("test_random_port",
                                     None,
                                     host="::1")
@@ -156,12 +162,9 @@ class TestWSGIServer(unittest.TestCase):
 
         server.stop()
 
+    @test.skip_if(not _ipv6_configured(),
+                  "Test requires an IPV6 configured interface")
     def test_app_using_ipv6_and_ssl(self):
-        #check to see if we have IPV6 configured on this system
-        out, err = utils.execute('cat', '/proc/net/if_inet6')
-        if not out:
-            self.skipTest("No IPV6 interface configured")
-
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
         CONF.set_default("ssl_key_file",
