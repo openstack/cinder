@@ -85,21 +85,27 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         self._try_execute(*cmd, run_as_root=True)
 
-    def _copy_volume(self, srcstr, deststr, size_in_g):
+    def _copy_volume(self, srcstr, deststr, size_in_g, clearing=False):
         # Use O_DIRECT to avoid thrashing the system buffer cache
-        direct_flags = ('iflag=direct', 'oflag=direct')
+        extra_flags = ['iflag=direct', 'oflag=direct']
 
         # Check whether O_DIRECT is supported
         try:
             self._execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
-                          *direct_flags, run_as_root=True)
+                          *extra_flags, run_as_root=True)
         except exception.ProcessExecutionError:
-            direct_flags = ()
+            extra_flags = []
+
+        # If the volume is being unprovisioned then
+        # request the data is persisted before returning,
+        # so that it's not discarded from the cache.
+        if clearing and not extra_flags:
+            extra_flags.append('conv=fdatasync')
 
         # Perform the copy
         self._execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
                       'count=%d' % (size_in_g * 1024), 'bs=1M',
-                      *direct_flags, run_as_root=True)
+                      *extra_flags, run_as_root=True)
 
     def _volume_not_present(self, volume_name):
         path_name = '%s/%s' % (FLAGS.volume_group, volume_name)
@@ -184,7 +190,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         if FLAGS.volume_clear == 'zero':
             if size_in_m == 0:
-                return self._copy_volume('/dev/zero', vol_path, size_in_g)
+                return self._copy_volume('/dev/zero', vol_path, size_in_g,
+                                         clearing=True)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
         elif FLAGS.volume_clear == 'shred':
