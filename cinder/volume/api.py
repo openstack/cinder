@@ -416,7 +416,15 @@ class API(base.Base):
 
     @wrap_check_policy
     def reserve_volume(self, context, volume):
-        self.update(context, volume, {"status": "attaching"})
+        #NOTE(jdg): check for Race condition bug 1096983
+        #explicitly get updated ref and check
+        volume = self.db.volume_get(context, volume['id'])
+        if volume['status'] == 'available':
+            self.update(context, volume, {"status": "attaching"})
+        else:
+            msg = _("Volume status must be available to reserve")
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
 
     @wrap_check_policy
     def unreserve_volume(self, context, volume):
