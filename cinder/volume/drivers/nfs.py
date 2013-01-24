@@ -57,9 +57,12 @@ class NfsDriver(driver.VolumeDriver):
 
         config = FLAGS.nfs_shares_config
         if not config:
-            LOG.warn(_("There's no NFS config file configured "))
-        if not config or not os.path.exists(config):
-            msg = _("NFS config file doesn't exist")
+            msg = (_("There's no NFS config file configured (%s)") %
+                   'nfs_shares_config')
+            LOG.warn(msg)
+            raise exception.NfsException(msg)
+        if not os.path.exists(config):
+            msg = _("NFS config file at %(config)s doesn't exist") % locals()
             LOG.warn(msg)
             raise exception.NfsException(msg)
 
