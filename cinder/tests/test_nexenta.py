@@ -148,10 +148,10 @@ class TestNexentaDriver(cinder.test.TestCase):
         self.assertEquals(
             retval,
             {'provider_location':
-                '%s:%s,1 %s%s' % (FLAGS.nexenta_host,
-                                  FLAGS.nexenta_iscsi_target_portal_port,
-                                  FLAGS.nexenta_target_prefix,
-                                  self.TEST_VOLUME_NAME)})
+                '%s:%s,1 %s%s 0' % (FLAGS.nexenta_host,
+                                    FLAGS.nexenta_iscsi_target_portal_port,
+                                    FLAGS.nexenta_target_prefix,
+                                    self.TEST_VOLUME_NAME)})
 
     def __get_test(i):
         def _test_create_export_fail(self):

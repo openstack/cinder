@@ -234,9 +234,9 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             else:
                 LOG.info(_('Ignored LUN mapping entry addition error "%s"'
                            ' while ensuring export'), exc)
-        return '%s:%s,1 %s' % (FLAGS.nexenta_host,
-                               FLAGS.nexenta_iscsi_target_portal_port,
-                               target_name)
+        return '%s:%s,1 %s 0' % (FLAGS.nexenta_host,
+                                 FLAGS.nexenta_iscsi_target_portal_port,
+                                 target_name)
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
