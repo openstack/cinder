@@ -20,7 +20,7 @@ import datetime
 from lxml import etree
 import webob.exc
 
-from cinder.api.openstack.volume.contrib import hosts as os_hosts
+from cinder.api.contrib import hosts as os_hosts
 from cinder import context
 from cinder import db
 from cinder import flags
