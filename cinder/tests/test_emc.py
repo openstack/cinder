@@ -18,7 +18,8 @@
 
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume.drivers.emc import EMCISCSIDriver
+from cinder.volume.drivers.emc.emc_smis_common import EMCSMISCommon
+from cinder.volume.drivers.emc.emc_smis_iscsi import EMCSMISISCSIDriver
 
 LOG = logging.getLogger(__name__)
 
@@ -58,6 +59,15 @@ test_clone = {'name': 'clone1',
               'display_name': 'clone1',
               'display_description': 'volume created from snapshot',
               'volume_type_id': None}
+test_clone3 = {'name': 'clone3',
+               'size': 1,
+               'volume_name': 'vol1',
+               'id': '3',
+               'provider_auth': None,
+               'project_id': 'project',
+               'display_name': 'clone3',
+               'display_description': 'cloned volume',
+               'volume_type_id': None}
 
 
 class EMC_StorageVolume(dict):
@@ -282,19 +292,44 @@ class FakeEcomConnection():
         clone_vol.path = {'DeviceID': clone_vol['DeviceID']}
         vols.append(clone_vol)
 
+        clone_vol3 = EMC_StorageVolume()
+        clone_vol3['CreationClassName'] = 'Clar_StorageVolume'
+        clone_vol3['ElementName'] = test_clone3['name']
+        clone_vol3['DeviceID'] = test_clone3['id']
+        clone_vol3['SystemName'] = storage_system
+        clone_vol3.path = {'DeviceID': clone_vol3['DeviceID']}
+        vols.append(clone_vol3)
+
         return vols
 
     def _enum_syncsvsvs(self):
         syncs = []
-        sync = {}
 
         vols = self._enum_storagevolumes()
+
         objpath1 = vols[0]
         objpath2 = vols[1]
+        sync = {}
         sync['SyncedElement'] = objpath2
         sync['SystemElement'] = objpath1
         sync['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
         syncs.append(sync)
+
+        objpath1 = vols[1]
+        objpath2 = vols[2]
+        sync2 = {}
+        sync2['SyncedElement'] = objpath2
+        sync2['SystemElement'] = objpath1
+        sync2['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        syncs.append(sync2)
+
+        objpath1 = vols[0]
+        objpath2 = vols[3]
+        sync3 = {}
+        sync3['SyncedElement'] = objpath2
+        sync3['SystemElement'] = objpath1
+        sync3['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        syncs.append(sync3)
 
         return syncs
 
@@ -318,17 +353,17 @@ class FakeEcomConnection():
         return names
 
 
-class EMCISCSIDriverTestCase(test.TestCase):
+class EMCSMISISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
-        super(EMCISCSIDriverTestCase, self).setUp()
-        driver = EMCISCSIDriver()
+        super(EMCSMISISCSIDriverTestCase, self).setUp()
+        driver = EMCSMISISCSIDriver()
         self.driver = driver
-        self.stubs.Set(EMCISCSIDriver, '_get_iscsi_properties',
+        self.stubs.Set(EMCSMISISCSIDriver, '_get_iscsi_properties',
                        self.fake_get_iscsi_properties)
-        self.stubs.Set(EMCISCSIDriver, '_get_ecom_connection',
+        self.stubs.Set(EMCSMISCommon, '_get_ecom_connection',
                        self.fake_ecom_connection)
-        self.stubs.Set(EMCISCSIDriver, '_get_storage_type',
+        self.stubs.Set(EMCSMISCommon, '_get_storage_type',
                        self.fake_storage_type)
 
     def fake_ecom_connection(self):
@@ -365,7 +400,10 @@ class EMCISCSIDriverTestCase(test.TestCase):
         self.driver.create_snapshot(test_snapshot)
         self.driver.create_volume_from_snapshot(
             test_clone, test_snapshot)
+        self.driver.create_cloned_volume(
+            test_clone3, test_volume)
         self.driver.delete_volume(test_clone)
+        self.driver.delete_volume(test_clone3)
         self.driver.delete_snapshot(test_snapshot)
         self.driver.delete_volume(test_volume)
 
