@@ -17,6 +17,8 @@
 #    under the License.
 
 import contextlib
+import os
+import pickle
 
 
 class XenAPIException(Exception):
@@ -138,6 +140,9 @@ class VdiOperations(OperationsBase):
     def copy(self, vdi_ref, sr_ref):
         return self.call_xenapi('VDI.copy', vdi_ref, sr_ref)
 
+    def resize(self, vdi_ref, size):
+        return self.call_xenapi('VDI.resize', vdi_ref, str(size))
+
 
 class HostOperations(OperationsBase):
     def get_record(self, host_ref):
@@ -160,11 +165,21 @@ class XenAPISession(object):
     def close(self):
         return self.call_xenapi('logout')
 
-    def call_xenapi(self, method, *args):
+    @contextlib.contextmanager
+    def exception_converter(self):
         try:
-            return self._session.xenapi_request(method, args)
+            yield None
         except self._exception_to_convert as e:
             raise XenAPIException(e)
+
+    def call_xenapi(self, method, *args):
+        with self.exception_converter():
+            return self._session.xenapi_request(method, args)
+
+    def call_plugin(self, host_ref, plugin, function, args):
+        with self.exception_converter():
+            return self._session.xenapi.host.call_plugin(
+                host_ref, plugin, function, args)
 
     def get_pool(self):
         return self.call_xenapi('session.get_pool', self.handle)
@@ -292,9 +307,44 @@ class SessionFactory(object):
         return connect(self.url, self.user, self.password)
 
 
+class XapiPluginProxy(object):
+    def __init__(self, session_factory, plugin_name):
+        self._session_factory = session_factory
+        self._plugin_name = plugin_name
+
+    def call(self, function, *plugin_args, **plugin_kwargs):
+        plugin_params = dict(args=plugin_args, kwargs=plugin_kwargs)
+        args = dict(params=pickle.dumps(plugin_params))
+
+        with self._session_factory.get_session() as session:
+            host_ref = session.get_this_host()
+            result = session.call_plugin(
+                host_ref, self._plugin_name, function, args)
+
+        return pickle.loads(result)
+
+
+class GlancePluginProxy(XapiPluginProxy):
+    def __init__(self, session_factory):
+        super(GlancePluginProxy, self).__init__(session_factory, 'glance')
+
+    def download_vhd(self, image_id, glance_host, glance_port, glance_use_ssl,
+                     uuid_stack, sr_path, auth_token):
+        return self.call(
+            'download_vhd',
+            image_id=image_id,
+            glance_host=glance_host,
+            glance_port=glance_port,
+            glance_use_ssl=glance_use_ssl,
+            uuid_stack=uuid_stack,
+            sr_path=sr_path,
+            auth_token=auth_token)
+
+
 class NFSBasedVolumeOperations(object):
     def __init__(self, session_factory):
         self._session_factory = session_factory
+        self.glance_plugin = GlancePluginProxy(session_factory)
 
     def create_volume(self, server, serverpath, size,
                       name=None, description=None):
@@ -355,3 +405,35 @@ class NFSBasedVolumeOperations(object):
                 session.unplug_pbds_and_forget_sr(src_refs['sr_ref'])
 
             return dst_refs
+
+    def resize_volume(self, server, serverpath, sr_uuid, vdi_uuid,
+                      size_in_gigabytes):
+        self.connect_volume(server, serverpath, sr_uuid, vdi_uuid)
+
+        try:
+            with self._session_factory.get_session() as session:
+                vdi_ref = session.VDI.get_by_uuid(vdi_uuid)
+                session.VDI.resize(vdi_ref, to_bytes(size_in_gigabytes))
+        finally:
+            self.disconnect_volume(vdi_uuid)
+
+    def use_glance_plugin_to_overwrite_volume(self, server, serverpath,
+                                              sr_uuid, vdi_uuid, glance_server,
+                                              image_id, auth_token,
+                                              sr_base_path):
+        self.connect_volume(server, serverpath, sr_uuid, vdi_uuid)
+
+        uuid_stack = [vdi_uuid]
+        glance_host, glance_port, glance_use_ssl = glance_server
+
+        try:
+            result = self.glance_plugin.download_vhd(
+                image_id, glance_host, glance_port, glance_use_ssl, uuid_stack,
+                os.path.join(sr_base_path, sr_uuid), auth_token)
+        finally:
+            self.disconnect_volume(vdi_uuid)
+
+        if len(result) != 1 or result['root']['uuid'] != vdi_uuid:
+            return False
+
+        return True

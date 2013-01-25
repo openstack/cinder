@@ -525,3 +525,7 @@ class NfsNoSuitableShareFound(NotFound):
 class GlanceMetadataExists(Invalid):
     message = _("Glance metadata cannot be updated, key %(key)s"
                 " exists for volume id %(volume_id)s")
+
+
+class ImageCopyFailure(Invalid):
+    message = _("Failed to copy image to volume")
