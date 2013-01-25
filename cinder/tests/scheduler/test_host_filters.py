@@ -128,3 +128,32 @@ class HostFiltersTestCase(test.TestCase):
                                     'updated_at': None,
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
+    def test_retry_filter_disabled(self):
+        # Test case where retry/re-scheduling is disabled.
+        filt_cls = self.class_map['RetryFilter']()
+        host = fakes.FakeHostState('host1', {})
+        filter_properties = {}
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
+    def test_retry_filter_pass(self):
+        # Node not previously tried.
+        filt_cls = self.class_map['RetryFilter']()
+        host = fakes.FakeHostState('host1', {})
+        retry = dict(num_attempts=2, hosts=['host2'])
+        filter_properties = dict(retry=retry)
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
+    def test_retry_filter_fail(self):
+        # Node was already tried.
+        filt_cls = self.class_map['RetryFilter']()
+        host = fakes.FakeHostState('host1', {})
+        retry = dict(num_attempts=1, hosts=['host1'])
+        filter_properties = dict(retry=retry)
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))

@@ -508,7 +508,8 @@ class VolumeTestCase(test.TestCase):
         def fake_local_path(volume):
             return dst_path
 
-        def fake_copy_image_to_volume(context, volume, image_id):
+        def fake_copy_image_to_volume(context, volume,
+                                      image_service, image_id):
             pass
 
         def fake_fetch_to_raw(context, image_service, image_id, vol_path):
@@ -545,11 +546,6 @@ class VolumeTestCase(test.TestCase):
             db.volume_destroy(self.context, volume_id)
             os.unlink(dst_path)
 
-    def test_create_volume_from_image_status_downloading(self):
-        """Verify that before copying image to volume, it is in downloading
-        state."""
-        self._create_volume_from_image('downloading', True)
-
     def test_create_volume_from_image_status_available(self):
         """Verify that before copying image to volume, it is in available
         state."""
@@ -577,7 +573,7 @@ class VolumeTestCase(test.TestCase):
         self.assertRaises(exception.ImageNotFound,
                           self.volume.create_volume,
                           self.context,
-                          volume_id,
+                          volume_id, None, None, None,
                           None,
                           image_id)
         volume = db.volume_get(self.context, volume_id)

@@ -34,6 +34,8 @@ filters = [
     "cinder.scheduler.filters.capacity_filter:CapacityFilter",
     "JsonFilter = "
     "cinder.openstack.common.scheduler.filters.json_filter:JsonFilter",
+    "RetryFilter = "
+    "cinder.scheduler.filters.retry_filter:RetryFilter",
 ]
 
 weights = [

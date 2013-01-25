@@ -33,7 +33,11 @@ from cinder.volume import rpcapi as volume_rpcapi
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',
                default='cinder.scheduler.host_manager.HostManager',
-               help='The scheduler host manager class to use'), ]
+               help='The scheduler host manager class to use'),
+    cfg.IntOpt('scheduler_max_attempts',
+               default=3,
+               help='Maximum number of attempts to schedule an volume'),
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(scheduler_driver_opts)
