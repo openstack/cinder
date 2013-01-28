@@ -97,3 +97,25 @@ class HostFiltersTestCase(test.TestCase):
                                     'updated_at': None,
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_capacity_filter_passes_infinite(self):
+        self._stub_service_is_up(True)
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 'infinite',
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_capacity_filter_passes_unknown(self):
+        self._stub_service_is_up(True)
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 'unknown',
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
