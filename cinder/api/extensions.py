@@ -269,9 +269,8 @@ class ExtensionManager(object):
 
         extensions = list(self.cls_list)
 
-        # NOTE(thingee): Until we update devstack to have the new location,
-        # we'll just set replace the old contrib path with the new and preserve
-        # any other extensions that need to be loaded
+        # NOTE(thingee): Backwards compat for the old extension loader path.
+        # We can drop this post-grizzly in the H release.
         old_contrib_path = ('cinder.api.openstack.volume.contrib.'
                             'standard_extensions')
         new_contrib_path = 'cinder.api.contrib.standard_extensions'
