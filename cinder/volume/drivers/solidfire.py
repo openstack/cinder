@@ -405,7 +405,7 @@ class SolidFire(SanISCSIDriver):
         params = {'name': 'UUID-%s' % volume['id'],
                   'accountID': None,
                   'sliceCount': slice_count,
-                  'totalSize': volume['size'] * self.GB,
+                  'totalSize': int(volume['size'] * self.GB),
                   'enable512e': FLAGS.sf_emulate_512,
                   'attributes': attributes,
                   'qos': qos}
