@@ -15,7 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import os
 import re
 
@@ -24,9 +23,27 @@ class CommandFilter(object):
     """Command filter only checking that the 1st argument matches exec_path"""
 
     def __init__(self, exec_path, run_as, *args):
+        self.name = ''
         self.exec_path = exec_path
         self.run_as = run_as
         self.args = args
+        self.real_exec = None
+
+    def get_exec(self, exec_dirs=[]):
+        """Returns existing executable, or empty string if none found"""
+        if self.real_exec is not None:
+            return self.real_exec
+        self.real_exec = ""
+        if self.exec_path.startswith('/'):
+            if os.access(self.exec_path, os.X_OK):
+                self.real_exec = self.exec_path
+        else:
+            for binary_path in exec_dirs:
+                expanded_path = os.path.join(binary_path, self.exec_path)
+                if os.access(expanded_path, os.X_OK):
+                    self.real_exec = expanded_path
+                    break
+        return self.real_exec
 
     def match(self, userargs):
         """Only check that the first argument (command) matches exec_path"""
@@ -34,12 +51,13 @@ class CommandFilter(object):
             return True
         return False
 
-    def get_command(self, userargs):
+    def get_command(self, userargs, exec_dirs=[]):
         """Returns command to execute (with sudo -u if run_as != root)."""
+        to_exec = self.get_exec(exec_dirs=exec_dirs) or self.exec_path
         if (self.run_as != 'root'):
             # Used to run commands at lesser privileges
-            return ['sudo', '-u', self.run_as, self.exec_path] + userargs[1:]
-        return [self.exec_path] + userargs[1:]
+            return ['sudo', '-u', self.run_as, to_exec] + userargs[1:]
+        return [to_exec] + userargs[1:]
 
     def get_environment(self, userargs):
         """Returns specific environment to set, None if none"""
@@ -73,21 +91,31 @@ class RegExpFilter(CommandFilter):
 class DnsmasqFilter(CommandFilter):
     """Specific filter for the dnsmasq call (which includes env)"""
 
+    CONFIG_FILE_ARG = 'CONFIG_FILE'
+
     def match(self, userargs):
-        if (userargs[0].startswith("FLAGFILE=") and
-            userargs[1].startswith("NETWORK_ID=") and
-            userargs[2] == "dnsmasq"):
+        if (userargs[0] == 'env' and
+                userargs[1].startswith(self.CONFIG_FILE_ARG) and
+                userargs[2].startswith('NETWORK_ID=') and
+                userargs[3] == 'dnsmasq'):
             return True
         return False
 
-    def get_command(self, userargs):
-        return [self.exec_path] + userargs[3:]
+    def get_command(self, userargs, exec_dirs=[]):
+        to_exec = self.get_exec(exec_dirs=exec_dirs) or self.exec_path
+        dnsmasq_pos = userargs.index('dnsmasq')
+        return [to_exec] + userargs[dnsmasq_pos + 1:]
 
     def get_environment(self, userargs):
         env = os.environ.copy()
-        env['FLAGFILE'] = userargs[0].split('=')[-1]
-        env['NETWORK_ID'] = userargs[1].split('=')[-1]
+        env[self.CONFIG_FILE_ARG] = userargs[1].split('=')[-1]
+        env['NETWORK_ID'] = userargs[2].split('=')[-1]
         return env
+
+
+class DeprecatedDnsmasqFilter(DnsmasqFilter):
+    """Variant of dnsmasq filter to support old-style FLAGFILE"""
+    CONFIG_FILE_ARG = 'FLAGFILE'
 
 
 class KillFilter(CommandFilter):
