@@ -857,6 +857,21 @@ class DbQuotaDriverTestCase(test.TestCase):
                                       ('quota_reserve', expire, 0, 86400), ])
         self.assertEqual(result, ['resv-1', 'resv-2', 'resv-3'])
 
+    def _stub_quota_destroy_all_by_project(self):
+        def fake_quota_destroy_all_by_project(context, project_id):
+            self.calls.append(('quota_destroy_all_by_project', project_id))
+            return None
+        self.stubs.Set(sqa_api, 'quota_destroy_all_by_project',
+                       fake_quota_destroy_all_by_project)
+
+    def test_destroy_by_project(self):
+        self._stub_quota_destroy_all_by_project()
+        self.driver.destroy_all_by_project(FakeContext('test_project',
+                                                       'test_class'),
+                                           'test_project')
+        self.assertEqual(self.calls, [('quota_destroy_all_by_project',
+                                      ('test_project')), ])
+
 
 class FakeSession(object):
     def begin(self):
