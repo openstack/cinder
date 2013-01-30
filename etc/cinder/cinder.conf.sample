@@ -618,6 +618,9 @@
 # Options defined in cinder.scheduler.host_manager
 #
 
+# num_shell_tries=3
+#### (IntOpt) number of times to attempt to run flakey shell commands
+
 # Which filter class names to use for filtering hosts when not
 # specified in the request. (list value)
 #scheduler_default_filters=AvailabilityZoneFilter,CapacityFilter,CapabilitiesFilter
@@ -722,6 +725,11 @@
 # requires lvm_mirrors + 2 pvs with available space (integer
 # value)
 #lvm_mirrors=0
+
+# pool_size=None
+### (strOpt) Size of thin pool to create including suffix (5G),
+###          default is None and uses full size of VG###
+
 
 
 #
