@@ -14,12 +14,19 @@
 #    License for the specific language governing permissions and limitations
 #
 
+import os
+
 import cinder.context
-import cinder.db
-import cinder.flags
 
 FLAGS = cinder.flags.FLAGS
 
 
 def get_test_admin_context():
     return cinder.context.get_admin_context()
+
+
+def is_cinder_installed():
+    if os.path.exists('../../cinder.cinder.egg-info'):
+        return True
+    else:
+        return False

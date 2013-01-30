@@ -25,6 +25,7 @@ from cinder.openstack.common import jsonutils
 from cinder.openstack.common.scheduler import filters
 from cinder import test
 from cinder.tests.scheduler import fakes
+from cinder.tests import utils as test_utils
 from cinder import utils
 
 
@@ -75,6 +76,8 @@ class HostFiltersTestCase(test.TestCase):
             return ret_value
         self.stubs.Set(utils, 'service_is_up', fake_service_is_up)
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_capacity_filter_passes(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
@@ -86,6 +89,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_capacity_filter_fails(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()

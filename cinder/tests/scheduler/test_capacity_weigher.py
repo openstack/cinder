@@ -20,6 +20,7 @@ from cinder import context
 from cinder.openstack.common.scheduler.weights import HostWeightHandler
 from cinder import test
 from cinder.tests.scheduler import fakes
+from cinder.tests import utils as test_utils
 
 
 class CapacityWeigherTestCase(test.TestCase):
@@ -45,6 +46,8 @@ class CapacityWeigherTestCase(test.TestCase):
         self.mox.ResetAll()
         return host_states
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_default_of_spreading_first(self):
         hostinfo_list = self._get_all_hosts()
 
@@ -58,6 +61,8 @@ class CapacityWeigherTestCase(test.TestCase):
         self.assertEqual(weighed_host.weight, 921.0)
         self.assertEqual(weighed_host.obj.host, 'host1')
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_capacity_weight_multiplier1(self):
         self.flags(capacity_weight_multiplier=-1.0)
         hostinfo_list = self._get_all_hosts()
@@ -72,6 +77,8 @@ class CapacityWeigherTestCase(test.TestCase):
         self.assertEqual(weighed_host.weight, -190.0)
         self.assertEqual(weighed_host.obj.host, 'host4')
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_capacity_weight_multiplier2(self):
         self.flags(capacity_weight_multiplier=2.0)
         hostinfo_list = self._get_all_hosts()
