@@ -20,10 +20,12 @@ Drivers for volumes.
 
 """
 
+import os
 import time
 
 from cinder import exception
 from cinder import flags
+from cinder.image import image_utils
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -172,7 +174,7 @@ class VolumeDriver(object):
         """Fetch the image from image_service and write it to the volume."""
         raise NotImplementedError()
 
-    def copy_volume_to_image(self, context, volume, image_service, image_id):
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         raise NotImplementedError()
 
@@ -287,19 +289,22 @@ class ISCSIDriver(VolumeDriver):
 
         return properties
 
-    def _run_iscsiadm(self, iscsi_properties, iscsi_command):
+    def _run_iscsiadm(self, iscsi_properties, iscsi_command, **kwargs):
+        check_exit_code = kwargs.pop('check_exit_code', 0)
         (out, err) = self._execute('iscsiadm', '-m', 'node', '-T',
                                    iscsi_properties['target_iqn'],
                                    '-p', iscsi_properties['target_portal'],
-                                   *iscsi_command, run_as_root=True)
+                                   *iscsi_command, run_as_root=True,
+                                   check_exit_code=check_exit_code)
         LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
                   (iscsi_command, out, err))
         return (out, err)
 
-    def _iscsiadm_update(self, iscsi_properties, property_key, property_value):
+    def _iscsiadm_update(self, iscsi_properties, property_key, property_value,
+                         **kwargs):
         iscsi_command = ('--op', 'update', '-n', property_key,
                          '-v', property_value)
-        return self._run_iscsiadm(iscsi_properties, iscsi_command)
+        return self._run_iscsiadm(iscsi_properties, iscsi_command, **kwargs)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -328,6 +333,115 @@ class ISCSIDriver(VolumeDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
+
+    def _get_iscsi_initiator(self):
+        """Get iscsi initiator name for this machine"""
+        # NOTE openiscsi stores initiator name in a file that
+        #      needs root permission to read.
+        contents = utils.read_file_as_root('/etc/iscsi/initiatorname.iscsi')
+        for l in contents.split('\n'):
+            if l.startswith('InitiatorName='):
+                return l[l.index('=') + 1:].strip()
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
+        initiator = self._get_iscsi_initiator()
+        connector = {}
+        connector['initiator'] = initiator
+
+        iscsi_properties, volume_path = self._attach_volume(
+            context, volume, connector)
+
+        try:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     volume_path)
+        finally:
+            self.terminate_connection(volume, connector)
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+        LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
+        initiator = self._get_iscsi_initiator()
+        connector = {}
+        connector['initiator'] = initiator
+
+        iscsi_properties, volume_path = self._attach_volume(
+            context, volume, connector)
+
+        try:
+            image_utils.upload_volume(context,
+                                      image_service,
+                                      image_meta,
+                                      volume_path)
+        finally:
+            self.terminate_connection(volume, connector)
+
+    def _attach_volume(self, context, volume, connector):
+        """Attach the volume."""
+        iscsi_properties = None
+        host_device = None
+        init_conn = self.initialize_connection(volume, connector)
+        iscsi_properties = init_conn['data']
+
+        # code "inspired by" nova/virt/libvirt/volume.py
+        try:
+            self._run_iscsiadm(iscsi_properties, ())
+        except exception.ProcessExecutionError as exc:
+            # iscsiadm returns 21 for "No records found" after version 2.0-871
+            if exc.exit_code in [21, 255]:
+                self._run_iscsiadm(iscsi_properties, ('--op', 'new'))
+            else:
+                raise
+
+        if iscsi_properties.get('auth_method'):
+            self._iscsiadm_update(iscsi_properties,
+                                  "node.session.auth.authmethod",
+                                  iscsi_properties['auth_method'])
+            self._iscsiadm_update(iscsi_properties,
+                                  "node.session.auth.username",
+                                  iscsi_properties['auth_username'])
+            self._iscsiadm_update(iscsi_properties,
+                                  "node.session.auth.password",
+                                  iscsi_properties['auth_password'])
+
+        # NOTE(vish): If we have another lun on the same target, we may
+        #             have a duplicate login
+        self._run_iscsiadm(iscsi_properties, ("--login",),
+                           check_exit_code=[0, 255])
+
+        self._iscsiadm_update(iscsi_properties, "node.startup", "automatic")
+
+        host_device = ("/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" %
+                       (iscsi_properties['target_portal'],
+                        iscsi_properties['target_iqn'],
+                        iscsi_properties.get('target_lun', 0)))
+
+        tries = 0
+        while not os.path.exists(host_device):
+            if tries >= FLAGS.num_iscsi_scan_tries:
+                raise exception.CinderException(
+                    _("iSCSI device not found at %s") % (host_device))
+
+            LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
+                     "Will rescan & retry.  Try number: %(tries)s") %
+                     locals())
+
+            # The rescan isn't documented as being necessary(?), but it helps
+            self._run_iscsiadm(iscsi_properties, ("--rescan"))
+
+            tries = tries + 1
+            if not os.path.exists(host_device):
+                time.sleep(tries ** 2)
+
+        if tries != 0:
+            LOG.debug(_("Found iSCSI node %(host_device)s "
+                      "(after %(tries)s rescans)") %
+                      locals())
+
+        return iscsi_properties, host_device
 
 
 class FakeISCSIDriver(ISCSIDriver):

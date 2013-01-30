@@ -150,7 +150,10 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('copy_volume_to_image',
                               rpc_method='cast',
                               volume=self.fake_volume,
-                              image_id='fake_image_id')
+                              image_meta={'id': 'fake_image_id',
+                                          'container_format': 'fake_type',
+                                          'disk_format': 'fake_type'},
+                              version='1.3')
 
     def test_initialize_connection(self):
         self._test_volume_api('initialize_connection',

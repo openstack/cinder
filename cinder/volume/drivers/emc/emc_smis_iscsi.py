@@ -269,7 +269,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         return iscsi_properties, host_device
 
-    def copy_volume_to_image(self, context, volume, image_service, image_id):
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
         initiator = get_iscsi_initiator()
@@ -281,7 +281,8 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         with utils.temporary_chown(volume_path):
             with utils.file_open(volume_path) as volume_file:
-                image_service.update(context, image_id, {}, volume_file)
+                image_service.update(context, image_meta['id'], {},
+                                     volume_file)
 
         self.terminate_connection(volume, connector)
 

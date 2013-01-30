@@ -42,6 +42,9 @@ ln: CommandFilter, /bin/ln, root
 qemu-img: CommandFilter, /usr/bin/qemu-img, root
 env: CommandFilter, /usr/bin/env, root
 
+# cinder/volume/driver.py: utils.read_file_as_root()
+cat: CommandFilter, /bin/cat, root
+
 # cinder/volume/nfs.py
 stat: CommandFilter, /usr/bin/stat, root
 mount: CommandFilter, /bin/mount, root
