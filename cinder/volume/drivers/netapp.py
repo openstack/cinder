@@ -433,10 +433,11 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
     def _remove_destroy(self, name, project):
         """Remove the LUN from the dataset, also destroying it.
 
-        Remove the LUN from the dataset and destroy the actual LUN on the
-        storage system.
+        Remove the LUN from the dataset and destroy the actual LUN and Qtree
+        on the storage system.
         """
         lun = self._lookup_lun_for_volume(name, project)
+        lun_details = self._get_lun_details(lun.id)
         member = self.client.factory.create('DatasetMemberParameter')
         member.ObjectNameOrId = lun.id
         members = self.client.factory.create('ArrayOfDatasetMemberParameter')
@@ -447,11 +448,27 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         try:
             server.DatasetRemoveMember(EditLockId=lock_id, Destroy=True,
                                        DatasetMemberParameters=members)
+            res = server.DatasetEditCommit(EditLockId=lock_id,
+                                           AssumeConfirmation=True)
+        except (suds.WebFault, Exception):
+            server.DatasetEditRollback(EditLockId=lock_id)
+            msg = _('Failed to remove and delete dataset LUN member')
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for info in res.JobIds.JobInfo:
+            self._wait_for_job(info.JobId)
+
+        # Note: it's not possible to delete Qtree & his LUN in one transaction
+        member.ObjectNameOrId = lun_details.QtreeId
+        lock_id = server.DatasetEditBegin(DatasetNameOrId=lun.dataset.id)
+        try:
+            server.DatasetRemoveMember(EditLockId=lock_id, Destroy=True,
+                                       DatasetMemberParameters=members)
             server.DatasetEditCommit(EditLockId=lock_id,
                                      AssumeConfirmation=True)
         except (suds.WebFault, Exception):
             server.DatasetEditRollback(EditLockId=lock_id)
-            msg = _('Failed to remove and delete dataset member')
+            msg = _('Failed to remove and delete dataset Qtree member')
             raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume(self, volume):
