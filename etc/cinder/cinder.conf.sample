@@ -126,7 +126,6 @@
 #osapi_volume_ext_list=
 
 # osapi volume extension to load (multi valued)
-#osapi_volume_extension=cinder.api.openstack.volume.contrib.standard_extensions
 #osapi_volume_extension=cinder.api.contrib.standard_extensions
 
 # Base URL that will be presented to users in links to the
@@ -596,6 +595,33 @@
 
 # Disable Nagle algorithm (boolean value)
 #qpid_tcp_nodelay=true
+
+
+#
+# Options defined in cinder.openstack.common.rpc.impl_zmq
+#
+
+# ZeroMQ bind address. Should be a wildcard (*), an ethernet
+# interface, or IP. The "host" option should point or resolve
+# to this address. (string value)
+#rpc_zmq_bind_address=*
+
+# MatchMaker driver (string value)
+#rpc_zmq_matchmaker=cinder.openstack.common.rpc.matchmaker.MatchMakerLocalhost
+
+# ZeroMQ receiver listening port (integer value)
+#rpc_zmq_port=9501
+
+# Number of ZeroMQ contexts, defaults to 1 (integer value)
+#rpc_zmq_contexts=1
+
+# Directory for holding IPC sockets (string value)
+#rpc_zmq_ipc_dir=/var/run/openstack
+
+# Name of this node. Must be a valid hostname, FQDN, or IP
+# address. Must match "host" option, if running Nova. (string
+# value)
+#rpc_zmq_host=cinder
 
 
 #
@@ -1078,4 +1104,4 @@
 #volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 
 
-# Total option count: 238
+# Total option count: 244
