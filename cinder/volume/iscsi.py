@@ -43,6 +43,7 @@ iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(iscsi_helper_opt)
+FLAGS.import_opt('volume_name_template', 'cinder.db')
 
 
 class TargetAdmin(object):
@@ -172,7 +173,7 @@ class TgtAdm(TargetAdmin):
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
         LOG.info(_('Removing volume: %s') % vol_id)
-        vol_uuid_file = 'volume-%s' % vol_id
+        vol_uuid_file = FLAGS.volume_name_template % vol_id
         volume_path = os.path.join(FLAGS.volumes_dir, vol_uuid_file)
         if os.path.isfile(volume_path):
             iqn = '%s%s' % (FLAGS.iscsi_target_prefix,
@@ -239,7 +240,7 @@ class IetAdm(TargetAdmin):
         LOG.info(_('Removing volume: %s') % vol_id)
         self._delete_logicalunit(tid, lun, **kwargs)
         self._delete_target(tid, **kwargs)
-        vol_uuid = 'volume-%s' % vol_id
+        vol_uuid_file = FLAGS.volume_name_template % vol_id
         conf_file = FLAGS.iet_conf
         if os.path.exists(conf_file):
             with utils.temporary_chown(conf_file):
@@ -252,7 +253,7 @@ class IetAdm(TargetAdmin):
                         if count > 0:
                             count -= 1
                             continue
-                        elif re.search(vol_uuid, line):
+                        elif re.search(vol_uuid_file, line):
                             count = 2
                             continue
                         else:
