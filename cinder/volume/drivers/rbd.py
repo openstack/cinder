@@ -55,7 +55,7 @@ class RBDDriver(driver.VolumeDriver):
         """Returns an error if prerequisites aren't met"""
         (stdout, stderr) = self._execute('rados', 'lspools')
         pools = stdout.split("\n")
-        if not FLAGS.rbd_pool in pools:
+        if FLAGS.rbd_pool not in pools:
             exception_message = (_("rbd has no pool %s") %
                                  FLAGS.rbd_pool)
             raise exception.VolumeBackendAPIException(data=exception_message)

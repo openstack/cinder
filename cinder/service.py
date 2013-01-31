@@ -351,7 +351,7 @@ class WSGIService(object):
 
         """
         fl = '%s_manager' % self.name
-        if not fl in FLAGS:
+        if fl not in FLAGS:
             return None
 
         manager_class_name = FLAGS.get(fl, None)
