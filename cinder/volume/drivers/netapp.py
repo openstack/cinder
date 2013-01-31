@@ -548,7 +548,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         is empty. This is necessary because the API proxy produces nasty
         looking XML.
         """
-        if not type(elem) is list:
+        if type(elem) is not list:
             return True
         if 0 == len(elem):
             return True

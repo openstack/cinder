@@ -159,13 +159,13 @@ class HpSanISCSIDriver(SanISCSIDriver):
             volume_attributes["volume." + k] = v
 
         status_node = volume_node.find("status")
-        if not status_node is None:
+        if status_node is not None:
             for k, v in status_node.attrib.items():
                 volume_attributes["status." + k] = v
 
         # We only consider the first permission node
         permission_node = volume_node.find("permission")
-        if not permission_node is None:
+        if permission_node is not None:
             for k, v in status_node.attrib.items():
                 volume_attributes["permission." + k] = v
 
