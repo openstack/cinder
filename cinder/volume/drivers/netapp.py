@@ -436,8 +436,14 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         Remove the LUN from the dataset and destroy the actual LUN and Qtree
         on the storage system.
         """
-        lun = self._lookup_lun_for_volume(name, project)
-        lun_details = self._get_lun_details(lun.id)
+        try:
+            lun = self._lookup_lun_for_volume(name, project)
+            lun_details = self._get_lun_details(lun.id)
+        except exception.VolumeBackendAPIException:
+            msg = _("No entry in LUN table for volume %(name)s.")
+            LOG.debug(msg % locals())
+            return
+
         member = self.client.factory.create('DatasetMemberParameter')
         member.ObjectNameOrId = lun.id
         members = self.client.factory.create('ArrayOfDatasetMemberParameter')
