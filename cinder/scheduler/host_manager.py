@@ -135,7 +135,14 @@ class HostState(object):
     def consume_from_volume(self, volume):
         """Incrementally update host state from an volume"""
         volume_gb = volume['size']
-        self.free_capacity_gb -= volume_gb
+        if self.free_capacity_gb == 'infinite':
+            # There's virtually infinite space on back-end
+            pass
+        elif self.free_capacity_gb == 'unknown':
+            # Unable to determine the actual free space on back-end
+            pass
+        else:
+            self.free_capacity_gb -= volume_gb
         self.updated = timeutils.utcnow()
 
     def __repr__(self):

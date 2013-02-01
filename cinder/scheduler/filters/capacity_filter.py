@@ -38,7 +38,14 @@ class CapacityFilter(filters.BaseHostFilter):
                           "volume node info collection broken."))
             return False
 
+        free_space = host_state.free_capacity_gb
+        if free_space == 'infinite' or free_space == 'unknown':
+            # NOTE(zhiteng) for those back-ends cannot report actual
+            # available capacity, we assume it is able to serve the
+            # request.  Even if it was not, the retry mechanism is
+            # able to handle the failure by rescheduling
+            return True
         reserved = float(host_state.reserved_percentage) / 100
-        free = math.floor(host_state.free_capacity_gb * (1 - reserved))
+        free = math.floor(free_space * (1 - reserved))
 
         return free >= volume_size
