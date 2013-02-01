@@ -144,14 +144,6 @@ class API(base.Base):
             if image_size_in_gb > size:
                 msg = _('Size of specified image is larger than volume size.')
                 raise exception.InvalidInput(reason=msg)
-            #We use qemu-img to convert images to raw and so we can only
-            #support the intersection of what qemu-img and glance support
-            if (image_meta['container_format'] != 'bare' or
-                image_meta['disk_format'] not in ['raw', 'qcow2',
-                                                  'vmdk', 'vdi']):
-                msg = (_("Image format must be one of raw, qcow2, "
-                         "vmdk, or vdi."))
-                raise exception.InvalidInput(reason=msg)
 
         try:
             reservations = QUOTAS.reserve(context, volumes=1, gigabytes=size)
@@ -599,16 +591,6 @@ class API(base.Base):
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
         self._check_volume_availability(context, volume, force)
-
-        #We use qemu-img to convert raw images to the requested type
-        #and so we can only support the intersection of what qemu-img and
-        #glance support
-        if (metadata['container_format'] != 'bare' or
-                metadata['disk_format'] not in ['raw', 'qcow2',
-                                                'vmdk', 'vdi']):
-            msg = (_("Image format must be one of raw, qcow2, "
-                     "vmdk, or vdi."))
-            raise exception.InvalidInput(reason=msg)
 
         recv_metadata = self.image_service.create(context, metadata)
         self.update(context, volume, {'status': 'uploading'})

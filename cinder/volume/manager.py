@@ -221,6 +221,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._reset_stats()
 
         if image_id and not cloned:
+            # NOTE(jdg): Our current ref hasn't been updated since
+            # the create, need to update ref to get provider_location
+            # before trying to perform the copy operation
+            volume_ref = self.db.volume_get(context, volume_id)
             if image_meta:
                 # Copy all of the Glance image properties to the
                 # volume_glance_metadata table for future reference.
