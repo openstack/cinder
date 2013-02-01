@@ -176,8 +176,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     snapshot_ref)
             elif source_volid is not None:
                 src_vref = self.db.volume_get(context, source_volid)
+                self.db.volume_update(context, src_vref['id'],
+                                      {'status': 'in use'})
                 model_update = self.driver.create_cloned_volume(volume_ref,
                                                                 src_vref)
+                self.db.volume_update(context, src_vref['id'],
+                                      {'status': src_vref['status']})
             else:
                 # create the volume from an image
                 image_service, image_id = \
