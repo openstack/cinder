@@ -24,6 +24,7 @@ def upgrade(migrate_engine):
     snapshots = Table('snapshots', meta, autoload=True)
     provider_location = Column('provider_location', String(255))
     snapshots.create_column(provider_location)
+    snapshots.update().values(provider_location=None).execute()
 
 
 def downgrade(migrate_engine):
@@ -32,4 +33,4 @@ def downgrade(migrate_engine):
 
     snapshots = Table('snapshots', meta, autoload=True)
     provider_location = snapshots.columns.provider_location
-    provider_location.drop()
+    snapshots.drop_column(provider_location)
