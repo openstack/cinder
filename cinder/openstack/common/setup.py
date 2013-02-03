@@ -282,7 +282,7 @@ def get_version_from_git(pre_version):
     if os.path.isdir('.git'):
         if pre_version:
             try:
-                return  _run_shell_command(
+                return _run_shell_command(
                     "git describe --exact-match",
                     throw_on_error=True).replace('-', '.')
             except Exception:

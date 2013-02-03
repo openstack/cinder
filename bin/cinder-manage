@@ -226,10 +226,7 @@ class VersionCommands(object):
         pass
 
     def list(self):
-        print(
-            _("%(version)s (%(vcs)s)") %
-            {'version': version.version_string(),
-             'vcs': version.version_string_with_vcs()})
+        print(version.version_string())
 
     def __call__(self):
         self.list()
@@ -723,9 +720,8 @@ def main():
     FLAGS.register_cli_opt(category_opt)
     script_name = sys.argv[0]
     if len(sys.argv) < 2:
-        print _("\nOpenStack Cinder version: %(version)s (%(vcs)s)\n") %\
-            {'version': version.version_string(),
-             'vcs': version.version_string_with_vcs()}
+        print(_("\nOpenStack Cinder version: %(version)s\n") %
+              {'version': version.version_string()})
         print script_name + " category action [<args>]"
         print _("Available categories:")
         for category in CATEGORIES:
