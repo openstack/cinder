@@ -103,6 +103,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_capacity_filter_passes_infinite(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
@@ -114,6 +116,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed')
     def test_capacity_filter_passes_unknown(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
