@@ -31,7 +31,8 @@ xenapi_opts = [
                help='Username for XenAPI connection'),
     cfg.StrOpt('xenapi_connection_password',
                default=None,
-               help='Password for XenAPI connection'),
+               help='Password for XenAPI connection',
+               secret=True),
 ]
 
 xenapi_nfs_opts = [
