@@ -188,7 +188,7 @@ class SnapshotsController(wsgi.Controller):
         if not body:
             raise exc.HTTPUnprocessableEntity()
 
-        if not 'snapshot' in body:
+        if 'snapshot' not in body:
             raise exc.HTTPUnprocessableEntity()
 
         snapshot = body['snapshot']

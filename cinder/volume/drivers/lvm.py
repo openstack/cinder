@@ -70,7 +70,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         out, err = self._execute('vgs', '--noheadings', '-o', 'name',
                                  run_as_root=True)
         volume_groups = out.split()
-        if not FLAGS.volume_group in volume_groups:
+        if FLAGS.volume_group not in volume_groups:
             exception_message = (_("volume group %s doesn't exist")
                                  % FLAGS.volume_group)
             raise exception.VolumeBackendAPIException(data=exception_message)

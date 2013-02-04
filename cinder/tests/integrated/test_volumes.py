@@ -72,7 +72,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
 
             self.assertEqual(volume_id, found_volume['id'])
 
-            if not found_volume['status'] in continue_states:
+            if found_volume['status'] not in continue_states:
                 break
 
             time.sleep(1)

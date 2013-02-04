@@ -185,6 +185,6 @@ class FakeRateLimiter(object):
 
 
 def get_fake_uuid(token=0):
-    if not token in FAKE_UUIDS:
+    if token not in FAKE_UUIDS:
         FAKE_UUIDS[token] = str(uuid.uuid4())
     return FAKE_UUIDS[token]

@@ -1306,7 +1306,7 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
 
     def _get_lun_handle(self, name):
         """Get the details for a LUN from our cache table."""
-        if not name in self.lun_table:
+        if name not in self.lun_table:
             LOG.warn(_("Could not find handle for LUN named %s") % name)
             return None
         return self.lun_table[name].handle

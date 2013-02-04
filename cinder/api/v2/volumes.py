@@ -302,7 +302,7 @@ class VolumeController(wsgi.Controller):
         if not body:
             raise exc.HTTPUnprocessableEntity()
 
-        if not 'volume' in body:
+        if 'volume' not in body:
             raise exc.HTTPUnprocessableEntity()
 
         volume = body['volume']

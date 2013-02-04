@@ -89,7 +89,7 @@ class Request(webob.Request):
         Does not do any body introspection, only checks header
 
         """
-        if not "Content-Type" in self.headers:
+        if "Content-Type" not in self.headers:
             return None
 
         allowed_types = SUPPORTED_CONTENT_TYPES

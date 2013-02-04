@@ -164,7 +164,7 @@ class MockProxy(object):
         l.append(val)
 
     def _add_recorded_value(self, name, val):
-        if not name in self._recorded_values:
+        if name not in self._recorded_values:
             self._recorded_values[name] = []
         self._recorded_values[name].append(val)
 
