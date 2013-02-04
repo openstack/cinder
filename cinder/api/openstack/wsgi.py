@@ -23,6 +23,7 @@ import webob
 from cinder import exception
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder import wsgi
 
 from lxml import etree
@@ -151,7 +152,7 @@ class XMLDeserializer(TextDeserializer):
         plurals = set(self.metadata.get('plurals', {}))
 
         try:
-            node = minidom.parseString(datastring).childNodes[0]
+            node = utils.safe_minidom_parse_string(datastring).childNodes[0]
             return {node.nodeName: self._from_xml_node(node, plurals)}
         except expat.ExpatError:
             msg = _("cannot understand XML")
@@ -548,7 +549,7 @@ def action_peek_json(body):
 def action_peek_xml(body):
     """Determine action to invoke."""
 
-    dom = minidom.parseString(body)
+    dom = utils.safe_minidom_parse_string(body)
     action_node = dom.childNodes[0]
 
     return action_node.tagName

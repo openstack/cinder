@@ -17,7 +17,6 @@
 
 import webob
 from webob import exc
-from xml.dom import minidom
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
@@ -26,6 +25,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
+from cinder import utils
 from cinder import volume
 from cinder.volume import volume_types
 
@@ -204,7 +204,7 @@ class CreateDeserializer(CommonDeserializer):
 
     def default(self, string):
         """Deserialize an xml-formatted volume create request."""
-        dom = minidom.parseString(string)
+        dom = utils.safe_minidom_parse_string(string)
         volume = self._extract_volume(dom)
         return {'body': {'volume': volume}}
 
