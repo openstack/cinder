@@ -41,6 +41,7 @@ from cinder import quota
 from cinder import test
 from cinder.tests import fake_flags
 from cinder.tests.image import fake as fake_image
+from cinder.volume import driver
 from cinder.volume import iscsi
 
 QUOTAS = quota.QUOTAS
@@ -943,6 +944,25 @@ class ISCSITestCase(DriverTestCase):
             volume_id_list.append(vol_ref['id'])
 
         return volume_id_list
+
+    def test_do_iscsi_discovery(self):
+        iscsi_driver = driver.ISCSIDriver()
+        iscsi_driver._execute = lambda *a, **kw: \
+            ("%s dummy" % FLAGS.iscsi_ip_address, '')
+        volume = {"name": "dummy",
+                  "host": "0.0.0.0"}
+        iscsi_driver._do_iscsi_discovery(volume)
+
+    def test_get_iscsi_properties(self):
+        volume = {"provider_location": '',
+                  "id": "0",
+                  "provider_auth": "a b c"}
+        iscsi_driver = driver.ISCSIDriver()
+        iscsi_driver._do_iscsi_discovery = lambda v: "0.0.0.0:0000,0 iqn:iqn 0"
+        result = iscsi_driver._get_iscsi_properties(volume)
+        self.assertEquals(result["target_portal"], "0.0.0.0:0000")
+        self.assertEquals(result["target_iqn"], "iqn:iqn")
+        self.assertEquals(result["target_lun"], 0)
 
 
 class VolumePolicyTestCase(test.TestCase):
