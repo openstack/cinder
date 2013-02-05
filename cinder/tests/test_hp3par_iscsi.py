@@ -54,7 +54,8 @@ class FakeHP3ParClient(object):
                      'usedMiB': 256},
          'SDGrowth': {'LDLayout': {'RAIDType': 4,
                       'diskPatterns': [{'diskType': 2}]},
-                      'incrementMiB': 32768},
+                      'incrementMiB': 32768,
+                      'limitMiB': 1024000},
          'SDUsage': {'rawTotalMiB': 49152,
                      'rawUsedMiB': 1023,
                      'totalMiB': 36864,
@@ -251,10 +252,12 @@ class FakeHP3ParClient(object):
 class TestHP3PARDriver(test.TestCase):
 
     TARGET_IQN = "iqn.2000-05.com.3pardata:21810002ac00383d"
+    VOLUME_ID = "d03338a9-9115-48a3-8dfc-35cdfcdc15a7"
     VOLUME_NAME = "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7"
+    SNAPSHOT_ID = "2f823bdc-e36e-4dc8-bd15-de1c7a28ff31"
     SNAPSHOT_NAME = "snapshot-2f823bdc-e36e-4dc8-bd15-de1c7a28ff31"
     VOLUME_3PAR_NAME = "osv-0DM4qZEVSKON-DXN-NwVpw"
-    SNAPSHOT_VOL_NAME = "oss-L4I73ONuTci9Fd4ceij-MQ"
+    SNAPSHOT_3PAR_NAME = "oss-L4I73ONuTci9Fd4ceij-MQ"
     FAKE_HOST = "fakehost"
 
     _hosts = {}
@@ -292,31 +295,35 @@ class TestHP3PARDriver(test.TestCase):
                        self.fake_delete_3par_host)
         self.stubs.Set(hpdriver.HP3PARCommon, "_create_3par_vlun",
                        self.fake_create_3par_vlun)
+        self.stubs.Set(hpdriver.HP3PARCommon, "get_ports",
+                       self.fake_get_ports)
 
         self.driver = hpdriver.HP3PARISCSIDriver()
         self.driver.do_setup(None)
 
         self.volume = {'name': self.VOLUME_NAME,
+                       'id': self.VOLUME_ID,
                        'display_name': 'Foo Volume',
-                       'size': 1,
+                       'size': 2,
                        'host': self.FAKE_HOST}
 
         user_id = '2689d9a913974c008b1d859013f23607'
         project_id = 'fac88235b9d64685a3530f73e490348f'
         volume_id = '761fc5e5-5191-4ec7-aeba-33e36de44156'
         fake_desc = 'test description name'
-        self.snapshot = type('snapshot',
-                             (object,),
-                             {'name': self.SNAPSHOT_NAME,
-                              'user_id': user_id,
-                              'project_id': project_id,
-                              'volume_id': volume_id,
-                              'volume_name': self.VOLUME_NAME,
-                              'status': 'creating',
-                              'progress': '0%',
-                              'volume_size': 2,
-                              'display_name': 'fakesnap',
-                              'display_description': fake_desc})()
+        fake_fc_ports = ['0987654321234', '123456789000987']
+        fake_iscsi_ports = ['10.10.10.10', '10.10.10.11']
+        self.snapshot = {'name': self.SNAPSHOT_NAME,
+                         'id': self.SNAPSHOT_ID,
+                         'user_id': user_id,
+                         'project_id': project_id,
+                         'volume_id': volume_id,
+                         'volume_name': self.VOLUME_NAME,
+                         'status': 'creating',
+                         'progress': '0%',
+                         'volume_size': 2,
+                         'display_name': 'fakesnap',
+                         'display_description': fake_desc}
         self.connector = {'ip': '10.0.0.2',
                           'initiator': 'iqn.1993-08.org.debian:01:222',
                           'host': 'fakehost'}
@@ -328,6 +335,13 @@ class TestHP3PARDriver(test.TestCase):
                             'target_lun': 186,
                             'target_portal': '1.1.1.2:1234'},
                            'driver_volume_type': 'iscsi'}
+        self.stats = {'driver_version': '1.0',
+                      'free_capacity_gb': 968,
+                      'reserved_percentage': 0,
+                      'storage_protocol': 'iSCSI',
+                      'total_capacity_gb': 1000,
+                      'vendor_name': 'Hewlett-Packard',
+                      'volume_backend_name': 'HP3PARISCSIDriver'}
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
@@ -375,6 +389,9 @@ class TestHP3PARDriver(test.TestCase):
     def fake_create_3par_vlun(self, volume, hostname):
         self.driver.client.createVLUN(volume, 19, hostname)
 
+    def fake_get_ports(self):
+        return {'FC': self.fake_fc_ports, 'iSCSI': self.fake_iscsi_ports}
+
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
         model_update = self.driver.create_volume(self.volume)
@@ -389,13 +406,29 @@ class TestHP3PARDriver(test.TestCase):
                           self.driver.client.getVolume,
                           self.VOLUME_NAME)
 
+    def test_get_volume_stats(self):
+        self.flags(lock_path=self.tempdir)
+        vol_stats = self.driver.get_volume_stats(True)
+        self.assertEqual(vol_stats['driver_version'],
+                         self.stats['driver_version'])
+        self.assertEqual(vol_stats['free_capacity_gb'],
+                         self.stats['free_capacity_gb'])
+        self.assertEqual(vol_stats['reserved_percentage'],
+                         self.stats['reserved_percentage'])
+        self.assertEqual(vol_stats['storage_protocol'],
+                         self.stats['storage_protocol'])
+        self.assertEqual(vol_stats['vendor_name'],
+                         self.stats['vendor_name'])
+        self.assertEqual(vol_stats['volume_backend_name'],
+                         self.stats['volume_backend_name'])
+
     def test_create_snapshot(self):
         self.flags(lock_path=self.tempdir)
         self.driver.create_snapshot(self.snapshot)
 
         # check to see if the snapshot was created
-        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_VOL_NAME)
-        self.assertEqual(snap_vol['name'], self.SNAPSHOT_VOL_NAME)
+        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
 
     def test_delete_snapshot(self):
         self.flags(lock_path=self.tempdir)
@@ -404,14 +437,14 @@ class TestHP3PARDriver(test.TestCase):
         # the snapshot should be deleted now
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.client.getVolume,
-                          self.SNAPSHOT_VOL_NAME)
+                          self.SNAPSHOT_NAME)
 
     def test_create_volume_from_snapshot(self):
         self.flags(lock_path=self.tempdir)
         self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
 
-        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_VOL_NAME)
-        self.assertEqual(snap_vol['name'], self.SNAPSHOT_VOL_NAME)
+        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
 
     def test_initialize_connection(self):
         self.flags(lock_path=self.tempdir)

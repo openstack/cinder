@@ -94,6 +94,14 @@ FLAGS.register_opts(hp3par_opts)
 
 class HP3PARCommon():
 
+    stats = {'driver_version': '1.0',
+             'free_capacity_gb': 'unknown',
+             'reserved_percentage': 0,
+             'storage_protocol': None,
+             'total_capacity_gb': 'unknown',
+             'vendor_name': 'Hewlett-Packard',
+             'volume_backend_name': None}
+
     def __init__(self):
         self.sshpool = None
 
@@ -102,10 +110,10 @@ class HP3PARCommon():
             if not getattr(FLAGS, flag, None):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
 
-    def _get_3par_vol_name(self, name):
+    def _get_3par_vol_name(self, volume_id):
         """
-        Converts the openstack volume name from
-        volume-ecffc30f-98cb-4cf5-85ee-d7309cc17cd2
+        Converts the openstack volume id from
+        ecffc30f-98cb-4cf5-85ee-d7309cc17cd2
         to
         osv-7P.DD5jLTPWF7tcwnMF80g
 
@@ -116,13 +124,11 @@ class HP3PARCommon():
         We strip the padding '=' and replace + with .
         and / with -
         """
-        name = name.replace("volume-", "")
-        volume_name = self._encode_name(name)
+        volume_name = self._encode_name(volume_id)
         return "osv-%s" % volume_name
 
-    def _get_3par_snap_name(self, name):
-        name = name.replace("snapshot-", "")
-        snapshot_name = self._encode_name(name)
+    def _get_3par_snap_name(self, snapshot_id):
+        snapshot_name = self._encode_name(snapshot_id)
         return "oss-%s" % snapshot_name
 
     def _encode_name(self, name):
@@ -133,7 +139,7 @@ class HP3PARCommon():
         # 3par doesn't allow +, nor /
         vol_encoded = vol_encoded.replace('+', '.')
         vol_encoded = vol_encoded.replace('/', '-')
-        #strip off the == as 3par doesn't like those.
+        # strip off the == as 3par doesn't like those.
         vol_encoded = vol_encoded.replace('=', '')
         return vol_encoded
 
@@ -193,8 +199,8 @@ class HP3PARCommon():
 exit
 ''' % cmd)
 
-        #stdin.write('process_input would go here')
-        #stdin.flush()
+        # stdin.write('process_input would go here')
+        # stdin.flush()
 
         # NOTE(justinsb): This seems suspicious...
         # ...other SSH clients have buffering issues with this approach
@@ -262,7 +268,7 @@ exit
             # couldn't find it
             index = len(hostname)
 
-        #we'll just chop this off for now.
+        # we'll just chop this off for now.
         if index > 23:
             index = 23
 
@@ -354,19 +360,80 @@ exit
 
         return host
 
+    def get_ports(self):
+        # First get the active FC ports
+        out = self._cli_run('showport', None)
+
+        # strip out header
+        # N:S:P,Mode,State,----Node_WWN----,-Port_WWN/HW_Addr-,Type,
+        # Protocol,Label,Partner,FailoverState
+        out = out[1:len(out) - 2]
+
+        ports = {'FC': [], 'iSCSI': []}
+        for line in out:
+            tmp = line.split(',')
+
+            if tmp:
+                if tmp[1] == 'target' and tmp[2] == 'ready':
+                    if tmp[6] == 'FC':
+                        port = {'wwn': tmp[4], 'nsp': tmp[0]}
+                        ports['FC'].append(port)
+
+        # now get the active iSCSI ports
+        out = self._cli_run('showport -iscsi', None)
+
+        # strip out header
+        # N:S:P,State,IPAddr,Netmask,Gateway,
+        # TPGT,MTU,Rate,DHCP,iSNS_Addr,iSNS_Port
+        out = out[1:len(out) - 2]
+        for line in out:
+            tmp = line.split(',')
+
+            if tmp:
+                if tmp[1] == 'ready':
+                    port = {'ip': tmp[2], 'nsp': tmp[0]}
+                    ports['iSCSI'].append(port)
+
+        LOG.debug("PORTS = %s" % pprint.pformat(ports))
+        return ports
+
+    def get_volume_stats(self, refresh, client):
+        # const to convert MiB to GB
+        const = 0.0009765625
+
+        if refresh:
+            try:
+                cpg = client.getCPG(FLAGS.hp3par_cpg)
+                if 'limitMiB' not in cpg['SDGrowth']:
+                    total_capacity = 'infinite'
+                    free_capacity = 'infinite'
+                else:
+                    total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
+                    free_capacity = int((cpg['SDGrowth']['limitMiB'] -
+                                        cpg['UsrUsage']['usedMiB']) * const)
+
+                self.stats['total_capacity_gb'] = total_capacity
+                self.stats['free_capacity_gb'] = free_capacity
+            except hpexceptions.HTTPNotFound:
+                err = _("CPG (%s) doesn't exist on array") % FLAGS.hp3par_cpg
+                LOG.error(err)
+                raise exception.InvalidInput(reason=err)
+
+        return self.stats
+
     def create_vlun(self, volume, host, client):
         """
         In order to export a volume on a 3PAR box, we have to
         create a VLUN.
         """
-        volume_name = self._get_3par_vol_name(volume['name'])
+        volume_name = self._get_3par_vol_name(volume['id'])
         self._create_3par_vlun(volume_name, host['name'])
         return client.getVLUN(volume_name)
 
     def delete_vlun(self, volume, connector, client):
         hostname = self._safe_hostname(connector['host'])
 
-        volume_name = self._get_3par_vol_name(volume['name'])
+        volume_name = self._get_3par_vol_name(volume['id'])
         vlun = client.getVLUN(volume_name)
         client.deleteVLUN(volume_name, vlun['lun'], hostname)
         self._delete_3par_host(hostname)
@@ -376,11 +443,16 @@ exit
         """ Create a new volume """
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
                   (volume['display_name'], volume['name'],
-                   self._get_3par_vol_name(volume['name'])))
+                   self._get_3par_vol_name(volume['id'])))
         try:
-            comments = {'name': volume['name'],
-                        'display_name': volume['display_name'],
+            comments = {'volume_id': volume['id'],
+                        'name': volume['name'],
                         'type': 'OpenStack'}
+
+            name = volume.get('display_name', None)
+            if name:
+                comments['display_name'] = name
+
             extras = {'comment': json.dumps(comments),
                       'snapCPG': FLAGS.hp3par_cpg_snap}
 
@@ -388,7 +460,7 @@ exit
                 extras['snapCPG'] = FLAGS.hp3par_cpg
 
             capacity = self._capacity_from_size(volume['size'])
-            volume_name = self._get_3par_vol_name(volume['name'])
+            volume_name = self._get_3par_vol_name(volume['id'])
             client.createVolume(volume_name, FLAGS.hp3par_cpg,
                                 capacity, extras)
 
@@ -402,15 +474,20 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
+        metadata = {'3ParName': volume_name, 'CPG': FLAGS.hp3par_cpg,
+                    'snapCPG': extras['snapCPG']}
+        return metadata
+
     @lockutils.synchronized('3par', 'cinder-', True)
     def delete_volume(self, volume, client):
         """ Delete a volume """
         try:
-            volume_name = self._get_3par_vol_name(volume['name'])
+            volume_name = self._get_3par_vol_name(volume['id'])
             client.deleteVolume(volume_name)
         except hpexceptions.HTTPNotFound as ex:
+            # We'll let this act as if it worked
+            # it helps clean up the cinder entries.
             LOG.error(str(ex))
-            raise exception.NotFound(ex.get_description())
         except hpexceptions.HTTPForbidden as ex:
             LOG.error(str(ex))
             raise exception.NotAuthorized(ex.get_description())
@@ -427,21 +504,35 @@ exit
         """
         LOG.debug("Create Volume from Snapshot\n%s\n%s" %
                   (pprint.pformat(volume['display_name']),
-                   pprint.pformat(snapshot.display_name)))
-        try:
-            snap_name = self._get_3par_snap_name(snapshot.name)
-            vol_name = self._get_3par_vol_name(volume['name'])
+                   pprint.pformat(snapshot['display_name'])))
 
-            extra = {'name': snapshot.display_name,
-                     'description': snapshot.display_description}
+        if snapshot['volume_size'] != volume['size']:
+            err = "You cannot change size of the volume.  It must \
+be the same as it's Snapshot."
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        try:
+            snap_name = self._get_3par_snap_name(snapshot['id'])
+            vol_name = self._get_3par_vol_name(volume['id'])
+
+            extra = {'volume_id': volume['id'],
+                     'snapshot_id': snapshot['id']}
+            name = snapshot.get('display_name', None)
+            if name:
+                extra['name'] = name
+
+            description = snapshot.get('display_description', None)
+            if description:
+                extra['description'] = description
 
             optional = {'comment': json.dumps(extra),
                         'readOnly': False}
 
             client.createSnapshot(vol_name, snap_name, optional)
-        except hpexceptions.HTTPForbidden as ex:
+        except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound as ex:
+        except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
 
     @lockutils.synchronized('3par', 'cinder-', True)
@@ -450,12 +541,23 @@ exit
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
-            snap_name = self._get_3par_snap_name(snapshot.name)
-            vol_name = self._get_3par_vol_name(snapshot.volume_name)
+            snap_name = self._get_3par_snap_name(snapshot['id'])
+            vol_name = self._get_3par_vol_name(snapshot['volume_id'])
 
-            extra = {'name': snapshot.display_name,
-                     'vol_name': snapshot.volume_name,
-                     'description': snapshot.display_description}
+            extra = {'volume_name': snapshot['volume_name']}
+            vol_id = snapshot.get('volume_id', None)
+            if vol_id:
+                extra['volume_id'] = vol_id
+
+            try:
+                extra['name'] = snapshot['display_name']
+            except AttribteError:
+                pass
+
+            try:
+                extra['description'] = snapshot['display_description']
+            except AttribteError:
+                pass
 
             optional = {'comment': json.dumps(extra),
                         'readOnly': True}
@@ -477,9 +579,9 @@ exit
         LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
-            snap_name = self._get_3par_snap_name(snapshot.name)
+            snap_name = self._get_3par_snap_name(snapshot['id'])
             client.deleteVolume(snap_name)
         except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound:
-            raise exception.NotFound()
+        except hpexceptions.HTTPNotFound as ex:
+            LOG.error(str(ex))

@@ -59,6 +59,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def _create_client(self):
         return client.HP3ParClient(FLAGS.hp3par_api_url)
 
+    def get_volume_stats(self, refresh):
+        stats = self.common.get_volume_stats(refresh, self.client)
+        stats['storage_protocol'] = 'iSCSI'
+        stats['volume_backend_name'] = 'HP3PARISCSIDriver'
+        return stats
+
     def do_setup(self, context):
         self.common = self._init_common()
         self._check_flags()
@@ -77,11 +83,20 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         # make sure the CPG exists
         try:
-            self.client.getCPG(FLAGS.hp3par_cpg)
+            cpg = self.client.getCPG(FLAGS.hp3par_cpg)
         except hpexceptions.HTTPNotFound as ex:
             err = _("CPG (%s) doesn't exist on array") % FLAGS.hp3par_cpg
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
+
+        if 'domain' not in cpg and cpg['domain'] != FLAGS.hp3par_domain:
+            err = "CPG's domain '%s' and config option hp3par_domain '%s' \
+must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        # make sure ssh works.
+        self._iscsi_discover_target_iqn(FLAGS.iscsi_ip_address)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -90,10 +105,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @lockutils.synchronized('3par-vol', 'cinder-', True)
     def create_volume(self, volume):
         """ Create a new volume """
-        self.common.create_volume(volume, self.client, FLAGS)
+        metadata = self.common.create_volume(volume, self.client, FLAGS)
 
         return {'provider_location': "%s:%s" %
-                (FLAGS.iscsi_ip_address, FLAGS.iscsi_port)}
+                (FLAGS.iscsi_ip_address, FLAGS.iscsi_port),
+                'metadata': metadata}
 
     @lockutils.synchronized('3par-vol', 'cinder-', True)
     def delete_volume(self, volume):
