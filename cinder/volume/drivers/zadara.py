@@ -51,7 +51,8 @@ zadara_opts = [
                help='User name for the VPSA'),
     cfg.StrOpt('zadara_password',
                default=None,
-               help='Password for the VPSA'),
+               help='Password for the VPSA',
+               secret=True),
 
     cfg.StrOpt('zadara_vpsa_poolname',
                default=None,
