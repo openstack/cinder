@@ -179,4 +179,20 @@ class XenAPINFSDriver(driver.VolumeDriver):
             volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        raise NotImplementedError()
+        image_id = image_meta['id']
+
+        sr_uuid, vdi_uuid = volume['provider_location'].split('/')
+
+        api_servers = glance.get_api_servers()
+        glance_server = api_servers.next()
+        auth_token = context.auth_token
+
+        self.nfs_ops.use_glance_plugin_to_upload_volume(
+            FLAGS.xenapi_nfs_server,
+            FLAGS.xenapi_nfs_serverpath,
+            sr_uuid,
+            vdi_uuid,
+            glance_server,
+            image_id,
+            auth_token,
+            FLAGS.xenapi_sr_base_path)

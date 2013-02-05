@@ -340,6 +340,19 @@ class GlancePluginProxy(XapiPluginProxy):
             sr_path=sr_path,
             auth_token=auth_token)
 
+    def upload_vhd(self, vdi_uuids, image_id, glance_host, glance_port,
+                   glance_use_ssl, sr_path, auth_token, properties):
+        return self.call(
+            'upload_vhd',
+            vdi_uuids=vdi_uuids,
+            image_id=image_id,
+            glance_host=glance_host,
+            glance_port=glance_port,
+            glance_use_ssl=glance_use_ssl,
+            sr_path=sr_path,
+            auth_token=auth_token,
+            properties=properties)
+
 
 class NFSBasedVolumeOperations(object):
     def __init__(self, session_factory):
@@ -437,3 +450,18 @@ class NFSBasedVolumeOperations(object):
             return False
 
         return True
+
+    def use_glance_plugin_to_upload_volume(self, server, serverpath,
+                                           sr_uuid, vdi_uuid, glance_server,
+                                           image_id, auth_token, sr_base_path):
+        self.connect_volume(server, serverpath, sr_uuid, vdi_uuid)
+
+        vdi_uuids = [vdi_uuid]
+        glance_host, glance_port, glance_use_ssl = glance_server
+
+        try:
+            result = self.glance_plugin.upload_vhd(
+                vdi_uuids, image_id, glance_host, glance_port, glance_use_ssl,
+                os.path.join(sr_base_path, sr_uuid), auth_token, dict())
+        finally:
+            self.disconnect_volume(vdi_uuid)
