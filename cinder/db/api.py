@@ -441,6 +441,19 @@ def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
     return IMPL.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
 
 
+def volume_glance_metadata_copy_from_volume_to_volume(context,
+                                                      src_volume_id,
+                                                      volume_id):
+    """
+    Update the Glance metadata for a volume by copying all of the key:value
+    pairs from the originating volume. This is so that a volume created from
+    the volume (clone) will retain the original metadata.
+    """
+    return IMPL.volume_glance_metadata_copy_from_volume_to_volume(
+        context,
+        src_volume_id,
+        volume_id)
+
 ###################
 
 

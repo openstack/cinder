@@ -1599,6 +1599,33 @@ def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id,
 
 @require_context
 @require_volume_exists
+def volume_glance_metadata_copy_from_volume_to_volume(context,
+                                                      src_volume_id,
+                                                      volume_id,
+                                                      session=None):
+    """
+    Update the Glance metadata for a volume by copying all of the key:value
+    pairs from the originating volume. This is so that a volume created from
+    the volume (clone) will retain the original metadata.
+    """
+    if session is None:
+        session = get_session()
+
+    metadata = volume_glance_metadata_get(context,
+                                          src_volume_id,
+                                          session=session)
+    with session.begin():
+        for meta in metadata:
+            vol_glance_metadata = models.VolumeGlanceMetadata()
+            vol_glance_metadata.volume_id = volume_id
+            vol_glance_metadata.key = meta['key']
+            vol_glance_metadata.value = meta['value']
+
+            vol_glance_metadata.save(session=session)
+
+
+@require_context
+@require_volume_exists
 def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id,
                                           session=None):
     """
