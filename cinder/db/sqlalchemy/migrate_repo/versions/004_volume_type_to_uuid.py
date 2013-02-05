@@ -116,10 +116,6 @@ def downgrade(migrate_engine):
                 else:
                     raise
 
-    volumes.c.volume_type_id.alter(Integer)
-    volume_types.c.id.alter(Integer)
-    extra_specs.c.volume_type_id.alter(Integer)
-
     vtype_list = list(volume_types.select().execute())
     new_id = 1
 
@@ -137,6 +133,10 @@ def downgrade(migrate_engine):
             values(id=new_id).execute()
 
         new_id += 1
+
+    volumes.c.volume_type_id.alter(Integer)
+    volume_types.c.id.alter(Integer)
+    extra_specs.c.volume_type_id.alter(Integer)
 
     for column in fkey_remove_list:
         fkeys = list(column.foreign_keys)
