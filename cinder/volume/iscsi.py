@@ -40,7 +40,15 @@ iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
                                     'directory'),
                     cfg.StrOpt('iet_conf',
                                default='/etc/iet/ietd.conf',
-                               help='IET configuration file'), ]
+                               help='IET configuration file'),
+                    cfg.StrOpt('lio_initiator_iqns',
+                               default='',
+                               help=('Comma-separatd list of initiator IQNs '
+                                     'allowed to connect to the '
+                                     'iSCSI target. (From Nova compute nodes.)'
+                                     )
+                               )
+                    ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(iscsi_helper_opt)
@@ -353,14 +361,20 @@ class LioAdm(TargetAdmin):
         if chap_auth != None:
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
+        extra_args = []
+        if FLAGS.lio_initiator_iqns:
+            extra_args.append(FLAGS.lio_initiator_iqns)
+
         try:
-            self._execute('cinder-rtstool',
-                          'create',
-                          path,
-                          name,
-                          chap_auth_userid,
-                          chap_auth_password,
-                          run_as_root=True)
+            command_args = ['cinder-rtstool',
+                            'create',
+                            path,
+                            name,
+                            chap_auth_userid,
+                            chap_auth_password]
+            if extra_args != []:
+                command_args += extra_args
+            self._execute(*command_args, run_as_root=True)
         except exception.ProcessExecutionError as e:
                 LOG.error(_("Failed to create iscsi target for volume "
                             "id:%(vol_id)s.") % locals())

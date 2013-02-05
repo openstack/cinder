@@ -33,7 +33,7 @@ class RtstoolImportError(RtstoolError):
     pass
 
 
-def create(backing_device, name, userid, password):
+def create(backing_device, name, userid, password, initiator_iqns=None):
     try:
         rtsroot = rtslib.root.RTSRoot()
     except rtslib.utils.RTSLibError:
@@ -78,9 +78,18 @@ def create(backing_device, name, userid, password):
     acl_new.chap_userid = userid
     acl_new.chap_password = password
 
-    tpg_new.enable = 1
-
     m = rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
+
+    if initiator_iqns:
+        initiator_iqns = initiator_iqns.strip(' ')
+        for i in initiator_iqns.split(','):
+            acl_new = rtslib.NodeACL(tpg_new, i, mode='create')
+            acl_new.chap_userid = userid
+            acl_new.chap_password = password
+
+            m = rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
+
+    tpg_new.enable = 1
 
     try:
         rtslib.NetworkPortal(tpg_new, '0.0.0.0', 3260, mode='any')
@@ -127,7 +136,9 @@ def verify_rtslib():
 
 def usage():
     print "Usage:"
-    print sys.argv[0], "create [device] [name] [userid] [password]"
+    print sys.argv[0], \
+        "create [device] [name] [userid] [password]", \
+        "<initiator_iqn,iqn2,iqn3,...>"
     print sys.argv[0], "get-targets"
     print sys.argv[0], "delete [iqn]"
     print sys.argv[0], "verify"
@@ -145,12 +156,19 @@ def main(argv=None):
         if len(argv) < 6:
             usage()
 
+        if len(argv) > 7:
+            usage()
+
         backing_device = argv[2]
         name = argv[3]
         userid = argv[4]
         password = argv[5]
+        initiator_iqns = None
 
-        create(backing_device, name, userid, password)
+        if len(argv) > 6:
+            initiator_iqns = argv[6]
+
+        create(backing_device, name, userid, password, initiator_iqns)
 
     elif argv[1] == 'get-targets':
         get_targets()
