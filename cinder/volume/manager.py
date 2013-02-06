@@ -176,12 +176,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     snapshot_ref)
             elif source_volid is not None:
                 src_vref = self.db.volume_get(context, source_volid)
-                self.db.volume_update(context, src_vref['id'],
-                                      {'status': 'in use'})
                 model_update = self.driver.create_cloned_volume(volume_ref,
                                                                 src_vref)
-                self.db.volume_update(context, src_vref['id'],
-                                      {'status': src_vref['status']})
+                self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                    context,
+                    source_volid,
+                    volume_id)
             else:
                 # create the volume from an image
                 image_service, image_id = \
@@ -221,10 +221,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._reset_stats()
 
         if image_id and not cloned:
-            # NOTE(jdg): Our current ref hasn't been updated since
-            # the create, need to update ref to get provider_location
-            # before trying to perform the copy operation
-            volume_ref = self.db.volume_get(context, volume_id)
             if image_meta:
                 # Copy all of the Glance image properties to the
                 # volume_glance_metadata table for future reference.

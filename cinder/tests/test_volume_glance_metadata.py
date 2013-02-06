@@ -113,3 +113,19 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         for meta in db.volume_snapshot_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():
                 self.assertEquals(meta[key], value)
+
+    def test_vol_glance_metadata_copy_to_volume(self):
+        ctxt = context.get_admin_context()
+        db.volume_create(ctxt, {'id': 1})
+        db.volume_create(ctxt, {'id': 100, 'source_volid': 1})
+        vol_meta = db.volume_glance_metadata_create(ctxt, 1, 'key1',
+                                                    'value1')
+        db.volume_glance_metadata_copy_from_volume_to_volume(ctxt, 100, 1)
+
+        expected_meta = {'id': '100',
+                         'key': 'key1',
+                         'value': 'value1'}
+
+        for meta in db.volume_glance_metadata_get(ctxt, 100):
+            for (key, value) in expected_meta.items():
+                self.assertEquals(meta[key], value)
