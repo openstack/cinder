@@ -277,7 +277,7 @@ class SSHPool(pools.Pool):
         self.port = port
         self.login = login
         self.password = password
-        self.conn_timeout = conn_timeout
+        self.conn_timeout = conn_timeout if conn_timeout else None
         self.privatekey = privatekey
         super(SSHPool, self).__init__(*args, **kwargs)
 
@@ -310,9 +310,10 @@ class SSHPool(pools.Pool):
             # the sockettimeout to None and setting a keepalive packet so that,
             # the server will keep the connection open. All that does is send
             # a keepalive packet every ssh_conn_timeout seconds.
-            transport = ssh.get_transport()
-            transport.sock.settimeout(None)
-            transport.set_keepalive(self.conn_timeout)
+            if self.conn_timeout:
+                transport = ssh.get_transport()
+                transport.sock.settimeout(None)
+                transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
             msg = _("Error connecting via ssh: %s") % e
