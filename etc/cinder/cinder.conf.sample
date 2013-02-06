@@ -23,11 +23,11 @@
 
 # A logging.Formatter log message format string which may use
 # any of the available logging.LogRecord attributes. Default:
-# %default (string value)
+# %(default)s (string value)
 #log_format=%(asctime)s %(levelname)8s [%(name)s] %(message)s
 
-# Format string for %(asctime)s in log records. Default:
-# %default (string value)
+# Format string for %%(asctime)s in log records. Default:
+# %(default)s (string value)
 #log_date_format=%Y-%m-%d %H:%M:%S
 
 # (Optional) Name of log file to output to. If not set,
@@ -35,7 +35,7 @@
 #log_file=<None>
 
 # (Optional) The directory to keep log files in (will be
-# prepended to --logfile) (string value)
+# prepended to --log-file) (string value)
 #log_dir=<None>
 
 # Use syslog for logging. (boolean value)
@@ -644,9 +644,6 @@
 # Options defined in cinder.scheduler.host_manager
 #
 
-# num_shell_tries=3
-#### (IntOpt) number of times to attempt to run flakey shell commands
-
 # Which filter class names to use for filtering hosts when not
 # specified in the request. (list value)
 #scheduler_default_filters=AvailabilityZoneFilter,CapacityFilter,CapabilitiesFilter
@@ -732,6 +729,26 @@
 
 
 #
+# Options defined in cinder.volume.drivers.glusterfs
+#
+
+# File with the list of available gluster shares (string
+# value)
+#glusterfs_shares_config=<None>
+
+# Base dir where gluster expected to be mounted (string value)
+#glusterfs_mount_point_base=$state_path/mnt
+
+# Use du or df for free space calculation (string value)
+#glusterfs_disk_util=df
+
+# Create volumes as sparsed files which take no space.If set
+# to False volume is created as regular file.In such case
+# volume creation takes a lot of time. (boolean value)
+#glusterfs_sparsed_volumes=true
+
+
+#
 # Options defined in cinder.volume.drivers.lvm
 #
 
@@ -747,15 +764,14 @@
 # (integer value)
 #volume_clear_size=0
 
+# Size of thin provisioning pool (None uses entire cinder VG)
+# (string value)
+#pool_size=<None>
+
 # If set, create lvms with multiple mirrors. Note that this
 # requires lvm_mirrors + 2 pvs with available space (integer
 # value)
 #lvm_mirrors=0
-
-# pool_size=None
-### (strOpt) Size of thin pool to create including suffix (5G),
-###          default is None and uses full size of VG###
-
 
 
 #
@@ -1109,4 +1125,4 @@
 #volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 
 
-# Total option count: 244
+# Total option count: 249

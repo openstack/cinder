@@ -522,6 +522,18 @@ class NfsNoSuitableShareFound(NotFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
+class GlusterfsException(CinderException):
+    message = _("Unknown Gluster exception")
+
+
+class GlusterfsNoSharesMounted(NotFound):
+    message = _("No mounted Gluster shares found")
+
+
+class GlusterfsNoSuitableShareFound(NotFound):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
 class GlanceMetadataExists(Invalid):
     message = _("Glance metadata cannot be updated, key %(key)s"
                 " exists for volume id %(volume_id)s")
