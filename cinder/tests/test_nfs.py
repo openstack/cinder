@@ -43,6 +43,97 @@ class DumbVolume(object):
         return self.fields[item]
 
 
+class RemoteFsDriverTestCase(test.TestCase):
+    TEST_EXPORT = '1.2.3.4/export1'
+    TEST_FILE_NAME = 'test.txt'
+
+    def setUp(self):
+        self._driver = nfs.RemoteFsDriver()
+        self._mox = mox_lib.Mox()
+        pass
+
+    def tearDown(self):
+        self._mox.UnsetStubs()
+
+    def test_create_sparsed_file(self):
+        (mox, drv) = self._mox, self._driver
+
+        mox.StubOutWithMock(drv, '_execute')
+        drv._execute('truncate', '-s', '1G', '/path', run_as_root=True).\
+            AndReturn("")
+
+        mox.ReplayAll()
+
+        drv._create_sparsed_file('/path', 1)
+
+        mox.VerifyAll()
+
+    def test_create_regular_file(self):
+        (mox, drv) = self._mox, self._driver
+
+        mox.StubOutWithMock(drv, '_execute')
+        drv._execute('dd', 'if=/dev/zero', 'of=/path', 'bs=1M', 'count=1024',
+                     run_as_root=True)
+
+        mox.ReplayAll()
+
+        drv._create_regular_file('/path', 1)
+
+        mox.VerifyAll()
+
+    def test_set_rw_permissions_for_all(self):
+        (mox, drv) = self._mox, self._driver
+
+        mox.StubOutWithMock(drv, '_execute')
+        drv._execute('chmod', 'ugo+rw', '/path', run_as_root=True)
+
+        mox.ReplayAll()
+
+        drv._set_rw_permissions_for_all('/path')
+
+        mox.VerifyAll()
+
+    def test_path_exists_should_return_true(self):
+        """_path_exists should return True if stat returns 0."""
+        mox = self._mox
+        drv = self._driver
+
+        mox.StubOutWithMock(drv, '_execute')
+        drv._execute('stat', self.TEST_FILE_NAME, run_as_root=True)
+
+        mox.ReplayAll()
+
+        self.assertTrue(drv._path_exists(self.TEST_FILE_NAME))
+
+        mox.VerifyAll()
+
+    def test_path_exists_should_return_false(self):
+        """_path_exists should return True if stat doesn't return 0."""
+        mox = self._mox
+        drv = self._driver
+
+        mox.StubOutWithMock(drv, '_execute')
+        drv._execute(
+            'stat',
+            self.TEST_FILE_NAME, run_as_root=True).\
+            AndRaise(ProcessExecutionError(
+                stderr="stat: cannot stat `test.txt': No such file "
+                       "or directory"))
+
+        mox.ReplayAll()
+
+        self.assertFalse(drv._path_exists(self.TEST_FILE_NAME))
+
+        mox.VerifyAll()
+
+    def test_get_hash_str(self):
+        """_get_hash_str should calculation correct value."""
+        drv = self._driver
+
+        self.assertEqual('4d664fd43b6ff86d80a4ea969c07b3b9',
+                         drv._get_hash_str(self.TEST_EXPORT))
+
+
 class NfsDriverTestCase(test.TestCase):
     """Test case for NFS driver."""
 

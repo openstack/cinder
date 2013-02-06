@@ -52,7 +52,72 @@ FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
 
 
-class NfsDriver(driver.VolumeDriver):
+class RemoteFsDriver(driver.VolumeDriver):
+    """Common base for drivers that work like NFS."""
+
+    def check_for_setup_error(self):
+        """Just to override parent behavior."""
+        pass
+
+    def create_volume(self, volume):
+        raise NotImplementedError()
+
+    def delete_volume(self, volume):
+        raise NotImplementedError()
+
+    def ensure_export(self, ctx, volume):
+        raise NotImplementedError()
+
+    def _create_sparsed_file(self, path, size):
+        """Creates file with 0 disk usage."""
+        self._execute('truncate', '-s', '%sG' % size,
+                      path, run_as_root=True)
+
+    def _create_regular_file(self, path, size):
+        """Creates regular file of given size. Takes a lot of time for large
+        files."""
+        KB = 1024
+        MB = KB * 1024
+        GB = MB * 1024
+
+        block_size_mb = 1
+        block_count = size * GB / (block_size_mb * MB)
+
+        self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
+                      'bs=%dM' % block_size_mb,
+                      'count=%d' % block_count,
+                      run_as_root=True)
+
+    def _set_rw_permissions_for_all(self, path):
+        """Sets 666 permissions for the path."""
+        self._execute('chmod', 'ugo+rw', path, run_as_root=True)
+
+    def local_path(self, volume):
+        """Get volume path (mounted locally fs path) for given volume
+        :param volume: volume reference
+        """
+        nfs_share = volume['provider_location']
+        return os.path.join(self._get_mount_point_for_share(nfs_share),
+                            volume['name'])
+
+    def _path_exists(self, path):
+        """Check for existence of given path."""
+        try:
+            self._execute('stat', path, run_as_root=True)
+            return True
+        except exception.ProcessExecutionError as exc:
+            if 'No such file or directory' in exc.stderr:
+                return False
+            else:
+                raise
+
+    def _get_hash_str(self, base_str):
+        """returns string that represents hash of base_str
+        (in a hex format)."""
+        return hashlib.md5(base_str).hexdigest()
+
+
+class NfsDriver(RemoteFsDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
     as block device on hypervisor."""
 
@@ -78,10 +143,6 @@ class NfsDriver(driver.VolumeDriver):
                 raise exception.NfsException('mount.nfs is not installed')
             else:
                 raise
-
-    def check_for_setup_error(self):
-        """Just to override parent behavior"""
-        pass
 
     def create_cloned_volume(self, volume, src_vref):
         raise NotImplementedError()
@@ -145,38 +206,6 @@ class NfsDriver(driver.VolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
         pass
-
-    def local_path(self, volume):
-        """Get volume path (mounted locally fs path) for given volume
-        :param volume: volume reference
-        """
-        nfs_share = volume['provider_location']
-        return os.path.join(self._get_mount_point_for_share(nfs_share),
-                            volume['name'])
-
-    def _create_sparsed_file(self, path, size):
-        """Creates file with 0 disk usage"""
-        self._execute('truncate', '-s', '%sG' % size,
-                      path, run_as_root=True)
-
-    def _create_regular_file(self, path, size):
-        """Creates regular file of given size. Takes a lot of time for large
-        files"""
-        KB = 1024
-        MB = KB * 1024
-        GB = MB * 1024
-
-        block_size_mb = 1
-        block_count = size * GB / (block_size_mb * MB)
-
-        self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
-                      'bs=%dM' % block_size_mb,
-                      'count=%d' % block_count,
-                      run_as_root=True)
-
-    def _set_rw_permissions_for_all(self, path):
-        """Sets 666 permissions for the path"""
-        self._execute('chmod', 'ugo+rw', path, run_as_root=True)
 
     def _do_create_volume(self, volume):
         """Create a volume on given nfs_share
@@ -288,18 +317,3 @@ class NfsDriver(driver.VolumeDriver):
                 LOG.warn(_("%s is already mounted"), nfs_share)
             else:
                 raise
-
-    def _path_exists(self, path):
-        """Check given path """
-        try:
-            self._execute('stat', path, run_as_root=True)
-            return True
-        except exception.ProcessExecutionError as exc:
-            if 'No such file or directory' in exc.stderr:
-                return False
-            else:
-                raise
-
-    def _get_hash_str(self, base_str):
-        """returns string that represents hash of base_str (in a hex format)"""
-        return hashlib.md5(base_str).hexdigest()
