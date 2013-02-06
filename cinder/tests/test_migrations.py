@@ -41,38 +41,63 @@ from cinder import test
 LOG = logging.getLogger('cinder.tests.test_migrations')
 
 
-def _mysql_get_connect_string(user="openstack_citest",
-                              passwd="openstack_citest",
-                              database="openstack_citest"):
+def _get_connect_string(backend,
+                        user="openstack_citest",
+                        passwd="openstack_citest",
+                        database="openstack_citest"):
     """
-    Try to get a connection with a very specfic set of values, if we get
-    these then we'll run the mysql tests, otherwise they are skipped
+    Try to get a connection with a very specific set of values, if we get
+    these then we'll run the tests, otherwise they are skipped
     """
-    return "mysql://%(user)s:%(passwd)s@localhost/%(database)s" % locals()
+    if backend == "postgres":
+        backend = "postgresql+psycopg2"
+
+    return ("%(backend)s://%(user)s:%(passwd)s@localhost/%(database)s"
+            % locals())
 
 
-def _is_mysql_avail(user="openstack_citest",
-                    passwd="openstack_citest",
-                    database="openstack_citest"):
+def _is_mysql_avail(**kwargs):
+    return _is_backend_avail('mysql', **kwargs)
+
+
+def _is_backend_avail(backend,
+                      user="openstack_citest",
+                      passwd="openstack_citest",
+                      database="openstack_citest"):
     try:
-        connect_uri = _mysql_get_connect_string(
-            user=user, passwd=passwd, database=database)
+        if backend == "mysql":
+            connect_uri = _get_connect_string("mysql", user=user,
+                                              passwd=passwd, database=database)
+        elif backend == "postgres":
+            connect_uri = _get_connect_string("postgres", user=user,
+                                              passwd=passwd, database=database)
         engine = sqlalchemy.create_engine(connect_uri)
         connection = engine.connect()
     except Exception:
-        # intential catch all to handle exceptions even if we don't
-        # have mysql code loaded at all.
+        # intentionally catch all to handle exceptions even if we don't
+        # have any backend code loaded.
         return False
     else:
         connection.close()
+        engine.dispose()
         return True
 
 
 def _have_mysql():
     present = os.environ.get('NOVA_TEST_MYSQL_PRESENT')
     if present is None:
-        return _is_mysql_avail()
+        return _is_backend_avail('mysql')
     return present.lower() in ('', 'true')
+
+
+def get_table(engine, name):
+    """Returns an sqlalchemy table dynamically from db.
+
+    Needed because the models don't work for us in migrations
+    as models will be far out of sync with the current data."""
+    metadata = sqlalchemy.schema.MetaData()
+    metadata.bind = engine
+    return sqlalchemy.Table(name, metadata, autoload=True)
 
 
 class TestMigrations(test.TestCase):
@@ -223,7 +248,7 @@ class TestMigrations(test.TestCase):
         """
         # add this to the global lists to make reset work with it, it's removed
         # automaticaly in tearDown so no need to clean it up here.
-        connect_string = _mysql_get_connect_string()
+        connect_string = _get_connect_string('mysql')
         engine = sqlalchemy.create_engine(connect_string)
         self.engines["mysqlcitest"] = engine
         TestMigrations.TEST_DATABASES["mysqlcitest"] = connect_string
@@ -232,7 +257,7 @@ class TestMigrations(test.TestCase):
         self._reset_databases()
         self._walk_versions(engine, False, False)
 
-        uri = _mysql_get_connect_string(database="information_schema")
+        uri = _get_connect_string('mysql', database="information_schema")
         connection = sqlalchemy.create_engine(uri).connect()
 
         # sanity check
