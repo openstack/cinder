@@ -152,9 +152,9 @@ class Service(object):
         self.timers = []
 
     def start(self):
-        vcs_string = version.version_string_with_vcs()
-        LOG.audit(_('Starting %(topic)s node (version %(vcs_string)s)'),
-                  {'topic': self.topic, 'vcs_string': vcs_string})
+        version_string = version.version_string()
+        LOG.audit(_('Starting %(topic)s node (version %(version_string)s)'),
+                  {'topic': self.topic, 'version_string': version_string})
         self.manager.init_host()
         self.model_disconnected = False
         ctxt = context.get_admin_context()

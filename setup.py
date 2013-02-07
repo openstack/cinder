@@ -19,9 +19,9 @@
 import setuptools
 
 from cinder.openstack.common import setup as common_setup
-from cinder import version
 
 requires = common_setup.parse_requirements()
+project = 'cinder'
 
 filters = [
     "AvailabilityZoneFilter = "
@@ -41,8 +41,8 @@ weights = [
 ]
 
 setuptools.setup(
-    name='cinder',
-    version=version.canonical_version_string(),
+    name=project,
+    version=common_setup.get_version(project, '2013.1'),
     description='block storage service',
     author='OpenStack',
     author_email='cinder@lists.launchpad.net',

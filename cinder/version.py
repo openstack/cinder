@@ -14,25 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-CINDER_VERSION = ['2013', '1', None]
-YEAR, COUNT, REVISION = CINDER_VERSION
-FINAL = False   # This becomes true at Release Candidate time
+from cinder.openstack.common import version as common_version
 
+CINDER_VENDOR = "OpenStack Foundation"
+CINDER_PRODUCT = "OpenStack Cinder"
+CINDER_PACKAGE = None  # OS distro package version suffix
 
-def canonical_version_string():
-    return '.'.join(filter(None, CINDER_VERSION))
-
-
-def version_string():
-    if FINAL:
-        return canonical_version_string()
-    else:
-        return '%s-dev' % (canonical_version_string(),)
-
-
-def vcs_version_string():
-    return 'LOCALBRANCH:LOCALREVISION'
-
-
-def version_string_with_vcs():
-    return '%s-%s' % (canonical_version_string(), vcs_version_string())
+loaded = False
+version_info = common_version.VersionInfo('cinder')
+version_string = version_info.version_string
