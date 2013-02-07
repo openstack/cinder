@@ -195,7 +195,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     status = 'downloading'
 
             if model_update:
-                self.db.volume_update(context, volume_ref['id'], model_update)
+                volume_ref = self.db.volume_update(
+                    context, volume_ref['id'], model_update)
 
             LOG.debug(_("volume %s: creating export"), volume_ref['name'])
             model_update = self.driver.create_export(context, volume_ref)

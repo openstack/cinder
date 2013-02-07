@@ -16,11 +16,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
+from cinder import exception
 from cinder import flags
+from cinder.image import glance
 from cinder.openstack.common import cfg
+from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.xenapi import lib as xenapi_lib
 
+
+LOG = logging.getLogger(__name__)
 
 xenapi_opts = [
     cfg.StrOpt('xenapi_connection_url',
@@ -33,6 +39,9 @@ xenapi_opts = [
                default=None,
                help='Password for XenAPI connection',
                secret=True),
+    cfg.StrOpt('xenapi_sr_base_path',
+               default='/var/run/sr-mount',
+               help='Base path to the storage repository'),
 ]
 
 xenapi_nfs_opts = [
@@ -143,7 +152,31 @@ class XenAPINFSDriver(driver.VolumeDriver):
         pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        raise NotImplementedError()
+        sr_uuid, vdi_uuid = volume['provider_location'].split('/')
+
+        api_servers = glance.get_api_servers()
+        glance_server = api_servers.next()
+        auth_token = context.auth_token
+
+        overwrite_result = self.nfs_ops.use_glance_plugin_to_overwrite_volume(
+            FLAGS.xenapi_nfs_server,
+            FLAGS.xenapi_nfs_serverpath,
+            sr_uuid,
+            vdi_uuid,
+            glance_server,
+            image_id,
+            auth_token,
+            FLAGS.xenapi_sr_base_path)
+
+        if overwrite_result is False:
+            raise exception.ImageCopyFailure()
+
+        self.nfs_ops.resize_volume(
+            FLAGS.xenapi_nfs_server,
+            FLAGS.xenapi_nfs_serverpath,
+            sr_uuid,
+            vdi_uuid,
+            volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         raise NotImplementedError()
