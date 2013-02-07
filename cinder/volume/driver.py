@@ -102,20 +102,7 @@ class VolumeDriver(object):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
-        volume_name = FLAGS.volume_name_template % src_vref['id']
-        temp_snapshot = {'volume_name': volume_name,
-                         'size': src_vref['size'],
-                         'volume_size': src_vref['size'],
-                         'name': 'clone-snap-%s' % src_vref['id']}
-        self.create_snapshot(temp_snapshot)
-        self._create_volume(volume['name'], self._sizestr(volume['size']))
-        try:
-            self._copy_volume(self.local_path(temp_snapshot),
-                              self.local_path(volume),
-                              src_vref['size'])
-        finally:
-            self.delete_snapshot(temp_snapshot)
+        raise NotImplementedError()
 
     def delete_volume(self, volume):
         """Deletes a volume."""
