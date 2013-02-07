@@ -21,7 +21,6 @@ The unique thing about a SAN is that we don't expect that we can run the volume
 controller on the SAN hardware.  We expect to access it over SSH or some API.
 """
 
-import paramiko
 import random
 
 from eventlet import greenthread
@@ -112,6 +111,7 @@ class SanISCSIDriver(ISCSIDriver):
                                          privatekey=FLAGS.san_private_key,
                                          min_size=FLAGS.ssh_min_pool_conn,
                                          max_size=FLAGS.ssh_max_pool_conn)
+        last_exception = None
         try:
             total_attempts = attempts
             with self.sshpool.item() as ssh:
@@ -124,12 +124,23 @@ class SanISCSIDriver(ISCSIDriver):
                             check_exit_code=check_exit_code)
                     except Exception as e:
                         LOG.error(e)
+                        last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
-                raise paramiko.SSHException(_("SSH Command failed after "
-                                              "'%(total_attempts)r' attempts"
-                                              ": '%(command)s'"), locals())
+                try:
+                    raise exception.ProcessExecutionError(
+                            exit_code=last_exception.exit_code,
+                            stdout=last_exception.stdout,
+                            stderr=last_exception.stderr,
+                            cmd=last_exception.cmd)
+                except AttributeError:
+                    raise exception.ProcessExecutionError(
+                            exit_code=-1,
+                            stdout="",
+                            stderr="Error running SSH command",
+                            cmd=command)
+
         except Exception as e:
-            LOG.error(_("Error running ssh command: %s") % command)
+            LOG.error(_("Error running SSH command: %s") % command)
             raise e
 
     def ensure_export(self, context, volume):
