@@ -41,7 +41,12 @@ volume_opts = [
                 default=True,
                 help=('Create volumes as sparsed files which take no space.'
                       'If set to False volume is created as regular file.'
-                      'In such case volume creation takes a lot of time.'))]
+                      'In such case volume creation takes a lot of time.')),
+    cfg.StrOpt('nfs_mount_options',
+               default=None,
+               help='Mount options passed to the nfs client. See section '
+                    'of the nfs man page for details'),
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
@@ -270,9 +275,14 @@ class NfsDriver(driver.VolumeDriver):
         if not self._path_exists(mount_path):
             self._execute('mkdir', '-p', mount_path)
 
+        # Construct the NFS mount command.
+        nfs_cmd = ['mount', '-t', 'nfs']
+        if FLAGS.nfs_mount_options is not None:
+            nfs_cmd.extend(['-o', FLAGS.nfs_mount_options])
+        nfs_cmd.extend([nfs_share, mount_path])
+
         try:
-            self._execute('mount', '-t', 'nfs', nfs_share, mount_path,
-                          run_as_root=True)
+            self._execute(*nfs_cmd, run_as_root=True)
         except exception.ProcessExecutionError as exc:
             if ensure and 'already mounted' in exc.stderr:
                 LOG.warn(_("%s is already mounted"), nfs_share)

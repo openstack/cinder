@@ -882,6 +882,11 @@
 # volume creation takes a lot of time. (boolean value)
 #nfs_sparsed_volumes=true
 
+# Mount options passed to the nfs client (string value)
+# The value set here is passed directly to the -o flag
+# of the mount command. See the nfs man page for details.
+#nfs_mount_options=None
+
 
 #
 # Options defined in cinder.volume.drivers.rbd
