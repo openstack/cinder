@@ -1,0 +1,214 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# Copyright 2012 OpenStack LLC.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+from cinder import exception
+from cinder.openstack.common import log as logging
+from cinder import test
+from cinder.volume.drivers import coraid
+from cinder.volume.drivers.coraid import CoraidDriver
+from cinder.volume.drivers.coraid import CoraidRESTClient
+
+import cookielib
+import urllib2
+
+LOG = logging.getLogger(__name__)
+
+
+fake_esm_ipaddress = "192.168.0.1"
+fake_esm_username = "admin"
+fake_esm_password = "12345678"
+
+fake_volume_name = "volume-12345678-1234-1234-1234-1234567890ab"
+fake_volume_size = "10"
+fake_repository_name = "A-B:C:D"
+fake_pool_name = "FakePool"
+fake_aoetarget = 4081
+fake_shelf = 16
+fake_lun = 241
+
+fake_str_aoetarget = str(fake_aoetarget)
+fake_lun_addr = {"shelf": fake_shelf, "lun": fake_lun}
+
+fake_volume = {"name": fake_volume_name,
+               "size": fake_volume_size,
+               "volume_type": {"id": 1}}
+
+fake_volume_info = {"pool": fake_pool_name,
+                    "repo": fake_repository_name,
+                    "vsxidx": fake_aoetarget,
+                    "index": fake_lun,
+                    "shelf": fake_shelf}
+
+fake_lun_info = {"shelf": fake_shelf, "lun": fake_lun}
+
+fake_snapshot_name = "snapshot-12345678-8888-8888-1234-1234567890ab"
+fake_snapshot_id = "12345678-8888-8888-1234-1234567890ab"
+fake_volume_id = "12345678-1234-1234-1234-1234567890ab"
+fake_snapshot = {"id": fake_snapshot_id,
+                 "volume_id": fake_volume_id}
+
+fake_configure_data = [{"addr": "cms", "data": "FAKE"}]
+
+fake_esm_fetch = [[
+    {"command": "super_fake_command_of_death"},
+    {"reply": [
+        {"lv":
+            {"containingPool": fake_pool_name,
+             "lunIndex": fake_aoetarget,
+             "name": fake_volume_name,
+             "lvStatus":
+                {"exportedLun":
+                    {"lun": fake_lun,
+                     "shelf": fake_shelf}}
+             },
+         "repoName": fake_repository_name}]}]]
+
+fake_esm_success = {"category": "provider",
+                    "tracking": False,
+                    "configState": "completedSuccessfully",
+                    "heldPending": False,
+                    "metaCROp": "noAction",
+                    "message": None}
+
+
+class TestCoraidDriver(test.TestCase):
+    def setUp(self):
+        super(TestCoraidDriver, self).setUp()
+        self.esm_mock = self.mox.CreateMockAnything()
+        self.stubs.Set(coraid, 'CoraidRESTClient',
+                       lambda *_, **__: self.esm_mock)
+        self.drv = CoraidDriver()
+        self.drv.do_setup({})
+
+    def test_create_volume(self):
+        setattr(self.esm_mock, 'create_lun', lambda *_: True)
+        self.stubs.Set(CoraidDriver, '_get_repository',
+                       lambda *_: fake_repository_name)
+        self.drv.create_volume(fake_volume)
+
+    def test_delete_volume(self):
+        setattr(self.esm_mock, 'delete_lun',
+                lambda *_: True)
+        self.drv.delete_volume(fake_volume)
+
+    def test_initialize_connection(self):
+        setattr(self.esm_mock, '_get_lun_address',
+                lambda *_: fake_lun_addr)
+        self.drv.initialize_connection(fake_volume, '')
+
+    def test_create_snapshot(self):
+        setattr(self.esm_mock, 'create_snapshot',
+                lambda *_: True)
+        self.drv.create_snapshot(fake_snapshot)
+
+    def test_delete_snapshot(self):
+        setattr(self.esm_mock, 'delete_snapshot',
+                lambda *_: True)
+        self.drv.delete_snapshot(fake_snapshot)
+
+    def test_create_volume_from_snapshot(self):
+        setattr(self.esm_mock, 'create_volume_from_snapshot',
+                lambda *_: True)
+        self.stubs.Set(CoraidDriver, '_get_repository',
+                       lambda *_: fake_repository_name)
+        self.drv.create_volume_from_snapshot(fake_volume, fake_snapshot)
+
+
+class TestCoraidRESTClient(test.TestCase):
+    def setUp(self):
+        super(TestCoraidRESTClient, self).setUp()
+        self.stubs.Set(cookielib, 'CookieJar', lambda *_: True)
+        self.stubs.Set(urllib2, 'build_opener', lambda *_: True)
+        self.stubs.Set(urllib2, 'HTTPCookieProcessor', lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_login', lambda *_: True)
+        self.rest_mock = self.mox.CreateMockAnything()
+        self.stubs.Set(coraid, 'CoraidRESTClient',
+                       lambda *_, **__: self.rest_mock)
+        self.drv = CoraidRESTClient(fake_esm_ipaddress,
+                                    fake_esm_username,
+                                    fake_esm_password)
+
+    def test__configure(self):
+        setattr(self.rest_mock, '_configure',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_esm',
+                       lambda *_: fake_esm_success)
+        self.drv._configure(fake_configure_data)
+
+    def test__get_volume_info(self):
+        setattr(self.rest_mock, '_get_volume_info',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_esm',
+                       lambda *_: fake_esm_fetch)
+        self.drv._get_volume_info(fake_volume_name)
+
+    def test__get_lun_address(self):
+        setattr(self.rest_mock, '_get_lun_address',
+                lambda *_: fake_lun_info)
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: fake_volume_info)
+        self.drv._get_lun_address(fake_volume_name)
+
+    def test_create_lun(self):
+        setattr(self.rest_mock, 'create_lun',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_configure',
+                       lambda *_: fake_esm_success)
+        self.rest_mock.create_lun(fake_volume_name, '10',
+                                  fake_repository_name)
+        self.drv.create_lun(fake_volume_name, '10',
+                            fake_repository_name)
+
+    def test_delete_lun(self):
+        setattr(self.rest_mock, 'delete_lun',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: fake_volume_info)
+        self.stubs.Set(CoraidRESTClient, '_configure',
+                       lambda *_: fake_esm_success)
+        self.rest_mock.delete_lun(fake_volume_name)
+        self.drv.delete_lun(fake_volume_name)
+
+    def test_create_snapshot(self):
+        setattr(self.rest_mock, 'create_snapshot',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: fake_volume_info)
+        self.stubs.Set(CoraidRESTClient, '_configure',
+                       lambda *_: fake_esm_success)
+        self.drv.create_snapshot(fake_volume_name,
+                                 fake_volume_name)
+
+    def test_delete_snapshot(self):
+        setattr(self.rest_mock, 'delete_snapshot',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: fake_volume_info)
+        self.stubs.Set(CoraidRESTClient, '_configure',
+                       lambda *_: fake_esm_success)
+        self.drv.delete_snapshot(fake_volume_name)
+
+    def test_create_volume_from_snapshot(self):
+        setattr(self.rest_mock, 'create_volume_from_snapshot',
+                lambda *_: True)
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: fake_volume_info)
+        self.stubs.Set(CoraidRESTClient, '_configure',
+                       lambda *_: fake_esm_success)
+        self.drv.create_volume_from_snapshot(fake_volume_name,
+                                             fake_volume_name,
+                                             fake_repository_name)
