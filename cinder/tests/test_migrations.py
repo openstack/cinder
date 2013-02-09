@@ -104,7 +104,6 @@ def get_table(engine, name):
 class TestMigrations(test.TestCase):
     """Test sqlalchemy-migrate migrations."""
 
-    TEST_DATABASES = {}
     DEFAULT_CONFIG_FILE = os.path.join(os.path.dirname(__file__),
                                        'test_migrations.conf')
     # Test machines can set the CINDER_TEST_MIGRATIONS_CONF variable
@@ -119,18 +118,19 @@ class TestMigrations(test.TestCase):
         super(TestMigrations, self).setUp()
 
         self.snake_walk = False
+        self.test_databases = {}
 
         # Load test databases from the config file. Only do this
         # once. No need to re-run this on each test...
         LOG.debug('config_path is %s' % TestMigrations.CONFIG_FILE_PATH)
-        if not TestMigrations.TEST_DATABASES:
+        if not self.test_databases:
             if os.path.exists(TestMigrations.CONFIG_FILE_PATH):
                 cp = ConfigParser.RawConfigParser()
                 try:
                     cp.read(TestMigrations.CONFIG_FILE_PATH)
                     defaults = cp.defaults()
                     for key, value in defaults.items():
-                        TestMigrations.TEST_DATABASES[key] = value
+                        self.test_databases[key] = value
                     self.snake_walk = cp.getboolean('walk_style', 'snake_walk')
                 except ConfigParser.ParsingError, e:
                     self.fail("Failed to read test_migrations.conf config "
@@ -140,7 +140,7 @@ class TestMigrations(test.TestCase):
                           "file.")
 
         self.engines = {}
-        for key, value in TestMigrations.TEST_DATABASES.items():
+        for key, value in self.test_databases.items():
             self.engines[key] = sqlalchemy.create_engine(value)
 
         # We start each test case with a completely blank slate.
@@ -151,13 +151,7 @@ class TestMigrations(test.TestCase):
         # We destroy the test data store between each test case,
         # and recreate it, which ensures that we have no side-effects
         # from the tests
-        # self._reset_databases()
-
-        # remove these from the list so they aren't used in the migration tests
-        if "mysqlcitest" in self.engines:
-            del self.engines["mysqlcitest"]
-        if "mysqlcitest" in TestMigrations.TEST_DATABASES:
-            del TestMigrations.TEST_DATABASES["mysqlcitest"]
+        self._reset_databases()
         super(TestMigrations, self).tearDown()
 
     def _reset_databases(self):
@@ -166,7 +160,7 @@ class TestMigrations(test.TestCase):
             LOG.debug(output)
             self.assertEqual(0, status)
         for key, engine in self.engines.items():
-            conn_string = TestMigrations.TEST_DATABASES[key]
+            conn_string = self.test_databases[key]
             conn_pieces = urlparse.urlparse(conn_string)
             if conn_string.startswith('sqlite'):
                 # We can just delete the SQLite database, which is
@@ -252,7 +246,7 @@ class TestMigrations(test.TestCase):
         connect_string = _get_connect_string('mysql')
         engine = sqlalchemy.create_engine(connect_string)
         self.engines["mysqlcitest"] = engine
-        TestMigrations.TEST_DATABASES["mysqlcitest"] = connect_string
+        self.test_databases["mysqlcitest"] = connect_string
 
         # build a fully populated mysql database with all the tables
         self._reset_databases()
