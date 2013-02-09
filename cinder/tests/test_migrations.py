@@ -162,6 +162,7 @@ class TestMigrations(test.TestCase):
         for key, engine in self.engines.items():
             conn_string = self.test_databases[key]
             conn_pieces = urlparse.urlparse(conn_string)
+            engine.dispose()
             if conn_string.startswith('sqlite'):
                 # We can just delete the SQLite database, which is
                 # the easiest and cleanest solution
@@ -192,33 +193,31 @@ class TestMigrations(test.TestCase):
                 database = conn_pieces.path.strip('/')
                 loc_pieces = conn_pieces.netloc.split('@')
                 host = loc_pieces[1]
+
                 auth_pieces = loc_pieces[0].split(':')
                 user = auth_pieces[0]
                 password = ""
                 if len(auth_pieces) > 1:
-                    if auth_pieces[1].strip():
-                        password = auth_pieces[1]
-                cmd = ("touch ~/.pgpass;"
-                       "chmod 0600 ~/.pgpass;"
-                       "sed -i -e"
-                       "'1{s/^.*$/\*:\*:\*:%(user)s:%(password)s/};"
-                       "1!d' ~/.pgpass") % locals()
-                execute_cmd(cmd)
-                sql = ("UPDATE pg_catalog.pg_database SET datallowconn=false "
-                       "WHERE datname='%(database)s';") % locals()
-                cmd = ("psql -U%(user)s -h%(host)s -c\"%(sql)s\"") % locals()
-                execute_cmd(cmd)
-                sql = ("SELECT pg_catalog.pg_terminate_backend(procpid) "
-                       "FROM pg_catalog.pg_stat_activity "
-                       "WHERE datname='%(database)s';") % locals()
-                cmd = ("psql -U%(user)s -h%(host)s -c\"%(sql)s\"") % locals()
-                execute_cmd(cmd)
+                    password = auth_pieces[1].strip()
+                # note(krtaylor): File creation problems with tests in
+                # venv using .pgpass authentication, changed to
+                # PGPASSWORD environment variable which is no longer
+                # planned to be deprecated
+                os.environ['PGPASSWORD'] = password
+                os.environ['PGUSER'] = user
+                # note(boris-42): We must create and drop database, we can't
+                # drop database which we have connected to, so for such
+                # operations there is a special database template1.
+                sqlcmd = ("psql -w -U %(user)s -h %(host)s -c"
+                          " '%(sql)s' -d template1")
                 sql = ("drop database if exists %(database)s;") % locals()
-                cmd = ("psql -U%(user)s -h%(host)s -c\"%(sql)s\"") % locals()
-                execute_cmd(cmd)
+                droptable = sqlcmd % locals()
+                execute_cmd(droptable)
                 sql = ("create database %(database)s;") % locals()
-                cmd = ("psql -U%(user)s -h%(host)s -c\"%(sql)s\"") % locals()
-                execute_cmd(cmd)
+                createtable = sqlcmd % locals()
+                execute_cmd(createtable)
+                os.unsetenv('PGPASSWORD')
+                os.unsetenv('PGUSER')
 
     def test_walk_versions(self):
         """
@@ -268,6 +267,29 @@ class TestMigrations(test.TestCase):
                                        "and TABLE_NAME!='migrate_version'")
         count = noninnodb.scalar()
         self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
+
+    def test_postgresql_connect_fail(self):
+        """
+        Test that we can trigger a postgres connection failure and we fail
+        gracefully to ensure we don't break people without postgres
+        """
+        if _is_backend_avail('postgres', user="openstack_cifail"):
+            self.fail("Shouldn't have connected")
+
+    def test_postgresql_opportunistically(self):
+        # Test postgresql database migration walk
+        if not _is_backend_avail('postgres'):
+            self.skipTest("postgresql not available")
+        # add this to the global lists to make reset work with it, it's removed
+        # automatically in tearDown so no need to clean it up here.
+        connect_string = _get_connect_string("postgres")
+        engine = sqlalchemy.create_engine(connect_string)
+        self.engines["postgresqlcitest"] = engine
+        self.test_databases["postgresqlcitest"] = connect_string
+
+        # build a fully populated postgresql database with all the tables
+        self._reset_databases()
+        self._walk_versions(engine, False, False)
 
     def _walk_versions(self, engine=None, snake_walk=False, downgrade=True):
         # Determine latest version script from the repo, then
