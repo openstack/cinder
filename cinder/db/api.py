@@ -43,11 +43,11 @@ these objects be simple dictionaries.
 
 """
 
+from oslo.config import cfg
+
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder import utils
-
 
 db_opts = [
     cfg.StrOpt('db_backend',

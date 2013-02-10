@@ -19,16 +19,16 @@ Manage hosts in the current zone.
 
 import UserDict
 
+from oslo.config import cfg
+
 from cinder import db
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
 from cinder.openstack.common import timeutils
 from cinder import utils
-
 
 host_manager_opts = [
     cfg.ListOpt('scheduler_default_filters',

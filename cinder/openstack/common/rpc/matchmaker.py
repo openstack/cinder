@@ -23,9 +23,9 @@ import itertools
 import json
 import logging
 
-from cinder.openstack.common import cfg
-from cinder.openstack.common.gettextutils import _
+from oslo.config import cfg
 
+from cinder.openstack.common.gettextutils import _
 
 matchmaker_opts = [
     # Matchmaker ring file

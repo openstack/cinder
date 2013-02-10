@@ -25,9 +25,9 @@ For some wrappers that add message versioning to rpc, see:
     rpc.proxy
 """
 
-from cinder.openstack.common import cfg
-from cinder.openstack.common import importutils
+from oslo.config import cfg
 
+from cinder.openstack.common import importutils
 
 rpc_opts = [
     cfg.StrOpt('rpc_backend',

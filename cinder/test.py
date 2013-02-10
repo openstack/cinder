@@ -29,16 +29,15 @@ import uuid
 
 import mox
 import nose.plugins.skip
+from oslo.config import cfg
 import stubout
 
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import service
 from cinder import tests
 from cinder.tests import fake_flags
-
 
 test_opts = [
     cfg.StrOpt('sqlite_clean_db',

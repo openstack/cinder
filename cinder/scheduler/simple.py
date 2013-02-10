@@ -21,14 +21,14 @@
 Simple Scheduler
 """
 
+from oslo.config import cfg
+
 from cinder import db
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.scheduler import chance
 from cinder.scheduler import driver
 from cinder import utils
-
 
 simple_scheduler_opts = [
     cfg.IntOpt("max_gigabytes",

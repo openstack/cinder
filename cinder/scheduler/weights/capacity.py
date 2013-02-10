@@ -22,10 +22,10 @@ number and the weighing has the opposite effect of the default.
 
 import math
 
-from cinder import flags
-from cinder.openstack.common import cfg
-from cinder.openstack.common.scheduler import weights
+from oslo.config import cfg
 
+from cinder import flags
+from cinder.openstack.common.scheduler import weights
 
 capacity_weight_opts = [
         cfg.FloatOpt('capacity_weight_multiplier',

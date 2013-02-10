@@ -20,16 +20,15 @@ Common Auth Middleware.
 """
 import os
 
+from oslo.config import cfg
 import webob.dec
 import webob.exc
 
 from cinder.api.openstack import wsgi
 from cinder import context
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import wsgi as base_wsgi
-
 
 use_forwarded_for_opt = cfg.BoolOpt(
     'use_forwarded_for',

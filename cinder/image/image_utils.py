@@ -29,12 +29,12 @@ import os
 import re
 import tempfile
 
+from oslo.config import cfg
+
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import utils
-
 
 LOG = logging.getLogger(__name__)
 

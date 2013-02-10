@@ -24,16 +24,15 @@ ONTAP 7-mode storage systems with installed iSCSI licenses.
 """
 
 import time
+import uuid
 
+from oslo.config import cfg
 import suds
 from suds import client
 from suds.sax import text
 
-import uuid
-
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.api import NaApiError

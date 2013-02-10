@@ -17,9 +17,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
 
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder import test
 
 FLAGS = flags.FLAGS

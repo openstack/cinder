@@ -24,9 +24,9 @@ import socket
 import sys
 import textwrap
 
-from cinder.openstack.common import cfg
-from cinder.openstack.common import importutils
+from oslo.config import cfg
 
+from cinder.openstack.common import importutils
 
 STROPT = "StrOpt"
 BOOLOPT = "BoolOpt"

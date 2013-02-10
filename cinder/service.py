@@ -29,19 +29,18 @@ import time
 
 import eventlet
 import greenlet
+from oslo.config import cfg
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 from cinder import utils
 from cinder import version
 from cinder import wsgi
-
 
 LOG = logging.getLogger(__name__)
 

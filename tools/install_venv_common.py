@@ -31,7 +31,7 @@ if os.path.exists(os.path.join(possible_topdir, "cinder",
     sys.path.insert(0, possible_topdir)
 
 
-from cinder.openstack.common import cfg
+from oslo.config import cfg
 
 
 class InstallVenv(object):

@@ -23,9 +23,10 @@ This driver requires ISCSI target role installed
 import os
 import sys
 
+from oslo.config import cfg
+
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 

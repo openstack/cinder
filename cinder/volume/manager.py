@@ -41,12 +41,13 @@ intact.
 import sys
 import traceback
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder import flags
 from cinder.image import glance
 from cinder import manager
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
@@ -57,7 +58,6 @@ from cinder import quota
 from cinder.volume.configuration import Configuration
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
-
 
 LOG = logging.getLogger(__name__)
 

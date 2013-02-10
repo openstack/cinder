@@ -18,10 +18,10 @@
 
 """Base class for classes that need modular database access."""
 
-from cinder import flags
-from cinder.openstack.common import cfg
-from cinder.openstack.common import importutils
+from oslo.config import cfg
 
+from cinder import flags
+from cinder.openstack.common import importutils
 
 db_driver_opt = cfg.StrOpt('db_driver',
                            default='cinder.db',
