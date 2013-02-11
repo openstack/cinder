@@ -39,10 +39,21 @@ from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import utils
 
+FLAGS = flags.FLAGS
+
 if __name__ == '__main__':
     flags.parse_args(sys.argv)
     logging.setup("cinder")
     utils.monkey_patch()
-    server = service.Service.create(binary='cinder-volume')
-    service.serve(server)
-    service.wait()
+    launcher = service.ProcessLauncher()
+    if FLAGS.enabled_backends:
+        for backend in FLAGS.enabled_backends:
+            host = "%s@%s" % (FLAGS.host, backend)
+            server = service.Service.create(
+                                        host=host,
+                                        service_name=backend)
+            launcher.launch_server(server)
+    else:
+        server = service.Service.create(binary='cinder-volume')
+        launcher.launch_server(server)
+    launcher.wait()

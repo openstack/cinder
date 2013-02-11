@@ -87,11 +87,13 @@ class SanISCSIDriver(ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(SanISCSIDriver, self).__init__(*args, **kwargs)
-        self.run_local = FLAGS.san_is_local
+        self.configuration.append_config_values(san_opts)
+        self.run_local = self.configuration.san_is_local
         self.sshpool = None
 
     def _build_iscsi_target_name(self, volume):
-        return "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
+        return "%s%s" % (self.configuration.iscsi_target_prefix,
+                         volume['name'])
 
     def _execute(self, *cmd, **kwargs):
         if self.run_local:
@@ -103,14 +105,18 @@ class SanISCSIDriver(ISCSIDriver):
 
     def _run_ssh(self, command, check_exit_code=True, attempts=1):
         if not self.sshpool:
-            self.sshpool = utils.SSHPool(FLAGS.san_ip,
-                                         FLAGS.san_ssh_port,
-                                         FLAGS.ssh_conn_timeout,
-                                         FLAGS.san_login,
-                                         password=FLAGS.san_password,
-                                         privatekey=FLAGS.san_private_key,
-                                         min_size=FLAGS.ssh_min_pool_conn,
-                                         max_size=FLAGS.ssh_max_pool_conn)
+            password = self.configuration.san_password
+            privatekey = self.configuration.san_private_key
+            min_size = self.configuration.ssh_min_pool_conn
+            max_size = self.configuration.ssh_max_pool_conn
+            self.sshpool = utils.SSHPool(self.configuration.san_ip,
+                                         self.configuration.san_ssh_port,
+                                         self.configuration.ssh_conn_timeout,
+                                         self.configuration.san_login,
+                                         password=password,
+                                         privatekey=privatekey,
+                                         min_size=min_size,
+                                         max_size=max_size)
         last_exception = None
         try:
             total_attempts = attempts
@@ -158,12 +164,13 @@ class SanISCSIDriver(ISCSIDriver):
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         if not self.run_local:
-            if not (FLAGS.san_password or FLAGS.san_private_key):
+            if not (self.configuration.san_password or
+                    self.configuration.san_private_key):
                 raise exception.InvalidInput(
                     reason=_('Specify san_password or san_private_key'))
 
         # The san_ip must always be set, because we use it for the target
-        if not FLAGS.san_ip:
+        if not self.configuration.san_ip:
             raise exception.InvalidInput(reason=_("san_ip must be set"))
 
     def create_cloned_volume(self, volume, src_vref):

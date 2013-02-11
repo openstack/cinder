@@ -727,6 +727,9 @@
 # value)
 #iscsi_port=3260
 
+# Optional override to the capacity based volume backend name
+#
+#volume_backend_name=LVM_iSCSI_unique1
 
 #
 # Options defined in cinder.volume.drivers.glusterfs
@@ -1125,4 +1128,20 @@
 #volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 
 
-# Total option count: 249
+#
+# Multi backend options
+#
+
+# Define the names of the groups for multiple volume backends
+#enabled_backends=fakedriver,lvmdriver
+
+# Define the groups as above
+#[lvmdriver]
+#volume_group=lvm-group-1
+#volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
+#volume_backend_name=LVM_iSCSI_unique1
+#[fakedriver]
+#volume_driver=cinder.volume.driver.FakeISCSIDriver
+
+
+# Total option count: 251

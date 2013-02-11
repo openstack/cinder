@@ -16,6 +16,7 @@
 #    under the License.
 
 import contextlib
+import mox
 import os
 import tempfile
 
@@ -27,6 +28,7 @@ from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.image import fake as fake_image
 from cinder.tests.test_volume import DriverTestCase
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.rbd import RBDDriver
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +46,17 @@ class RBDTestCase(test.TestCase):
 
         def fake_execute(*args, **kwargs):
             return '', ''
-        self.driver = RBDDriver(execute=fake_execute)
+        self._mox = mox.Mox()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.volume_tmp_dir = None
+        configuration.rbd_pool = 'rbd'
+        configuration.rbd_secret_uuid = None
+        configuration.rbd_user = None
+        configuration.append_config_values(mox.IgnoreArg())
+
+        self.driver = RBDDriver(execute=fake_execute,
+                                configuration=configuration)
+        self._mox.ReplayAll()
 
     def test_good_locations(self):
         locations = ['rbd://fsid/pool/image/snap',

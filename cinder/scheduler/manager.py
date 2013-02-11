@@ -50,7 +50,8 @@ class SchedulerManager(manager.Manager):
 
     RPC_API_VERSION = '1.2'
 
-    def __init__(self, scheduler_driver=None, *args, **kwargs):
+    def __init__(self, scheduler_driver=None, service_name=None,
+                 *args, **kwargs):
         if not scheduler_driver:
             scheduler_driver = FLAGS.scheduler_driver
         self.driver = importutils.import_object(scheduler_driver)

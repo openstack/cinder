@@ -54,7 +54,9 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 from cinder import quota
+from cinder.volume.configuration import Configuration
 from cinder.volume import utils as volume_utils
+from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
@@ -109,16 +111,23 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     RPC_API_VERSION = '1.4'
 
-    def __init__(self, volume_driver=None, *args, **kwargs):
+    def __init__(self, volume_driver=None, service_name=None,
+                 *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
+        self.configuration = Configuration(volume_manager_opts,
+                                           config_group=service_name)
         if not volume_driver:
-            volume_driver = FLAGS.volume_driver
+            # Get from configuration, which will get the default
+            # if its not using the multi backend
+            volume_driver = self.configuration.volume_driver
         if volume_driver in MAPPING:
             LOG.warn(_("Driver path %s is deprecated, update your "
                        "configuration to the new path."), volume_driver)
-            self.driver = importutils.import_object(MAPPING[volume_driver])
-        else:
-            self.driver = importutils.import_object(volume_driver)
+            volume_driver = MAPPING[volume_driver]
+        self.driver = importutils.import_object(
+                                        volume_driver,
+                                        configuration=self.configuration)
+        # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
         # NOTE(vish): Implementation specific db handling is done

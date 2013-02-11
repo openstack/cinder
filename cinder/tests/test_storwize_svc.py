@@ -24,6 +24,7 @@
 Tests for the IBM Storwize V7000 and SVC volume driver.
 """
 
+import mox
 import random
 import socket
 
@@ -32,6 +33,7 @@ from cinder import flags
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import storwize_svc
 
 FLAGS = flags.FLAGS
@@ -962,7 +964,11 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                 storwize_svc_flashcopy_timeout="20",
             )
             self.sim = StorwizeSVCManagementSimulator("volpool")
-            self.driver = StorwizeSVCFakeDriver()
+            configuration = mox.MockObject(conf.Configuration)
+            configuration.san_is_local = False
+            configuration.append_config_values(mox.IgnoreArg())
+
+            self.driver = StorwizeSVCFakeDriver(configuration=configuration)
             self.driver.set_fake_storage(self.sim)
         else:
             self.flags(

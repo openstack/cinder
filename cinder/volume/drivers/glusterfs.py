@@ -50,11 +50,15 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     """Gluster based cinder driver. Creates file on Gluster share for using it
     as block device on hypervisor."""
 
+    def __init__(self, *args, **kwargs):
+        super(GlusterfsDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(volume_opts)
+
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(GlusterfsDriver, self).do_setup(context)
 
-        config = FLAGS.glusterfs_shares_config
+        config = self.configuration.glusterfs_shares_config
         if not config:
             msg = (_("There's no Gluster config file configured (%s)") %
                    'glusterfs_shares_config')
@@ -149,7 +153,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         volume_path = self.local_path(volume)
         volume_size = volume['size']
 
-        if FLAGS.glusterfs_sparsed_volumes:
+        if self.configuration.glusterfs_sparsed_volumes:
             self._create_sparsed_file(volume_path, volume_size)
         else:
             self._create_regular_file(volume_path, volume_size)
@@ -171,7 +175,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         LOG.debug('Available shares %s' % str(self._mounted_shares))
 
     def _load_shares_config(self):
-        return [share.strip() for share in open(FLAGS.glusterfs_shares_config)
+        return [share.strip() for share
+                in open(self.configuration.glusterfs_shares_config)
                 if share and not share.startswith('#')]
 
     def _ensure_share_mounted(self, glusterfs_share):
@@ -208,7 +213,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         """Return mount point for share.
         :param glusterfs_share: example 172.18.194.100:/var/glusterfs
         """
-        return os.path.join(FLAGS.glusterfs_mount_point_base,
+        return os.path.join(self.configuration.glusterfs_mount_point_base,
                             self._get_hash_str(glusterfs_share))
 
     def _get_available_capacity(self, glusterfs_share):
@@ -223,7 +228,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         available = 0
 
-        if FLAGS.glusterfs_disk_util == 'df':
+        if self.configuration.glusterfs_disk_util == 'df':
             available = int(out.split()[3])
         else:
             size = int(out.split()[1])

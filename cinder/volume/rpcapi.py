@@ -42,9 +42,9 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
 
     BASE_RPC_API_VERSION = '1.0'
 
-    def __init__(self):
+    def __init__(self, topic=None):
         super(VolumeAPI, self).__init__(
-            topic=FLAGS.volume_topic,
+            topic=topic or FLAGS.volume_topic,
             default_version=self.BASE_RPC_API_VERSION)
 
     def create_volume(self, ctxt, volume, host,

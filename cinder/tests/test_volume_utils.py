@@ -34,6 +34,12 @@ FLAGS = flags.FLAGS
 
 class UsageInfoTestCase(test.TestCase):
 
+    QUEUE_NAME = 'cinder-volume'
+    HOSTNAME = 'my-host.com'
+    HOSTIP = '10.0.0.1'
+    BACKEND = 'test_backend'
+    MULTI_AT_BACKEND = 'test_b@ckend'
+
     def setUp(self):
         super(UsageInfoTestCase, self).setUp()
         self.flags(connection_type='fake',
@@ -87,3 +93,25 @@ class UsageInfoTestCase(test.TestCase):
             self.assertTrue(attr in payload,
                             msg="Key %s not in payload" % attr)
         db.volume_destroy(context.get_admin_context(), volume['id'])
+
+    def test_get_host_from_queue_simple(self):
+        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTNAME, self.BACKEND)
+        self.assertEquals(volume_utils.get_host_from_queue(fullname),
+                          self.HOSTNAME)
+
+    def test_get_host_from_queue_ip(self):
+        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTIP, self.BACKEND)
+        self.assertEquals(volume_utils.get_host_from_queue(fullname),
+                          self.HOSTIP)
+
+    def test_get_host_from_queue_multi_at_symbol(self):
+        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTNAME,
+                                 self.MULTI_AT_BACKEND)
+        self.assertEquals(volume_utils.get_host_from_queue(fullname),
+                          self.HOSTNAME)
+
+    def test_get_host_from_queue_ip_multi_at_symbol(self):
+        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTIP,
+                                 self.MULTI_AT_BACKEND)
+        self.assertEquals(volume_utils.get_host_from_queue(fullname),
+                          self.HOSTIP)

@@ -18,6 +18,9 @@
 
 from cinder.db import api as db_api
 from cinder import exception
+from cinder.openstack.common import cfg
+from cinder.volume import configuration as conf
+from cinder.volume import driver as parent_driver
 from cinder.volume.drivers.xenapi import lib
 from cinder.volume.drivers.xenapi import sm as driver
 import mox
@@ -45,11 +48,13 @@ class DriverTestCase(unittest.TestCase):
     def test_do_setup(self):
         mock = mox.Mox()
         mock.StubOutWithMock(driver, 'xenapi_lib')
-        mock.StubOutWithMock(driver, 'FLAGS')
+        mock.StubOutWithMock(driver, 'xenapi_opts')
 
-        driver.FLAGS.xenapi_connection_url = 'url'
-        driver.FLAGS.xenapi_connection_username = 'user'
-        driver.FLAGS.xenapi_connection_password = 'pass'
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.xenapi_connection_url = 'url'
+        configuration.xenapi_connection_username = 'user'
+        configuration.xenapi_connection_password = 'pass'
+        configuration.append_config_values(mox.IgnoreArg())
 
         session_factory = object()
         nfsops = object()
@@ -60,7 +65,7 @@ class DriverTestCase(unittest.TestCase):
         driver.xenapi_lib.NFSBasedVolumeOperations(
             session_factory).AndReturn(nfsops)
 
-        drv = driver.XenAPINFSDriver()
+        drv = driver.XenAPINFSDriver(configuration=configuration)
 
         mock.ReplayAll()
         drv.do_setup('context')
@@ -71,12 +76,13 @@ class DriverTestCase(unittest.TestCase):
     def test_create_volume(self):
         mock = mox.Mox()
 
-        mock.StubOutWithMock(driver, 'FLAGS')
-        driver.FLAGS.xenapi_nfs_server = 'server'
-        driver.FLAGS.xenapi_nfs_serverpath = 'path'
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.xenapi_nfs_server = 'server'
+        configuration.xenapi_nfs_serverpath = 'path'
+        configuration.append_config_values(mox.IgnoreArg())
 
         ops = mock.CreateMock(lib.NFSBasedVolumeOperations)
-        drv = driver.XenAPINFSDriver()
+        drv = driver.XenAPINFSDriver(configuration=configuration)
         drv.nfs_ops = ops
 
         volume_details = dict(
@@ -96,12 +102,13 @@ class DriverTestCase(unittest.TestCase):
     def test_delete_volume(self):
         mock = mox.Mox()
 
-        mock.StubOutWithMock(driver, 'FLAGS')
-        driver.FLAGS.xenapi_nfs_server = 'server'
-        driver.FLAGS.xenapi_nfs_serverpath = 'path'
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.xenapi_nfs_server = 'server'
+        configuration.xenapi_nfs_serverpath = 'path'
+        configuration.append_config_values(mox.IgnoreArg())
 
         ops = mock.CreateMock(lib.NFSBasedVolumeOperations)
-        drv = driver.XenAPINFSDriver()
+        drv = driver.XenAPINFSDriver(configuration=configuration)
         drv.nfs_ops = ops
 
         ops.delete_volume('server', 'path', 'sr_uuid', 'vdi_uuid')
@@ -112,21 +119,23 @@ class DriverTestCase(unittest.TestCase):
         mock.VerifyAll()
 
     def test_create_export_does_not_raise_exception(self):
-        drv = driver.XenAPINFSDriver()
+        configuration = conf.Configuration([])
+        drv = driver.XenAPINFSDriver(configuration=configuration)
         drv.create_export('context', 'volume')
 
     def test_remove_export_does_not_raise_exception(self):
-        drv = driver.XenAPINFSDriver()
+        configuration = conf.Configuration([])
+        drv = driver.XenAPINFSDriver(configuration=configuration)
         drv.remove_export('context', 'volume')
 
     def test_initialize_connection(self):
         mock = mox.Mox()
 
-        mock.StubOutWithMock(driver, 'FLAGS')
-        driver.FLAGS.xenapi_nfs_server = 'server'
-        driver.FLAGS.xenapi_nfs_serverpath = 'path'
-
-        drv = driver.XenAPINFSDriver()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.xenapi_nfs_server = 'server'
+        configuration.xenapi_nfs_serverpath = 'path'
+        configuration.append_config_values(mox.IgnoreArg())
+        drv = driver.XenAPINFSDriver(configuration=configuration)
 
         mock.ReplayAll()
         result = drv.initialize_connection(
@@ -157,12 +166,12 @@ class DriverTestCase(unittest.TestCase):
 
     def test_initialize_connection_null_values(self):
         mock = mox.Mox()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.xenapi_nfs_server = 'server'
+        configuration.xenapi_nfs_serverpath = 'path'
+        configuration.append_config_values(mox.IgnoreArg())
 
-        mock.StubOutWithMock(driver, 'FLAGS')
-        driver.FLAGS.xenapi_nfs_server = 'server'
-        driver.FLAGS.xenapi_nfs_serverpath = 'path'
-
-        drv = driver.XenAPINFSDriver()
+        drv = driver.XenAPINFSDriver(configuration=configuration)
 
         mock.ReplayAll()
         result = drv.initialize_connection(
@@ -194,7 +203,12 @@ class DriverTestCase(unittest.TestCase):
     def _setup_mock_driver(self, server, serverpath, sr_base_path="_srbp"):
         mock = mox.Mox()
 
-        drv = driver.XenAPINFSDriver()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.xenapi_nfs_server = server
+        configuration.xenapi_nfs_serverpath = serverpath
+        configuration.append_config_values(mox.IgnoreArg())
+
+        drv = driver.XenAPINFSDriver(configuration=configuration)
         ops = mock.CreateMock(lib.NFSBasedVolumeOperations)
         db = mock.CreateMock(db_api)
         drv.nfs_ops = ops

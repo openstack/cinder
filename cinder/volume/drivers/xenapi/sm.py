@@ -59,12 +59,16 @@ FLAGS.register_opts(xenapi_nfs_opts)
 
 
 class XenAPINFSDriver(driver.VolumeDriver):
+    def __init__(self, *args, **kwargs):
+        super(XenAPINFSDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(xenapi_opts)
+        self.configuration.append_config_values(xenapi_nfs_opts)
 
     def do_setup(self, context):
         session_factory = xenapi_lib.SessionFactory(
-            FLAGS.xenapi_connection_url,
-            FLAGS.xenapi_connection_username,
-            FLAGS.xenapi_connection_password
+            self.configuration.xenapi_connection_url,
+            self.configuration.xenapi_connection_username,
+            self.configuration.xenapi_connection_password
         )
         self.nfs_ops = xenapi_lib.NFSBasedVolumeOperations(session_factory)
 
@@ -73,8 +77,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         volume_details = self.nfs_ops.create_volume(
-            FLAGS.xenapi_nfs_server,
-            FLAGS.xenapi_nfs_serverpath,
+            self.configuration.xenapi_nfs_server,
+            self.configuration.xenapi_nfs_serverpath,
             volume['size'],
             volume['display_name'],
             volume['display_description']
@@ -89,8 +93,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
         sr_uuid, vdi_uuid = volume['provider_location'].split('/')
 
         self.nfs_ops.delete_volume(
-            FLAGS.xenapi_nfs_server,
-            FLAGS.xenapi_nfs_serverpath,
+            self.configuration.xenapi_nfs_server,
+            self.configuration.xenapi_nfs_serverpath,
             sr_uuid,
             vdi_uuid
         )
@@ -109,8 +113,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
                 sr_uuid=sr_uuid,
                 vdi_uuid=vdi_uuid,
                 sr_type='nfs',
-                server=FLAGS.xenapi_nfs_server,
-                serverpath=FLAGS.xenapi_nfs_serverpath,
+                server=self.configuration.xenapi_nfs_server,
+                serverpath=self.configuration.xenapi_nfs_serverpath,
                 introduce_sr_keys=['sr_type', 'server', 'serverpath']
             )
         )
@@ -135,8 +139,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
         sr_uuid, vdi_uuid = volume['provider_location'].split('/')
 
         volume_details = self.nfs_ops.copy_volume(
-            FLAGS.xenapi_nfs_server,
-            FLAGS.xenapi_nfs_serverpath,
+            self.configuration.xenapi_nfs_server,
+            self.configuration.xenapi_nfs_serverpath,
             sr_uuid,
             vdi_uuid,
             target_name,

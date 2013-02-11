@@ -222,6 +222,11 @@ global_opts = [
                     'and deprecated.'),
     cfg.StrOpt('control_exchange',
                default='cinder',
-               help='AMQP exchange to connect to if using RabbitMQ or Qpid'), ]
+               help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
+    cfg.ListOpt('enabled_backends',
+                default=None,
+                help='A list of backend names to use. These backend names '
+                     'should be backed by a unique [CONFIG] group '
+                     'with its options'), ]
 
 FLAGS.register_opts(global_opts)

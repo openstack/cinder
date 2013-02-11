@@ -41,7 +41,9 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
 
         super(EMCSMISISCSIDriver, self).__init__(*args, **kwargs)
-        self.common = emc_smis_common.EMCSMISCommon('iSCSI')
+        self.common = emc_smis_common.EMCSMISCommon(
+                                        'iSCSI',
+                                        configuration=self.configuration)
 
     def check_for_setup_error(self):
         pass
@@ -118,10 +120,10 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
                                     '-t', 'sendtargets', '-p',
-                                    FLAGS.iscsi_ip_address,
+                                    self.configuration.iscsi_ip_address,
                                     run_as_root=True)
         for target in out.splitlines():
-            index = target.find(FLAGS.iscsi_ip_address)
+            index = target.find(self.configuration.iscsi_ip_address)
             if index != -1:
                 return target
         return None

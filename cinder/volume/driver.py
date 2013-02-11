@@ -29,6 +29,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume.configuration import Configuration
 
 
 LOG = logging.getLogger(__name__)
@@ -54,7 +55,10 @@ volume_opts = [
                help='The port that the iSCSI daemon is listening on'),
     cfg.IntOpt('iscsi_port',
                default=3260,
-               help='The port that the iSCSI daemon is listening on'), ]
+               help='The port that the iSCSI daemon is listening on'),
+    cfg.StrOpt('volume_backend_name',
+               default=None,
+               help='The backend name for a given driver implementation'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
@@ -66,6 +70,9 @@ class VolumeDriver(object):
     def __init__(self, execute=utils.execute, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         self.db = None
+        self.configuration = kwargs.get('configuration', None)
+        if self.configuration:
+            self.configuration.append_config_values(volume_opts)
         self.set_execute(execute)
         self._stats = {}
 
@@ -83,7 +90,7 @@ class VolumeDriver(object):
                 return True
             except exception.ProcessExecutionError:
                 tries = tries + 1
-                if tries >= FLAGS.num_shell_tries:
+                if tries >= self.configuration.num_shell_tries:
                     raise
                 LOG.exception(_("Recovering from a failed execute.  "
                                 "Try number %s"), tries)
@@ -208,7 +215,8 @@ class ISCSIDriver(VolumeDriver):
                                     '-t', 'sendtargets', '-p', volume['host'],
                                     run_as_root=True)
         for target in out.splitlines():
-            if FLAGS.iscsi_ip_address in target and volume_name in target:
+            if (self.configuration.iscsi_ip_address in target
+                and volume_name in target):
                 return target
         return None
 
@@ -260,7 +268,7 @@ class ISCSIDriver(VolumeDriver):
         try:
             properties['target_lun'] = int(results[2])
         except (IndexError, ValueError):
-            if FLAGS.iscsi_helper == 'tgtadm':
+            if self.configuration.iscsi_helper == 'tgtadm':
                 properties['target_lun'] = 1
             else:
                 properties['target_lun'] = 0
@@ -409,7 +417,7 @@ class ISCSIDriver(VolumeDriver):
 
         tries = 0
         while not os.path.exists(host_device):
-            if tries >= FLAGS.num_iscsi_scan_tries:
+            if tries >= self.configuration.num_iscsi_scan_tries:
                 raise exception.CinderException(
                     _("iSCSI device not found at %s") % (host_device))
 
@@ -430,6 +438,32 @@ class ISCSIDriver(VolumeDriver):
                       locals())
 
         return iscsi_properties, host_device
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status.
+
+        If 'refresh' is True, run update the stats first."""
+        if refresh:
+            self._update_volume_status()
+
+        return self._stats
+
+    def _update_volume_status(self):
+        """Retrieve status info from volume group."""
+
+        LOG.debug(_("Updating volume status"))
+        data = {}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'Generic_iSCSI'
+        data["vendor_name"] = 'Open Source'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'iSCSI'
+
+        data['total_capacity_gb'] = 'infinite'
+        data['free_capacity_gb'] = 'infinite'
+        data['reserved_percentage'] = 100
+        data['QoS_support'] = False
+        self._stats = data
 
 
 class FakeISCSIDriver(ISCSIDriver):

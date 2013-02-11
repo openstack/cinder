@@ -1080,14 +1080,15 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_iSCSI_7mode'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'NetApp_iSCSI_7mode'
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] = 'infinite'
         data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
+        data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data
 
@@ -1437,7 +1438,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_iSCSI_Cluster'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'NetApp_iSCSI_Cluster'
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
@@ -2193,7 +2195,9 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_iSCSI_Cluster_direct'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = (backend_name
+                                       or 'NetApp_iSCSI_Cluster_direct')
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
@@ -2448,7 +2452,9 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_iSCSI_7mode_direct'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = (backend_name
+                                       or 'NetApp_iSCSI_7mode_direct')
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
