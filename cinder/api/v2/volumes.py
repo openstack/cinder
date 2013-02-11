@@ -51,7 +51,7 @@ def make_volume(elem):
     elem.set('availability_zone')
     elem.set('created_at')
     elem.set('name')
-    elem.set('display_description')
+    elem.set('description')
     elem.set('volume_type')
     elem.set('snapshot_id')
     elem.set('source_volid')
@@ -97,7 +97,7 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
         volume = {}
         volume_node = self.find_first_child_named(node, 'volume')
 
-        attributes = ['name', 'display_description', 'size',
+        attributes = ['name', 'description', 'size',
                       'volume_type', 'availability_zone']
         for attr in attributes:
             if volume_node.getAttribute(attr):
@@ -231,6 +231,11 @@ class VolumeController(wsgi.Controller):
             volume['display_name'] = volume.get('name')
             del volume['name']
 
+        # NOTE(thingee): v2 API allows description instead of description
+        if volume.get('description'):
+            volume['display_description'] = volume.get('description')
+            del volume['description']
+
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
             try:
@@ -310,7 +315,7 @@ class VolumeController(wsgi.Controller):
 
         valid_update_keys = (
             'name',
-            'display_description',
+            'description',
             'metadata',
         )
 
@@ -322,6 +327,11 @@ class VolumeController(wsgi.Controller):
         if 'name' in update_dict:
             update_dict['display_name'] = update_dict['name']
             del update_dict['name']
+
+        # NOTE(thingee): v2 API allows name instead of display_name
+        if 'description' in update_dict:
+            update_dict['display_description'] = update_dict['description']
+            del update_dict['description']
 
         try:
             volume = self.volume_api.get(context, id)

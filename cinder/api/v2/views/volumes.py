@@ -61,7 +61,7 @@ class ViewBuilder(common.ViewBuilder):
                 'created_at': volume.get('created_at'),
                 'attachments': self._get_attachments(volume),
                 'name': volume.get('display_name'),
-                'display_description': volume.get('display_description'),
+                'description': volume.get('display_description'),
                 'volume_type': self._get_volume_type(volume),
                 'snapshot_id': volume.get('snapshot_id'),
                 'source_volid': volume.get('source_volid'),
