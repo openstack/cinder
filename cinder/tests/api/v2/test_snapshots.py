@@ -87,47 +87,52 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_create(self):
         self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        snapshot_name = 'Snapshot Test Name'
+        snapshot_description = 'Snapshot Test Desc'
         snapshot = {
             "volume_id": '12',
             "force": False,
-            "display_name": "Snapshot Test Name",
-            "display_description": "Snapshot Test Desc"
+            "name": snapshot_name,
+            "description": snapshot_description
         }
+
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')
         resp_dict = self.controller.create(req, body)
 
         self.assertTrue('snapshot' in resp_dict)
-        self.assertEqual(resp_dict['snapshot']['display_name'],
-                         snapshot['display_name'])
-        self.assertEqual(resp_dict['snapshot']['display_description'],
-                         snapshot['display_description'])
+        self.assertEqual(resp_dict['snapshot']['name'],
+                         snapshot_name)
+        self.assertEqual(resp_dict['snapshot']['description'],
+                         snapshot_description)
 
     def test_snapshot_create_force(self):
         self.stubs.Set(volume.api.API, "create_snapshot_force",
                        stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        snapshot_name = 'Snapshot Test Name'
+        snapshot_description = 'Snapshot Test Desc'
         snapshot = {
             "volume_id": '12',
             "force": True,
-            "display_name": "Snapshot Test Name",
-            "display_description": "Snapshot Test Desc"
+            "name": snapshot_name,
+            "description": snapshot_description
         }
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')
         resp_dict = self.controller.create(req, body)
 
         self.assertTrue('snapshot' in resp_dict)
-        self.assertEqual(resp_dict['snapshot']['display_name'],
-                         snapshot['display_name'])
-        self.assertEqual(resp_dict['snapshot']['display_description'],
-                         snapshot['display_description'])
+        self.assertEqual(resp_dict['snapshot']['name'],
+                         snapshot_name)
+        self.assertEqual(resp_dict['snapshot']['description'],
+                         snapshot_description)
 
         snapshot = {
             "volume_id": "12",
             "force": "**&&^^%%$$##@@",
-            "display_name": "Snapshot Test Name",
-            "display_description": "Snapshot Test Desc"
+            "name": "Snapshot Test Name",
+            "description": "Snapshot Test Desc"
         }
         body = dict(snapshot=snapshot)
         req = fakes.HTTPRequest.blank('/v2/snapshots')
@@ -141,7 +146,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API, "update_snapshot",
                        stubs.stub_snapshot_update)
         updates = {
-            "display_name": "Updated Test Name",
+            "name": "Updated Test Name",
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
@@ -153,8 +158,8 @@ class SnapshotApiTest(test.TestCase):
                 'status': 'available',
                 'size': 100,
                 'created_at': None,
-                'display_name': 'Updated Test Name',
-                'display_description': 'Default description',
+                'name': 'Updated Test Name',
+                'description': 'Default description',
             }
         }
         self.assertEquals(expected, res_dict)
@@ -166,7 +171,7 @@ class SnapshotApiTest(test.TestCase):
                           self.controller.update, req, UUID, body)
 
     def test_snapshot_update_invalid_body(self):
-        body = {'display_name': 'missing top level snapshot key'}
+        body = {'name': 'missing top level snapshot key'}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.update, req, UUID, body)
@@ -174,7 +179,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_update_not_found(self):
         self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
         updates = {
-            "display_name": "Updated Test Name",
+            "name": "Updated Test Name",
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/not-the-uuid')
@@ -296,17 +301,17 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(db, 'snapshot_get_all_by_project',
                        stub_snapshot_get_all_by_project)
 
-        # no display_name filter
+        # no name filter
         req = fakes.HTTPRequest.blank('/v2/snapshots')
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 3)
         # filter by one name
-        req = fakes.HTTPRequest.blank('/v2/snapshots?display_name=backup2')
+        req = fakes.HTTPRequest.blank('/v2/snapshots?name=backup2')
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 1)
-        self.assertEquals(resp['snapshots'][0]['display_name'], 'backup2')
+        self.assertEquals(resp['snapshots'][0]['name'], 'backup2')
         # filter no match
-        req = fakes.HTTPRequest.blank('/v2/snapshots?display_name=backup4')
+        req = fakes.HTTPRequest.blank('/v2/snapshots?name=backup4')
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 0)
 
@@ -343,7 +348,7 @@ class SnapshotSerializerTest(test.TestCase):
         self.assertEqual(tree.tag, 'snapshot')
 
         for attr in ('id', 'status', 'size', 'created_at',
-                     'display_name', 'display_description', 'volume_id'):
+                     'name', 'description', 'volume_id'):
             self.assertEqual(str(snap[attr]), tree.get(attr))
 
     def test_snapshot_show_create_serializer(self):
@@ -353,7 +358,8 @@ class SnapshotSerializerTest(test.TestCase):
             status='snap_status',
             size=1024,
             created_at=datetime.datetime.now(),
-            display_name='snap_name',
+            name='snap_name',
+            description='snap_desc',
             display_description='snap_desc',
             volume_id='vol_id',
         )
@@ -372,8 +378,8 @@ class SnapshotSerializerTest(test.TestCase):
                 status='snap1_status',
                 size=1024,
                 created_at=datetime.datetime.now(),
-                display_name='snap1_name',
-                display_description='snap1_desc',
+                name='snap1_name',
+                description='snap1_desc',
                 volume_id='vol1_id',
             ),
             dict(
@@ -381,8 +387,8 @@ class SnapshotSerializerTest(test.TestCase):
                 status='snap2_status',
                 size=1024,
                 created_at=datetime.datetime.now(),
-                display_name='snap2_name',
-                display_description='snap2_desc',
+                name='snap2_name',
+                description='snap2_desc',
                 volume_id='vol2_id',
             )
         ]
