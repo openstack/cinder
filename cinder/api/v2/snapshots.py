@@ -144,6 +144,7 @@ class SnapshotsController(wsgi.Controller):
         res = [entity_maker(context, snapshot) for snapshot in limited_list]
         return {'snapshots': res}
 
+    @wsgi.response(202)
     @wsgi.serializers(xml=SnapshotTemplate)
     def create(self, req, body):
         """Creates a new snapshot."""

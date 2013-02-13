@@ -214,6 +214,7 @@ class VolumeController(wsgi.Controller):
 
         return image_uuid
 
+    @wsgi.response(202)
     @wsgi.serializers(xml=VolumeTemplate)
     @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
