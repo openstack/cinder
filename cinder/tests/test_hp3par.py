@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 #
-#    Copyright (c) 2012 Hewlett-Packard, Inc.
+#    (c) Copyright 2013 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,16 +16,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Unit tests for OpenStack Cinder volume driver
+Unit tests for OpenStack Cinder volume drivers
 """
 import shutil
 import tempfile
 
 from hp3parclient import exceptions as hpexceptions
 
+from cinder import exception
 import cinder.flags
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
 from cinder.volume.drivers.san.hp import hp_3par_iscsi as hpdriver
 
 FLAGS = cinder.flags.FLAGS
@@ -54,8 +56,7 @@ class FakeHP3ParClient(object):
                      'usedMiB': 256},
          'SDGrowth': {'LDLayout': {'RAIDType': 4,
                       'diskPatterns': [{'diskType': 2}]},
-                      'incrementMiB': 32768,
-                      'limitMiB': 1024000},
+                      'incrementMiB': 32768},
          'SDUsage': {'rawTotalMiB': 49152,
                      'rawUsedMiB': 1023,
                      'totalMiB': 36864,
@@ -249,22 +250,258 @@ class FakeHP3ParClient(object):
         raise hpexceptions.HTTPNotFound(msg)
 
 
-class TestHP3PARDriver(test.TestCase):
+class HP3PARBaseDriver():
 
-    TARGET_IQN = "iqn.2000-05.com.3pardata:21810002ac00383d"
     VOLUME_ID = "d03338a9-9115-48a3-8dfc-35cdfcdc15a7"
+    CLONE_ID = "d03338a9-9115-48a3-8dfc-000000000000"
     VOLUME_NAME = "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7"
     SNAPSHOT_ID = "2f823bdc-e36e-4dc8-bd15-de1c7a28ff31"
     SNAPSHOT_NAME = "snapshot-2f823bdc-e36e-4dc8-bd15-de1c7a28ff31"
     VOLUME_3PAR_NAME = "osv-0DM4qZEVSKON-DXN-NwVpw"
     SNAPSHOT_3PAR_NAME = "oss-L4I73ONuTci9Fd4ceij-MQ"
     FAKE_HOST = "fakehost"
+    USER_ID = '2689d9a913974c008b1d859013f23607'
+    PROJECT_ID = 'fac88235b9d64685a3530f73e490348f'
+    VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
+    FAKE_DESC = 'test description name'
+    FAKE_FC_PORTS = ['0987654321234', '123456789000987']
+    FAKE_ISCSI_PORTS = ['10.10.10.10', '10.10.10.11']
+
+    volume = {'name': VOLUME_NAME,
+              'id': VOLUME_ID,
+              'display_name': 'Foo Volume',
+              'size': 2,
+              'host': FAKE_HOST,
+              'volume_type': None,
+              'volume_type_id': None}
+
+    snapshot = {'name': SNAPSHOT_NAME,
+                'id': SNAPSHOT_ID,
+                'user_id': USER_ID,
+                'project_id': PROJECT_ID,
+                'volume_id': VOLUME_ID_SNAP,
+                'volume_name': VOLUME_NAME,
+                'status': 'creating',
+                'progress': '0%',
+                'volume_size': 2,
+                'display_name': 'fakesnap',
+                'display_description': FAKE_DESC}
+
+    connector = {'ip': '10.0.0.2',
+                 'initiator': 'iqn.1993-08.org.debian:01:222',
+                 'wwpns': ["123456789012345", "123456789054321"],
+                 'wwnns': ["223456789012345", "223456789054321"],
+                 'host': 'fakehost'}
+
+    def fake_create_client(self):
+        return FakeHP3ParClient(FLAGS.hp3par_api_url)
+
+    def fake_get_3par_host(self, hostname):
+        if hostname not in self._hosts:
+            msg = {'code': 'NON_EXISTENT_HOST',
+                   'desc': "HOST '%s' was not found" % hostname}
+            raise hpexceptions.HTTPNotFound(msg)
+        else:
+            return self._hosts[hostname]
+
+    def fake_delete_3par_host(self, hostname):
+        if hostname not in self._hosts:
+            msg = {'code': 'NON_EXISTENT_HOST',
+                   'desc': "HOST '%s' was not found" % hostname}
+            raise hpexceptions.HTTPNotFound(msg)
+        else:
+            self._hosts[hostname] = None
+
+    def fake_create_3par_vlun(self, volume, hostname):
+        self.driver.client.createVLUN(volume, 19, hostname)
+
+    def fake_get_ports(self):
+        return {'FC': self.FAKE_FC_PORTS, 'iSCSI': self.FAKE_ISCSI_PORTS}
+
+    def fake_copy_volume(self, src_name, dest_name):
+        pass
+
+    def fake_get_volume_state(self, vol_name):
+        return "normal"
+
+    def test_delete_volume(self):
+        self.flags(lock_path=self.tempdir)
+        self.driver.delete_volume(self.volume)
+        self.assertRaises(hpexceptions.HTTPNotFound,
+                          self.driver.client.getVolume,
+                          self.VOLUME_ID)
+
+    def test_create_snapshot(self):
+        self.flags(lock_path=self.tempdir)
+        self.driver.create_snapshot(self.snapshot)
+
+        # check to see if the snapshot was created
+        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
+
+    def test_delete_snapshot(self):
+        self.flags(lock_path=self.tempdir)
+        self.driver.delete_snapshot(self.snapshot)
+
+        # the snapshot should be deleted now
+        self.assertRaises(hpexceptions.HTTPNotFound,
+                          self.driver.client.getVolume,
+                          self.SNAPSHOT_3PAR_NAME)
+
+    def test_create_volume_from_snapshot(self):
+        self.flags(lock_path=self.tempdir)
+        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
+
+        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
+
+        volume = self.volume.copy()
+        volume['size'] = 1
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume_from_snapshot,
+                          volume, self.snapshot)
+
+    def test_terminate_connection(self):
+        self.flags(lock_path=self.tempdir)
+        self.driver.terminate_connection(self.volume, self.connector, True)
+        # vlun should be gone.
+        self.assertRaises(hpexceptions.HTTPNotFound,
+                          self.driver.client.getVLUN,
+                          self.VOLUME_3PAR_NAME)
+
+
+class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
     _hosts = {}
 
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
-        super(TestHP3PARDriver, self).setUp()
+        super(TestHP3PARFCDriver, self).setUp()
+        self.flags(
+            hp3par_username='testUser',
+            hp3par_password='testPassword',
+            hp3par_api_url='https://1.1.1.1/api/v1',
+            hp3par_domain=HP3PAR_DOMAIN,
+            hp3par_cpg=HP3PAR_CPG,
+            hp3par_cpg_snap=HP3PAR_CPG_SNAP,
+            iscsi_ip_address='1.1.1.2',
+            iscsi_port='1234',
+            san_ip='2.2.2.2',
+            san_login='test',
+            san_password='test'
+        )
+        self.stubs.Set(hpfcdriver.HP3PARFCDriver, "_create_client",
+                       self.fake_create_client)
+        self.stubs.Set(hpfcdriver.HP3PARFCDriver,
+                       "_create_3par_fibrechan_host",
+                       self.fake_create_3par_fibrechan_host)
+
+        self.stubs.Set(hpfcdriver.HP3PARCommon, "_get_3par_host",
+                       self.fake_get_3par_host)
+        self.stubs.Set(hpfcdriver.HP3PARCommon, "_delete_3par_host",
+                       self.fake_delete_3par_host)
+        self.stubs.Set(hpdriver.HP3PARCommon, "_create_3par_vlun",
+                       self.fake_create_3par_vlun)
+        self.stubs.Set(hpdriver.HP3PARCommon, "get_ports",
+                       self.fake_get_ports)
+
+        self.driver = hpfcdriver.HP3PARFCDriver()
+        self.driver.do_setup(None)
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+        super(TestHP3PARFCDriver, self).tearDown()
+
+    def fake_create_3par_fibrechan_host(self, hostname, wwn,
+                                        domain, persona_id):
+        host = {'FCPaths': [{'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 1,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': wwn[0]},
+                            {'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 0,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': wwn[1]}],
+                'descriptors': None,
+                'domain': domain,
+                'iSCSIPaths': [],
+                'id': 11,
+                'name': hostname}
+        self._hosts[hostname] = host
+
+        self.properties = {'data':
+                          {'target_discovered': True,
+                           'target_lun': 186,
+                           'target_portal': '1.1.1.2:1234'},
+                           'driver_volume_type': 'fibre_channel'}
+
+    def test_create_volume(self):
+        self.flags(lock_path=self.tempdir)
+        model_update = self.driver.create_volume(self.volume)
+        metadata = model_update['metadata']
+        self.assertFalse(metadata['3ParName'] is None)
+        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
+        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
+
+    def test_initialize_connection(self):
+        self.flags(lock_path=self.tempdir)
+        result = self.driver.initialize_connection(self.volume, self.connector)
+        self.assertEqual(result['driver_volume_type'], 'fibre_channel')
+
+        # we should have a host and a vlun now.
+        host = self.fake_get_3par_host(self.FAKE_HOST)
+        self.assertEquals(self.FAKE_HOST, host['name'])
+        self.assertEquals(HP3PAR_DOMAIN, host['domain'])
+        vlun = self.driver.client.getVLUN(self.VOLUME_3PAR_NAME)
+
+        self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
+        self.assertEquals(self.FAKE_HOST, vlun['hostname'])
+
+    def test_create_cloned_volume(self):
+        self.flags(lock_path=self.tempdir)
+        self.stubs.Set(hpdriver.HP3PARCommon, "_get_volume_state",
+                       self.fake_get_volume_state)
+        self.stubs.Set(hpdriver.HP3PARCommon, "_copy_volume",
+                       self.fake_copy_volume)
+        self.state_tries = 0
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+        src_vref = {}
+        model_update = self.driver.create_cloned_volume(volume, src_vref)
+        self.assertTrue(model_update is not None)
+        metadata = model_update['metadata']
+        self.assertFalse(metadata['3ParName'] is None)
+        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
+        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
+
+    def test_get_volume_stats(self):
+        self.flags(lock_path=self.tempdir)
+        stats = self.driver.get_volume_stats(True)
+        self.assertEquals(stats['storage_protocol'], 'FC')
+        self.assertEquals(stats['volume_backend_name'], 'HP3PARFCDriver')
+
+
+class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
+
+    TARGET_IQN = "iqn.2000-05.com.3pardata:21810002ac00383d"
+
+    _hosts = {}
+
+    def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
+        super(TestHP3PARISCSIDriver, self).setUp()
         self.flags(
             hp3par_username='testUser',
             hp3par_password='testPassword',
@@ -295,65 +532,27 @@ class TestHP3PARDriver(test.TestCase):
                        self.fake_delete_3par_host)
         self.stubs.Set(hpdriver.HP3PARCommon, "_create_3par_vlun",
                        self.fake_create_3par_vlun)
-        self.stubs.Set(hpdriver.HP3PARCommon, "get_ports",
-                       self.fake_get_ports)
 
         self.driver = hpdriver.HP3PARISCSIDriver()
         self.driver.do_setup(None)
 
-        self.volume = {'name': self.VOLUME_NAME,
-                       'id': self.VOLUME_ID,
-                       'display_name': 'Foo Volume',
-                       'size': 2,
-                       'host': self.FAKE_HOST}
-
-        user_id = '2689d9a913974c008b1d859013f23607'
-        project_id = 'fac88235b9d64685a3530f73e490348f'
-        volume_id = '761fc5e5-5191-4ec7-aeba-33e36de44156'
-        fake_desc = 'test description name'
-        fake_fc_ports = ['0987654321234', '123456789000987']
-        fake_iscsi_ports = ['10.10.10.10', '10.10.10.11']
-        self.snapshot = {'name': self.SNAPSHOT_NAME,
-                         'id': self.SNAPSHOT_ID,
-                         'user_id': user_id,
-                         'project_id': project_id,
-                         'volume_id': volume_id,
-                         'volume_name': self.VOLUME_NAME,
-                         'status': 'creating',
-                         'progress': '0%',
-                         'volume_size': 2,
-                         'display_name': 'fakesnap',
-                         'display_description': fake_desc}
-        self.connector = {'ip': '10.0.0.2',
-                          'initiator': 'iqn.1993-08.org.debian:01:222',
-                          'host': 'fakehost'}
-
         target_iqn = 'iqn.2000-05.com.3pardata:21810002ac00383d'
         self.properties = {'data':
-                           {'target_discovered': True,
-                            'target_iqn': target_iqn,
-                            'target_lun': 186,
-                            'target_portal': '1.1.1.2:1234'},
+                          {'target_discovered': True,
+                           'target_iqn': target_iqn,
+                           'target_lun': 186,
+                           'target_portal': '1.1.1.2:1234'},
                            'driver_volume_type': 'iscsi'}
-        self.stats = {'driver_version': '1.0',
-                      'free_capacity_gb': 968,
-                      'reserved_percentage': 0,
-                      'storage_protocol': 'iSCSI',
-                      'total_capacity_gb': 1000,
-                      'vendor_name': 'Hewlett-Packard',
-                      'volume_backend_name': 'HP3PARISCSIDriver'}
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
-        super(TestHP3PARDriver, self).tearDown()
-
-    def fake_create_client(self):
-        return FakeHP3ParClient(FLAGS.hp3par_api_url)
+        super(TestHP3PARISCSIDriver, self).tearDown()
 
     def fake_iscsi_discover_target_iqn(self, ip_address):
         return self.TARGET_IQN
 
-    def fake_create_3par_iscsi_host(self, hostname, iscsi_iqn, domain):
+    def fake_create_3par_iscsi_host(self, hostname, iscsi_iqn,
+                                    domain, persona_id):
         host = {'FCPaths': [],
                 'descriptors': None,
                 'domain': domain,
@@ -370,81 +569,19 @@ class TestHP3PARDriver(test.TestCase):
                 'name': hostname}
         self._hosts[hostname] = host
 
-    def fake_get_3par_host(self, hostname):
-        if hostname not in self._hosts:
-            msg = {'code': 'NON_EXISTENT_HOST',
-                   'desc': "HOST '%s' was not found" % hostname}
-            raise hpexceptions.HTTPNotFound(msg)
-        else:
-            return self._hosts[hostname]
-
-    def fake_delete_3par_host(self, hostname):
-        if hostname not in self._hosts:
-            msg = {'code': 'NON_EXISTENT_HOST',
-                   'desc': "HOST '%s' was not found" % hostname}
-            raise hpexceptions.HTTPNotFound(msg)
-        else:
-            self._hosts[hostname] = None
-
-    def fake_create_3par_vlun(self, volume, hostname):
-        self.driver.client.createVLUN(volume, 19, hostname)
-
-    def fake_get_ports(self):
-        return {'FC': self.fake_fc_ports, 'iSCSI': self.fake_iscsi_ports}
+    def fake_iscsi_discover_target_iqn(self, remote_ip):
+        return 'iqn.2000-05.com.3pardata:21810002ac00383d'
 
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
         model_update = self.driver.create_volume(self.volume)
+        metadata = model_update['metadata']
+        self.assertFalse(metadata['3ParName'] is None)
+        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
+        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
         expected_location = "%s:%s" % (FLAGS.iscsi_ip_address,
                                        FLAGS.iscsi_port)
         self.assertEqual(model_update['provider_location'], expected_location)
-
-    def test_delete_volume(self):
-        self.flags(lock_path=self.tempdir)
-        self.driver.delete_volume(self.volume)
-        self.assertRaises(hpexceptions.HTTPNotFound,
-                          self.driver.client.getVolume,
-                          self.VOLUME_NAME)
-
-    def test_get_volume_stats(self):
-        self.flags(lock_path=self.tempdir)
-        vol_stats = self.driver.get_volume_stats(True)
-        self.assertEqual(vol_stats['driver_version'],
-                         self.stats['driver_version'])
-        self.assertEqual(vol_stats['free_capacity_gb'],
-                         self.stats['free_capacity_gb'])
-        self.assertEqual(vol_stats['reserved_percentage'],
-                         self.stats['reserved_percentage'])
-        self.assertEqual(vol_stats['storage_protocol'],
-                         self.stats['storage_protocol'])
-        self.assertEqual(vol_stats['vendor_name'],
-                         self.stats['vendor_name'])
-        self.assertEqual(vol_stats['volume_backend_name'],
-                         self.stats['volume_backend_name'])
-
-    def test_create_snapshot(self):
-        self.flags(lock_path=self.tempdir)
-        self.driver.create_snapshot(self.snapshot)
-
-        # check to see if the snapshot was created
-        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
-        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
-
-    def test_delete_snapshot(self):
-        self.flags(lock_path=self.tempdir)
-        self.driver.delete_snapshot(self.snapshot)
-
-        # the snapshot should be deleted now
-        self.assertRaises(hpexceptions.HTTPNotFound,
-                          self.driver.client.getVolume,
-                          self.SNAPSHOT_NAME)
-
-    def test_create_volume_from_snapshot(self):
-        self.flags(lock_path=self.tempdir)
-        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
-
-        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
-        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
 
     def test_initialize_connection(self):
         self.flags(lock_path=self.tempdir)
@@ -466,11 +603,29 @@ class TestHP3PARDriver(test.TestCase):
         self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
         self.assertEquals(self.FAKE_HOST, vlun['hostname'])
 
-    def test_terminate_connection(self):
+    def test_create_cloned_volume(self):
         self.flags(lock_path=self.tempdir)
-        self.driver.terminate_connection(self.volume,
-                                         self.connector, True)
-        # vlun should be gone.
-        self.assertRaises(hpexceptions.HTTPNotFound,
-                          self.driver.client.getVLUN,
-                          self.VOLUME_3PAR_NAME)
+        self.stubs.Set(hpdriver.HP3PARCommon, "_get_volume_state",
+                       self.fake_get_volume_state)
+        self.stubs.Set(hpdriver.HP3PARCommon, "_copy_volume",
+                       self.fake_copy_volume)
+        self.state_tries = 0
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+        src_vref = {}
+        model_update = self.driver.create_cloned_volume(volume, src_vref)
+        self.assertTrue(model_update is not None)
+        metadata = model_update['metadata']
+        self.assertFalse(metadata['3ParName'] is None)
+        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
+        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
+
+    def test_get_volume_stats(self):
+        self.flags(lock_path=self.tempdir)
+        stats = self.driver.get_volume_stats(True)
+        self.assertEquals(stats['storage_protocol'], 'iSCSI')
+        self.assertEquals(stats['volume_backend_name'], 'HP3PARISCSIDriver')

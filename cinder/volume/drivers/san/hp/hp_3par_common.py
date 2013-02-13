@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 #
-#    Copyright (c) 2012 Hewlett-Packard, Inc.
+#    (c) Copyright 2012-2013 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
 #
 #    Copyright 2012 OpenStack LLC
@@ -19,14 +19,14 @@
 #
 """
 Volume driver common utilities for HP 3PAR Storage array
-This driver requires 3.1.2 firmware on the 3PAR array.
+The 3PAR drivers requires 3.1.2 firmware on the 3PAR array.
 
-The driver uses both the REST service and the SSH
+The drivers uses both the REST service and the SSH
 command line to correctly operate.  Since the
 ssh credentials and the REST credentials can be different
 we need to have settings for both.
 
-This driver requires the use of the san_ip, san_login,
+The drivers requires the use of the san_ip, san_login,
 san_password settings for ssh connections into the 3PAR
 array.   It also requires the setting of
 hp3par_api_url, hp3par_username, hp3par_password
@@ -38,17 +38,20 @@ import json
 import paramiko
 import pprint
 from random import randint
+import time
 import uuid
 
 from eventlet import greenthread
 from hp3parclient import exceptions as hpexceptions
 
+from cinder import context
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import cfg
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
@@ -101,6 +104,18 @@ class HP3PARCommon():
              'total_capacity_gb': 'unknown',
              'vendor_name': 'Hewlett-Packard',
              'volume_backend_name': None}
+
+    # Valid values for volume type extra specs
+    # The first value in the list is the default value
+    valid_prov_values = ['thin', 'full']
+    valid_persona_values = ['1 - Generic',
+                            '2 - Generic-ALUA',
+                            '6 - Generic-legacy',
+                            '7 - HPUX-legacy',
+                            '8 - AIX-legacy',
+                            '9 - EGENERA',
+                            '10 - ONTAP-legacy',
+                            '11 - VMWare']
 
     def __init__(self):
         self.sshpool = None
@@ -159,7 +174,7 @@ class HP3PARCommon():
         return capacity
 
     def _cli_run(self, verb, cli_args):
-        """Runs a CLI command over SSH, without doing any result parsing"""
+        """ Runs a CLI command over SSH, without doing any result parsing. """
         cli_arg_strings = []
         if cli_args:
             for k, v in cli_args.items():
@@ -185,7 +200,7 @@ class HP3PARCommon():
         from the CLI command.   We first have to issue
         a command to tell the CLI that we want the output
         to be formatted in CSV, then we issue the real
-        command
+        command.
         """
         LOG.debug(_('Running cmd (SSH): %s'), cmd)
 
@@ -260,7 +275,7 @@ exit
     def _safe_hostname(self, hostname):
         """
         We have to use a safe hostname length
-        for 3PAR host names
+        for 3PAR host names.
         """
         try:
             index = hostname.index('.')
@@ -376,8 +391,7 @@ exit
             if tmp:
                 if tmp[1] == 'target' and tmp[2] == 'ready':
                     if tmp[6] == 'FC':
-                        port = {'wwn': tmp[4], 'nsp': tmp[0]}
-                        ports['FC'].append(port)
+                        ports['FC'].append(tmp[4])
 
         # now get the active iSCSI ports
         out = self._cli_run('showport -iscsi', None)
@@ -391,8 +405,7 @@ exit
 
             if tmp:
                 if tmp[1] == 'ready':
-                    port = {'ip': tmp[2], 'nsp': tmp[0]}
-                    ports['iSCSI'].append(port)
+                    ports['iSCSI'].append(tmp[2])
 
         LOG.debug("PORTS = %s" % pprint.pformat(ports))
         return ports
@@ -438,9 +451,42 @@ exit
         client.deleteVLUN(volume_name, vlun['lun'], hostname)
         self._delete_3par_host(hostname)
 
+    def _get_volume_type(self, type_id):
+        ctxt = context.get_admin_context()
+        return volume_types.get_volume_type(ctxt, type_id)
+
+    def _get_volume_type_value(self, volume_type, key, default=None):
+        if volume_type is not None:
+            specs = volume_type.get('extra_specs')
+            if key in specs:
+                return specs[key]
+            else:
+                return default
+        else:
+            return default
+
+    def get_persona_type(self, volume):
+        default_persona = self.valid_persona_values[0]
+        type_id = volume.get('volume_type_id', None)
+        volume_type = None
+        if type_id is not None:
+            volume_type = self._get_volume_type(type_id)
+        persona_value = self._get_volume_type_value(volume_type, 'persona',
+                                                    default_persona)
+        if persona_value not in self.valid_persona_values:
+            err = _("Must specify a valid persona %(valid)s, "
+                    "value '%(persona)s' is invalid.") % \
+                   ({'valid': self.valid_persona_values,
+                     'persona': persona_value})
+            raise exception.InvalidInput(reason=err)
+        # persona is set by the id so remove the text and return the id
+        # i.e for persona '1 - Generic' returns 1
+        persona_id = persona_value.split(' ')
+        return persona_id[0]
+
     @lockutils.synchronized('3par', 'cinder-', True)
     def create_volume(self, volume, client, FLAGS):
-        """ Create a new volume """
+        """ Create a new volume. """
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
                   (volume['display_name'], volume['name'],
                    self._get_3par_vol_name(volume['id'])))
@@ -453,16 +499,57 @@ exit
             if name:
                 comments['display_name'] = name
 
-            extras = {'comment': json.dumps(comments),
-                      'snapCPG': FLAGS.hp3par_cpg_snap}
+            # get the options supported by volume types
+            volume_type = None
+            type_id = volume.get('volume_type_id', None)
+            if type_id is not None:
+                volume_type = self._get_volume_type(type_id)
 
-            if not FLAGS.hp3par_cpg_snap:
-                extras['snapCPG'] = FLAGS.hp3par_cpg
+            cpg = self._get_volume_type_value(volume_type, 'cpg',
+                                              FLAGS.hp3par_cpg)
+
+            # if provisioning is not set use thin
+            default_prov = self.valid_prov_values[0]
+            prov_value = self._get_volume_type_value(volume_type,
+                                                     'provisioning',
+                                                     default_prov)
+            # check for valid provisioning type
+            if prov_value not in self.valid_prov_values:
+                err = _("Must specify a valid provisioning type %(valid)s, "
+                        "value '%(prov)s' is invalid.") % \
+                       ({'valid': self.valid_prov_values,
+                         'prov': prov_value})
+                raise exception.InvalidInput(reason=err)
+
+            ttpv = True
+            if prov_value == "full":
+                ttpv = False
+
+            # default to hp3par_cpg if hp3par_cpg_snap is not set.
+            if FLAGS.hp3par_cpg_snap == "":
+                snap_default = FLAGS.hp3par_cpg
+            else:
+                snap_default = FLAGS.hp3par_cpg_snap
+            snap_cpg = self._get_volume_type_value(volume_type,
+                                                   'snap_cpg',
+                                                   snap_default)
+
+            # check for valid persona even if we don't use it until
+            # attach time, this will given end user notice that the
+            # persona type is invalid at volume creation time
+            self.get_persona_type(volume)
+
+            if type_id is not None:
+                comments['volume_type_name'] = volume_type.get('name')
+                comments['volume_type_id'] = type_id
+
+            extras = {'comment': json.dumps(comments),
+                      'snapCPG': snap_cpg,
+                      'tpvv': ttpv}
 
             capacity = self._capacity_from_size(volume['size'])
             volume_name = self._get_3par_vol_name(volume['id'])
-            client.createVolume(volume_name, FLAGS.hp3par_cpg,
-                                capacity, extras)
+            client.createVolume(volume_name, cpg, capacity, extras)
 
         except hpexceptions.HTTPConflict:
             raise exception.Duplicate(_("Volume (%s) already exists on array")
@@ -470,6 +557,9 @@ exit
         except hpexceptions.HTTPBadRequest as ex:
             LOG.error(str(ex))
             raise exception.Invalid(ex.get_description())
+        except exception.InvalidInput as ex:
+            LOG.error(str(ex))
+            raise ex
         except Exception as ex:
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
@@ -478,9 +568,67 @@ exit
                     'snapCPG': extras['snapCPG']}
         return metadata
 
+    @lockutils.synchronized('3parcopy', 'cinder-', True)
+    def _copy_volume(self, src_name, dest_name):
+        self._cli_run('createvvcopy -p %s %s' % (src_name, dest_name), None)
+
+    @lockutils.synchronized('3parstate', 'cinder-', True)
+    def _get_volume_state(self, vol_name):
+        out = self._cli_run('showvv -state %s' % vol_name, None)
+        status = None
+        if out:
+            # out[0] is the header
+            info = out[1].split(',')
+            status = info[5]
+
+        return status
+
+    @lockutils.synchronized('3parclone', 'cinder-', True)
+    def create_cloned_volume(self, volume, src_vref, client, FLAGS):
+
+        try:
+            orig_name = self._get_3par_vol_name(volume['source_volid'])
+            vol_name = self._get_3par_vol_name(volume['id'])
+            # We need to create a new volume first.  Otherwise you
+            # can't delete the original
+            new_vol = self.create_volume(volume, client, FLAGS)
+
+            # make the 3PAR copy the contents.
+            # can't delete the original until the copy is done.
+            self._copy_volume(orig_name, vol_name)
+
+            # this can take a long time to complete
+            done = False
+            while not done:
+                status = self._get_volume_state(vol_name)
+                if status == 'normal':
+                    done = True
+                elif status == 'copy_target':
+                    LOG.debug("3Par still copying %s => %s"
+                              % (orig_name, vol_name))
+                else:
+                    msg = _("Unexpected state while cloning %s") % status
+                    LOG.warn(msg)
+                    raise exception.CinderException(msg)
+
+                if not done:
+                    # wait 5 seconds between tests
+                    time.sleep(5)
+
+            return new_vol
+        except hpexceptions.HTTPForbidden:
+            raise exception.NotAuthorized()
+        except hpexceptions.HTTPNotFound:
+            raise exception.NotFound()
+        except Exception as ex:
+            LOG.error(str(ex))
+            raise exception.CinderException(ex)
+
+        return None
+
     @lockutils.synchronized('3par', 'cinder-', True)
     def delete_volume(self, volume, client):
-        """ Delete a volume """
+        """ Delete a volume. """
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
             client.deleteVolume(volume_name)
@@ -537,7 +685,7 @@ be the same as it's Snapshot."
 
     @lockutils.synchronized('3par', 'cinder-', True)
     def create_snapshot(self, snapshot, client, FLAGS):
-        """Creates a snapshot."""
+        """ Creates a snapshot. """
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
@@ -575,7 +723,7 @@ be the same as it's Snapshot."
 
     @lockutils.synchronized('3par', 'cinder-', True)
     def delete_snapshot(self, snapshot, client):
-        """Driver entry point for deleting a snapshot."""
+        """ Driver entry point for deleting a snapshot. """
         LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
