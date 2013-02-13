@@ -966,6 +966,17 @@ class ISCSITestCase(DriverTestCase):
         self.assertEquals(result["target_lun"], 0)
 
 
+class FibreChannelTestCase(DriverTestCase):
+    """Test Case for FibreChannelDriver"""
+    driver_name = "cinder.volume.driver.FibreChannelDriver"
+
+    def test_initialize_connection(self):
+        self.driver = driver.FibreChannelDriver()
+        self.driver.do_setup(None)
+        self.assertRaises(NotImplementedError,
+                          self.driver.initialize_connection, {}, {})
+
+
 class VolumePolicyTestCase(test.TestCase):
 
     def setUp(self):

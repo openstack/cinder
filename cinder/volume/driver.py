@@ -490,3 +490,47 @@ class FakeISCSIDriver(ISCSIDriver):
         """Execute that simply logs the command."""
         LOG.debug(_("FAKE ISCSI: %s"), cmd)
         return (None, None)
+
+
+class FibreChannelDriver(VolumeDriver):
+    """Executes commands relating to Fibre Channel volumes."""
+    def __init__(self, *args, **kwargs):
+        super(FibreChannelDriver, self).__init__(*args, **kwargs)
+
+    def initialize_connection(self, volume, connector):
+        """Initializes the connection and returns connection info.
+
+        The  driver returns a driver_volume_type of 'fibre_channel'.
+        The target_wwn can be a single entry or a list of wwns that
+        correspond to the list of remote wwn(s) that will export the volume.
+        Example return values:
+
+            {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': '1234567890123',
+                }
+            }
+
+            or
+
+             {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': ['1234567890123', '0987654321321'],
+                }
+            }
+
+        """
+        msg = _("Driver must implement initialize_connection")
+        raise NotImplementedError(msg)
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        raise NotImplementedError()
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        raise NotImplementedError()
