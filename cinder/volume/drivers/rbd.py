@@ -21,8 +21,10 @@ import urllib
 
 from cinder import exception
 from cinder import flags
+from cinder.image import image_utils
 from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume import driver
 
 
@@ -222,19 +224,42 @@ class RBDDriver(driver.VolumeDriver):
         self._resize(volume)
         return True
 
+    def _ensure_tmp_exists(self):
+        if FLAGS.volume_tmp_dir and not os.path.exists(FLAGS.volume_tmp_dir):
+            os.makedirs(FLAGS.volume_tmp_dir)
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         # TODO(jdurgin): replace with librbd
         # this is a temporary hack, since rewriting this driver
         # to use librbd would take too long
-        if FLAGS.volume_tmp_dir and not os.path.exists(FLAGS.volume_tmp_dir):
-            os.makedirs(FLAGS.volume_tmp_dir)
+        self._ensure_tmp_exists()
 
         with tempfile.NamedTemporaryFile(dir=FLAGS.volume_tmp_dir) as tmp:
-            image_service.download(context, image_id, tmp)
+            image_utils.fetch_to_raw(context, image_service, image_id,
+                                     tmp.name)
             # import creates the image, so we must remove it first
             self._try_execute('rbd', 'rm',
                               '--pool', FLAGS.rbd_pool,
                               volume['name'])
-            self._try_execute('rbd', 'import',
+
+            args = ['rbd', 'import',
+                    '--pool', FLAGS.rbd_pool,
+                    tmp.name, volume['name']]
+            if self._supports_layering():
+                args += ['--new-format']
+            self._try_execute(*args)
+        self._resize(volume)
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        self._ensure_tmp_exists()
+
+        tmp_dir = FLAGS.volume_tmp_dir or '/tmp'
+        tmp_file = os.path.join(tmp_dir,
+                                volume['name'] + '-' + image_meta['id'])
+        with utils.remove_path_on_error(tmp_file):
+            self._try_execute('rbd', 'export',
                               '--pool', FLAGS.rbd_pool,
-                              tmp.name, volume['name'])
+                              volume['name'], tmp_file)
+            image_utils.upload_volume(context, image_service,
+                                      image_meta, tmp_file)
+        os.unlink(tmp_file)
