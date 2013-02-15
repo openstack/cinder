@@ -282,9 +282,6 @@ class SolidFire(SanISCSIDriver):
                       'is_clone': 'True',
                       'src_uuid': 'src_uuid'}
 
-        if qos:
-            attributes['qos'] = qos
-
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
                   'attributes': attributes,
@@ -331,7 +328,7 @@ class SolidFire(SanISCSIDriver):
                     qos[i.key] = int(i.value)
         return qos
 
-    def _set_qos_by_volume_type(self, type_id, ctxt):
+    def _set_qos_by_volume_type(self, ctxt, type_id):
         qos = {}
         volume_type = volume_types.get_volume_type(ctxt, type_id)
         specs = volume_type.get('extra_specs')
@@ -399,8 +396,6 @@ class SolidFire(SanISCSIDriver):
 
         attributes = {'uuid': volume['id'],
                       'is_clone': 'False'}
-        if qos:
-            attributes['qos'] = qos
 
         params = {'name': 'UUID-%s' % volume['id'],
                   'accountID': None,
