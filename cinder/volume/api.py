@@ -242,8 +242,12 @@ class API(base.Base):
             self.volume_rpcapi.create_volume(context,
                                              volume_ref,
                                              volume_ref['host'],
-                                             snapshot_id,
-                                             image_id)
+                                             request_spec=request_spec,
+                                             filter_properties=
+                                             filter_properties,
+                                             allow_reschedule=False,
+                                             snapshot_id=snapshot_id,
+                                             image_id=image_id)
         elif source_volid:
             source_volume_ref = self.db.volume_get(context,
                                                    source_volid)
@@ -255,18 +259,22 @@ class API(base.Base):
             self.volume_rpcapi.create_volume(context,
                                              volume_ref,
                                              volume_ref['host'],
-                                             snapshot_id,
-                                             image_id,
-                                             source_volid)
+                                             request_spec=request_spec,
+                                             filter_properties=
+                                             filter_properties,
+                                             allow_reschedule=False,
+                                             snapshot_id=snapshot_id,
+                                             image_id=image_id,
+                                             source_volid=source_volid)
         else:
-            self.scheduler_rpcapi.create_volume(
-                context,
-                FLAGS.volume_topic,
-                volume_id,
-                snapshot_id,
-                image_id,
-                request_spec=request_spec,
-                filter_properties=filter_properties)
+            self.scheduler_rpcapi.create_volume(context,
+                                                FLAGS.volume_topic,
+                                                volume_id,
+                                                snapshot_id,
+                                                image_id,
+                                                request_spec=request_spec,
+                                                filter_properties=
+                                                filter_properties)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):

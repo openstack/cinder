@@ -112,10 +112,13 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               volume=self.fake_volume,
                               host='fake_host1',
+                              request_spec='fake_request_spec',
+                              filter_properties='fake_properties',
+                              allow_reschedule=True,
                               snapshot_id='fake_snapshot_id',
                               image_id='fake_image_id',
                               source_volid='fake_src_id',
-                              version='1.1')
+                              version='1.4')
 
     def test_delete_volume(self):
         self._test_volume_api('delete_volume',

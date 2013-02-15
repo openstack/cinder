@@ -37,8 +37,8 @@ from cinder.volume import rpcapi as volume_rpcapi
 LOG = logging.getLogger(__name__)
 
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
-                                  default='cinder.scheduler.simple.'
-                                          'SimpleScheduler',
+                                  default='cinder.scheduler.filter_scheduler.'
+                                          'FilterScheduler',
                                   help='Default scheduler driver to use')
 
 FLAGS = flags.FLAGS
