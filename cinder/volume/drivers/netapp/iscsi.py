@@ -32,7 +32,6 @@ from suds import client
 from suds.sax import text
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
@@ -84,9 +83,6 @@ netapp_opts = [
                help='Comma separated eligible volumes for provisioning on'
                     ' 7 mode'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(netapp_opts)
-
 
 class DfmDataset(object):
     def __init__(self, id, name, project, type):
@@ -113,6 +109,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetAppISCSIDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(netapp_opts)
         self.discovered_luns = []
         self.discovered_datasets = []
         self.lun_table = {}
@@ -167,10 +164,10 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         required_flags = ['netapp_wsdl_url', 'netapp_login', 'netapp_password',
                           'netapp_server_hostname', 'netapp_server_port']
         for flag in required_flags:
-            if not getattr(FLAGS, flag, None):
+            if not getattr(self.configuration, flag, None):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
-        if not (FLAGS.netapp_storage_service or
-                FLAGS.netapp_storage_service_prefix):
+        if not (self.configuration.netapp_storage_service or
+                self.configuration.netapp_storage_service_prefix):
             raise exception.InvalidInput(
                 reason=_('Either '
                          'netapp_storage_service or '
@@ -186,13 +183,15 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         """
         self._check_flags()
         self._create_client(
-            wsdl_url=FLAGS.netapp_wsdl_url,
-            login=FLAGS.netapp_login, password=FLAGS.netapp_password,
-            hostname=FLAGS.netapp_server_hostname,
-            port=FLAGS.netapp_server_port, cache=True)
-        self._set_storage_service(FLAGS.netapp_storage_service)
-        self._set_storage_service_prefix(FLAGS.netapp_storage_service_prefix)
-        self._set_vfiler(FLAGS.netapp_vfiler)
+            wsdl_url=self.configuration.netapp_wsdl_url,
+            login=self.configuration.netapp_login,
+            password=self.configuration.netapp_password,
+            hostname=self.configuration.netapp_server_hostname,
+            port=self.configuration.netapp_server_port, cache=True)
+        self._set_storage_service(self.configuration.netapp_storage_service)
+        self._set_storage_service_prefix(
+            self.configuration.netapp_storage_service_prefix)
+        self._set_vfiler(self.configuration.netapp_vfiler)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
@@ -1153,6 +1152,7 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeISCSIDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(netapp_opts)
         self.lun_table = {}
 
     def _create_client(self, **kwargs):
@@ -1177,7 +1177,7 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         required_flags = ['netapp_wsdl_url', 'netapp_login', 'netapp_password',
                           'netapp_server_hostname', 'netapp_server_port']
         for flag in required_flags:
-            if not getattr(FLAGS, flag, None):
+            if not getattr(self.configuration, flag, None):
                 msg = _('%s is not set') % flag
                 raise exception.InvalidInput(data=msg)
 
@@ -1190,10 +1190,11 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         """
         self._check_flags()
         self._create_client(
-            wsdl_url=FLAGS.netapp_wsdl_url,
-            login=FLAGS.netapp_login, password=FLAGS.netapp_password,
-            hostname=FLAGS.netapp_server_hostname,
-            port=FLAGS.netapp_server_port, cache=True)
+            wsdl_url=self.configuration.netapp_wsdl_url,
+            login=self.configuration.netapp_login,
+            password=self.configuration.netapp_password,
+            hostname=self.configuration.netapp_server_hostname,
+            port=self.configuration.netapp_server_port, cache=True)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
@@ -1494,6 +1495,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetAppDirectISCSIDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(netapp_opts)
         self.lun_table = {}
 
     def _create_client(self, **kwargs):
@@ -1522,7 +1524,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """Ensure that the flags we care about are set."""
         required_flags = self.required_flags
         for flag in required_flags:
-            if not getattr(FLAGS, flag, None):
+            if not getattr(self.configuration, flag, None):
                 msg = _('%s is not set') % flag
                 raise exception.InvalidInput(data=msg)
 
@@ -1535,10 +1537,11 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """
         self._check_flags()
         self._create_client(
-            transport_type=FLAGS.netapp_transport_type,
-            login=FLAGS.netapp_login, password=FLAGS.netapp_password,
-            hostname=FLAGS.netapp_server_hostname,
-            port=FLAGS.netapp_server_port)
+            transport_type=self.configuration.netapp_transport_type,
+            login=self.configuration.netapp_login,
+            password=self.configuration.netapp_password,
+            hostname=self.configuration.netapp_server_hostname,
+            port=self.configuration.netapp_server_port)
         self._do_custom_setup()
 
     def check_for_setup_error(self):
@@ -1714,7 +1717,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
     def _create_lun_on_eligible_vol(self, name, size, metadata):
         """Creates an actual lun on filer."""
-        req_size = float(size) * float(FLAGS.netapp_size_multiplier)
+        req_size = float(size) *\
+            float(self.configuration.netapp_size_multiplier)
         volume = self._get_avl_volume_by_size(req_size)
         if not volume:
             msg = _('Failed to get vol with required size for volume: %s')
@@ -1959,7 +1963,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
 
     def _do_custom_setup(self):
         """Does custom setup for ontap cluster."""
-        self.vserver = FLAGS.netapp_vserver
+        self.vserver = self.configuration.netapp_vserver
         # Default values to run first api
         self.client.set_api_version(1, 15)
         (major, minor) = self._get_ontapi_version()
@@ -2250,8 +2254,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
 
     def _do_custom_setup(self):
         """Does custom setup depending on the type of filer."""
-        self.vfiler = FLAGS.netapp_vfiler
-        self.volume_list = FLAGS.netapp_volume_list
+        self.vfiler = self.configuration.netapp_vfiler
+        self.volume_list = self.configuration.netapp_volume_list
         if self.volume_list:
             self.volume_list = self.volume_list.split(',')
             self.volume_list = [el.strip() for el in self.volume_list]
@@ -2350,9 +2354,10 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
     def _create_lun_handle(self, metadata):
         """Returns lun handle based on filer type."""
         if self.vfiler:
-            owner = '%s:%s' % (FLAGS.netapp_server_hostname, self.vfiler)
+            owner = '%s:%s' % (self.configuration.netapp_server_hostname,
+                               self.vfiler)
         else:
-            owner = FLAGS.netapp_server_hostname
+            owner = self.configuration.netapp_server_hostname
         return '%s:%s' % (owner, metadata['Path'])
 
     def _get_lun_list(self):

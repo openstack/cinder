@@ -30,7 +30,9 @@ from lxml import etree
 from cinder.exception import VolumeBackendAPIException
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import iscsi
+from cinder.volume.drivers.netapp.iscsi import netapp_opts
 
 
 LOG = logging.getLogger("cinder.volume.driver")
@@ -596,6 +598,12 @@ iter_count = 0
 iter_table = {}
 
 
+def create_configuration():
+    configuration = conf.Configuration(None)
+    configuration.append_config_values(netapp_opts)
+    return configuration
+
+
 class FakeDfmServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run."""
 
@@ -979,7 +987,7 @@ class NetAppDriverTestCase(test.TestCase):
         super(NetAppDriverTestCase, self).setUp()
         self.tempdir = tempfile.mkdtemp()
         self.flags(lock_path=self.tempdir)
-        driver = iscsi.NetAppISCSIDriver()
+        driver = iscsi.NetAppISCSIDriver(configuration=create_configuration())
         self.stubs.Set(httplib, 'HTTPConnection', FakeHTTPConnection)
         driver._create_client(wsdl_url='http://localhost:8088/dfm.wsdl',
                               login='root', password='password',
@@ -1403,7 +1411,8 @@ class NetAppCmodeISCSIDriverTestCase(test.TestCase):
         self._custom_setup()
 
     def _custom_setup(self):
-        driver = iscsi.NetAppCmodeISCSIDriver()
+        driver = iscsi.NetAppCmodeISCSIDriver(
+            configuration=create_configuration())
         self.stubs.Set(httplib, 'HTTPConnection', FakeCmodeHTTPConnection)
         driver._create_client(wsdl_url='http://localhost:8080/ntap_cloud.wsdl',
                               login='root', password='password',
@@ -1849,7 +1858,8 @@ class NetAppDirectCmodeISCSIDriverTestCase(NetAppCmodeISCSIDriverTestCase):
         super(NetAppDirectCmodeISCSIDriverTestCase, self).setUp()
 
     def _custom_setup(self):
-        driver = iscsi.NetAppDirectCmodeISCSIDriver()
+        driver = iscsi.NetAppDirectCmodeISCSIDriver(
+            configuration=create_configuration())
         self.stubs.Set(httplib, 'HTTPConnection',
                        FakeDirectCmodeHTTPConnection)
         driver._create_client(transport_type='http',
@@ -2280,7 +2290,8 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         super(NetAppDirect7modeISCSIDriverTestCase_NV, self).setUp()
 
     def _custom_setup(self):
-        driver = iscsi.NetAppDirect7modeISCSIDriver()
+        driver = iscsi.NetAppDirect7modeISCSIDriver(
+            configuration=create_configuration())
         self.stubs.Set(httplib,
                        'HTTPConnection', FakeDirect7modeHTTPConnection)
         driver._create_client(transport_type='http',
@@ -2320,7 +2331,8 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
         super(NetAppDirect7modeISCSIDriverTestCase_WV, self).setUp()
 
     def _custom_setup(self):
-        driver = iscsi.NetAppDirect7modeISCSIDriver()
+        driver = iscsi.NetAppDirect7modeISCSIDriver(
+            configuration=create_configuration())
         self.stubs.Set(httplib, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
         driver._create_client(transport_type='http',
