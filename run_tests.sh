@@ -13,6 +13,7 @@ function usage {
   echo "  -n, --no-recreate-db     Don't recreate the test database."
   echo "  -x, --stop               Stop running tests after the first error or failure."
   echo "  -f, --force              Force a clean re-build of the virtual environment. Useful when dependencies have been added."
+  echo "  -u, --update             Update the virtual environment with any     newer package versions"
   echo "  -p, --pep8               Just run PEP8 and HACKING compliance check"
   echo "  -P, --no-pep8            Don't run static code checks"
   echo "  -c, --coverage           Generate coverage report"
@@ -37,6 +38,7 @@ function process_option {
     -m|--patch-migrate) patch_migrate=1;;
     -w|--no-patch-migrate) patch_migrate=0;;
     -f|--force) force=1;;
+    -u|--update) update=1;;
     -p|--pep8) just_pep8=1;;
     -P|--no-pep8) no_pep8=1;;
     -c|--coverage) coverage=1;;
@@ -62,6 +64,7 @@ coverage=0
 coverage_xml=0
 recreate_db=1
 patch_migrate=1
+update=0
 
 for arg in "$@"; do
   process_option $arg
@@ -129,6 +132,10 @@ then
   if [ $force -eq 1 ]; then
     echo "Cleaning virtualenv..."
     rm -rf ${venv}
+  fi
+  if [ $update -eq 1 ]; then
+      echo "Updating virtualenv..."
+      python tools/install_venv.py $installvenvopts
   fi
   if [ -e ${venv} ]; then
     wrapper="${with_venv}"
