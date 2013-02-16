@@ -21,6 +21,7 @@ import tempfile
 
 from cinder import db
 from cinder import exception
+from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
@@ -41,8 +42,8 @@ class RBDTestCase(test.TestCase):
     def setUp(self):
         super(RBDTestCase, self).setUp()
 
-        def fake_execute(*args):
-            pass
+        def fake_execute(*args, **kwargs):
+            return '', ''
         self.driver = RBDDriver(execute=fake_execute)
 
     def test_good_locations(self):
@@ -91,7 +92,9 @@ class RBDTestCase(test.TestCase):
             yield FakeTmp('test')
         self.stubs.Set(tempfile, 'NamedTemporaryFile', fake_temp_file)
         self.stubs.Set(os.path, 'exists', lambda x: True)
-        self.driver.copy_image_to_volume(None, {'name': 'test'},
+        self.stubs.Set(image_utils, 'fetch_to_raw', lambda w, x, y, z: None)
+        self.driver.copy_image_to_volume(None, {'name': 'test',
+                                                'size': 1},
                                          FakeImageService(), None)
 
     def test_copy_image_no_volume_tmp(self):
@@ -103,17 +106,8 @@ class RBDTestCase(test.TestCase):
         self._copy_image()
 
 
-class FakeRBDDriver(RBDDriver):
-
-    def _clone(self):
-        pass
-
-    def _resize(self):
-        pass
-
-
 class ManagedRBDTestCase(DriverTestCase):
-    driver_name = "cinder.tests.test_rbd.FakeRBDDriver"
+    driver_name = "cinder.volume.drivers.rbd.RBDDriver"
 
     def setUp(self):
         super(ManagedRBDTestCase, self).setUp()
@@ -124,7 +118,7 @@ class ManagedRBDTestCase(DriverTestCase):
         """Try to clone a volume from an image, and check the status
         afterwards"""
         def fake_clone_image(volume, image_location):
-            pass
+            return True
 
         def fake_clone_error(volume, image_location):
             raise exception.CinderException()
