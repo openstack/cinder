@@ -16,7 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-ISCSI Drivers for EMC VNX and VMAX/VMAXe arrays based on SMI-S.
+ISCSI Drivers for EMC VNX and VMAX arrays based on SMI-S.
 
 """
 
@@ -35,29 +35,19 @@ LOG = logging.getLogger(__name__)
 FLAGS = flags.FLAGS
 
 
-def get_iscsi_initiator():
-    """Get iscsi initiator name for this machine."""
-    # NOTE openiscsi stores initiator name in a file that
-    #      needs root permission to read.
-    contents = utils.read_file_as_root('/etc/iscsi/initiatorname.iscsi')
-    for l in contents.split('\n'):
-        if l.startswith('InitiatorName='):
-            return l[l.index('=') + 1:].strip()
-
-
 class EMCSMISISCSIDriver(driver.ISCSIDriver):
-    """EMC ISCSI Drivers for VMAX/VMAXe and VNX using SMI-S."""
+    """EMC ISCSI Drivers for VMAX and VNX using SMI-S."""
 
     def __init__(self, *args, **kwargs):
 
         super(EMCSMISISCSIDriver, self).__init__(*args, **kwargs)
-        self.common = emc_smis_common.EMCSMISCommon()
+        self.common = emc_smis_common.EMCSMISCommon('iSCSI')
 
     def check_for_setup_error(self):
         pass
 
     def create_volume(self, volume):
-        """Creates a EMC(VMAX/VMAXe/VNX) volume."""
+        """Creates a EMC(VMAX/VNX) volume."""
         self.common.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -80,12 +70,9 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         """Deletes a snapshot."""
         self.common.delete_snapshot(snapshot)
 
-    def _iscsi_location(ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, FLAGS.iscsi_port, target, iqn, lun)
-
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
-        return self.common.ensure_export(context, volume)
+        pass
 
     def create_export(self, context, volume):
         """Driver entry point to get the export info for a new volume."""
@@ -102,7 +89,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
-        the iscsi driver returns a driver_volume_type of 'iscsi'.
+        The iscsi driver returns a driver_volume_type of 'iscsi'.
         the format of the driver data is defined in _get_iscsi_properties.
         Example return value::
 
@@ -134,11 +121,13 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
                                     FLAGS.iscsi_ip_address,
                                     run_as_root=True)
         for target in out.splitlines():
-            return target
+            index = target.find(FLAGS.iscsi_ip_address)
+            if index != -1:
+                return target
         return None
 
     def _get_iscsi_properties(self, volume):
-        """Gets iscsi configuration
+        """Gets iscsi configuration.
 
         We ideally get saved information in the volume entity, but fall back
         to discovery if need be. Discovery may be completely removed in future
@@ -175,11 +164,13 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         properties['target_portal'] = results[0].split(",")[0]
         properties['target_iqn'] = results[1]
 
-        device_number = self.common.find_device_number(volume)
-        if device_number is None:
+        device_info = self.common.find_device_number(volume)
+        if device_info is None or device_info['hostlunid'] is None:
             exception_message = (_("Cannot find device number for volume %s")
                                  % volume['name'])
             raise exception.VolumeBackendAPIException(data=exception_message)
+
+        device_number = device_info['hostlunid']
 
         properties['target_lun'] = device_number
 
@@ -197,98 +188,15 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         return properties
 
-    def _run_iscsiadm(self, iscsi_properties, iscsi_command, **kwargs):
-        check_exit_code = kwargs.pop('check_exit_code', 0)
-        (out, err) = self._execute('iscsiadm', '-m', 'node', '-T',
-                                   iscsi_properties['target_iqn'],
-                                   '-p', iscsi_properties['target_portal'],
-                                   *iscsi_command, run_as_root=True,
-                                   check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
-                  (iscsi_command, out, err))
-        return (out, err)
-
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector"""
+        """Disallow connection from connector."""
         self.common.terminate_connection(volume, connector)
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
-        initiator = get_iscsi_initiator()
-        connector = {}
-        connector['initiator'] = initiator
-
-        iscsi_properties, volume_path = self._attach_volume(
-            context, volume, connector)
-
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path, "wb") as image_file:
-                image_service.download(context, image_id, image_file)
-
-        self.terminate_connection(volume, connector)
-
-    def _attach_volume(self, context, volume, connector):
-        """Attach the volume."""
-        iscsi_properties = None
-        host_device = None
-        init_conn = self.initialize_connection(volume, connector)
-        iscsi_properties = init_conn['data']
-
-        self._run_iscsiadm(iscsi_properties, ("--login",),
-                           check_exit_code=[0, 255])
-
-        self._iscsiadm_update(iscsi_properties, "node.startup", "automatic")
-
-        host_device = ("/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" %
-                       (iscsi_properties['target_portal'],
-                        iscsi_properties['target_iqn'],
-                        iscsi_properties.get('target_lun', 0)))
-
-        tries = 0
-        while not os.path.exists(host_device):
-            if tries >= FLAGS.num_iscsi_scan_tries:
-                raise exception.CinderException(
-                    _("iSCSI device not found at %s") % (host_device))
-
-            LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
-                     "Will rescan & retry.  Try number: %(tries)s") %
-                     locals())
-
-            # The rescan isn't documented as being necessary(?), but it helps
-            self._run_iscsiadm(iscsi_properties, ("--rescan",))
-
-            tries = tries + 1
-            if not os.path.exists(host_device):
-                time.sleep(tries ** 2)
-
-        if tries != 0:
-            LOG.debug(_("Found iSCSI node %(host_device)s "
-                      "(after %(tries)s rescans)") %
-                      locals())
-
-        return iscsi_properties, host_device
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
-        initiator = get_iscsi_initiator()
-        connector = {}
-        connector['initiator'] = initiator
-
-        iscsi_properties, volume_path = self._attach_volume(
-            context, volume, connector)
-
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path) as volume_file:
-                image_service.update(context, image_meta['id'], {},
-                                     volume_file)
-
-        self.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):
         """Get volume status.
-        If 'refresh' is True, run update the stats first."""
+
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self.update_volume_status()
 

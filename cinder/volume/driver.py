@@ -58,6 +58,7 @@ volume_opts = [
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
+FLAGS.import_opt('iscsi_helper', 'cinder.volume.iscsi')
 
 
 class VolumeDriver(object):
