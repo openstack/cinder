@@ -16,6 +16,7 @@ from cinder import context
 from cinder import flags
 from cinder.openstack.common import importutils
 from cinder import test
+from cinder.volume.drivers.solidfire import SolidFire
 
 FLAGS = flags.FLAGS
 
@@ -40,6 +41,9 @@ ZADARA_MODULE = "cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver"
 class VolumeDriverCompatibility(test.TestCase):
     """Test backwards compatibility for volume drivers."""
 
+    def fake_update_cluster_status(self):
+        return
+
     def setUp(self):
         super(VolumeDriverCompatibility, self).setUp()
         self.manager = importutils.import_object(FLAGS.volume_manager)
@@ -49,6 +53,10 @@ class VolumeDriverCompatibility(test.TestCase):
         super(VolumeDriverCompatibility, self).tearDown()
 
     def _load_driver(self, driver):
+        if 'SolidFire' in driver:
+            # SolidFire driver does update_cluster stat on init
+            self.stubs.Set(SolidFire, '_update_cluster_status',
+                           self.fake_update_cluster_status)
         self.manager.__init__(volume_driver=driver)
 
     def _driver_module_name(self):
