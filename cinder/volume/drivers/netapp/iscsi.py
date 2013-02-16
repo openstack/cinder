@@ -1244,6 +1244,10 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         """Driver entry point for destroying existing volumes."""
         name = volume['name']
         handle = self._get_lun_handle(name)
+        if not handle:
+            msg = _("No entry in LUN table for volume %(name)s.")
+            LOG.warn(msg % locals())
+            return
         self.client.service.DestroyLun(Handle=handle)
         LOG.debug(_("Destroyed LUN %s") % handle)
         self.lun_table.pop(name)
@@ -1353,7 +1357,12 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
-        handle = self._get_lun_handle(snapshot['name'])
+        name = snapshot['name']
+        handle = self._get_lun_handle(name)
+        if not handle:
+            msg = _("No entry in LUN table for snapshot %(name)s.")
+            LOG.warn(msg % locals())
+            return
         self.client.service.DestroyLun(Handle=handle)
         LOG.debug(_("Destroyed LUN %s") % handle)
         self.lun_table.pop(snapshot['name'])
@@ -1571,6 +1580,10 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """Driver entry point for destroying existing volumes."""
         name = volume['name']
         metadata = self._get_lun_attr(name, 'metadata')
+        if not metadata:
+            msg = _("No entry in LUN table for volume/snapshot %(name)s.")
+            LOG.warn(msg % locals())
+            return
         lun_destroy = NaElement.create_node_with_children(
             'lun-destroy',
             **{'path': metadata['Path'],
