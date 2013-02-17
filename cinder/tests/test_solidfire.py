@@ -26,8 +26,21 @@ LOG = logging.getLogger(__name__)
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
         super(SolidFireVolumeTestCase, self).setUp()
+        self.stubs.Set(SolidFire, '_issue_api_request',
+                       self.fake_issue_api_request)
 
     def fake_issue_api_request(obj, method, params):
+        if method is 'GetClusterCapacity':
+            LOG.info('Called Fake GetClusterCapacity...')
+            data = {}
+            data = {'result':
+                    {'clusterCapacity': {'maxProvisionedSpace': 99999999,
+                     'usedSpace': 999,
+                     'compressionPercent': 100,
+                     'deDuplicationPercent': 100,
+                     'thinProvisioningPercent': 100}}}
+            return data
+
         if method is 'GetClusterInfo':
             LOG.info('Called Fake GetClusterInfo...')
             results = {'result': {'clusterInfo':
@@ -76,7 +89,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'enable512e': True,
                              'access': "readWrite",
                              'status': "active",
-                             'attributes': None,
+                             'attributes':None,
                              'qos': None,
                              'iqn': test_name}]}}
             return result
@@ -98,6 +111,9 @@ class SolidFireVolumeTestCase(test.TestCase):
     def fake_volume_get(obj, key, default=None):
         return {'qos': 'fast'}
 
+    def fake_update_cluster_status(self):
+        return
+
     def test_create_with_qos_type(self):
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request)
@@ -110,6 +126,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'volume_type_id': 'fast'}
         sfv = SolidFire()
         model_update = sfv.create_volume(testvol)
+        self.assertNotEqual(model_update, None)
 
     def test_create_volume(self):
         self.stubs.Set(SolidFire, '_issue_api_request',
@@ -121,6 +138,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'volume_type_id': None}
         sfv = SolidFire()
         model_update = sfv.create_volume(testvol)
+        self.assertNotEqual(model_update, None)
 
     def test_create_volume_with_qos(self):
         preset_qos = {}
@@ -137,8 +155,13 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         sfv = SolidFire()
         model_update = sfv.create_volume(testvol)
+        self.assertNotEqual(model_update, None)
 
     def test_create_volume_fails(self):
+        # NOTE(JDG) This test just fakes update_cluster_status
+        # this is inentional for this test
+        self.stubs.Set(SolidFire, '_update_cluster_status',
+                       self.fake_update_cluster_status)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         testvol = {'project_id': 'testprjid',
@@ -188,7 +211,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
         sfv = SolidFire()
-        model_update = sfv.delete_volume(testvol)
+        sfv.delete_volume(testvol)
 
     def test_delete_volume_fails_no_volume(self):
         self.stubs.Set(SolidFire, '_issue_api_request',
@@ -199,12 +222,16 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
         sfv = SolidFire()
         try:
-            model_update = sfv.delete_volume(testvol)
+            sfv.delete_volume(testvol)
             self.fail("Should have thrown Error")
         except Exception:
             pass
 
     def test_delete_volume_fails_account_lookup(self):
+        # NOTE(JDG) This test just fakes update_cluster_status
+        # this is inentional for this test
+        self.stubs.Set(SolidFire, '_update_cluster_status',
+                       self.fake_update_cluster_status)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         testvol = {'project_id': 'testprjid',
@@ -223,6 +250,10 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv._get_cluster_info()
 
     def test_get_cluster_info_fail(self):
+        # NOTE(JDG) This test just fakes update_cluster_status
+        # this is inentional for this test
+        self.stubs.Set(SolidFire, '_update_cluster_status',
+                       self.fake_update_cluster_status)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         sfv = SolidFire()

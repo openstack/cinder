@@ -33,7 +33,7 @@ from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import volume_types
 
-VERSION = 1.1
+VERSION = 1.2
 LOG = logging.getLogger(__name__)
 
 sf_opts = [
@@ -73,11 +73,13 @@ class SolidFire(SanISCSIDriver):
                    'off': None}
 
     sf_qos_keys = ['minIOPS', 'maxIOPS', 'burstIOPS']
+    cluster_stats = {}
 
     GB = math.pow(10, 9)
 
     def __init__(self, *args, **kwargs):
             super(SolidFire, self).__init__(*args, **kwargs)
+            self._update_cluster_status()
 
     def _issue_api_request(self, method_name, params):
         """All API requests to SolidFire device go through this method.
@@ -282,6 +284,9 @@ class SolidFire(SanISCSIDriver):
                       'is_clone': 'True',
                       'src_uuid': 'src_uuid'}
 
+        if qos:
+            attributes['qos'] = qos
+
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
                   'attributes': attributes,
@@ -328,7 +333,7 @@ class SolidFire(SanISCSIDriver):
                     qos[i.key] = int(i.value)
         return qos
 
-    def _set_qos_by_volume_type(self, ctxt, type_id):
+    def _set_qos_by_volume_type(self, type_id, ctxt):
         qos = {}
         volume_type = volume_types.get_volume_type(ctxt, type_id)
         specs = volume_type.get('extra_specs')
@@ -396,6 +401,8 @@ class SolidFire(SanISCSIDriver):
 
         attributes = {'uuid': volume['id'],
                       'is_clone': 'False'}
+        if qos:
+            attributes['qos'] = qos
 
         params = {'name': 'UUID-%s' % volume['id'],
                   'accountID': None,
@@ -482,3 +489,51 @@ class SolidFire(SanISCSIDriver):
             volume)
 
         return model
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status.
+
+        If 'refresh' is True, run update first.
+        The name is a bit misleading as
+        the majority of the data here is cluster
+        data
+        """
+        if refresh:
+            self._update_cluster_status()
+
+        return self.cluster_stats
+
+    def _update_cluster_status(self):
+        """Retrieve status info for the Cluster."""
+
+        LOG.debug(_("Updating cluster status info"))
+
+        params = {}
+
+        # NOTE(jdg): The SF api provides an UNBELIEVABLE amount
+        # of stats data, this is just one of the calls
+        results = self._issue_api_request('GetClusterCapacity', params)
+        if 'result' not in results:
+            LOG.error(_('Failed to get updated stats'))
+
+        results = results['result']['clusterCapacity']
+        free_capacity =\
+            results['maxProvisionedSpace'] - results['usedSpace']
+
+        data = {}
+        data["volume_backend_name"] = self.__class__.__name__
+        data["vendor_name"] = 'SolidFire Inc'
+        data["driver_version"] = '1.2'
+        data["storage_protocol"] = 'iSCSI'
+
+        data['total_capacity_gb'] = results['maxProvisionedSpace']
+        data['free_capacity_gb'] = free_capacity
+        data['reserved_percentage'] = FLAGS.reserved_percentage
+        data['QoS_support'] = True
+        data['compression_percent'] =\
+            results['compressionPercent']
+        data['deduplicaton_percent'] =\
+            results['deDuplicationPercent']
+        data['thin_provision_percent'] =\
+            results['thinProvisioningPercent']
+        self.cluster_stats = data
