@@ -46,5 +46,11 @@ class CapacityWeigher(weights.BaseHostWeigher):
     def _weigh_object(self, host_state, weight_properties):
         """Higher weights win.  We want spreading to be the default."""
         reserved = float(host_state.reserved_percentage) / 100
-        free = math.floor(host_state.free_capacity_gb * (1 - reserved))
+        free_space = host_state.free_capacity_gb
+        if free_space == 'infinite' or free_space == 'unknown':
+            #(zhiteng) 'infinite' and 'unknown' are treated the same
+            # here, for sorting purpose.
+            free = float('inf')
+        else:
+            free = math.floor(host_state.free_capacity_gb * (1 - reserved))
         return free
