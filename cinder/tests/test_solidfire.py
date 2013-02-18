@@ -89,7 +89,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'enable512e': True,
                              'access': "readWrite",
                              'status': "active",
-                             'attributes':None,
+                             'attributes': None,
                              'qos': None,
                              'iqn': test_name}]}}
             return result
