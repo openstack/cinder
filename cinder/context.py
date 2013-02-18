@@ -112,7 +112,9 @@ class RequestContext(object):
                 'timestamp': timeutils.strtime(self.timestamp),
                 'request_id': self.request_id,
                 'auth_token': self.auth_token,
-                'quota_class': self.quota_class}
+                'quota_class': self.quota_class,
+                'tenant': self.tenant,
+                'user': self.user}
 
     @classmethod
     def from_dict(cls, values):
@@ -130,6 +132,19 @@ class RequestContext(object):
             context.read_deleted = read_deleted
 
         return context
+
+    # NOTE(sirp): the openstack/common version of RequestContext uses
+    # tenant/user whereas the Cinder version uses project_id/user_id. We need
+    # this shim in order to use context-aware code from openstack/common, like
+    # logging, until we make the switch to using openstack/common's version of
+    # RequestContext.
+    @property
+    def tenant(self):
+        return self.project_id
+
+    @property
+    def user(self):
+        return self.user_id
 
 
 def get_admin_context(read_deleted="no"):

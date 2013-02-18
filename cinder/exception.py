@@ -134,10 +134,6 @@ class CinderException(Exception):
         super(CinderException, self).__init__(message)
 
 
-class DeprecatedConfig(CinderException):
-    message = _("Fatal call to deprecated config") + " %(msg)s"
-
-
 class GlanceConnectionFailed(CinderException):
     message = _("Connection to glance failed") + ": %(reason)s"
 
