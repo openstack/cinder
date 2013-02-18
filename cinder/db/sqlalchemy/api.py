@@ -1186,6 +1186,8 @@ def volume_metadata_update(context, volume_id, metadata, delete):
 
 @require_context
 def snapshot_create(context, values):
+    values['snapshot_metadata'] = _metadata_refs(values.get('metadata'),
+                                                 models.SnapshotMetadata)
     snapshot_ref = models.Snapshot()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
@@ -1194,7 +1196,8 @@ def snapshot_create(context, values):
     session = get_session()
     with session.begin():
         snapshot_ref.save(session=session)
-    return snapshot_ref
+
+    return snapshot_get(context, values['id'], session=session)
 
 
 @require_admin_context
@@ -1265,6 +1268,85 @@ def snapshot_update(context, snapshot_id, values):
         snapshot_ref.update(values)
         snapshot_ref.save(session=session)
 
+####################
+
+
+def _snapshot_metadata_get_query(context, snapshot_id, session=None):
+    return model_query(context, models.SnapshotMetadata,
+                       session=session, read_deleted="no").\
+        filter_by(snapshot_id=snapshot_id)
+
+
+@require_context
+@require_snapshot_exists
+def snapshot_metadata_get(context, snapshot_id):
+    rows = _snapshot_metadata_get_query(context, snapshot_id).all()
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+
+    return result
+
+
+@require_context
+@require_snapshot_exists
+def snapshot_metadata_delete(context, snapshot_id, key):
+    _snapshot_metadata_get_query(context, snapshot_id).\
+        filter_by(key=key).\
+        update({'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
+
+
+@require_context
+@require_snapshot_exists
+def snapshot_metadata_get_item(context, snapshot_id, key, session=None):
+    result = _snapshot_metadata_get_query(context,
+                                          snapshot_id,
+                                          session=session).\
+        filter_by(key=key).\
+        first()
+
+    if not result:
+        raise exception.SnapshotMetadataNotFound(metadata_key=key,
+                                                 snapshot_id=snapshot_id)
+    return result
+
+
+@require_context
+@require_snapshot_exists
+def snapshot_metadata_update(context, snapshot_id, metadata, delete):
+    session = get_session()
+
+    # Set existing metadata to deleted if delete argument is True
+    if delete:
+        original_metadata = snapshot_metadata_get(context, snapshot_id)
+        for meta_key, meta_value in original_metadata.iteritems():
+            if meta_key not in metadata:
+                meta_ref = snapshot_metadata_get_item(context, snapshot_id,
+                                                      meta_key, session)
+                meta_ref.update({'deleted': True})
+                meta_ref.save(session=session)
+
+    meta_ref = None
+
+    # Now update all existing items with new values, or create new meta objects
+    for meta_key, meta_value in metadata.items():
+
+        # update the value whether it exists or not
+        item = {"value": meta_value}
+
+        try:
+            meta_ref = snapshot_metadata_get_item(context, snapshot_id,
+                                                  meta_key, session)
+        except exception.SnapshotMetadataNotFound as e:
+            meta_ref = models.SnapshotMetadata()
+            item.update({"key": meta_key, "snapshot_id": snapshot_id})
+
+        meta_ref.update(item)
+        meta_ref.save(session=session)
+
+    return metadata
 
 ###################
 

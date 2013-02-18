@@ -56,6 +56,15 @@ def _translate_snapshot_summary_view(context, snapshot):
     d['status'] = snapshot['status']
     d['size'] = snapshot['volume_size']
 
+    if snapshot.get('snapshot_metadata'):
+        metadata = snapshot.get('snapshot_metadata')
+        d['metadata'] = dict((item['key'], item['value']) for item in metadata)
+    # avoid circular ref when vol is a Volume instance
+    elif snapshot.get('metadata') and isinstance(snapshot.get('metadata'),
+                                                 dict):
+        d['metadata'] = snapshot['metadata']
+    else:
+        d['metadata'] = {}
     return d
 
 
@@ -67,6 +76,7 @@ def make_snapshot(elem):
     elem.set('display_name')
     elem.set('display_description')
     elem.set('volume_id')
+    elem.append(common.MetadataTemplate())
 
 
 class SnapshotTemplate(xmlutil.TemplateBuilder):
@@ -147,12 +157,15 @@ class SnapshotsController(wsgi.Controller):
     @wsgi.serializers(xml=SnapshotTemplate)
     def create(self, req, body):
         """Creates a new snapshot."""
+        kwargs = {}
         context = req.environ['cinder.context']
 
         if not self.is_valid_body(body, 'snapshot'):
             raise exc.HTTPUnprocessableEntity()
 
         snapshot = body['snapshot']
+        kwargs['metadata'] = snapshot.get('metadata', None)
+
         volume_id = snapshot['volume_id']
         volume = self.volume_api.get(context, volume_id)
         force = snapshot.get('force', False)
@@ -168,13 +181,15 @@ class SnapshotsController(wsgi.Controller):
                 context,
                 volume,
                 snapshot.get('display_name'),
-                snapshot.get('display_description'))
+                snapshot.get('display_description'),
+                **kwargs)
         else:
             new_snapshot = self.volume_api.create_snapshot(
                 context,
                 volume,
                 snapshot.get('display_name'),
-                snapshot.get('display_description'))
+                snapshot.get('display_description'),
+                **kwargs)
 
         retval = _translate_snapshot_detail_view(context, new_snapshot)
 

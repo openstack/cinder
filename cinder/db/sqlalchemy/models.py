@@ -325,6 +325,22 @@ class Snapshot(BASE, CinderBase):
                           'Snapshot.deleted == False)')
 
 
+class SnapshotMetadata(BASE, CinderBase):
+    """Represents a metadata key/value pair for a snapshot."""
+    __tablename__ = 'snapshot_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    snapshot_id = Column(String(36),
+                         ForeignKey('snapshots.id'),
+                         nullable=False)
+    snapshot = relationship(Snapshot, backref="snapshot_metadata",
+                            foreign_keys=snapshot_id,
+                            primaryjoin='and_('
+                            'SnapshotMetadata.snapshot_id == Snapshot.id,'
+                            'SnapshotMetadata.deleted == False)')
+
+
 class IscsiTarget(BASE, CinderBase):
     """Represents an iscsi target for a given host."""
     __tablename__ = 'iscsi_targets'
@@ -427,6 +443,7 @@ def register_models():
               SMVolume,
               Volume,
               VolumeMetadata,
+              SnapshotMetadata,
               VolumeTypeExtraSpecs,
               VolumeTypes,
               VolumeGlanceMetadata,
