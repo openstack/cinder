@@ -27,6 +27,12 @@ FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
 
 
+def get_host_from_queue(queuename):
+    # This assumes the queue is named something like cinder-volume
+    # and does not have dot separators in the queue name
+    return queuename.split('@', 1)[0].split('.', 1)[1]
+
+
 def notify_usage_exists(context, volume_ref, current_period=False):
     """ Generates 'exists' notification for a volume for usage auditing
         purposes.

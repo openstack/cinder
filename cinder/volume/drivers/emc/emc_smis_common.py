@@ -55,7 +55,7 @@ class EMCSMISCommon():
              'vendor_name': 'EMC',
              'volume_backend_name': None}
 
-    def __init__(self, prtcl):
+    def __init__(self, prtcl, configuration=None):
 
         opt = cfg.StrOpt('cinder_emc_config_file',
                          default=CINDER_EMC_CONFIG_FILE,
@@ -63,6 +63,9 @@ class EMCSMISCommon():
                          'config data')
         FLAGS.register_opt(opt)
         self.protocol = prtcl
+        self.configuration = configuration
+        self.configuration.append_config_values([opt])
+
         ip, port = self._get_ecom_server()
         self.user, self.passwd = self._get_ecom_cred()
         self.url = 'http://' + ip + ':' + port
@@ -862,7 +865,7 @@ class EMCSMISCommon():
     def _get_storage_type(self, filename=None):
         """Get the storage type from the config file."""
         if filename == None:
-            filename = FLAGS.cinder_emc_config_file
+            filename = self.configuration.cinder_emc_config_file
 
         file = open(filename, 'r')
         data = file.read()
@@ -882,7 +885,7 @@ class EMCSMISCommon():
 
     def _get_masking_view(self, filename=None):
         if filename == None:
-            filename = FLAGS.cinder_emc_config_file
+            filename = self.configuration.cinder_emc_config_file
 
         file = open(filename, 'r')
         data = file.read()
@@ -900,7 +903,7 @@ class EMCSMISCommon():
 
     def _get_ecom_cred(self, filename=None):
         if filename == None:
-            filename = FLAGS.cinder_emc_config_file
+            filename = self.configuration.cinder_emc_config_file
 
         file = open(filename, 'r')
         data = file.read()
@@ -922,7 +925,7 @@ class EMCSMISCommon():
 
     def _get_ecom_server(self, filename=None):
         if filename == None:
-            filename = FLAGS.cinder_emc_config_file
+            filename = self.configuration.cinder_emc_config_file
 
         file = open(filename, 'r')
         data = file.read()

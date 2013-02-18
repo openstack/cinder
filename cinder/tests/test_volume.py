@@ -41,6 +41,7 @@ from cinder import quota
 from cinder import test
 from cinder.tests import fake_flags
 from cinder.tests.image import fake as fake_image
+from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume import iscsi
 
@@ -942,7 +943,11 @@ class ISCSITestCase(DriverTestCase):
         return volume_id_list
 
     def test_do_iscsi_discovery(self):
-        iscsi_driver = driver.ISCSIDriver()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.iscsi_ip_address = '0.0.0.0'
+        configuration.append_config_values(mox.IgnoreArg())
+
+        iscsi_driver = driver.ISCSIDriver(configuration=configuration)
         iscsi_driver._execute = lambda *a, **kw: \
             ("%s dummy" % FLAGS.iscsi_ip_address, '')
         volume = {"name": "dummy",

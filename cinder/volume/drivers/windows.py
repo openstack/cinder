@@ -50,8 +50,8 @@ FLAGS.register_opts(windows_opts)
 class WindowsDriver(driver.ISCSIDriver):
     """Executes volume driver commands on Windows Storage server."""
 
-    def __init__(self):
-        super(WindowsDriver, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(WindowsDriver, self).__init__(*args, **kwargs)
 
     def do_setup(self, context):
         """Setup the Windows Volume driver.

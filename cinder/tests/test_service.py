@@ -49,6 +49,11 @@ flags.FLAGS.register_opts(test_service_opts)
 
 class FakeManager(manager.Manager):
     """Fake manager for tests"""
+    def __init__(self, host=None,
+                 db_driver=None, service_name=None):
+        super(FakeManager, self).__init__(host=host,
+                                          db_driver=db_driver)
+
     def test_method(self):
         return 'manager'
 

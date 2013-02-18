@@ -11,9 +11,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import mox
+
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.san.hp_lefthand import HpSanISCSIDriver
 
 LOG = logging.getLogger(__name__)
@@ -27,7 +31,11 @@ class HpSanISCSITestCase(test.TestCase):
                        self._fake_cliq_run)
         self.stubs.Set(HpSanISCSIDriver, "_get_iscsi_properties",
                        self._fake_get_iscsi_properties)
-        self.driver = HpSanISCSIDriver()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.san_is_local = False
+        configuration.append_config_values(mox.IgnoreArg())
+
+        self.driver = HpSanISCSIDriver(configuration=configuration)
         self.volume_name = "fakevolume"
         self.connector = {'ip': '10.0.0.2',
                           'initiator': 'iqn.1993-08.org.debian:01:222',

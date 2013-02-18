@@ -120,12 +120,15 @@ class RemoteFsDriver(driver.VolumeDriver):
 class NfsDriver(RemoteFsDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
     as block device on hypervisor."""
+    def __init__(self, *args, **kwargs):
+        super(NfsDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(volume_opts)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting"""
         super(NfsDriver, self).do_setup(context)
 
-        config = FLAGS.nfs_shares_config
+        config = self.configuration.nfs_shares_config
         if not config:
             msg = (_("There's no NFS config file configured (%s)") %
                    'nfs_shares_config')
@@ -214,7 +217,7 @@ class NfsDriver(RemoteFsDriver):
         volume_path = self.local_path(volume)
         volume_size = volume['size']
 
-        if FLAGS.nfs_sparsed_volumes:
+        if self.configuration.nfs_sparsed_volumes:
             self._create_sparsed_file(volume_path, volume_size)
         else:
             self._create_regular_file(volume_path, volume_size)
@@ -235,7 +238,8 @@ class NfsDriver(RemoteFsDriver):
         LOG.debug('Available shares %s' % str(self._mounted_shares))
 
     def _load_shares_config(self):
-        return [share.strip() for share in open(FLAGS.nfs_shares_config)
+        return [share.strip() for share in
+                open(self.configuration.nfs_shares_config)
                 if share and not share.startswith('#')]
 
     def _ensure_share_mounted(self, nfs_share):
@@ -272,7 +276,7 @@ class NfsDriver(RemoteFsDriver):
         """
         :param nfs_share: example 172.18.194.100:/var/nfs
         """
-        return os.path.join(FLAGS.nfs_mount_point_base,
+        return os.path.join(self.configuration.nfs_mount_point_base,
                             self._get_hash_str(nfs_share))
 
     def _get_available_capacity(self, nfs_share):
@@ -287,7 +291,7 @@ class NfsDriver(RemoteFsDriver):
 
         available = 0
 
-        if FLAGS.nfs_disk_util == 'df':
+        if self.configuration.nfs_disk_util == 'df':
             available = int(out.split()[3])
         else:
             size = int(out.split()[1])

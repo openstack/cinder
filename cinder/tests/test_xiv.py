@@ -20,9 +20,12 @@
 #   Erik Zaadi <erikz@il.ibm.com>
 #   Avishay Traeger <avishay@il.ibm.com>
 
+import mox
+
 from cinder import exception
 from cinder import flags
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import xiv
 
 
@@ -114,7 +117,11 @@ class XIVVolumeDriverTest(test.TestCase):
         """Initialize IVM XIV Driver."""
         super(XIVVolumeDriverTest, self).setUp()
 
-        self.driver = xiv.XIVDriver()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.san_is_local = False
+        configuration.append_config_values(mox.IgnoreArg())
+
+        self.driver = xiv.XIVDriver(configuration=configuration)
 
     def test_initialized_should_set_xiv_info(self):
         """Test that the san flags are passed to the XIV proxy."""

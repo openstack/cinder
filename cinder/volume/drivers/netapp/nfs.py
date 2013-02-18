@@ -295,7 +295,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_NFS_7mode'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'NetApp_NFS_7mode'
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS'
@@ -366,7 +367,8 @@ class NetAppCmodeNfsDriver (NetAppNFSDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_NFS_Cluster'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'NetApp_NFS_Cluster'
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS'
@@ -540,7 +542,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_NFS_cluster_direct'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = (backend_name
+                                       or 'NetApp_NFS_cluster_direct')
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS'
@@ -668,7 +672,9 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = 'NetApp_NFS_7mode_direct'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = (backend_name
+                                       or 'NetApp_NFS_7mode_direct')
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS'

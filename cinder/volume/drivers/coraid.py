@@ -246,12 +246,13 @@ class CoraidDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(CoraidDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(coraid_opts)
 
     def do_setup(self, context):
         """Initialize the volume driver."""
-        self.esm = CoraidRESTClient(FLAGS.coraid_esm_address,
-                                    FLAGS.coraid_user,
-                                    FLAGS.coraid_password)
+        self.esm = CoraidRESTClient(self.configuration.coraid_esm_address,
+                                    self.configuration.coraid_user,
+                                    self.configuration.coraid_password)
 
     def check_for_setup_error(self):
         """Return an error if prerequisites aren't met."""
@@ -264,7 +265,7 @@ class CoraidDriver(driver.VolumeDriver):
         The ESM Repository is stored into a volume_type_extra_specs key.
         """
         volume_type_id = volume_type['id']
-        repository_key_name = FLAGS.coraid_repository_key
+        repository_key_name = self.configuration.coraid_repository_key
         repository = volume_types.get_volume_type_extra_specs(
             volume_type_id, repository_key_name)
         return repository
@@ -296,10 +297,12 @@ class CoraidDriver(driver.VolumeDriver):
     def create_snapshot(self, snapshot):
         """Create a Snapshot."""
         try:
-            volume_name = FLAGS.volume_name_template % snapshot['volume_id']
-            snapshot_name = FLAGS.snapshot_name_template % snapshot['id']
+            volume_name = (FLAGS.volume_name_template
+                           % snapshot['volume_id'])
+            snapshot_name = (FLAGS.snapshot_name_template
+                             % snapshot['id'])
             self.esm.create_snapshot(volume_name, snapshot_name)
-        except Exception:
+        except Exception, e:
             msg = _('Failed to Create Snapshot %(snapname)s')
             LOG.debug(msg % dict(snapname=snapshot_name))
             raise
@@ -308,7 +311,8 @@ class CoraidDriver(driver.VolumeDriver):
     def delete_snapshot(self, snapshot):
         """Delete a Snapshot."""
         try:
-            snapshot_name = FLAGS.snapshot_name_template % snapshot['id']
+            snapshot_name = (FLAGS.snapshot_name_template
+                             % snapshot['id'])
             self.esm.delete_snapshot(snapshot_name)
         except Exception:
             msg = _('Failed to Delete Snapshot %(snapname)s')
@@ -319,7 +323,8 @@ class CoraidDriver(driver.VolumeDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a Volume from a Snapshot."""
         try:
-            snapshot_name = FLAGS.snapshot_name_template % snapshot['id']
+            snapshot_name = (FLAGS.snapshot_name_template
+                             % snapshot['id'])
             repository = self._get_repository(volume['volume_type'])
             self.esm.create_volume_from_snapshot(snapshot_name,
                                                  volume['name'],

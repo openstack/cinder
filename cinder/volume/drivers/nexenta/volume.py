@@ -75,8 +75,8 @@ FLAGS.register_opts(nexenta_opts)
 class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance."""
 
-    def __init__(self):
-        super(NexentaDriver, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(NexentaDriver, self).__init__(*args, **kwargs)
 
     def do_setup(self, context):
         protocol = FLAGS.nexenta_rest_protocol

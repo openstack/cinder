@@ -16,6 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mox
 import os
 from xml.dom.minidom import Document
 
@@ -23,11 +24,11 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc.emc_smis_common import EMCSMISCommon
 from cinder.volume.drivers.emc.emc_smis_iscsi import EMCSMISISCSIDriver
 
-FLAGS = flags.FLAGS
-
+CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_emc_config.xml'
 LOG = logging.getLogger(__name__)
 
 config_file_name = 'cinder_emc_config.xml'
@@ -579,12 +580,16 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         super(EMCSMISISCSIDriverTestCase, self).setUp()
         self.config_file_path = None
         self.create_fake_config_file()
-        FLAGS.cinder_emc_config_file = self.config_file_path
+
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.cinder_emc_config_file = self.config_file_path
+        configuration.append_config_values(mox.IgnoreArg())
+
         self.stubs.Set(EMCSMISISCSIDriver, '_get_iscsi_properties',
                        self.fake_get_iscsi_properties)
         self.stubs.Set(EMCSMISCommon, '_get_ecom_connection',
                        self.fake_ecom_connection)
-        driver = EMCSMISISCSIDriver()
+        driver = EMCSMISISCSIDriver(configuration=configuration)
         self.driver = driver
 
     def create_fake_config_file(self):

@@ -20,6 +20,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
 from cinder.volume.drivers.netapp import iscsi
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
@@ -32,6 +33,12 @@ from mox import MockObject
 import mox
 import suds
 import types
+
+
+def create_configuration():
+    configuration = mox.MockObject(conf.Configuration)
+    configuration.append_config_values(mox.IgnoreArg())
+    return configuration
 
 
 class FakeVolume(object):
@@ -72,8 +79,9 @@ class NetappNfsDriverTestCase(test.TestCase):
     """Test case for NetApp specific NFS clone driver."""
 
     def setUp(self):
-        self._driver = netapp_nfs.NetAppNFSDriver()
         self._mox = mox.Mox()
+        self._driver = netapp_nfs.NetAppNFSDriver(
+                                    configuration=create_configuration())
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -278,7 +286,8 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
         self._custom_setup()
 
     def _custom_setup(self):
-        self._driver = netapp_nfs.NetAppCmodeNfsDriver()
+        self._driver = netapp_nfs.NetAppCmodeNfsDriver(
+                                    configuration=create_configuration())
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -460,7 +469,8 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
     """Test direct NetApp C Mode driver"""
     def _custom_setup(self):
-        self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver()
+        self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver(
+                                        configuration=create_configuration())
 
     def test_check_for_setup_error(self):
         mox = self._mox
@@ -579,7 +589,8 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
 class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
     """Test direct NetApp C Mode driver"""
     def _custom_setup(self):
-        self._driver = netapp_nfs.NetAppDirect7modeNfsDriver()
+        self._driver = netapp_nfs.NetAppDirect7modeNfsDriver(
+                                    configuration=create_configuration())
 
     def test_check_for_setup_error(self):
         mox = self._mox

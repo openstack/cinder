@@ -30,6 +30,7 @@ from cinder import exception
 from cinder.exception import ProcessExecutionError
 from cinder import test
 
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import glusterfs
 
 
@@ -57,9 +58,19 @@ class GlusterFsDriverTestCase(test.TestCase):
     ONE_GB_IN_BYTES = 1024 * 1024 * 1024
 
     def setUp(self):
-        self._driver = glusterfs.GlusterfsDriver()
         self._mox = mox_lib.Mox()
+        self._configuration = mox_lib.MockObject(conf.Configuration)
+        self._configuration.append_config_values(mox_lib.IgnoreArg())
+        self._configuration.glusterfs_shares_config = \
+            self.TEST_SHARES_CONFIG_FILE
+        self._configuration.glusterfs_mount_point_base = \
+            self.TEST_MNT_POINT_BASE
+        self._configuration.glusterfs_disk_util = 'df'
+        self._configuration.glusterfs_sparsed_volumes = True
+
         self.stubs = stubout.StubOutForTesting()
+        self._driver = glusterfs.GlusterfsDriver(
+                                    configuration=self._configuration)
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -276,7 +287,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        setattr(glusterfs.FLAGS, 'glusterfs_disk_util', 'du')
+        old_value = self._configuration.glusterfs_disk_util
+        self._configuration.glusterfs_disk_util = 'du'
 
         df_total_size = 2620544
         df_used_size = 996864
@@ -313,7 +325,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(glusterfs.FLAGS, 'glusterfs_disk_util')
+        self._configuration.glusterfs_disk_util = old_value
 
     def test_load_shares_config(self):
         mox = self._mox
@@ -505,7 +517,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
         volume = self._simple_volume()
 
-        setattr(glusterfs.FLAGS, 'glusterfs_sparsed_volumes', False)
+        old_value = self._configuration.glusterfs_sparsed_volumes
+        self._configuration.glusterfs_sparsed_volumes = False
 
         mox.StubOutWithMock(drv, '_create_regular_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
@@ -519,7 +532,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(glusterfs.FLAGS, 'glusterfs_sparsed_volumes')
+        self._configuration.glusterfs_sparsed_volumes = old_value
 
     def test_create_volume_should_ensure_glusterfs_mounted(self):
         """create_volume ensures shares provided in config are mounted."""

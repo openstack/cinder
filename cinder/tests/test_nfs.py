@@ -30,6 +30,7 @@ from cinder import exception
 from cinder.exception import ProcessExecutionError
 from cinder import test
 
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 
 
@@ -148,9 +149,15 @@ class NfsDriverTestCase(test.TestCase):
     ONE_GB_IN_BYTES = 1024 * 1024 * 1024
 
     def setUp(self):
-        self._driver = nfs.NfsDriver()
         self._mox = mox_lib.Mox()
         self.stubs = stubout.StubOutForTesting()
+        self.configuration = mox_lib.MockObject(conf.Configuration)
+        self.configuration.append_config_values(mox_lib.IgnoreArg())
+        self.configuration.nfs_shares_config = None
+        self.configuration.nfs_mount_point_base = '$state_path/mnt'
+        self.configuration.nfs_disk_util = 'df'
+        self.configuration.nfs_sparsed_volumes = True
+        self._driver = nfs.NfsDriver(configuration=self.configuration)
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -196,7 +203,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_local_path(self):
         """local_path common use case."""
-        nfs.FLAGS.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         drv = self._driver
 
         volume = DumbVolume()
@@ -318,7 +325,7 @@ class NfsDriverTestCase(test.TestCase):
         """_get_mount_point_for_share should calculate correct value."""
         drv = self._driver
 
-        nfs.FLAGS.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
 
         self.assertEqual('/mnt/test/2f4f60214cf43c595666dd815f0360a4',
                          drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1))
@@ -333,7 +340,7 @@ class NfsDriverTestCase(test.TestCase):
         df_data = 'nfs-host:/export 2620544 996864 %d 41%% /mnt' % df_avail
         df_output = df_head + df_data
 
-        setattr(nfs.FLAGS, 'nfs_disk_util', 'df')
+        self.configuration.nfs_disk_util = 'df'
 
         mox.StubOutWithMock(drv, '_get_mount_point_for_share')
         drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1).\
@@ -350,14 +357,11 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(nfs.FLAGS, 'nfs_disk_util')
-
     def test_get_available_capacity_with_du(self):
         """_get_available_capacity should calculate correct value."""
         mox = self._mox
         drv = self._driver
-
-        setattr(nfs.FLAGS, 'nfs_disk_util', 'du')
+        self.configuration.nfs_disk_util = 'du'
 
         df_total_size = 2620544
         df_used_size = 996864
@@ -391,13 +395,11 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(nfs.FLAGS, 'nfs_disk_util')
-
     def test_load_shares_config(self):
         mox = self._mox
         drv = self._driver
 
-        nfs.FLAGS.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+        self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         mox.StubOutWithMock(__builtin__, 'open')
         config_data = []
@@ -481,7 +483,7 @@ class NfsDriverTestCase(test.TestCase):
         """do_setup should throw error if nfs client is not installed."""
         mox = self._mox
         drv = self._driver
-
+        self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
         nfs.FLAGS.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         mox.StubOutWithMock(os.path, 'exists')
@@ -578,6 +580,7 @@ class NfsDriverTestCase(test.TestCase):
     def test_create_nonsparsed_volume(self):
         mox = self._mox
         drv = self._driver
+        self.configuration.nfs_sparsed_volumes = False
         volume = self._simple_volume()
 
         setattr(nfs.FLAGS, 'nfs_sparsed_volumes', False)

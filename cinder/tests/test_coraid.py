@@ -15,9 +15,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mox
+
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import coraid
 from cinder.volume.drivers.coraid import CoraidDriver
 from cinder.volume.drivers.coraid import CoraidRESTClient
@@ -91,7 +94,13 @@ class TestCoraidDriver(test.TestCase):
         self.esm_mock = self.mox.CreateMockAnything()
         self.stubs.Set(coraid, 'CoraidRESTClient',
                        lambda *_, **__: self.esm_mock)
-        self.drv = CoraidDriver()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.append_config_values(mox.IgnoreArg())
+        configuration.coraid_esm_address = fake_esm_ipaddress
+        configuration.coraid_user = fake_esm_username
+        configuration.coraid_password = fake_esm_password
+
+        self.drv = CoraidDriver(configuration=configuration)
         self.drv.do_setup({})
 
     def test_create_volume(self):

@@ -64,22 +64,23 @@ class LVMVolumeDriver(driver.VolumeDriver):
     """Executes commands relating to Volumes."""
     def __init__(self, *args, **kwargs):
         super(LVMVolumeDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(volume_opts)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
         out, err = self._execute('vgs', '--noheadings', '-o', 'name',
                                  run_as_root=True)
         volume_groups = out.split()
-        if FLAGS.volume_group not in volume_groups:
+        if self.configuration.volume_group not in volume_groups:
             exception_message = (_("volume group %s doesn't exist")
-                                 % FLAGS.volume_group)
+                                 % self.configuration.volume_group)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
     def _create_volume(self, volume_name, sizestr):
         cmd = ['lvcreate', '-L', sizestr, '-n', volume_name,
-               FLAGS.volume_group]
-        if FLAGS.lvm_mirrors:
-            cmd += ['-m', FLAGS.lvm_mirrors, '--nosync']
+               self.configuration.volume_group]
+        if self.configuration.lvm_mirrors:
+            cmd += ['-m', self.configuration.lvm_mirrors, '--nosync']
             terras = int(sizestr[:-1]) / 1024.0
             if terras >= 1.5:
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
@@ -112,7 +113,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                       *extra_flags, run_as_root=True)
 
     def _volume_not_present(self, volume_name):
-        path_name = '%s/%s' % (FLAGS.volume_group, volume_name)
+        path_name = '%s/%s' % (self.configuration.volume_group, volume_name)
         try:
             self._try_execute('lvdisplay', path_name, run_as_root=True)
         except Exception as e:
@@ -129,7 +130,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             self.clear_volume(volume)
 
         self._try_execute('lvremove', '-f', "%s/%s" %
-                          (FLAGS.volume_group,
+                          (self.configuration.volume_group,
                            self._escape_snapshot(volume['name'])),
                           run_as_root=True)
 
@@ -166,7 +167,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # deleting derived snapshots. Can we do something fancy?
         out, err = self._execute('lvdisplay', '--noheading',
                                  '-C', '-o', 'Attr',
-                                 '%s/%s' % (FLAGS.volume_group,
+                                 '%s/%s' % (self.configuration.volume_group,
                                             volume['name']),
                                  run_as_root=True)
         # fake_execute returns None resulting unit test error
@@ -182,29 +183,29 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         vol_path = self.local_path(volume)
         size_in_g = volume.get('size')
-        size_in_m = FLAGS.volume_clear_size
+        size_in_m = self.configuration.volume_clear_size
 
         if not size_in_g:
             return
 
-        if FLAGS.volume_clear == 'none':
+        if self.configuration.volume_clear == 'none':
             return
 
         LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
 
-        if FLAGS.volume_clear == 'zero':
+        if self.configuration.volume_clear == 'zero':
             if size_in_m == 0:
                 return self._copy_volume('/dev/zero', vol_path, size_in_g,
                                          clearing=True)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
-        elif FLAGS.volume_clear == 'shred':
+        elif self.configuration.volume_clear == 'shred':
             clear_cmd = ['shred', '-n3']
             if size_in_m:
                 clear_cmd.append('-s%dMiB' % size_in_m)
         else:
             LOG.error(_("Error unrecognized volume_clear option: %s"),
-                      FLAGS.volume_clear)
+                      self.configuration.volume_clear)
             return
 
         clear_cmd.append(vol_path)
@@ -212,7 +213,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        orig_lv_name = "%s/%s" % (FLAGS.volume_group, snapshot['volume_name'])
+        orig_lv_name = "%s/%s" % (self.configuration.volume_group,
+                                  snapshot['volume_name'])
         self._try_execute('lvcreate', '-L',
                           self._sizestr(snapshot['volume_size']),
                           '--name', self._escape_snapshot(snapshot['name']),
@@ -230,7 +232,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def local_path(self, volume):
         # NOTE(vish): stops deprecation warning
-        escaped_group = FLAGS.volume_group.replace('-', '--')
+        escaped_group = self.configuration.volume_group.replace('-', '--')
         escaped_name = self._escape_snapshot(volume['name']).replace('-', '--')
         return "/dev/mapper/%s-%s" % (escaped_group, escaped_name)
 
@@ -352,8 +354,10 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 volume_name = old_name
                 old_name = None
 
-        iscsi_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume_name)
-        volume_path = "/dev/%s/%s" % (FLAGS.volume_group, volume_name)
+        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                               volume_name)
+        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
+                                      volume_name)
 
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
@@ -388,12 +392,13 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         self.db.volume_update(context, volume['id'], model_update)
 
         start = os.getcwd()
-        os.chdir('/dev/%s' % FLAGS.volume_group)
+        os.chdir('/dev/%s' % self.configuration.volume_group)
 
         try:
             (out, err) = self._execute('readlink', old_name)
         except exception.ProcessExecutionError:
-            link_path = '/dev/%s/%s' % (FLAGS.volume_group, old_name)
+            link_path = '/dev/%s/%s' % (self.configuration.volume_group,
+                                        old_name)
             LOG.debug(_('Symbolic link %s not found') % link_path)
             os.chdir(start)
             return
@@ -414,19 +419,22 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
             host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
                                                                     host)
-            if host_iscsi_targets >= FLAGS.iscsi_num_targets:
+            if host_iscsi_targets >= self.configuration.iscsi_num_targets:
                 return
 
             # NOTE(vish): Target ids start at 1, not 0.
-            for target_num in xrange(1, FLAGS.iscsi_num_targets + 1):
+            target_end = self.configuration.iscsi_num_targets + 1
+            for target_num in xrange(1, target_end):
                 target = {'host': host, 'target_num': target_num}
                 self.db.iscsi_target_create_safe(context, target)
 
     def create_export(self, context, volume):
         """Creates an export for a logical volume."""
 
-        iscsi_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
-        volume_path = "/dev/%s/%s" % (FLAGS.volume_group, volume['name'])
+        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                               volume['name'])
+        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
+                                      volume['name'])
         model_update = {}
 
         # TODO(jdg): In the future move all of the dependent stuff into the
@@ -454,7 +462,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                                               volume_path,
                                               chap_auth)
         model_update['provider_location'] = self._iscsi_location(
-            FLAGS.iscsi_ip_address, tid, iscsi_name, lun)
+            self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
         model_update['provider_auth'] = self._iscsi_authentication(
             'CHAP', chap_username, chap_password)
         return model_update
@@ -527,20 +535,22 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         # Note(zhiteng): These information are driver/backend specific,
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
-        data["volume_backend_name"] = 'LVM_iSCSI'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'LVM_iSCSI'
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] = 0
         data['free_capacity_gb'] = 0
-        data['reserved_percentage'] = FLAGS.reserved_percentage
+        data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
 
         try:
             out, err = self._execute('vgs', '--noheadings', '--nosuffix',
                                      '--unit=G', '-o', 'name,size,free',
-                                     FLAGS.volume_group, run_as_root=True)
+                                     self.configuration.volume_group,
+                                     run_as_root=True)
         except exception.ProcessExecutionError as exc:
             LOG.error(_("Error retrieving volume status: "), exc.stderr)
             out = False
@@ -553,7 +563,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         self._stats = data
 
     def _iscsi_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, FLAGS.iscsi_port, target, iqn, lun)
+        return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
+                                   target, iqn, lun)
 
     def _iscsi_authentication(self, chap, name, password):
         return "%s %s %s" % (chap, name, password)
