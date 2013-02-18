@@ -276,10 +276,9 @@ class TestMigrations(test.TestCase):
         if _is_backend_avail('postgres', user="openstack_cifail"):
             self.fail("Shouldn't have connected")
 
+    @test.skip_unless(_is_backend_avail('postgres'),
+                      "postgresql not available")
     def test_postgresql_opportunistically(self):
-        # Test postgresql database migration walk
-        if not _is_backend_avail('postgres'):
-            self.skipTest("postgresql not available")
         # add this to the global lists to make reset work with it, it's removed
         # automatically in tearDown so no need to clean it up here.
         connect_string = _get_connect_string("postgres")
