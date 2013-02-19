@@ -65,7 +65,7 @@ if __name__ == '__main__':
     logging.setup("cinder")
     begin, end = utils.last_completed_audit_period()
     print _("Starting volume usage audit")
-    msg = _("Creating usages for %(begin_period) until %(end_period)")
+    msg = _("Creating usages for %(begin_period)s until %(end_period)s")
     print (msg % {"begin_period": str(begin), "end_period": str(end)})
     volumes = db.volume_get_active_by_window(admin_context,
                                              begin,
