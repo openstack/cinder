@@ -21,6 +21,7 @@ Drivers for volumes.
 """
 
 import os
+import socket
 import time
 
 from cinder import exception
@@ -342,9 +343,8 @@ class ISCSIDriver(VolumeDriver):
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
-        initiator = self._get_iscsi_initiator()
-        connector = {}
-        connector['initiator'] = initiator
+        connector = {'initiator': self._get_iscsi_initiator(),
+                     'host': socket.gethostname()}
 
         iscsi_properties, volume_path = self._attach_volume(
             context, volume, connector)
@@ -360,9 +360,8 @@ class ISCSIDriver(VolumeDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
-        initiator = self._get_iscsi_initiator()
-        connector = {}
-        connector['initiator'] = initiator
+        connector = {'initiator': self._get_iscsi_initiator(),
+                     'host': socket.gethostname()}
 
         iscsi_properties, volume_path = self._attach_volume(
             context, volume, connector)
