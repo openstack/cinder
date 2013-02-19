@@ -164,7 +164,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         cloned = None
         model_update = False
 
-        if all(x is None for x in(snapshot_ref, image_location, srcvol_ref)):
+        if all(x is None for x in(snapshot_ref, image_id, srcvol_ref)):
             model_update = self.driver.create_volume(volume_ref)
         elif snapshot_ref is not None:
             model_update = self.driver.create_volume_from_snapshot(
@@ -178,11 +178,12 @@ class VolumeManager(manager.SchedulerDependentManager):
             cloned = self.driver.clone_image(volume_ref, image_location)
             if not cloned:
                 model_update = self.driver.create_volume(volume_ref)
-                #copy the image onto the volume.
-                status = 'downloading'
-                self.db.volume_update(context,
-                                      volume_ref['id'],
-                                      {'status': status})
+
+                updates = dict(model_update or dict(), status='downloading')
+                volume_ref = self.db.volume_update(context,
+                                                   volume_ref['id'],
+                                                   updates)
+
                 self._copy_image_to_volume(context,
                                            volume_ref,
                                            image_service,
@@ -334,7 +335,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         except Exception:
             rescheduled = False
-            LOG.exception(_("Error trying to reschedule"),
+            LOG.exception(_("Error trying to reschedule %(volume_id)s"),
                           volume_id=volume_id)
 
         if rescheduled:
