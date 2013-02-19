@@ -124,6 +124,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           fakes.FakeFilterScheduler)
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed (try setup.py develop')
     def test_retry_disabled(self):
         # Retry info should not get populated when re-scheduling is off.
         self.flags(scheduler_max_attempts=1)
@@ -140,6 +142,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         # should not have retry info in the populated filter properties:
         self.assertFalse("retry" in filter_properties)
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed (try setup.py develop')
     def test_retry_attempt_one(self):
         # Test retry logic on initial scheduling attempt.
         self.flags(scheduler_max_attempts=2)
@@ -156,6 +160,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         num_attempts = filter_properties['retry']['num_attempts']
         self.assertEqual(1, num_attempts)
 
+    @test.skip_if(not test_utils.is_cinder_installed(),
+                  'Test requires Cinder installed (try setup.py develop')
     def test_retry_attempt_two(self):
         # Test retry logic when re-scheduling.
         self.flags(scheduler_max_attempts=2)
