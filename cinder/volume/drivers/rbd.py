@@ -15,6 +15,7 @@
 RADOS Block Device Driver
 """
 
+import json
 import os
 import tempfile
 import urllib
@@ -49,12 +50,22 @@ rbd_opts = [
 FLAGS = flags.FLAGS
 FLAGS.register_opts(rbd_opts)
 
+VERSION = '1.0'
+
 
 class RBDDriver(driver.VolumeDriver):
     """Implements RADOS block device (RBD) volume commands"""
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(rbd_opts)
+        self._stats = dict(
+            volume_backend_name='RBD',
+            vendor_name='Open Source',
+            driver_version=VERSION,
+            storage_protocol='ceph',
+            total_capacity_gb='unknown',
+            free_capacity_gb='unknown',
+            reserved_percentage=0)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
@@ -64,6 +75,29 @@ class RBDDriver(driver.VolumeDriver):
             exception_message = (_("rbd has no pool %s") %
                                  self.configuration.rbd_pool)
             raise exception.VolumeBackendAPIException(data=exception_message)
+
+    def _update_volume_stats(self):
+        stats = dict(
+            total_capacity_gb='unknown',
+            free_capacity_gb='unknown')
+        try:
+            stdout, _err = self._execute('rados', 'df', '--format', 'json')
+            new_stats = json.loads(stdout)
+            total = int(new_stats['total_space']) / 1024 ** 2
+            free = int(new_stats['total_avail']) / 1024 ** 2
+            stats['total_capacity_gb'] = total
+            stats['free_capacity_gb'] = free
+        except exception.ProcessExecutionError:
+            # just log and return unknown capacities
+            LOG.exception(_('error refreshing volume stats'))
+        self._stats.update(stats)
+
+    def get_volume_stats(self, refresh=False):
+        """Return the current state of the volume service. If 'refresh' is
+           True, run the update first."""
+        if refresh:
+            self._update_volume_stats()
+        return self._stats
 
     def _supports_layering(self):
         stdout, _ = self._execute('rbd', '--help')
