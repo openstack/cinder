@@ -17,12 +17,12 @@
 
 """Policy Engine For Cinder"""
 
+from oslo.config import cfg
+
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import policy
 from cinder import utils
-
 
 policy_opts = [
     cfg.StrOpt('policy_file',

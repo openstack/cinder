@@ -21,14 +21,14 @@
 Scheduler base class that all Schedulers should inherit from
 """
 
+from oslo.config import cfg
+
 from cinder import db
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
-
 
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',

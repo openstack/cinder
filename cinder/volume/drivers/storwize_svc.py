@@ -45,10 +45,11 @@ import re
 import string
 import time
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils

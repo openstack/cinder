@@ -24,9 +24,10 @@
 Volume driver for IBM XIV storage systems.
 """
 
+from oslo.config import cfg
+
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san

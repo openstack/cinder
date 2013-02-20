@@ -30,8 +30,7 @@ import os
 import socket
 import sys
 
-from cinder.openstack.common import cfg
-
+from oslo.config import cfg
 
 FLAGS = cfg.CONF
 

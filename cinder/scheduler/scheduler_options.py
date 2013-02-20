@@ -26,11 +26,11 @@ import datetime
 import json
 import os
 
+from oslo.config import cfg
+
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
-
 
 scheduler_json_config_location_opt = cfg.StrOpt(
         'scheduler_json_config_location',

@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
-
 
 CONF = cfg.CONF
 

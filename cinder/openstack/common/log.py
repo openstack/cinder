@@ -40,12 +40,12 @@ import stat
 import sys
 import traceback
 
-from cinder.openstack.common import cfg
+from oslo.config import cfg
+
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import local
 from cinder.openstack.common import notifier
-
 
 _DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)8s [%(name)s] %(message)s"
 _DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"

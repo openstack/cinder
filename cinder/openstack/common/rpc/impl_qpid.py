@@ -23,10 +23,10 @@ import uuid
 
 import eventlet
 import greenlet
+from oslo.config import cfg
 import qpid.messaging
 import qpid.messaging.exceptions
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common.rpc import amqp as rpc_amqp

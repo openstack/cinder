@@ -19,13 +19,14 @@ Volume driver for NetApp NFS storage.
 """
 
 import os
+import time
+
+from oslo.config import cfg
 import suds
 from suds.sax import text
-import time
 
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement

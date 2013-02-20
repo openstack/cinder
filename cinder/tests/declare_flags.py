@@ -16,8 +16,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
+
 from cinder import flags
-from cinder.openstack.common import cfg
 
 FLAGS = flags.FLAGS
 FLAGS.register_opt(cfg.IntOpt('answer', default=42, help='test flag'))

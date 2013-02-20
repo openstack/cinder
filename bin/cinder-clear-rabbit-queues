@@ -40,13 +40,13 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
 gettext.install('cinder', unicode=1)
 
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
-
 
 delete_exchange_opt = \
     cfg.BoolOpt('delete_exchange',

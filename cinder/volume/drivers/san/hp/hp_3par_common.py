@@ -43,16 +43,15 @@ import uuid
 
 from eventlet import greenthread
 from hp3parclient import exceptions as hpexceptions
+from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import volume_types
-
 
 LOG = logging.getLogger(__name__)
 

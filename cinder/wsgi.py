@@ -29,6 +29,7 @@ import time
 import eventlet
 import eventlet.wsgi
 import greenlet
+from oslo.config import cfg
 from paste import deploy
 import routes.middleware
 import webob.dec
@@ -36,7 +37,6 @@ import webob.exc
 
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import utils
 

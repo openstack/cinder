@@ -33,13 +33,12 @@ import uuid
 from eventlet import greenpool
 from eventlet import pools
 from eventlet import semaphore
+from oslo.config import cfg
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import local
 from cinder.openstack.common.rpc import common as rpc_common
-
 
 LOG = logging.getLogger(__name__)
 

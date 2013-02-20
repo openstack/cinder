@@ -25,12 +25,11 @@ import time
 import weakref
 
 from eventlet import semaphore
+from oslo.config import cfg
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common import fileutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
-
 
 LOG = logging.getLogger(__name__)
 

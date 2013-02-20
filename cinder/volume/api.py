@@ -22,12 +22,13 @@ Handles all requests relating to volumes.
 
 import functools
 
+from oslo.config import cfg
+
 from cinder.db import base
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import flags
 from cinder.image import glance
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc

@@ -23,12 +23,13 @@ import ssl
 import tempfile
 import unittest
 import urllib2
+
+from oslo.config import cfg
 import webob
 import webob.dec
 
 from cinder.api.middleware import fault
 from cinder import exception
-from cinder.openstack.common import cfg
 from cinder import test
 from cinder import utils
 import cinder.wsgi

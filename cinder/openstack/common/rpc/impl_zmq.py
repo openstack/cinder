@@ -24,13 +24,12 @@ import uuid
 import eventlet
 from eventlet.green import zmq
 import greenlet
+from oslo.config import cfg
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common.rpc import common as rpc_common
-
 
 # for convenience, are not modified.
 pformat = pprint.pformat

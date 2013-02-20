@@ -24,14 +24,13 @@ controller on the SAN hardware.  We expect to access it over SSH or some API.
 import random
 
 from eventlet import greenthread
+from oslo.config import cfg
 
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.driver import ISCSIDriver
-
 
 LOG = logging.getLogger(__name__)
 

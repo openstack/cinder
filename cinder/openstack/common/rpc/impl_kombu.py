@@ -28,8 +28,8 @@ import kombu
 import kombu.connection
 import kombu.entity
 import kombu.messaging
+from oslo.config import cfg
 
-from cinder.openstack.common import cfg
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import network_utils
 from cinder.openstack.common.rpc import amqp as rpc_amqp
