@@ -273,6 +273,21 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def clone_image(self, volume, image_location):
         return False
 
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        volume = self.db.volume_get(context, backup['volume_id'])
+        volume_path = self.local_path(volume)
+        with utils.temporary_chown(volume_path):
+            with utils.file_open(volume_path) as volume_file:
+                backup_service.backup(backup, volume_file)
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume."""
+        volume_path = self.local_path(volume)
+        with utils.temporary_chown(volume_path):
+            with utils.file_open(volume_path, 'wb') as volume_file:
+                backup_service.restore(backup, volume['id'], volume_file)
+
 
 class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     """Executes commands relating to ISCSI volumes.

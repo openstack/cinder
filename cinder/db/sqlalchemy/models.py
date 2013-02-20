@@ -385,6 +385,32 @@ class SMVolume(BASE, CinderBase):
     vdi_uuid = Column(String(255))
 
 
+class Backup(BASE, CinderBase):
+    """Represents a backup of a volume to Swift."""
+    __tablename__ = 'backups'
+    id = Column(String(36), primary_key=True)
+
+    @property
+    def name(self):
+        return FLAGS.backup_name_template % self.id
+
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    volume_id = Column(String(36), nullable=False)
+    host = Column(String(255))
+    availability_zone = Column(String(255))
+    display_name = Column(String(255))
+    display_description = Column(String(255))
+    container = Column(String(255))
+    status = Column(String(255))
+    fail_reason = Column(String(255))
+    service_metadata = Column(String(255))
+    service = Column(String(255))
+    size = Column(Integer)
+    object_count = Column(Integer)
+
+
 def register_models():
     """Register Models and create metadata.
 
@@ -393,7 +419,8 @@ def register_models():
     connection is lost and needs to be reestablished.
     """
     from sqlalchemy import create_engine
-    models = (Migration,
+    models = (Backup,
+              Migration,
               Service,
               SMBackendConf,
               SMFlavors,

@@ -642,7 +642,44 @@ class GetLogCommands(object):
             print "No cinder entries in syslog!"
 
 
+class BackupCommands(object):
+    """Methods for managing backups."""
+
+    def list(self):
+        """List all backups (including ones in progress) and the host
+        on which the backup operation is running."""
+        ctxt = context.get_admin_context()
+        backups = db.backup_get_all(ctxt)
+
+        hdr = "%-6s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s\t%-12s"
+        print hdr % (_('ID'),
+                     _('User ID'),
+                     _('Project ID'),
+                     _('Host'),
+                     _('Name'),
+                     _('Container'),
+                     _('Status'),
+                     _('Size'),
+                     _('Object Count'))
+
+        res = "%-6d\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12d\t%-12d"
+        for backup in backups:
+            object_count = 0
+            if backup['object_count'] is not None:
+                object_count = backup['object_count']
+            print res % (backup['id'],
+                         backup['user_id'],
+                         backup['project_id'],
+                         backup['host'],
+                         backup['display_name'],
+                         backup['container'],
+                         backup['status'],
+                         backup['size'],
+                         object_count)
+
+
 CATEGORIES = {
+    'backup': BackupCommands,
     'config': ConfigCommands,
     'db': DbCommands,
     'host': HostCommands,

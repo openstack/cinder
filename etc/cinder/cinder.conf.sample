@@ -346,6 +346,9 @@
 # (string value)
 #snapshot_name_template=snapshot-%s
 
+# Template string to be used to generate backup names (string
+# value)
+#backup_name_template=backup-%s
 
 #
 # Options defined in cinder.db.base
