@@ -178,13 +178,9 @@
 # be hour, day, month or year (string value)
 #volume_usage_audit_period=month
 
-# Deprecated: command to use for running commands as root
-# (string value)
-#root_helper=sudo
-
 # Path to the rootwrap configuration file to use for running
 # commands as root (string value)
-#rootwrap_config=<None>
+#rootwrap_config=/etc/cinder/rootwrap.conf
 
 # Whether to log monkey patching (boolean value)
 #monkey_patch=false
