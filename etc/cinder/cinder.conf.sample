@@ -1130,6 +1130,10 @@
 # IET configuration file (string value)
 #iet_conf=/etc/iet/ietd.conf
 
+# Comma-separatd list of initiator IQNs allowed to connect to
+# the iSCSI target. (From Nova compute nodes.) (string value)
+#lio_initiator_iqns=
+
 
 #
 # Options defined in cinder.volume.manager
