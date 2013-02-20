@@ -17,7 +17,6 @@
 
 from webob import exc
 import webob
-from xml.dom import minidom
 
 from cinder.api.openstack import common
 from cinder.api.openstack import wsgi
@@ -194,7 +193,7 @@ class CreateDeserializer(CommonDeserializer):
 
     def default(self, string):
         """Deserialize an xml-formatted volume create request."""
-        dom = minidom.parseString(string)
+        dom = utils.safe_minidom_parse_string(string)
         volume = self._extract_volume(dom)
         return {'body': {'volume': volume}}
 
