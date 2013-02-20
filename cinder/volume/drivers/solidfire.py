@@ -90,6 +90,10 @@ class SolidFire(SanISCSIDriver):
         and returns results in a dict as well.
 
         """
+        max_simultaneous_clones = ['xMaxSnapshotsPerVolumeExceeded',
+                                   'xMaxClonesPerVolumeExceeded',
+                                   'xMaxSnapshotsPerNodeExceeded',
+                                   'xMaxClonesPerNodeExceeded']
         host = FLAGS.san_ip
         # For now 443 is the only port our server accepts requests on
         port = 443
@@ -136,7 +140,6 @@ class SolidFire(SanISCSIDriver):
                 data = response.read()
                 try:
                     data = json.loads(data)
-
                 except (TypeError, ValueError), exc:
                     connection.close()
                     msg = _("Call to json.loads() raised "
@@ -146,12 +149,24 @@ class SolidFire(SanISCSIDriver):
                 connection.close()
 
             LOG.debug(_("Results of SolidFire API call: %s"), data)
-            if ('error' in data and
-                    'xDBVersionMismatch' in data['error']['name']):
-                LOG.debug(_('Detected xDBVersionMismatch, '
-                            'retry %s of 5') % (5 - retry_count))
-                time.sleep(1)
-                retry_count -= 1
+
+            if 'error' in data:
+                if data['error']['name'] in max_simultaneous_clones:
+                    LOG.warning(_('Clone operation '
+                                  'encountered: %s') % data['error']['name'])
+                    LOG.warning(_(
+                        'Waiting for outstanding operation '
+                        'before retrying snapshot: %s') % params['name'])
+                    time.sleep(5)
+                    # Don't decrement the retry count for this one
+                elif 'xDBVersionMismatch' in data['error']['name']:
+                    LOG.debug(_('Detected xDBVersionMismatch, '
+                                'retry %s of 5') % (5 - retry_count))
+                    time.sleep(1)
+                    retry_count -= 1
+                else:
+                    msg = _("API response: %s") % data
+                    raise exception.SolidFireAPIException(msg)
             else:
                 retry_count = 0
 
@@ -300,6 +315,9 @@ class SolidFire(SanISCSIDriver):
 
         sf_volume_id = data['result']['volumeID']
         model_update = self._get_model_info(sfaccount, sf_volume_id)
+        if model_update is None:
+            mesg = _('Failed to get model update from clone')
+            raise exception.SolidFireAPIDataException(mesg)
 
         return (data, sfaccount, model_update)
 
