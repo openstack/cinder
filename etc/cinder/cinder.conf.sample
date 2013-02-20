@@ -974,6 +974,21 @@
 
 
 #
+# Options defined in cinder.volume.drivers.scality
+#
+
+# Path or URL to Scality SOFS configuration file (string
+# value)
+#scality_sofs_config=<None>
+
+# Base dir where Scality SOFS shall be mounted (string value)
+#scality_sofs_mount_point=$state_path/scality
+
+# Path from Scality SOFS root to volume dir (string value)
+#scality_sofs_volume_dir=cinder/volumes
+
+
+#
 # Options defined in cinder.volume.drivers.solidfire
 #
 
@@ -1140,4 +1155,4 @@
 #volume_driver=cinder.volume.driver.FakeISCSIDriver
 
 
-# Total option count: 251
+# Total option count: 254
