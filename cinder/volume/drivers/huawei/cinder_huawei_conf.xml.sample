@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+    <Storage>
+        <ControllerIP0>x.x.x.x</ControllerIP0>
+        <ControllerIP1>x.x.x.x</ControllerIP1>
+        <UserName>xxxxxx</UserName>
+        <UserPassword>xxxxxx</UserPassword>
+    </Storage>
+    <LUN>
+        <!--LUN Type: Thick, or Thin. Default: Thick-->
+        <LUNType>Thick</LUNType>
+        <!--The stripe size can be 4, 8, 16, 32, 64, 128, 256, and 512 in the unit of KB.Default: 64-->
+        <StripUnitSize>64</StripUnitSize>
+        <!--The write cache policy of the LUN:-->
+        <!--1 specifies write back, 2 specifies write through, 3 specifies write back mandatorily.Default: 1-->
+        <WriteType>1</WriteType>
+        <!--Enables or disbles cahce mirroring: 0 Disable, or 1 Enable. Default: Enable-->
+        <MirrorSwitch>1</MirrorSwitch>
+        <!--The prefetch policy of the reading cache:-->
+        <!--prefetch type 0 specifies non-preftch and prefetch value is 0,-->
+        <!--prefetch type 1 specifies constant prefetch and  prefetch value ranges from 0 to 1024 in the unit of KB,-->
+        <!--prefetch type 2 specifies variable prefetch and value specifies cache prefetch multiple ranges from 0 to 65535,-->
+        <!--prefetch type 3 specifies intelligent prefetch Intelligent and Vaule is 0,-->
+        <!--Default:  prefetch type 0 and prefetch value 0-->
+        <Prefetch Type="0" Value="0"/>
+        <StoragePool Name="xxxxxx"/>
+        <StoragePool Name="xxxxxx"/>
+    </LUN>
+    <iSCSI>
+        <DefaultTargetIP>x.x.x.x</DefaultTargetIP>
+        <Initiator Name="xxxxxx" TargetIP="x.x.x.x"/>
+        <Initiator Name="xxxxxx" TargetIP="x.x.x.x"/>
+    </iSCSI>
+</config>
