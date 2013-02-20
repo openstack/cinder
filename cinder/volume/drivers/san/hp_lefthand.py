@@ -220,8 +220,11 @@ class HpSanISCSIDriver(SanISCSIDriver):
         cliq_args = {}
         cliq_args['volumeName'] = volume['name']
         cliq_args['prompt'] = 'false'  # Don't confirm
-
-        self._cliq_run_xml("deleteVolume", cliq_args)
+        try:
+            volume_info = self._cliq_get_volume_info(volume['name'])
+            self._cliq_run_xml("deleteVolume", cliq_args)
+        except Exception:
+            LOG.exception("Volume did not exist. It will not be deleted")
 
     def local_path(self, volume):
         msg = _("local_path not supported")
