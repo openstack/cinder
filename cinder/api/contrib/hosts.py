@@ -16,7 +16,6 @@
 """The hosts admin extension."""
 
 import webob.exc
-from xml.dom import minidom
 from xml.parsers import expat
 
 from cinder.api import extensions
@@ -79,7 +78,7 @@ class HostShowTemplate(xmlutil.TemplateBuilder):
 class HostDeserializer(wsgi.XMLDeserializer):
     def default(self, string):
         try:
-            node = minidom.parseString(string)
+            node = utils.safe_minidom_parse_string(string)
         except expat.ExpatError:
             msg = _("cannot understand XML")
             raise exception.MalformedRequestBody(reason=msg)

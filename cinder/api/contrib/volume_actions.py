@@ -13,7 +13,6 @@
 #   under the License.
 
 import webob
-from xml.dom import minidom
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
@@ -22,6 +21,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.rpc import common as rpc_common
+from cinder import utils
 from cinder import volume
 
 
@@ -54,7 +54,7 @@ class VolumeToImageSerializer(xmlutil.TemplateBuilder):
 class VolumeToImageDeserializer(wsgi.XMLDeserializer):
     """Deserializer to handle xml-formatted requests."""
     def default(self, string):
-        dom = minidom.parseString(string)
+        dom = utils.safe_minidom_parse_string(string)
         action_node = dom.childNodes[0]
         action_name = action_node.tagName
 
