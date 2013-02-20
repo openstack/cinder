@@ -18,6 +18,8 @@
 
 import mox
 import os
+import shutil
+import tempfile
 from xml.dom.minidom import Document
 
 from cinder import exception
@@ -577,6 +579,7 @@ class FakeEcomConnection():
 class EMCSMISISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
         super(EMCSMISISCSIDriverTestCase, self).setUp()
         self.config_file_path = None
         self.create_fake_config_file()
@@ -622,8 +625,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         emc.appendChild(ecompassword)
         ecompassword.appendChild(ecompasswordtext)
 
-        dir_path = os.getcwd()
-        self.config_file_path = dir_path + '/' + config_file_name
+        self.config_file_path = self.tempdir + '/' + config_file_name
         f = open(self.config_file_path, 'w')
         doc.writexml(f)
         f.close()
@@ -743,8 +745,12 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
                           self.driver.delete_volume,
                           failed_delete_vol)
 
-    def TearDown(self):
+    def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
         if bExists:
             os.remove(self.config_file_path)
+        shutil.rmtree(self.tempdir)
+
+    def tearDown(self):
+        self._cleanup()
         super(EMCSMISISCSIDriverTestCase, self).tearDown()
