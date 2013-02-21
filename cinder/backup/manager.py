@@ -32,11 +32,12 @@ Volume backups can be created, restored, deleted and listed.
 
 """
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder import flags
 from cinder import manager
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
@@ -58,7 +59,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
     RPC_API_VERSION = '1.0'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, service_name=None, *args, **kwargs):
         self.service = importutils.import_module(FLAGS.backup_service)
         self.az = FLAGS.storage_availability_zone
         self.volume_manager = importutils.import_object(FLAGS.volume_manager)

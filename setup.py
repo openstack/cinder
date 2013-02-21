@@ -73,6 +73,7 @@ setuptools.setup(
     setup_requires=['setuptools_git>=0.4'],
     scripts=['bin/cinder-all',
              'bin/cinder-api',
+             'bin/cinder-backup',
              'bin/cinder-clear-rabbit-queues',
              'bin/cinder-manage',
              'bin/cinder-rootwrap',
