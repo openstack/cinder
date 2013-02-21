@@ -16,6 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.volume.drivers.xenapi import tools
 import contextlib
 import os
 import pickle
@@ -33,6 +34,55 @@ class OperationsBase(object):
 
     def call_xenapi(self, method, *args):
         return self.session.call_xenapi(method, *args)
+
+
+class VMOperations(OperationsBase):
+    def get_by_uuid(self, vm_uuid):
+        return self.call_xenapi('VM.get_by_uuid', vm_uuid)
+
+    def get_vbds(self, vm_uuid):
+        return self.call_xenapi('VM.get_VBDs', vm_uuid)
+
+
+class VBDOperations(OperationsBase):
+    def create(self, vm_ref, vdi_ref, userdevice, bootable, mode, type,
+               empty, other_config):
+        vbd_rec = dict(
+            VM=vm_ref,
+            VDI=vdi_ref,
+            userdevice=str(userdevice),
+            bootable=bootable,
+            mode=mode,
+            type=type,
+            empty=empty,
+            other_config=other_config,
+            qos_algorithm_type='',
+            qos_algorithm_params=dict()
+        )
+        return self.call_xenapi('VBD.create', vbd_rec)
+
+    def destroy(self, vbd_ref):
+        self.call_xenapi('VBD.destroy', vbd_ref)
+
+    def get_device(self, vbd_ref):
+        return self.call_xenapi('VBD.get_device', vbd_ref)
+
+    def plug(self, vbd_ref):
+        return self.call_xenapi('VBD.plug', vbd_ref)
+
+    def unplug(self, vbd_ref):
+        return self.call_xenapi('VBD.unplug', vbd_ref)
+
+    def get_vdi(self, vbd_ref):
+        return self.call_xenapi('VBD.get_VDI', vbd_ref)
+
+
+class PoolOperations(OperationsBase):
+    def get_all(self):
+        return self.call_xenapi('pool.get_all')
+
+    def get_default_SR(self, pool_ref):
+        return self.call_xenapi('pool.get_default_SR', pool_ref)
 
 
 class PbdOperations(OperationsBase):
@@ -161,6 +211,9 @@ class XenAPISession(object):
         self.SR = SrOperations(self)
         self.VDI = VdiOperations(self)
         self.host = HostOperations(self)
+        self.pool = PoolOperations(self)
+        self.VBD = VBDOperations(self)
+        self.VM = VMOperations(self)
 
     def close(self):
         return self.call_xenapi('logout')
@@ -465,3 +518,25 @@ class NFSBasedVolumeOperations(object):
                 os.path.join(sr_base_path, sr_uuid), auth_token, dict())
         finally:
             self.disconnect_volume(vdi_uuid)
+
+    @contextlib.contextmanager
+    def volume_attached_here(self, server, serverpath, sr_uuid, vdi_uuid,
+                             readonly=True):
+        self.connect_volume(server, serverpath, sr_uuid, vdi_uuid)
+
+        with self._session_factory.get_session() as session:
+            vm_uuid = tools.get_this_vm_uuid()
+            vm_ref = session.VM.get_by_uuid(vm_uuid)
+            vdi_ref = session.VDI.get_by_uuid(vdi_uuid)
+            vbd_ref = session.VBD.create(
+                vm_ref, vdi_ref, userdevice='autodetect', bootable=False,
+                mode='RO' if readonly else 'RW', type='disk', empty=False,
+                other_config=dict())
+            session.VBD.plug(vbd_ref)
+            device = session.VBD.get_device(vbd_ref)
+            try:
+                yield "/dev/" + device
+            finally:
+                session.VBD.unplug(vbd_ref)
+                session.VBD.destroy(vbd_ref)
+                self.disconnect_volume(vdi_uuid)

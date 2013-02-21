@@ -21,6 +21,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder import flags
 from cinder.image import glance
+from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.xenapi import lib as xenapi_lib
@@ -155,6 +156,27 @@ class XenAPINFSDriver(driver.VolumeDriver):
         pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        if is_xenserver_image(context, image_service, image_id):
+            return self._use_glance_plugin_to_copy_image_to_volume(
+                context, volume, image_service, image_id)
+
+        return self._use_image_utils_to_pipe_bytes_to_volume(
+            context, volume, image_service, image_id)
+
+    def _use_image_utils_to_pipe_bytes_to_volume(self, context, volume,
+                                                 image_service, image_id):
+        sr_uuid, vdi_uuid = volume['provider_location'].split('/')
+        with self.nfs_ops.volume_attached_here(FLAGS.xenapi_nfs_server,
+                                               FLAGS.xenapi_nfs_serverpath,
+                                               sr_uuid, vdi_uuid,
+                                               False) as device:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     device)
+
+    def _use_glance_plugin_to_copy_image_to_volume(self, context, volume,
+                                                   image_service, image_id):
         sr_uuid, vdi_uuid = volume['provider_location'].split('/')
 
         api_servers = glance.get_api_servers()
@@ -212,3 +234,12 @@ class XenAPINFSDriver(driver.VolumeDriver):
                 reserved_percentage=0)
 
         return self._stats
+
+
+def is_xenserver_image(context, image_service, image_id):
+    image_meta = image_service.show(context, image_id)
+
+    return (
+        image_meta['disk_format'] == 'vhd'
+        and image_meta['container_format'] == 'ovf'
+    )
