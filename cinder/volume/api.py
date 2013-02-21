@@ -25,13 +25,11 @@ import functools
 from oslo.config import cfg
 
 from cinder.db import base
-from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import flags
 from cinder.image import glance
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
 import cinder.policy
 from cinder import quota
@@ -484,14 +482,16 @@ class API(base.Base):
                                                        connector,
                                                        force)
 
-    def _create_snapshot(self, context, volume, name, description,
-                         force=False):
+    def _create_snapshot(self, context,
+                         volume, name, description,
+                         force=False, metadata=None):
         check_policy(context, 'create_snapshot', volume)
 
         if ((not force) and (volume['status'] != "available")):
             msg = _("must be available")
             raise exception.InvalidVolume(reason=msg)
 
+        self._check_metadata_properties(context, metadata)
         options = {'volume_id': volume['id'],
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -499,20 +499,25 @@ class API(base.Base):
                    'progress': '0%',
                    'volume_size': volume['size'],
                    'display_name': name,
-                   'display_description': description}
+                   'display_description': description,
+                   'metadata': metadata}
 
         snapshot = self.db.snapshot_create(context, options)
         self.volume_rpcapi.create_snapshot(context, volume, snapshot)
 
         return snapshot
 
-    def create_snapshot(self, context, volume, name, description):
+    def create_snapshot(self, context,
+                        volume, name,
+                        description, metadata=None):
         return self._create_snapshot(context, volume, name, description,
-                                     False)
+                                     False, metadata)
 
-    def create_snapshot_force(self, context, volume, name, description):
+    def create_snapshot_force(self, context,
+                              volume, name,
+                              description, metadata=None):
         return self._create_snapshot(context, volume, name, description,
-                                     True)
+                                     True, metadata)
 
     @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False):
@@ -588,6 +593,45 @@ class API(base.Base):
                 if i['key'] == key:
                     return i['value']
         return None
+
+    def get_snapshot_metadata(self, context, snapshot):
+        """Get all metadata associated with a snapshot."""
+        rv = self.db.snapshot_metadata_get(context, snapshot['id'])
+        return dict(rv.iteritems())
+
+    def delete_snapshot_metadata(self, context, snapshot, key):
+        """Delete the given metadata item from a snapshot."""
+        self.db.snapshot_metadata_delete(context, snapshot['id'], key)
+
+    def update_snapshot_metadata(self, context,
+                                 snapshot, metadata,
+                                 delete=False):
+        """Updates or creates snapshot metadata.
+
+        If delete is True, metadata items that are not specified in the
+        `metadata` argument will be deleted.
+
+        """
+        orig_meta = self.get_snapshot_metadata(context, snapshot)
+        if delete:
+            _metadata = metadata
+        else:
+            _metadata = orig_meta.copy()
+            _metadata.update(metadata)
+
+        self._check_metadata_properties(context, _metadata)
+
+        self.db.snapshot_metadata_update(context,
+                                         snapshot['id'],
+                                         _metadata,
+                                         True)
+
+        # TODO(jdg): Implement an RPC call for drivers that may use this info
+
+        return _metadata
+
+    def get_snapshot_metadata_value(self, snapshot, key):
+        pass
 
     @wrap_check_policy
     def get_volume_image_metadata(self, context, volume):

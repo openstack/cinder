@@ -48,11 +48,14 @@ def _get_default_snapshot_param():
     }
 
 
-def stub_snapshot_create(self, context, volume_id, name, description):
+def stub_snapshot_create(self, context,
+                         volume_id, name,
+                         description, metadata):
     snapshot = _get_default_snapshot_param()
     snapshot['volume_id'] = volume_id
     snapshot['display_name'] = name
     snapshot['display_description'] = description
+    snapshot['metadata'] = metadata
     return snapshot
 
 
@@ -160,6 +163,7 @@ class SnapshotApiTest(test.TestCase):
                 'created_at': None,
                 'name': 'Updated Test Name',
                 'description': 'Default description',
+                'metadata': {},
             }
         }
         self.assertEquals(expected, res_dict)

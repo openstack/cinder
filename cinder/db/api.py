@@ -320,6 +320,24 @@ def snapshot_data_get_for_project(context, project_id, session=None):
 ####################
 
 
+def snapshot_metadata_get(context, snapshot_id):
+    """Get all metadata for a snapshot."""
+    return IMPL.snapshot_metadata_get(context, snapshot_id)
+
+
+def snapshot_metadata_delete(context, snapshot_id, key):
+    """Delete the given metadata item."""
+    IMPL.snapshot_metadata_delete(context, snapshot_id, key)
+
+
+def snapshot_metadata_update(context, snapshot_id, metadata, delete):
+    """Update metadata if it exists, otherwise create it."""
+    IMPL.snapshot_metadata_update(context, snapshot_id, metadata, delete)
+
+
+####################
+
+
 def volume_metadata_get(context, volume_id):
     """Get all metadata for a volume."""
     return IMPL.volume_metadata_get(context, volume_id)
