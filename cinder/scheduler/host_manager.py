@@ -116,10 +116,10 @@ class HostState(object):
 
     def update_from_volume_capability(self, capability):
         """Update information about a host from its volume_node info."""
-        if self.updated and self.updated > capability['timestamp']:
-            return
-
         if capability:
+            if self.updated and self.updated > capability['timestamp']:
+                return
+
             self.volume_backend = capability.get('volume_backend_name', None)
             self.vendor_name = capability.get('vendor_name', None)
             self.driver_version = capability.get('driver_version', None)
