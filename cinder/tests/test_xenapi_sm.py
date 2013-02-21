@@ -36,6 +36,11 @@ class MockContext(object):
         ctxt.auth_token = auth_token
 
 
+@contextlib.contextmanager
+def simple_context(value):
+    yield value
+
+
 def get_configured_driver(server='ignore_server', path='ignore_path'):
     configuration = mox.MockObject(conf.Configuration)
     configuration.xenapi_nfs_server = server
@@ -264,6 +269,89 @@ class DriverTestCase(unittest.TestCase):
         drv.delete_snapshot(snapshot)
         mock.VerifyAll()
 
+    def test_copy_volume_to_image_xenserver_case(self):
+        mock, drv = self._setup_mock_driver(
+            'server', 'serverpath', '/var/run/sr-mount')
+
+        mock.StubOutWithMock(drv, '_use_glance_plugin_to_upload_volume')
+        mock.StubOutWithMock(driver, 'is_xenserver_format')
+        context = MockContext('token')
+
+        driver.is_xenserver_format('image_meta').AndReturn(True)
+
+        drv._use_glance_plugin_to_upload_volume(
+            context, 'volume', 'image_service', 'image_meta').AndReturn(
+                'result')
+        mock.ReplayAll()
+
+        result = drv.copy_volume_to_image(
+            context, "volume", "image_service", "image_meta")
+        self.assertEquals('result', result)
+
+        mock.VerifyAll()
+
+    def test_copy_volume_to_image_non_xenserver_case(self):
+        mock, drv = self._setup_mock_driver(
+            'server', 'serverpath', '/var/run/sr-mount')
+
+        mock.StubOutWithMock(drv, '_use_image_utils_to_upload_volume')
+        mock.StubOutWithMock(driver, 'is_xenserver_format')
+        context = MockContext('token')
+
+        driver.is_xenserver_format('image_meta').AndReturn(False)
+
+        drv._use_image_utils_to_upload_volume(
+            context, 'volume', 'image_service', 'image_meta').AndReturn(
+                'result')
+        mock.ReplayAll()
+
+        result = drv.copy_volume_to_image(
+            context, "volume", "image_service", "image_meta")
+        self.assertEquals('result', result)
+
+        mock.VerifyAll()
+
+    def test_use_image_utils_to_upload_volume(self):
+        mock, drv = self._setup_mock_driver(
+            'server', 'serverpath', '/var/run/sr-mount')
+
+        volume = dict(provider_location='sr-uuid/vdi-uuid')
+        context = MockContext('token')
+
+        mock.StubOutWithMock(driver.image_utils, 'upload_volume')
+
+        drv.nfs_ops.volume_attached_here(
+            'server', 'serverpath', 'sr-uuid', 'vdi-uuid', True).AndReturn(
+                simple_context('device'))
+
+        driver.image_utils.upload_volume(
+            context, 'image_service', 'image_meta', 'device')
+
+        mock.ReplayAll()
+        drv._use_image_utils_to_upload_volume(
+            context, volume, "image_service", "image_meta")
+        mock.VerifyAll()
+
+    def test_use_glance_plugin_to_upload_volume(self):
+        mock, drv = self._setup_mock_driver(
+            'server', 'serverpath', '/var/run/sr-mount')
+
+        volume = dict(provider_location='sr-uuid/vdi-uuid')
+        context = MockContext('token')
+
+        mock.StubOutWithMock(driver.glance, 'get_api_servers')
+
+        driver.glance.get_api_servers().AndReturn((x for x in ['glancesrv']))
+
+        drv.nfs_ops.use_glance_plugin_to_upload_volume(
+            'server', 'serverpath', 'sr-uuid', 'vdi-uuid', 'glancesrv',
+            'image-id', 'token', '/var/run/sr-mount')
+
+        mock.ReplayAll()
+        drv._use_glance_plugin_to_upload_volume(
+            context, volume, "image_service", {"id": "image-id"})
+        mock.VerifyAll()
+
     def test_copy_image_to_volume_xenserver_case(self):
         mock, drv = self._setup_mock_driver(
             'server', 'serverpath', '/var/run/sr-mount')
@@ -307,10 +395,6 @@ class DriverTestCase(unittest.TestCase):
         context = MockContext('token')
 
         mock.StubOutWithMock(driver.image_utils, 'fetch_to_raw')
-
-        @contextlib.contextmanager
-        def simple_context(value):
-            yield value
 
         drv.nfs_ops.volume_attached_here(
             'server', 'serverpath', 'sr-uuid', 'vdi-uuid', False).AndReturn(
