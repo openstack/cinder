@@ -295,7 +295,8 @@ class API(base.Base):
             if reservations:
                 QUOTAS.commit(context, reservations)
             return
-        if not force and volume['status'] not in ["available", "error"]:
+        if not force and volume['status'] not in ["available", "error",
+                                                  "error_restoring"]:
             msg = _("Volume status must be available or error")
             raise exception.InvalidVolume(reason=msg)
 

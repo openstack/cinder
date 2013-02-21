@@ -523,3 +523,65 @@ class TestMigrations(test.TestCase):
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
 
             self.assertEquals(0, len(snapshots.c.volume_id.foreign_keys))
+
+    def test_migration_008(self):
+        """Test that adding and removing the backups table works correctly"""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 7)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 8)
+
+            self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                     "backups"))
+            backups = sqlalchemy.Table('backups',
+                                       metadata,
+                                       autoload=True)
+
+            self.assertTrue(isinstance(backups.c.created_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(backups.c.updated_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(backups.c.deleted_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(backups.c.deleted.type,
+                                       sqlalchemy.types.BOOLEAN))
+            self.assertTrue(isinstance(backups.c.id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.volume_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.user_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.project_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.host.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.availability_zone.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.display_name.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.display_description.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.container.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.status.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.fail_reason.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.service_metadata.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.service.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(backups.c.size.type,
+                                       sqlalchemy.types.INTEGER))
+            self.assertTrue(isinstance(backups.c.object_count.type,
+                                       sqlalchemy.types.INTEGER))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 7)
+
+            self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                      "backups"))

@@ -61,7 +61,10 @@ db_opts = [
                help='Template string to be used to generate volume names'),
     cfg.StrOpt('snapshot_name_template',
                default='snapshot-%s',
-               help='Template string to be used to generate snapshot names'), ]
+               help='Template string to be used to generate snapshot names'),
+    cfg.StrOpt('backup_name_template',
+               default='backup-%s',
+               help='Template string to be used to generate backup names'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(db_opts)
@@ -676,3 +679,45 @@ def quota_destroy_all_by_project(context, project_id):
 def reservation_expire(context):
     """Roll back any expired reservations."""
     return IMPL.reservation_expire(context)
+
+
+###################
+
+
+def backup_get(context, backup_id):
+    """Get a backup or raise if it does not exist."""
+    return IMPL.backup_get(context, backup_id)
+
+
+def backup_get_all(context):
+    """Get all backups."""
+    return IMPL.backup_get_all(context)
+
+
+def backup_get_all_by_host(context, host):
+    """Get all backups belonging to a host."""
+    return IMPL.backup_get_all_by_host(context, host)
+
+
+def backup_create(context, values):
+    """Create a backup from the values dictionary."""
+    return IMPL.backup_create(context, values)
+
+
+def backup_get_all_by_project(context, project_id):
+    """Get all backups belonging to a project."""
+    return IMPL.backup_get_all_by_project(context, project_id)
+
+
+def backup_update(context, backup_id, values):
+    """
+    Set the given properties on a backup and update it.
+
+    Raises NotFound if backup does not exist.
+    """
+    return IMPL.backup_update(context, backup_id, values)
+
+
+def backup_destroy(context, backup_id):
+    """Destroy the backup or raise if it does not exist."""
+    return IMPL.backup_destroy(context, backup_id)

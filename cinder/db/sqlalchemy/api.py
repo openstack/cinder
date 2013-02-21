@@ -1827,3 +1827,68 @@ def sm_volume_get(context, volume_id):
 
 def sm_volume_get_all(context):
     return model_query(context, models.SMVolume, read_deleted="yes").all()
+
+
+###############################
+
+
+@require_context
+def backup_get(context, backup_id, session=None):
+    result = model_query(context, models.Backup,
+                         read_deleted="yes").filter_by(id=backup_id).first()
+    if not result:
+        raise exception.BackupNotFound(backup_id=backup_id)
+    return result
+
+
+@require_admin_context
+def backup_get_all(context):
+    return model_query(context, models.Backup, read_deleted="yes").all()
+
+
+@require_admin_context
+def backup_get_all_by_host(context, host):
+    return model_query(context, models.Backup,
+                       read_deleted="yes").filter_by(host=host).all()
+
+
+@require_context
+def backup_get_all_by_project(context, project_id):
+    authorize_project_context(context, project_id)
+
+    return model_query(context, models.Backup, read_deleted="yes").all()
+
+
+@require_context
+def backup_create(context, values):
+    backup = models.Backup()
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+    backup.update(values)
+    backup.save()
+    return backup
+
+
+@require_context
+def backup_update(context, backup_id, values):
+    session = get_session()
+    with session.begin():
+        backup = model_query(context, models.Backup,
+                             session=session, read_deleted="yes").\
+            filter_by(id=backup_id).first()
+
+        if not backup:
+            raise exception.BackupNotFound(
+                _("No backup with id %(backup_id)s") % locals())
+
+        backup.update(values)
+        backup.save(session=session)
+    return backup
+
+
+@require_admin_context
+def backup_destroy(context, backup_id):
+    session = get_session()
+    with session.begin():
+        model_query(context, models.Backup,
+                    read_deleted="yes").filter_by(id=backup_id).delete()
