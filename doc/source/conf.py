@@ -90,7 +90,6 @@ version = version_info.version_string()
 # List of documents that shouldn't be included in the build.
 unused_docs = [
     'api_ext/rst_extension_template',
-    'vmwareapi_readme',
     'installer',
 ]
 
