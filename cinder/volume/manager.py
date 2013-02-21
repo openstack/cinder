@@ -209,6 +209,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         status = 'available'
         model_update = False
         image_meta = None
+        cloned = False
 
         try:
             vol_name = volume_ref['name']
@@ -306,11 +307,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_volume_usage(context, volume_ref, "create.end")
         return volume_ref['id']
 
-    def _log_original_error(self, exc_info, volume_id):
+    def _log_original_error(self, exc_info):
         type_, value, tb = exc_info
         LOG.error(_('Error: %s') %
-                  traceback.format_exception(type_, value, tb),
-                  volume_id=volume_id)
+                  traceback.format_exception(type_, value, tb))
 
     def _reschedule_or_reraise(self, context, volume_id, exc_info,
                                snapshot_id, image_id, request_spec,
@@ -335,12 +335,11 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         except Exception:
             rescheduled = False
-            LOG.exception(_("Error trying to reschedule %(volume_id)s"),
-                          volume_id=volume_id)
+            LOG.exception(_("Error trying to reschedule"))
 
         if rescheduled:
             # log the original build error
-            self._log_original_error(exc_info, volume_id)
+            self._log_original_error(exc_info)
         else:
             # not re-scheduling
             raise exc_info[0], exc_info[1], exc_info[2]
