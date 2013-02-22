@@ -536,7 +536,8 @@ class ISCSIDriver(VolumeDriver):
         try:
             properties['target_lun'] = int(results[2])
         except (IndexError, ValueError):
-            if FLAGS.iscsi_helper == 'tgtadm':
+            if (FLAGS.volume_driver == 'cinder.volume.driver.ISCSIDriver' and
+                FLAGS.iscsi_helper == 'tgtadm'):
                 properties['target_lun'] = 1
             else:
                 properties['target_lun'] = 0
