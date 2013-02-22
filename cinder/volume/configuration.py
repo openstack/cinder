@@ -42,8 +42,9 @@ option group. This is due to the way cfg works. All cfg options must be defined
 and registered in the group in which they are used.
 """
 
+from oslo.config import cfg
+
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 
 
