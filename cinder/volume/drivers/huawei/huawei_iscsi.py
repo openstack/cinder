@@ -21,11 +21,12 @@ Volume driver for HUAWEI T series and Dorado storage systems.
 import re
 import socket
 import time
+
+from oslo.config import cfg
 from xml.etree import ElementTree as ET
 
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils

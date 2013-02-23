@@ -17,6 +17,7 @@
 
 import uuid
 
+from oslo.config import cfg
 import webob
 
 from cinder.api import extensions
@@ -24,7 +25,6 @@ from cinder.api.v2 import snapshot_metadata
 from cinder.api.v2 import snapshots
 import cinder.db
 from cinder import exception
-from cinder.openstack.common import cfg
 from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes

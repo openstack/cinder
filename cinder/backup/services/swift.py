@@ -30,17 +30,18 @@
                                None (to disable), zlib and bz2 (default: zlib)
 """
 
-import eventlet
 import hashlib
 import httplib
 import json
 import os
 import StringIO
 
+import eventlet
+from oslo.config import cfg
+
 from cinder.db import base
 from cinder import exception
 from cinder import flags
-from cinder.openstack.common import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from swiftclient import client as swift
