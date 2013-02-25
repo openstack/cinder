@@ -204,6 +204,27 @@ class XenAPINFSDriver(driver.VolumeDriver):
             volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        if is_xenserver_format(image_meta):
+            return self._use_glance_plugin_to_upload_volume(
+                context, volume, image_service, image_meta)
+
+        return self._use_image_utils_to_upload_volume(
+            context, volume, image_service, image_meta)
+
+    def _use_image_utils_to_upload_volume(self, context, volume, image_service,
+                                          image_meta):
+        sr_uuid, vdi_uuid = volume['provider_location'].split('/')
+        with self.nfs_ops.volume_attached_here(FLAGS.xenapi_nfs_server,
+                                               FLAGS.xenapi_nfs_serverpath,
+                                               sr_uuid, vdi_uuid,
+                                               True) as device:
+            image_utils.upload_volume(context,
+                                      image_service,
+                                      image_meta,
+                                      device)
+
+    def _use_glance_plugin_to_upload_volume(self, context, volume,
+                                            image_service, image_meta):
         image_id = image_meta['id']
 
         sr_uuid, vdi_uuid = volume['provider_location'].split('/')
@@ -238,7 +259,10 @@ class XenAPINFSDriver(driver.VolumeDriver):
 
 def is_xenserver_image(context, image_service, image_id):
     image_meta = image_service.show(context, image_id)
+    return is_xenserver_format(image_meta)
 
+
+def is_xenserver_format(image_meta):
     return (
         image_meta['disk_format'] == 'vhd'
         and image_meta['container_format'] == 'ovf'
