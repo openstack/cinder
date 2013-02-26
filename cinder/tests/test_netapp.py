@@ -21,7 +21,9 @@ Tests for NetApp volume driver
 
 import BaseHTTPServer
 import httplib
+import shutil
 import StringIO
+import tempfile
 
 from lxml import etree
 
@@ -975,6 +977,8 @@ class NetAppDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppDriverTestCase, self).setUp()
+        self.tempdir = tempfile.mkdtemp()
+        self.flags(lock_path=self.tempdir)
         driver = iscsi.NetAppISCSIDriver()
         self.stubs.Set(httplib, 'HTTPConnection', FakeHTTPConnection)
         driver._create_client(wsdl_url='http://localhost:8088/dfm.wsdl',
@@ -984,6 +988,10 @@ class NetAppDriverTestCase(test.TestCase):
         driver._set_storage_service_prefix(self.STORAGE_SERVICE_PREFIX)
         driver._set_vfiler('')
         self.driver = driver
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+        super(NetAppDriverTestCase, self).setUp()
 
     def test_connect(self):
         self.driver.check_for_setup_error()
