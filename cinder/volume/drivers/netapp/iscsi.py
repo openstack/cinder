@@ -33,6 +33,7 @@ from suds.sax import text
 
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.api import NaApiError
@@ -383,6 +384,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         self.discovered_datasets.append(ds)
         return ds
 
+    @lockutils.synchronized('netapp_dfm', 'cinder-', True)
     def _provision(self, name, description, project, ss_type, size):
         """Provision a LUN through provisioning manager.
 
@@ -443,6 +445,7 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
             return None
         return volume_type['name']
 
+    @lockutils.synchronized('netapp_dfm', 'cinder-', True)
     def _remove_destroy(self, name, project):
         """Remove the LUN from the dataset, also destroying it.
 
