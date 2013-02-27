@@ -141,7 +141,7 @@ class TgtAdm(TargetAdmin):
                 </target>
             """ % (name, path, chap_auth)
 
-        LOG.info(_('Creating volume: %s') % vol_id)
+        LOG.info(_('Creating iscsi_target for: %s') % vol_id)
         volumes_dir = FLAGS.volumes_dir
         volume_path = os.path.join(volumes_dir, vol_id)
 
@@ -181,7 +181,7 @@ class TgtAdm(TargetAdmin):
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
-        LOG.info(_('Removing volume: %s') % vol_id)
+        LOG.info(_('Removing iscsi_target for: %s') % vol_id)
         vol_uuid_file = FLAGS.volume_name_template % vol_id
         volume_path = os.path.join(FLAGS.volumes_dir, vol_uuid_file)
         if os.path.isfile(volume_path):
@@ -195,7 +195,7 @@ class TgtAdm(TargetAdmin):
                           iqn,
                           run_as_root=True)
         except exception.ProcessExecutionError, e:
-            LOG.error(_("Failed to delete iscsi target for volume "
+            LOG.error(_("Failed to remove iscsi target for volume "
                         "id:%(vol_id)s.") % locals())
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
@@ -246,7 +246,7 @@ class IetAdm(TargetAdmin):
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
-        LOG.info(_('Removing volume: %s') % vol_id)
+        LOG.info(_('Removing iscsi_target for volume: %s') % vol_id)
         self._delete_logicalunit(tid, lun, **kwargs)
         self._delete_target(tid, **kwargs)
         vol_uuid_file = FLAGS.volume_name_template % vol_id
@@ -352,7 +352,7 @@ class LioAdm(TargetAdmin):
 
         vol_id = name.split(':')[1]
 
-        LOG.info(_('Creating volume: %s') % vol_id)
+        LOG.info(_('Creating iscsi_target for volume: %s') % vol_id)
 
         # cinder-rtstool requires chap_auth, but unit tests don't provide it
         chap_auth_userid = 'test_id'
@@ -392,7 +392,7 @@ class LioAdm(TargetAdmin):
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
-        LOG.info(_('Removing volume: %s') % vol_id)
+        LOG.info(_('Removing iscsi_target: %s') % vol_id)
         vol_uuid_name = 'volume-%s' % vol_id
         iqn = '%s%s' % (FLAGS.iscsi_target_prefix, vol_uuid_name)
 

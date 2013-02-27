@@ -187,6 +187,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         size_in_m = self.configuration.volume_clear_size
 
         if not size_in_g:
+            LOG.warning(_("Size for volume: %s not found, "
+                          "skipping secure delete.") % volume['name'])
             return
 
         if self.configuration.volume_clear == 'none':
@@ -196,7 +198,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         if self.configuration.volume_clear == 'zero':
             if size_in_m == 0:
-                return self._copy_volume('/dev/zero', vol_path, size_in_g,
+                return self._copy_volume('/dev/zero',
+                                         vol_path, size_in_g,
                                          clearing=True)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
@@ -225,6 +228,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Deletes a snapshot."""
         if self._volume_not_present(self._escape_snapshot(snapshot['name'])):
             # If the snapshot isn't present, then don't attempt to delete
+            LOG.warning(_("snapshot: %s not found, "
+                          "skipping delete operations") % snapshot['name'])
             return True
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.
