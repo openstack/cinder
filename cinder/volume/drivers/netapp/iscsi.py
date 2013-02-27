@@ -77,7 +77,11 @@ netapp_opts = [
                help='Cluster vserver to use for provisioning'),
     cfg.FloatOpt('netapp_size_multiplier',
                  default=1.2,
-                 help='Volume size multiplier to ensure while creation'), ]
+                 help='Volume size multiplier to ensure while creation'),
+    cfg.StrOpt('netapp_volume_list',
+               default='',
+               help='Comma separated eligible volumes for provisioning on'
+                    ' 7 mode'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(netapp_opts)
@@ -2244,6 +2248,10 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
     def _do_custom_setup(self):
         """Does custom setup depending on the type of filer."""
         self.vfiler = FLAGS.netapp_vfiler
+        self.volume_list = FLAGS.netapp_volume_list
+        if self.volume_list:
+            self.volume_list = self.volume_list.split(',')
+            self.volume_list = [el.strip() for el in self.volume_list]
         if self.vfiler:
             (major, minor) = self._get_ontapi_version()
             self.client.set_api_version(major, minor)
@@ -2263,8 +2271,12 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                 avl_vol['block-type'] = vol.get_child_content('block-type')
                 avl_vol['type'] = vol.get_child_content('type')
                 avl_vol['size-available'] = avl_size
-                if self._check_vol_not_root(avl_vol):
-                    return avl_vol
+                if self.volume_list:
+                    if avl_vol['name'] in self.volume_list:
+                        return avl_vol
+                else:
+                    if self._check_vol_not_root(avl_vol):
+                        return avl_vol
         return None
 
     def _check_vol_not_root(self, vol):
@@ -2342,10 +2354,29 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
 
     def _get_lun_list(self):
         """Gets the list of luns on filer."""
+        lun_list = []
+        if self.volume_list:
+            for vol in self.volume_list:
+                try:
+                    luns = self._get_vol_luns(vol)
+                    if luns:
+                        lun_list.extend(luns)
+                except NaApiError:
+                    LOG.warn(_("Error finding luns for volume %(vol)s."
+                               " Verify volume exists.") % locals())
+        else:
+            luns = self._get_vol_luns(None)
+            lun_list.extend(luns)
+        self._extract_and_populate_luns(lun_list)
+
+    def _get_vol_luns(self, vol_name):
+        """Gets the luns for a volume."""
         api = NaElement('lun-list-info')
+        if vol_name:
+            api.add_new_child('volume-name', vol_name)
         result = self._invoke_successfully(api, True)
         luns = result.get_child_by_name('luns')
-        self._extract_and_populate_luns(luns.get_children())
+        return luns.get_children()
 
     def _find_mapped_lun_igroup(self, path, initiator, os=None):
         """Find the igroup for mapped lun with initiator."""

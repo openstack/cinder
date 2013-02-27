@@ -2280,11 +2280,31 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
                               hostname='127.0.0.1',
                               port='80')
         driver.vfiler = None
+        driver.volume_list = None
         self.driver = driver
+
+    def test_create_on_select_vol(self):
+        self.driver.volume_list = ['vol0', 'vol1']
+        self.driver.create_volume(self.volume)
+        self.driver.delete_volume(self.volume)
+        self.driver.volume_list = []
+
+    def test_create_fail_on_select_vol(self):
+        self.driver.volume_list = ['vol2', 'vol3']
+        success = False
+        try:
+            self.driver.create_volume(self.volume)
+        except VolumeBackendAPIException:
+            success = True
+            pass
+        finally:
+            self.driver.volume_list = []
+        if not success:
+            raise AssertionError('Failed creating on selected volumes')
 
 
 class NetAppDirect7modeISCSIDriverTestCase_WV(
-        NetAppDirectCmodeISCSIDriverTestCase):
+        NetAppDirect7modeISCSIDriverTestCase_NV):
     """Test case for NetAppISCSIDriver
        With vfiler
     """
@@ -2301,4 +2321,5 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
                               port='80')
         driver.vfiler = 'vfiler'
         driver.client.set_api_version(1, 7)
+        driver.volume_list = None
         self.driver = driver
