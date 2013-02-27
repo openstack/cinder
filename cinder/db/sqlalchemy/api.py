@@ -1523,7 +1523,7 @@ def volume_get_active_by_window(context,
     session = get_session()
     query = session.query(models.Volume)
 
-    query = query.filter(or_(models.Volume.deleted_at is None,
+    query = query.filter(or_(models.Volume.deleted_at == None,
                              models.Volume.deleted_at > begin))
     if end:
         query = query.filter(models.Volume.created_at < end)
