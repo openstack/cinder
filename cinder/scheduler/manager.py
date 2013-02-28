@@ -116,7 +116,7 @@ class SchedulerManager(manager.Manager):
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,
                                      request_spec):
-        LOG.warning(_("Failed to schedule_%(method)s: %(ex)s") % locals())
+        LOG.error(_("Failed to schedule_%(method)s: %(ex)s") % locals())
 
         volume_state = updates['volume_state']
         properties = request_spec.get('volume_properties', {})
