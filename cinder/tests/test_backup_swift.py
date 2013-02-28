@@ -26,6 +26,7 @@ import zlib
 from cinder.backup.services.swift import SwiftBackupService
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
@@ -121,6 +122,26 @@ class BackupSwiftTestCase(test.TestCase):
         backup = db.backup_get(self.ctxt, 123)
         self.assertEquals(backup['container'], container_name)
 
+    def test_create_backup_container_check_wraps_socket_error(self):
+        container_name = 'socket_error_on_head'
+        self._create_backup_db_entry(container=container_name)
+        service = SwiftBackupService(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.backup,
+                          backup, self.volume_file)
+
+    def test_create_backup_put_object_wraps_socket_error(self):
+        container_name = 'socket_error_on_put'
+        self._create_backup_db_entry(container=container_name)
+        service = SwiftBackupService(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.backup,
+                          backup, self.volume_file)
+
     def test_restore(self):
         self._create_backup_db_entry()
         service = SwiftBackupService(self.ctxt)
@@ -129,11 +150,31 @@ class BackupSwiftTestCase(test.TestCase):
             backup = db.backup_get(self.ctxt, 123)
             service.restore(backup, '1234-5678-1234-8888', volume_file)
 
+    def test_restore_wraps_socket_error(self):
+        container_name = 'socket_error_on_get'
+        self._create_backup_db_entry(container=container_name)
+        service = SwiftBackupService(self.ctxt)
+
+        with tempfile.NamedTemporaryFile() as volume_file:
+            backup = db.backup_get(self.ctxt, 123)
+            self.assertRaises(exception.SwiftConnectionFailed,
+                              service.restore,
+                              backup, '1234-5678-1234-8888', volume_file)
+
     def test_delete(self):
         self._create_backup_db_entry()
         service = SwiftBackupService(self.ctxt)
         backup = db.backup_get(self.ctxt, 123)
         service.delete(backup)
+
+    def test_delete_wraps_socket_error(self):
+        container_name = 'socket_error_on_delete'
+        self._create_backup_db_entry(container=container_name)
+        service = SwiftBackupService(self.ctxt)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.delete,
+                          backup)
 
     def test_get_compressor(self):
         service = SwiftBackupService(self.ctxt)
