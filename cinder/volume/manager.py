@@ -125,8 +125,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                        "configuration to the new path."), volume_driver)
             volume_driver = MAPPING[volume_driver]
         self.driver = importutils.import_object(
-                                        volume_driver,
-                                        configuration=self.configuration)
+            volume_driver,
+            configuration=self.configuration)
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
@@ -200,7 +200,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             filter_properties = {}
         volume_ref = self.db.volume_get(context, volume_id)
         self._notify_about_volume_usage(context, volume_ref, "create.start")
-        LOG.info(_("volume %s: creating"), volume_ref['name'])
 
         # NOTE(vish): so we don't have to get volume from db again
         #             before passing it to the driver.
@@ -223,16 +222,24 @@ class VolumeManager(manager.SchedulerDependentManager):
             image_meta = None
 
             if snapshot_id is not None:
+                LOG.info(_("volume %s: creating from snapshot"),
+                         volume_ref['name'])
                 snapshot_ref = self.db.snapshot_get(context, snapshot_id)
             elif source_volid is not None:
+                LOG.info(_("volume %s: creating from existing volume"),
+                         volume_ref['name'])
                 sourcevol_ref = self.db.volume_get(context, source_volid)
             elif image_id is not None:
+                LOG.info(_("volume %s: creating from image"),
+                         volume_ref['name'])
                 # create the volume from an image
                 image_service, image_id = \
                     glance.get_remote_image_service(context,
                                                     image_id)
                 image_location = image_service.get_location(context, image_id)
                 image_meta = image_service.show(context, image_id)
+            else:
+                LOG.info(_("volume %s: creating"), volume_ref['name'])
 
             try:
                 model_update, cloned = self._create_volume(context,
@@ -272,6 +279,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context,
                                       volume_ref['id'], {'status': 'error'})
+                LOG.error(_("volume %s: create failed"), volume_ref['name'])
 
         if snapshot_id:
             # Copy any Glance metadata from the original volume
@@ -301,7 +309,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_update(context,
                               volume_ref['id'], {'status': status,
                                                  'launched_at': now})
-        LOG.debug(_("volume %s: created successfully"), volume_ref['name'])
+        LOG.info(_("volume %s: created successfully"), volume_ref['name'])
         self._reset_stats()
 
         self._notify_about_volume_usage(context, volume_ref, "create.end")
@@ -384,12 +392,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Deletes and unexports volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
+        LOG.info(_("volume %s: deleting"), volume_ref['name'])
         if volume_ref['attach_status'] == "attached":
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
         if volume_ref['host'] != self.host:
             raise exception.InvalidVolume(
-                reason=_("Volume is not local to this node"))
+                reason=_("volume is not local to this node"))
 
         self._notify_about_volume_usage(context, volume_ref, "delete.start")
         self._reset_stats()
@@ -420,7 +429,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
         self.db.volume_destroy(context, volume_id)
-        LOG.debug(_("volume %s: deleted successfully"), volume_ref['name'])
+        LOG.info(_("volume %s: deleted successfully"), volume_ref['name'])
         self._notify_about_volume_usage(context, volume_ref, "delete.end")
 
         # Commit the reservations
@@ -455,13 +464,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_glance_metadata_copy_to_snapshot(context,
                                                         snapshot_ref['id'],
                                                         volume_id)
-        LOG.debug(_("snapshot %s: created successfully"), snapshot_ref['name'])
+        LOG.info(_("snapshot %s: created successfully"), snapshot_ref['name'])
         return snapshot_id
 
     def delete_snapshot(self, context, snapshot_id):
         """Deletes and unexports snapshot."""
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+        LOG.info(_("snapshot %s: deleting"), snapshot_ref['name'])
 
         try:
             LOG.debug(_("snapshot %s: deleting"), snapshot_ref['name'])
@@ -480,7 +490,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
         self.db.snapshot_destroy(context, snapshot_id)
-        LOG.debug(_("snapshot %s: deleted successfully"), snapshot_ref['name'])
+        LOG.info(_("snapshot %s: deleted successfully"), snapshot_ref['name'])
         return True
 
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
