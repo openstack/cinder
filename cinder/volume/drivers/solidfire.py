@@ -29,7 +29,6 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import volume_types
@@ -45,9 +44,6 @@ sf_opts = [
     cfg.BoolOpt('sf_allow_tenant_qos',
                 default=False,
                 help='Allow tenants to specify QOS on create'), ]
-
-FLAGS = flags.FLAGS
-FLAGS.register_opts(sf_opts)
 
 
 class SolidFire(SanISCSIDriver):
@@ -76,10 +72,11 @@ class SolidFire(SanISCSIDriver):
     sf_qos_keys = ['minIOPS', 'maxIOPS', 'burstIOPS']
     cluster_stats = {}
 
-    GB = math.pow(10, 9)
+    GB = math.pow(2, 30)
 
     def __init__(self, *args, **kwargs):
             super(SolidFire, self).__init__(*args, **kwargs)
+            self.configuration.append_config_values(sf_opts)
             self._update_cluster_status()
 
     def _issue_api_request(self, method_name, params):
@@ -94,12 +91,12 @@ class SolidFire(SanISCSIDriver):
                                    'xMaxClonesPerVolumeExceeded',
                                    'xMaxSnapshotsPerNodeExceeded',
                                    'xMaxClonesPerNodeExceeded']
-        host = FLAGS.san_ip
+        host = self.configuration.san_ip
         # For now 443 is the only port our server accepts requests on
         port = 443
 
-        cluster_admin = FLAGS.san_login
-        cluster_password = FLAGS.san_password
+        cluster_admin = self.configuration.san_login
+        cluster_password = self.configuration.san_password
 
         # NOTE(jdg): We're wrapping a retry loop for a know XDB issue
         # Shows up in very high request rates (ie create 1000 volumes)
@@ -160,10 +157,12 @@ class SolidFire(SanISCSIDriver):
                     time.sleep(5)
                     # Don't decrement the retry count for this one
                 elif 'xDBVersionMismatch' in data['error']['name']:
-                    LOG.debug(_('Detected xDBVersionMismatch, '
+                    LOG.warning(_('Detected xDBVersionMismatch, '
                                 'retry %s of 5') % (5 - retry_count))
                     time.sleep(1)
                     retry_count -= 1
+                elif 'xUnknownAccount' in data['error']['name']:
+                    retry_count = 0
                 else:
                     msg = _("API response: %s") % data
                     raise exception.SolidFireAPIException(msg)
@@ -257,12 +256,24 @@ class SolidFire(SanISCSIDriver):
         iscsi_portal = cluster_info['clusterInfo']['svip'] + ':3260'
         chap_secret = sfaccount['targetSecret']
 
-        volume_list = self._get_volumes_by_sfaccount(sfaccount['accountID'])
-        iqn = None
-        for v in volume_list:
-            if v['volumeID'] == sf_volume_id:
-                iqn = v['iqn']
-                break
+        found_volume = False
+        iteration_count = 0
+        while not found_volume and iteration_count < 10:
+            volume_list = self._get_volumes_by_sfaccount(
+                sfaccount['accountID'])
+            iqn = None
+            for v in volume_list:
+                if v['volumeID'] == sf_volume_id:
+                    iqn = v['iqn']
+                    found_volume = True
+                    break
+            time.sleep(2)
+            iteration_count += 1
+
+        if not found_volume:
+            LOG.error(_('Failed to retrieve volume SolidFire-'
+                        'ID: %s in get_by_account!') % sf_volume_id)
+            raise exception.VolumeNotFound(volume_id=uuid)
 
         model_update = {}
         # NOTE(john-griffith): SF volumes are always at lun 0
@@ -409,7 +420,7 @@ class SolidFire(SanISCSIDriver):
         attributes = {}
         qos = {}
 
-        if (FLAGS.sf_allow_tenant_qos and
+        if (self.configuration.sf_allow_tenant_qos and
                 volume.get('volume_metadata')is not None):
             qos = self._set_qos_presets(volume)
 
@@ -427,7 +438,7 @@ class SolidFire(SanISCSIDriver):
                   'accountID': None,
                   'sliceCount': slice_count,
                   'totalSize': int(volume['size'] * self.GB),
-                  'enable512e': FLAGS.sf_emulate_512,
+                  'enable512e': self.configuration.sf_emulate_512,
                   'attributes': attributes,
                   'qos': qos}
 
@@ -453,6 +464,13 @@ class SolidFire(SanISCSIDriver):
         LOG.debug(_("Enter SolidFire delete_volume..."))
 
         sfaccount = self._get_sfaccount(volume['project_id'])
+        if sfaccount is None:
+            LOG.error(_("Account for Volume ID %s was not found on "
+                        "the SolidFire Cluster!") % volume['id'])
+            LOG.error(_("This usually means the volume was never "
+                        "succesfully created."))
+            return
+
         params = {'accountID': sfaccount['accountID']}
 
         sf_vol = self._get_sf_volume(volume['id'], params)
@@ -546,8 +564,9 @@ class SolidFire(SanISCSIDriver):
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] = results['maxProvisionedSpace']
-        data['free_capacity_gb'] = free_capacity
-        data['reserved_percentage'] = FLAGS.reserved_percentage
+
+        data['free_capacity_gb'] = float(free_capacity)
+        data['reserved_percentage'] = 0
         data['QoS_support'] = True
         data['compression_percent'] =\
             results['compressionPercent']

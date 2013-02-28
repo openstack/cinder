@@ -16,6 +16,10 @@
 #    under the License.
 
 import mox
+from mox import IgnoreArg
+from mox import IsA
+from mox import stubout
+
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -35,6 +39,12 @@ def create_configuration():
 
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
+        self._mox = mox.Mox()
+        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration.sf_allow_tenant_qos = True
+        self.configuration.san_is_local = True
+        self.configuration.sf_emulate_512 = True
+
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request)
@@ -135,7 +145,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'volume_type_id': 'fast'}
 
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
         self.assertNotEqual(model_update, None)
 
@@ -147,7 +157,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'volume_type_id': None}
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
         self.assertNotEqual(model_update, None)
 
@@ -164,7 +174,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'metadata': [preset_qos],
                    'volume_type_id': None}
 
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
         self.assertNotEqual(model_update, None)
 
@@ -179,7 +189,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         try:
             sfv.create_volume(testvol)
             self.fail("Should have thrown Error")
@@ -187,28 +197,28 @@ class SolidFireVolumeTestCase(test.TestCase):
             pass
 
     def test_create_sfaccount(self):
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request)
         account = sfv._create_sfaccount('project-id')
         self.assertNotEqual(account, None)
 
     def test_create_sfaccount_fails(self):
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         account = sfv._create_sfaccount('project-id')
         self.assertEqual(account, None)
 
     def test_get_sfaccount_by_name(self):
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request)
         account = sfv._get_sfaccount_by_name('some-name')
         self.assertNotEqual(account, None)
 
     def test_get_sfaccount_by_name_fails(self):
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         account = sfv._get_sfaccount_by_name('some-name')
@@ -221,7 +231,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'test_volume',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         sfv.delete_volume(testvol)
 
     def test_delete_volume_fails_no_volume(self):
@@ -231,7 +241,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'no-name',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         try:
             sfv.delete_volume(testvol)
             self.fail("Should have thrown Error")
@@ -249,7 +259,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'no-name',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         self.assertRaises(exception.SfAccountNotFound,
                           sfv.delete_volume,
                           testvol)
@@ -257,7 +267,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_get_cluster_info(self):
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request)
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         sfv._get_cluster_info()
 
     def test_get_cluster_info_fail(self):
@@ -267,6 +277,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                        self.fake_update_cluster_status)
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request_fails)
-        sfv = SolidFire(configuration=create_configuration())
+        sfv = SolidFire(configuration=self.configuration)
         self.assertRaises(exception.SolidFireAPIException,
                           sfv._get_cluster_info)
