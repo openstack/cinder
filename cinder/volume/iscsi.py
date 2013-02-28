@@ -416,6 +416,25 @@ class LioAdm(TargetAdmin):
         if tid is None:
             raise exception.NotFound()
 
+    def initialize_connection(self, volume, connector):
+        volume_iqn = volume['provider_location'].split(' ')[1]
+
+        (auth_method, auth_user, auth_pass) = \
+            volume['provider_auth'].split(' ', 3)
+
+        # Add initiator iqns to target ACL
+        try:
+            self._execute('cinder-rtstool', 'add-initiator',
+                          volume_iqn,
+                          auth_user,
+                          auth_pass,
+                          connector['initiator'],
+                          run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            LOG.error(_("Failed to add initiator iqn %s to target") %
+                      connector['initiator'])
+            raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
+
 
 def get_target_admin():
     if FLAGS.iscsi_helper == 'tgtadm':

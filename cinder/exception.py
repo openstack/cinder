@@ -307,6 +307,10 @@ class ISCSITargetCreateFailed(CinderException):
     message = _("Failed to create iscsi target for volume %(volume_id)s.")
 
 
+class ISCSITargetAttachFailed(CinderException):
+    message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
+
+
 class ISCSITargetRemoveFailed(CinderException):
     message = _("Failed to remove iscsi target for volume %(volume_id)s.")
 

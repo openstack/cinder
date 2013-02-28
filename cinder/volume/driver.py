@@ -333,6 +333,9 @@ class ISCSIDriver(VolumeDriver):
 
         """
 
+        if self.configuration.iscsi_helper == 'lioadm':
+            self.tgtadm.initialize_connection(volume, connector)
+
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iscsi',
