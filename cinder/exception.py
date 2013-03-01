@@ -558,3 +558,7 @@ class BackupNotFound(NotFound):
 
 class InvalidBackup(Invalid):
     message = _("Invalid backup: %(reason)s")
+
+
+class SwiftConnectionFailed(CinderException):
+    message = _("Connection to swift failed") + ": %(reason)s"

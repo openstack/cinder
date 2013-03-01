@@ -34,6 +34,7 @@ import hashlib
 import httplib
 import json
 import os
+import socket
 import StringIO
 
 import eventlet
@@ -59,10 +60,10 @@ swiftbackup_service_opts = [
                default=52428800,
                help='The size in bytes of Swift backup objects'),
     cfg.IntOpt('backup_swift_retry_attempts',
-               default=10,
+               default=3,
                help='The number of retries to make for Swift operations'),
     cfg.IntOpt('backup_swift_retry_backoff',
-               default=10,
+               default=2,
                help='The backoff time in seconds between Swift retries'),
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
@@ -206,7 +207,10 @@ class SwiftBackupService(base.Base):
             err = _('volume size %d is invalid.') % volume['size']
             raise exception.InvalidVolume(reason=err)
 
-        container = self._create_container(self.context, backup)
+        try:
+            container = self._create_container(self.context, backup)
+        except socket.error as err:
+            raise exception.SwiftConnectionFailed(reason=str(err))
 
         object_prefix = self._generate_swift_object_name_prefix(backup)
         backup['service_metadata'] = object_prefix
@@ -246,7 +250,10 @@ class SwiftBackupService(base.Base):
 
             reader = StringIO.StringIO(data)
             LOG.debug(_('About to put_object'))
-            etag = self.conn.put_object(container, object_name, reader)
+            try:
+                etag = self.conn.put_object(container, object_name, reader)
+            except socket.error as err:
+                raise exception.SwiftConnectionFailed(reason=str(err))
             LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') % locals())
             md5 = hashlib.md5(data).hexdigest()
             obj[object_name]['md5'] = md5
@@ -260,7 +267,10 @@ class SwiftBackupService(base.Base):
             object_id += 1
             LOG.debug(_('Calling eventlet.sleep(0)'))
             eventlet.sleep(0)
-        self._write_metadata(backup, volume_id, container, object_list)
+        try:
+            self._write_metadata(backup, volume_id, container, object_list)
+        except socket.error as err:
+            raise exception.SwiftConnectionFailed(reason=str(err))
         self.db.backup_update(self.context, backup_id, {'object_count':
                                                         object_id})
         LOG.debug(_('backup %s finished.') % backup_id)
@@ -279,7 +289,10 @@ class SwiftBackupService(base.Base):
                     ' container: %(container)s, to volume %(volume_id)s, '
                     'backup: %(backup_id)s') % locals())
         swift_object_names = self._generate_object_names(backup)
-        metadata_objects = self._read_metadata(backup)
+        try:
+            metadata_objects = self._read_metadata(backup)
+        except socket.error as err:
+            raise exception.SwiftConnectionFailed(reason=str(err))
         metadata_object_names = []
         for metadata_object in metadata_objects:
             metadata_object_names.extend(metadata_object.keys())
@@ -298,7 +311,10 @@ class SwiftBackupService(base.Base):
             LOG.debug(_('restoring object from swift. backup: %(backup_id)s, '
                         'container: %(container)s, swift object name: '
                         '%(object_name)s, volume: %(volume_id)s') % locals())
-            (resp, body) = self.conn.get_object(container, object_name)
+            try:
+                (resp, body) = self.conn.get_object(container, object_name)
+            except socket.error as err:
+                raise exception.SwiftConnectionFailed(reason=str(err))
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
             if decompressor is not None:
@@ -336,6 +352,8 @@ class SwiftBackupService(base.Base):
             for swift_object_name in swift_object_names:
                 try:
                     self.conn.delete_object(container, swift_object_name)
+                except socket.error as err:
+                    raise exception.SwiftConnectionFailed(reason=str(err))
                 except Exception:
                     LOG.warn(_('swift error while deleting object %s, '
                                'continuing with delete') % swift_object_name)

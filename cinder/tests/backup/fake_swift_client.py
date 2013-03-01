@@ -16,6 +16,7 @@
 import httplib
 import json
 import os
+import socket
 import zlib
 
 from cinder.openstack.common import log as logging
@@ -45,9 +46,11 @@ class FakeSwiftConnection(object):
         if container == 'missing_container':
             raise swift.ClientException('fake exception',
                                         http_status=httplib.NOT_FOUND)
-        if container == 'unauthorized_container':
+        elif container == 'unauthorized_container':
             raise swift.ClientException('fake exception',
                                         http_status=httplib.UNAUTHORIZED)
+        elif container == 'socket_error_on_head':
+            raise socket.error(111, 'ECONNREFUSED')
         pass
 
     def put_container(self, container):
@@ -68,6 +71,8 @@ class FakeSwiftConnection(object):
 
     def get_object(self, container, name):
         LOG.debug("fake get_object(%s, %s)" % (container, name))
+        if container == 'socket_error_on_get':
+            raise socket.error(111, 'ECONNREFUSED')
         if 'metadata' in name:
             fake_object_header = None
             metadata = {}
@@ -92,8 +97,12 @@ class FakeSwiftConnection(object):
 
     def put_object(self, container, name, reader):
         LOG.debug("fake put_object(%s, %s)" % (container, name))
+        if container == 'socket_error_on_put':
+            raise socket.error(111, 'ECONNREFUSED')
         return 'fake-md5-sum'
 
     def delete_object(self, container, name):
         LOG.debug("fake delete_object(%s, %s)" % (container, name))
+        if container == 'socket_error_on_delete':
+            raise socket.error(111, 'ECONNREFUSED')
         pass
