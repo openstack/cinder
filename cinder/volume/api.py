@@ -287,8 +287,7 @@ class API(base.Base):
             except Exception:
                 reservations = None
                 LOG.exception(_("Failed to update quota for deleting volume"))
-
-            self.db.volume_destroy(context, volume_id)
+            self.db.volume_destroy(context.elevated(), volume_id)
 
             if reservations:
                 QUOTAS.commit(context, reservations)
