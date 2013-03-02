@@ -16,6 +16,7 @@
 SheepDog Volume Driver.
 
 """
+import re
 
 from cinder import exception
 from cinder import flags
@@ -29,6 +30,19 @@ FLAGS = flags.FLAGS
 
 class SheepdogDriver(driver.VolumeDriver):
     """Executes commands relating to Sheepdog Volumes"""
+
+    def __init__(self, *args, **kwargs):
+        super(SheepdogDriver, self).__init__(*args, **kwargs)
+        self._stats = dict(
+            volume_backend_name='sheepdog',
+            vendor_name='Open Source',
+            dirver_version='1.0',
+            storage_protocol='sheepdog',
+            total_capacity_gb='unknown',
+            free_capacity_gb='unknown',
+            reserved_percentage=0,
+            QoS_support=False)
+        self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
@@ -101,3 +115,21 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
+
+    def _update_volume_stats(self):
+        stats = {}
+        try:
+            stdout, _err = self._execute('collie', 'node', 'info', '-r')
+            m = self.stats_pattern.match(stdout)
+            total = float(m.group(1))
+            used = float(m.group(2))
+            stats['total_capacity_gb'] = total / (1024 ** 3)
+            stats['free_capacity_gb'] = (total - used) / (1024 ** 3)
+        except exception.ProcessExecutionError:
+            LOG.exception(_('error refreshing volume stats'))
+        self._stats.update(stats)
+
+    def get_volume_stats(self, refresh=False):
+        if refresh:
+            self._update_volume_stats()
+        return self._stats
