@@ -165,7 +165,7 @@ class HostStateTestCase(test.TestCase):
 
     def test_update_from_volume_capability(self):
         fake_host = host_manager.HostState('host1')
-        self.assertEqual(fake_host.free_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
 
         volume_capability = {'total_capacity_gb': 1024,
                              'free_capacity_gb': 512,
@@ -177,7 +177,7 @@ class HostStateTestCase(test.TestCase):
 
     def test_update_from_volume_infinite_capability(self):
         fake_host = host_manager.HostState('host1')
-        self.assertEqual(fake_host.free_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
 
         volume_capability = {'total_capacity_gb': 'infinite',
                              'free_capacity_gb': 'infinite',
@@ -190,7 +190,7 @@ class HostStateTestCase(test.TestCase):
 
     def test_update_from_volume_unknown_capability(self):
         fake_host = host_manager.HostState('host1')
-        self.assertEqual(fake_host.free_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
 
         volume_capability = {'total_capacity_gb': 'infinite',
                              'free_capacity_gb': 'unknown',

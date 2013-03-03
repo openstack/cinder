@@ -32,10 +32,10 @@ class CapacityFilter(filters.BaseHostFilter):
         """Return True if host has sufficient capacity."""
         volume_size = filter_properties.get('size')
 
-        if not host_state.free_capacity_gb:
+        if host_state.free_capacity_gb is None:
             # Fail Safe
-            LOG.warning(_("Free capacity not set;"
-                          "volume node info collection broken."))
+            LOG.error(_("Free capacity not set: "
+                        "volume node info collection broken."))
             return False
 
         free_space = host_state.free_capacity_gb
@@ -47,5 +47,11 @@ class CapacityFilter(filters.BaseHostFilter):
             return True
         reserved = float(host_state.reserved_percentage) / 100
         free = math.floor(free_space * (1 - reserved))
+        if free < volume_size:
+            LOG.warning(_("Insufficient free space for volume creation "
+                        "(requested / avail): "
+                        "%(requested)s/%(available)s")
+                        % {'requested': volume_size,
+                           'available': free})
 
         return free >= volume_size

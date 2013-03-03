@@ -99,7 +99,7 @@ class HostState(object):
         # Mutable available resources.
         # These will change as resources are virtually "consumed".
         self.total_capacity_gb = 0
-        self.free_capacity_gb = 0
+        self.free_capacity_gb = None
         self.reserved_percentage = 0
 
         self.updated = None
