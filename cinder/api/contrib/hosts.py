@@ -36,14 +36,14 @@ authorize = extensions.extension_authorizer('volume', 'hosts')
 
 class HostIndexTemplate(xmlutil.TemplateBuilder):
     def construct(self):
-        def shimmer(obj, do_raise=False):
-            # A bare list is passed in; we need to wrap it in a dict
-            return dict(hosts=obj)
-
-        root = xmlutil.TemplateElement('hosts', selector=shimmer)
+        root = xmlutil.TemplateElement('hosts')
         elem = xmlutil.SubTemplateElement(root, 'host', selector='hosts')
-        elem.set('host')
-        elem.set('topic')
+        elem.set('service-status')
+        elem.set('service')
+        elem.set('zone')
+        elem.set('service-state')
+        elem.set('host_name')
+        elem.set('last-update')
 
         return xmlutil.MasterTemplate(root, 1)
 
@@ -183,7 +183,7 @@ class HostController(object):
             raise webob.exc.HTTPBadRequest(explanation=result)
         return {"host": host, "status": result}
 
-    #@wsgi.serializers(xml=HostShowTemplate)
+    @wsgi.serializers(xml=HostShowTemplate)
     def show(self, req, id):
         """Shows the volume usage info given by hosts.
 
@@ -219,9 +219,9 @@ class HostController(object):
         snap_sum_total = 0
         resources = [{'resource': {'host': host, 'project': '(total)',
                       'volume_count': str(count),
-                      'total_volume_gb': str(sum)},
+                      'total_volume_gb': str(sum),
                       'snapshot_count': str(snap_count_total),
-                      'total_snapshot_gb': str(snap_sum_total)}]
+                      'total_snapshot_gb': str(snap_sum_total)}}]
 
         project_ids = [v['project_id'] for v in volume_refs]
         project_ids = list(set(project_ids))
