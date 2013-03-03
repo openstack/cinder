@@ -552,7 +552,7 @@ class EMCSMISCommon():
                      'volume': volumename})
 
         sync_name, storage_system = self._find_storage_sync_sv_sv(
-                                    snapshotname, volumename)
+                                    snapshotname, volumename, False)
         if sync_name is None:
             LOG.error(_('Snapshot: %(snapshot)s: volume: %(volume)s '
                       'not found on the array. No snapshot to delete.')
@@ -1116,9 +1116,11 @@ class EMCSMISCommon():
 
         return foundinstance
 
-    def _find_storage_sync_sv_sv(self, snapshotname, volumename):
+    def _find_storage_sync_sv_sv(self, snapshotname, volumename,
+                                 waitforsync=True):
         foundsyncname = None
         storage_system = None
+        percent_synced = 0
 
         LOG.debug(_("Source: %(volumename)s  Target: %(snapshotname)s.")
                   % {'volumename': volumename, 'snapshotname': snapshotname})
@@ -1137,6 +1139,9 @@ class EMCSMISCommon():
             if vol_instance['ElementName'] == volumename:
                 foundsyncname = n
                 storage_system = vol_instance['SystemName']
+                if waitforsync:
+                    sync_instance = self.conn.GetInstance(n, LocalOnly=False)
+                    percent_synced = sync_instance['PercentSynced']
                 break
 
         if foundsyncname is None:
@@ -1149,6 +1154,13 @@ class EMCSMISCommon():
                       "Storage Synchronized instance: %(sync)s.")
                       % {'storage_system': storage_system,
                          'sync': str(foundsyncname)})
+            # Wait for SE_StorageSynchronized_SV_SV to be fully synced
+            while waitforsync and percent_synced < 100:
+                time.sleep(10)
+                sync_instance = self.conn.GetInstance(foundsyncname,
+                                                      LocalOnly=False)
+                percent_synced = sync_instance['PercentSynced']
+
         return foundsyncname, storage_system
 
     def _find_initiator_names(self, connector):
@@ -1350,6 +1362,12 @@ class EMCSMISCommon():
         volumename = volume['name']
         vol_instance = self._find_lun(volume)
         storage_system = vol_instance['SystemName']
+        sp = None
+        try:
+            sp = vol_instance['EMCCurrentOwningStorageProcessor']
+        except KeyError:
+            # VMAX LUN doesn't have this property
+            pass
 
         unitnames = self.conn.ReferenceNames(
                         vol_instance.path,
@@ -1388,7 +1406,8 @@ class EMCSMISCommon():
                        'vol_instance': str(vol_instance.path)})
 
         data = {'hostlunid': out_num_device_number,
-                'storagesystem': storage_system}
+                'storagesystem': storage_system,
+                'owningsp': sp}
 
         LOG.debug(_("Device info: %(data)s.") % {'data': data})
 

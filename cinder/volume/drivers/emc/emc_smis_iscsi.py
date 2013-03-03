@@ -122,11 +122,11 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
                                     '-t', 'sendtargets', '-p',
                                     self.configuration.iscsi_ip_address,
                                     run_as_root=True)
+        targets = []
         for target in out.splitlines():
-            index = target.find(self.configuration.iscsi_ip_address)
-            if index != -1:
-                return target
-        return None
+            targets.append(target)
+
+        return targets
 
     def _get_iscsi_properties(self, volume):
         """Gets iscsi configuration.
@@ -162,10 +162,6 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         LOG.debug(_("ISCSI Discovery: Found %s") % (location))
         properties['target_discovered'] = True
 
-        results = location.split(" ")
-        properties['target_portal'] = results[0].split(",")[0]
-        properties['target_iqn'] = results[1]
-
         device_info = self.common.find_device_number(volume)
         if device_info is None or device_info['hostlunid'] is None:
             exception_message = (_("Cannot find device number for volume %s")
@@ -173,6 +169,16 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         device_number = device_info['hostlunid']
+
+        sp = device_info['owningsp']
+        for loc in location:
+            results = loc.split(" ")
+            properties['target_portal'] = results[0].split(",")[0]
+            properties['target_iqn'] = results[1]
+            # owning sp is None for VMAX
+            # for VNX, find the owning sp in target_iqn
+            if not sp or -1 != properties['target_iqn'].find(sp):
+                break
 
         properties['target_lun'] = device_number
 

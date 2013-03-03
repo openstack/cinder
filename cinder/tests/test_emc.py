@@ -249,6 +249,8 @@ class FakeEcomConnection():
             result = self._getinstance_lunmask()
         elif name == 'SE_ConcreteJob':
             result = self._getinstance_job(objectpath)
+        elif name == 'SE_StorageSynchronized_SV_SV':
+            result = self._getinstance_syncsvsv(objectpath)
         else:
             result = self._default_getinstance(objectpath)
         return result
@@ -328,6 +330,16 @@ class FakeEcomConnection():
                 instance = vol
                 break
         return instance
+
+    def _getinstance_syncsvsv(self, objectpath):
+        foundsync = None
+        syncs = self._enum_syncsvsvs()
+        for sync in syncs:
+            if (sync['SyncedElement'] == objectpath['SyncedElement'] and
+                sync['SystemElement'] == objectpath['SystemElement']):
+                foundsync = sync
+                break
+        return foundsync
 
     def _getinstance_lunmask(self):
         lunmask = {}
@@ -508,28 +520,13 @@ class FakeEcomConnection():
 
         vols = self._enum_storagevolumes()
 
-        objpath1 = vols[0]
-        objpath2 = vols[1]
-        sync = {}
-        sync['SyncedElement'] = objpath2
-        sync['SystemElement'] = objpath1
-        sync['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        sync = self._create_sync(vols[0], vols[1], 100)
         syncs.append(sync)
 
-        objpath1 = vols[1]
-        objpath2 = vols[2]
-        sync2 = {}
-        sync2['SyncedElement'] = objpath2
-        sync2['SystemElement'] = objpath1
-        sync2['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        sync2 = self._create_sync(vols[1], vols[2], 100)
         syncs.append(sync2)
 
-        objpath1 = vols[0]
-        objpath2 = vols[3]
-        sync3 = {}
-        sync3['SyncedElement'] = objpath2
-        sync3['SystemElement'] = objpath1
-        sync3['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        sync3 = self._create_sync(vols[0], vols[3], 100)
         syncs.append(sync3)
 
         objpath1 = vols[1]
@@ -537,10 +534,7 @@ class FakeEcomConnection():
             if vol['ElementName'] == 'failed_snapshot_sync':
                 objpath2 = vol
                 break
-        sync4 = {}
-        sync4['SyncedElement'] = objpath2
-        sync4['SystemElement'] = objpath1
-        sync4['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        sync4 = self._create_sync(objpath1, objpath2, 100)
         syncs.append(sync4)
 
         objpath1 = vols[0]
@@ -548,13 +542,18 @@ class FakeEcomConnection():
             if vol['ElementName'] == 'failed_clone_sync':
                 objpath2 = vol
                 break
-        sync5 = {}
-        sync5['SyncedElement'] = objpath2
-        sync5['SystemElement'] = objpath1
-        sync5['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        sync5 = self._create_sync(objpath1, objpath2, 100)
         syncs.append(sync5)
 
         return syncs
+
+    def _create_sync(self, objpath1, objpath2, percentsynced):
+        sync = {}
+        sync['SyncedElement'] = objpath2
+        sync['SystemElement'] = objpath1
+        sync['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        sync['PercentSynced'] = percentsynced
+        return sync
 
     def _enum_unitnames(self):
         return self._ref_unitnames()
@@ -675,6 +674,8 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(test_volume)
         export = self.driver.create_export(None, test_volume)
         test_volume['provider_location'] = export['provider_location']
+        test_volume['EMCCurrentOwningStorageProcessor'] = \
+            'iqn.1993-08.org.debian:01:a1b2c3d4e5f6'
         connector = {'initiator': initiator1}
         connection_info = self.driver.initialize_connection(test_volume,
                                                             connector)
