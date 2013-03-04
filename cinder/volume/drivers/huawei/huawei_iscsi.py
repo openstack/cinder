@@ -274,14 +274,22 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
         hostlun_id = None
         map_info = self._get_map_info(host_id)
+        # Make sure the hostLUN ID starts from 1.
+        new_hostlun_id = 1
+        new_hostlunid_found = False
         if map_info:
             for map in map_info:
                 if map['devlunid'] == lun_id:
                     hostlun_id = map['hostlunid']
                     break
+                elif not new_hostlunid_found:
+                    if new_hostlun_id < int(map['hostlunid']):
+                        new_hostlunid_found = True
+                    else:
+                        new_hostlun_id = int(map['hostlunid']) + 1
         # The LUN is not mapped to the host.
         if not hostlun_id:
-            self._map_lun(lun_id, host_id)
+            self._map_lun(lun_id, host_id, new_hostlun_id)
             hostlun_id = self._get_hostlunid(host_id, lun_id)
 
         # Return iSCSI properties.
@@ -382,6 +390,13 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         self.login_info = self._get_login_info()
         if self.device_type['type'] == 'Dorado2100 G2':
             err_msg = (_('create_snapshot:Device does not support snapshot.'))
+
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        if self._is_resource_pool_enough() is False:
+            err_msg = (_('create_snapshot:'
+                         'Resource pool needs 1GB valid size at least.'))
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -979,19 +994,26 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                 return iscsiIPinfo
         return None
 
-    def _map_lun(self, lunid, hostid):
-        """Map a lun to a host."""
+    def _map_lun(self, lunid, hostid, new_hostlun_id):
+        """Map a lun to a host.
+
+        Here we give the hostlun ID which starts from 1.
+        """
         cli_cmd = ('addhostmap -host %(hostid)s -devlun %(lunid)s'
+                   '-hostlun %(hostlunid)s'
                    % {'hostid': hostid,
-                      'lunid': lunid})
+                      'lunid': lunid,
+                      'hostlunid': new_hostlun_id})
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
             err_msg = (_('_map_lun:Failed to add hostmap.'
                          'hostid:%(host)s'
-                         'lunid:%(lun)s.'
+                         'lunid:%(lun)s'
+                         'hostlunid:%(hostlunid)s.'
                          'out:%(out)s')
                        % {'host': hostid,
                           'lun': lunid,
+                          'hostlunid': new_hostlun_id,
                           'out': out})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -1048,7 +1070,13 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def _get_map_info(self, hostid):
-        """Get map infomation of the given host."""
+        """Get map infomation of the given host.
+
+        This method return a map information list. Every item in the list
+        is a dictionary. The dictionarie includes three keys: mapid,
+        devlunid, hostlunid. These items are sorted by hostlunid value
+        from small to large.
+        """
         cli_cmd = ('showhostmap -host %(hostid)s'
                    % {'hostid': hostid})
         out = self._execute_cli(cli_cmd)
@@ -1064,7 +1092,19 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             list_tmp = en[i].split()
             list_val = [list_tmp[0], list_tmp[2], list_tmp[4]]
             dic = dict(map(None, list_key, list_val))
-            mapinfo.append(dic)
+            inserted = False
+            mapinfo_length = len(mapinfo)
+            if mapinfo_length == 0:
+                mapinfo.append(dic)
+                continue
+            for index in range(0, mapinfo_length):
+                if (int(mapinfo[mapinfo_length - index - 1]['hostlunid']) <
+                        int(dic['hostlunid'])):
+                    mapinfo.insert(mapinfo_length - index, dic)
+                    inserted = True
+                    break
+            if not inserted:
+                mapinfo.insert(0, dic)
         return mapinfo
 
     def _get_device_type(self):
@@ -1331,6 +1371,28 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             if r[0] == snapshotname:
                 return r[1]
         return None
+
+    def _is_resource_pool_enough(self):
+        """Check whether resource pools' valid size is more than 1G."""
+        cli_cmd = ('showrespool')
+        out = self._execute_cli(cli_cmd)
+        en = re.split('\r\n', out)
+        if len(en) <= 6:
+            LOG.error(_('_is_resource_pool_enough:Resource pool for snapshot'
+                        'not be added.'))
+            return False
+        resource_pools = []
+        list_key = ['pool id', 'size', 'usage', 'valid size',
+                    'alarm threshold']
+        for i in range(6, len(en) - 2):
+            list_val = en[i].split()
+            dic = dict(map(None, list_key, list_val))
+            resource_pools.append(dic)
+
+        for pool in resource_pools:
+            if float(pool['valid size']) < 1024.0:
+                return False
+        return True
 
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
