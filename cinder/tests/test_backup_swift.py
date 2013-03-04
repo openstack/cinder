@@ -161,6 +161,17 @@ class BackupSwiftTestCase(test.TestCase):
                               service.restore,
                               backup, '1234-5678-1234-8888', volume_file)
 
+    def test_restore_unsupported_version(self):
+        container_name = 'unsupported_version'
+        self._create_backup_db_entry(container=container_name)
+        service = SwiftBackupService(self.ctxt)
+
+        with tempfile.NamedTemporaryFile() as volume_file:
+            backup = db.backup_get(self.ctxt, 123)
+            self.assertRaises(exception.InvalidBackup,
+                              service.restore,
+                              backup, '1234-5678-1234-8888', volume_file)
+
     def test_delete(self):
         self._create_backup_db_entry()
         service = SwiftBackupService(self.ctxt)

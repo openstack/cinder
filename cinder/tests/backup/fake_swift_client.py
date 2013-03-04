@@ -76,7 +76,10 @@ class FakeSwiftConnection(object):
         if 'metadata' in name:
             fake_object_header = None
             metadata = {}
-            metadata['version'] = '1.0.0'
+            if container == 'unsupported_version':
+                metadata['version'] = '9.9.9'
+            else:
+                metadata['version'] = '1.0.0'
             metadata['backup_id'] = 123
             metadata['volume_id'] = 123
             metadata['backup_name'] = 'fake backup'

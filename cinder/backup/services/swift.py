@@ -78,6 +78,7 @@ class SwiftBackupService(base.Base):
     """Provides backup, restore and delete of backup objects within Swift."""
 
     SERVICE_VERSION = '1.0.0'
+    SERVICE_VERSION_MAPPING = {'1.0.0': '_restore_v1'}
 
     def _get_compressor(self, algorithm):
         try:
@@ -194,11 +195,10 @@ class SwiftBackupService(base.Base):
         (resp, body) = self.conn.get_object(container, filename)
         metadata = json.loads(body)
         LOG.debug(_('_read_metadata finished (%s)') % metadata)
-        return metadata['objects']
+        return metadata
 
     def backup(self, backup, volume_file):
-        """Backup the given volume to swift using the given backup metadata.
-        """
+        """Backup the given volume to swift using the given backup metadata."""
         backup_id = backup['id']
         volume_id = backup['volume_id']
         volume = self.db.volume_get(self.context, volume_id)
@@ -275,32 +275,20 @@ class SwiftBackupService(base.Base):
                                                         object_id})
         LOG.debug(_('backup %s finished.') % backup_id)
 
-    def restore(self, backup, volume_id, volume_file):
-        """Restore the given volume backup from swift.
-        """
+    def _restore_v1(self, backup, volume_id, metadata, volume_file):
+        """Restore a v1 swift volume backup from swift."""
         backup_id = backup['id']
+        LOG.debug(_('v1 swift volume backup restore of %s started'), backup_id)
         container = backup['container']
-        volume = self.db.volume_get(self.context, volume_id)
-        volume_size = volume['size']
-        backup_size = backup['size']
-
-        object_prefix = backup['service_metadata']
-        LOG.debug(_('starting restore of backup %(object_prefix)s from swift'
-                    ' container: %(container)s, to volume %(volume_id)s, '
-                    'backup: %(backup_id)s') % locals())
-        swift_object_names = self._generate_object_names(backup)
-        try:
-            metadata_objects = self._read_metadata(backup)
-        except socket.error as err:
-            raise exception.SwiftConnectionFailed(reason=str(err))
+        metadata_objects = metadata['objects']
         metadata_object_names = []
         for metadata_object in metadata_objects:
             metadata_object_names.extend(metadata_object.keys())
         LOG.debug(_('metadata_object_names = %s') % metadata_object_names)
         prune_list = [self._metadata_filename(backup)]
         swift_object_names = [swift_object_name for swift_object_name in
-                              swift_object_names if swift_object_name
-                              not in prune_list]
+                              self._generate_object_names(backup)
+                              if swift_object_name not in prune_list]
         if sorted(swift_object_names) != sorted(metadata_object_names):
             err = _('restore_backup aborted, actual swift object list in '
                     'swift does not match object list stored in metadata')
@@ -332,6 +320,31 @@ class SwiftBackupService(base.Base):
             # threads can run, allowing for among other things the service
             # status to be updated
             eventlet.sleep(0)
+        LOG.debug(_('v1 swift volume backup restore of %s finished'),
+                  backup_id)
+
+    def restore(self, backup, volume_id, volume_file):
+        """Restore the given volume backup from swift."""
+        backup_id = backup['id']
+        container = backup['container']
+        object_prefix = backup['service_metadata']
+        LOG.debug(_('starting restore of backup %(object_prefix)s from swift'
+                    ' container: %(container)s, to volume %(volume_id)s, '
+                    'backup: %(backup_id)s') % locals())
+        try:
+            metadata = self._read_metadata(backup)
+        except socket.error as err:
+            raise exception.SwiftConnectionFailed(reason=str(err))
+        metadata_version = metadata['version']
+        LOG.debug(_('Restoring swift backup version %s'), metadata_version)
+        try:
+            restore_func = getattr(self, self.SERVICE_VERSION_MAPPING.get(
+                metadata_version))
+        except TypeError:
+            err = (_('No support to restore swift backup version %s')
+                   % metadata_version)
+            raise exception.InvalidBackup(reason=err)
+        restore_func(backup, volume_id, metadata, volume_file)
         LOG.debug(_('restore %(backup_id)s to %(volume_id)s finished.') %
                   locals())
 
