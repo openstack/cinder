@@ -49,7 +49,6 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -97,9 +96,6 @@ storwize_svc_opts = [
                 help='Connect with multipath (currently FC-only)'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(storwize_svc_opts)
-
 
 class StorwizeSVCDriver(san.SanISCSIDriver):
     """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
@@ -117,6 +113,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(storwize_svc_opts)
         self._storage_nodes = {}
         self._enabled_protocols = set()
         self._compression_enabled = False
@@ -189,11 +186,11 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         out, err = self._run_ssh(ssh_cmd)
         self._assert_ssh_return(len(out.strip()), 'do_setup',
                                 ssh_cmd, out, err)
-        search_text = '!%s!' % FLAGS.storwize_svc_volpool_name
+        search_text = '!%s!' % self.configuration.storwize_svc_volpool_name
         if search_text not in out:
             raise exception.InvalidInput(
                 reason=(_('pool %s doesn\'t exist')
-                        % FLAGS.storwize_svc_volpool_name))
+                        % self.configuration.storwize_svc_volpool_name))
 
         # Check if compression is supported
         ssh_cmd = 'lslicense -delim !'
@@ -269,21 +266,21 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _build_default_opts(self):
         # Ignore capitalization
-        protocol = FLAGS.storwize_svc_connection_protocol
+        protocol = self.configuration.storwize_svc_connection_protocol
         if protocol.lower() == 'fc':
             protocol = 'FC'
         elif protocol.lower() == 'iscsi':
             protocol = 'iSCSI'
 
-        opts = {'rsize': FLAGS.storwize_svc_vol_rsize,
-                'warning': FLAGS.storwize_svc_vol_warning,
-                'autoexpand': FLAGS.storwize_svc_vol_autoexpand,
-                'grainsize': FLAGS.storwize_svc_vol_grainsize,
-                'compression': FLAGS.storwize_svc_vol_compression,
-                'easytier': FLAGS.storwize_svc_vol_easytier,
-                'protocol': protocol,
-                'multipath': FLAGS.storwize_svc_multipath_enabled}
-        return opts
+        opt = {'rsize': self.configuration.storwize_svc_vol_rsize,
+               'warning': self.configuration.storwize_svc_vol_warning,
+               'autoexpand': self.configuration.storwize_svc_vol_autoexpand,
+               'grainsize': self.configuration.storwize_svc_vol_grainsize,
+               'compression': self.configuration.storwize_svc_vol_compression,
+               'easytier': self.configuration.storwize_svc_vol_easytier,
+               'protocol': protocol,
+               'multipath': self.configuration.storwize_svc_multipath_enabled}
+        return opt
 
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
@@ -292,18 +289,19 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         required_flags = ['san_ip', 'san_ssh_port', 'san_login',
                           'storwize_svc_volpool_name']
         for flag in required_flags:
-            if not getattr(FLAGS, flag, None):
+            if not self.configuration.safe_get(flag):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
 
         # Ensure that either password or keyfile were set
-        if not (FLAGS.san_password or FLAGS.san_private_key):
+        if not (self.configuration.san_password or
+                self.configuration.san_private_key):
             raise exception.InvalidInput(
                 reason=_('Password or SSH private key is required for '
                          'authentication: set either san_password or '
                          'san_private_key option'))
 
         # Check that flashcopy_timeout is not more than 10 minutes
-        flashcopy_timeout = FLAGS.storwize_svc_flashcopy_timeout
+        flashcopy_timeout = self.configuration.storwize_svc_flashcopy_timeout
         if not (flashcopy_timeout > 0 and flashcopy_timeout <= 600):
             raise exception.InvalidInput(
                 reason=_('Illegal value %d specified for '
@@ -893,7 +891,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                    '-iogrp 0 -size %(size)s -unit '
                    '%(unit)s %(easytier)s %(ssh_cmd_se_opt)s'
                    % {'name': name,
-                   'mdiskgrp': FLAGS.storwize_svc_volpool_name,
+                   'mdiskgrp': self.configuration.storwize_svc_volpool_name,
                    'size': size, 'unit': units, 'easytier': easytier,
                    'ssh_cmd_se_opt': ssh_cmd_se_opt})
         out, err = self._run_ssh(ssh_cmd)
@@ -986,36 +984,36 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         mapping_ready = False
         wait_time = 5
         # Allow waiting of up to timeout (set as parameter)
-        max_retries = (FLAGS.storwize_svc_flashcopy_timeout / wait_time) + 1
+        timeout = self.configuration.storwize_svc_flashcopy_timeout
+        max_retries = (timeout / wait_time) + 1
         for try_number in range(1, max_retries):
-            mapping_attributes = self._get_flashcopy_mapping_attributes(
-                fc_map_id)
-            if (mapping_attributes is None or
-                    'status' not in mapping_attributes):
+            mapping_attrs = self._get_flashcopy_mapping_attributes(fc_map_id)
+            if (mapping_attrs is None or
+                    'status' not in mapping_attrs):
                 break
-            if mapping_attributes['status'] == 'prepared':
+            if mapping_attrs['status'] == 'prepared':
                 mapping_ready = True
                 break
-            elif mapping_attributes['status'] == 'stopped':
+            elif mapping_attrs['status'] == 'stopped':
                 self._call_prepare_fc_map(fc_map_id, source, target)
-            elif mapping_attributes['status'] != 'preparing':
+            elif mapping_attrs['status'] != 'preparing':
                 # Unexpected mapping status
                 exception_msg = (_('Unexecpted mapping status %(status)s '
                                    'for mapping %(id)s. Attributes: '
                                    '%(attr)s')
-                                 % {'status': mapping_attributes['status'],
+                                 % {'status': mapping_attrs['status'],
                                     'id': fc_map_id,
-                                    'attr': mapping_attributes})
+                                    'attr': mapping_attrs})
                 raise exception.VolumeBackendAPIException(data=exception_msg)
             # Need to wait for mapping to be prepared, wait a few seconds
             time.sleep(wait_time)
 
         if not mapping_ready:
             exception_msg = (_('Mapping %(id)s prepare failed to complete '
-                               'within the alloted %(to)d seconds timeout. '
+                               'within the allotted %(to)d seconds timeout. '
                                'Terminating.')
                              % {'id': fc_map_id,
-                                'to': FLAGS.storwize_svc_flashcopy_timeout})
+                                'to': timeout})
             LOG.error(_('_prepare_fc_map: Failed to start FlashCopy '
                         'from %(source)s to %(target)s with '
                         'exception %(ex)s')
@@ -1306,7 +1304,6 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         LOG.debug(_("Updating volume status"))
         data = {}
 
-        data['volume_backend_name'] = 'IBM_STORWIZE_SVC'  # To be overwritten
         data['vendor_name'] = 'IBM'
         data['driver_version'] = '1.1'
         data['storage_protocol'] = list(self._enabled_protocols)
@@ -1316,7 +1313,9 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 
-        pool = FLAGS.storwize_svc_volpool_name
+        data['compression_enabled'] = self._compression_enabled
+
+        pool = self.configuration.storwize_svc_volpool_name
         #Get storage system name
         ssh_cmd = 'lssystem -delim !'
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
@@ -1325,7 +1324,10 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                    'Could not get system name'))
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        data['volume_backend_name'] = '%s_%s' % (attributes['name'], pool)
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        if not backend_name:
+            backend_name = '%s_%s' % (attributes['name'], pool)
+        data['volume_backend_name'] = backend_name
 
         ssh_cmd = 'lsmdiskgrp -bytes -delim ! %s' % pool
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
