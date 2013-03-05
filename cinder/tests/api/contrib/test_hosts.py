@@ -161,18 +161,26 @@ class HostSerializerTest(test.TestCase):
 
     def test_index_serializer(self):
         serializer = os_hosts.HostIndexTemplate()
-        text = serializer.serialize(SERVICE_LIST)
+        text = serializer.serialize({"hosts": LIST_RESPONSE})
 
         tree = etree.fromstring(text)
 
         self.assertEqual('hosts', tree.tag)
-        self.assertEqual(len(SERVICE_LIST), len(tree))
-        for i in range(len(SERVICE_LIST)):
+        self.assertEqual(len(LIST_RESPONSE), len(tree))
+        for i in range(len(LIST_RESPONSE)):
             self.assertEqual('host', tree[i].tag)
-            self.assertEqual(SERVICE_LIST[i]['host'],
-                             tree[i].get('host'))
-            self.assertEqual(SERVICE_LIST[i]['topic'],
-                             tree[i].get('topic'))
+            self.assertEqual(LIST_RESPONSE[i]['service-status'],
+                             tree[i].get('service-status'))
+            self.assertEqual(LIST_RESPONSE[i]['service'],
+                             tree[i].get('service'))
+            self.assertEqual(LIST_RESPONSE[i]['zone'],
+                             tree[i].get('zone'))
+            self.assertEqual(LIST_RESPONSE[i]['service-state'],
+                             tree[i].get('service-state'))
+            self.assertEqual(LIST_RESPONSE[i]['host_name'],
+                             tree[i].get('host_name'))
+            self.assertEqual(str(LIST_RESPONSE[i]['last-update']),
+                             tree[i].get('last-update'))
 
     def test_update_serializer_with_status(self):
         exemplar = dict(host='test.host.1', status='enabled')
