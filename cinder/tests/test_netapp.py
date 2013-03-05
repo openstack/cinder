@@ -972,6 +972,9 @@ class NetAppDriverTestCase(test.TestCase):
                                self.VOLUME_TYPE, self.VOLUME_SIZE)
         self.driver._remove_destroy(self.VOLUME_NAME, self.PROJECT_ID)
 
+    def test_destroy_uncreated_volume(self):
+        self.driver._remove_destroy('fake-nonexistent-volume', self.PROJECT_ID)
+
     def test_map_unmap(self):
         self.driver._discover_luns()
         self.driver._provision(self.VOLUME_NAME, None, self.PROJECT_ID,
