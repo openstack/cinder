@@ -578,8 +578,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
         if out:
             volume = out.split()
-            data['total_capacity_gb'] = float(volume[1])
-            data['free_capacity_gb'] = float(volume[2])
+            data['total_capacity_gb'] = float(volume[1].replace(',', '.'))
+            data['free_capacity_gb'] = float(volume[2].replace(',', '.'))
 
         self._stats = data
 

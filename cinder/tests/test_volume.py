@@ -965,6 +965,21 @@ class ISCSITestCase(DriverTestCase):
         self.assertEquals(result["target_iqn"], "iqn:iqn")
         self.assertEquals(result["target_lun"], 0)
 
+    def test_get_volume_stats(self):
+        def _emulate_vgs_execute(_command, *_args, **_kwargs):
+            out = "  test1-volumes  5,52  0,52"
+            out += " test2-volumes  5.52  0.52"
+            return out, None
+
+        self.volume.driver.set_execute(_emulate_vgs_execute)
+
+        self.volume.driver._update_volume_status()
+
+        stats = self.volume.driver._stats
+
+        self.assertEquals(stats['total_capacity_gb'], float('5.52'))
+        self.assertEquals(stats['free_capacity_gb'], float('0.52'))
+
 
 class FibreChannelTestCase(DriverTestCase):
     """Test Case for FibreChannelDriver"""
