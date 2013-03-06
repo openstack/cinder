@@ -211,6 +211,27 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
             image_service.download(context, image_id, image_file)
 
 
+def fetch_verify_image(context, image_service, image_id, dest,
+                       user_id=None, project_id=None):
+    fetch(context, image_service, image_id, dest,
+          None, None)
+
+    with fileutils.remove_path_on_error(dest):
+        data = qemu_img_info(dest)
+        fmt = data.file_format
+        if fmt is None:
+            raise exception.ImageUnacceptable(
+                reason=_("'qemu-img info' parsing failed."),
+                image_id=image_id)
+
+        backing_file = data.backing_file
+        if backing_file is not None:
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=_("fmt=%(fmt)s backed by:"
+                         "%(backing_file)s") % locals())
+
+
 def fetch_to_raw(context, image_service,
                  image_id, dest,
                  user_id=None, project_id=None):

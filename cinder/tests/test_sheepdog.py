@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2013 Wenhao Xu
+# Copyright (c) 2013 Zelin.io
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,9 +15,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
+import contextlib
+import os
+import tempfile
+
 from cinder import exception
+from cinder.image import image_utils
 from cinder import test
 from cinder.volume.drivers.sheepdog import SheepdogDriver
+
 
 COLLIE_NODE_INFO = """
 0 107287605248 3623897354 3%
@@ -43,8 +50,12 @@ Epoch Time           Version
 """
 
 
-class SheepdogTestCase(test.TestCase):
+class FakeImageService:
+    def download(self, context, image_id, path):
+        pass
 
+
+class SheepdogTestCase(test.TestCase):
     def setUp(self):
         super(SheepdogTestCase, self).setUp()
         self.driver = SheepdogDriver()
@@ -92,3 +103,25 @@ class SheepdogTestCase(test.TestCase):
             return COLLIE_CLUSTER_INFO_0_6, ''
         self.stubs.Set(self.driver, '_execute', fake_stats)
         self.driver.check_for_setup_error()
+
+    def test_copy_image_to_volume(self):
+        @contextlib.contextmanager
+        def fake_temp_file(dir):
+            class FakeTmp:
+                def __init__(self, name):
+                    self.name = name
+            yield FakeTmp('test')
+
+        def fake_try_execute(obj, *command, **kwargs):
+            return True
+
+        self.stubs.Set(tempfile, 'NamedTemporaryFile', fake_temp_file)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
+        self.stubs.Set(image_utils, 'fetch_verify_image',
+                       lambda w, x, y, z: None)
+        self.stubs.Set(image_utils, 'convert_image',
+                       lambda x, y, z: None)
+        self.stubs.Set(SheepdogDriver, '_try_execute', fake_try_execute)
+        self.driver.copy_image_to_volume(None, {'name': 'test',
+                                                'size': 1},
+                                         FakeImageService(), None)
