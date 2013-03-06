@@ -991,7 +991,7 @@ class NetAppDriverTestCase(test.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
-        super(NetAppDriverTestCase, self).setUp()
+        super(NetAppDriverTestCase, self).tearDown()
 
     def test_connect(self):
         self.driver.check_for_setup_error()
