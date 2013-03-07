@@ -171,6 +171,7 @@ if [ $recreate_db -eq 1 ]; then
 fi
 
 run_tests
+RET=$?
 
 # NOTE(sirp): we only want to run pep8 when we're running the full-test suite,
 # not when we're running tests individually. To handle this, we need to
@@ -187,3 +188,5 @@ if [ $coverage -eq 1 ]; then
     # Don't compute coverage for common code, which is tested elsewhere
     ${wrapper} coverage html --include='cinder/*' --omit='cinder/openstack/common/*' -d covhtml -i
 fi
+
+exit $RET
