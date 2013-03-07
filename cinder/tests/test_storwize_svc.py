@@ -1243,7 +1243,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'san_login': 'user',
                                'san_password': 'pass',
                                'storwize_svc_flashcopy_timeout': 20,
-                               'storwize_svc_connection_protocol': 'iscsi',
+                               # Test ignore capitalization
+                               'storwize_svc_connection_protocol': 'iScSi',
                                'storwize_svc_multipath_enabled': False}
             self._host_name = 'storwize-svc-test'
             self._host_ip = '1.234.56.78'
@@ -1266,7 +1267,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'san_login': 'user',
                                'san_password': 'password',
                                'storwize_svc_volpool_name': 'openstack',
-                               'storwize_svc_connection_protocol': 'iscsi',
+                               # Test ignore capitalization
+                               'storwize_svc_connection_protocol': 'iScSi',
                                'storwize_svc_multipath_enabled': False,
                                'ssh_conn_timeout': 0}
             self._host_name = socket.gethostname()
@@ -1382,7 +1384,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           self.driver.check_for_setup_error)
         self._reset_flags()
 
-        self.flags(storwize_svc_connection_protocol='iscsi')
+        self.flags(storwize_svc_connection_protocol='iSCSI')
         self.flags(storwize_svc_multipath_enabled=True)
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
@@ -1624,7 +1626,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
     def test_storwize_svc_unicode_host_and_volume_names(self):
         # We'll check with iSCSI only - nothing protocol-dependednt here
-        self.flags(storwize_svc_connection_protocol='iscsi')
+        self.flags(storwize_svc_connection_protocol='iSCSI')
         self.driver.do_setup(None)
 
         rand_id = random.randint(10000, 99999)
@@ -1681,8 +1683,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Create volume types that we created
         types = {}
-        for protocol in ['fc', 'iscsi']:
-            opts = {'protocol': protocol}
+        for protocol in ['FC', 'iSCSI']:
+            opts = {'storage_protocol': '<in> ' + protocol}
             types[protocol] = volume_types.create(ctxt, protocol, opts)
 
         conn = {'initiator': self._iscsi_name,
@@ -1690,7 +1692,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                 'host': self._host_name,
                 'wwpns': self._host_wwpns}
 
-        for protocol in ['fc', 'iscsi']:
+        for protocol in ['FC', 'iSCSI']:
             volume1['volume_type_id'] = types[protocol]['id']
             volume2['volume_type_id'] = types[protocol]['id']
 
@@ -1703,7 +1705,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self._assert_vol_exists(volume2['name'], True)
 
             # Check bad output from lsfabric
-            if protocol == 'fc' and self.USESIM:
+            if protocol == 'FC' and self.USESIM:
                 for error in ['remove_field', 'header_mismatch']:
                     self.sim.error_injection('lsfabric', error)
                     self.assertRaises(exception.VolumeBackendAPIException,
@@ -1733,7 +1735,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                            'ip': '11.11.11.11',
                            'host': 'host-%s' % case}
                 self.sim._add_host_to_list(conn_na)
-                volume1['volume_type_id'] = types['iscsi']['id']
+                volume1['volume_type_id'] = types['iSCSI']['id']
                 if case == 'no_info':
                     self.sim.error_injection('lsiscsiauth', 'no_info')
                 self.driver.initialize_connection(volume1, conn_na)
@@ -1785,7 +1787,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self._assert_vol_exists(volume2['name'], False)
 
         # Delete volume types that we created
-        for protocol in ['fc', 'iscsi']:
+        for protocol in ['FC', 'iSCSI']:
             volume_types.destroy(ctxt, types[protocol]['id'])
 
         # Check if our host still exists (it should not)
@@ -1874,12 +1876,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.fail('%s not less than or equal to %s' % (repr(a), repr(b)))
 
     def test_storwize_svc_get_volume_stats(self):
-        #first call,  no refresh, expect None
         stats = self.driver.get_volume_stats()
-        self.assertEqual(stats, {})
-
-        #call with refresh
-        stats = self.driver.get_volume_stats(refresh=True)
         self.assertLessEqual(stats['free_capacity_gb'],
                              stats['total_capacity_gb'])
         if self.USESIM:

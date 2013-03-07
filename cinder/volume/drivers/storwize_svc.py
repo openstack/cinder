@@ -90,8 +90,8 @@ storwize_svc_opts = [
                help='Maximum number of seconds to wait for FlashCopy to be '
                     'prepared. Maximum value is 600 seconds (10 minutes).'),
     cfg.StrOpt('storwize_svc_connection_protocol',
-               default='iscsi',
-               help='Connection protocol (iscsi/fc)'),
+               default='iSCSI',
+               help='Connection protocol (iSCSI/FC)'),
     cfg.BoolOpt('storwize_svc_multipath_enabled',
                 default=False,
                 help='Connect with multipath (currently FC-only)'),
@@ -119,7 +119,6 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
         self._storage_nodes = {}
         self._enabled_protocols = set()
-        self._supported_protocols = ['iscsi', 'fc']
         self._compression_enabled = False
         self._context = None
 
@@ -251,11 +250,11 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         for k, node in self._storage_nodes.iteritems():
             if ((len(node['ipv4']) or len(node['ipv6']))
                     and len(node['iscsi_name'])):
-                node['enabled_protocols'].append('iscsi')
-                self._enabled_protocols.add('iscsi')
+                node['enabled_protocols'].append('iSCSI')
+                self._enabled_protocols.add('iSCSI')
             if len(node['WWPN']):
-                node['enabled_protocols'].append('fc')
-                self._enabled_protocols.add('fc')
+                node['enabled_protocols'].append('FC')
+                self._enabled_protocols.add('FC')
             if not len(node['enabled_protocols']):
                 to_delete.append(k)
 
@@ -269,13 +268,20 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         LOG.debug(_('leave: do_setup'))
 
     def _build_default_opts(self):
+        # Ignore capitalization
+        protocol = FLAGS.storwize_svc_connection_protocol
+        if protocol.lower() == 'fc':
+            protocol = 'FC'
+        elif protocol.lower() == 'iscsi':
+            protocol = 'iSCSI'
+
         opts = {'rsize': FLAGS.storwize_svc_vol_rsize,
                 'warning': FLAGS.storwize_svc_vol_warning,
                 'autoexpand': FLAGS.storwize_svc_vol_autoexpand,
                 'grainsize': FLAGS.storwize_svc_vol_grainsize,
                 'compression': FLAGS.storwize_svc_vol_compression,
                 'easytier': FLAGS.storwize_svc_vol_easytier,
-                'protocol': FLAGS.storwize_svc_connection_protocol,
+                'protocol': protocol,
                 'multipath': FLAGS.storwize_svc_multipath_enabled}
         return opts
 
@@ -639,7 +645,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                 host_name is not None,
                 _('_create_host failed to return the host name.'))
 
-        if vol_opts['protocol'] == 'iscsi':
+        if vol_opts['protocol'] == 'iSCSI':
             chap_secret = self._get_chap_secret_for_host(host_name)
             if chap_secret is None:
                 chap_secret = self._add_chapsecret_to_host(host_name)
@@ -689,7 +695,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             properties['target_discovered'] = False
             properties['target_lun'] = lun_id
             properties['volume_id'] = volume['id']
-            if vol_opts['protocol'] == 'iscsi':
+            if vol_opts['protocol'] == 'iSCSI':
                 type_str = 'iscsi'
                 # We take the first IP address for now. Ideally, OpenStack will
                 # support iSCSI multipath for improved performance.
@@ -807,7 +813,19 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             specs = volume_type.get('extra_specs')
+            key_trans = {'storage_protocol': 'protocol'}
             for key, value in specs.iteritems():
+                if key in key_trans:
+                    key = key_trans[key]
+                if key == 'protocol':
+                    words = value.split()
+                    self._driver_assert(words and
+                                        len(words) == 2 and
+                                        words[0] == '<in>',
+                                        _('protocol must be specified as '
+                                          '\'<in> iSCSI\' or \'<in> FC\''))
+                    del words[0]
+                    value = words[0]
                 if key in opts:
                     this_type = type(opts[key]).__name__
                     if this_type == 'int':
@@ -1223,7 +1241,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         opts = self._get_vdisk_params(volume['volume_type_id'])
-        if opts['protocol'] == 'iscsi':
+        if opts['protocol'] == 'iSCSI':
             # Implemented in base iSCSI class
             return super(StorwizeSVCDriver, self).copy_image_to_volume(
                     context, volume, image_service, image_id)
@@ -1232,7 +1250,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         opts = self._get_vdisk_params(volume['volume_type_id'])
-        if opts['protocol'] == 'iscsi':
+        if opts['protocol'] == 'iSCSI':
             # Implemented in base iSCSI class
             return super(StorwizeSVCDriver, self).copy_volume_to_image(
                     context, volume, image_service, image_meta)
@@ -1246,8 +1264,9 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
-        if refresh:
+        If we haven't gotten stats yet or 'refresh' is True,
+        run update the stats first."""
+        if not self._stats or refresh:
             self._update_volume_status()
 
         return self._stats
@@ -1261,11 +1280,10 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         data['volume_backend_name'] = 'IBM_STORWIZE_SVC'  # To be overwritten
         data['vendor_name'] = 'IBM'
         data['driver_version'] = '1.1'
-        data['storage_protocol'] = 'iSCSI'
-        data['storage_protocols'] = self._enabled_protocols
+        data['storage_protocol'] = list(self._enabled_protocols)
 
-        data['total_capacity_gb'] = 0
-        data['free_capacity_gb'] = 0
+        data['total_capacity_gb'] = 0  # To be overwritten
+        data['free_capacity_gb'] = 0   # To be overwritten
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 
@@ -1358,7 +1376,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                    'enabled': ','.join(self._enabled_protocols)})
 
         # Check that multipath is only enabled for fc
-        if opts['protocol'] != 'fc' and opts['multipath']:
+        if opts['protocol'] != 'FC' and opts['multipath']:
             raise exception.InvalidInput(
                 reason=_('Multipath is currently only supported for FC '
                          'connections and not iSCSI.  (This is a Nova '
