@@ -18,19 +18,18 @@
 """
 Unit tests for OpenStack Cinder volume drivers
 """
+import mox
 import shutil
 import tempfile
 
 from hp3parclient import exceptions as hpexceptions
 
 from cinder import exception
-import cinder.flags
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
 from cinder.volume.drivers.san.hp import hp_3par_iscsi as hpdriver
-
-FLAGS = cinder.flags.FLAGS
 
 LOG = logging.getLogger(__name__)
 
@@ -294,7 +293,7 @@ class HP3PARBaseDriver():
                  'host': 'fakehost'}
 
     def fake_create_client(self):
-        return FakeHP3ParClient(FLAGS.hp3par_api_url)
+        return FakeHP3ParClient(self.driver.configuration.hp3par_api_url)
 
     def fake_get_3par_host(self, hostname):
         if hostname not in self._hosts:
@@ -377,35 +376,40 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         super(TestHP3PARFCDriver, self).setUp()
-        self.flags(
-            hp3par_username='testUser',
-            hp3par_password='testPassword',
-            hp3par_api_url='https://1.1.1.1/api/v1',
-            hp3par_domain=HP3PAR_DOMAIN,
-            hp3par_cpg=HP3PAR_CPG,
-            hp3par_cpg_snap=HP3PAR_CPG_SNAP,
-            iscsi_ip_address='1.1.1.2',
-            iscsi_port='1234',
-            san_ip='2.2.2.2',
-            san_login='test',
-            san_password='test'
-        )
+
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.hp3par_debug = False
+        configuration.hp3par_username = 'testUser'
+        configuration.hp3par_password = 'testPassword'
+        configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
+        configuration.hp3par_domain = HP3PAR_DOMAIN
+        configuration.hp3par_cpg = HP3PAR_CPG
+        configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
+        configuration.iscsi_ip_address = '1.1.1.2'
+        configuration.iscsi_port = '1234'
+        configuration.san_ip = '2.2.2.2'
+        configuration.san_login = 'test'
+        configuration.san_password = 'test'
+        configuration.hp3par_snapshot_expiration = ""
+        configuration.hp3par_snapshot_retention = ""
         self.stubs.Set(hpfcdriver.HP3PARFCDriver, "_create_client",
                        self.fake_create_client)
         self.stubs.Set(hpfcdriver.HP3PARFCDriver,
                        "_create_3par_fibrechan_host",
                        self.fake_create_3par_fibrechan_host)
 
-        self.stubs.Set(hpfcdriver.HP3PARCommon, "_get_3par_host",
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "_get_3par_host",
                        self.fake_get_3par_host)
-        self.stubs.Set(hpfcdriver.HP3PARCommon, "_delete_3par_host",
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "_delete_3par_host",
                        self.fake_delete_3par_host)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_create_3par_vlun",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_3par_vlun",
                        self.fake_create_3par_vlun)
-        self.stubs.Set(hpdriver.HP3PARCommon, "get_ports",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
                        self.fake_get_ports)
 
-        self.driver = hpfcdriver.HP3PARFCDriver()
+        self.configuration = configuration
+
+        self.driver = hpfcdriver.HP3PARFCDriver(configuration=configuration)
         self.driver.do_setup(None)
 
     def tearDown(self):
@@ -467,9 +471,9 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_create_cloned_volume(self):
         self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_get_volume_state",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_state",
                        self.fake_get_volume_state)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_copy_volume",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
                        self.fake_copy_volume)
         self.state_tries = 0
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
@@ -502,19 +506,23 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         super(TestHP3PARISCSIDriver, self).setUp()
-        self.flags(
-            hp3par_username='testUser',
-            hp3par_password='testPassword',
-            hp3par_api_url='https://1.1.1.1/api/v1',
-            hp3par_domain=HP3PAR_DOMAIN,
-            hp3par_cpg=HP3PAR_CPG,
-            hp3par_cpg_snap=HP3PAR_CPG_SNAP,
-            iscsi_ip_address='1.1.1.2',
-            iscsi_port='1234',
-            san_ip='2.2.2.2',
-            san_login='test',
-            san_password='test'
-        )
+
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.hp3par_debug = False
+        configuration.hp3par_username = 'testUser'
+        configuration.hp3par_password = 'testPassword'
+        configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
+        configuration.hp3par_domain = HP3PAR_DOMAIN
+        configuration.hp3par_cpg = HP3PAR_CPG
+        configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
+        configuration.iscsi_ip_address = '1.1.1.2'
+        configuration.iscsi_port = '1234'
+        configuration.san_ip = '2.2.2.2'
+        configuration.san_login = 'test'
+        configuration.san_password = 'test'
+        configuration.hp3par_snapshot_expiration = ""
+        configuration.hp3par_snapshot_retention = ""
+
         self.stubs.Set(hpdriver.HP3PARISCSIDriver, "_create_client",
                        self.fake_create_client)
         self.stubs.Set(hpdriver.HP3PARISCSIDriver,
@@ -526,14 +534,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                        "_iscsi_discover_target_iqn",
                        self.fake_iscsi_discover_target_iqn)
 
-        self.stubs.Set(hpdriver.HP3PARCommon, "_get_3par_host",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_3par_host",
                        self.fake_get_3par_host)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_delete_3par_host",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_delete_3par_host",
                        self.fake_delete_3par_host)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_create_3par_vlun",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_3par_vlun",
                        self.fake_create_3par_vlun)
 
-        self.driver = hpdriver.HP3PARISCSIDriver()
+        self.driver = hpdriver.HP3PARISCSIDriver(configuration=configuration)
         self.driver.do_setup(None)
 
         target_iqn = 'iqn.2000-05.com.3pardata:21810002ac00383d'
@@ -579,9 +587,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.assertFalse(metadata['3ParName'] is None)
         self.assertEqual(metadata['CPG'], HP3PAR_CPG)
         self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
-        expected_location = "%s:%s" % (FLAGS.iscsi_ip_address,
-                                       FLAGS.iscsi_port)
-        self.assertEqual(model_update['provider_location'], expected_location)
 
     def test_initialize_connection(self):
         self.flags(lock_path=self.tempdir)
@@ -605,9 +610,9 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_create_cloned_volume(self):
         self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_get_volume_state",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_state",
                        self.fake_get_volume_state)
-        self.stubs.Set(hpdriver.HP3PARCommon, "_copy_volume",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
                        self.fake_copy_volume)
         self.state_tries = 0
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,

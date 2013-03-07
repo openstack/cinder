@@ -21,6 +21,9 @@
 Volume driver common utilities for HP 3PAR Storage array
 The 3PAR drivers requires 3.1.2 firmware on the 3PAR array.
 
+You will need to install the python hp3parclient.
+sudo pip install hp3parclient
+
 The drivers uses both the REST service and the SSH
 command line to correctly operate.  Since the
 ssh credentials and the REST credentials can be different
@@ -47,7 +50,6 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -90,9 +92,6 @@ hp3par_opts = [
                 help="Enable HTTP debugging to 3PAR")
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(hp3par_opts)
-
 
 class HP3PARCommon():
 
@@ -116,12 +115,13 @@ class HP3PARCommon():
                             '10 - ONTAP-legacy',
                             '11 - VMWare']
 
-    def __init__(self):
+    def __init__(self, config):
         self.sshpool = None
+        self.config = config
 
-    def check_flags(self, FLAGS, required_flags):
+    def check_flags(self, options, required_flags):
         for flag in required_flags:
-            if not getattr(FLAGS, flag, None):
+            if not getattr(options, flag, None):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
 
     def _get_3par_vol_name(self, volume_id):
@@ -239,14 +239,17 @@ exit
 
     def _run_ssh(self, command, check_exit=True, attempts=1):
         if not self.sshpool:
-            self.sshpool = utils.SSHPool(FLAGS.san_ip,
-                                         FLAGS.san_ssh_port,
-                                         FLAGS.ssh_conn_timeout,
-                                         FLAGS.san_login,
-                                         password=FLAGS.san_password,
-                                         privatekey=FLAGS.san_private_key,
-                                         min_size=FLAGS.ssh_min_pool_conn,
-                                         max_size=FLAGS.ssh_max_pool_conn)
+            self.sshpool = utils.SSHPool(self.config.san_ip,
+                                         self.config.san_ssh_port,
+                                         self.config.ssh_conn_timeout,
+                                         self.config.san_login,
+                                         password=self.config.san_password,
+                                         privatekey=
+                                         self.config.san_private_key,
+                                         min_size=
+                                         self.config.ssh_min_pool_conn,
+                                         max_size=
+                                         self.config.ssh_max_pool_conn)
         try:
             total_attempts = attempts
             with self.sshpool.item() as ssh:
@@ -415,7 +418,7 @@ exit
 
         if refresh:
             try:
-                cpg = client.getCPG(FLAGS.hp3par_cpg)
+                cpg = client.getCPG(self.config.hp3par_cpg)
                 if 'limitMiB' not in cpg['SDGrowth']:
                     total_capacity = 'infinite'
                     free_capacity = 'infinite'
@@ -427,7 +430,8 @@ exit
                 self.stats['total_capacity_gb'] = total_capacity
                 self.stats['free_capacity_gb'] = free_capacity
             except hpexceptions.HTTPNotFound:
-                err = _("CPG (%s) doesn't exist on array") % FLAGS.hp3par_cpg
+                err = (_("CPG (%s) doesn't exist on array")
+                       % self.config.hp3par_cpg)
                 LOG.error(err)
                 raise exception.InvalidInput(reason=err)
 
@@ -484,8 +488,7 @@ exit
         return persona_id[0]
 
     @lockutils.synchronized('3par', 'cinder-', True)
-    def create_volume(self, volume, client, FLAGS):
-        """ Create a new volume. """
+    def create_volume(self, volume, client):
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
                   (volume['display_name'], volume['name'],
                    self._get_3par_vol_name(volume['id'])))
@@ -505,7 +508,7 @@ exit
                 volume_type = self._get_volume_type(type_id)
 
             cpg = self._get_volume_type_value(volume_type, 'cpg',
-                                              FLAGS.hp3par_cpg)
+                                              self.config.hp3par_cpg)
 
             # if provisioning is not set use thin
             default_prov = self.valid_prov_values[0]
@@ -525,10 +528,10 @@ exit
                 ttpv = False
 
             # default to hp3par_cpg if hp3par_cpg_snap is not set.
-            if FLAGS.hp3par_cpg_snap == "":
-                snap_default = FLAGS.hp3par_cpg
+            if self.config.hp3par_cpg_snap == "":
+                snap_default = self.config.hp3par_cpg
             else:
-                snap_default = FLAGS.hp3par_cpg_snap
+                snap_default = self.config.hp3par_cpg_snap
             snap_cpg = self._get_volume_type_value(volume_type,
                                                    'snap_cpg',
                                                    snap_default)
@@ -563,7 +566,7 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
-        metadata = {'3ParName': volume_name, 'CPG': FLAGS.hp3par_cpg,
+        metadata = {'3ParName': volume_name, 'CPG': self.config.hp3par_cpg,
                     'snapCPG': extras['snapCPG']}
         return metadata
 
@@ -583,14 +586,14 @@ exit
         return status
 
     @lockutils.synchronized('3parclone', 'cinder-', True)
-    def create_cloned_volume(self, volume, src_vref, client, FLAGS):
+    def create_cloned_volume(self, volume, src_vref, client):
 
         try:
             orig_name = self._get_3par_vol_name(volume['source_volid'])
             vol_name = self._get_3par_vol_name(volume['id'])
             # We need to create a new volume first.  Otherwise you
             # can't delete the original
-            new_vol = self.create_volume(volume, client, FLAGS)
+            new_vol = self.create_volume(volume, client)
 
             # make the 3PAR copy the contents.
             # can't delete the original until the copy is done.
@@ -627,7 +630,6 @@ exit
 
     @lockutils.synchronized('3par', 'cinder-', True)
     def delete_volume(self, volume, client):
-        """ Delete a volume. """
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
             client.deleteVolume(volume_name)
@@ -654,8 +656,8 @@ exit
                    pprint.pformat(snapshot['display_name'])))
 
         if snapshot['volume_size'] != volume['size']:
-            err = "You cannot change size of the volume.  It must \
-be the same as it's Snapshot."
+            err = "You cannot change size of the volume.  It must "
+            "be the same as the snapshot."
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
@@ -683,8 +685,7 @@ be the same as it's Snapshot."
             raise exception.NotFound()
 
     @lockutils.synchronized('3par', 'cinder-', True)
-    def create_snapshot(self, snapshot, client, FLAGS):
-        """ Creates a snapshot. """
+    def create_snapshot(self, snapshot, client):
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
@@ -708,11 +709,13 @@ be the same as it's Snapshot."
 
             optional = {'comment': json.dumps(extra),
                         'readOnly': True}
-            if FLAGS.hp3par_snapshot_expiration:
-                optional['expirationHours'] = FLAGS.hp3par_snapshot_expiration
+            if self.config.hp3par_snapshot_expiration:
+                optional['expirationHours'] = (
+                    self.config.hp3par_snapshot_expiration)
 
-            if FLAGS.hp3par_snapshot_retention:
-                optional['retentionHours'] = FLAGS.hp3par_snapshot_retention
+            if self.config.hp3par_snapshot_retention:
+                optional['retentionHours'] = (
+                    self.config.hp3par_snapshot_retention)
 
             client.createSnapshot(snap_name, vol_name, optional)
         except hpexceptions.HTTPForbidden:
@@ -722,7 +725,6 @@ be the same as it's Snapshot."
 
     @lockutils.synchronized('3par', 'cinder-', True)
     def delete_snapshot(self, snapshot, client):
-        """ Driver entry point for deleting a snapshot. """
         LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:

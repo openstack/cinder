@@ -19,7 +19,12 @@
 #
 """
 Volume driver for HP 3PAR Storage array. This driver requires 3.1.2 firmware
-on the 3PAR array. Set the following in the cinder.conf file to enable the
+on the 3PAR array.
+
+You will need to install the python hp3parclient.
+sudo pip install hp3parclient
+
+Set the following in the cinder.conf file to enable the
 3PAR iSCSI Driver along with the required flags:
 
 volume_driver=cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver
@@ -29,16 +34,14 @@ from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 import cinder.volume.driver
-from cinder.volume.drivers.san.hp.hp_3par_common import HP3PARCommon
+from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
+from cinder.volume.drivers.san import san
 
 VERSION = 1.0
 LOG = logging.getLogger(__name__)
-
-FLAGS = flags.FLAGS
 
 
 class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
@@ -52,9 +55,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
         self.client = None
         self.common = None
+        self.configuration.append_config_values(hpcommon.hp3par_opts)
+        self.configuration.append_config_values(san.san_opts)
 
     def _init_common(self):
-        return HP3PARCommon()
+        return hpcommon.HP3PARCommon(self.configuration)
 
     def _check_flags(self):
         """Sanity check to ensure we have required options set."""
@@ -62,10 +67,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                           'hp3par_password', 'iscsi_ip_address',
                           'iscsi_port', 'san_ip', 'san_login',
                           'san_password']
-        self.common.check_flags(FLAGS, required_flags)
+        self.common.check_flags(self.configuration, required_flags)
 
     def _create_client(self):
-        return client.HP3ParClient(FLAGS.hp3par_api_url)
+        return client.HP3ParClient(self.configuration.hp3par_api_url)
 
     def get_volume_stats(self, refresh):
         stats = self.common.get_volume_stats(refresh, self.client)
@@ -77,34 +82,37 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.common = self._init_common()
         self._check_flags()
         self.client = self._create_client()
-        if FLAGS.hp3par_debug:
+        if self.configuration.hp3par_debug:
             self.client.debug_rest(True)
 
         try:
             LOG.debug("Connecting to 3PAR")
-            self.client.login(FLAGS.hp3par_username, FLAGS.hp3par_password)
+            self.client.login(self.configuration.hp3par_username,
+                              self.configuration.hp3par_password)
         except hpexceptions.HTTPUnauthorized as ex:
             LOG.warning("Failed to connect to 3PAR (%s) because %s" %
-                       (FLAGS.hp3par_api_url, str(ex)))
+                       (self.configuration.hp3par_api_url, str(ex)))
             msg = _("Login to 3PAR array invalid")
             raise exception.InvalidInput(reason=msg)
 
         # make sure the CPG exists
         try:
-            cpg = self.client.getCPG(FLAGS.hp3par_cpg)
+            cpg = self.client.getCPG(self.configuration.hp3par_cpg)
         except hpexceptions.HTTPNotFound as ex:
-            err = _("CPG (%s) doesn't exist on array") % FLAGS.hp3par_cpg
+            err = (_("CPG (%s) doesn't exist on array")
+                   % self.configuration.hp3par_cpg)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
-        if 'domain' not in cpg and cpg['domain'] != FLAGS.hp3par_domain:
+        if ('domain' not in cpg and
+            cpg['domain'] != self.configuration.hp3par_domain):
             err = "CPG's domain '%s' and config option hp3par_domain '%s' \
-must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
+must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
         # make sure ssh works.
-        self._iscsi_discover_target_iqn(FLAGS.iscsi_ip_address)
+        self._iscsi_discover_target_iqn(self.configuration.iscsi_ip_address)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -112,24 +120,24 @@ must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
 
     @lockutils.synchronized('3par-vol', 'cinder-', True)
     def create_volume(self, volume):
-        """ Create a new volume. """
-        metadata = self.common.create_volume(volume, self.client, FLAGS)
+        metadata = self.common.create_volume(volume, self.client)
 
         return {'provider_location': "%s:%s" %
-                (FLAGS.iscsi_ip_address, FLAGS.iscsi_port),
+                (self.configuration.iscsi_ip_address,
+                 self.configuration.iscsi_port),
                 'metadata': metadata}
 
     def create_cloned_volume(self, volume, src_vref):
         """ Clone an existing volume. """
         new_vol = self.common.create_cloned_volume(volume, src_vref,
-                                                   self.client, FLAGS)
+                                                   self.client)
         return {'provider_location': "%s:%s" %
-                (FLAGS.iscsi_ip_address, FLAGS.iscsi_port),
+                (self.configuration.iscsi_ip_address,
+                 self.configuration.iscsi_port),
                 'metadata': new_vol}
 
     @lockutils.synchronized('3par-vol', 'cinder-', True)
     def delete_volume(self, volume):
-        """ Delete a volume. """
         self.common.delete_volume(volume, self.client)
 
     @lockutils.synchronized('3par-vol', 'cinder-', True)
@@ -143,12 +151,10 @@ must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
 
     @lockutils.synchronized('3par-snap', 'cinder-', True)
     def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        self.common.create_snapshot(snapshot, self.client, FLAGS)
+        self.common.create_snapshot(snapshot, self.client)
 
     @lockutils.synchronized('3par-snap', 'cinder-', True)
     def delete_snapshot(self, snapshot):
-        """Driver entry point for deleting a snapshot."""
         self.common.delete_snapshot(snapshot, self.client)
 
     @lockutils.synchronized('3par-attach', 'cinder-', True)
@@ -178,7 +184,8 @@ must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
           * create vlun on the 3par
         """
         # get the target_iqn on the 3par interface.
-        target_iqn = self._iscsi_discover_target_iqn(FLAGS.iscsi_ip_address)
+        target_iqn = self._iscsi_discover_target_iqn(
+            self.configuration.iscsi_ip_address)
 
         # we have to make sure we have a host
         host = self._create_host(volume, connector)
@@ -188,7 +195,8 @@ must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
 
         info = {'driver_volume_type': 'iscsi',
                 'data': {'target_portal': "%s:%s" %
-                         (FLAGS.iscsi_ip_address, FLAGS.iscsi_port),
+                         (self.configuration.iscsi_ip_address,
+                          self.configuration.iscsi_port),
                          'target_iqn': target_iqn,
                          'target_lun': vlun['lun'],
                          'target_discovered': True
@@ -246,7 +254,8 @@ must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
             persona_id = self.common.get_persona_type(volume)
             # host doesn't exist, we have to create it
             self._create_3par_iscsi_host(hostname, connector['initiator'],
-                                         FLAGS.hp3par_domain, persona_id)
+                                         self.configuration.hp3par_domain,
+                                         persona_id)
             host = self.common._get_3par_host(hostname)
 
         return host
@@ -257,10 +266,8 @@ must be the same" % (cpg['domain'], FLAGS.hp3par_domain)
 
     @lockutils.synchronized('3par-exp', 'cinder-', True)
     def ensure_export(self, context, volume):
-        """Exports the volume."""
         pass
 
     @lockutils.synchronized('3par-exp', 'cinder-', True)
     def remove_export(self, context, volume):
-        """Removes an export for a logical volume."""
         pass
