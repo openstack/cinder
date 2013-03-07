@@ -420,6 +420,57 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         host_name = str(host_name)
         return host_name[:55]
 
+    def _find_host_from_wwpn(self, connector):
+        for wwpn in connector['wwpns']:
+            ssh_cmd = 'lsfabric -wwpn %s -delim !' % wwpn
+            out, err = self._run_ssh(ssh_cmd)
+            host_lines = out.strip().split('\n')
+
+            if len(host_lines) == 0:
+                # This WWPN is not in use
+                continue
+
+            header = host_lines.pop(0).split('!')
+            self._assert_ssh_return('remote_wwpn' in header and
+                                    'name' in header,
+                                    '_find_host_from_wwpn',
+                                    ssh_cmd, out, err)
+            rmt_wwpn_idx = header.index('remote_wwpn')
+            name_idx = header.index('name')
+
+            wwpns = map(lambda x: x.split('!')[rmt_wwpn_idx], host_lines)
+
+            if wwpn in wwpns:
+                # All the wwpns will be the mapping for the same
+                # host from this WWPN-based query. Just pick
+                # the name from first line.
+                hostname = host_lines[0].split('!')[name_idx]
+                return hostname
+
+        # Didn't find a host
+        return None
+
+    def _find_host_exhaustive(self, connector, hosts):
+        for host in hosts:
+            ssh_cmd = 'lshost -delim ! %s' % host
+            out, err = self._run_ssh(ssh_cmd)
+            self._assert_ssh_return(len(out.strip()),
+                                    '_find_host_exhaustive',
+                                    ssh_cmd, out, err)
+            for attr_line in out.split('\n'):
+                # If '!' not found, return the string and two empty strings
+                attr_name, foo, attr_val = attr_line.partition('!')
+                if (attr_name == 'iscsi_name' and
+                    'initiator' in connector and
+                    attr_val == connector['initiator']):
+                        return host
+                elif (attr_name == 'WWPN' and
+                      'wwpns' in connector and
+                      attr_val.lower() in
+                      map(str.lower, map(str, connector['wwpns']))):
+                        return host
+        return None
+
     def _get_host_from_connector(self, connector):
         """List the hosts defined in the storage.
 
@@ -438,46 +489,24 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         if not len(out.strip()):
             return None
 
-        host_lines = out.strip().split('\n')
-        self._assert_ssh_return(len(host_lines), '_get_host_from_connector',
-                                ssh_cmd, out, err)
-        header = host_lines.pop(0).split('!')
-        self._assert_ssh_return('name' in header, '_get_host_from_connector',
-                                ssh_cmd, out, err)
-        name_index = header.index('name')
-
-        hosts = map(lambda x: x.split('!')[name_index], host_lines)
+        # If we have FC information, we have a faster lookup option
         hostname = None
+        if 'wwpns' in connector:
+            hostname = self._find_host_from_wwpn(connector)
 
-        # For each host with the prefix, check connection details to verify
-        for host in hosts:
-            if not host.startswith(prefix):
-                continue
-            ssh_cmd = 'lshost -delim ! %s' % host
-            out, err = self._run_ssh(ssh_cmd)
-            self._assert_ssh_return(len(out.strip()),
+        # If we don't have a hostname yet, try the long way
+        if not hostname:
+            host_lines = out.strip().split('\n')
+            self._assert_ssh_return(len(host_lines),
                                     '_get_host_from_connector',
                                     ssh_cmd, out, err)
-            for attr_line in out.split('\n'):
-                # If '!' not found, return the string and two empty strings
-                attr_name, foo, attr_val = attr_line.partition('!')
-                found = False
-                if ('initiator' in connector and
-                    attr_name == 'iscsi_name' and
-                    attr_val == connector['initiator']):
-                        found = True
-                elif ('wwpns' in connector and
-                      attr_name == 'WWPN' and
-                      attr_val.lower() in
-                      map(str.lower, map(str, connector['wwpns']))):
-                        found = True
-
-                if found:
-                    hostname = host
-                    break
-
-            if hostname is not None:
-                break
+            header = host_lines.pop(0).split('!')
+            self._assert_ssh_return('name' in header,
+                                    '_get_host_from_connector',
+                                    ssh_cmd, out, err)
+            name_index = header.index('name')
+            hosts = map(lambda x: x.split('!')[name_index], host_lines)
+            hostname = self._find_host_exhaustive(connector, hosts)
 
         LOG.debug(_('leave: _get_host_from_connector: host %s') % hostname)
 

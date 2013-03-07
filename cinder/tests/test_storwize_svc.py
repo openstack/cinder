@@ -213,6 +213,7 @@ class StorwizeSVCManagementSimulator:
             'unit',
             'easytier',
             'warning',
+            'wwpn',
         ]
 
         # Handle the special case of lsnode which is a two-word command
@@ -474,14 +475,16 @@ class StorwizeSVCManagementSimulator:
 
     def _cmd_lsfabric(self, **kwargs):
         host_name = kwargs['host'] if 'host' in kwargs else None
+        target_wwpn = kwargs['wwpn'] if 'wwpn' in kwargs else None
         host_infos = []
 
         for hk, hv in self._hosts_list.iteritems():
             if not host_name or hv['host_name'] == host_name:
                 for mk, mv in self._mappings_list.iteritems():
                     if mv['host'] == hv['host_name']:
-                        host_infos.append(hv)
-                        break
+                        if not target_wwpn or target_wwpn in hv['wwpns']:
+                            host_infos.append(hv)
+                            break
 
         if not len(host_infos):
             return ('', '')
