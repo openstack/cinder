@@ -22,7 +22,6 @@ from cinder import test
 
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
-from cinder.volume.drivers.netapp import iscsi
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
 from cinder.volume.drivers import nfs
 from lxml import etree
@@ -81,7 +80,7 @@ class NetappNfsDriverTestCase(test.TestCase):
     def setUp(self):
         self._mox = mox.Mox()
         self._driver = netapp_nfs.NetAppNFSDriver(
-                                    configuration=create_configuration())
+            configuration=create_configuration())
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -95,13 +94,17 @@ class NetappNfsDriverTestCase(test.TestCase):
                           'netapp_server_hostname',
                           'netapp_server_port']
 
+        # set required flags
+        for flag in required_flags:
+            setattr(drv.configuration, flag, None)
+
         # check exception raises when flags are not set
         self.assertRaises(exception.CinderException,
                           drv.check_for_setup_error)
 
         # set required flags
         for flag in required_flags:
-            setattr(iscsi.FLAGS, flag, 'val')
+            setattr(drv.configuration, flag, 'val')
 
         mox.StubOutWithMock(nfs.NfsDriver, 'check_for_setup_error')
         nfs.NfsDriver.check_for_setup_error()
@@ -113,17 +116,17 @@ class NetappNfsDriverTestCase(test.TestCase):
 
         # restore initial FLAGS
         for flag in required_flags:
-            delattr(iscsi.FLAGS, flag)
+            delattr(drv.configuration, flag)
 
     def test_do_setup(self):
         mox = self._mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
-        mox.StubOutWithMock(netapp_nfs.NetAppNFSDriver, '_get_client')
+        mox.StubOutWithMock(drv, '_get_client')
 
         drv.check_for_setup_error()
-        netapp_nfs.NetAppNFSDriver._get_client()
+        drv._get_client()
 
         mox.ReplayAll()
 
@@ -240,7 +243,8 @@ class NetappNfsDriverTestCase(test.TestCase):
     def test_successfull_clone_volume(self):
         drv = self._driver
         mox = self._prepare_clone_mock('passed')
-
+        # set required flags
+        setattr(drv.configuration, 'synchronous_snapshot_create', False)
         mox.ReplayAll()
 
         volume_name = 'volume_name'
@@ -287,7 +291,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppCmodeNfsDriver(
-                                    configuration=create_configuration())
+            configuration=create_configuration())
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -302,13 +306,16 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
             'netapp_server_hostname',
             'netapp_server_port']
 
+        # set required flags
+        for flag in required_flags:
+            setattr(drv.configuration, flag, None)
         # check exception raises when flags are not set
         self.assertRaises(exception.CinderException,
                           drv.check_for_setup_error)
 
         # set required flags
         for flag in required_flags:
-            setattr(iscsi.FLAGS, flag, 'val')
+            setattr(drv.configuration, flag, 'val')
 
         mox.ReplayAll()
 
@@ -318,17 +325,17 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
         # restore initial FLAGS
         for flag in required_flags:
-            delattr(iscsi.FLAGS, flag)
+            delattr(drv.configuration, flag)
 
     def test_do_setup(self):
         mox = self._mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
-        mox.StubOutWithMock(netapp_nfs.NetAppCmodeNfsDriver, '_get_client')
+        mox.StubOutWithMock(drv, '_get_client')
 
         drv.check_for_setup_error()
-        netapp_nfs.NetAppCmodeNfsDriver._get_client()
+        drv._get_client()
 
         mox.ReplayAll()
 
@@ -470,7 +477,7 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
     """Test direct NetApp C Mode driver"""
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver(
-                                        configuration=create_configuration())
+            configuration=create_configuration())
 
     def test_check_for_setup_error(self):
         mox = self._mox
@@ -482,13 +489,16 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
             'netapp_server_hostname',
             'netapp_server_port']
 
+        # set required flags
+        for flag in required_flags:
+            setattr(drv.configuration, flag, None)
         # check exception raises when flags are not set
         self.assertRaises(exception.CinderException,
                           drv.check_for_setup_error)
 
         # set required flags
         for flag in required_flags:
-            setattr(iscsi.FLAGS, flag, 'val')
+            setattr(drv.configuration, flag, 'val')
 
         mox.ReplayAll()
 
@@ -498,19 +508,18 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
 
         # restore initial FLAGS
         for flag in required_flags:
-            delattr(iscsi.FLAGS, flag)
+            delattr(drv.configuration, flag)
 
     def test_do_setup(self):
         mox = self._mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
-        mox.StubOutWithMock(netapp_nfs.NetAppDirectCmodeNfsDriver,
-                            '_get_client')
+        mox.StubOutWithMock(drv, '_get_client')
         mox.StubOutWithMock(drv, '_do_custom_setup')
 
         drv.check_for_setup_error()
-        netapp_nfs.NetAppDirectNfsDriver._get_client()
+        drv._get_client()
         drv._do_custom_setup(IgnoreArg())
 
         mox.ReplayAll()
@@ -590,7 +599,7 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
     """Test direct NetApp C Mode driver"""
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppDirect7modeNfsDriver(
-                                    configuration=create_configuration())
+            configuration=create_configuration())
 
     def test_check_for_setup_error(self):
         mox = self._mox
@@ -602,13 +611,16 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
             'netapp_server_hostname',
             'netapp_server_port']
 
+        # set required flags
+        for flag in required_flags:
+            setattr(drv.configuration, flag, None)
         # check exception raises when flags are not set
         self.assertRaises(exception.CinderException,
                           drv.check_for_setup_error)
 
         # set required flags
         for flag in required_flags:
-            setattr(iscsi.FLAGS, flag, 'val')
+            setattr(drv.configuration, flag, 'val')
 
         mox.ReplayAll()
 
@@ -618,19 +630,18 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
 
         # restore initial FLAGS
         for flag in required_flags:
-            delattr(iscsi.FLAGS, flag)
+            delattr(drv.configuration, flag)
 
     def test_do_setup(self):
         mox = self._mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
-        mox.StubOutWithMock(netapp_nfs.NetAppDirect7modeNfsDriver,
-                            '_get_client')
+        mox.StubOutWithMock(drv, '_get_client')
         mox.StubOutWithMock(drv, '_do_custom_setup')
 
         drv.check_for_setup_error()
-        netapp_nfs.NetAppDirectNfsDriver._get_client()
+        drv._get_client()
         drv._do_custom_setup(IgnoreArg())
 
         mox.ReplayAll()
