@@ -33,6 +33,12 @@ class HpSanISCSITestCase(test.TestCase):
                        self._fake_get_iscsi_properties)
         configuration = mox.MockObject(conf.Configuration)
         configuration.san_is_local = False
+        configuration.san_ip = "10.0.0.1"
+        configuration.san_login = "foo"
+        configuration.san_password = "bar"
+        configuration.san_ssh_port = 16022
+        configuration.san_clustername = "CloudCluster1"
+        configuration.san_thin_provision = True
         configuration.append_config_values(mox.IgnoreArg())
 
         self.driver = HpSanISCSIDriver(configuration=configuration)
@@ -53,7 +59,7 @@ class HpSanISCSITestCase(test.TestCase):
     def _fake_get_iscsi_properties(self, volume):
         return self.properties
 
-    def _fake_cliq_run(self, verb, cliq_args):
+    def _fake_cliq_run(self, verb, cliq_args, check_exit_code=True):
         """Return fake results for the various methods."""
 
         def create_volume(cliq_args):
@@ -159,6 +165,22 @@ class HpSanISCSITestCase(test.TestCase):
                 </volume></response></gauche>"""
             return output, None
 
+        def get_server_info(cliq_args):
+            """
+            input = "getServerInfo serverName=fakeName"
+            """
+            output = """<gauche version="1.0"><response result="0"/>
+                     </gauche>"""
+            return output, None
+
+        def create_server(cliq_args):
+            """
+            input = "createServer serverName=fakeName initiator=something"
+            """
+            output = """<gauche version="1.0"><response result="0"/>
+                     </gauche>"""
+            return output, None
+
         def test_error(cliq_args):
             output = """<gauche version="1.0">
                 <response description="Volume '134234' not found."
@@ -175,6 +197,8 @@ class HpSanISCSITestCase(test.TestCase):
                      'unassignVolumeToServer': unassign_volume,
                      'getClusterInfo': get_cluster_info,
                      'getVolumeInfo': get_volume_info,
+                     'getServerInfo': get_server_info,
+                     'createServer': create_server,
                      'testError': test_error}
         except KeyError:
             raise NotImplementedError()
