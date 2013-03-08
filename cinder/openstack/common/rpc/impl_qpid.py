@@ -17,20 +17,22 @@
 
 import functools
 import itertools
-import logging
 import time
 import uuid
 
 import eventlet
 import greenlet
 from oslo.config import cfg
-import qpid.messaging
-import qpid.messaging.exceptions
 
 from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import log as logging
 from cinder.openstack.common.rpc import amqp as rpc_amqp
 from cinder.openstack.common.rpc import common as rpc_common
+
+qpid_messaging = importutils.try_import("qpid.messaging")
+qpid_exceptions = importutils.try_import("qpid.messaging.exceptions")
 
 LOG = logging.getLogger(__name__)
 
@@ -41,33 +43,19 @@ qpid_opts = [
     cfg.StrOpt('qpid_port',
                default='5672',
                help='Qpid broker port'),
+    cfg.ListOpt('qpid_hosts',
+                default=['$qpid_hostname:$qpid_port'],
+                help='Qpid HA cluster host:port pairs'),
     cfg.StrOpt('qpid_username',
                default='',
                help='Username for qpid connection'),
     cfg.StrOpt('qpid_password',
                default='',
-               help='Password for qpid connection'),
+               help='Password for qpid connection',
+               secret=True),
     cfg.StrOpt('qpid_sasl_mechanisms',
                default='',
                help='Space separated list of SASL mechanisms to use for auth'),
-    cfg.BoolOpt('qpid_reconnect',
-                default=True,
-                help='Automatically reconnect'),
-    cfg.IntOpt('qpid_reconnect_timeout',
-               default=0,
-               help='Reconnection timeout in seconds'),
-    cfg.IntOpt('qpid_reconnect_limit',
-               default=0,
-               help='Max reconnections before giving up'),
-    cfg.IntOpt('qpid_reconnect_interval_min',
-               default=0,
-               help='Minimum seconds between reconnection attempts'),
-    cfg.IntOpt('qpid_reconnect_interval_max',
-               default=0,
-               help='Maximum seconds between reconnection attempts'),
-    cfg.IntOpt('qpid_reconnect_interval',
-               default=0,
-               help='Equivalent to setting max and min to the same value'),
     cfg.IntOpt('qpid_heartbeat',
                default=60,
                help='Seconds between connection keepalive heartbeats'),
@@ -139,7 +127,8 @@ class ConsumerBase(object):
         """Fetch the message and pass it to the callback object"""
         message = self.receiver.fetch()
         try:
-            self.callback(message.content)
+            msg = rpc_common.deserialize_msg(message.content)
+            self.callback(msg)
         except Exception:
             LOG.exception(_("Failed to process message... skipping it."))
         finally:
@@ -289,54 +278,50 @@ class Connection(object):
     pool = None
 
     def __init__(self, conf, server_params=None):
+        if not qpid_messaging:
+            raise ImportError("Failed to import qpid.messaging")
+
         self.session = None
         self.consumers = {}
         self.consumer_thread = None
+        self.proxy_callbacks = []
         self.conf = conf
 
-        if server_params is None:
-            server_params = {}
+        if server_params and 'hostname' in server_params:
+            # NOTE(russellb) This enables support for cast_to_server.
+            server_params['qpid_hosts'] = [
+                '%s:%d' % (server_params['hostname'],
+                           server_params.get('port', 5672))
+            ]
 
-        default_params = dict(hostname=self.conf.qpid_hostname,
-                              port=self.conf.qpid_port,
-                              username=self.conf.qpid_username,
-                              password=self.conf.qpid_password)
+        params = {
+            'qpid_hosts': self.conf.qpid_hosts,
+            'username': self.conf.qpid_username,
+            'password': self.conf.qpid_password,
+        }
+        params.update(server_params or {})
 
-        params = server_params
-        for key in default_params.keys():
-            params.setdefault(key, default_params[key])
+        self.brokers = params['qpid_hosts']
+        self.username = params['username']
+        self.password = params['password']
+        self.connection_create(self.brokers[0])
+        self.reconnect()
 
-        self.broker = params['hostname'] + ":" + str(params['port'])
+    def connection_create(self, broker):
         # Create the connection - this does not open the connection
-        self.connection = qpid.messaging.Connection(self.broker)
+        self.connection = qpid_messaging.Connection(broker)
 
         # Check if flags are set and if so set them for the connection
         # before we call open
-        self.connection.username = params['username']
-        self.connection.password = params['password']
+        self.connection.username = self.username
+        self.connection.password = self.password
+
         self.connection.sasl_mechanisms = self.conf.qpid_sasl_mechanisms
-        self.connection.reconnect = self.conf.qpid_reconnect
-        if self.conf.qpid_reconnect_timeout:
-            self.connection.reconnect_timeout = (
-                self.conf.qpid_reconnect_timeout)
-        if self.conf.qpid_reconnect_limit:
-            self.connection.reconnect_limit = self.conf.qpid_reconnect_limit
-        if self.conf.qpid_reconnect_interval_max:
-            self.connection.reconnect_interval_max = (
-                self.conf.qpid_reconnect_interval_max)
-        if self.conf.qpid_reconnect_interval_min:
-            self.connection.reconnect_interval_min = (
-                self.conf.qpid_reconnect_interval_min)
-        if self.conf.qpid_reconnect_interval:
-            self.connection.reconnect_interval = (
-                self.conf.qpid_reconnect_interval)
+        # Reconnection is done by self.reconnect()
+        self.connection.reconnect = False
         self.connection.heartbeat = self.conf.qpid_heartbeat
         self.connection.protocol = self.conf.qpid_protocol
         self.connection.tcp_nodelay = self.conf.qpid_tcp_nodelay
-
-        # Open is part of reconnect -
-        # NOTE(WGH) not sure we need this with the reconnect flags
-        self.reconnect()
 
     def _register_consumer(self, consumer):
         self.consumers[str(consumer.get_receiver())] = consumer
@@ -349,34 +334,47 @@ class Connection(object):
         if self.connection.opened():
             try:
                 self.connection.close()
-            except qpid.messaging.exceptions.ConnectionError:
+            except qpid_exceptions.ConnectionError:
                 pass
 
+        attempt = 0
+        delay = 1
         while True:
-            try:
-                self.connection.open()
-            except qpid.messaging.exceptions.ConnectionError, e:
-                LOG.error(_('Unable to connect to AMQP server: %s'), e)
-                time.sleep(self.conf.qpid_reconnect_interval or 1)
-            else:
-                break
+            broker = self.brokers[attempt % len(self.brokers)]
+            attempt += 1
 
-        LOG.info(_('Connected to AMQP server on %s'), self.broker)
+            try:
+                self.connection_create(broker)
+                self.connection.open()
+            except qpid_exceptions.ConnectionError, e:
+                msg_dict = dict(e=e, delay=delay)
+                msg = _("Unable to connect to AMQP server: %(e)s. "
+                        "Sleeping %(delay)s seconds") % msg_dict
+                LOG.error(msg)
+                time.sleep(delay)
+                delay = min(2 * delay, 60)
+            else:
+                LOG.info(_('Connected to AMQP server on %s'), broker)
+                break
 
         self.session = self.connection.session()
 
-        for consumer in self.consumers.itervalues():
-            consumer.reconnect(self.session)
-
         if self.consumers:
+            consumers = self.consumers
+            self.consumers = {}
+
+            for consumer in consumers.itervalues():
+                consumer.reconnect(self.session)
+                self._register_consumer(consumer)
+
             LOG.debug(_("Re-established AMQP queues"))
 
     def ensure(self, error_callback, method, *args, **kwargs):
         while True:
             try:
                 return method(*args, **kwargs)
-            except (qpid.messaging.exceptions.Empty,
-                    qpid.messaging.exceptions.ConnectionError), e:
+            except (qpid_exceptions.Empty,
+                    qpid_exceptions.ConnectionError), e:
                 if error_callback:
                     error_callback(e)
                 self.reconnect()
@@ -384,12 +382,14 @@ class Connection(object):
     def close(self):
         """Close/release this connection"""
         self.cancel_consumer_thread()
+        self.wait_on_proxy_callbacks()
         self.connection.close()
         self.connection = None
 
     def reset(self):
         """Reset a connection so it can be used again"""
         self.cancel_consumer_thread()
+        self.wait_on_proxy_callbacks()
         self.session.close()
         self.session = self.connection.session()
         self.consumers = {}
@@ -414,9 +414,9 @@ class Connection(object):
         """Return an iterator that will consume from all queues/consumers"""
 
         def _error_callback(exc):
-            if isinstance(exc, qpid.messaging.exceptions.Empty):
-                LOG.exception(_('Timed out waiting for RPC response: %s') %
-                              str(exc))
+            if isinstance(exc, qpid_exceptions.Empty):
+                LOG.debug(_('Timed out waiting for RPC response: %s') %
+                          str(exc))
                 raise rpc_common.Timeout()
             else:
                 LOG.exception(_('Failed to consume message from queue: %s') %
@@ -443,6 +443,11 @@ class Connection(object):
             except greenlet.GreenletExit:
                 pass
             self.consumer_thread = None
+
+    def wait_on_proxy_callbacks(self):
+        """Wait for all proxy callback threads to exit."""
+        for proxy_cb in self.proxy_callbacks:
+            proxy_cb.wait()
 
     def publisher_send(self, cls, topic, msg):
         """Send to a publisher based on the publisher class"""
@@ -482,9 +487,20 @@ class Connection(object):
         """Send a 'direct' message"""
         self.publisher_send(DirectPublisher, msg_id, msg)
 
-    def topic_send(self, topic, msg):
+    def topic_send(self, topic, msg, timeout=None):
         """Send a 'topic' message"""
-        self.publisher_send(TopicPublisher, topic, msg)
+        #
+        # We want to create a message with attributes, e.g. a TTL. We
+        # don't really need to keep 'msg' in its JSON format any longer
+        # so let's create an actual qpid message here and get some
+        # value-add on the go.
+        #
+        # WARNING: Request timeout happens to be in the same units as
+        # qpid's TTL (seconds). If this changes in the future, then this
+        # will need to be altered accordingly.
+        #
+        qpid_message = qpid_messaging.Message(content=msg, ttl=timeout)
+        self.publisher_send(TopicPublisher, topic, qpid_message)
 
     def fanout_send(self, topic, msg):
         """Send a 'fanout' message"""
@@ -519,6 +535,7 @@ class Connection(object):
         proxy_cb = rpc_amqp.ProxyCallback(
             self.conf, proxy,
             rpc_amqp.get_connection_pool(self.conf, Connection))
+        self.proxy_callbacks.append(proxy_cb)
 
         if fanout:
             consumer = FanoutConsumer(self.conf, self.session, topic, proxy_cb)
@@ -534,12 +551,41 @@ class Connection(object):
         proxy_cb = rpc_amqp.ProxyCallback(
             self.conf, proxy,
             rpc_amqp.get_connection_pool(self.conf, Connection))
+        self.proxy_callbacks.append(proxy_cb)
 
         consumer = TopicConsumer(self.conf, self.session, topic, proxy_cb,
                                  name=pool_name)
 
         self._register_consumer(consumer)
 
+        return consumer
+
+    def join_consumer_pool(self, callback, pool_name, topic,
+                           exchange_name=None):
+        """Register as a member of a group of consumers for a given topic from
+        the specified exchange.
+
+        Exactly one member of a given pool will receive each message.
+
+        A message will be delivered to multiple pools, if more than
+        one is created.
+        """
+        callback_wrapper = rpc_amqp.CallbackWrapper(
+            conf=self.conf,
+            callback=callback,
+            connection_pool=rpc_amqp.get_connection_pool(self.conf,
+                                                         Connection),
+        )
+        self.proxy_callbacks.append(callback_wrapper)
+
+        consumer = TopicConsumer(conf=self.conf,
+                                 session=self.session,
+                                 topic=topic,
+                                 callback=callback_wrapper,
+                                 name=pool_name,
+                                 exchange_name=exchange_name)
+
+        self._register_consumer(consumer)
         return consumer
 
 
@@ -592,10 +638,11 @@ def fanout_cast_to_server(conf, context, server_params, topic, msg):
         rpc_amqp.get_connection_pool(conf, Connection))
 
 
-def notify(conf, context, topic, msg):
+def notify(conf, context, topic, msg, envelope):
     """Sends a notification event on a topic."""
     return rpc_amqp.notify(conf, context, topic, msg,
-                           rpc_amqp.get_connection_pool(conf, Connection))
+                           rpc_amqp.get_connection_pool(conf, Connection),
+                           envelope)
 
 
 def cleanup():

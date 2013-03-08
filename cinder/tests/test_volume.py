@@ -293,6 +293,7 @@ class VolumeTestCase(test.TestCase):
                           self.context,
                           volume_id)
 
+    @test.skip_test
     def test_preattach_status_volume(self):
         """Ensure volume goes into pre-attaching state"""
         instance_uuid = '12345678-1234-5678-1234-567812345678'

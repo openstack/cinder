@@ -21,17 +21,25 @@ return keys for direct exchanges, per (approximate) AMQP parlance.
 import contextlib
 import itertools
 import json
-import logging
 
+import eventlet
 from oslo.config import cfg
 
 from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common import log as logging
+
 
 matchmaker_opts = [
     # Matchmaker ring file
     cfg.StrOpt('matchmaker_ringfile',
                default='/etc/nova/matchmaker_ring.json',
                help='Matchmaker ring file (JSON)'),
+    cfg.IntOpt('matchmaker_heartbeat_freq',
+               default='300',
+               help='Heartbeat frequency'),
+    cfg.IntOpt('matchmaker_heartbeat_ttl',
+               default='600',
+               help='Heartbeat time-to-live.'),
 ]
 
 CONF = cfg.CONF
@@ -69,11 +77,72 @@ class Binding(object):
 
 
 class MatchMakerBase(object):
-    """Match Maker Base Class."""
-
+    """
+    Match Maker Base Class.
+    Build off HeartbeatMatchMakerBase if building a
+    heartbeat-capable MatchMaker.
+    """
     def __init__(self):
         # Array of tuples. Index [2] toggles negation, [3] is last-if-true
         self.bindings = []
+
+        self.no_heartbeat_msg = _('Matchmaker does not implement '
+                                  'registration or heartbeat.')
+
+    def register(self, key, host):
+        """
+        Register a host on a backend.
+        Heartbeats, if applicable, may keepalive registration.
+        """
+        pass
+
+    def ack_alive(self, key, host):
+        """
+        Acknowledge that a key.host is alive.
+        Used internally for updating heartbeats,
+        but may also be used publically to acknowledge
+        a system is alive (i.e. rpc message successfully
+        sent to host)
+        """
+        pass
+
+    def is_alive(self, topic, host):
+        """
+        Checks if a host is alive.
+        """
+        pass
+
+    def expire(self, topic, host):
+        """
+        Explicitly expire a host's registration.
+        """
+        pass
+
+    def send_heartbeats(self):
+        """
+        Send all heartbeats.
+        Use start_heartbeat to spawn a heartbeat greenthread,
+        which loops this method.
+        """
+        pass
+
+    def unregister(self, key, host):
+        """
+        Unregister a topic.
+        """
+        pass
+
+    def start_heartbeat(self):
+        """
+        Spawn heartbeat greenthread.
+        """
+        pass
+
+    def stop_heartbeat(self):
+        """
+        Destroys the heartbeat greenthread.
+        """
+        pass
 
     def add_binding(self, binding, rule, last=True):
         self.bindings.append((binding, rule, False, last))
@@ -96,6 +165,103 @@ class MatchMakerBase(object):
                 if last:
                     return workers
         return workers
+
+
+class HeartbeatMatchMakerBase(MatchMakerBase):
+    """
+    Base for a heart-beat capable MatchMaker.
+    Provides common methods for registering,
+    unregistering, and maintaining heartbeats.
+    """
+    def __init__(self):
+        self.hosts = set()
+        self._heart = None
+        self.host_topic = {}
+
+        super(HeartbeatMatchMakerBase, self).__init__()
+
+    def send_heartbeats(self):
+        """
+        Send all heartbeats.
+        Use start_heartbeat to spawn a heartbeat greenthread,
+        which loops this method.
+        """
+        for key, host in self.host_topic:
+            self.ack_alive(key, host)
+
+    def ack_alive(self, key, host):
+        """
+        Acknowledge that a host.topic is alive.
+        Used internally for updating heartbeats,
+        but may also be used publically to acknowledge
+        a system is alive (i.e. rpc message successfully
+        sent to host)
+        """
+        raise NotImplementedError("Must implement ack_alive")
+
+    def backend_register(self, key, host):
+        """
+        Implements registration logic.
+        Called by register(self,key,host)
+        """
+        raise NotImplementedError("Must implement backend_register")
+
+    def backend_unregister(self, key, key_host):
+        """
+        Implements de-registration logic.
+        Called by unregister(self,key,host)
+        """
+        raise NotImplementedError("Must implement backend_unregister")
+
+    def register(self, key, host):
+        """
+        Register a host on a backend.
+        Heartbeats, if applicable, may keepalive registration.
+        """
+        self.hosts.add(host)
+        self.host_topic[(key, host)] = host
+        key_host = '.'.join((key, host))
+
+        self.backend_register(key, key_host)
+
+        self.ack_alive(key, host)
+
+    def unregister(self, key, host):
+        """
+        Unregister a topic.
+        """
+        if (key, host) in self.host_topic:
+            del self.host_topic[(key, host)]
+
+        self.hosts.discard(host)
+        self.backend_unregister(key, '.'.join((key, host)))
+
+        LOG.info(_("Matchmaker unregistered: %s, %s" % (key, host)))
+
+    def start_heartbeat(self):
+        """
+        Implementation of MatchMakerBase.start_heartbeat
+        Launches greenthread looping send_heartbeats(),
+        yielding for CONF.matchmaker_heartbeat_freq seconds
+        between iterations.
+        """
+        if len(self.hosts) == 0:
+            raise MatchMakerException(
+                _("Register before starting heartbeat."))
+
+        def do_heartbeat():
+            while True:
+                self.send_heartbeats()
+                eventlet.sleep(CONF.matchmaker_heartbeat_freq)
+
+        self._heart = eventlet.spawn(do_heartbeat)
+
+    def stop_heartbeat(self):
+        """
+        Destroys the heartbeat greenthread.
+        """
+        if self._heart:
+            self._heart.kill()
 
 
 class DirectBinding(Binding):
@@ -201,24 +367,25 @@ class FanoutRingExchange(RingExchange):
 
 class LocalhostExchange(Exchange):
     """Exchange where all direct topics are local."""
-    def __init__(self):
+    def __init__(self, host='localhost'):
+        self.host = host
         super(Exchange, self).__init__()
 
     def run(self, key):
-        return [(key.split('.')[0] + '.localhost', 'localhost')]
+        return [('.'.join((key.split('.')[0], self.host)), self.host)]
 
 
 class DirectExchange(Exchange):
     """
     Exchange where all topic keys are split, sending to second half.
-    i.e. "compute.host" sends a message to "compute" running on "host"
+    i.e. "compute.host" sends a message to "compute.host" running on "host"
     """
     def __init__(self):
         super(Exchange, self).__init__()
 
     def run(self, key):
-        b, e = key.split('.', 1)
-        return [(b, e)]
+        e = key.split('.', 1)[1]
+        return [(key, e)]
 
 
 class MatchMakerRing(MatchMakerBase):
@@ -237,11 +404,11 @@ class MatchMakerLocalhost(MatchMakerBase):
     Match Maker where all bare topics resolve to localhost.
     Useful for testing.
     """
-    def __init__(self):
+    def __init__(self, host='localhost'):
         super(MatchMakerLocalhost, self).__init__()
-        self.add_binding(FanoutBinding(), LocalhostExchange())
+        self.add_binding(FanoutBinding(), LocalhostExchange(host))
         self.add_binding(DirectBinding(), DirectExchange())
-        self.add_binding(TopicBinding(), LocalhostExchange())
+        self.add_binding(TopicBinding(), LocalhostExchange(host))
 
 
 class MatchMakerStub(MatchMakerBase):
