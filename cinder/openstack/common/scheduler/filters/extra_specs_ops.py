@@ -15,13 +15,17 @@
 
 import operator
 
+from cinder.openstack.common import strutils
+
 # 1. The following operations are supported:
-#   =, s==, s!=, s>=, s>, s<=, s<, <in>, <or>, ==, !=, >=, <=
+#   =, s==, s!=, s>=, s>, s<=, s<, <in>, <is>, <or>, ==, !=, >=, <=
 # 2. Note that <or> is handled in a different way below.
 # 3. If the first word in the extra_specs is not one of the operators,
 #   it is ignored.
 _op_methods = {'=': lambda x, y: float(x) >= float(y),
                '<in>': lambda x, y: y in x,
+               '<is>': lambda x, y: (strutils.bool_from_string(x) is
+                                     strutils.bool_from_string(y)),
                '==': lambda x, y: float(x) == float(y),
                '!=': lambda x, y: float(x) != float(y),
                '>=': lambda x, y: float(x) >= float(y),
