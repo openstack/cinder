@@ -110,6 +110,15 @@ class NfsDriver(driver.VolumeDriver):
 
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
+    def create_volume_from_snapshot(self, volume, snapshot):
+        raise NotImplementedError()
+
+    def create_snapshot(self, snapshot):
+        raise NotImplementedError()
+
+    def delete_snapshot(self, snapshot):
+        raise NotImplementedError()
+
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
         self._ensure_share_mounted(volume['provider_location'])
