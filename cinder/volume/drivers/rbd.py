@@ -23,7 +23,6 @@ import urllib
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -46,9 +45,6 @@ rbd_opts = [
                default=None,
                help='where to store temporary image files if the volume '
                     'driver does not write them directly to the volume'), ]
-
-FLAGS = flags.FLAGS
-FLAGS.register_opts(rbd_opts)
 
 VERSION = '1.0'
 
