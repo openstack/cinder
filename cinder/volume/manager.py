@@ -343,7 +343,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         except Exception:
             rescheduled = False
-            LOG.exception(_("Error trying to reschedule"))
+            LOG.exception(_("volume %s: Error trying to reschedule create"),
+                          volume_id)
 
         if rescheduled:
             # log the original build error
@@ -360,20 +361,20 @@ class VolumeManager(manager.SchedulerDependentManager):
         retry = filter_properties.get('retry', None)
         if not retry:
             # no retry information, do not reschedule.
-            LOG.debug(_("Retry info not present, will not reschedule"),
-                      volume_id=volume_id)
+            LOG.debug(_("Retry info not present, will not reschedule"))
             return
 
         if not request_spec:
-            LOG.debug(_("No request spec, will not reschedule"),
-                      volume_id=volume_id)
+            LOG.debug(_("No request spec, will not reschedule"))
             return
 
         request_spec['volume_id'] = [volume_id]
 
-        LOG.debug(_("Re-scheduling %(method)s: attempt %(num)d") %
-                  {'method': scheduler_method.func_name,
-                   'num': retry['num_attempts']}, volume_id=volume_id)
+        LOG.debug(_("volume %(volume_id)s: re-scheduling %(method)s "
+                    "attempt %(num)d") %
+                  {'volume_id': volume_id,
+                   'method': scheduler_method.func_name,
+                   'num': retry['num_attempts']})
 
         # reset the volume state:
         now = timeutils.utcnow()
