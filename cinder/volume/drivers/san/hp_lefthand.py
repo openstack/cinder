@@ -17,17 +17,14 @@ HP Lefthand SAN ISCSI Driver.
 The driver communicates to the backend aka Cliq via SSH to perform all the
 operations on the SAN.
 """
-
 from lxml import etree
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
 
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
 
 
 class HpSanISCSIDriver(SanISCSIDriver):
@@ -54,23 +51,31 @@ class HpSanISCSIDriver(SanISCSIDriver):
     compute layer.
     """
 
+    stats = {'driver_version': '1.0',
+             'free_capacity_gb': 'unknown',
+             'reserved_percentage': 0,
+             'storage_protocol': 'iSCSI',
+             'total_capacity_gb': 'unknown',
+             'vendor_name': 'Hewlett-Packard',
+             'volume_backend_name': 'HpSanISCSIDriver'}
+
     def __init__(self, *args, **kwargs):
         super(HpSanISCSIDriver, self).__init__(*args, **kwargs)
         self.cluster_vip = None
 
-    def _cliq_run(self, verb, cliq_args):
+    def _cliq_run(self, verb, cliq_args, check_exit_code=True):
         """Runs a CLIQ command over SSH, without doing any result parsing"""
         cliq_arg_strings = []
         for k, v in cliq_args.items():
             cliq_arg_strings.append(" %s=%s" % (k, v))
         cmd = verb + ''.join(cliq_arg_strings)
 
-        return self._run_ssh(cmd)
+        return self._run_ssh(cmd, check_exit_code)
 
     def _cliq_run_xml(self, verb, cliq_args, check_cliq_result=True):
         """Runs a CLIQ command over SSH, parsing and checking the output"""
         cliq_args['output'] = 'XML'
-        (out, _err) = self._cliq_run(verb, cliq_args)
+        (out, _err) = self._cliq_run(verb, cliq_args, check_cliq_result)
 
         LOG.debug(_("CLIQ command returned %s"), out)
 
@@ -176,8 +181,13 @@ class HpSanISCSIDriver(SanISCSIDriver):
     def create_volume(self, volume):
         """Creates a volume."""
         cliq_args = {}
-        cliq_args['clusterName'] = FLAGS.san_clustername
-        cliq_args['thinProvision'] = '1' if FLAGS.san_thin_provision else '0'
+        cliq_args['clusterName'] = self.configuration.san_clustername
+
+        if self.configuration.san_thin_provision:
+            cliq_args['thinProvision'] = '1'
+        else:
+            cliq_args['thinProvision'] = '0'
+
         cliq_args['volumeName'] = volume['name']
         if int(volume['size']) == 0:
             cliq_args['size'] = '100MB'
@@ -253,6 +263,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
             }
 
         """
+        self._create_server(connector)
         cliq_args = {}
         cliq_args['volumeName'] = volume['name']
         cliq_args['serverName'] = connector['host']
@@ -264,9 +275,35 @@ class HpSanISCSIDriver(SanISCSIDriver):
             'data': iscsi_properties
         }
 
+    def _create_server(self, connector):
+        cliq_args = {}
+        cliq_args['serverName'] = connector['host']
+        out = self._cliq_run_xml("getServerInfo", cliq_args, False)
+        response = out.find("response")
+        result = response.attrib.get("result")
+        if result != '0':
+            cliq_args = {}
+            cliq_args['serverName'] = connector['host']
+            cliq_args['initiator'] = connector['initiator']
+            self._cliq_run_xml("createServer", cliq_args)
+
     def terminate_connection(self, volume, connector, **kwargs):
         """Unassign the volume from the host."""
         cliq_args = {}
         cliq_args['volumeName'] = volume['name']
         cliq_args['serverName'] = connector['host']
         self._cliq_run_xml("unassignVolumeToServer", cliq_args)
+
+    def get_volume_stats(self, refresh):
+        if refresh:
+            cliq_args = {}
+            result_xml = self._cliq_run_xml("getClusterInfo", cliq_args)
+            cluster_node = result_xml.find("response/cluster")
+            total_capacity = cluster_node.attrib.get("spaceTotal")
+            free_capacity = cluster_node.attrib.get("unprovisionedSpace")
+            GB = 1073741824
+
+            self.stats['total_capacity_gb'] = int(total_capacity) / GB
+            self.stats['free_capacity_gb'] = int(free_capacity) / GB
+
+        return self.stats
