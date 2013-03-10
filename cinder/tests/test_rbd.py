@@ -80,15 +80,15 @@ class RBDTestCase(test.TestCase):
         def fake_execute(*args, **kwargs):
             return '', ''
         self._mox = mox.Mox()
-        configuration = mox.MockObject(conf.Configuration)
-        configuration.volume_tmp_dir = None
-        configuration.rbd_pool = 'rbd'
-        configuration.rbd_secret_uuid = None
-        configuration.rbd_user = None
-        configuration.append_config_values(mox.IgnoreArg())
+        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration.volume_tmp_dir = None
+        self.configuration.rbd_pool = 'rbd'
+        self.configuration.rbd_secret_uuid = None
+        self.configuration.rbd_user = None
+        self.configuration.append_config_values(mox.IgnoreArg())
 
         self.driver = RBDDriver(execute=fake_execute,
-                                configuration=configuration)
+                                configuration=self.configuration)
         self._mox.ReplayAll()
 
     def test_good_locations(self):
@@ -143,11 +143,11 @@ class RBDTestCase(test.TestCase):
                                          FakeImageService(), None)
 
     def test_copy_image_no_volume_tmp(self):
-        self.flags(volume_tmp_dir=None)
+        self.configuration.volume_tmp_dir = None
         self._copy_image()
 
     def test_copy_image_volume_tmp(self):
-        self.flags(volume_tmp_dir='/var/run/cinder/tmp')
+        self.configuration.volume_tmp_dir = '/var/run/cinder/tmp'
         self._copy_image()
 
     def test_update_volume_stats(self):
