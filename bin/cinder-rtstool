@@ -78,7 +78,7 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
     acl_new.chap_userid = userid
     acl_new.chap_password = password
 
-    m = rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
+    rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
 
     if initiator_iqns:
         initiator_iqns = initiator_iqns.strip(' ')
@@ -87,7 +87,7 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
             acl_new.chap_userid = userid
             acl_new.chap_password = password
 
-            m = rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
+            rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
 
     tpg_new.enable = 1
 
@@ -103,6 +103,36 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
     except rtslib.utils.RTSLibError:
         # TODO(emh): Binding to IPv6 fails sometimes -- let pass for now.
         pass
+
+
+def add_initiator(target_iqn, initiator_iqn, userid, password):
+    try:
+        rtsroot = rtslib.root.RTSRoot()
+    except rtslib.utils.RTSLibError:
+        print _('Ensure that configfs is mounted at /sys/kernel/config.')
+        raise
+
+    # Look for the target
+    target = None
+    for t in rtsroot.targets:
+        if t.dump()['wwn'] == target_iqn:
+            target = t
+            break
+    if target == None:
+        raise RtstoolError(_('Could not find target %s') % target_iqn)
+
+    tpg = target.tpgs.next()  # get the first one
+    for acl in tpg.dump()['node_acls']:
+        # See if this ACL configuration already exists
+        if acl['node_wwn'] == initiator_iqn:
+            # No further action required
+            return
+
+    acl_new = rtslib.NodeACL(tpg, initiator_iqn, mode='create')
+    acl_new.chap_userid = userid
+    acl_new.chap_password = password
+
+    rtslib.MappedLUN(acl_new, 0, tpg_lun=0)
 
 
 def get_targets():
@@ -139,6 +169,8 @@ def usage():
     print sys.argv[0], \
         "create [device] [name] [userid] [password]", \
         "<initiator_iqn,iqn2,iqn3,...>"
+    print sys.argv[0], \
+        "add-initiator [target_iqn] [userid] [password] [initiator_iqn]"
     print sys.argv[0], "get-targets"
     print sys.argv[0], "delete [iqn]"
     print sys.argv[0], "verify"
@@ -169,6 +201,17 @@ def main(argv=None):
             initiator_iqns = argv[6]
 
         create(backing_device, name, userid, password, initiator_iqns)
+
+    elif argv[1] == 'add-initiator':
+        if len(argv) < 6:
+            usage()
+
+        target_iqn = argv[2]
+        userid = argv[3]
+        password = argv[4]
+        initiator_iqn = argv[5]
+
+        add_initiator(target_iqn, initiator_iqn, userid, password)
 
     elif argv[1] == 'get-targets':
         get_targets()
