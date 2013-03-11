@@ -14,22 +14,25 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import pprint
 import socket
-import string
 import sys
 import types
 import uuid
 
 import eventlet
-from eventlet.green import zmq
 import greenlet
 from oslo.config import cfg
 
+from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import processutils as utils
 from cinder.openstack.common.rpc import common as rpc_common
+
+zmq = importutils.try_import('eventlet.green.zmq')
 
 # for convenience, are not modified.
 pformat = pprint.pformat
@@ -60,6 +63,10 @@ zmq_opts = [
     cfg.IntOpt('rpc_zmq_contexts', default=1,
                help='Number of ZeroMQ contexts, defaults to 1'),
 
+    cfg.IntOpt('rpc_zmq_topic_backlog', default=None,
+               help='Maximum number of ingress messages to locally buffer '
+                    'per topic. Default is unlimited.'),
+
     cfg.StrOpt('rpc_zmq_ipc_dir', default='/var/run/openstack',
                help='Directory for holding IPC sockets'),
 
@@ -69,9 +76,9 @@ zmq_opts = [
 ]
 
 
-# These globals are defined in register_opts(conf),
-# a mandatory initialization call
-CONF = None
+CONF = cfg.CONF
+CONF.register_opts(zmq_opts)
+
 ZMQ_CTX = None  # ZeroMQ Context, must be global.
 matchmaker = None  # memoized matchmaker object
 
@@ -83,10 +90,10 @@ def _serialize(data):
     Error if a developer passes us bad data.
     """
     try:
-        return str(jsonutils.dumps(data, ensure_ascii=True))
+        return jsonutils.dumps(data, ensure_ascii=True)
     except TypeError:
-        LOG.error(_("JSON serialization failed."))
-        raise
+        with excutils.save_and_reraise_exception():
+            LOG.error(_("JSON serialization failed."))
 
 
 def _deserialize(data):
@@ -106,7 +113,7 @@ class ZmqSocket(object):
     """
 
     def __init__(self, addr, zmq_type, bind=True, subscribe=None):
-        self.sock = ZMQ_CTX.socket(zmq_type)
+        self.sock = _get_ctxt().socket(zmq_type)
         self.addr = addr
         self.type = zmq_type
         self.subscriptions = []
@@ -180,11 +187,15 @@ class ZmqSocket(object):
                     pass
             self.subscriptions = []
 
-        # Linger -1 prevents lost/dropped messages
         try:
-            self.sock.close(linger=-1)
+            # Default is to linger
+            self.sock.close()
         except Exception:
-            pass
+            # While this is a bad thing to happen,
+            # it would be much worse if some of the code calling this
+            # were to fail. For now, lets log, and later evaluate
+            # if we can safely raise here.
+            LOG.error("ZeroMQ socket could not be closed.")
         self.sock = None
 
     def recv(self):
@@ -201,12 +212,23 @@ class ZmqSocket(object):
 class ZmqClient(object):
     """Client for ZMQ sockets."""
 
-    def __init__(self, addr, socket_type=zmq.PUSH, bind=False):
+    def __init__(self, addr, socket_type=None, bind=False):
+        if socket_type is None:
+            socket_type = zmq.PUSH
         self.outq = ZmqSocket(addr, socket_type, bind=bind)
 
-    def cast(self, msg_id, topic, data):
-        self.outq.send([str(msg_id), str(topic), str('cast'),
-                        _serialize(data)])
+    def cast(self, msg_id, topic, data, envelope=False):
+        msg_id = msg_id or 0
+
+        if not (envelope or rpc_common._SEND_RPC_ENVELOPE):
+            self.outq.send(map(bytes,
+                           (msg_id, topic, 'cast', _serialize(data))))
+            return
+
+        rpc_envelope = rpc_common.serialize_msg(data[1], envelope)
+        zmq_msg = reduce(lambda x, y: x + y, rpc_envelope.items())
+        self.outq.send(map(bytes,
+                       (msg_id, topic, 'impl_zmq_v2', data[0]) + zmq_msg))
 
     def close(self):
         self.outq.close()
@@ -249,7 +271,7 @@ class InternalContext(object):
         """Process a curried message and cast the result to topic."""
         LOG.debug(_("Running func with context: %s"), ctx.to_dict())
         data.setdefault('version', None)
-        data.setdefault('args', [])
+        data.setdefault('args', {})
 
         try:
             result = proxy.dispatch(
@@ -258,7 +280,14 @@ class InternalContext(object):
         except greenlet.GreenletExit:
             # ignore these since they are just from shutdowns
             pass
+        except rpc_common.ClientException, e:
+            LOG.debug(_("Expected exception during message handling (%s)") %
+                      e._exc_info[1])
+            return {'exc':
+                    rpc_common.serialize_remote_exception(e._exc_info,
+                                                          log_failure=False)}
         except Exception:
+            LOG.error(_("Exception during message handling"))
             return {'exc':
                     rpc_common.serialize_remote_exception(sys.exc_info())}
 
@@ -273,13 +302,13 @@ class InternalContext(object):
             ctx.replies)
 
         LOG.debug(_("Sending reply"))
-        cast(CONF, ctx, topic, {
+        _multi_send(_cast, ctx, topic, {
             'method': '-process_reply',
             'args': {
-                'msg_id': msg_id,
+                'msg_id': msg_id,  # Include for Folsom compat.
                 'response': response
             }
-        })
+        }, _msg_id=msg_id)
 
 
 class ConsumerBase(object):
@@ -298,22 +327,23 @@ class ConsumerBase(object):
         else:
             return [result]
 
-    def process(self, style, target, proxy, ctx, data):
+    def process(self, proxy, ctx, data):
+        data.setdefault('version', None)
+        data.setdefault('args', {})
+
         # Method starting with - are
         # processed internally. (non-valid method name)
-        method = data['method']
+        method = data.get('method')
+        if not method:
+            LOG.error(_("RPC message did not include method."))
+            return
 
         # Internal method
         # uses internal context for safety.
-        if data['method'][0] == '-':
-            # For reply / process_reply
-            method = method[1:]
-            if method == 'reply':
-                self.private_ctx.reply(ctx, proxy, **data['args'])
+        if method == '-reply':
+            self.private_ctx.reply(ctx, proxy, **data['args'])
             return
 
-        data.setdefault('version', None)
-        data.setdefault('args', [])
         proxy.dispatch(ctx, data['version'],
                        data['method'], **data['args'])
 
@@ -403,51 +433,115 @@ class ZmqProxy(ZmqBaseReactor):
         super(ZmqProxy, self).__init__(conf)
 
         self.topic_proxy = {}
-        ipc_dir = CONF.rpc_zmq_ipc_dir
-
-        self.topic_proxy['zmq_replies'] = \
-            ZmqSocket("ipc://%s/zmq_topic_zmq_replies" % (ipc_dir, ),
-                      zmq.PUB, bind=True)
-        self.sockets.append(self.topic_proxy['zmq_replies'])
 
     def consume(self, sock):
         ipc_dir = CONF.rpc_zmq_ipc_dir
 
         #TODO(ewindisch): use zero-copy (i.e. references, not copying)
         data = sock.recv()
-        msg_id, topic, style, in_msg = data
-        topic = topic.split('.', 1)[0]
+        topic = data[1]
 
         LOG.debug(_("CONSUMER GOT %s"), ' '.join(map(pformat, data)))
 
-        # Handle zmq_replies magic
         if topic.startswith('fanout~'):
             sock_type = zmq.PUB
+            topic = topic.split('.', 1)[0]
         elif topic.startswith('zmq_replies'):
             sock_type = zmq.PUB
-            inside = _deserialize(in_msg)
-            msg_id = inside[-1]['args']['msg_id']
-            response = inside[-1]['args']['response']
-            LOG.debug(_("->response->%s"), response)
-            data = [str(msg_id), _serialize(response)]
         else:
             sock_type = zmq.PUSH
 
-        if not topic in self.topic_proxy:
-            outq = ZmqSocket("ipc://%s/zmq_topic_%s" % (ipc_dir, topic),
-                             sock_type, bind=True)
-            self.topic_proxy[topic] = outq
-            self.sockets.append(outq)
-            LOG.info(_("Created topic proxy: %s"), topic)
+        if topic not in self.topic_proxy:
+            def publisher(waiter):
+                LOG.info(_("Creating proxy for topic: %s"), topic)
 
-            # It takes some time for a pub socket to open,
-            # before we can have any faith in doing a send() to it.
-            if sock_type == zmq.PUB:
-                eventlet.sleep(.5)
+                try:
+                    out_sock = ZmqSocket("ipc://%s/zmq_topic_%s" %
+                                         (ipc_dir, topic),
+                                         sock_type, bind=True)
+                except RPCException:
+                    waiter.send_exception(*sys.exc_info())
+                    return
 
-        LOG.debug(_("ROUTER RELAY-OUT START %(data)s") % {'data': data})
-        self.topic_proxy[topic].send(data)
-        LOG.debug(_("ROUTER RELAY-OUT SUCCEEDED %(data)s") % {'data': data})
+                self.topic_proxy[topic] = eventlet.queue.LightQueue(
+                    CONF.rpc_zmq_topic_backlog)
+                self.sockets.append(out_sock)
+
+                # It takes some time for a pub socket to open,
+                # before we can have any faith in doing a send() to it.
+                if sock_type == zmq.PUB:
+                    eventlet.sleep(.5)
+
+                waiter.send(True)
+
+                while(True):
+                    data = self.topic_proxy[topic].get()
+                    out_sock.send(data)
+                    LOG.debug(_("ROUTER RELAY-OUT SUCCEEDED %(data)s") %
+                              {'data': data})
+
+            wait_sock_creation = eventlet.event.Event()
+            eventlet.spawn(publisher, wait_sock_creation)
+
+            try:
+                wait_sock_creation.wait()
+            except RPCException:
+                LOG.error(_("Topic socket file creation failed."))
+                return
+
+        try:
+            self.topic_proxy[topic].put_nowait(data)
+            LOG.debug(_("ROUTER RELAY-OUT QUEUED %(data)s") %
+                      {'data': data})
+        except eventlet.queue.Full:
+            LOG.error(_("Local per-topic backlog buffer full for topic "
+                        "%(topic)s. Dropping message.") % {'topic': topic})
+
+    def consume_in_thread(self):
+        """Runs the ZmqProxy service"""
+        ipc_dir = CONF.rpc_zmq_ipc_dir
+        consume_in = "tcp://%s:%s" % \
+            (CONF.rpc_zmq_bind_address,
+             CONF.rpc_zmq_port)
+        consumption_proxy = InternalContext(None)
+
+        if not os.path.isdir(ipc_dir):
+            try:
+                utils.execute('mkdir', '-p', ipc_dir, run_as_root=True)
+                utils.execute('chown', "%s:%s" % (os.getuid(), os.getgid()),
+                              ipc_dir, run_as_root=True)
+                utils.execute('chmod', '750', ipc_dir, run_as_root=True)
+            except utils.ProcessExecutionError:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_("Could not create IPC directory %s") %
+                              (ipc_dir, ))
+
+        try:
+            self.register(consumption_proxy,
+                          consume_in,
+                          zmq.PULL,
+                          out_bind=True)
+        except zmq.ZMQError:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Could not create ZeroMQ receiver daemon. "
+                            "Socket may already be in use."))
+
+        super(ZmqProxy, self).consume_in_thread()
+
+
+def unflatten_envelope(packenv):
+    """Unflattens the RPC envelope.
+       Takes a list and returns a dictionary.
+       i.e. [1,2,3,4] => {1: 2, 3: 4}
+    """
+    i = iter(packenv)
+    h = {}
+    try:
+        while True:
+            k = i.next()
+            h[k] = i.next()
+    except StopIteration:
+        return h
 
 
 class ZmqReactor(ZmqBaseReactor):
@@ -470,38 +564,53 @@ class ZmqReactor(ZmqBaseReactor):
             self.mapping[sock].send(data)
             return
 
-        msg_id, topic, style, in_msg = data
-
-        ctx, request = _deserialize(in_msg)
-        ctx = RpcContext.unmarshal(ctx)
-
         proxy = self.proxies[sock]
 
-        self.pool.spawn_n(self.process, style, topic,
-                          proxy, ctx, request)
+        if data[2] == 'cast':  # Legacy protocol
+            packenv = data[3]
+
+            ctx, msg = _deserialize(packenv)
+            request = rpc_common.deserialize_msg(msg)
+            ctx = RpcContext.unmarshal(ctx)
+        elif data[2] == 'impl_zmq_v2':
+            packenv = data[4:]
+
+            msg = unflatten_envelope(packenv)
+            request = rpc_common.deserialize_msg(msg)
+
+            # Unmarshal only after verifying the message.
+            ctx = RpcContext.unmarshal(data[3])
+        else:
+            LOG.error(_("ZMQ Envelope version unsupported or unknown."))
+            return
+
+        self.pool.spawn_n(self.process, proxy, ctx, request)
 
 
 class Connection(rpc_common.Connection):
     """Manages connections and threads."""
 
     def __init__(self, conf):
+        self.topics = []
         self.reactor = ZmqReactor(conf)
 
     def create_consumer(self, topic, proxy, fanout=False):
-        # Only consume on the base topic name.
-        topic = topic.split('.', 1)[0]
-
-        LOG.info(_("Create Consumer for topic (%(topic)s)") %
-                 {'topic': topic})
+        # Register with matchmaker.
+        _get_matchmaker().register(topic, CONF.rpc_zmq_host)
 
         # Subscription scenarios
         if fanout:
-            subscribe = ('', fanout)[type(fanout) == str]
             sock_type = zmq.SUB
-            topic = 'fanout~' + topic
+            subscribe = ('', fanout)[type(fanout) == str]
+            topic = 'fanout~' + topic.split('.', 1)[0]
         else:
             sock_type = zmq.PULL
             subscribe = None
+            topic = '.'.join((topic.split('.', 1)[0], CONF.rpc_zmq_host))
+
+        if topic in self.topics:
+            LOG.info(_("Skipping topic registration. Already registered."))
+            return
 
         # Receive messages from (local) proxy
         inaddr = "ipc://%s/zmq_topic_%s" % \
@@ -512,18 +621,26 @@ class Connection(rpc_common.Connection):
 
         self.reactor.register(proxy, inaddr, sock_type,
                               subscribe=subscribe, in_bind=False)
+        self.topics.append(topic)
 
     def close(self):
+        _get_matchmaker().stop_heartbeat()
+        for topic in self.topics:
+            _get_matchmaker().unregister(topic, CONF.rpc_zmq_host)
+
         self.reactor.close()
+        self.topics = []
 
     def wait(self):
         self.reactor.wait()
 
     def consume_in_thread(self):
+        _get_matchmaker().start_heartbeat()
         self.reactor.consume_in_thread()
 
 
-def _cast(addr, context, msg_id, topic, msg, timeout=None):
+def _cast(addr, context, topic, msg, timeout=None, envelope=False,
+          _msg_id=None):
     timeout_cast = timeout or CONF.rpc_cast_timeout
     payload = [RpcContext.marshal(context), msg]
 
@@ -532,7 +649,7 @@ def _cast(addr, context, msg_id, topic, msg, timeout=None):
             conn = ZmqClient(addr)
 
             # assumes cast can't return an exception
-            conn.cast(msg_id, topic, payload)
+            conn.cast(_msg_id, topic, payload, envelope)
         except zmq.ZMQError:
             raise RPCException("Cast failed. ZMQ Socket Exception")
         finally:
@@ -540,12 +657,13 @@ def _cast(addr, context, msg_id, topic, msg, timeout=None):
                 conn.close()
 
 
-def _call(addr, context, msg_id, topic, msg, timeout=None):
+def _call(addr, context, topic, msg, timeout=None,
+          envelope=False):
     # timeout_response is how long we wait for a response
     timeout = timeout or CONF.rpc_response_timeout
 
     # The msg_id is used to track replies.
-    msg_id = str(uuid.uuid4().hex)
+    msg_id = uuid.uuid4().hex
 
     # Replies always come into the reply service.
     reply_topic = "zmq_replies.%s" % CONF.rpc_zmq_host
@@ -570,22 +688,36 @@ def _call(addr, context, msg_id, topic, msg, timeout=None):
     with Timeout(timeout, exception=rpc_common.Timeout):
         try:
             msg_waiter = ZmqSocket(
-                "ipc://%s/zmq_topic_zmq_replies" % CONF.rpc_zmq_ipc_dir,
+                "ipc://%s/zmq_topic_zmq_replies.%s" %
+                (CONF.rpc_zmq_ipc_dir,
+                 CONF.rpc_zmq_host),
                 zmq.SUB, subscribe=msg_id, bind=False
             )
 
             LOG.debug(_("Sending cast"))
-            _cast(addr, context, msg_id, topic, payload)
+            _cast(addr, context, topic, payload, envelope)
 
             LOG.debug(_("Cast sent; Waiting reply"))
             # Blocks until receives reply
             msg = msg_waiter.recv()
             LOG.debug(_("Received message: %s"), msg)
             LOG.debug(_("Unpacking response"))
-            responses = _deserialize(msg[-1])
+
+            if msg[2] == 'cast':  # Legacy version
+                raw_msg = _deserialize(msg[-1])[-1]
+            elif msg[2] == 'impl_zmq_v2':
+                rpc_envelope = unflatten_envelope(msg[4:])
+                raw_msg = rpc_common.deserialize_msg(rpc_envelope)
+            else:
+                raise rpc_common.UnsupportedRpcEnvelopeVersion(
+                    _("Unsupported or unknown ZMQ envelope returned."))
+
+            responses = raw_msg['args']['response']
         # ZMQError trumps the Timeout error.
         except zmq.ZMQError:
             raise RPCException("ZMQ Socket Error")
+        except (IndexError, KeyError):
+            raise RPCException(_("RPC Message Invalid."))
         finally:
             if 'msg_waiter' in vars():
                 msg_waiter.close()
@@ -601,7 +733,8 @@ def _call(addr, context, msg_id, topic, msg, timeout=None):
     return responses[-1]
 
 
-def _multi_send(method, context, topic, msg, timeout=None):
+def _multi_send(method, context, topic, msg, timeout=None,
+                envelope=False, _msg_id=None):
     """
     Wraps the sending of messages,
     dispatches to the matchmaker and sends
@@ -610,7 +743,7 @@ def _multi_send(method, context, topic, msg, timeout=None):
     conf = CONF
     LOG.debug(_("%(msg)s") % {'msg': ' '.join(map(pformat, (topic, msg)))})
 
-    queues = matchmaker.queues(topic)
+    queues = _get_matchmaker().queues(topic)
     LOG.debug(_("Sending message(s) to: %s"), queues)
 
     # Don't stack if we have no matchmaker results
@@ -618,7 +751,7 @@ def _multi_send(method, context, topic, msg, timeout=None):
         LOG.warn(_("No matchmaker results. Not casting."))
         # While not strictly a timeout, callers know how to handle
         # this exception and a timeout isn't too big a lie.
-        raise rpc_common.Timeout, "No match from matchmaker."
+        raise rpc_common.Timeout(_("No match from matchmaker."))
 
     # This supports brokerless fanout (addresses > 1)
     for queue in queues:
@@ -627,9 +760,11 @@ def _multi_send(method, context, topic, msg, timeout=None):
 
         if method.__name__ == '_cast':
             eventlet.spawn_n(method, _addr, context,
-                             _topic, _topic, msg, timeout)
+                             _topic, msg, timeout, envelope,
+                             _msg_id)
             return
-        return method(_addr, context, _topic, _topic, msg, timeout)
+        return method(_addr, context, _topic, msg, timeout,
+                      envelope)
 
 
 def create_connection(conf, new=True):
@@ -659,7 +794,7 @@ def fanout_cast(conf, context, topic, msg, **kwargs):
     _multi_send(_cast, context, 'fanout~' + str(topic), msg, **kwargs)
 
 
-def notify(conf, context, topic, msg, **kwargs):
+def notify(conf, context, topic, msg, envelope):
     """
     Send notification event.
     Notifications are sent to topic-priority.
@@ -667,51 +802,34 @@ def notify(conf, context, topic, msg, **kwargs):
     """
     # NOTE(ewindisch): dot-priority in rpc notifier does not
     # work with our assumptions.
-    topic.replace('.', '-')
-    cast(conf, context, topic, msg, **kwargs)
+    topic = topic.replace('.', '-')
+    cast(conf, context, topic, msg, envelope=envelope)
 
 
 def cleanup():
     """Clean up resources in use by implementation."""
     global ZMQ_CTX
-    global matchmaker
-    matchmaker = None
-    ZMQ_CTX.term()
+    if ZMQ_CTX:
+        ZMQ_CTX.term()
     ZMQ_CTX = None
 
-
-def register_opts(conf):
-    """Registration of options for this driver."""
-    #NOTE(ewindisch): ZMQ_CTX and matchmaker
-    # are initialized here as this is as good
-    # an initialization method as any.
-
-    # We memoize through these globals
-    global ZMQ_CTX
     global matchmaker
-    global CONF
+    matchmaker = None
 
-    if not CONF:
-        conf.register_opts(zmq_opts)
-        CONF = conf
-    # Don't re-set, if this method is called twice.
+
+def _get_ctxt():
+    if not zmq:
+        raise ImportError("Failed to import eventlet.green.zmq")
+
+    global ZMQ_CTX
     if not ZMQ_CTX:
-        ZMQ_CTX = zmq.Context(conf.rpc_zmq_contexts)
+        ZMQ_CTX = zmq.Context(CONF.rpc_zmq_contexts)
+    return ZMQ_CTX
+
+
+def _get_matchmaker(*args, **kwargs):
+    global matchmaker
     if not matchmaker:
-        # rpc_zmq_matchmaker should be set to a 'module.Class'
-        mm_path = conf.rpc_zmq_matchmaker.split('.')
-        mm_module = '.'.join(mm_path[:-1])
-        mm_class = mm_path[-1]
-
-        # Only initialize a class.
-        if mm_path[-1][0] not in string.ascii_uppercase:
-            LOG.error(_("Matchmaker could not be loaded.\n"
-                      "rpc_zmq_matchmaker is not a class."))
-            raise RPCException(_("Error loading Matchmaker."))
-
-        mm_impl = importutils.import_module(mm_module)
-        mm_constructor = getattr(mm_impl, mm_class)
-        matchmaker = mm_constructor()
-
-
-register_opts(cfg.CONF)
+        matchmaker = importutils.import_object(
+            CONF.rpc_zmq_matchmaker, *args, **kwargs)
+    return matchmaker

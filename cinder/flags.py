@@ -228,9 +228,6 @@ global_opts = [
                default='noauth',
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),
-    cfg.StrOpt('control_exchange',
-               default='cinder',
-               help='AMQP exchange to connect to if using RabbitMQ or Qpid'),
     cfg.ListOpt('enabled_backends',
                 default=None,
                 help='A list of backend names to use. These backend names '
