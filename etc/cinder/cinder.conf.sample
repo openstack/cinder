@@ -97,6 +97,9 @@
 # ([hostname|ip]:port) (list value)
 #glance_api_servers=$glance_host:$glance_port
 
+# default version of the glance api to use
+#glance_api_version=1
+
 # Number retries when downloading an image from glance
 # (integer value)
 #glance_num_retries=0

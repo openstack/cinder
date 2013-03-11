@@ -24,9 +24,14 @@ import glanceclient.exc
 
 from cinder import context
 from cinder import exception
+from cinder import flags
 from cinder.image import glance
 from cinder import test
 from cinder.tests.glance import stubs as glance_stubs
+from glanceclient.v2.client import Client as glanceclient_v2
+
+
+FLAGS = flags.FLAGS
 
 
 class NullWriter(object):
@@ -535,6 +540,42 @@ class TestGlanceImageService(test.TestCase):
         self.assertEquals(same_id, image_id)
         self.assertEquals(service._client.host,
                           'something-less-likely')
+
+
+class TestGlanceClientVersion(test.TestCase):
+    """Tests the version of the glance client generated"""
+    def setUp(self):
+        super(TestGlanceClientVersion, self).setUp()
+
+        def fake_get_image_model(self):
+            return
+
+        self.stubs.Set(glanceclient_v2, '_get_image_model',
+                       fake_get_image_model)
+
+    def test_glance_version_by_flag(self):
+        """Test glance version set by flag is honoured"""
+        client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
+                                                       9292)
+        self.assertEquals(client_wrapper_v1.client.__module__,
+                          'glanceclient.v1.client')
+        self.flags(glance_api_version=2)
+        client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
+                                                       9292)
+        self.assertEquals(client_wrapper_v2.client.__module__,
+                          'glanceclient.v2.client')
+        FLAGS.reset()
+
+    def test_glance_version_by_arg(self):
+        """Test glance version set by arg to GlanceClientWrapper"""
+        client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
+                                                       9292, version=1)
+        self.assertEquals(client_wrapper_v1.client.__module__,
+                          'glanceclient.v1.client')
+        client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
+                                                       9292, version=2)
+        self.assertEquals(client_wrapper_v2.client.__module__,
+                          'glanceclient.v2.client')
 
 
 def _create_failing_glance_client(info):

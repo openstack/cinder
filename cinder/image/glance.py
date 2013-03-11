@@ -56,8 +56,11 @@ def _parse_image_ref(image_href):
     return (image_id, host, port, use_ssl)
 
 
-def _create_glance_client(context, host, port, use_ssl, version=1):
+def _create_glance_client(context, host, port, use_ssl,
+                          version=FLAGS.glance_api_version):
     """Instantiate a new glanceclient.Client object"""
+    if version is None:
+        version = FLAGS.glance_api_version
     if use_ssl:
         scheme = 'https'
     else:
@@ -101,6 +104,7 @@ class GlanceClientWrapper(object):
         else:
             self.client = None
         self.api_servers = None
+        self.version = version
 
     def _create_static_client(self, context, host, port, use_ssl, version):
         """Create a client that we'll use for every call."""
@@ -121,11 +125,15 @@ class GlanceClientWrapper(object):
                                      self.host, self.port,
                                      self.use_ssl, version)
 
-    def call(self, context, version, method, *args, **kwargs):
+    def call(self, context, method, *args, **kwargs):
         """
         Call a glance client method.  If we get a connection error,
         retry the request according to FLAGS.glance_num_retries.
         """
+        version = self.version
+        if version in kwargs:
+            version = kwargs['version']
+
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
                       glanceclient.exc.CommunicationError)
@@ -163,7 +171,7 @@ class GlanceImageService(object):
         """Calls out to Glance for a list of detailed image information."""
         params = self._extract_query_params(kwargs)
         try:
-            images = self._client.call(context, 1, 'list', **params)
+            images = self._client.call(context, 'list', **params)
         except Exception:
             _reraise_translated_exception()
 
@@ -192,7 +200,7 @@ class GlanceImageService(object):
     def show(self, context, image_id):
         """Returns a dict with image data for the given opaque image id."""
         try:
-            image = self._client.call(context, 1, 'get', image_id)
+            image = self._client.call(context, 'get', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
 
@@ -207,7 +215,7 @@ class GlanceImageService(object):
         or None if this attribute is not shown by Glance."""
         try:
             client = GlanceClientWrapper()
-            image_meta = client.call(context, 2, 'get', image_id)
+            image_meta = client.call(context, 'get', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
 
@@ -219,7 +227,7 @@ class GlanceImageService(object):
     def download(self, context, image_id, data):
         """Calls out to Glance for metadata and data and writes data."""
         try:
-            image_chunks = self._client.call(context, 1, 'data', image_id)
+            image_chunks = self._client.call(context, 'data', image_id)
         except Exception:
             _reraise_translated_image_exception(image_id)
 
@@ -233,7 +241,7 @@ class GlanceImageService(object):
         if data:
             sent_service_image_meta['data'] = data
 
-        recv_service_image_meta = self._client.call(context, 1, 'create',
+        recv_service_image_meta = self._client.call(context, 'create',
                                                     **sent_service_image_meta)
 
         return self._translate_from_glance(recv_service_image_meta)
@@ -249,8 +257,8 @@ class GlanceImageService(object):
         if data:
             image_meta['data'] = data
         try:
-            image_meta = self._client.call(context, 1, 'update',
-                                           image_id, **image_meta)
+            image_meta = self._client.call(context, 'update', image_id,
+                                           **image_meta)
         except Exception:
             _reraise_translated_image_exception(image_id)
         else:
@@ -264,7 +272,7 @@ class GlanceImageService(object):
 
         """
         try:
-            self._client.call(context, 1, 'delete', image_id)
+            self._client.call(context, 'delete', image_id)
         except glanceclient.exc.NotFound:
             raise exception.ImageNotFound(image_id=image_id)
         return True

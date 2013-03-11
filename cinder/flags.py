@@ -117,6 +117,9 @@ global_opts = [
                 default=['$glance_host:$glance_port'],
                 help='A list of the glance api servers available to cinder '
                      '([hostname|ip]:port)'),
+    cfg.IntOpt('glance_api_version',
+               default=1,
+               help='Version of the glance api to use'),
     cfg.IntOpt('glance_num_retries',
                default=0,
                help='Number retries when downloading an image from glance'),
