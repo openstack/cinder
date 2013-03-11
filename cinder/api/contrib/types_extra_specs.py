@@ -80,7 +80,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         authorize(context)
 
         if not self.is_valid_body(body, 'extra_specs'):
-            raise webob.exc.HTTPUnprocessableEntity()
+            raise webob.exc.HTTPBadRequest()
 
         self._check_type(context, type_id)
 
