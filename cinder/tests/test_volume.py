@@ -96,13 +96,13 @@ class VolumeTestCase(test.TestCase):
     def test_create_delete_volume(self):
         """Test volume can be created and deleted."""
         # Need to stub out reserve, commit, and rollback
-        def fake_reserve(context, expire=None, **deltas):
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
             return ["RESERVATION"]
 
-        def fake_commit(context, reservations):
+        def fake_commit(context, reservations, project_id=None):
             pass
 
-        def fake_rollback(context, reservations):
+        def fake_rollback(context, reservations, project_id=None):
             pass
 
         self.stubs.Set(QUOTAS, "reserve", fake_reserve)
@@ -160,13 +160,13 @@ class VolumeTestCase(test.TestCase):
 
     def test_create_volume_with_volume_type(self):
         """Test volume creation with default volume type."""
-        def fake_reserve(context, expire=None, **deltas):
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
             return ["RESERVATION"]
 
-        def fake_commit(context, reservations):
+        def fake_commit(context, reservations, project_id=None):
             pass
 
-        def fake_rollback(context, reservations):
+        def fake_rollback(context, reservations, project_id=None):
             pass
 
         self.stubs.Set(QUOTAS, "reserve", fake_reserve)
@@ -746,13 +746,13 @@ class VolumeTestCase(test.TestCase):
                           'name', 'description', image_id=1)
 
     def _do_test_create_volume_with_size(self, size):
-        def fake_reserve(context, expire=None, **deltas):
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
             return ["RESERVATION"]
 
-        def fake_commit(context, reservations):
+        def fake_commit(context, reservations, project_id=None):
             pass
 
-        def fake_rollback(context, reservations):
+        def fake_rollback(context, reservations, project_id=None):
             pass
 
         self.stubs.Set(QUOTAS, "reserve", fake_reserve)
@@ -776,13 +776,13 @@ class VolumeTestCase(test.TestCase):
         self._do_test_create_volume_with_size('2')
 
     def test_create_volume_with_bad_size(self):
-        def fake_reserve(context, expire=None, **deltas):
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
             return ["RESERVATION"]
 
-        def fake_commit(context, reservations):
+        def fake_commit(context, reservations, project_id=None):
             pass
 
-        def fake_rollback(context, reservations):
+        def fake_rollback(context, reservations, project_id=None):
             pass
 
         self.stubs.Set(QUOTAS, "reserve", fake_reserve)

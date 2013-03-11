@@ -143,18 +143,21 @@ class FakeDriver(object):
                             project_id, quota_class, defaults, usages))
         return resources
 
-    def limit_check(self, context, resources, values):
-        self.called.append(('limit_check', context, resources, values))
+    def limit_check(self, context, resources, values, project_id=None):
+        self.called.append(('limit_check', context, resources,
+                            values, project_id))
 
-    def reserve(self, context, resources, deltas, expire=None):
-        self.called.append(('reserve', context, resources, deltas, expire))
+    def reserve(self, context, resources, deltas, expire=None,
+                project_id=None):
+        self.called.append(('reserve', context, resources, deltas,
+                            expire, project_id))
         return self.reservations
 
-    def commit(self, context, reservations):
-        self.called.append(('commit', context, reservations))
+    def commit(self, context, reservations, project_id=None):
+        self.called.append(('commit', context, reservations, project_id))
 
-    def rollback(self, context, reservations):
-        self.called.append(('rollback', context, reservations))
+    def rollback(self, context, reservations, project_id=None):
+        self.called.append(('rollback', context, reservations, project_id))
 
     def destroy_all_by_project(self, context, project_id):
         self.called.append(('destroy_all_by_project', context, project_id))
@@ -468,7 +471,8 @@ class QuotaEngineTestCase(test.TestCase):
                  test_resource1=4,
                  test_resource2=3,
                  test_resource3=2,
-                 test_resource4=1,)), ])
+                 test_resource4=1,),
+             None), ])
 
     def test_reserve(self):
         context = FakeContext(None, None)
@@ -483,6 +487,9 @@ class QuotaEngineTestCase(test.TestCase):
         result2 = quota_obj.reserve(context, expire=3600,
                                     test_resource1=1, test_resource2=2,
                                     test_resource3=3, test_resource4=4)
+        result3 = quota_obj.reserve(context, project_id='fake_project',
+                                    test_resource1=1, test_resource2=2,
+                                    test_resource3=3, test_resource4=4)
 
         self.assertEqual(driver.called, [
             ('reserve',
@@ -493,6 +500,7 @@ class QuotaEngineTestCase(test.TestCase):
                  test_resource2=3,
                  test_resource3=2,
                  test_resource4=1, ),
+             None,
              None),
             ('reserve',
              context,
@@ -502,12 +510,27 @@ class QuotaEngineTestCase(test.TestCase):
                  test_resource2=2,
                  test_resource3=3,
                  test_resource4=4, ),
-             3600), ])
+             3600,
+             None),
+            ('reserve',
+             context,
+             quota_obj._resources,
+             dict(
+                 test_resource1=1,
+                 test_resource2=2,
+                 test_resource3=3,
+                 test_resource4=4, ),
+             None,
+             'fake_project'), ])
         self.assertEqual(result1, ['resv-01',
                                    'resv-02',
                                    'resv-03',
                                    'resv-04', ])
         self.assertEqual(result2, ['resv-01',
+                                   'resv-02',
+                                   'resv-03',
+                                   'resv-04', ])
+        self.assertEqual(result3, ['resv-01',
                                    'resv-02',
                                    'resv-03',
                                    'resv-04', ])
@@ -523,7 +546,8 @@ class QuotaEngineTestCase(test.TestCase):
                            context,
                            ['resv-01',
                             'resv-02',
-                            'resv-03']), ])
+                            'resv-03'],
+                           None), ])
 
     def test_rollback(self):
         context = FakeContext(None, None)
@@ -536,7 +560,8 @@ class QuotaEngineTestCase(test.TestCase):
                            context,
                            ['resv-01',
                             'resv-02',
-                            'resv-03']), ])
+                            'resv-03'],
+                           None), ])
 
     def test_destroy_all_by_project(self):
         context = FakeContext(None, None)
@@ -788,7 +813,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def _stub_quota_reserve(self):
         def fake_quota_reserve(context, resources, quotas, deltas, expire,
-                               until_refresh, max_age):
+                               until_refresh, max_age, project_id=None):
             self.calls.append(('quota_reserve', expire, until_refresh,
                                max_age))
             return ['resv-1', 'resv-2', 'resv-3']
@@ -946,7 +971,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         def fake_get_session():
             return FakeSession()
 
-        def fake_get_quota_usages(context, session):
+        def fake_get_quota_usages(context, session, project_id):
             return self.usages.copy()
 
         def fake_quota_usage_create(context, project_id, resource, in_use,
