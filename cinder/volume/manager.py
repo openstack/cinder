@@ -393,6 +393,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Deletes and unexports volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
+
+        if context.project_id != volume_ref['project_id']:
+            project_id = volume_ref['project_id']
+        else:
+            project_id = context.project_id
+
         LOG.info(_("volume %s: deleting"), volume_ref['name'])
         if volume_ref['attach_status'] == "attached":
             # Volume is still attached, need to detach first
@@ -422,7 +428,9 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Get reservations
         try:
-            reservations = QUOTAS.reserve(context, volumes=-1,
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          volumes=-1,
                                           gigabytes=-volume_ref['size'])
         except Exception:
             reservations = None
@@ -435,7 +443,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Commit the reservations
         if reservations:
-            QUOTAS.commit(context, reservations)
+            QUOTAS.commit(context, reservations, project_id=project_id)
 
         return True
 
@@ -474,6 +482,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         LOG.info(_("snapshot %s: deleting"), snapshot_ref['name'])
 
+        if context.project_id != snapshot_ref['project_id']:
+            project_id = snapshot_ref['project_id']
+        else:
+            project_id = context.project_id
+
         try:
             LOG.debug(_("snapshot %s: deleting"), snapshot_ref['name'])
             self.driver.delete_snapshot(snapshot_ref)
@@ -492,10 +505,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Get reservations
         try:
             if CONF.no_snapshot_gb_quota:
-                reservations = QUOTAS.reserve(context, snapshots=-1)
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              snapshots=-1)
             else:
                 reservations = QUOTAS.reserve(
                     context,
+                    project_id=project_id,
                     snapshots=-1,
                     gigabytes=-snapshot_ref['volume_size'])
         except Exception:
@@ -507,7 +523,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Commit the reservations
         if reservations:
-            QUOTAS.commit(context, reservations)
+            QUOTAS.commit(context, reservations, project_id=project_id)
         return True
 
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
