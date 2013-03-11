@@ -226,7 +226,10 @@
 # number of volumes allowed per project (integer value)
 #quota_volumes=10
 
-# number of volume gigabytes allowed per project (integer
+# number of volume snapshots allowed per project (integer value)
+#quota_snapshots=10
+
+# number of volume and snapshot gigabytes allowed per project (integer
 # value)
 #quota_gigabytes=1000
 

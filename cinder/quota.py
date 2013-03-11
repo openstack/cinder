@@ -35,9 +35,13 @@ quota_opts = [
     cfg.IntOpt('quota_volumes',
                default=10,
                help='number of volumes allowed per project'),
+    cfg.IntOpt('quota_snapshots',
+               default=10,
+               help='number of volume snapshots allowed per project'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
-               help='number of volume gigabytes allowed per project'),
+               help='number of volume gigabytes (snapshots are also included) '
+                    'allowed per project'),
     cfg.IntOpt('reservation_expire',
                default=86400,
                help='number of seconds until a reservation expires'),
@@ -732,11 +736,19 @@ def _sync_volumes(context, project_id, session):
                                                session=session)))
 
 
+def _sync_snapshots(context, project_id, session):
+    return dict(zip(('snapshots', 'gigabytes'),
+                db.volume_data_get_for_project(context,
+                                               project_id,
+                                               session=session)))
+
+
 QUOTAS = QuotaEngine()
 
 
 resources = [
     ReservableResource('volumes', _sync_volumes, 'quota_volumes'),
+    ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
     ReservableResource('gigabytes', _sync_volumes, 'quota_gigabytes'), ]
 
 

@@ -773,7 +773,8 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 413)
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
-                         'Requested volume exceeds allowed volume size quota')
+                         'Requested volume or snapshot exceeds allowed '
+                         'Gigabytes quota')
 
     def test_restore_backup_with_VolumeLimitExceeded(self):
 

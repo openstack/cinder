@@ -490,6 +490,33 @@ class API(base.Base):
             msg = _("must be available")
             raise exception.InvalidVolume(reason=msg)
 
+        try:
+            reservations = QUOTAS.reserve(context, snapshots=1,
+                                          gigabytes=volume['size'])
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            pid = context.project_id
+            if 'gigabytes' in overs:
+                consumed = _consumed('gigabytes')
+                quota = quotas['gigabytes']
+                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
+                           "%(size)sG volume (%(consumed)dG of %(quota)dG "
+                           "already consumed)") % locals())
+                raise exception.VolumeSizeExceedsAvailableQuota()
+            elif 'snapshots' in overs:
+                consumed = _consumed('snapshots')
+                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
+                           "snapshot (%(consumed)d snapshots "
+                           "already consumed)") % locals())
+                raise exception.SnapshotLimitExceeded(
+                    allowed=quotas['snapshots'])
+
         self._check_metadata_properties(context, metadata)
         options = {'volume_id': volume['id'],
                    'user_id': context.user_id,
@@ -501,7 +528,16 @@ class API(base.Base):
                    'display_description': description,
                    'metadata': metadata}
 
-        snapshot = self.db.snapshot_create(context, options)
+        try:
+            snapshot = self.db.snapshot_create(context, options)
+            QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.db.snapshot_destroy(context, volume['id'])
+                finally:
+                    QUOTAS.rollback(context, reservations)
+
         self.volume_rpcapi.create_snapshot(context, volume, snapshot)
 
         return snapshot

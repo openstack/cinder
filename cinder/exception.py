@@ -450,15 +450,20 @@ class QuotaError(CinderException):
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume exceeds allowed volume size quota")
+    message = _("Requested volume or snapshot exceeds "
+                "allowed Gigabytes quota")
 
 
 class VolumeSizeExceedsQuota(QuotaError):
-    message = _("Maximum volume size exceeded")
+    message = _("Maximum volume/snapshot size exceeded")
 
 
 class VolumeLimitExceeded(QuotaError):
     message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
+
+
+class SnapshotLimitExceeded(QuotaError):
+    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
 
 
 class DuplicateSfVolumeNames(Duplicate):
