@@ -162,6 +162,23 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def test_update_empty_body(self):
         self._extra_specs_empty_update(body={})
 
+    def _extra_specs_create_bad_body(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
+        req.method = 'POST'
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, '1', body)
+
+    def test_create_no_body(self):
+        self._extra_specs_create_bad_body(body=None)
+
+    def test_create_missing_volume(self):
+        body = {'foo': {'a': 'b'}}
+        self._extra_specs_create_bad_body(body=body)
+
+    def test_create_malformed_entity(self):
+        body = {'extra_specs': 'string'}
+        self._extra_specs_create_bad_body(body=body)
+
 
 class VolumeTypeExtraSpecsSerializerTest(test.TestCase):
     def test_index_create_serializer(self):
@@ -195,32 +212,3 @@ class VolumeTypeExtraSpecsSerializerTest(test.TestCase):
         self.assertEqual('key1', tree.tag)
         self.assertEqual('value1', tree.text)
         self.assertEqual(0, len(tree))
-
-
-class VolumeTypeExtraSpecsUnprocessableEntityTestCase(test.TestCase):
-
-    """
-    Tests of places we throw 422 Unprocessable Entity from
-    """
-
-    def setUp(self):
-        super(VolumeTypeExtraSpecsUnprocessableEntityTestCase, self).setUp()
-        self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
-
-    def _unprocessable_extra_specs_create(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
-        req.method = 'POST'
-
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
-                          self.controller.create, req, '1', body)
-
-    def test_create_no_body(self):
-        self._unprocessable_extra_specs_create(body=None)
-
-    def test_create_missing_volume(self):
-        body = {'foo': {'a': 'b'}}
-        self._unprocessable_extra_specs_create(body=body)
-
-    def test_create_malformed_entity(self):
-        body = {'extra_specs': 'string'}
-        self._unprocessable_extra_specs_create(body=body)
