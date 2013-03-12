@@ -119,10 +119,11 @@ class WindowsDriver(driver.ISCSIDriver):
         longer access it.
         """
         initiator_name = connector['initiator']
+        provider_location = volume['provider_location']
         #DesAssigning target to initiators
-        wt_idmethod = self._conn_wmi.WT_IDMethod(HostName=volume['name'],
+        wt_idmethod = self._conn_wmi.WT_IDMethod(HostName=provider_location,
                                                  Method=4,
-                                                 Value=initiator_name)
+                                                 Value=initiator_name)[0]
         wt_idmethod.Delete_()
 
     def create_volume(self, volume):
