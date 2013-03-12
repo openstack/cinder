@@ -128,9 +128,9 @@ class FilterScheduler(driver.Scheduler):
             return  # no previously attempted hosts, skip
 
         last_host = hosts[-1]
-        msg = _("Error from last vol-service: %(last_host)s : "
-                "%(exc)s") % locals()
-        LOG.error(msg, volume_id=volume_id)
+        msg = _("Error scheduling %(volume_id)s from last vol-service: "
+                "%(last_host)s : %(exc)s") % locals()
+        LOG.error(msg)
 
     def _populate_retry(self, filter_properties, properties):
         """Populate filter properties with history of retries for this
