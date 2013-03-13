@@ -793,6 +793,18 @@ Link Status  Multipath Type
        FakePoolInfo['Status'], FakePoolInfo['Free Capacity'],
        FakePoolInfo['Disk List'], FakePoolInfo['Name'])
 
+        elif cmd == 'showrespool':
+            out = """/>showrespool
+============================================================================
+                         Resource Pool Information
+----------------------------------------------------------------------------
+  Pool ID    Size(MB)    Usage(MB)    Valid Size(MB)    Alarm Threshold(%)
+----------------------------------------------------------------------------
+  A          5130.0      0.0          5130.0            80
+  B          3082.0      0.0          3082.0            80
+============================================================================
+"""
+
         out = out.replace('\n', '\r\n')
         return out
 
