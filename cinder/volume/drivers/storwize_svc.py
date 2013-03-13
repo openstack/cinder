@@ -51,6 +51,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import strutils
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -422,12 +423,12 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         for wwpn in connector['wwpns']:
             ssh_cmd = 'lsfabric -wwpn %s -delim !' % wwpn
             out, err = self._run_ssh(ssh_cmd)
-            host_lines = out.strip().split('\n')
 
-            if len(host_lines) == 0:
+            if not len(out.strip()):
                 # This WWPN is not in use
                 continue
 
+            host_lines = out.strip().split('\n')
             header = host_lines.pop(0).split('!')
             self._assert_ssh_return('remote_wwpn' in header and
                                     'name' in header,
@@ -840,11 +841,23 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             specs = volume_type.get('extra_specs')
-            key_trans = {'storage_protocol': 'protocol'}
-            for key, value in specs.iteritems():
-                if key in key_trans:
-                    key = key_trans[key]
-                if key == 'protocol':
+            for k, value in specs.iteritems():
+                # Get the scope, if using scope format
+                key_split = k.split(':')
+                if len(key_split) == 1:
+                    scope = None
+                    key = key_split[0]
+                else:
+                    scope = key_split[0]
+                    key = key_split[1]
+
+                # We generally do not look at capabilities in the driver, but
+                # protocol is a special case where the user asks for a given
+                # protocol and we want both the scheduler and the driver to act
+                # on the value.
+                if scope == 'capabilities' and key == 'storage_protocol':
+                    scope = None
+                    key = 'protocol'
                     words = value.split()
                     self._driver_assert(words and
                                         len(words) == 2 and
@@ -853,13 +866,20 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                           '\'<in> iSCSI\' or \'<in> FC\''))
                     del words[0]
                     value = words[0]
+
+                # Anything keys that the driver should look at should have the
+                # 'drivers' scope.
+                if scope and scope != "drivers":
+                    continue
+
                 if key in opts:
                     this_type = type(opts[key]).__name__
                     if this_type == 'int':
                         value = int(value)
                     elif this_type == 'bool':
-                        value = False if value == "0" else True
+                        value = strutils.bool_from_string(value)
                     opts[key] = value
+
         self._check_vdisk_opts(opts)
         return opts
 
@@ -1313,8 +1333,6 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 
-        data['compression_enabled'] = self._compression_enabled
-
         pool = self.configuration.storwize_svc_volpool_name
         #Get storage system name
         ssh_cmd = 'lssystem -delim !'
@@ -1341,6 +1359,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                     (1024 ** 3))
         data['free_capacity_gb'] = (float(attributes['free_capacity']) /
                                     (1024 ** 3))
+        data['easytier_support'] = attributes['easy_tier'] in ['on', 'auto']
+        data['compression_support'] = self._compression_enabled
 
         self._stats = data
 

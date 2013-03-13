@@ -497,11 +497,11 @@ class StorwizeSVCManagementSimulator:
                             host_info['host_name'], '', 'host'])
 
         if self._next_cmd_error['lsfabric'] == 'header_mismatch':
-            rows[0].pop(2)
+            rows[0].pop(0)
             self._next_cmd_error['lsfabric'] = ''
         if self._next_cmd_error['lsfabric'] == 'remove_field':
             for row in rows:
-                row.pop(4)
+                row.pop(0)
             self._next_cmd_error['lsfabric'] = ''
         return self._print_info_cmd(rows=rows, **kwargs)
 
@@ -1697,22 +1697,13 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             volume2['volume_type_id'] = types[protocol]['id']
 
             # Check case where no hosts exist
-            ret = self.driver._get_host_from_connector(conn)
-            self.assertEqual(ret, None)
+            if self.USESIM:
+                ret = self.driver._get_host_from_connector(conn)
+                self.assertEqual(ret, None)
 
             # Make sure that the volumes have been created
             self._assert_vol_exists(volume1['name'], True)
             self._assert_vol_exists(volume2['name'], True)
-
-            # Check bad output from lsfabric
-            if protocol == 'FC' and self.USESIM:
-                for error in ['remove_field', 'header_mismatch']:
-                    self.sim.error_injection('lsfabric', error)
-                    self.assertRaises(exception.VolumeBackendAPIException,
-                                      self.driver.initialize_connection,
-                                      volume1, conn)
-                    host_name = self.driver._get_host_from_connector(conn)
-                    self.assertEqual(host_name, None)
 
             # Initialize connection from the first volume to a host
             self.driver.initialize_connection(volume1, conn)
@@ -1725,7 +1716,18 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                               self.driver.delete_volume,
                               volume1)
 
+            # Check bad output from lsfabric for the 2nd volume
+            if protocol == 'FC' and self.USESIM:
+                for error in ['remove_field', 'header_mismatch']:
+                    self.sim.error_injection('lsfabric', error)
+                    self.assertRaises(exception.VolumeBackendAPIException,
+                                      self.driver.initialize_connection,
+                                      volume2, conn)
+
             self.driver.terminate_connection(volume1, conn)
+            if self.USESIM:
+                host_name = self.driver._get_host_from_connector(conn)
+                self.assertEqual(host_name, None)
 
         # Check cases with no auth set for host
         if self.USESIM:
@@ -1760,7 +1762,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Try to remove connection from host that doesn't exist (should fail)
         conn_no_exist = conn.copy()
         conn_no_exist['initiator'] = 'i_dont_exist'
-        conn_no_exist['wwpns'] = ['i_dont_exist']
+        conn_no_exist['wwpns'] = ['0000000000000000']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
                           volume1,
