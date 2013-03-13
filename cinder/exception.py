@@ -465,6 +465,10 @@ class DuplicateSfVolumeNames(Duplicate):
     message = _("Detected more than one volume with name %(vol_name)s")
 
 
+class Duplicate3PARHost(CinderException):
+    message = _("3PAR Host already exists: %(err)s.  %(info)s")
+
+
 class VolumeTypeCreateFailed(CinderException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
