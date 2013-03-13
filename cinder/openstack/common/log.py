@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2011 OpenStack LLC.
+# Copyright 2011 OpenStack Foundation.
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -46,6 +46,7 @@ from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import local
 from cinder.openstack.common import notifier
+
 
 _DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)8s [%(name)s] %(message)s"
 _DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -324,16 +325,11 @@ def _create_logging_excepthook(product_name):
 
 def setup(product_name):
     """Setup logging."""
-    sys.excepthook = _create_logging_excepthook(product_name)
-
     if CONF.log_config:
-        try:
-            logging.config.fileConfig(CONF.log_config)
-        except Exception:
-            traceback.print_exc()
-            raise
+        logging.config.fileConfig(CONF.log_config)
     else:
-        _setup_logging_from_conf(product_name)
+        _setup_logging_from_conf()
+    sys.excepthook = _create_logging_excepthook(product_name)
 
 
 def set_defaults(logging_context_format_string):
@@ -366,8 +362,8 @@ def _find_facility_from_conf():
     return facility
 
 
-def _setup_logging_from_conf(product_name):
-    log_root = getLogger(product_name).logger
+def _setup_logging_from_conf():
+    log_root = getLogger(None).logger
     for handler in log_root.handlers:
         log_root.removeHandler(handler)
 
@@ -405,7 +401,8 @@ def _setup_logging_from_conf(product_name):
         if CONF.log_format:
             handler.setFormatter(logging.Formatter(fmt=CONF.log_format,
                                                    datefmt=datefmt))
-        handler.setFormatter(LegacyFormatter(datefmt=datefmt))
+        else:
+            handler.setFormatter(LegacyFormatter(datefmt=datefmt))
 
     if CONF.debug:
         log_root.setLevel(logging.DEBUG)
