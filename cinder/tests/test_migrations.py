@@ -353,13 +353,13 @@ class TestMigrations(test.TestCase):
                 if prerun:
                     data = prerun(engine)
 
-                migration_api.upgrade(engine,
-                                      TestMigrations.REPOSITORY,
-                                      version)
-                self.assertEqual(
-                    version,
-                    migration_api.db_version(engine,
-                                             TestMigrations.REPOSITORY))
+            migration_api.upgrade(engine,
+                                  TestMigrations.REPOSITORY,
+                                  version)
+            self.assertEqual(
+                version,
+                migration_api.db_version(engine,
+                                         TestMigrations.REPOSITORY))
 
             if with_data:
                 check = getattr(self, "_check_%3.3d" % version, None)
