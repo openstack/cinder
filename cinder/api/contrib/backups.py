@@ -184,7 +184,7 @@ class BackupsController(wsgi.Controller):
         """Create a new backup."""
         LOG.debug(_('Creating new backup %s'), body)
         if not self.is_valid_body(body, 'backup'):
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         context = req.environ['cinder.context']
 
@@ -220,7 +220,7 @@ class BackupsController(wsgi.Controller):
         backup_id = id
         LOG.debug(_('Restoring backup %(backup_id)s (%(body)s)') % locals())
         if not self.is_valid_body(body, 'restore'):
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         context = req.environ['cinder.context']
 

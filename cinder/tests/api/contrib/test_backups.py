@@ -395,10 +395,11 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 422)
-        self.assertEqual(res_dict['computeFault']['code'], 422)
-        self.assertEqual(res_dict['computeFault']['message'],
-                         'Unable to process the contained instructions')
+        self.assertEqual(res.status_int, 400)
+        self.assertEqual(res_dict['badRequest']['code'], 400)
+        self.assertEqual(res_dict['badRequest']['message'],
+                         'The server could not comply with the request since'
+                         ' it is either malformed or otherwise incorrect.')
 
     def test_create_backup_with_body_KeyError(self):
         # omit volume_id from body
@@ -576,10 +577,11 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 422)
-        self.assertEqual(res_dict['computeFault']['code'], 422)
-        self.assertEqual(res_dict['computeFault']['message'],
-                         'Unable to process the contained instructions')
+        self.assertEqual(res.status_int, 400)
+        self.assertEqual(res_dict['badRequest']['code'], 400)
+        self.assertEqual(res_dict['badRequest']['message'],
+                         'The server could not comply with the request since'
+                         ' it is either malformed or otherwise incorrect.')
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
@@ -597,10 +599,11 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 422)
-        self.assertEqual(res_dict['computeFault']['code'], 422)
-        self.assertEqual(res_dict['computeFault']['message'],
-                         'Unable to process the contained instructions')
+        self.assertEqual(res.status_int, 400)
+        self.assertEqual(res_dict['badRequest']['code'], 400)
+        self.assertEqual(res_dict['badRequest']['message'],
+                         'The server could not comply with the request since'
+                         ' it is either malformed or otherwise incorrect.')
 
     def test_restore_backup_volume_id_unspecified(self):
 

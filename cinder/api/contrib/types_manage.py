@@ -43,14 +43,14 @@ class VolumeTypesManageController(wsgi.Controller):
         authorize(context)
 
         if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPUnprocessableEntity()
+            raise webob.exc.HTTPBadRequest()
 
         vol_type = body['volume_type']
         name = vol_type.get('name', None)
         specs = vol_type.get('extra_specs', {})
 
         if name is None or name == "":
-            raise webob.exc.HTTPUnprocessableEntity()
+            raise webob.exc.HTTPBadRequest()
 
         try:
             volume_types.create(context, name, specs)
