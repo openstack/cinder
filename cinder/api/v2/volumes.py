@@ -220,7 +220,7 @@ class VolumeController(wsgi.Controller):
     def create(self, req, body):
         """Creates a new volume."""
         if not self.is_valid_body(body, 'volume'):
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         context = req.environ['cinder.context']
         volume = body['volume']
@@ -306,10 +306,10 @@ class VolumeController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         if not body:
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         if 'volume' not in body:
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         volume = body['volume']
         update_dict = {}

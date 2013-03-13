@@ -92,31 +92,19 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(1, len(res_dict))
         self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
 
-
-class VolumeTypesUnprocessableEntityTestCase(test.TestCase):
-
-    """
-    Tests of places we throw 422 Unprocessable Entity from
-    """
-
-    def setUp(self):
-        super(VolumeTypesUnprocessableEntityTestCase, self).setUp()
-        self.controller = types_manage.VolumeTypesManageController()
-
-    def _unprocessable_volume_type_create(self, body):
+    def _create_volume_type_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
         req.method = 'POST'
-
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._create, req, body)
 
     def test_create_no_body(self):
-        self._unprocessable_volume_type_create(body=None)
+        self._create_volume_type_bad_body(body=None)
 
     def test_create_missing_volume(self):
         body = {'foo': {'a': 'b'}}
-        self._unprocessable_volume_type_create(body=body)
+        self._create_volume_type_bad_body(body=body)
 
     def test_create_malformed_entity(self):
         body = {'volume_type': 'string'}
-        self._unprocessable_volume_type_create(body=body)
+        self._create_volume_type_bad_body(body=body)

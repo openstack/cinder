@@ -167,7 +167,7 @@ class SnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         if not self.is_valid_body(body, 'snapshot'):
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)
@@ -212,10 +212,10 @@ class SnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         if not body:
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         if 'snapshot' not in body:
-            raise exc.HTTPUnprocessableEntity()
+            raise exc.HTTPBadRequest()
 
         snapshot = body['snapshot']
         update_dict = {}

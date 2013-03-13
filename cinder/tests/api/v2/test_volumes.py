@@ -304,7 +304,7 @@ class VolumeApiTest(test.TestCase):
     def test_update_empty_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
                           req, '1', body)
 
@@ -313,7 +313,7 @@ class VolumeApiTest(test.TestCase):
             'name': 'missing top level volume key'
         }
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
                           req, '1', body)
 
@@ -661,6 +661,24 @@ class VolumeApiTest(test.TestCase):
         self.assertTrue('volumes' in res)
         self.assertEqual(1, len(res['volumes']))
 
+    def _create_volume_bad_request(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req.method = 'POST'
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, body)
+
+    def test_create_no_body(self):
+        self._create_volume_bad_request(body=None)
+
+    def test_create_missing_volume(self):
+        body = {'foo': {'a': 'b'}}
+        self._create_volume_bad_request(body=body)
+
+    def test_create_malformed_entity(self):
+        body = {'volume': 'string'}
+        self._create_volume_bad_request(body=body)
+
 
 class VolumeSerializerTest(test.TestCase):
     def _verify_volume_attachment(self, attach, tree):
@@ -904,34 +922,3 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
             },
         }
         self.assertEquals(request['body'], expected)
-
-
-class VolumesUnprocessableEntityTestCase(test.TestCase):
-
-    """
-    Tests of places we throw 422 Unprocessable Entity from
-    """
-
-    def setUp(self):
-        super(VolumesUnprocessableEntityTestCase, self).setUp()
-        self.ext_mgr = extensions.ExtensionManager()
-        self.ext_mgr.extensions = {}
-        self.controller = volumes.VolumeController(self.ext_mgr)
-
-    def _unprocessable_volume_create(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
-        req.method = 'POST'
-
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
-                          self.controller.create, req, body)
-
-    def test_create_no_body(self):
-        self._unprocessable_volume_create(body=None)
-
-    def test_create_missing_volume(self):
-        body = {'foo': {'a': 'b'}}
-        self._unprocessable_volume_create(body=body)
-
-    def test_create_malformed_entity(self):
-        body = {'volume': 'string'}
-        self._unprocessable_volume_create(body=body)
