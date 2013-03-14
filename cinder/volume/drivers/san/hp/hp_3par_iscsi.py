@@ -229,7 +229,12 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
     def _create_3par_iscsi_host(self, hostname, iscsi_iqn, domain, persona_id):
         cmd = 'createhost -iscsi -persona %s -domain %s %s %s' % \
               (persona_id, domain, hostname, iscsi_iqn)
-        self.common._cli_run(cmd, None)
+        out = self.common._cli_run(cmd, None)
+        if out and len(out) > 1:
+            if "already used by host" in out[1]:
+                err = out[1].strip()
+                info = _("The hostname must be called '%s'") % hostname
+                raise exception.Duplicate3PARHost(err=err, info=info)
 
     def _modify_3par_iscsi_host(self, hostname, iscsi_iqn):
         # when using -add, you can not send the persona or domain options
