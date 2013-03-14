@@ -439,7 +439,7 @@ class ISCSIDriver(VolumeDriver):
                      locals())
 
             # The rescan isn't documented as being necessary(?), but it helps
-            self._run_iscsiadm(iscsi_properties, ("--rescan"))
+            self._run_iscsiadm(iscsi_properties, ("--rescan",))
 
             tries = tries + 1
             if not os.path.exists(host_device):
