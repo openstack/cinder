@@ -330,6 +330,16 @@ class API(base.Base):
                 sort_dir='desc', filters={}):
         check_policy(context, 'get_all')
 
+        try:
+            if limit is not None:
+                limit = int(limit)
+                if limit < 0:
+                    msg = _('limit param must be positive')
+                    raise exception.InvalidInput(reason=msg)
+        except ValueError:
+            msg = _('limit param must be an integer')
+            raise exception.InvalidInput(reason=msg)
+
         if (context.is_admin and 'all_tenants' in filters):
             # Need to remove all_tenants to pass the filtering below.
             del filters['all_tenants']
