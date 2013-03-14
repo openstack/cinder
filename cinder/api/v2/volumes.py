@@ -179,6 +179,7 @@ class VolumeController(wsgi.Controller):
         limit = params.pop('limit', None)
         sort_key = params.pop('sort_key', 'created_at')
         sort_dir = params.pop('sort_dir', 'desc')
+        params.pop('offset', None)
         filters = params
 
         remove_invalid_options(context,
