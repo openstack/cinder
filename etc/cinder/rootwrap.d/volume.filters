@@ -3,58 +3,56 @@
 
 [Filters]
 # cinder/volume/iscsi.py: iscsi_helper '--op' ...
-ietadm: CommandFilter, /usr/sbin/ietadm, root
-tgtadm: CommandFilter, /usr/sbin/tgtadm, root
-tgt-admin: CommandFilter, /usr/sbin/tgt-admin, root
+ietadm: CommandFilter, ietadm, root
+tgtadm: CommandFilter, tgtadm, root
+tgt-admin: CommandFilter, tgt-admin, root
 cinder-rtstool: CommandFilter, cinder-rtstool, root
 
 # cinder/volume/driver.py: 'vgs', '--noheadings', '-o', 'name'
-vgs: CommandFilter, /sbin/vgs, root
+vgs: CommandFilter, vgs, root
 
 # cinder/volume/driver.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
 # cinder/volume/driver.py: 'lvcreate', '-L', ...
-lvcreate: CommandFilter, /sbin/lvcreate, root
+lvcreate: CommandFilter, lvcreate, root
 
 # cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
-dd: CommandFilter, /bin/dd, root
+dd: CommandFilter, dd, root
 
 # cinder/volume/driver.py: 'lvremove', '-f', %s/%s % ...
-lvremove: CommandFilter, /sbin/lvremove, root
+lvremove: CommandFilter, lvremove, root
 
 # cinder/volume/driver.py: 'lvdisplay', '--noheading', '-C', '-o', 'Attr',..
-lvdisplay: CommandFilter, /sbin/lvdisplay, root
+lvdisplay: CommandFilter, lvdisplay, root
 
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
-iscsiadm: CommandFilter, /sbin/iscsiadm, root
-iscsiadm_usr: CommandFilter, /usr/bin/iscsiadm, root
+iscsiadm: CommandFilter, iscsiadm, root
 
 # cinder/volume/drivers/lvm.py: 'shred', '-n3'
 # cinder/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
-shred: CommandFilter, /usr/bin/shred, root
+shred: CommandFilter, shred, root
 
 #cinder/volume/.py: utils.temporary_chown(path, 0), ...
-chown: CommandFilter, /bin/chown, root
+chown: CommandFilter, chown, root
 
 # cinder/volume/driver.py
-dmsetup: CommandFilter, /sbin/dmsetup, root
-dmsetup_usr: CommandFilter, /usr/sbin/dmsetup, root
-ln: CommandFilter, /bin/ln, root
-qemu-img: CommandFilter, /usr/bin/qemu-img, root
-env: CommandFilter, /usr/bin/env, root
+dmsetup: CommandFilter, dmsetup, root
+ln: CommandFilter, ln, root
+qemu-img: CommandFilter, qemu-img, root
+env: CommandFilter, env, root
 
 # cinder/volume/driver.py: utils.read_file_as_root()
-cat: CommandFilter, /bin/cat, root
+cat: CommandFilter, cat, root
 
 # cinder/volume/nfs.py
-stat: CommandFilter, /usr/bin/stat, root
-mount: CommandFilter, /bin/mount, root
-df: CommandFilter, /bin/df, root
-truncate: CommandFilter, /usr/bin/truncate, root
-chmod: CommandFilter, /bin/chmod, root
-rm: CommandFilter, /bin/rm, root
-lvs: CommandFilter, /sbin/lvs, root
+stat: CommandFilter, stat, root
+mount: CommandFilter, mount, root
+df: CommandFilter, df, root
+truncate: CommandFilter, truncate, root
+chmod: CommandFilter, chmod, root
+rm: CommandFilter, rm, root
+lvs: CommandFilter, lvs, root
 
 # cinder/volume/scality.py
-mount: CommandFilter, /bin/mount, root
-dd: CommandFilter, /bin/dd, root
+mount: CommandFilter, mount, root
+dd: CommandFilter, dd, root
