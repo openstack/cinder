@@ -23,6 +23,7 @@ from xml.etree import ElementTree as ET
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import huawei_iscsi
 
 LOG = logging.getLogger(__name__)
@@ -184,7 +185,7 @@ class HuaweiVolumeTestCase(test.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(HuaweiVolumeTestCase, self).__init__(*args, **kwargs)
-        self.driver = FakeHuaweiStorage()
+        self.driver = FakeHuaweiStorage(configuration=conf.Configuration(None))
         self.driver.do_setup({})
         self.driver._test_flg = 'check_for_fail'
         self._test_check_for_setup_errors()

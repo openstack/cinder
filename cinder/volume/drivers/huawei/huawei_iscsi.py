@@ -26,7 +26,6 @@ from oslo.config import cfg
 from xml.etree import ElementTree as ET
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -38,9 +37,6 @@ huawei_opt = [
     cfg.StrOpt('cinder_huawei_conf_file',
                default='/etc/cinder/cinder_huawei_conf.xml',
                help='config data for cinder huawei plugin')]
-
-FLAGS = flags.FLAGS
-FLAGS.register_opts(huawei_opt)
 
 HOST_GROUP_NAME = 'HostGroup_OpenStack'
 HOST_NAME_PREFIX = 'Host_'
@@ -107,6 +103,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(huawei_opt)
         self.device_type = {}
         self.login_info = {}
         self.hostgroup_id = None
@@ -542,7 +539,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
     def _read_xml(self):
         """Open xml file."""
-        filename = FLAGS.cinder_huawei_conf_file
+        filename = self.configuration.cinder_huawei_conf_file
         try:
             tree = ET.parse(filename)
             root = tree.getroot()
@@ -875,7 +872,6 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         if len(en) < 6:
             return None
 
-        en = out.split('\r\n')
         for i in range(6, len(en) - 2):
             r = en[i].split()
             if r[1] == hostname:
@@ -894,7 +890,6 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         hostportinfo = []
         list_key = ['id', 'name', 'info', 'type', 'hostid',
                     'linkstatus', 'multioathtype']
-        en = out.split('\r\n')
         for i in range(6, len(en) - 2):
             list_val = en[i].split()
             hostport_dic = dict(map(None, list_key, list_val))
@@ -1087,7 +1082,6 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         mapinfo = []
         list_tmp = []
         list_key = ['mapid', 'devlunid', 'hostlunid']
-        en = out.split('\r\n')
         for i in range(6, len(en) - 2):
             list_tmp = en[i].split()
             list_val = [list_tmp[0], list_tmp[2], list_tmp[4]]
