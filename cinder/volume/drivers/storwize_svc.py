@@ -593,6 +593,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             for index, n in enumerate(lun_used):
                 if n > index:
                     result_lun = str(index)
+                    break
 
         # Volume is not mapped to host, create a new LUN
         if not mapped_flag:
