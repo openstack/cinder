@@ -160,7 +160,7 @@ class TestCoraidRESTClient(test.TestCase):
 
     def test__get_volume_info(self):
         setattr(self.rest_mock, '_get_volume_info',
-                lambda *_: True)
+                lambda *_: fake_volume_info)
         self.stubs.Set(CoraidRESTClient, '_esm',
                        lambda *_: fake_esm_fetch)
         self.drv._get_volume_info(fake_volume_name)

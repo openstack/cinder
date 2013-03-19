@@ -144,31 +144,19 @@ class CoraidRESTClient(object):
                 raise CoraidESMException(msg % dict(message=errmsg))
         return False
 
-    def _get_volume_info(self, lvname):
-        """Fetch information for a given Volume or Snapshot."""
-        self._login()
-        url = 'fetch?shelf=cms&orchStrRepo&lv=%s' % (lvname)
-        response = self._esm(url)
-
-        items = []
-        for cmd, reply in response:
-            if len(reply['reply']) != 0:
-                items.append(reply['reply'])
-
-        volume_info = False
-        for item in items[0]:
-            if item['lv']['name'] == lvname:
-                volume_info = {
-                    "pool": item['lv']['containingPool'],
-                    "repo": item['repoName'],
-                    "vsxidx": item['lv']['lunIndex'],
-                    "index": item['lv']['lvStatus']['exportedLun']['lun'],
-                    "shelf": item['lv']['lvStatus']['exportedLun']['shelf']}
-
-        if volume_info:
-            return volume_info
-        else:
-            msg = _('Informtion about Volume %(volname)s not found')
+    def _get_volume_info(self, volume_name):
+        """Retrive volume informations for a given volume name."""
+        url = 'fetch?shelf=cms&orchStrRepo&lv=%s' % (volume_name)
+        try:
+            response = self._esm(url)
+            info = response[0][1]['reply'][0]
+            return {"pool": info['lv']['containingPool'],
+                    "repo": info['repoName'],
+                    "vsxidx": info['lv']['lunIndex'],
+                    "index": info['lv']['lvStatus']['exportedLun']['lun'],
+                    "shelf": info['lv']['lvStatus']['exportedLun']['shelf']}
+        except Exception:
+            msg = _('Unable to retrive volume infos for volume %(volname)s')
             raise CoraidESMException(msg % dict(volname=volume_name))
 
     def _get_lun_address(self, volume_name):
