@@ -1,16 +1,15 @@
-# Packages needed for dev testing
-distribute>=0.6.28
-
-coverage
-mock
+# This file is managed by openstack-depends
+coverage>=3.6
+distribute>=0.6.24
+hp3parclient>=1.0.0
+mock>=0.8.0
 mox>=0.5.3
+mysql-python
 nose
+nosehtmloutput>=0.0.3
 nosexcover
-openstack.nose_plugin
-nosehtmloutput
+openstack.nose_plugin>=0.7
 pep8==1.3.3
+psycopg2
 pylint==0.25.2
 sphinx>=1.1.2
-MySQL-python
-psycopg2
-hp3parclient>=1.0.0
