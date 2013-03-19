@@ -69,8 +69,8 @@ volume_manager_opts = [
                help='Driver to use for volume creation'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(volume_manager_opts)
+CONF = cfg.CONF
+CONF.register_opts(volume_manager_opts)
 
 MAPPING = {
     'cinder.volume.driver.RBDDriver': 'cinder.volume.drivers.rbd.RBDDriver',
@@ -332,7 +332,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         rescheduled = False
 
         try:
-            method_args = (FLAGS.volume_topic, volume_id, snapshot_id,
+            method_args = (CONF.volume_topic, volume_id, snapshot_id,
                            image_id, request_spec, filter_properties)
 
             rescheduled = self._reschedule(context, request_spec,
