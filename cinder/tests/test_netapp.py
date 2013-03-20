@@ -604,7 +604,14 @@ def create_configuration():
     return configuration
 
 
-class FakeDfmServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    """HTTP handler that doesn't spam the log."""
+
+    def log_message(self, format, *args):
+        pass
+
+
+class FakeDfmServerHandler(FakeHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run."""
 
     def do_GET(s):
@@ -1221,7 +1228,7 @@ CMODE_APIS = ['ProvisionLun', 'DestroyLun', 'CloneLun', 'MapLun', 'UnmapLun',
               'ListLuns', 'GetLunTargetDetails']
 
 
-class FakeCMODEServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class FakeCMODEServerHandler(FakeHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run"""
 
     def do_GET(s):
@@ -1489,7 +1496,7 @@ RESPONSE_PREFIX_DIRECT = """
 RESPONSE_SUFFIX_DIRECT = """</netapp>"""
 
 
-class FakeDirectCMODEServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run"""
 
     def do_GET(s):
@@ -1888,7 +1895,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(NetAppCmodeISCSIDriverTestCase):
                           self.driver.create_volume, self.vol_fail)
 
 
-class FakeDirect7MODEServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class FakeDirect7MODEServerHandler(FakeHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run"""
 
     def do_GET(s):
