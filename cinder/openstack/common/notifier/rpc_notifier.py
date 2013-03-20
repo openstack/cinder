@@ -15,21 +15,32 @@
 
 from oslo.config import cfg
 
-from cinder.openstack.common import jsonutils
+from cinder.openstack.common import context as req_context
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import rpc
 
+LOG = logging.getLogger(__name__)
+
+notification_topic_opt = cfg.ListOpt(
+    'notification_topics', default=['notifications', ],
+    help='AMQP topic used for openstack notifications')
 
 CONF = cfg.CONF
+CONF.register_opt(notification_topic_opt)
 
 
-def notify(_context, message):
-    """Notifies the recipient of the desired event given the model.
-    Log notifications using openstack's default logging system"""
-
+def notify(context, message):
+    """Sends a notification via RPC"""
+    if not context:
+        context = req_context.get_admin_context()
     priority = message.get('priority',
                            CONF.default_notification_level)
     priority = priority.lower()
-    logger = logging.getLogger(
-        'cinder.openstack.common.notification.%s' %
-        message['event_type'])
-    getattr(logger, priority)(jsonutils.dumps(message))
+    for topic in CONF.notification_topics:
+        topic = '%s.%s' % (topic, priority)
+        try:
+            rpc.notify(context, topic, message)
+        except Exception:
+            LOG.exception(_("Could not send notification to %(topic)s. "
+                            "Payload=%(message)s"), locals())
