@@ -267,7 +267,8 @@ class SolidFire(SanISCSIDriver):
                     iqn = v['iqn']
                     found_volume = True
                     break
-            time.sleep(2)
+            if not found_volume:
+                time.sleep(2)
             iteration_count += 1
 
         if not found_volume:
