@@ -62,6 +62,11 @@ class RemoteFsDriver(driver.VolumeDriver):
     def delete_volume(self, volume):
         raise NotImplementedError()
 
+    def delete_snapshot(self, snapshot):
+        """Do nothing for this driver, but allow manager to handle deletion
+           of snapshot in error state."""
+        pass
+
     def ensure_export(self, ctx, volume):
         raise NotImplementedError()
 
