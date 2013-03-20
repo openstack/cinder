@@ -857,6 +857,159 @@ class VolumeTestCase(test.TestCase):
         snap = db.snapshot_get(context.get_admin_context(), snapshot['id'])
         self.assertEquals(snap['display_name'], 'test update name')
 
+    def test_volume_get_active_by_window(self):
+        # Find all all volumes valid within a timeframe window.
+        try:  # Not in window
+            db.volume_create(
+                self.context,
+                {
+                    'id': 1,
+                    'host': 'devstack',
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'deleted': True, 'status': 'deleted',
+                    'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
+                }
+            )
+        except exception.VolumeNotFound:
+            pass
+
+        try:  # In - deleted in window
+            db.volume_create(
+                self.context,
+                {
+                    'id': 2,
+                    'host': 'devstack',
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'deleted': True, 'status': 'deleted',
+                    'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+                }
+            )
+        except exception.VolumeNotFound:
+            pass
+
+        try:  # In - deleted after window
+            db.volume_create(
+                self.context,
+                {
+                    'id': 3,
+                    'host': 'devstack',
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'deleted': True, 'status': 'deleted',
+                    'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+                }
+            )
+        except exception.VolumeNotFound:
+            pass
+
+        # In - created in window
+        db.volume_create(
+            self.context,
+            {
+                'id': 4,
+                'host': 'devstack',
+                'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+            }
+        )
+
+        # Not of window.
+        db.volume_create(
+            self.context,
+            {
+                'id': 5,
+                'host': 'devstack',
+                'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+            }
+        )
+
+        volumes = db.volume_get_active_by_window(
+            self.context,
+            datetime.datetime(1, 3, 1, 1, 1, 1),
+            datetime.datetime(1, 4, 1, 1, 1, 1))
+        self.assertEqual(len(volumes), 3)
+        self.assertEqual(volumes[0].id, u'2')
+        self.assertEqual(volumes[1].id, u'3')
+        self.assertEqual(volumes[2].id, u'4')
+
+    def test_snapshot_get_active_by_window(self):
+        # Find all all snapshots valid within a timeframe window.
+        vol = db.volume_create(self.context, {'id': 1})
+
+        try:  # Not in window
+            db.snapshot_create(
+                self.context,
+                {
+                    'id': 1,
+                    'host': 'devstack',
+                    'volume_id': 1,
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'deleted': True, 'status': 'deleted',
+                    'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
+                }
+            )
+        except exception.SnapshotNotFound:
+            pass
+
+        try:  # In - deleted in window
+            db.snapshot_create(
+                self.context,
+                {
+                    'id': 2,
+                    'host': 'devstack',
+                    'volume_id': 1,
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'deleted': True, 'status': 'deleted',
+                    'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+                }
+            )
+        except exception.SnapshotNotFound:
+            pass
+
+        try:  # In - deleted after window
+            db.snapshot_create(
+                self.context,
+                {
+                    'id': 3,
+                    'host': 'devstack',
+                    'volume_id': 1,
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'deleted': True, 'status': 'deleted',
+                    'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+                }
+            )
+        except exception.SnapshotNotFound:
+            pass
+
+        # In - created in window
+        db.snapshot_create(
+            self.context,
+            {
+                'id': 4,
+                'host': 'devstack',
+                'volume_id': 1,
+                'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+            }
+        )
+
+        # Not of window.
+        db.snapshot_create(
+            self.context,
+            {
+                'id': 5,
+                'host': 'devstack',
+                'volume_id': 1,
+                'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+            }
+        )
+
+        snapshots = db.snapshot_get_active_by_window(
+            self.context,
+            datetime.datetime(1, 3, 1, 1, 1, 1),
+            datetime.datetime(1, 4, 1, 1, 1, 1))
+        self.assertEqual(len(snapshots), 3)
+        self.assertEqual(snapshots[0].id, u'2')
+        self.assertEqual(snapshots[1].id, u'3')
+        self.assertEqual(snapshots[2].id, u'4')
+
 
 class DriverTestCase(test.TestCase):
     """Base Test class for Drivers."""

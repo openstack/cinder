@@ -1261,6 +1261,22 @@ def snapshot_data_get_for_project(context, project_id, session=None):
 
 
 @require_context
+def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
+    """Return snapshots that were active during window."""
+    session = get_session()
+    query = session.query(models.Snapshot)
+
+    query = query.filter(or_(models.Snapshot.deleted_at == None,
+                             models.Snapshot.deleted_at > begin))
+    if end:
+        query = query.filter(models.Snapshot.created_at < end)
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+
+    return query.all()
+
+
+@require_context
 def snapshot_update(context, snapshot_id, values):
     session = get_session()
     with session.begin():

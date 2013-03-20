@@ -317,6 +317,13 @@ def snapshot_data_get_for_project(context, project_id, session=None):
                                               session=None)
 
 
+def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
+    """Get all the snapshots inside the window.
+
+    Specifying a project_id will filter for a certain project."""
+    return IMPL.snapshot_get_active_by_window(context, begin, end, project_id)
+
+
 ####################
 
 
