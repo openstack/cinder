@@ -23,6 +23,7 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import coraid
 from cinder.volume.drivers.coraid import CoraidDriver
+from cinder.volume.drivers.coraid import CoraidESMException
 from cinder.volume.drivers.coraid import CoraidRESTClient
 
 import cookielib
@@ -32,7 +33,8 @@ LOG = logging.getLogger(__name__)
 
 
 fake_esm_ipaddress = "192.168.0.1"
-fake_esm_username = "admin"
+fake_esm_username = "darmok"
+fake_esm_group = "tanagra"
 fake_esm_password = "12345678"
 
 fake_volume_name = "volume-12345678-1234-1234-1234-1234567890ab"
@@ -87,6 +89,24 @@ fake_esm_success = {"category": "provider",
                     "metaCROp": "noAction",
                     "message": None}
 
+fake_group_fullpath = "admin group:%s" % (fake_esm_group)
+fake_group_id = 4
+fake_login_reply = {"values": [
+                    {"fullPath": fake_group_fullpath,
+                     "groupId": fake_group_id}],
+                    "message": "",
+                    "state": "adminSucceed",
+                    "metaCROp": "noAction"}
+
+fake_group_fail_fullpath = "fail group:%s" % (fake_esm_group)
+fake_group_fail_id = 5
+fake_login_reply_group_fail = {"values": [
+                               {"fullPath": fake_group_fail_fullpath,
+                                "groupId": fake_group_fail_id}],
+                               "message": "",
+                               "state": "adminSucceed",
+                               "metaCROp": "noAction"}
+
 
 class TestCoraidDriver(test.TestCase):
     def setUp(self):
@@ -98,6 +118,7 @@ class TestCoraidDriver(test.TestCase):
         configuration.append_config_values(mox.IgnoreArg())
         configuration.coraid_esm_address = fake_esm_ipaddress
         configuration.coraid_user = fake_esm_username
+        configuration.coraid_group = fake_esm_group
         configuration.coraid_password = fake_esm_password
 
         self.drv = CoraidDriver(configuration=configuration)
@@ -149,7 +170,31 @@ class TestCoraidRESTClient(test.TestCase):
                        lambda *_, **__: self.rest_mock)
         self.drv = CoraidRESTClient(fake_esm_ipaddress,
                                     fake_esm_username,
+                                    fake_esm_group,
                                     fake_esm_password)
+
+    def test__get_group_id(self):
+        setattr(self.rest_mock, '_get_group_id',
+                lambda *_: True)
+        self.assertEquals(self.drv._get_group_id(fake_esm_group,
+                                                 fake_login_reply),
+                          fake_group_id)
+
+    def test__set_group(self):
+        setattr(self.rest_mock, '_set_group',
+                lambda *_: fake_group_id)
+        self.stubs.Set(CoraidRESTClient, '_esm',
+                       lambda *_: fake_login_reply)
+        self.drv._set_group(fake_login_reply)
+
+    def test__set_group_fails_no_group(self):
+        setattr(self.rest_mock, '_set_group',
+                lambda *_: False)
+        self.stubs.Set(CoraidRESTClient, '_esm',
+                       lambda *_: fake_login_reply_group_fail)
+        self.assertRaises(CoraidESMException,
+                          self.drv._set_group,
+                          fake_login_reply_group_fail)
 
     def test__configure(self):
         setattr(self.rest_mock, '_configure',

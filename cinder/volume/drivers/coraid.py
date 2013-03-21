@@ -18,6 +18,7 @@
 Desc    : Driver to store volumes on Coraid Appliances.
 Require : Coraid EtherCloud ESM, Coraid VSX and Coraid SRX.
 Author  : Jean-Baptiste RANSY <openstack@alyseo.com>
+Contrib : Larry Matter <support@coraid.com>
 """
 
 import cookielib
@@ -45,6 +46,9 @@ coraid_opts = [
     cfg.StrOpt('coraid_user',
                default='admin',
                help='User name to connect to Coraid ESM'),
+    cfg.StrOpt('coraid_group',
+               default=False,
+               help='Group name of coraid_user (must have admin privilege)'),
     cfg.StrOpt('coraid_password',
                default='password',
                help='Password to connect to Coraid ESM'),
@@ -74,9 +78,10 @@ class CoraidESMException(CoraidException):
 class CoraidRESTClient(object):
     """Executes volume driver commands on Coraid ESM EtherCloud Appliance."""
 
-    def __init__(self, ipaddress, user, password):
+    def __init__(self, ipaddress, user, group, password):
         self.url = "https://%s:8443/" % ipaddress
         self.user = user
+        self.group = group
         self.password = password
         self.session = False
         self.cookiejar = cookielib.CookieJar()
@@ -96,12 +101,44 @@ class CoraidRESTClient(object):
                 self.session = time.time() + 1100
                 msg = _('Update session cookie %(session)s')
                 LOG.debug(msg % dict(session=self.session))
+                self._set_group(reply)
                 return True
             else:
                 errmsg = response.get('message', '')
                 msg = _('Message : %(message)s')
                 raise CoraidESMException(msg % dict(message=errmsg))
         return True
+
+    def _set_group(self, reply):
+        """Set effective group."""
+        if self.group:
+            group = self.group
+            groupId = self._get_group_id(group, reply)
+            if groupId:
+                url = ('admin?op=setRbacGroup&groupId=%s' % (groupId))
+                data = 'Group'
+                reply = self._esm(url, data)
+                if reply.get('state') == 'adminSucceed':
+                    return True
+                else:
+                    errmsg = reply.get('message', '')
+                    msg = _('Error while trying to set group: %(message)s')
+                    raise CoraidRESTException(msg % dict(message=errmsg))
+            else:
+                msg = _('Unable to find group: %(group)s')
+                raise CoraidESMException(msg % dict(group=group))
+        return True
+
+    def _get_group_id(self, groupName, loginResult):
+        """Map group name to group ID."""
+        # NOTE(lmatter): All other groups are under the admin group
+        fullName = "admin group:%s" % groupName
+        groupId = False
+        for kid in loginResult['values']:
+            fullPath = kid['fullPath']
+            if fullPath == fullName:
+                return kid['groupId']
+        return False
 
     def _esm(self, url=False, data=None):
         """
@@ -240,6 +277,7 @@ class CoraidDriver(driver.VolumeDriver):
         """Initialize the volume driver."""
         self.esm = CoraidRESTClient(self.configuration.coraid_esm_address,
                                     self.configuration.coraid_user,
+                                    self.configuration.coraid_group,
                                     self.configuration.coraid_password)
 
     def check_for_setup_error(self):
