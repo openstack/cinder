@@ -252,7 +252,7 @@ class AdminActionsTest(test.TestCase):
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # start service to handle rpc.cast for 'delete snapshot'
-        self.start_service('volume', host='test')
+        svc = self.start_service('volume', host='test')
         # make request
         resp = req.get_response(app())
         # request is accepted
@@ -260,6 +260,8 @@ class AdminActionsTest(test.TestCase):
         # snapshot is deleted
         self.assertRaises(exception.NotFound, db.snapshot_get, ctx,
                           snapshot['id'])
+        # cleanup
+        svc.stop()
 
     def test_force_detach_volume(self):
         # admin context
@@ -268,7 +270,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': ''})
         # start service to handle rpc messages for attach requests
-        self.start_service('volume', host='test')
+        svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
         self.volume_api.initialize_connection(ctx, volume, {})
         mountpoint = '/dev/vbd'
@@ -297,6 +299,8 @@ class AdminActionsTest(test.TestCase):
         self.assertEquals(volume['instance_uuid'], None)
         self.assertEquals(volume['mountpoint'], None)
         self.assertEquals(volume['attach_status'], 'detached')
+        # cleanup
+        svc.stop()
 
     def test_attach_in_use_volume(self):
         """Test that attaching to an in-use volume fails."""
@@ -306,7 +310,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': ''})
         # start service to handle rpc messages for attach requests
-        self.start_service('volume', host='test')
+        svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
         self.volume_api.initialize_connection(ctx, volume, {})
         mountpoint = '/dev/vbd'
@@ -317,6 +321,8 @@ class AdminActionsTest(test.TestCase):
                           volume,
                           fakes.get_fake_uuid(),
                           mountpoint)
+        # cleanup
+        svc.stop()
 
     def test_attach_attaching_volume_with_different_instance(self):
         """Test that attaching volume reserved for another instance fails."""
@@ -326,7 +332,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': ''})
         # start service to handle rpc messages for attach requests
-        self.start_service('volume', host='test')
+        svc = self.start_service('volume', host='test')
         self.volume_api.initialize_connection(ctx, volume, {})
         values = {'status': 'attaching',
                   'instance_uuid': fakes.get_fake_uuid()}
@@ -338,3 +344,5 @@ class AdminActionsTest(test.TestCase):
                           volume,
                           stubs.FAKE_UUID,
                           mountpoint)
+        # cleanup
+        svc.stop()
