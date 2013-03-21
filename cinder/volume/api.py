@@ -491,8 +491,11 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         try:
-            reservations = QUOTAS.reserve(context, snapshots=1,
-                                          gigabytes=volume['size'])
+            if FLAGS.no_snapshot_gb_quota:
+                reservations = QUOTAS.reserve(context, snapshots=1)
+            else:
+                reservations = QUOTAS.reserve(context, snapshots=1,
+                                              gigabytes=volume['size'])
         except exception.OverQuota as e:
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']

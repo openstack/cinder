@@ -489,9 +489,25 @@ class VolumeManager(manager.SchedulerDependentManager):
                                         snapshot_ref['id'],
                                         {'status': 'error_deleting'})
 
+        # Get reservations
+        try:
+            if CONF.no_snapshot_gb_quota:
+                reservations = QUOTAS.reserve(context, snapshots=-1)
+            else:
+                reservations = QUOTAS.reserve(
+                    context,
+                    snapshots=-1,
+                    gigabytes=-snapshot_ref['volume_size'])
+        except Exception:
+            reservations = None
+            LOG.exception(_("Failed to update usages deleting snapshot"))
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
         self.db.snapshot_destroy(context, snapshot_id)
         LOG.info(_("snapshot %s: deleted successfully"), snapshot_ref['name'])
+
+        # Commit the reservations
+        if reservations:
+            QUOTAS.commit(context, reservations)
         return True
 
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):

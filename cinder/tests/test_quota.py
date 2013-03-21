@@ -68,13 +68,14 @@ class QuotaIntegrationTestCase(test.TestCase):
         vol['user_id'] = self.user_id
         vol['project_id'] = self.project_id
         vol['size'] = size
-        return db.volume_create(self.context, vol)['id']
+        vol['status'] = 'available'
+        return db.volume_create(self.context, vol)
 
     def test_too_many_volumes(self):
         volume_ids = []
         for i in range(FLAGS.quota_volumes):
-            volume_id = self._create_volume()
-            volume_ids.append(volume_id)
+            vol_ref = self._create_volume()
+            volume_ids.append(vol_ref['id'])
         self.assertRaises(exception.QuotaError,
                           volume.API().create,
                           self.context, 10, '', '', None)
@@ -83,8 +84,8 @@ class QuotaIntegrationTestCase(test.TestCase):
 
     def test_too_many_gigabytes(self):
         volume_ids = []
-        volume_id = self._create_volume(size=20)
-        volume_ids.append(volume_id)
+        vol_ref = self._create_volume(size=20)
+        volume_ids.append(vol_ref['id'])
         self.assertRaises(exception.QuotaError,
                           volume.API().create,
                           self.context, 10, '', '', None)

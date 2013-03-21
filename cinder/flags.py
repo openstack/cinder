@@ -238,6 +238,9 @@ global_opts = [
                 default=None,
                 help='A list of backend names to use. These backend names '
                      'should be backed by a unique [CONFIG] group '
-                     'with its options'), ]
+                     'with its options'),
+    cfg.BoolOpt('no_snapshot_gb_quota',
+                default=False,
+                help='Whether snapshots count against GigaByte quota'), ]
 
 FLAGS.register_opts(global_opts)
