@@ -83,6 +83,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
+from cinder.openstack.common import uuidutils
 from cinder import utils
 from cinder import version
 
@@ -101,7 +102,9 @@ def param2id(object_id):
     """Helper function to convert various id types to internal id.
     args: [object_id], e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
     """
-    if '-' in object_id:
+    if uuidutils.is_uuid_like(object_id):
+        return object_id
+    elif '-' in object_id:
         # FIXME(ja): mapping occurs in nova?
         pass
     else:
