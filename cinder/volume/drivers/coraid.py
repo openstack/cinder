@@ -98,7 +98,7 @@ class CoraidRESTClient(object):
                 LOG.debug(msg % dict(session=self.session))
                 return True
             else:
-                errmsg = response.get('message', '')
+                errmsg = reply.get('message', '')
                 msg = _('Message : %(message)s')
                 raise CoraidESMException(msg % dict(message=errmsg))
         return True
