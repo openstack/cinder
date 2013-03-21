@@ -83,7 +83,6 @@ class CoraidRESTClient(object):
         self.urlOpener = urllib2.build_opener(
             urllib2.HTTPCookieProcessor(self.cookiejar))
         LOG.debug(_('Running with CoraidDriver for ESM EtherCLoud'))
-        self._login()
 
     def _login(self):
         """Login and Session Handler."""
