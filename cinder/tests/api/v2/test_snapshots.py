@@ -171,13 +171,13 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_update_missing_body(self):
         body = {}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, UUID, body)
 
     def test_snapshot_update_invalid_body(self):
         body = {'name': 'missing top level snapshot key'}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, UUID, body)
 
     def test_snapshot_update_not_found(self):
@@ -346,6 +346,24 @@ class SnapshotApiTest(test.TestCase):
         self.assertTrue('snapshots' in res)
         self.assertEqual(1, len(res['snapshots']))
 
+    def _create_snapshot_bad_body(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
+        req.method = 'POST'
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, body)
+
+    def test_create_no_body(self):
+        self._create_snapshot_bad_body(body=None)
+
+    def test_create_missing_snapshot(self):
+        body = {'foo': {'a': 'b'}}
+        self._create_snapshot_bad_body(body=body)
+
+    def test_create_malformed_entity(self):
+        body = {'snapshot': 'string'}
+        self._create_snapshot_bad_body(body=body)
+
 
 class SnapshotSerializerTest(test.TestCase):
     def _verify_snapshot(self, snap, tree):
@@ -405,32 +423,3 @@ class SnapshotSerializerTest(test.TestCase):
         self.assertEqual(len(raw_snapshots), len(tree))
         for idx, child in enumerate(tree):
             self._verify_snapshot(raw_snapshots[idx], child)
-
-
-class SnapshotsUnprocessableEntityTestCase(test.TestCase):
-
-    """
-    Tests of places we throw 422 Unprocessable Entity from
-    """
-
-    def setUp(self):
-        super(SnapshotsUnprocessableEntityTestCase, self).setUp()
-        self.controller = snapshots.SnapshotsController()
-
-    def _unprocessable_snapshot_create(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
-        req.method = 'POST'
-
-        self.assertRaises(webob.exc.HTTPUnprocessableEntity,
-                          self.controller.create, req, body)
-
-    def test_create_no_body(self):
-        self._unprocessable_snapshot_create(body=None)
-
-    def test_create_missing_snapshot(self):
-        body = {'foo': {'a': 'b'}}
-        self._unprocessable_snapshot_create(body=body)
-
-    def test_create_malformed_entity(self):
-        body = {'snapshot': 'string'}
-        self._unprocessable_snapshot_create(body=body)
