@@ -221,6 +221,8 @@ class FakeEcomConnection():
             result = self._enum_unitnames()
         elif name == 'EMC_LunMaskingSCSIProtocolController':
             result = self._enum_lunmaskctrls()
+        elif name == 'EMC_StorageProcessorSystem':
+            result = self._enum_processors()
         else:
             result = self._default_enum()
         return result
@@ -259,6 +261,8 @@ class FakeEcomConnection():
         result = None
         if resultClass == 'EMC_StorageHardwareID':
             result = self._assoc_hdwid()
+        elif resultClass == 'EMC_iSCSIProtocolEndpoint':
+            result = self._assoc_endpoint()
         else:
             result = self._default_assoc(objectpath)
         return result
@@ -310,6 +314,14 @@ class FakeEcomConnection():
         assocs = []
         assoc = {}
         assoc['StorageID'] = initiator1
+        assocs.append(assoc)
+        return assocs
+
+    def _assoc_endpoint(self):
+        assocs = []
+        assoc = {}
+        assoc['Name'] = 'iqn.1992-04.com.emc:cx.apm00123907237.a8,t,0x0001'
+        assoc['SystemName'] = storage_system + '+SP_A+8'
         assocs.append(assoc)
         return assocs
 
@@ -567,6 +579,14 @@ class FakeEcomConnection():
         ctrls.append(ctrl)
         return ctrls
 
+    def _enum_processors(self):
+        ctrls = []
+        ctrl = {}
+        ctrl['CreationClassName'] = 'Clar_StorageProcessorSystem'
+        ctrl['Name'] = storage_system + '+SP_A'
+        ctrls.append(ctrl)
+        return ctrls
+
     def _default_enum(self):
         names = []
         name = {}
@@ -587,8 +607,8 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         configuration.cinder_emc_config_file = self.config_file_path
         configuration.append_config_values(mox.IgnoreArg())
 
-        self.stubs.Set(EMCSMISISCSIDriver, '_get_iscsi_properties',
-                       self.fake_get_iscsi_properties)
+        self.stubs.Set(EMCSMISISCSIDriver, '_do_iscsi_discovery',
+                       self.fake_do_iscsi_discovery)
         self.stubs.Set(EMCSMISCommon, '_get_ecom_connection',
                        self.fake_ecom_connection)
         driver = EMCSMISISCSIDriver(configuration=configuration)
@@ -633,23 +653,13 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         conn = FakeEcomConnection()
         return conn
 
-    def fake_get_iscsi_properties(self, volume):
-        LOG.info('Fake _get_iscsi_properties.')
-        properties = {}
-        properties['target_discovered'] = True
-        properties['target_portal'] = '10.10.10.10'
-        properties['target_iqn'] = 'iqn.1993-08.org.debian:01:a1b2c3d4e5f6'
-        device_number = '000008'
-        properties['target_lun'] = device_number
-        properties['volume_id'] = volume['id']
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-        LOG.info(_("Fake ISCSI properties: %s") % (properties))
-        return properties
+    def fake_do_iscsi_discovery(self, volume):
+        output = []
+        item = '10.0.0.3:3260,1 iqn.1992-04.com.emc:cx.apm00123907237.a8'
+        item2 = '10.0.0.4:3260,2 iqn.1992-04.com.emc:cx.apm00123907237.b8'
+        output.append(item)
+        output.append(item2)
+        return output
 
     def test_get_volume_stats(self):
         self.driver.get_volume_stats(True)
@@ -674,8 +684,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(test_volume)
         export = self.driver.create_export(None, test_volume)
         test_volume['provider_location'] = export['provider_location']
-        test_volume['EMCCurrentOwningStorageProcessor'] = \
-            'iqn.1993-08.org.debian:01:a1b2c3d4e5f6'
+        test_volume['EMCCurrentOwningStorageProcessor'] = 'SP_A'
         connector = {'initiator': initiator1}
         connection_info = self.driver.initialize_connection(test_volume,
                                                             connector)
