@@ -98,19 +98,19 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_create_with_type(self):
-        vol_type = FLAGS.default_volume_type
-        db.volume_type_create(context.get_admin_context(),
-                              dict(name=vol_type, extra_specs={}))
+        vol_type = db.volume_type_create(context.get_admin_context(),
+                                         dict(name=FLAGS.default_volume_type,
+                                              extra_specs={}))
 
-        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
-                                                 vol_type)
+        db_vol_type = db.volume_type_get(context.get_admin_context(),
+                                         vol_type.id)
 
         vol = {
             "size": 100,
             "name": "Volume Test Name",
             "description": "Volume Test Desc",
             "availability_zone": "zone1:host1",
-            "volume_type": db_vol_type['name'],
+            "volume_type": db_vol_type['id'],
         }
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
