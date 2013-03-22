@@ -312,8 +312,8 @@ class NfsDriver(RemoteFsDriver):
 
         # Construct the NFS mount command.
         nfs_cmd = ['mount', '-t', 'nfs']
-        if cfg.CONF.nfs_mount_options is not None:
-            nfs_cmd.extend(['-o', cfg.CONF.nfs_mount_options])
+        if self.configuration.nfs_mount_options is not None:
+            nfs_cmd.extend(['-o', self.configuration.nfs_mount_options])
         nfs_cmd.extend([nfs_share, mount_path])
 
         try:
