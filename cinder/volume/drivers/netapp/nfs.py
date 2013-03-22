@@ -280,31 +280,15 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
         return {'provider_location': share}
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first."""
-        if refresh:
-            self._update_volume_status()
-
-        return self._stats
-
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
+        super(NetAppNFSDriver, self)._update_volume_status()
 
-        LOG.debug(_("Updating volume status"))
-        data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = backend_name or 'NetApp_NFS_7mode'
-        data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS'
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
-        self._stats = data
+        self._stats["volume_backend_name"] = (backend_name or
+                                              'NetApp_NFS_7mode')
+        self._stats["vendor_name"] = 'NetApp'
+        self._stats["driver_version"] = '1.0'
 
 
 class NetAppCmodeNfsDriver (NetAppNFSDriver):
@@ -351,31 +335,15 @@ class NetAppCmodeNfsDriver (NetAppNFSDriver):
             password=self.configuration.netapp_password)
         return client
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first."""
-        if refresh:
-            self._update_volume_status()
-
-        return self._stats
-
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
+        super(NetAppCmodeNfsDriver, self)._update_volume_status()
 
-        LOG.debug(_("Updating volume status"))
-        data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = backend_name or 'NetApp_NFS_Cluster'
-        data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS'
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
-        self._stats = data
+        self._stats["volume_backend_name"] = (backend_name or
+                                              'NetApp_NFS_Cluster')
+        self._stats["vendor_name"] = 'NetApp'
+        self._stats["driver_version"] = '1.0'
 
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
@@ -525,32 +493,15 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             'destination-path': dest_path})
         self._invoke_successfully(clone_create, vserver)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first."""
-        if refresh:
-            self._update_volume_status()
-
-        return self._stats
-
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
+        super(NetAppDirectCmodeNfsDriver, self)._update_volume_status()
 
-        LOG.debug(_("Updating volume status"))
-        data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = (backend_name
-                                       or 'NetApp_NFS_cluster_direct')
-        data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS'
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
-        self._stats = data
+        self._stats["volume_backend_name"] = (backend_name or
+                                              'NetApp_NFS_cluster_direct')
+        self._stats["vendor_name"] = 'NetApp'
+        self._stats["driver_version"] = '1.0'
 
 
 class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
@@ -655,29 +606,12 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
                 time.sleep(5)
             retry = retry - 1
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first."""
-        if refresh:
-            self._update_volume_status()
-
-        return self._stats
-
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
+        super(NetAppDirect7modeNfsDriver, self)._update_volume_status()
 
-        LOG.debug(_("Updating volume status"))
-        data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = (backend_name
-                                       or 'NetApp_NFS_7mode_direct')
-        data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS'
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
-        self._stats = data
+        self._stats["volume_backend_name"] = (backend_name or
+                                              'NetApp_NFS_7mode_direct')
+        self._stats["vendor_name"] = 'NetApp'
+        self._stats["driver_version"] = '1.0'

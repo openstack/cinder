@@ -22,7 +22,6 @@ import os
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
@@ -48,9 +47,6 @@ volume_opts = [
                help='Mount options passed to the nfs client. See section '
                     'of the nfs man page for details'),
 ]
-
-FLAGS = flags.FLAGS
-FLAGS.register_opts(volume_opts)
 
 
 class RemoteFsDriver(driver.VolumeDriver):
@@ -268,7 +264,7 @@ class NfsDriver(RemoteFsDriver):
         greatest_share = None
 
         for nfs_share in self._mounted_shares:
-            capacity = self._get_available_capacity(nfs_share)
+            capacity = self._get_available_capacity(nfs_share)[0]
             if capacity > greatest_size:
                 greatest_share = nfs_share
                 greatest_size = capacity
@@ -297,17 +293,17 @@ class NfsDriver(RemoteFsDriver):
 
         available = 0
 
+        size = int(out.split()[1])
         if self.configuration.nfs_disk_util == 'df':
             available = int(out.split()[3])
         else:
-            size = int(out.split()[1])
             out, _ = self._execute('du', '-sb', '--apparent-size',
                                    '--exclude', '*snapshot*', mount_point,
                                    run_as_root=True)
             used = int(out.split()[0])
             available = size - used
 
-        return available
+        return available, size
 
     def _mount_nfs(self, nfs_share, mount_path, ensure=False):
         """Mount NFS share to mount path"""
@@ -316,8 +312,8 @@ class NfsDriver(RemoteFsDriver):
 
         # Construct the NFS mount command.
         nfs_cmd = ['mount', '-t', 'nfs']
-        if FLAGS.nfs_mount_options is not None:
-            nfs_cmd.extend(['-o', FLAGS.nfs_mount_options])
+        if cfg.CONF.nfs_mount_options is not None:
+            nfs_cmd.extend(['-o', cfg.CONF.nfs_mount_options])
         nfs_cmd.extend([nfs_share, mount_path])
 
         try:
@@ -327,3 +323,38 @@ class NfsDriver(RemoteFsDriver):
                 LOG.warn(_("%s is already mounted"), nfs_share)
             else:
                 raise
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status.
+
+        If 'refresh' is True, run update the stats first."""
+        if refresh or not self._stats:
+            self._update_volume_status()
+
+        return self._stats
+
+    def _update_volume_status(self):
+        """Retrieve status info from volume group."""
+
+        LOG.debug(_("Updating volume status"))
+        data = {}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'Generic_NFS'
+        data["vendor_name"] = 'Open Source'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'nfs'
+
+        self._ensure_shares_mounted()
+
+        global_capacity = 0
+        global_free = 0
+        for nfs_share in self._mounted_shares:
+            free, capacity = self._get_available_capacity(nfs_share)
+            global_capacity += capacity
+            global_free += free
+
+        data['total_capacity_gb'] = global_capacity / 1024.0 ** 3
+        data['free_capacity_gb'] = global_free / 1024.0 ** 3
+        data['reserved_percentage'] = 0
+        data['QoS_support'] = False
+        self._stats = data
