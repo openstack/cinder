@@ -113,7 +113,7 @@ class HP3PARCommon():
                             '8 - AIX-legacy',
                             '9 - EGENERA',
                             '10 - ONTAP-legacy',
-                            '11 - VMWare']
+                            '11 - VMware']
 
     def __init__(self, config):
         self.sshpool = None
