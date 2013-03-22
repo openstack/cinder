@@ -156,6 +156,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration = mox_lib.MockObject(conf.Configuration)
         self.configuration.append_config_values(mox_lib.IgnoreArg())
         self.configuration.nfs_shares_config = None
+        self.configuration.nfs_mount_options = None
         self.configuration.nfs_mount_point_base = '$state_path/mnt'
         self.configuration.nfs_disk_util = 'df'
         self.configuration.nfs_sparsed_volumes = True
@@ -477,8 +478,7 @@ class NfsDriverTestCase(test.TestCase):
     def test_setup_should_throw_error_if_shares_config_not_configured(self):
         """do_setup should throw error if shares config is not configured."""
         drv = self._driver
-
-        cfg.CONF.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+        self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         self.assertRaises(exception.NfsException,
                           drv.do_setup, IsA(context.RequestContext))
@@ -488,7 +488,6 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
         self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
-        cfg.CONF.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         mox.StubOutWithMock(os.path, 'exists')
         os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
