@@ -749,7 +749,8 @@ QUOTAS = QuotaEngine()
 resources = [
     ReservableResource('volumes', _sync_volumes, 'quota_volumes'),
     ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
-    ReservableResource('gigabytes', _sync_volumes, 'quota_gigabytes'), ]
+    ReservableResource('gigabytes', _sync_volumes, 'quota_gigabytes'),
+    ReservableResource('gigabytes', _sync_snapshots, 'quota_gigabytes'), ]
 
 
 QUOTAS.register_resources(resources)

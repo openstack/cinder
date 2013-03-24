@@ -154,19 +154,21 @@ class API(base.Base):
             def _consumed(name):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            pid = context.project_id
             if 'gigabytes' in overs:
-                consumed = _consumed('gigabytes')
-                quota = quotas['gigabytes']
-                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
-                           "%(size)sG volume (%(consumed)dG of %(quota)dG "
-                           "already consumed)") % locals())
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "%(s_size)sG volume (%(d_consumed)dG of %(d_quota)dG "
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                's_size': size,
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
                 raise exception.VolumeSizeExceedsAvailableQuota()
             elif 'volumes' in overs:
-                consumed = _consumed('volumes')
-                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
-                           "volume (%(consumed)d volumes "
-                           "already consumed)") % locals())
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "volume (%(d_consumed)d volumes"
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                'd_consumed': _consumed('volumes')})
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
 
         if availability_zone is None:
@@ -238,15 +240,15 @@ class API(base.Base):
             volume_ref = self.db.volume_update(context, volume_id, values)
 
             # bypass scheduler and send request directly to volume
-            self.volume_rpcapi.create_volume(context,
-                                             volume_ref,
-                                             volume_ref['host'],
-                                             request_spec=request_spec,
-                                             filter_properties=
-                                             filter_properties,
-                                             allow_reschedule=False,
-                                             snapshot_id=snapshot_id,
-                                             image_id=image_id)
+            self.volume_rpcapi.create_volume(
+                context,
+                volume_ref,
+                volume_ref['host'],
+                request_spec=request_spec,
+                filter_properties=filter_properties,
+                allow_reschedule=False,
+                snapshot_id=snapshot_id,
+                image_id=image_id)
         elif source_volid:
             source_volume_ref = self.db.volume_get(context,
                                                    source_volid)
@@ -255,25 +257,25 @@ class API(base.Base):
             volume_ref = self.db.volume_update(context, volume_id, values)
 
             # bypass scheduler and send request directly to volume
-            self.volume_rpcapi.create_volume(context,
-                                             volume_ref,
-                                             volume_ref['host'],
-                                             request_spec=request_spec,
-                                             filter_properties=
-                                             filter_properties,
-                                             allow_reschedule=False,
-                                             snapshot_id=snapshot_id,
-                                             image_id=image_id,
-                                             source_volid=source_volid)
+            self.volume_rpcapi.create_volume(
+                context,
+                volume_ref,
+                volume_ref['host'],
+                request_spec=request_spec,
+                filter_properties=filter_properties,
+                allow_reschedule=False,
+                snapshot_id=snapshot_id,
+                image_id=image_id,
+                source_volid=source_volid)
         else:
-            self.scheduler_rpcapi.create_volume(context,
-                                                FLAGS.volume_topic,
-                                                volume_id,
-                                                snapshot_id,
-                                                image_id,
-                                                request_spec=request_spec,
-                                                filter_properties=
-                                                filter_properties)
+            self.scheduler_rpcapi.create_volume(
+                context,
+                FLAGS.volume_topic,
+                volume_id,
+                snapshot_id,
+                image_id,
+                request_spec=request_spec,
+                filter_properties=filter_properties)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):
@@ -514,19 +516,22 @@ class API(base.Base):
             def _consumed(name):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            pid = context.project_id
             if 'gigabytes' in overs:
-                consumed = _consumed('gigabytes')
-                quota = quotas['gigabytes']
-                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
-                           "%(size)sG volume (%(consumed)dG of %(quota)dG "
-                           "already consumed)") % locals())
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "%(s_size)sG snapshot (%(d_consumed)dG of "
+                        "%(d_quota)dG already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                's_size': volume['size'],
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
                 raise exception.VolumeSizeExceedsAvailableQuota()
             elif 'snapshots' in overs:
-                consumed = _consumed('snapshots')
-                LOG.warn(_("Quota exceeded for %(pid)s, tried to create "
-                           "snapshot (%(consumed)d snapshots "
-                           "already consumed)") % locals())
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "snapshot (%(d_consumed)d snapshots "
+                        "already consumed)")
+
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                'd_consumed': _consumed('snapshots')})
                 raise exception.SnapshotLimitExceeded(
                     allowed=quotas['snapshots'])
 
