@@ -314,7 +314,7 @@ def snapshot_data_get_for_project(context, project_id, session=None):
     """Get count and gigabytes used for snapshots for specified project."""
     return IMPL.snapshot_data_get_for_project(context,
                                               project_id,
-                                              session=None)
+                                              session)
 
 
 ####################

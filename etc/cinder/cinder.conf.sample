@@ -44,6 +44,8 @@
 # syslog facility to receive log lines (string value)
 #syslog_log_facility=LOG_USER
 
+# Do not count snapshots against gigabytes quota (bool value)
+#no_snapshot_gb_quota=False
 
 #
 # Options defined in cinder.exception
@@ -1168,4 +1170,4 @@
 #volume_driver=cinder.volume.driver.FakeISCSIDriver
 
 
-# Total option count: 254
+# Total option count: 255
