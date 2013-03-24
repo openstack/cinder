@@ -240,7 +240,7 @@ class VolumeController(wsgi.Controller):
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
             try:
-                kwargs['volume_type'] = volume_types.get_volume_type_by_name(
+                kwargs['volume_type'] = volume_types.get_volume_type(
                     context, req_volume_type)
             except exception.VolumeTypeNotFound:
                 explanation = 'Volume type not found.'

@@ -106,8 +106,7 @@ class ViewBuilder(common.ViewBuilder):
         if volume['volume_type_id'] and volume.get('volume_type'):
             return volume['volume_type']['name']
         else:
-            # TODO(bcwaldon): remove str cast once we use uuids
-            return str(volume['volume_type_id'])
+            return volume['volume_type_id']
 
     def _list_view(self, func, request, volumes):
         """Provide a view for a list of volumes."""
