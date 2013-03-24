@@ -169,16 +169,42 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         device_number = device_info['hostlunid']
+        storage_system = device_info['storagesystem']
 
+        # sp is "SP_A" or "SP_B"
         sp = device_info['owningsp']
+        endpoints = []
+        if sp:
+            # endpointss example:
+            # [iqn.1992-04.com.emc:cx.apm00123907237.a8,
+            # iqn.1992-04.com.emc:cx.apm00123907237.a9]
+            endpoints = self.common._find_iscsi_protocol_endpoints(
+                sp, storage_system)
+
+        foundEndpoint = False
         for loc in location:
             results = loc.split(" ")
             properties['target_portal'] = results[0].split(",")[0]
             properties['target_iqn'] = results[1]
             # owning sp is None for VMAX
-            # for VNX, find the owning sp in target_iqn
-            if not sp or -1 != properties['target_iqn'].find(sp):
+            # for VNX, find the target_iqn that matches the endpoint
+            # target_iqn example: iqn.1992-04.com.emc:cx.apm00123907237.a8
+            # or iqn.1992-04.com.emc:cx.apm00123907237.b8
+            if not sp:
                 break
+            for endpoint in endpoints:
+                if properties['target_iqn'] == endpoint:
+                    LOG.debug(_("Found iSCSI endpoint: %s") % endpoint)
+                    foundEndpoint = True
+                    break
+            if foundEndpoint:
+                break
+
+        if sp and not foundEndpoint:
+            LOG.warn(_("ISCSI endpoint not found for SP %(sp)s on "
+                     "storage system %(storage)s.")
+                     % {'sp': sp,
+                        'storage': storage_system})
 
         properties['target_lun'] = device_number
 

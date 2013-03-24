@@ -1071,7 +1071,7 @@ class EMCSMISCommon():
             poolname = instanceid[endp + 1:]
 
         idarray = instanceid.split('+')
-        if len > 2:
+        if len(idarray) > 2:
             systemname = idarray[0] + '+' + idarray[1]
 
         LOG.debug(_("Pool name: %(poolname)s  System name: %(systemname)s.")
@@ -1436,6 +1436,58 @@ class EMCSMISCommon():
                      'masking': str(foundMaskingGroup)})
 
         return foundMaskingGroup
+
+    # Find a StorageProcessorSystem given sp and storage system
+    def _find_storage_processor_system(self, owningsp, storage_system):
+        foundSystem = None
+        systems = self.conn.EnumerateInstanceNames(
+            'EMC_StorageProcessorSystem')
+        for system in systems:
+            # Clar_StorageProcessorSystem.CreationClassName=
+            # "Clar_StorageProcessorSystem",Name="CLARiiON+APM00123907237+SP_A"
+            idarray = system['Name'].split('+')
+            if len(idarray) > 2:
+                storsystemname = idarray[0] + '+' + idarray[1]
+                sp = idarray[2]
+
+            if (storage_system == storsystemname and
+                owningsp == sp):
+                foundSystem = system
+                LOG.debug(_("Found Storage Processor System: %s")
+                          % (str(system)))
+                break
+
+        return foundSystem
+
+    # Find EMC_iSCSIProtocolEndpoint for the specified sp
+    def _find_iscsi_protocol_endpoints(self, owningsp, storage_system):
+        foundEndpoints = []
+
+        processor = self._find_storage_processor_system(
+            owningsp,
+            storage_system)
+
+        associators = self.conn.Associators(
+            processor,
+            resultClass='EMC_iSCSIProtocolEndpoint')
+        for assoc in associators:
+            # Name = iqn.1992-04.com.emc:cx.apm00123907237.a8,t,0x0001
+            # SystemName = CLARiiON+APM00123907237+SP_A+8
+            arr = assoc['SystemName'].split('+')
+            if len(arr) > 2:
+                processor_name = arr[0] + '+' + arr[1] + '+' + arr[2]
+                if processor_name == processor['Name']:
+                    arr2 = assoc['Name'].split(',')
+                    if len(arr2) > 1:
+                        foundEndpoints.append(arr2[0])
+
+        LOG.debug(_("iSCSIProtocolEndpoint for storage system "
+                  "%(storage_system)s and SP %(sp)s is  "
+                  "%(endpoint)s.")
+                  % {'storage_system': storage_system,
+                     'sp': owningsp,
+                     'endpoint': str(foundEndpoints)})
+        return foundEndpoints
 
     def _getnum(self, num, datatype):
         try:
