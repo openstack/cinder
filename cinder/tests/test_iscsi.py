@@ -101,7 +101,8 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.flags(volumes_dir=self.persist_tempdir)
         self.script_template = "\n".join([
             'tgt-admin --update iqn.2011-09.org.foo.bar:blaa',
-            'tgt-admin --delete iqn.2010-10.org.openstack:volume-blaa'])
+            'tgt-admin --force '
+            '--delete iqn.2010-10.org.openstack:volume-blaa'])
 
     def tearDown(self):
         try:

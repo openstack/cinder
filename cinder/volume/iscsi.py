@@ -190,7 +190,10 @@ class TgtAdm(TargetAdmin):
         else:
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         try:
+            # NOTE(vish): --force is a workaround for bug:
+            #             https://bugs.launchpad.net/cinder/+bug/1159948
             self._execute('tgt-admin',
+                          '--force',
                           '--delete',
                           iqn,
                           run_as_root=True)
