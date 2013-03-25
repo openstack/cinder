@@ -71,6 +71,15 @@ class QuotaIntegrationTestCase(test.TestCase):
         vol['status'] = 'available'
         return db.volume_create(self.context, vol)
 
+    def _create_snapshot(self, volume):
+        snapshot = {}
+        snapshot['user_id'] = self.user_id
+        snapshot['project_id'] = self.project_id
+        snapshot['volume_id'] = volume['id']
+        snapshot['volume_size'] = volume['size']
+        snapshot['status'] = 'available'
+        return db.snapshot_create(self.context, snapshot)
+
     def test_too_many_volumes(self):
         volume_ids = []
         for i in range(FLAGS.quota_volumes):
@@ -91,6 +100,47 @@ class QuotaIntegrationTestCase(test.TestCase):
                           self.context, 10, '', '', None)
         for volume_id in volume_ids:
             db.volume_destroy(self.context, volume_id)
+
+    def test_too_many_combined_gigabytes(self):
+        vol_ref = self._create_volume(size=10)
+        snap_ref = self._create_snapshot(vol_ref)
+        self.assertRaises(exception.QuotaError,
+                          volume.API().create_snapshot,
+                          self.context, vol_ref, '', '')
+        usages = db.quota_usage_get_all_by_project(self.context,
+                                                   self.project_id)
+        self.assertEqual(usages['gigabytes']['in_use'], 20)
+        db.snapshot_destroy(self.context, snap_ref['id'])
+        db.volume_destroy(self.context, vol_ref['id'])
+
+    def test_no_snapshot_gb_quota_flag(self):
+        self.flags(quota_volumes=2,
+                   quota_snapshots=2,
+                   quota_gigabytes=20,
+                   no_snapshot_gb_quota=True)
+        vol_ref = self._create_volume(size=10)
+        snap_ref = self._create_snapshot(vol_ref)
+        snap_ref2 = volume.API().create_snapshot(self.context,
+                                                 vol_ref, '', '')
+
+        # Make sure no reservation was created for snapshot gigabytes.
+        reservations = db.reservation_get_all_by_project(self.context,
+                                                         self.project_id)
+        self.assertEqual(reservations.get('gigabytes'), None)
+
+        # Make sure the snapshot volume_size isn't included in usage.
+        vol_type = db.volume_type_create(self.context,
+                                         dict(name=FLAGS.default_volume_type))
+        vol_ref2 = volume.API().create(self.context, 10, '', '')
+        usages = db.quota_usage_get_all_by_project(self.context,
+                                                   self.project_id)
+        self.assertEqual(usages['gigabytes']['in_use'], 20)
+
+        db.snapshot_destroy(self.context, snap_ref['id'])
+        db.snapshot_destroy(self.context, snap_ref2['id'])
+        db.volume_destroy(self.context, vol_ref['id'])
+        db.volume_destroy(self.context, vol_ref2['id'])
+        db.volume_type_destroy(self.context, vol_type['id'])
 
 
 class FakeContext(object):
