@@ -47,6 +47,9 @@ volume_opts = [
     cfg.IntOpt('volume_clear_size',
                default=0,
                help='Size in MiB to wipe at start of old volumes. 0 => all'),
+    cfg.StrOpt('volume_dd_blocksize',
+               default='1M',
+               help='The default block size used when clearing volumes'),
     cfg.StrOpt('pool_size',
                default=None,
                help='Size of thin provisioning pool '
@@ -110,7 +113,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         # Perform the copy
         self._execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-                      'count=%d' % (size_in_g * 1024), 'bs=1M',
+                      'count=%d' % (size_in_g * 1024),
+                      'bs=%s' % self.configuration.volume_dd_blocksize,
                       *extra_flags, run_as_root=True)
 
     def _volume_not_present(self, volume_name):
