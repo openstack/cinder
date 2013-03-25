@@ -607,7 +607,7 @@ def reservation_get(context, uuid, session=None):
 def reservation_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
 
-    rows = model_query(context, models.QuotaUsage, read_deleted="no").\
+    rows = model_query(context, models.Reservation, read_deleted="no").\
         filter_by(project_id=project_id).all()
 
     result = {'project_id': project_id}
