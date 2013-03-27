@@ -46,18 +46,18 @@ from cinder import service
 from cinder import utils
 
 
-LOG = logging.getLogger('cinder.all')
-
 if __name__ == '__main__':
     flags.parse_args(sys.argv)
     logging.setup("cinder")
+    LOG = logging.getLogger('cinder.all')
+
     utils.monkey_patch()
     servers = []
     # cinder-api
     try:
         servers.append(service.WSGIService('osapi_volume'))
     except (Exception, SystemExit):
-        logging.exception(_('Failed to load %s') % '%s-api' % api)
+        LOG.exception(_('Failed to load osapi_volume'))
 
     for binary in ['cinder-volume', 'cinder-scheduler']:
         try:
