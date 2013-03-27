@@ -279,12 +279,19 @@ class API(base.Base):
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):
+        if context.is_admin and context.project_id != volume['project_id']:
+            project_id = volume['project_id']
+        else:
+            project_id = context.project_id
+
         volume_id = volume['id']
         if not volume['host']:
             # NOTE(vish): scheduling failed, so delete it
             # Note(zhiteng): update volume quota reservation
             try:
-                reservations = QUOTAS.reserve(context, volumes=-1,
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              volumes=-1,
                                               gigabytes=-volume['size'])
             except Exception:
                 reservations = None
@@ -292,7 +299,7 @@ class API(base.Base):
             self.db.volume_destroy(context.elevated(), volume_id)
 
             if reservations:
-                QUOTAS.commit(context, reservations)
+                QUOTAS.commit(context, reservations, project_id=project_id)
             return
         if not force and volume['status'] not in ["available", "error",
                                                   "error_restoring"]:
