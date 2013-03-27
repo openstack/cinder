@@ -474,6 +474,10 @@ class Duplicate3PARHost(CinderException):
     message = _("3PAR Host already exists: %(err)s.  %(info)s")
 
 
+class Invalid3PARDomain(CinderException):
+    message = _("Invalid 3PAR Domain: %(err)s")
+
+
 class VolumeTypeCreateFailed(CinderException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
