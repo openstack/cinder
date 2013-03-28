@@ -114,6 +114,38 @@ class VolumeTestCase(test.TestCase):
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         self.volume.create_volume(self.context, volume_id)
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 2)
+        msg = test_notifier.NOTIFICATIONS[0]
+        self.assertEqual(msg['event_type'], 'volume.create.start')
+        expected = {
+            'status': 'creating',
+            'display_name': None,
+            'availability_zone': 'nova',
+            'tenant_id': 'fake',
+            'created_at': 'DONTCARE',
+            'volume_id': volume_id,
+            'volume_type': None,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'launched_at': '',
+            'size': 0,
+        }
+        self.assertDictMatch(msg['payload'], expected)
+        msg = test_notifier.NOTIFICATIONS[1]
+        self.assertEqual(msg['event_type'], 'volume.create.end')
+        expected = {
+            'status': 'creating',
+            'display_name': None,
+            'availability_zone': 'nova',
+            'tenant_id': 'fake',
+            'created_at': 'DONTCARE',
+            'volume_id': volume_id,
+            'volume_type': None,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'launched_at': '',
+            'size': 0,
+        }
+        self.assertDictMatch(msg['payload'], expected)
         self.assertEqual(volume_id, db.volume_get(context.get_admin_context(),
                          volume_id).id)
 
@@ -122,6 +154,38 @@ class VolumeTestCase(test.TestCase):
                             volume_id)
         self.assertEquals(vol['status'], 'deleted')
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 4)
+        msg = test_notifier.NOTIFICATIONS[2]
+        self.assertEqual(msg['event_type'], 'volume.delete.start')
+        expected = {
+            'status': 'available',
+            'display_name': None,
+            'availability_zone': 'nova',
+            'tenant_id': 'fake',
+            'created_at': 'DONTCARE',
+            'volume_id': volume_id,
+            'volume_type': None,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'launched_at': 'DONTCARE',
+            'size': 0,
+        }
+        self.assertDictMatch(msg['payload'], expected)
+        msg = test_notifier.NOTIFICATIONS[3]
+        self.assertEqual(msg['event_type'], 'volume.delete.end')
+        expected = {
+            'status': 'available',
+            'display_name': None,
+            'availability_zone': 'nova',
+            'tenant_id': 'fake',
+            'created_at': 'DONTCARE',
+            'volume_id': volume_id,
+            'volume_type': None,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'launched_at': 'DONTCARE',
+            'size': 0,
+        }
+        self.assertDictMatch(msg['payload'], expected)
         self.assertRaises(exception.NotFound,
                           db.volume_get,
                           self.context,
@@ -383,7 +447,8 @@ class VolumeTestCase(test.TestCase):
             'tenant_id': 'fake',
             'user_id': 'fake',
             'volume_id': volume['id'],
-            'volume_size': 0
+            'volume_size': 0,
+            'availability_zone': 'nova'
         }
         self.assertDictMatch(msg['payload'], expected)
         msg = test_notifier.NOTIFICATIONS[3]
@@ -397,7 +462,8 @@ class VolumeTestCase(test.TestCase):
             'tenant_id': 'fake',
             'user_id': 'fake',
             'volume_id': volume['id'],
-            'volume_size': 0
+            'volume_size': 0,
+            'availability_zone': 'nova'
         }
         self.assertDictMatch(msg['payload'], expected)
 
@@ -414,7 +480,8 @@ class VolumeTestCase(test.TestCase):
             'tenant_id': 'fake',
             'user_id': 'fake',
             'volume_id': volume['id'],
-            'volume_size': 0
+            'volume_size': 0,
+            'availability_zone': 'nova'
         }
         self.assertDictMatch(msg['payload'], expected)
         msg = test_notifier.NOTIFICATIONS[5]
@@ -428,7 +495,8 @@ class VolumeTestCase(test.TestCase):
             'tenant_id': 'fake',
             'user_id': 'fake',
             'volume_id': volume['id'],
-            'volume_size': 0
+            'volume_size': 0,
+            'availability_zone': 'nova'
         }
         self.assertDictMatch(msg['payload'], expected)
 
@@ -871,30 +939,6 @@ class VolumeTestCase(test.TestCase):
                           '2Gb',
                           'name',
                           'description')
-
-    def test_create_volume_usage_notification(self):
-        """Ensure create volume generates appropriate usage notification"""
-        volume = self._create_volume()
-        volume_id = volume['id']
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
-        self.volume.create_volume(self.context, volume_id)
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 2)
-        msg = test_notifier.NOTIFICATIONS[0]
-        self.assertEquals(msg['event_type'], 'volume.create.start')
-        msg = test_notifier.NOTIFICATIONS[1]
-        self.assertEquals(msg['priority'], 'INFO')
-        self.assertEquals(msg['event_type'], 'volume.create.end')
-        payload = msg['payload']
-        self.assertEquals(payload['tenant_id'], volume['project_id'])
-        self.assertEquals(payload['user_id'], volume['user_id'])
-        self.assertEquals(payload['volume_id'], volume['id'])
-        self.assertEquals(payload['status'], 'creating')
-        self.assertEquals(payload['size'], volume['size'])
-        self.assertTrue('display_name' in payload)
-        self.assertTrue('snapshot_id' in payload)
-        self.assertTrue('launched_at' in payload)
-        self.assertTrue('created_at' in payload)
-        self.volume.delete_volume(self.context, volume_id)
 
     def test_begin_roll_detaching_volume(self):
         """Test begin_detaching and roll_detaching functions."""
