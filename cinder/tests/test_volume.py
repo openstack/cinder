@@ -253,6 +253,19 @@ class VolumeTestCase(test.TestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_src['id'])
 
+    def test_create_volume_with_invalid_exclusive_options(self):
+        """Test volume create with multiple exclusive options fails."""
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          1,
+                          'name',
+                          'description',
+                          snapshot='fake_id',
+                          image_id='fake_id',
+                          source_volume='fake_id')
+
     def test_too_big_volume(self):
         """Ensure failure if a too large of a volume is requested."""
         # FIXME(vish): validation needs to move into the data layer in

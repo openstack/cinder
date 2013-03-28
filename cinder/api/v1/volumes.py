@@ -342,9 +342,6 @@ class VolumeController(wsgi.Controller):
         image_uuid = None
         if self.ext_mgr.is_loaded('os-image-create'):
             image_href = volume.get('imageRef')
-            if snapshot_id and image_href:
-                msg = _("Snapshot and image cannot be specified together.")
-                raise exc.HTTPBadRequest(explanation=msg)
             if image_href:
                 image_uuid = self._image_uuid_from_href(image_href)
                 kwargs['image_id'] = image_uuid

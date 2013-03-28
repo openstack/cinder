@@ -89,9 +89,12 @@ class API(base.Base):
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None):
 
-        if ((snapshot is not None) and (source_volume is not None)):
-            msg = (_("May specify either snapshot, "
-                     "or src volume but not both!"))
+        exclusive_options = (snapshot, image_id, source_volume)
+        exclusive_options_set = sum(1 for option in
+                                    exclusive_options if option is not None)
+        if exclusive_options_set > 1:
+            msg = (_("May specify only one of snapshot, imageRef "
+                     "or source volume"))
             raise exception.InvalidInput(reason=msg)
 
         check_policy(context, 'create')

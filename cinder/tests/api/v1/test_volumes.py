@@ -155,24 +155,6 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.create(req, body)
         self.assertEqual(res_dict, expected)
 
-    def test_volume_create_with_image_id_and_snapshot_id(self):
-        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
-        self.stubs.Set(volume_api.API, "get_snapshot", stub_snapshot_get)
-        self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": '1',
-               "display_name": "Volume Test Name",
-               "display_description": "Volume Test Desc",
-               "availability_zone": "cinder",
-               "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77',
-               "source_volid": None,
-               "snapshot_id": TEST_SNAPSHOT_UUID}
-        body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v1/volumes')
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create,
-                          req,
-                          body)
-
     def test_volume_create_with_image_id_is_integer(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
