@@ -363,14 +363,75 @@ class VolumeTestCase(test.TestCase):
     def test_create_delete_snapshot(self):
         """Test snapshot can be created and deleted."""
         volume = self._create_volume()
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         self.volume.create_volume(self.context, volume['id'])
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 2)
         snapshot_id = self._create_snapshot(volume['id'])['id']
         self.volume.create_snapshot(self.context, volume['id'], snapshot_id)
         self.assertEqual(snapshot_id,
                          db.snapshot_get(context.get_admin_context(),
                                          snapshot_id).id)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 4)
+        msg = test_notifier.NOTIFICATIONS[2]
+        self.assertEquals(msg['event_type'], 'snapshot.create.start')
+        expected = {
+            'created_at': 'DONTCARE',
+            'deleted': '',
+            'display_name': None,
+            'snapshot_id': snapshot_id,
+            'status': 'creating',
+            'tenant_id': 'fake',
+            'user_id': 'fake',
+            'volume_id': volume['id'],
+            'volume_size': 0
+        }
+        self.assertDictMatch(msg['payload'], expected)
+        msg = test_notifier.NOTIFICATIONS[3]
+        self.assertEquals(msg['event_type'], 'snapshot.create.end')
+        expected = {
+            'created_at': 'DONTCARE',
+            'deleted': '',
+            'display_name': None,
+            'snapshot_id': snapshot_id,
+            'status': 'creating',
+            'tenant_id': 'fake',
+            'user_id': 'fake',
+            'volume_id': volume['id'],
+            'volume_size': 0
+        }
+        self.assertDictMatch(msg['payload'], expected)
 
         self.volume.delete_snapshot(self.context, snapshot_id)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 6)
+        msg = test_notifier.NOTIFICATIONS[4]
+        self.assertEquals(msg['event_type'], 'snapshot.delete.start')
+        expected = {
+            'created_at': 'DONTCARE',
+            'deleted': '',
+            'display_name': None,
+            'snapshot_id': snapshot_id,
+            'status': 'available',
+            'tenant_id': 'fake',
+            'user_id': 'fake',
+            'volume_id': volume['id'],
+            'volume_size': 0
+        }
+        self.assertDictMatch(msg['payload'], expected)
+        msg = test_notifier.NOTIFICATIONS[5]
+        self.assertEquals(msg['event_type'], 'snapshot.delete.end')
+        expected = {
+            'created_at': 'DONTCARE',
+            'deleted': '',
+            'display_name': None,
+            'snapshot_id': snapshot_id,
+            'status': 'available',
+            'tenant_id': 'fake',
+            'user_id': 'fake',
+            'volume_id': volume['id'],
+            'volume_size': 0
+        }
+        self.assertDictMatch(msg['payload'], expected)
+
         snap = db.snapshot_get(context.get_admin_context(read_deleted='yes'),
                                snapshot_id)
         self.assertEquals(snap['status'], 'deleted')

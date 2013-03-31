@@ -452,6 +452,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         LOG.info(_("snapshot %s: creating"), snapshot_ref['name'])
+        self._notify_about_snapshot_usage(
+            context, snapshot_ref, "create.start")
 
         try:
             snap_name = snapshot_ref['name']
@@ -474,6 +476,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                         snapshot_ref['id'],
                                                         volume_id)
         LOG.info(_("snapshot %s: created successfully"), snapshot_ref['name'])
+        self._notify_about_snapshot_usage(context, snapshot_ref, "create.end")
         return snapshot_id
 
     def delete_snapshot(self, context, snapshot_id):
@@ -481,6 +484,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         LOG.info(_("snapshot %s: deleting"), snapshot_ref['name'])
+        self._notify_about_snapshot_usage(
+            context, snapshot_ref, "delete.start")
 
         if context.project_id != snapshot_ref['project_id']:
             project_id = snapshot_ref['project_id']
@@ -520,6 +525,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
         self.db.snapshot_destroy(context, snapshot_id)
         LOG.info(_("snapshot %s: deleted successfully"), snapshot_ref['name'])
+        self._notify_about_snapshot_usage(context, snapshot_ref, "delete.end")
 
         # Commit the reservations
         if reservations:
@@ -701,4 +707,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                                    extra_usage_info=None):
         volume_utils.notify_about_volume_usage(
             context, volume, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
+
+    def _notify_about_snapshot_usage(self,
+                                     context,
+                                     snapshot,
+                                     event_suffix,
+                                     extra_usage_info=None):
+        volume_utils.notify_about_snapshot_usage(
+            context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
