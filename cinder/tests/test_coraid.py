@@ -183,14 +183,14 @@ class TestCoraidRESTClient(test.TestCase):
     def test__set_group(self):
         setattr(self.rest_mock, '_set_group',
                 lambda *_: fake_group_id)
-        self.stubs.Set(CoraidRESTClient, '_esm',
+        self.stubs.Set(CoraidRESTClient, '_admin_esm_cmd',
                        lambda *_: fake_login_reply)
         self.drv._set_group(fake_login_reply)
 
     def test__set_group_fails_no_group(self):
         setattr(self.rest_mock, '_set_group',
                 lambda *_: False)
-        self.stubs.Set(CoraidRESTClient, '_esm',
+        self.stubs.Set(CoraidRESTClient, '_admin_esm_cmd',
                        lambda *_: fake_login_reply_group_fail)
         self.assertRaises(CoraidESMException,
                           self.drv._set_group,
@@ -199,14 +199,14 @@ class TestCoraidRESTClient(test.TestCase):
     def test__configure(self):
         setattr(self.rest_mock, '_configure',
                 lambda *_: True)
-        self.stubs.Set(CoraidRESTClient, '_esm',
+        self.stubs.Set(CoraidRESTClient, '_esm_cmd',
                        lambda *_: fake_esm_success)
         self.drv._configure(fake_configure_data)
 
     def test__get_volume_info(self):
         setattr(self.rest_mock, '_get_volume_info',
                 lambda *_: fake_volume_info)
-        self.stubs.Set(CoraidRESTClient, '_esm',
+        self.stubs.Set(CoraidRESTClient, '_esm_cmd',
                        lambda *_: fake_esm_fetch)
         self.drv._get_volume_info(fake_volume_name)
 
