@@ -586,7 +586,7 @@ class API(base.Base):
     def delete_snapshot(self, context, snapshot, force=False):
         if not force and snapshot['status'] not in ["available", "error"]:
             msg = _("Volume Snapshot status must be available or error")
-            raise exception.InvalidVolume(reason=msg)
+            raise exception.InvalidSnapshot(reason=msg)
         self.db.snapshot_update(context, snapshot['id'],
                                 {'status': 'deleting'})
         volume = self.db.volume_get(context, snapshot['volume_id'])

@@ -520,7 +520,7 @@ class VolumeTestCase(test.TestCase):
         volume_api = cinder.volume.api.API()
 
         snapshot['status'] = 'badstatus'
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(exception.InvalidSnapshot,
                           volume_api.delete_snapshot,
                           self.context,
                           snapshot)
