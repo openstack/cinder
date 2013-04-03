@@ -1255,6 +1255,12 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         Many would call this "cloning" and in fact we use cloning to implement
         this feature.
         """
+        vol_size = volume['size']
+        snap_size = snapshot['volume_size']
+        if vol_size != snap_size:
+            msg = _('Cannot create volume of size %(vol_size)s from '
+                    'snapshot of size %(snap_size)s')
+            raise exception.VolumeBackendAPIException(data=msg % locals())
         snapshot_name = snapshot['name']
         lun = self.lun_table[snapshot_name]
         new_name = volume['name']
