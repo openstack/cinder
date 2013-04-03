@@ -61,6 +61,7 @@ def null_safe_str(s):
 def _usage_from_volume(context, volume_ref, **kw):
     usage_info = dict(tenant_id=volume_ref['project_id'],
                       user_id=volume_ref['user_id'],
+                      availability_zone=volume_ref['availability_zone'],
                       volume_id=volume_ref['id'],
                       volume_type=volume_ref['volume_type_id'],
                       display_name=volume_ref['display_name'],
@@ -93,6 +94,7 @@ def _usage_from_snapshot(context, snapshot_ref, **extra_usage_info):
     usage_info = {
         'tenant_id': snapshot_ref['project_id'],
         'user_id': snapshot_ref['user_id'],
+        'availability_zone': snapshot_ref.volume['availability_zone'],
         'volume_id': snapshot_ref['volume_id'],
         'volume_size': snapshot_ref['volume_size'],
         'snapshot_id': snapshot_ref['id'],
