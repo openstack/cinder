@@ -255,10 +255,11 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
+        df_total_size = 2620544
         df_avail = 1490560
         df_head = 'Filesystem 1K-blocks Used Available Use% Mounted on\n'
-        df_data = 'glusterfs-host:/export 2620544 996864 %d 41%% /mnt' % \
-            df_avail
+        df_data = 'glusterfs-host:/export %d 996864 %d 41%% /mnt' % \
+                  (df_total_size, df_avail)
         df_output = df_head + df_data
 
         setattr(glusterfs.FLAGS, 'glusterfs_disk_util', 'df')
@@ -274,7 +275,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals(df_avail,
+        self.assertEquals((df_avail, df_total_size),
                           drv._get_available_capacity(
                               self.TEST_EXPORT1))
 
@@ -319,7 +320,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals(df_total_size - du_used,
+        self.assertEquals((df_total_size - du_used, df_total_size),
                           drv._get_available_capacity(
                               self.TEST_EXPORT1))
 
@@ -450,9 +451,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_available_capacity')
         drv._get_available_capacity(self.TEST_EXPORT1).\
-            AndReturn(2 * self.ONE_GB_IN_BYTES)
+            AndReturn((2 * self.ONE_GB_IN_BYTES, 5 * self.ONE_GB_IN_BYTES))
         drv._get_available_capacity(self.TEST_EXPORT2).\
-            AndReturn(3 * self.ONE_GB_IN_BYTES)
+            AndReturn((3 * self.ONE_GB_IN_BYTES, 10 * self.ONE_GB_IN_BYTES))
 
         mox.ReplayAll()
 
@@ -471,9 +472,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_available_capacity')
         drv._get_available_capacity(self.TEST_EXPORT1).\
-            AndReturn(0)
+            AndReturn((0, 5 * self.ONE_GB_IN_BYTES))
         drv._get_available_capacity(self.TEST_EXPORT2).\
-            AndReturn(0)
+            AndReturn((0, 10 * self.ONE_GB_IN_BYTES))
 
         mox.ReplayAll()
 
