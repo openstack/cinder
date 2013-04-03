@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2012, 2013 IBM Corp
+# Copyright 2013 IBM Corp.
 # Copyright 2012 OpenStack LLC.
 # All Rights Reserved.
 #
