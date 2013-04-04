@@ -318,7 +318,16 @@ class BackupTestCase(test.TestCase):
                           self.ctxt,
                           backup_id)
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'available')
+        self.assertEquals(backup['status'], 'error')
+
+    def test_delete_backup_with_no_service(self):
+        """Test error handling when attempting a delete of a backup
+        with no service defined for that backup, relates to bug #1162908"""
+        vol_id = self._create_volume_db_entry(size=1)
+        backup_id = self._create_backup_db_entry(status='deleting',
+                                                 volume_id=vol_id)
+        db.backup_update(self.ctxt, backup_id, {'service': None})
+        self.backup_mgr.delete_backup(self.ctxt, backup_id)
 
     def test_delete_backup(self):
         """Test normal backup deletion"""

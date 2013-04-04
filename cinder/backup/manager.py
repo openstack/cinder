@@ -238,23 +238,26 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         backup_service = backup['service']
-        configured_service = FLAGS.backup_service
-        if backup_service != configured_service:
-            err = _('delete_backup aborted, the backup service currently'
-                    ' configured [%(configured_service)s] is not the'
-                    ' backup service that was used to create this'
-                    ' backup [%(backup_service)s]') % locals()
-            self.db.backup_update(context, backup_id, {'status': 'available'})
-            raise exception.InvalidBackup(reason=err)
+        if backup_service is not None:
+            configured_service = FLAGS.backup_service
+            if backup_service != configured_service:
+                err = _('delete_backup aborted, the backup service currently'
+                        ' configured [%(configured_service)s] is not the'
+                        ' backup service that was used to create this'
+                        ' backup [%(backup_service)s]') % locals()
+                self.db.backup_update(context, backup_id,
+                                      {'status': 'error'})
+                raise exception.InvalidBackup(reason=err)
 
-        try:
-            backup_service = self.service.get_backup_service(context)
-            backup_service.delete(backup)
-        except Exception as err:
-            with excutils.save_and_reraise_exception():
-                self.db.backup_update(context, backup_id, {'status': 'error',
-                                                           'fail_reason':
-                                                           unicode(err)})
+            try:
+                backup_service = self.service.get_backup_service(context)
+                backup_service.delete(backup)
+            except Exception as err:
+                with excutils.save_and_reraise_exception():
+                    self.db.backup_update(context, backup_id,
+                                          {'status': 'error',
+                                           'fail_reason':
+                                           unicode(err)})
 
         context = context.elevated()
         self.db.backup_destroy(context, backup_id)
