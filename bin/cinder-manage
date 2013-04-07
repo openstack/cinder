@@ -654,7 +654,7 @@ class BackupCommands(object):
         ctxt = context.get_admin_context()
         backups = db.backup_get_all(ctxt)
 
-        hdr = "%-6s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s\t%-12s"
+        hdr = "%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s\t%-12s"
         print hdr % (_('ID'),
                      _('User ID'),
                      _('Project ID'),
@@ -665,7 +665,7 @@ class BackupCommands(object):
                      _('Size'),
                      _('Object Count'))
 
-        res = "%-6d\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12d\t%-12d"
+        res = "%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12d\t%-12d"
         for backup in backups:
             object_count = 0
             if backup['object_count'] is not None:
