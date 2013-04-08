@@ -104,7 +104,10 @@ class API(base.Base):
                 raise exception.InvalidSnapshot(reason=msg)
             if not size:
                 size = snapshot['volume_size']
-
+            elif size < snapshot['volume_size']:
+                msg = _("Volume size cannot be lesser than"
+                        " the Snapshot size")
+                raise exception.InvalidInput(reason=msg)
             snapshot_id = snapshot['id']
         else:
             snapshot_id = None

@@ -317,6 +317,20 @@ class VolumeTestCase(test.TestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_src['id'])
 
+    def test_create_volume_from_snapshot_fail_bad_size(self):
+        """Test volume can't be created from snapshot with bad volume size."""
+        volume_api = cinder.volume.api.API()
+        snapshot = dict(id=1234,
+                        status='available',
+                        volume_size=10)
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          size=1,
+                          name='fake_name',
+                          description='fake_desc',
+                          snapshot=snapshot)
+
     def test_create_volume_with_invalid_exclusive_options(self):
         """Test volume create with multiple exclusive options fails."""
         volume_api = cinder.volume.api.API()
