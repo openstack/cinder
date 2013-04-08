@@ -51,7 +51,7 @@ LOG = logging.getLogger(__name__)
 
 swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_url',
-               default='http://localhost:8080/v1/',
+               default='http://localhost:8080/v1/AUTH_',
                help='The URL of the Swift endpoint'),
     cfg.StrOpt('backup_swift_container',
                default='volumebackups',
@@ -98,8 +98,8 @@ class SwiftBackupService(base.Base):
 
     def __init__(self, context, db_driver=None):
         self.context = context
-        self.swift_url = '%sAUTH_%s' % (FLAGS.backup_swift_url,
-                                        self.context.project_id)
+        self.swift_url = '%s%s' % (FLAGS.backup_swift_url,
+                                   self.context.project_id)
         self.az = FLAGS.storage_availability_zone
         self.data_block_size_bytes = FLAGS.backup_swift_object_size
         self.swift_attempts = FLAGS.backup_swift_retry_attempts
