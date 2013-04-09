@@ -188,7 +188,7 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
-            LOG.warn('volume: %s, size: %d is larger than backup: %d, '
+            LOG.warn('volume: %s, size: %d is larger than backup: %s, '
                      'size: %d, continuing with restore',
                      volume['id'], volume['size'],
                      backup['id'], backup['size'])
