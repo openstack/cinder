@@ -1324,6 +1324,11 @@
 # the iSCSI target. (From Nova compute nodes.) (string value)
 #lio_initiator_iqns=
 
+# The type of IO the iSCSI target will issue to the backend storage.
+# This option only currently works with IET.
+# Valid settings are 'blockio','fileio' and 'auto' which will autodetect
+# the type of file provided to the target. (string value)
+# iscsi_iotype=fileio
 
 #
 # Options defined in cinder.volume.manager

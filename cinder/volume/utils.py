@@ -16,6 +16,9 @@
 
 """Volume-related Utilities and helpers."""
 
+import os
+import stat
+
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
@@ -121,3 +124,8 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
     notifier_api.notify(context, 'snapshot.%s' % host,
                         'snapshot.%s' % event_suffix,
                         notifier_api.INFO, usage_info)
+
+
+def is_block(path):
+    mode = os.stat(path).st_mode
+    return stat.S_ISBLK(mode)

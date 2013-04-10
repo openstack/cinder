@@ -28,6 +28,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -47,6 +48,13 @@ iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
                                      'allowed to connect to the '
                                      'iSCSI target. (From Nova compute nodes.)'
                                      )
+                               ),
+                    cfg.StrOpt('iscsi_iotype',
+                               default='fileio',
+                               help=('Sets the behavior of the iSCSI target to'
+                                     'either perform blockio or fileio'
+                                     'optionally, auto can be set and Cinder'
+                                     'will autodetect type of backing device')
                                )
                     ]
 
@@ -220,6 +228,12 @@ class IetAdm(TargetAdmin):
     def __init__(self, execute=utils.execute):
         super(IetAdm, self).__init__('ietadm', execute)
 
+    def _iotype(self, path):
+        if FLAGS.iscsi_iotype == 'auto':
+            return 'blockio' if volume_utils.is_block(path) else 'fileio'
+        else:
+            return FLAGS.iscsi_iotype
+
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
         self._new_target(name, tid, **kwargs)
@@ -234,8 +248,8 @@ class IetAdm(TargetAdmin):
                 volume_conf = """
                         Target %s
                             %s
-                            Lun 0 Path=%s,Type=fileio
-                """ % (name, chap_auth, path)
+                            Lun 0 Path=%s,Type=%s
+                """ % (name, chap_auth, path, self._iotype(path))
 
                 with utils.temporary_chown(conf_file):
                     f = open(conf_file, 'a+')
@@ -297,7 +311,7 @@ class IetAdm(TargetAdmin):
         self._run('--op', 'new',
                   '--tid=%s' % tid,
                   '--lun=%d' % lun,
-                  '--params', 'Path=%s,Type=fileio' % path,
+                  '--params', 'Path=%s,Type=%s' % (path, self._iotype(path)),
                   **kwargs)
 
     def _delete_logicalunit(self, tid, lun, **kwargs):
