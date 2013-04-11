@@ -363,7 +363,8 @@ class VolumeTestCase(test.TestCase):
         volume = self._create_volume()
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
-        db.volume_attached(self.context, volume_id, instance_uuid, mountpoint)
+        self.volume.attach_volume(self.context, volume_id, instance_uuid,
+                                  mountpoint)
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(vol['status'], "in-use")
         self.assertEqual(vol['attach_status'], "attached")
@@ -374,7 +375,7 @@ class VolumeTestCase(test.TestCase):
                           self.volume.delete_volume,
                           self.context,
                           volume_id)
-        db.volume_detached(self.context, volume_id)
+        self.volume.detach_volume(self.context, volume_id)
         vol = db.volume_get(self.context, volume_id)
         self.assertEqual(vol['status'], "available")
 
@@ -383,22 +384,6 @@ class VolumeTestCase(test.TestCase):
                           db.volume_get,
                           self.context,
                           volume_id)
-
-    def test_preattach_status_volume(self):
-        """Ensure volume goes into pre-attaching state"""
-        instance_uuid = '12345678-1234-5678-1234-567812345678'
-        mountpoint = "/dev/sdf"
-        volume = db.volume_create(self.context, {'size': 1,
-                                                 'status': 'available'})
-        volume_id = volume['id']
-
-        volume_api = cinder.volume.api.API()
-        volume_api.attach(self.context, volume, instance_uuid, mountpoint)
-
-        vol = db.volume_get(self.context, volume_id)
-        self.assertEqual(vol['status'], "available")
-        self.assertEqual(vol['attach_status'], None)
-        self.assertEqual(vol['instance_uuid'], None)
 
     def test_concurrent_volumes_get_different_targets(self):
         """Ensure multiple concurrent volumes get different targets."""
