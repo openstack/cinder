@@ -368,7 +368,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.debug(_("No request spec, will not reschedule"))
             return
 
-        request_spec['volume_id'] = [volume_id]
+        request_spec['volume_id'] = volume_id
 
         LOG.debug(_("volume %(volume_id)s: re-scheduling %(method)s "
                     "attempt %(num)d") %
