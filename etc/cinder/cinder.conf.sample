@@ -5,49 +5,6 @@
 [DEFAULT]
 
 #
-# Options defined in cinder.openstack.common.cfg:CommonConfigOpts
-#
-
-# Print debugging output (boolean value)
-#debug=false
-
-# Print more verbose output (boolean value)
-#verbose=false
-
-# If this option is specified, the logging configuration file
-# specified is used and overrides any other logging options
-# specified. Please see the Python logging module
-# documentation for details on logging configuration files.
-# (string value)
-#log_config=<None>
-
-# A logging.Formatter log message format string which may use
-# any of the available logging.LogRecord attributes. Default:
-# %(default)s (string value)
-#log_format=%(asctime)s %(levelname)8s [%(name)s] %(message)s
-
-# Format string for %%(asctime)s in log records. Default:
-# %(default)s (string value)
-#log_date_format=%Y-%m-%d %H:%M:%S
-
-# (Optional) Name of log file to output to. If not set,
-# logging will go to stdout. (string value)
-#log_file=<None>
-
-# (Optional) The directory to keep log files in (will be
-# prepended to --log-file) (string value)
-#log_dir=<None>
-
-# Use syslog for logging. (boolean value)
-#use_syslog=false
-
-# syslog facility to receive log lines (string value)
-#syslog_log_facility=LOG_USER
-
-# Do not count snapshots against gigabytes quota (bool value)
-#no_snapshot_gb_quota=False
-
-#
 # Options defined in cinder.exception
 #
 
@@ -99,7 +56,7 @@
 # ([hostname|ip]:port) (list value)
 #glance_api_servers=$glance_host:$glance_port
 
-# default version of the glance api to use
+# Version of the glance api to use (integer value)
 #glance_api_version=1
 
 # Number retries when downloading an image from glance
@@ -115,6 +72,9 @@
 
 # the topic volume nodes listen on (string value)
 #volume_topic=cinder-volume
+
+# the topic volume backup nodes listen on (string value)
+#backup_topic=cinder-backup
 
 # Deploy v1 of the Cinder API.  (boolean value)
 #enable_v1_api=true
@@ -162,6 +122,10 @@
 # full class name for the Manager for volume (string value)
 #volume_manager=cinder.volume.manager.VolumeManager
 
+# full class name for the Manager for volume backup (string
+# value)
+#backup_manager=cinder.backup.manager.BackupManager
+
 # full class name for the Manager for scheduler (string value)
 #scheduler_manager=cinder.scheduler.manager.SchedulerManager
 
@@ -183,9 +147,13 @@
 # be hour, day, month or year (string value)
 #volume_usage_audit_period=month
 
+# Deprecated: command to use for running commands as root
+# (string value)
+#root_helper=sudo
+
 # Path to the rootwrap configuration file to use for running
 # commands as root (string value)
-#rootwrap_config=/etc/cinder/rootwrap.conf
+#rootwrap_config=<None>
 
 # Whether to log monkey patching (boolean value)
 #monkey_patch=false
@@ -201,13 +169,22 @@
 # value)
 #volume_api_class=cinder.volume.api.API
 
+# The full class name of the volume backup API class (string
+# value)
+#backup_api_class=cinder.backup.api.API
+
 # The strategy to use for auth. Supports noauth, keystone, and
 # deprecated. (string value)
 #auth_strategy=noauth
 
-# AMQP exchange to connect to if using RabbitMQ or Qpid
-# (string value)
-#control_exchange=cinder
+# A list of backend names to use. These backend names should
+# be backed by a unique [CONFIG] group with its options (list
+# value)
+#enabled_backends=<None>
+
+# Whether snapshots count against GigaByte quota (boolean
+# value)
+#no_snapshot_gb_quota=false
 
 
 #
@@ -228,11 +205,12 @@
 # number of volumes allowed per project (integer value)
 #quota_volumes=10
 
-# number of volume snapshots allowed per project (integer value)
+# number of volume snapshots allowed per project (integer
+# value)
 #quota_snapshots=10
 
-# number of volume and snapshot gigabytes allowed per project (integer
-# value)
+# number of volume gigabytes (snapshots are also included)
+# allowed per project (integer value)
 #quota_gigabytes=1000
 
 # number of seconds until a reservation expires (integer
@@ -328,11 +306,36 @@
 
 
 #
-# Options defined in cinder.common.deprecated
+# Options defined in cinder.backup.manager
 #
 
-# make deprecations fatal (boolean value)
-#fatal_deprecations=false
+# Service to use for backups. (string value)
+#backup_service=cinder.backup.services.swift
+
+
+#
+# Options defined in cinder.backup.services.swift
+#
+
+# The URL of the Swift endpoint (string value)
+#backup_swift_url=http://localhost:8080/v1/AUTH_
+
+# The default Swift container to use (string value)
+#backup_swift_container=volumebackups
+
+# The size in bytes of Swift backup objects (integer value)
+#backup_swift_object_size=52428800
+
+# The number of retries to make for Swift operations (integer
+# value)
+#backup_swift_retry_attempts=3
+
+# The backoff time in seconds between Swift retries (integer
+# value)
+#backup_swift_retry_backoff=2
+
+# Compression algorithm (None to disable) (string value)
+#backup_compression_algorithm=zlib
 
 
 #
@@ -358,6 +361,7 @@
 # value)
 #backup_name_template=backup-%s
 
+
 #
 # Options defined in cinder.db.base
 #
@@ -382,7 +386,8 @@
 # Whether to disable inter-process locks (boolean value)
 #disable_process_locking=false
 
-# Directory to use for lock files (string value)
+# Directory to use for lock files. Default to a temp directory
+# (string value)
 #lock_path=<None>
 
 
@@ -390,12 +395,13 @@
 # Options defined in cinder.openstack.common.log
 #
 
-# Log output to a per-service log file in named directory
-# (string value)
-#logdir=<None>
+# Print debugging output (set logging level to DEBUG instead
+# of default WARNING level). (boolean value)
+#debug=false
 
-# Log output to a named file (string value)
-#logfile=<None>
+# Print more verbose output (set logging level to INFO instead
+# of default WARNING level). (boolean value)
+#verbose=false
 
 # Log output to standard error (boolean value)
 #use_stderr=true
@@ -406,11 +412,11 @@
 
 # format string to use for log messages with context (string
 # value)
-#logging_context_format_string=%(asctime)s %(levelname)s %(name)s [%(request_id)s %(user_id)s %(project_id)s] %(instance)s%(message)s
+#logging_context_format_string=%(asctime)s.%(msecs)03d %(levelname)s %(name)s [%(request_id)s %(user)s %(tenant)s] %(instance)s%(message)s
 
 # format string to use for log messages without context
 # (string value)
-#logging_default_format_string=%(asctime)s %(process)d %(levelname)s %(name)s [-] %(instance)s%(message)s
+#logging_default_format_string=%(asctime)s.%(msecs)03d %(process)d %(levelname)s %(name)s [-] %(instance)s%(message)s
 
 # data to append to log format when level is DEBUG (string
 # value)
@@ -418,13 +424,16 @@
 
 # prefix each line of exception output with this format
 # (string value)
-#logging_exception_prefix=%(asctime)s %(process)d TRACE %(name)s %(instance)s
+#logging_exception_prefix=%(asctime)s.%(msecs)03d %(process)d TRACE %(name)s %(instance)s
 
 # list of logger=LEVEL pairs (list value)
 #default_log_levels=amqplib=WARN,sqlalchemy=WARN,boto=WARN,suds=INFO,keystone=INFO,eventlet.wsgi.server=WARN
 
 # publish error events (boolean value)
 #publish_errors=false
+
+# make deprecations fatal (boolean value)
+#fatal_deprecations=false
 
 # If an instance is passed with the log message, format it
 # like this (string value)
@@ -433,6 +442,36 @@
 # If an instance UUID is passed with the log message, format
 # it like this (string value)
 #instance_uuid_format="[instance: %(uuid)s] "
+
+# If this option is specified, the logging configuration file
+# specified is used and overrides any other logging options
+# specified. Please see the Python logging module
+# documentation for details on logging configuration files.
+# (string value)
+#log_config=<None>
+
+# A logging.Formatter log message format string which may use
+# any of the available logging.LogRecord attributes. Default:
+# %(default)s (string value)
+#log_format=%(asctime)s %(levelname)8s [%(name)s] %(message)s
+
+# Format string for %%(asctime)s in log records. Default:
+# %(default)s (string value)
+#log_date_format=%Y-%m-%d %H:%M:%S
+
+# (Optional) Name of log file to output to. If not set,
+# logging will go to stdout. (string value)
+#log_file=<None>
+
+# (Optional) The directory to keep log files in (will be
+# prepended to --log-file) (string value)
+#log_dir=<None>
+
+# Use syslog for logging. (boolean value)
+#use_syslog=false
+
+# syslog facility to receive log lines (string value)
+#syslog_log_facility=LOG_USER
 
 
 #
@@ -452,11 +491,19 @@
 
 
 #
-# Options defined in cinder.openstack.common.notifier.rabbit_notifier
+# Options defined in cinder.openstack.common.notifier.rpc_notifier
 #
 
 # AMQP topic used for openstack notifications (list value)
 #notification_topics=notifications
+
+
+#
+# Options defined in cinder.openstack.common.notifier.rpc_notifier2
+#
+
+# AMQP topic(s) used for openstack notifications (list value)
+#topics=notifications
 
 
 #
@@ -483,10 +530,23 @@
 
 # Modules of exceptions that are permitted to be recreatedupon
 # receiving exception data from an rpc call. (list value)
-#allowed_rpc_exception_modules=cinder.openstack.common.exception,nova.exception,cinder.exception
+#allowed_rpc_exception_modules=cinder.openstack.common.exception,nova.exception,cinder.exception,exceptions
 
 # If passed, use a fake RabbitMQ provider (boolean value)
 #fake_rabbit=false
+
+# AMQP exchange to connect to if using RabbitMQ or Qpid
+# (string value)
+#control_exchange=openstack
+
+
+#
+# Options defined in cinder.openstack.common.rpc.amqp
+#
+
+# Enable a fast single reply queue if using AMQP based RPC
+# like RabbitMQ or Qpid. (boolean value)
+#amqp_rpc_single_reply_queue=false
 
 
 #
@@ -562,6 +622,9 @@
 # Qpid broker port (string value)
 #qpid_port=5672
 
+# Qpid HA cluster host:port pairs (list value)
+#qpid_hosts=$qpid_hostname:$qpid_port
+
 # Username for qpid connection (string value)
 #qpid_username=
 
@@ -571,27 +634,6 @@
 # Space separated list of SASL mechanisms to use for auth
 # (string value)
 #qpid_sasl_mechanisms=
-
-# Automatically reconnect (boolean value)
-#qpid_reconnect=true
-
-# Reconnection timeout in seconds (integer value)
-#qpid_reconnect_timeout=0
-
-# Max reconnections before giving up (integer value)
-#qpid_reconnect_limit=0
-
-# Minimum seconds between reconnection attempts (integer
-# value)
-#qpid_reconnect_interval_min=0
-
-# Maximum seconds between reconnection attempts (integer
-# value)
-#qpid_reconnect_interval_max=0
-
-# Equivalent to setting max and min to the same value (integer
-# value)
-#qpid_reconnect_interval=0
 
 # Seconds between connection keepalive heartbeats (integer
 # value)
@@ -622,6 +664,10 @@
 # Number of ZeroMQ contexts, defaults to 1 (integer value)
 #rpc_zmq_contexts=1
 
+# Maximum number of ingress messages to locally buffer per
+# topic. Default is unlimited. (integer value)
+#rpc_zmq_topic_backlog=<None>
+
 # Directory for holding IPC sockets (string value)
 #rpc_zmq_ipc_dir=/var/run/openstack
 
@@ -638,6 +684,26 @@
 # Matchmaker ring file (JSON) (string value)
 #matchmaker_ringfile=/etc/nova/matchmaker_ring.json
 
+# Heartbeat frequency (integer value)
+#matchmaker_heartbeat_freq=300
+
+# Heartbeat time-to-live. (integer value)
+#matchmaker_heartbeat_ttl=600
+
+
+#
+# Options defined in cinder.openstack.common.rpc.matchmaker_redis
+#
+
+# Host to locate redis (string value)
+#host=127.0.0.1
+
+# Use this port to connect to redis host. (integer value)
+#port=6379
+
+# Password for Redis server. (optional) (string value)
+#password=<None>
+
 
 #
 # Options defined in cinder.scheduler.driver
@@ -645,6 +711,10 @@
 
 # The scheduler host manager class to use (string value)
 #scheduler_host_manager=cinder.scheduler.host_manager.HostManager
+
+# Maximum number of attempts to schedule an volume (integer
+# value)
+#scheduler_max_attempts=3
 
 
 #
@@ -665,7 +735,7 @@
 #
 
 # Default scheduler driver to use (string value)
-#scheduler_driver=cinder.scheduler.simple.SimpleScheduler
+#scheduler_driver=cinder.scheduler.filter_scheduler.FilterScheduler
 
 
 #
@@ -734,9 +804,32 @@
 # value)
 #iscsi_port=3260
 
-# Optional override to the capacity based volume backend name
+# The backend name for a given driver implementation (string
+# value)
+#volume_backend_name=<None>
+
+
 #
-#volume_backend_name=LVM_iSCSI_unique1
+# Options defined in cinder.volume.drivers.coraid
+#
+
+# IP address of Coraid ESM (string value)
+#coraid_esm_address=
+
+# User name to connect to Coraid ESM (string value)
+#coraid_user=admin
+
+# Group name of coraid_user (must have admin privilege)
+# (boolean value)
+#coraid_group=false
+
+# Password to connect to Coraid ESM (string value)
+#coraid_password=password
+
+# Volume Type key name to store ESM Repository Name (string
+# value)
+#coraid_repository_key=coraid_repository
+
 
 #
 # Options defined in cinder.volume.drivers.glusterfs
@@ -759,6 +852,14 @@
 
 
 #
+# Options defined in cinder.volume.drivers.huawei.huawei_iscsi
+#
+
+# config data for cinder huawei plugin (string value)
+#cinder_huawei_conf_file=/etc/cinder/cinder_huawei_conf.xml
+
+
+#
 # Options defined in cinder.volume.drivers.lvm
 #
 
@@ -774,6 +875,10 @@
 # (integer value)
 #volume_clear_size=0
 
+# The default block size used when clearing volumes (string
+# value)
+#volume_dd_blocksize=1M
+
 # Size of thin provisioning pool (None uses entire cinder VG)
 # (string value)
 #pool_size=<None>
@@ -785,22 +890,23 @@
 
 
 #
-# Options defined in cinder.volume.drivers.netapp
+# Options defined in cinder.volume.drivers.netapp.iscsi
 #
 
-# URL of the WSDL file for the DFM server (string value)
+# URL of the WSDL file for the DFM/Webservice server (string
+# value)
 #netapp_wsdl_url=<None>
 
-# User name for the DFM server (string value)
+# User name for the DFM/Controller server (string value)
 #netapp_login=<None>
 
-# Password for the DFM server (string value)
+# Password for the DFM/Controller server (string value)
 #netapp_password=<None>
 
-# Hostname for the DFM server (string value)
+# Hostname for the DFM/Controller server (string value)
 #netapp_server_hostname=<None>
 
-# Port number for the DFM server (integer value)
+# Port number for the DFM/Controller server (integer value)
 #netapp_server_port=8088
 
 # Storage service to use for provisioning (when
@@ -814,28 +920,43 @@
 # Vfiler to use for provisioning (string value)
 #netapp_vfiler=<None>
 
+# Transport type protocol (string value)
+#netapp_transport_type=http
+
+# Cluster vserver to use for provisioning (string value)
+#netapp_vserver=openstack
+
+# Volume size multiplier to ensure while creation (floating
+# point value)
+#netapp_size_multiplier=1.2
+
+# Comma separated eligible volumes for provisioning on 7 mode
+# (string value)
+#netapp_volume_list=
+
 
 #
-# Options defined in cinder.volume.drivers.netapp_nfs
+# Options defined in cinder.volume.drivers.netapp.nfs
 #
 
 # Does snapshot creation call returns immediately (integer
 # value)
 #synchronous_snapshot_create=0
 
-# URL of the WSDL file for the DFM server (string value)
+# URL of the WSDL file for the DFM/Webservice server (string
+# value)
 #netapp_wsdl_url=<None>
 
-# User name for the DFM server (string value)
+# User name for the DFM/Controller server (string value)
 #netapp_login=<None>
 
-# Password for the DFM server (string value)
+# Password for the DFM/Controller server (string value)
 #netapp_password=<None>
 
-# Hostname for the DFM server (string value)
+# Hostname for the DFM/Controller server (string value)
 #netapp_server_hostname=<None>
 
-# Port number for the DFM server (integer value)
+# Port number for the DFM/Controller server (integer value)
 #netapp_server_port=8088
 
 # Storage service to use for provisioning (when
@@ -848,6 +969,20 @@
 
 # Vfiler to use for provisioning (string value)
 #netapp_vfiler=<None>
+
+# Transport type protocol (string value)
+#netapp_transport_type=http
+
+# Cluster vserver to use for provisioning (string value)
+#netapp_vserver=openstack
+
+# Volume size multiplier to ensure while creation (floating
+# point value)
+#netapp_size_multiplier=1.2
+
+# Comma separated eligible volumes for provisioning on 7 mode
+# (string value)
+#netapp_volume_list=
 
 
 #
@@ -908,10 +1043,9 @@
 # volume creation takes a lot of time. (boolean value)
 #nfs_sparsed_volumes=true
 
-# Mount options passed to the nfs client (string value)
-# The value set here is passed directly to the -o flag
-# of the mount command. See the nfs man page for details.
-#nfs_mount_options=None
+# Mount options passed to the nfs client. See section of the
+# nfs man page for details (string value)
+#nfs_mount_options=<None>
 
 
 #
@@ -933,6 +1067,42 @@
 # where to store temporary image files if the volume driver
 # does not write them directly to the volume (string value)
 #volume_tmp_dir=<None>
+
+
+#
+# Options defined in cinder.volume.drivers.san.hp.hp_3par_common
+#
+
+# 3PAR WSAPI Server Url like https://<3par ip>:8080/api/v1
+# (string value)
+#hp3par_api_url=
+
+# 3PAR Super user username (string value)
+#hp3par_username=
+
+# 3PAR Super user password (string value)
+#hp3par_password=
+
+# The 3par domain name to use (string value)
+#hp3par_domain=OpenStack
+
+# The CPG to use for volume creation (string value)
+#hp3par_cpg=OpenStack
+
+# The CPG to use for Snapshots for volumes. If empty
+# hp3par_cpg will be used (string value)
+#hp3par_cpg_snap=
+
+# The time in hours to retain a snapshot.  You can't delete it
+# before this expires. (string value)
+#hp3par_snapshot_retention=
+
+# The time in hours when a snapshot expires  and is deleted.
+# This must be larger than expiration (string value)
+#hp3par_snapshot_expiration=
+
+# Enable HTTP debugging to 3PAR (boolean value)
+#hp3par_debug=false
 
 
 #
@@ -1018,11 +1188,11 @@
 #storwize_svc_volpool_name=volpool
 
 # Storage system space-efficiency parameter for volumes
-# (string value)
-#storwize_svc_vol_rsize=2%
+# (percentage) (integer value)
+#storwize_svc_vol_rsize=2
 
 # Storage system threshold for volume capacity warnings
-# (string value)
+# (percentage) (integer value)
 #storwize_svc_vol_warning=0
 
 # Storage system autoexpand parameter for volumes (True/False)
@@ -1030,7 +1200,7 @@
 #storwize_svc_vol_autoexpand=true
 
 # Storage system grain size parameter for volumes
-# (32/64/128/256) (string value)
+# (32/64/128/256) (integer value)
 #storwize_svc_vol_grainsize=256
 
 # Storage system compression option for volumes (boolean
@@ -1041,9 +1211,15 @@
 #storwize_svc_vol_easytier=true
 
 # Maximum number of seconds to wait for FlashCopy to be
-# prepared. Maximum value is 600 seconds (10 minutes). (string
-# value)
+# prepared. Maximum value is 600 seconds (10 minutes).
+# (integer value)
 #storwize_svc_flashcopy_timeout=120
+
+# Connection protocol (iSCSI/FC) (string value)
+#storwize_svc_connection_protocol=iSCSI
+
+# Connect with multipath (currently FC-only) (boolean value)
+#storwize_svc_multipath_enabled=false
 
 
 #
@@ -1072,6 +1248,9 @@
 
 # Password for XenAPI connection (string value)
 #xenapi_connection_password=<None>
+
+# Base path to the storage repository (string value)
+#xenapi_sr_base_path=/var/run/sr-mount
 
 
 #
@@ -1154,20 +1333,4 @@
 #volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 
 
-#
-# Multi backend options
-#
-
-# Define the names of the groups for multiple volume backends
-#enabled_backends=fakedriver,lvmdriver
-
-# Define the groups as above
-#[lvmdriver]
-#volume_group=lvm-group-1
-#volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
-#volume_backend_name=LVM_iSCSI_unique1
-#[fakedriver]
-#volume_driver=cinder.volume.driver.FakeISCSIDriver
-
-
-# Total option count: 255
+# Total option count: 299
