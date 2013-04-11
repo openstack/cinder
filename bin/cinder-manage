@@ -681,12 +681,38 @@ class BackupCommands(object):
                          object_count)
 
 
+class ServiceCommands(object):
+    """Methods for managing services."""
+    def list(self):
+        """Show a list of all cinder services."""
+        ctxt = context.get_admin_context()
+        services = db.service_get_all(ctxt)
+        print_format = "%-16s %-36s %-16s %-10s %-5s %-10s"
+        print print_format % (
+                    _('Binary'),
+                    _('Host'),
+                    _('Zone'),
+                    _('Status'),
+                    _('State'),
+                    _('Updated At'))
+        for svc in services:
+            alive = utils.service_is_up(svc)
+            art = ":-)" if alive else "XXX"
+            status = 'enabled'
+            if svc['disabled']:
+                status = 'disabled'
+            print print_format % (svc['binary'], svc['host'].partition('.')[0],
+                                  svc['availability_zone'], status, art,
+                                  svc['updated_at'])
+
+
 CATEGORIES = {
     'backup': BackupCommands,
     'config': ConfigCommands,
     'db': DbCommands,
     'host': HostCommands,
     'logs': GetLogCommands,
+    'service': ServiceCommands,
     'shell': ShellCommands,
     'sm': StorageManagerCommands,
     'version': VersionCommands,
