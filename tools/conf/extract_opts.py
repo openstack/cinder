@@ -49,8 +49,8 @@ WORDWRAP_WIDTH = 60
 def main(srcfiles):
     print '\n'.join(['#' * 20, '# cinder.conf sample #', '#' * 20,
                      '', '[DEFAULT]', ''])
-    _list_opts(cfg.CommonConfigOpts,
-               cfg.__name__ + ':' + cfg.CommonConfigOpts.__name__)
+    _list_opts(cfg.ConfigOpts,
+               cfg.__name__ + ':' + cfg.ConfigOpts.__name__)
     mods_by_pkg = dict()
     for filepath in srcfiles:
         pkg_name = filepath.split(os.sep)[1]
