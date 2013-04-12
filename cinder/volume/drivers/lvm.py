@@ -63,6 +63,9 @@ FLAGS.register_opts(volume_opts)
 
 class LVMVolumeDriver(driver.VolumeDriver):
     """Executes commands relating to Volumes."""
+
+    VERSION = '1.0'
+
     def __init__(self, *args, **kwargs):
         super(LVMVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
@@ -559,7 +562,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'LVM_iSCSI'
         data["vendor_name"] = 'Open Source'
-        data["driver_version"] = '1.0'
+        data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] = 0
@@ -593,6 +596,9 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
 class ThinLVMVolumeDriver(LVMISCSIDriver):
     """Subclass for thin provisioned LVM's."""
+
+    VERSION = '1.0'
+
     def __init__(self, *args, **kwargs):
         super(ThinLVMVolumeDriver, self).__init__(*args, **kwargs)
 
@@ -651,3 +657,28 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
         """Creates a snapshot of a volume."""
         orig_lv_name = "%s/%s" % (FLAGS.volume_group, snapshot['volume_name'])
         self._do_lvm_snapshot(orig_lv_name, snapshot)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status.
+        If 'refresh' is True, run update the stats first."""
+        if refresh:
+            self._update_volume_status()
+
+        return self._stats
+
+    def _update_volume_status(self):
+        """Retrieve status info from volume group."""
+
+        LOG.debug(_("Updating volume status"))
+        data = {}
+
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or self.__class__.__name__
+        data["vendor_name"] = 'Open Source'
+        data["driver_version"] = self.VERSION
+        data["storage_protocol"] = 'iSCSI'
+        data['reserved_percentage'] = self.configuration.reserved_percentage
+        data['QoS_support'] = False
+        data['total_capacity_gb'] = 'infinite'
+        data['free_capacity_gb'] = 'infinite'
+        self._stats = data
