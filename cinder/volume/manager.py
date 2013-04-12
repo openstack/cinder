@@ -260,6 +260,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                             snapshot_id, image_id,
                                             request_spec, filter_properties,
                                             allow_reschedule)
+                return
 
             if model_update:
                 volume_ref = self.db.volume_update(
