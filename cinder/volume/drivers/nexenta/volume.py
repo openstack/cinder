@@ -31,6 +31,7 @@ from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 
+VERSION = '1.0'
 LOG = logging.getLogger(__name__)
 FLAGS = flags.FLAGS
 
@@ -293,3 +294,57 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         raise NotImplementedError()
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status.
+
+        If 'refresh' is True, run update the stats first."""
+        if refresh:
+            self._update_volume_status()
+
+        return self._stats
+
+    def _update_volume_status(self):
+        """Retrieve status info for Nexenta device."""
+
+        # NOTE(jdg): Aimon Bustardo was kind enough to point out the
+        # info he had regarding Nexenta Capabilities, ideally it would
+        # be great if somebody from Nexenta looked this over at some point
+
+        KB = 1024
+        MB = KB ** 2
+
+        LOG.debug(_("Updating volume status"))
+        data = {}
+        data["volume_backend_name"] = self.__class__.__name__
+        data["vendor_name"] = 'Nexenta'
+        data["driver_version"] = VERSION
+        data["storage_protocol"] = 'iSCSI'
+
+        stats = self.nms.volume.get_child_props(FLAGS.nexenta_volume,
+                                                'health|size|used|available')
+        total_unit = stats['size'][-1]
+        total_amount = float(stats['size'][:-1])
+        free_unit = stats['available'][-1]
+        free_amount = float(stats['available'][:-1])
+
+        if total_unit == "T":
+                total_amount = total_amount * KB
+        elif total_unit == "M":
+                total_amount = total_amount / KB
+        elif total_unit == "B":
+                total_amount = total_amount / MB
+
+        if free_unit == "T":
+                free_amount = free_amount * KB
+        elif free_unit == "M":
+                free_amount = free_amount / KB
+        elif free_unit == "B":
+                free_amount = free_amount / MB
+
+        data['total_capacity_gb'] = total_amount
+        data['free_capacity_gb'] = free_amount
+
+        data['reserved_percentage'] = 0
+        data['QoS_support'] = False
+        self._stats = data
