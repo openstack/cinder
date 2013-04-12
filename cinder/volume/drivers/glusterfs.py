@@ -42,6 +42,7 @@ volume_opts = [
                 help=('Create volumes as sparsed files which take no space.'
                       'If set to False volume is created as regular file.'
                       'In such case volume creation takes a lot of time.'))]
+VERSION = '1.0'
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(volume_opts)
@@ -271,7 +272,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or 'GlusterFS'
         data['vendor_name'] = 'Open Source'
-        data['driver_version'] = '1.0'
+        data['driver_version'] = VERSION
         data['storage_protocol'] = 'glusterfs'
 
         self._ensure_shares_mounted()

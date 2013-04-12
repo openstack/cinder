@@ -48,6 +48,8 @@ volume_opts = [
                     'of the nfs man page for details'),
 ]
 
+VERSION = '1.0'
+
 
 class RemoteFsDriver(driver.VolumeDriver):
     """Common base for drivers that work like NFS."""
@@ -340,7 +342,7 @@ class NfsDriver(RemoteFsDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_NFS'
         data["vendor_name"] = 'Open Source'
-        data["driver_version"] = '1.0'
+        data["driver_version"] = VERSION
         data["storage_protocol"] = 'nfs'
 
         self._ensure_shares_mounted()
