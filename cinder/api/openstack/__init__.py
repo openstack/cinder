@@ -1,7 +1,5 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2010 United States Government as represented by the
-# Administrator of the National Aeronautics and Space Administration.
+# Copyright (c) 2013 OpenStack, LLC.
+#
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -22,6 +20,7 @@ WSGI middleware for OpenStack API controllers.
 
 import routes
 
+from cinder.api.middleware import fault
 from cinder.api.openstack import wsgi
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -122,3 +121,10 @@ class APIRouter(base_wsgi.Router):
 
     def _setup_routes(self, mapper, ext_mgr):
         raise NotImplementedError
+
+
+class FaultWrapper(fault.FaultWrapper):
+    def __init__(self, application):
+        LOG.warn(_('cinder.api.openstack:FaultWrapper is deprecated. Please '
+                   'use cinder.api.middleware.fault:FaultWrapper instead.'))
+        super(FaultWrapper, self).__init__(application)
