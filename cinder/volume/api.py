@@ -171,7 +171,7 @@ class API(base.Base):
                 raise exception.VolumeSizeExceedsAvailableQuota()
             elif 'volumes' in overs:
                 msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes"
+                        "volume (%(d_consumed)d volumes "
                         "already consumed)")
                 LOG.warn(msg % {'s_pid': context.project_id,
                                 'd_consumed': _consumed('volumes')})
