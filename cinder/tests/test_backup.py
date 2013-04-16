@@ -56,7 +56,8 @@ class BackupTestCase(test.TestCase):
                                 container='volumebackups',
                                 status='creating',
                                 size=0,
-                                object_count=0):
+                                object_count=0,
+                                project_id='fake'):
         """
         Create a backup entry in the DB.
         Return the entry ID
@@ -64,7 +65,7 @@ class BackupTestCase(test.TestCase):
         backup = {}
         backup['volume_id'] = volume_id
         backup['user_id'] = 'fake'
-        backup['project_id'] = 'fake'
+        backup['project_id'] = project_id
         backup['host'] = 'testhost'
         backup['availability_zone'] = '1'
         backup['display_name'] = display_name
@@ -339,3 +340,13 @@ class BackupTestCase(test.TestCase):
                           db.backup_get,
                           self.ctxt,
                           backup_id)
+
+    def test_list_backup(self):
+        backups = db.backup_get_all_by_project(self.ctxt, 'project1')
+        self.assertEqual(len(backups), 0)
+
+        b1 = self._create_backup_db_entry()
+        b2 = self._create_backup_db_entry(project_id='project1')
+        backups = db.backup_get_all_by_project(self.ctxt, 'project1')
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].id, b2)

@@ -1957,7 +1957,8 @@ def backup_get_all_by_host(context, host):
 def backup_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
 
-    return model_query(context, models.Backup, read_deleted="yes").all()
+    return model_query(context, models.Backup, read_deleted="yes").\
+        filter_by(project_id=project_id).all()
 
 
 @require_context
