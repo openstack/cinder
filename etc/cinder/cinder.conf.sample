@@ -857,6 +857,22 @@
 
 
 #
+# Options defined in cinder.volume.drivers.block_device
+#
+
+# List of all available devices (list value)
+#available_devices=
+
+# Size in MiB to wipe at start of old volumes. 0 => all
+# (integer value)
+#volume_clear_size=0
+
+# Method used to wipe old volumes (valid options are: none,
+# zero, shred) (string value)
+#volume_clear=zero
+
+
+#
 # Options defined in cinder.volume.drivers.coraid
 #
 

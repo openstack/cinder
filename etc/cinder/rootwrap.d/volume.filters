@@ -62,6 +62,9 @@ ls: CommandFilter, ls, root
 tee: CommandFilter, tee, root
 multipath: CommandFilter, multipath, root
 
+# cinder/volume/drivers/block_device.py
+blockdev: CommandFilter, blockdev, root
+
 # cinder/volume/drivers/gpfs.py
 mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
 mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
