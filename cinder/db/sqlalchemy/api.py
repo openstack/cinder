@@ -1920,28 +1920,32 @@ def sm_volume_get_all(context):
 @require_context
 def backup_get(context, backup_id, session=None):
     result = model_query(context, models.Backup,
-                         read_deleted="yes").filter_by(id=backup_id).first()
+                         session=session, project_only=True).\
+        filter_by(id=backup_id).\
+        first()
+
     if not result:
         raise exception.BackupNotFound(backup_id=backup_id)
+
     return result
 
 
 @require_admin_context
 def backup_get_all(context):
-    return model_query(context, models.Backup, read_deleted="yes").all()
+    return model_query(context, models.Backup).all()
 
 
 @require_admin_context
 def backup_get_all_by_host(context, host):
-    return model_query(context, models.Backup,
-                       read_deleted="yes").filter_by(host=host).all()
+    return model_query(context, models.Backup).filter_by(host=host).all()
 
 
 @require_context
 def backup_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
 
-    return model_query(context, models.Backup, read_deleted="yes").all()
+    return model_query(context, models.Backup).\
+        filter_by(project_id=project_id).all()
 
 
 @require_context
@@ -1975,5 +1979,9 @@ def backup_update(context, backup_id, values):
 def backup_destroy(context, backup_id):
     session = get_session()
     with session.begin():
-        model_query(context, models.Backup,
-                    read_deleted="yes").filter_by(id=backup_id).delete()
+        session.query(models.Backup).\
+            filter_by(id=backup_id).\
+            update({'status': 'deleted',
+                    'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
