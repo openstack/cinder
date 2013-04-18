@@ -87,7 +87,8 @@ class API(base.Base):
 
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
-               availability_zone=None, source_volume=None):
+               availability_zone=None, source_volume=None,
+               scheduler_hints=None):
 
         exclusive_options = (snapshot, image_id, source_volume)
         exclusive_options_set = sum(1 for option in
@@ -223,7 +224,10 @@ class API(base.Base):
                         'image_id': image_id,
                         'source_volid': volume['source_volid']}
 
-        filter_properties = {}
+        if scheduler_hints:
+            filter_properties = {'scheduler_hints': scheduler_hints}
+        else:
+            filter_properties = {}
 
         self._cast_create_volume(context, request_spec, filter_properties)
 
