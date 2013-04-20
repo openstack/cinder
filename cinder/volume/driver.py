@@ -27,11 +27,9 @@ import time
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
-from cinder.volume.configuration import Configuration
 
 LOG = logging.getLogger(__name__)
 
@@ -61,9 +59,9 @@ volume_opts = [
                default=None,
                help='The backend name for a given driver implementation'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(volume_opts)
-FLAGS.import_opt('iscsi_helper', 'cinder.volume.iscsi')
+CONF = cfg.CONF
+CONF.register_opts(volume_opts)
+CONF.import_opt('iscsi_helper', 'cinder.volume.iscsi')
 
 
 class VolumeDriver(object):
@@ -333,7 +331,7 @@ class ISCSIDriver(VolumeDriver):
 
         """
 
-        if self.configuration.iscsi_helper == 'lioadm':
+        if CONF.iscsi_helper == 'lioadm':
             self.tgtadm.initialize_connection(volume, connector)
 
         iscsi_properties = self._get_iscsi_properties(volume)
