@@ -565,7 +565,7 @@ port_speed!N/A
             return self._errors['CMMVC5701E']
         vol_name = kwargs['obj'].strip('\'\'')
 
-        if not vol_name in self._volumes_list:
+        if vol_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
 
         if not force:
@@ -870,10 +870,10 @@ port_speed!N/A
             return self._errors['CMMVC5707E']
         mapping_info['vol'] = kwargs['obj'].strip('\'\'')
 
-        if not mapping_info['vol'] in self._volumes_list:
+        if mapping_info['vol'] not in self._volumes_list:
             return self._errors['CMMVC5753E']
 
-        if not mapping_info['host'] in self._hosts_list:
+        if mapping_info['host'] not in self._hosts_list:
             return self._errors['CMMVC5754E']
 
         if mapping_info['vol'] in self._mappings_list:
@@ -898,7 +898,7 @@ port_speed!N/A
             return self._errors['CMMVC5701E']
         vol = kwargs['obj'].strip('\'\'')
 
-        if not vol in self._mappings_list:
+        if vol not in self._mappings_list:
             return self._errors['CMMVC5753E']
 
         if self._mappings_list[vol]['host'] != host:
@@ -939,13 +939,13 @@ port_speed!N/A
         if 'source' not in kwargs:
             return self._errors['CMMVC5707E']
         source = kwargs['source'].strip('\'\'')
-        if not source in self._volumes_list:
+        if source not in self._volumes_list:
             return self._errors['CMMVC5754E']
 
         if 'target' not in kwargs:
             return self._errors['CMMVC5707E']
         target = kwargs['target'].strip('\'\'')
-        if not target in self._volumes_list:
+        if target not in self._volumes_list:
             return self._errors['CMMVC5754E']
 
         if source == target:
