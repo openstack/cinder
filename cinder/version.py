@@ -14,12 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.openstack.common import version as common_version
+from pbr import version as pbr_version
 
 CINDER_VENDOR = "OpenStack Foundation"
 CINDER_PRODUCT = "OpenStack Cinder"
 CINDER_PACKAGE = None  # OS distro package version suffix
 
 loaded = False
-version_info = common_version.VersionInfo('cinder')
+version_info = pbr_version.VersionInfo('cinder')
 version_string = version_info.version_string
