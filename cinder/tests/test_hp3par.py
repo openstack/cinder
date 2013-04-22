@@ -577,9 +577,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 'name': hostname}
         self._hosts[hostname] = host
 
-    def fake_iscsi_discover_target_iqn(self, remote_ip):
-        return 'iqn.2000-05.com.3pardata:21810002ac00383d'
-
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
         model_update = self.driver.create_volume(self.volume)
