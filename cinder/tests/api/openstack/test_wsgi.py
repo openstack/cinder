@@ -215,7 +215,7 @@ class ResourceTest(test.TestCase):
         expected = 'off'
         self.assertEqual(actual, expected)
 
-    def test_get_method_unknown_controller_action(self):
+    def test_get_method_undefined_controller_action(self):
         class Controller(object):
             def index(self, req, pants=None):
                 return pants
