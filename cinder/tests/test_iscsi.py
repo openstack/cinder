@@ -21,6 +21,7 @@ import tempfile
 
 from cinder import test
 from cinder.volume import iscsi
+from cinder.volume import utils as volume_utils
 
 
 class TargetAdminTestCase(object):
@@ -122,6 +123,55 @@ class IetAdmTestCase(test.TestCase, TargetAdminTestCase):
             'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
             'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
             '--params Path=%(path)s,Type=fileio',
+            'ietadm --op show --tid=%(tid)s',
+            'ietadm --op delete --tid=%(tid)s --lun=%(lun)s',
+            'ietadm --op delete --tid=%(tid)s'])
+
+
+class IetAdmBlockIOTestCase(test.TestCase, TargetAdminTestCase):
+
+    def setUp(self):
+        super(IetAdmBlockIOTestCase, self).setUp()
+        TargetAdminTestCase.setUp(self)
+        self.flags(iscsi_helper='ietadm')
+        self.flags(iscsi_iotype='blockio')
+        self.script_template = "\n".join([
+            'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
+            'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
+            '--params Path=%(path)s,Type=blockio',
+            'ietadm --op show --tid=%(tid)s',
+            'ietadm --op delete --tid=%(tid)s --lun=%(lun)s',
+            'ietadm --op delete --tid=%(tid)s'])
+
+
+class IetAdmFileIOTestCase(test.TestCase, TargetAdminTestCase):
+
+    def setUp(self):
+        super(IetAdmFileIOTestCase, self).setUp()
+        TargetAdminTestCase.setUp(self)
+        self.flags(iscsi_helper='ietadm')
+        self.flags(iscsi_iotype='fileio')
+        self.script_template = "\n".join([
+            'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
+            'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
+            '--params Path=%(path)s,Type=fileio',
+            'ietadm --op show --tid=%(tid)s',
+            'ietadm --op delete --tid=%(tid)s --lun=%(lun)s',
+            'ietadm --op delete --tid=%(tid)s'])
+
+
+class IetAdmAutoIOTestCase(test.TestCase, TargetAdminTestCase):
+
+    def setUp(self):
+        super(IetAdmAutoIOTestCase, self).setUp()
+        TargetAdminTestCase.setUp(self)
+        self.stubs.Set(volume_utils, 'is_block', lambda _: True)
+        self.flags(iscsi_helper='ietadm')
+        self.flags(iscsi_iotype='auto')
+        self.script_template = "\n".join([
+            'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
+            'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
+            '--params Path=%(path)s,Type=blockio',
             'ietadm --op show --tid=%(tid)s',
             'ietadm --op delete --tid=%(tid)s --lun=%(lun)s',
             'ietadm --op delete --tid=%(tid)s'])
