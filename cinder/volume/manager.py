@@ -147,6 +147,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         for volume in volumes:
             if volume['status'] in ['available', 'in-use']:
                 self.driver.ensure_export(ctxt, volume)
+            elif volume['status'] == 'downloading':
+                LOG.info(_("volume %s stuck in a downloading state"),
+                         volume['id'])
+                self.driver.clear_download(ctxt, volume)
+                self.db.volume_update(ctxt, volume['id'], {'status': 'error'})
             else:
                 LOG.info(_("volume %s: skipping export"), volume['name'])
 
