@@ -104,17 +104,6 @@ class RemoteFsDriver(driver.VolumeDriver):
         return os.path.join(self._get_mount_point_for_share(nfs_share),
                             volume['name'])
 
-    def _path_exists(self, path):
-        """Check for existence of given path."""
-        try:
-            self._execute('stat', path, run_as_root=True)
-            return True
-        except exception.ProcessExecutionError as exc:
-            if 'No such file or directory' in exc.stderr:
-                return False
-            else:
-                raise
-
     def _get_hash_str(self, base_str):
         """returns string that represents hash of base_str
         (in a hex format)."""
@@ -178,13 +167,6 @@ class NfsDriver(RemoteFsDriver):
         self._ensure_share_mounted(volume['provider_location'])
 
         mounted_path = self.local_path(volume)
-
-        if not self._path_exists(mounted_path):
-            volume = volume['name']
-
-            LOG.warn(_('Trying to delete non-existing volume %(volume)s at '
-                     'path %(mounted_path)s') % locals())
-            return
 
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
@@ -309,8 +291,7 @@ class NfsDriver(RemoteFsDriver):
 
     def _mount_nfs(self, nfs_share, mount_path, ensure=False):
         """Mount NFS share to mount path"""
-        if not self._path_exists(mount_path):
-            self._execute('mkdir', '-p', mount_path)
+        self._execute('mkdir', '-p', mount_path)
 
         # Construct the NFS mount command.
         nfs_cmd = ['mount', '-t', 'nfs']
