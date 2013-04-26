@@ -55,7 +55,7 @@ class RBDDriver(driver.VolumeDriver):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(rbd_opts)
         self._stats = dict(
-            volume_backend_name='RBD',
+            volume_backend_name=self.configuration.volume_backend_name or 'RBD',
             vendor_name='Open Source',
             driver_version=VERSION,
             storage_protocol='ceph',
