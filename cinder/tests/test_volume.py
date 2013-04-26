@@ -77,7 +77,7 @@ class VolumeTestCase(test.TestCase):
 
     @staticmethod
     def _create_volume(size=0, snapshot_id=None, image_id=None,
-                       metadata=None):
+                       metadata=None, status="creating"):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -86,12 +86,21 @@ class VolumeTestCase(test.TestCase):
         vol['user_id'] = 'fake'
         vol['project_id'] = 'fake'
         vol['availability_zone'] = FLAGS.storage_availability_zone
-        vol['status'] = "creating"
+        vol['status'] = status
         vol['attach_status'] = "detached"
         vol['host'] = FLAGS.host
         if metadata is not None:
             vol['metadata'] = metadata
         return db.volume_create(context.get_admin_context(), vol)
+
+    def test_init_host_clears_downloads(self):
+        """Test that init_host will unwedge a volume stuck in downloading."""
+        volume = self._create_volume(status='downloading')
+        volume_id = volume['id']
+        self.volume.init_host()
+        volume = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEquals(volume['status'], "error")
+        self.volume.delete_volume(self.context, volume_id)
 
     def test_create_delete_volume(self):
         """Test volume can be created and deleted."""

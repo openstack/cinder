@@ -191,6 +191,10 @@ class VolumeDriver(object):
         """Restore an existing backup to a new or existing volume."""
         raise NotImplementedError()
 
+    def clear_download(self, context, volume):
+        """Clean up after an interrupted image copy."""
+        pass
+
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.
