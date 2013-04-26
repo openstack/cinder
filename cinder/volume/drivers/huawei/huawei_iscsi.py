@@ -17,6 +17,7 @@
 """
 Volume driver for HUAWEI T series and Dorado storage systems.
 """
+import base64
 import os
 import paramiko
 import re
@@ -253,7 +254,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                 raise exception.VolumeBackendAPIException(data=err_msg)
             target_ip = iscsi_conf['DefaultTargetIP']
 
-        target_iqn = self._get_tgt_iqn(target_ip)
+        (target_iqn, controller) = self._get_tgt_iqn(target_ip)
         if not target_iqn:
             err_msg = (_('initialize_connection:Failed to find target iSCSI'
                          'iqn. Target IP:%(ip)s')
@@ -328,6 +329,10 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         if not hostlun_id:
             self._map_lun(lun_id, host_id, new_hostlun_id)
             hostlun_id = self._get_hostlunid(host_id, lun_id)
+
+        # Change lun ownning controller for better performance.
+        if self._get_lun_controller(lun_id) != controller:
+            self._change_lun_controller(lun_id, controller)
 
         # Return iSCSI properties.
         properties = {}
@@ -583,12 +588,29 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
     def _get_login_info(self):
         """Get login IP, username and password from config file."""
         logininfo = {}
-        root = self._read_xml()
         try:
+            filename = self.configuration.cinder_huawei_conf_file
+            tree = ET.parse(filename)
+            root = tree.getroot()
             logininfo['ControllerIP0'] = root.findtext('Storage/ControllerIP0')
             logininfo['ControllerIP1'] = root.findtext('Storage/ControllerIP1')
-            logininfo['UserName'] = root.findtext('Storage/UserName')
-            logininfo['UserPassword'] = root.findtext('Storage/UserPassword')
+
+            need_encode = False
+            for key in ['UserName', 'UserPassword']:
+                node = root.find('Storage/%s' % key)
+                node_text = node.text
+                if node_text.find('!$$$') == 0:
+                    logininfo[key] = base64.b64decode(node_text[4:])
+                else:
+                    logininfo[key] = node_text
+                    node.text = '!$$$' + base64.b64encode(node_text)
+                    need_encode = True
+            if need_encode:
+                try:
+                    tree.write(filename, 'UTF-8')
+                except Exception as err:
+                    LOG.error(_('Write login informationto xml error. %s')
+                              % err)
 
         except Exception as err:
             LOG.error(_('_get_login_info error. %s') % err)
@@ -996,7 +1018,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         out = self._execute_cli(cli_cmd)
         en = out.split('\r\n')
         if len(en) < 4:
-            return None
+            return (None, None)
 
         index = en[4].find('iqn')
         iqn_prefix = en[4][index:]
@@ -1026,9 +1048,9 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
             LOG.debug(_('_get_tgt_iqn:iSCSI target iqn is:%s') % iqn)
 
-            return iqn
+            return (iqn, iscsiip_info['ctrid'])
         else:
-            return None
+            return (None, None)
 
     def _get_iscsi_ip_info(self, iscsiip):
         """Get iSCSI IP infomation of storage device."""
@@ -1128,7 +1150,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         """Get map infomation of the given host.
 
         This method return a map information list. Every item in the list
-        is a dictionary. The dictionarie includes three keys: mapid,
+        is a dictionary. The dictionary includes three keys: mapid,
         devlunid, hostlunid. These items are sorted by hostlunid value
         from small to large.
         """
@@ -1425,6 +1447,32 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             if r[0] == snapshotname:
                 return r[1]
         return None
+
+    def _get_lun_controller(self, lun_id):
+        cli_cmd = ('showlun -lun %s' % lun_id)
+        out = self._execute_cli(cli_cmd)
+        en = out.split('\r\n')
+        if len(en) <= 4:
+            return None
+
+        if "Dorado2100 G2" == self.device_type['type']:
+            return en[10].split()[3]
+        else:
+            return en[12].split()[3]
+
+    def _change_lun_controller(self, lun_id, controller):
+        cli_cmd = ('chglun -lun %s -c %s' % (lun_id, controller))
+        out = self._execute_cli(cli_cmd)
+        if not re.search('command operates successfully', out):
+            err_msg = (_('_change_lun_controller:Failed to change lun owning'
+                         'controller. lun id:%(lunid)s. '
+                         'new controller:%(controller)s. '
+                         'out:%(out)s')
+                       % {'lunid': lun_id,
+                          'controller': controller,
+                          'out': out})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
     def _is_resource_pool_enough(self):
         """Check whether resource pools' valid size is more than 1G."""

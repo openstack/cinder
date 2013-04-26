@@ -18,6 +18,11 @@
 """
 Tests for HUAWEI volume driver.
 """
+import mox
+import os
+import shutil
+import tempfile
+from xml.dom.minidom import Document
 from xml.etree import ElementTree as ET
 
 from cinder import exception
@@ -27,30 +32,6 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import huawei_iscsi
 
 LOG = logging.getLogger(__name__)
-
-FakeXML = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-    <Storage>
-        <ControllerIP0>10.10.10.1</ControllerIP0>
-        <ControllerIP1>10.10.10.2</ControllerIP1>
-        <UserName>admin</UserName>
-        <UserPassword>123456</UserPassword>
-    </Storage>
-    <LUN>
-        <LUNType>Thick</LUNType>
-        <StripUnitSize>64</StripUnitSize>
-        <WriteType>1</WriteType>
-        <MirrorSwitch>1</MirrorSwitch>
-        <Prefetch Type="3" Value="0"/>
-        <StoragePool Name="RAID_001"/>
-        <StoragePool Name="RAID_002"/>
-    </LUN>
-    <iSCSI>
-        <DefaultTargetIP>192.168.100.1</DefaultTargetIP>
-        <Initiator Name="iqn.1993-08.debian:01:ec2bff7ac3a3"
-        TargetIP="192.168.100.2"/>
-    </iSCSI>
-</config>"""
 
 LUNInfo = {'ID': None,
            'Name': None,
@@ -185,13 +166,21 @@ class HuaweiVolumeTestCase(test.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(HuaweiVolumeTestCase, self).__init__(*args, **kwargs)
-        self.driver = FakeHuaweiStorage(configuration=conf.Configuration(None))
+
+        self.tmp_dir = tempfile.mkdtemp()
+        self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self._create_fake_conf_file()
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.cinder_huawei_conf_file = self.fake_conf_file
+        configuration.append_config_values(mox.IgnoreArg())
+        self.driver = FakeHuaweiStorage(configuration=configuration)
+
         self.driver.do_setup({})
-        self.driver._test_flg = 'check_for_fail'
-        self._test_check_for_setup_errors()
 
     def setUp(self):
         super(HuaweiVolumeTestCase, self).setUp()
+        self.driver._test_flg = 'check_for_fail'
+        self._test_check_for_setup_errors()
 
     def test_create_export_failed(self):
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -267,6 +256,60 @@ class HuaweiVolumeTestCase(test.TestCase):
         self._test_terminate_connection()
         self._test_delete_snapshot()
         self._test_delete_volume()
+
+    def cleanup(self):
+        if os.path.exists(self.fake_conf_file):
+            os.remove(self.fake_conf_file)
+        shutil.rmtree(self.tmp_dir)
+
+    def _create_fake_conf_file(self):
+        doc = Document()
+
+        config = doc.createElement('config')
+        doc.appendChild(config)
+
+        storage = doc.createElement('Storage')
+        config.appendChild(storage)
+        controllerip0 = doc.createElement('ControllerIP0')
+        controllerip0_text = doc.createTextNode('10.10.10.1')
+        controllerip0.appendChild(controllerip0_text)
+        storage.appendChild(controllerip0)
+        controllerip1 = doc.createElement('ControllerIP1')
+        controllerip1_text = doc.createTextNode('10.10.10.2')
+        controllerip1.appendChild(controllerip1_text)
+        storage.appendChild(controllerip1)
+        username = doc.createElement('UserName')
+        username_text = doc.createTextNode('admin')
+        username.appendChild(username_text)
+        storage.appendChild(username)
+        userpassword = doc.createElement('UserPassword')
+        userpassword_text = doc.createTextNode('123456')
+        userpassword.appendChild(userpassword_text)
+        storage.appendChild(userpassword)
+
+        lun = doc.createElement('LUN')
+        config.appendChild(lun)
+        storagepool = doc.createElement('StoragePool')
+        storagepool.setAttribute('Name', 'RAID_001')
+        lun.appendChild(storagepool)
+        storagepool = doc.createElement('StoragePool')
+        storagepool.setAttribute('Name', 'RAID_002')
+        lun.appendChild(storagepool)
+
+        iscsi = doc.createElement('iSCSI')
+        config.appendChild(iscsi)
+        defaulttargetip = doc.createElement('DefaultTargetIP')
+        defaulttargetip_text = doc.createTextNode('192.168.100.1')
+        defaulttargetip.appendChild(defaulttargetip_text)
+        iscsi.appendChild(defaulttargetip)
+        initiator = doc.createElement('Initiator')
+        initiator.setAttribute('Name', 'iqn.1993-08.debian:01:ec2bff7ac3a3')
+        initiator.setAttribute('TargetIP', '192.168.100.2')
+        iscsi.appendChild(initiator)
+
+        file = open(self.fake_conf_file, 'w')
+        file.write(doc.toprettyxml(indent=''))
+        file.close()
 
     def _test_check_for_setup_errors(self):
         self.driver.check_for_setup_error()
@@ -806,13 +849,11 @@ Link Status  Multipath Type
 ============================================================================
 """
 
+        elif cmd == 'chglun':
+            out = 'command operates successfully'
+
         out = out.replace('\n', '\r\n')
         return out
 
-    def _read_xml(self):
-        try:
-            root = ET.fromstring(FakeXML)
-        except Exception as err:
-            LOG.debug(_('_read_xml:ERROR:%s') % err)
-            raise exception.VolumeBackendAPIException(data=err)
-        return root
+    def _get_lun_controller(self, lunid):
+        pass
