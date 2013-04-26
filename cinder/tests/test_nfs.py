@@ -96,39 +96,6 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-    def test_path_exists_should_return_true(self):
-        """_path_exists should return True if stat returns 0."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('stat', self.TEST_FILE_NAME, run_as_root=True)
-
-        mox.ReplayAll()
-
-        self.assertTrue(drv._path_exists(self.TEST_FILE_NAME))
-
-        mox.VerifyAll()
-
-    def test_path_exists_should_return_false(self):
-        """_path_exists should return True if stat doesn't return 0."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute(
-            'stat',
-            self.TEST_FILE_NAME, run_as_root=True).\
-            AndRaise(ProcessExecutionError(
-                stderr="stat: cannot stat `test.txt': No such file "
-                       "or directory"))
-
-        mox.ReplayAll()
-
-        self.assertFalse(drv._path_exists(self.TEST_FILE_NAME))
-
-        mox.VerifyAll()
-
     def test_get_hash_str(self):
         """_get_hash_str should calculation correct value."""
         drv = self._driver
@@ -171,39 +138,6 @@ class NfsDriverTestCase(test.TestCase):
         stub = mox_lib.MockObject(attr_to_replace)
         self.stubs.Set(obj, attr_name, stub)
 
-    def test_path_exists_should_return_true(self):
-        """_path_exists should return True if stat returns 0."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('stat', self.TEST_FILE_NAME, run_as_root=True)
-
-        mox.ReplayAll()
-
-        self.assertTrue(drv._path_exists(self.TEST_FILE_NAME))
-
-        mox.VerifyAll()
-
-    def test_path_exists_should_return_false(self):
-        """_path_exists should return True if stat doesn't return 0."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute(
-            'stat',
-            self.TEST_FILE_NAME, run_as_root=True).\
-            AndRaise(ProcessExecutionError(
-                stderr="stat: cannot stat `test.txt': No such file "
-                       "or directory"))
-
-        mox.ReplayAll()
-
-        self.assertFalse(drv._path_exists(self.TEST_FILE_NAME))
-
-        mox.VerifyAll()
-
     def test_local_path(self):
         """local_path common use case."""
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
@@ -222,10 +156,8 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_MNT_POINT).AndReturn(True)
-
         mox.StubOutWithMock(drv, '_execute')
+        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
                      self.TEST_MNT_POINT, run_as_root=True)
 
@@ -241,10 +173,8 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_MNT_POINT).AndReturn(True)
-
         mox.StubOutWithMock(drv, '_execute')
+        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
                      self.TEST_MNT_POINT, run_as_root=True).\
             AndRaise(ProcessExecutionError(
@@ -262,10 +192,8 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_MNT_POINT).AndReturn(True)
-
         mox.StubOutWithMock(drv, '_execute')
+        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute(
             'mount',
             '-t',
@@ -287,9 +215,6 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_MNT_POINT).AndReturn(False)
-
         mox.StubOutWithMock(drv, '_execute')
         drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute(*([IgnoreArg()] * 5), run_as_root=IgnoreArg())
@@ -305,10 +230,8 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_MNT_POINT).AndReturn(True)
-
         mox.StubOutWithMock(drv, '_execute')
+        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute(*([IgnoreArg()] * 5), run_as_root=IgnoreArg())
 
         mox.ReplayAll()
@@ -657,9 +580,6 @@ class NfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, 'local_path')
         drv.local_path(volume).AndReturn(self.TEST_LOCAL_PATH)
 
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_LOCAL_PATH).AndReturn(True)
-
         mox.StubOutWithMock(drv, '_execute')
         drv._execute('rm', '-f', self.TEST_LOCAL_PATH, run_as_root=True)
 
@@ -699,31 +619,6 @@ class NfsDriverTestCase(test.TestCase):
         volume = DumbVolume()
         volume['name'] = 'volume-123'
         volume['provider_location'] = None
-
-        mox.StubOutWithMock(drv, '_execute')
-
-        mox.ReplayAll()
-
-        drv.delete_volume(volume)
-
-        mox.VerifyAll()
-
-    def test_delete_should_not_delete_if_there_is_no_file(self):
-        """delete_volume should not try to delete if file missed."""
-        mox = self._mox
-        drv = self._driver
-
-        self.stub_out_not_replaying(drv, '_ensure_share_mounted')
-
-        volume = DumbVolume()
-        volume['name'] = 'volume-123'
-        volume['provider_location'] = self.TEST_NFS_EXPORT1
-
-        mox.StubOutWithMock(drv, 'local_path')
-        drv.local_path(volume).AndReturn(self.TEST_LOCAL_PATH)
-
-        mox.StubOutWithMock(drv, '_path_exists')
-        drv._path_exists(self.TEST_LOCAL_PATH).AndReturn(False)
 
         mox.StubOutWithMock(drv, '_execute')
 

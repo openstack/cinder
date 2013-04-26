@@ -113,13 +113,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         mounted_path = self.local_path(volume)
 
-        if not self._path_exists(mounted_path):
-            volume = volume['name']
-
-            LOG.warn(_('Trying to delete non-existing volume %(volume)s at '
-                     'path %(mounted_path)s') % locals())
-            return
-
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
     def ensure_export(self, ctx, volume):
@@ -244,8 +237,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
     def _mount_glusterfs(self, glusterfs_share, mount_path, ensure=False):
         """Mount GlusterFS share to mount path."""
-        if not self._path_exists(mount_path):
-            self._execute('mkdir', '-p', mount_path)
+        self._execute('mkdir', '-p', mount_path)
 
         try:
             self._execute('mount', '-t', 'glusterfs', glusterfs_share,
