@@ -505,7 +505,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Get reservations
         try:
-            if CONF.no_snapshot_gb_quota:
+            if FLAGS.no_snapshot_gb_quota:
                 reservations = QUOTAS.reserve(context,
                                               project_id=project_id,
                                               snapshots=-1)
