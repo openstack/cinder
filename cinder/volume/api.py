@@ -149,6 +149,10 @@ class API(base.Base):
             if image_size_in_gb > size:
                 msg = _('Size of specified image is larger than volume size.')
                 raise exception.InvalidInput(reason=msg)
+            # Check image minDisk requirement is met for the particular volume
+            if size < image_meta.get('min_disk', 0):
+                msg = _('Image minDisk size is larger than the volume size.')
+                raise exception.InvalidInput(reason=msg)
 
         try:
             reservations = QUOTAS.reserve(context, volumes=1, gigabytes=size)

@@ -894,6 +894,27 @@ class VolumeTestCase(test.TestCase):
                           self.context, 2,
                           'name', 'description', image_id=1)
 
+    def test_create_volume_with_mindisk_error(self):
+        """Verify volumes smaller than image minDisk will cause an error."""
+        class _FakeImageService:
+            def __init__(self, db_driver=None, image_service=None):
+                pass
+
+            def show(self, context, image_id):
+                return {'size': 2 * 1024 * 1024 * 1024,
+                        'disk_format': 'raw',
+                        'container_format': 'bare',
+                        'min_disk': 5}
+
+        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
+
+        volume_api = cinder.volume.api.API(image_service=_FakeImageService())
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context, 2,
+                          'name', 'description', image_id=1)
+
     def _do_test_create_volume_with_size(self, size):
         def fake_reserve(context, expire=None, project_id=None, **deltas):
             return ["RESERVATION"]
