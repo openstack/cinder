@@ -76,7 +76,8 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     def get_volume_stats(self, refresh):
         stats = self.common.get_volume_stats(refresh, self.client)
         stats['storage_protocol'] = 'FC'
-        stats['volume_backend_name'] = 'HP3PARFCDriver'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        stats['volume_backend_name'] = backend_name or self.__class__.__name__
         return stats
 
     def do_setup(self, context):

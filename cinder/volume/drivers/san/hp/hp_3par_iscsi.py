@@ -75,7 +75,8 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def get_volume_stats(self, refresh):
         stats = self.common.get_volume_stats(refresh, self.client)
         stats['storage_protocol'] = 'iSCSI'
-        stats['volume_backend_name'] = 'HP3PARISCSIDriver'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        stats['volume_backend_name'] = backend_name or self.__class__.__name__
         return stats
 
     def do_setup(self, context):

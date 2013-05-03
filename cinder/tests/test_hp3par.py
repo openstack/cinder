@@ -492,9 +492,15 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_get_volume_stats(self):
         self.flags(lock_path=self.tempdir)
+
+        def fake_safe_get(*args):
+            return "HP3PARFCDriver"
+
+        self.stubs.Set(self.driver.configuration, 'safe_get', fake_safe_get)
         stats = self.driver.get_volume_stats(True)
         self.assertEquals(stats['storage_protocol'], 'FC')
-        self.assertEquals(stats['volume_backend_name'], 'HP3PARFCDriver')
+        self.assertEquals(stats['total_capacity_gb'], 'infinite')
+        self.assertEquals(stats['free_capacity_gb'], 'infinite')
 
 
 class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
@@ -631,6 +637,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_get_volume_stats(self):
         self.flags(lock_path=self.tempdir)
+
+        def fake_safe_get(*args):
+            return "HP3PARFCDriver"
+
+        self.stubs.Set(self.driver.configuration, 'safe_get', fake_safe_get)
         stats = self.driver.get_volume_stats(True)
         self.assertEquals(stats['storage_protocol'], 'iSCSI')
-        self.assertEquals(stats['volume_backend_name'], 'HP3PARISCSIDriver')
+        self.assertEquals(stats['total_capacity_gb'], 'infinite')
+        self.assertEquals(stats['free_capacity_gb'], 'infinite')

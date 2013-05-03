@@ -1393,7 +1393,8 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data['volume_backend_name'] = 'HuaweiISCSIDriver'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'HuaweiISCSIDriver'
         data['vendor_name'] = 'Huawei'
         data['driver_version'] = '1.0'
         data['storage_protocol'] = 'iSCSI'

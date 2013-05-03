@@ -54,14 +54,7 @@ class RBDDriver(driver.VolumeDriver):
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(rbd_opts)
-        self._stats = dict(
-            volume_backend_name='RBD',
-            vendor_name='Open Source',
-            driver_version=VERSION,
-            storage_protocol='ceph',
-            total_capacity_gb='unknown',
-            free_capacity_gb='unknown',
-            reserved_percentage=0)
+        self._stats = {}
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
@@ -73,9 +66,15 @@ class RBDDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
     def _update_volume_stats(self):
-        stats = dict(
-            total_capacity_gb='unknown',
-            free_capacity_gb='unknown')
+        stats = {'vendor_name': 'Open Source',
+                 'driver_version': VERSION,
+                 'storage_protocol': 'ceph',
+                 'total_capacity_gb': 'unknown',
+                 'free_capacity_gb': 'unknown',
+                 'reserved_percentage': 0}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        stats['volume_backend_name'] = backend_name or 'RBD'
+
         try:
             stdout, _err = self._execute('rados', 'df', '--format', 'json')
             new_stats = json.loads(stdout)
@@ -86,7 +85,7 @@ class RBDDriver(driver.VolumeDriver):
         except exception.ProcessExecutionError:
             # just log and return unknown capacities
             LOG.exception(_('error refreshing volume stats'))
-        self._stats.update(stats)
+        self._stats = stats
 
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is

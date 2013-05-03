@@ -153,7 +153,12 @@ class RBDTestCase(test.TestCase):
     def test_update_volume_stats(self):
         def fake_stats(*args):
             return RADOS_DF_OUT, ''
+
+        def fake_safe_get(*args):
+            return "RBD"
+
         self.stubs.Set(self.driver, '_execute', fake_stats)
+        self.stubs.Set(self.driver.configuration, 'safe_get', fake_safe_get)
         expected = dict(
             volume_backend_name='RBD',
             vendor_name='Open Source',
@@ -168,7 +173,12 @@ class RBDTestCase(test.TestCase):
     def test_update_volume_stats_error(self):
         def fake_exc(*args):
             raise exception.ProcessExecutionError()
+
+        def fake_safe_get(*args):
+            return "RBD"
+
         self.stubs.Set(self.driver, '_execute', fake_exc)
+        self.stubs.Set(self.driver.configuration, 'safe_get', fake_safe_get)
         expected = dict(
             volume_backend_name='RBD',
             vendor_name='Open Source',
