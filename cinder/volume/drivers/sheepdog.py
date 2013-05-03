@@ -33,16 +33,8 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
-        self._stats = dict(
-            volume_backend_name='sheepdog',
-            vendor_name='Open Source',
-            dirver_version='1.0',
-            storage_protocol='sheepdog',
-            total_capacity_gb='unknown',
-            free_capacity_gb='unknown',
-            reserved_percentage=0,
-            QoS_support=False)
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
+        self._stats = {}
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
@@ -118,6 +110,19 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def _update_volume_stats(self):
         stats = {}
+
+        backend_name = "sheepdog"
+        if self.configuration:
+            backend_name = self.configuration.safe_get('volume_backend_name')
+        stats["volume_backend_name"] = backend_name or 'sheepdog'
+        stats['vendor_name'] = 'Open Source'
+        stats['dirver_version'] = '1.0'
+        stats['storage_protocol'] = 'sheepdog'
+        stats['total_capacity_gb'] = 'unknown'
+        stats['free_capacity_gb'] = 'unknown'
+        stats['reserved_percentage'] = 0
+        stats['QoS_support'] = False
+
         try:
             stdout, _err = self._execute('collie', 'node', 'info', '-r')
             m = self.stats_pattern.match(stdout)
@@ -127,7 +132,8 @@ class SheepdogDriver(driver.VolumeDriver):
             stats['free_capacity_gb'] = (total - used) / (1024 ** 3)
         except exception.ProcessExecutionError:
             LOG.exception(_('error refreshing volume stats'))
-        self._stats.update(stats)
+
+        self._stats = stats
 
     def get_volume_stats(self, refresh=False):
         if refresh:

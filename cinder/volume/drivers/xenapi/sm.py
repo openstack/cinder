@@ -245,14 +245,17 @@ class XenAPINFSDriver(driver.VolumeDriver):
 
     def get_volume_stats(self, refresh=False):
         if refresh or not self._stats:
-            self._stats = dict(
-                volume_backend_name='XenAPINFS',
-                vendor_name='Open Source',
-                driver_version='1.0',
-                storage_protocol='xensm',
-                total_capacity_gb='unknown',
-                free_capacity_gb='unknown',
-                reserved_percentage=0)
+            data = {}
+
+            backend_name = self.configuration.safe_get('volume_backend_name')
+            data["volume_backend_name"] = backend_name or 'XenAPINFS',
+            data['vendor_name'] = 'Open Source',
+            data['driver_version'] = '1.0'
+            data['storage_protocol'] = 'xensm'
+            data['total_capacity_gb'] = 'unknown'
+            data['free_capacity_gb'] = 'unknown'
+            data['reserved_percentage'] = 0
+            self._stats = data
 
         return self._stats
 
