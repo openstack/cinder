@@ -23,7 +23,7 @@ import base64
 import urllib2
 
 import cinder.flags
-import cinder.test
+from cinder import test
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import volume
@@ -31,7 +31,7 @@ from cinder.volume.drivers.nexenta import volume
 FLAGS = cinder.flags.FLAGS
 
 
-class TestNexentaDriver(cinder.test.TestCase):
+class TestNexentaDriver(test.TestCase):
     TEST_VOLUME_NAME = 'volume1'
     TEST_VOLUME_NAME2 = 'volume2'
     TEST_SNAPSHOT_NAME = 'snapshot1'
@@ -197,8 +197,25 @@ class TestNexentaDriver(cinder.test.TestCase):
         self.mox.ReplayAll()
         self.drv.remove_export({}, self.TEST_VOLUME_REF)
 
+    def test_get_volume_stats(self):
+        stats = {'size': '5368709120G',
+                 'used': '5368709120G',
+                 'available': '5368709120G',
+                 'health': 'ONLINE'}
+        self.nms_mock.volume.get_child_props(
+            FLAGS.nexenta_volume,
+            'health|size|used|available').AndReturn(stats)
+        self.mox.ReplayAll()
+        stats = self.drv.get_volume_stats(True)
+        self.assertEquals(stats['storage_protocol'], 'iSCSI')
+        self.assertEquals(stats['volume_backend_name'], 'NexentaDriver')
+        self.assertEquals(stats['total_capacity_gb'], 5368709120.0)
+        self.assertEquals(stats['free_capacity_gb'], 5368709120.0)
+        self.assertEquals(stats['reserved_percentage'], 0)
+        self.assertEquals(stats['QoS_support'], False)
 
-class TestNexentaJSONRPC(cinder.test.TestCase):
+
+class TestNexentaJSONRPC(test.TestCase):
     URL = 'http://example.com/'
     URL_S = 'https://example.com/'
     USER = 'user'
