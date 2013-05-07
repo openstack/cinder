@@ -19,8 +19,8 @@ import shutil
 import string
 import tempfile
 
+from cinder.brick.iscsi import iscsi
 from cinder import test
-from cinder.volume import iscsi
 from cinder.volume import utils as volume_utils
 
 

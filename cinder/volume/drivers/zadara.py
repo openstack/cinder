@@ -31,7 +31,6 @@ from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
-from cinder.volume import iscsi
 
 LOG = logging.getLogger("cinder.volume.driver")
 

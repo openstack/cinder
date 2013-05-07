@@ -27,6 +27,7 @@ import mox
 import shutil
 import tempfile
 
+from cinder.brick.iscsi import iscsi
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -43,7 +44,6 @@ from cinder.tests import fake_flags
 from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
-from cinder.volume import iscsi
 
 QUOTAS = quota.QUOTAS
 FLAGS = flags.FLAGS
