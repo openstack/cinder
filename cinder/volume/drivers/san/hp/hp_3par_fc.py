@@ -116,6 +116,7 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
         """Returns an error if prerequisites aren't met."""
         self._check_flags()
 
+    @lockutils.synchronized('3par-vol', 'cinder-', True)
     def create_volume(self, volume):
         metadata = self.common.create_volume(volume, self.client)
         return {'metadata': metadata}
@@ -125,9 +126,11 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
                                                    self.client)
         return {'metadata': new_vol}
 
+    @lockutils.synchronized('3par-vol', 'cinder-', True)
     def delete_volume(self, volume):
         self.common.delete_volume(volume, self.client)
 
+    @lockutils.synchronized('3par-vol', 'cinder-', True)
     def create_volume_from_snapshot(self, volume, snapshot):
         """
         Creates a volume from a snapshot.
@@ -136,12 +139,15 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
         """
         self.common.create_volume_from_snapshot(volume, snapshot, self.client)
 
+    @lockutils.synchronized('3par-snap', 'cinder-', True)
     def create_snapshot(self, snapshot):
         self.common.create_snapshot(snapshot, self.client)
 
+    @lockutils.synchronized('3par-snap', 'cinder-', True)
     def delete_snapshot(self, snapshot):
         self.common.delete_snapshot(snapshot, self.client)
 
+    @lockutils.synchronized('3par-attach', 'cinder-', True)
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -193,6 +199,7 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
                          'target_wwn': ports['FC']}}
         return info
 
+    @lockutils.synchronized('3par-attach', 'cinder-', True)
     def terminate_connection(self, volume, connector, force):
         """
         Driver entry point to unattach a volume from an instance.
@@ -238,11 +245,14 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
 
         return host
 
+    @lockutils.synchronized('3par-exp', 'cinder-', True)
     def create_export(self, context, volume):
         pass
 
+    @lockutils.synchronized('3par-exp', 'cinder-', True)
     def ensure_export(self, context, volume):
         pass
 
+    @lockutils.synchronized('3par-exp', 'cinder-', True)
     def remove_export(self, context, volume):
         pass
