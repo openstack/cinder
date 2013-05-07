@@ -1315,6 +1315,14 @@
 
 
 #
+# options for cinder.volumes.drivers.hds.hds.HUSDriver
+#
+
+# default configuration file location/name is (string) :
+# hds_cinder_config_file=/opt/hds/hus/cinder_hds_conf.xml
+
+
+#
 # Options defined in cinder.volume.iscsi
 #
 
@@ -1344,5 +1352,4 @@
 # Driver to use for volume creation (string value)
 #volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 
-
-# Total option count: 299
+# Total option count: 300
