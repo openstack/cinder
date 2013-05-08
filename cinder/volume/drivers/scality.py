@@ -223,7 +223,6 @@ class ScalityDriver(driver.VolumeDriver):
         If 'refresh' is True, run the update first.
         """
         stats = {
-            'volume_backend_name': 'Scality_SOFS',
             'vendor_name': 'Scality',
             'driver_version': '1.0',
             'storage_protocol': 'scality',
@@ -231,6 +230,8 @@ class ScalityDriver(driver.VolumeDriver):
             'free_capacity_gb': 'infinite',
             'reserved_percentage': 0,
         }
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        stats['volume_backend_name'] = backend_name or 'Scality_SOFS'
         return stats
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):

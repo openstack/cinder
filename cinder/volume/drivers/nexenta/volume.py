@@ -316,7 +316,10 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         LOG.debug(_("Updating volume status"))
         data = {}
-        data["volume_backend_name"] = self.__class__.__name__
+        backend_name = self.__class__.__name__
+        if self.configuration:
+            backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'Nexenta'
         data["driver_version"] = VERSION
         data["storage_protocol"] = 'iSCSI'

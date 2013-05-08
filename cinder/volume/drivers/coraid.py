@@ -400,13 +400,15 @@ class CoraidDriver(driver.VolumeDriver):
 
     def get_volume_stats(self, refresh=False):
         """Return Volume Stats."""
-        return {'driver_version': '1.0',
+        data = {'driver_version': '1.0',
                 'free_capacity_gb': 'unknown',
                 'reserved_percentage': 0,
                 'storage_protocol': 'aoe',
                 'total_capacity_gb': 'unknown',
-                'vendor_name': 'Coraid',
-                'volume_backend_name': 'EtherCloud ESM'}
+                'vendor_name': 'Coraid'}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data['volume_backend_name'] = backend_name or 'EtherCloud ESM'
+        return data
 
     def local_path(self, volume):
         pass

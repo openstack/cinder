@@ -240,6 +240,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         """Retrieve status info from volume group."""
         LOG.debug(_("Updating volume status"))
         data = self.common.update_volume_status()
-        data['volume_backend_name'] = 'EMCSMISISCSIDriver'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data['volume_backend_name'] = backend_name or 'EMCSMISISCSIDriver'
         data['storage_protocol'] = 'iSCSI'
         self._stats = data
