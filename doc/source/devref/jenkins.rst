@@ -22,10 +22,6 @@ Jenkins performs tasks such as:
 `cinder-docs`_
     Build this documentation and push it to http://cinder.openstack.org.
 
-`cinder-pylint`_
-    Run `pylint <http://www.logilab.org/project/pylint>`_ on the cinder code and
-    report violations.
-
 `cinder-tarball`_
     Do ``python setup.py sdist`` to create a tarball of the cinder code and upload
     it to http://cinder.openstack.org/tarballs
