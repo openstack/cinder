@@ -45,7 +45,7 @@ weights = [
 
 setuptools.setup(
     name=project,
-    version=common_setup.get_version(project, '2013.1.1'),
+    version=common_setup.get_version(project, '2013.1.2'),
     description='block storage service',
     author='OpenStack',
     author_email='cinder@lists.launchpad.net',
