@@ -206,6 +206,39 @@ class FakeHP3ParClient(object):
         volume = self.getVolume(name)
         self.volumes.remove(volume)
 
+    def createCPG(self, name, optional=None):
+        cpg = {'SAGrowth': {'LDLayout': {'diskPatterns': [{'diskType': 2}]},
+                            'incrementMiB': 8192},
+               'SAUsage': {'rawTotalMiB': 24576,
+                           'rawUsedMiB': 768,
+                           'totalMiB': 8192,
+                           'usedMiB': 256},
+               'SDGrowth': {'LDLayout': {'RAIDType': 4,
+                            'diskPatterns': [{'diskType': 2}]},
+                            'incrementMiB': 32768},
+               'SDUsage': {'rawTotalMiB': 49152,
+                           'rawUsedMiB': 1023,
+                           'totalMiB': 36864,
+                           'usedMiB': 768},
+               'UsrUsage': {'rawTotalMiB': 57344,
+                            'rawUsedMiB': 43349,
+                            'totalMiB': 43008,
+                            'usedMiB': 32512},
+               'additionalStates': [],
+               'degradedStates': [],
+               'domain': HP3PAR_DOMAIN,
+               'failedStates': [],
+               'id': 1,
+               'name': name,
+               'numFPVVs': 2,
+               'numTPVVs': 0,
+               'state': 1,
+               'uuid': '29c214aa-62b9-41c8-b198-000000000000'}
+
+        new_cpg = cpg.copy()
+        new_cpg.update(optional)
+        self.cpgs.append(new_cpg)
+
     def getCPGs(self):
         return self.cpgs
 
@@ -218,6 +251,10 @@ class FakeHP3ParClient(object):
         msg = {'code': 'NON_EXISTENT_HOST',
                'desc': "CPG '%s' was not found" % name}
         raise hpexceptions.HTTPNotFound(msg)
+
+    def deleteCPG(self, name):
+        cpg = self.getCPG(name)
+        self.cpgs.remove(cpg)
 
     def createVLUN(self, volumeName, lun, hostname=None,
                    portPos=None, noVcn=None,
@@ -515,6 +552,22 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['total_capacity_gb'], 'infinite')
         self.assertEquals(stats['free_capacity_gb'], 'infinite')
 
+        #modify the CPG to have a limit
+        old_cpg = self.driver.client.getCPG(HP3PAR_CPG)
+        options = {'SDGrowth': {'limitMiB': 8192}}
+        self.driver.client.deleteCPG(HP3PAR_CPG)
+        self.driver.client.createCPG(HP3PAR_CPG, options)
+
+        const = 0.0009765625
+        stats = self.driver.get_volume_stats(True)
+        self.assertEquals(stats['storage_protocol'], 'FC')
+        total_capacity_gb = 8192 * const
+        self.assertEquals(stats['total_capacity_gb'], total_capacity_gb)
+        free_capacity_gb = int((8192 - old_cpg['UsrUsage']['usedMiB']) * const)
+        self.assertEquals(stats['free_capacity_gb'], free_capacity_gb)
+        self.driver.client.deleteCPG(HP3PAR_CPG)
+        self.driver.client.createCPG(HP3PAR_CPG, {})
+
     def test_create_host(self):
         self.flags(lock_path=self.tempdir)
 
@@ -722,6 +775,22 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['storage_protocol'], 'iSCSI')
         self.assertEquals(stats['total_capacity_gb'], 'infinite')
         self.assertEquals(stats['free_capacity_gb'], 'infinite')
+
+        #modify the CPG to have a limit
+        old_cpg = self.driver.client.getCPG(HP3PAR_CPG)
+        options = {'SDGrowth': {'limitMiB': 8192}}
+        self.driver.client.deleteCPG(HP3PAR_CPG)
+        self.driver.client.createCPG(HP3PAR_CPG, options)
+
+        const = 0.0009765625
+        stats = self.driver.get_volume_stats(True)
+        self.assertEquals(stats['storage_protocol'], 'iSCSI')
+        total_capacity_gb = 8192 * const
+        self.assertEquals(stats['total_capacity_gb'], total_capacity_gb)
+        free_capacity_gb = int((8192 - old_cpg['UsrUsage']['usedMiB']) * const)
+        self.assertEquals(stats['free_capacity_gb'], free_capacity_gb)
+        self.driver.client.deleteCPG(HP3PAR_CPG)
+        self.driver.client.createCPG(HP3PAR_CPG, {})
 
     def test_create_host(self):
         self.flags(lock_path=self.tempdir)

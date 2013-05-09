@@ -412,15 +412,14 @@ exit
         return ports
 
     def get_volume_stats(self, refresh, client):
-        # const to convert MiB to GB
-        const = 0.0009765625
-
         if refresh:
             self._update_volume_stats(client)
 
         return self.stats
 
     def _update_volume_stats(self, client):
+        # const to convert MiB to GB
+        const = 0.0009765625
 
         # storage_protocol and volume_backend_name are
         # set in the child classes
