@@ -1,7 +1,7 @@
---- .cinder-venv/lib/python2.6/site-packages/eventlet/green/subprocess.py.orig
+--- .nova-venv/lib/python2.6/site-packages/eventlet/green/subprocess.py.orig
 2011-05-25
 23:31:34.597271402 +0000
-+++ .cinder-venv/lib/python2.6/site-packages/eventlet/green/subprocess.py
++++ .nova-venv/lib/python2.6/site-packages/eventlet/green/subprocess.py
 2011-05-25
 23:33:24.055602468 +0000
 @@ -32,7 +32,7 @@
