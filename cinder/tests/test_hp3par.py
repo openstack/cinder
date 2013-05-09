@@ -36,6 +36,7 @@ LOG = logging.getLogger(__name__)
 HP3PAR_DOMAIN = 'OpenStack',
 HP3PAR_CPG = 'OpenStackCPG',
 HP3PAR_CPG_SNAP = 'OpenStackCPGSnap'
+CLI_CR = '\r\n'
 
 
 class FakeHP3ParClient(object):
@@ -77,6 +78,9 @@ class FakeHP3ParClient(object):
 
     def __init__(self, api_url):
         self.api_url = api_url
+        self.volumes = []
+        self.hosts = []
+        self.vluns = []
 
     def debug_rest(self, flag):
         self.debug = flag
@@ -340,6 +344,11 @@ class HP3PARBaseDriver():
 
     def test_delete_snapshot(self):
         self.flags(lock_path=self.tempdir)
+
+        self.driver.create_snapshot(self.snapshot)
+        #make sure it exists first
+        vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        self.assertEqual(vol['name'], self.SNAPSHOT_3PAR_NAME)
         self.driver.delete_snapshot(self.snapshot)
 
         # the snapshot should be deleted now
@@ -351,8 +360,8 @@ class HP3PARBaseDriver():
         self.flags(lock_path=self.tempdir)
         self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
 
-        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
-        self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
+        snap_vol = self.driver.client.getVolume(self.VOLUME_3PAR_NAME)
+        self.assertEqual(snap_vol['name'], self.VOLUME_3PAR_NAME)
 
         volume = self.volume.copy()
         volume['size'] = 1
@@ -362,6 +371,10 @@ class HP3PARBaseDriver():
 
     def test_terminate_connection(self):
         self.flags(lock_path=self.tempdir)
+        #setup the connections
+        self.driver.initialize_connection(self.volume, self.connector)
+        vlun = self.driver.client.getVLUN(self.VOLUME_3PAR_NAME)
+        self.assertEqual(vlun['volumeName'], self.VOLUME_3PAR_NAME)
         self.driver.terminate_connection(self.volume, self.connector, True)
         # vlun should be gone.
         self.assertRaises(hpexceptions.HTTPNotFound,
@@ -502,6 +515,71 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['total_capacity_gb'], 'infinite')
         self.assertEquals(stats['free_capacity_gb'], 'infinite')
 
+    def test_create_host(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+
+        create_host_cmd = ('createhost -persona 1 -domain (\'OpenStack\',) '
+                           'fakehost 123456789012345 123456789054321')
+        _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
+
+        _run_ssh(show_host_cmd, False).AndReturn([pack(FC_HOST_RET), ''])
+        self.mox.ReplayAll()
+
+        host = self.driver._create_host(self.volume, self.connector)
+        self.assertEqual(host['name'], self.FAKE_HOST)
+
+    def test_create_invalid_host(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+
+        create_host_cmd = ('createhost -persona 1 -domain (\'OpenStack\',) '
+                           'fakehost 123456789012345 123456789054321')
+        create_host_ret = pack(CLI_CR + 'already used by host fakehost.foo ')
+        _run_ssh(create_host_cmd, False).AndReturn([create_host_ret, ''])
+        self.mox.ReplayAll()
+
+        self.assertRaises(exception.Duplicate3PARHost,
+                          self.driver._create_host,
+                          self.volume,
+                          self.connector)
+
+    def test_create_modify_host(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack(NO_FC_HOST_RET), ''])
+
+        create_host_cmd = ('createhost -add fakehost '
+                           '123456789012345 123456789054321')
+        _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack(FC_HOST_RET), ''])
+        self.mox.ReplayAll()
+
+        host = self.driver._create_host(self.volume, self.connector)
+        self.assertEqual(host['name'], self.FAKE_HOST)
+
 
 class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
@@ -560,6 +638,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        self._hosts = {}
         super(TestHP3PARISCSIDriver, self).tearDown()
 
     def fake_iscsi_discover_target_iqn(self, ip_address):
@@ -643,3 +722,254 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['storage_protocol'], 'iSCSI')
         self.assertEquals(stats['total_capacity_gb'], 'infinite')
         self.assertEquals(stats['free_capacity_gb'], 'infinite')
+
+    def test_create_host(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+
+        create_host_cmd = ('createhost -iscsi -persona 1 -domain '
+                           '(\'OpenStack\',) '
+                           'fakehost iqn.1993-08.org.debian:01:222')
+        _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
+
+        _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_HOST_RET), ''])
+        self.mox.ReplayAll()
+
+        host = self.driver._create_host(self.volume, self.connector)
+        self.assertEqual(host['name'], self.FAKE_HOST)
+
+    def test_create_invalid_host(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+
+        create_host_cmd = ('createhost -iscsi -persona 1 -domain '
+                           '(\'OpenStack\',) '
+                           'fakehost iqn.1993-08.org.debian:01:222')
+        in_use_ret = pack('\r\nalready used by host fakehost.foo ')
+        _run_ssh(create_host_cmd, False).AndReturn([in_use_ret, ''])
+        self.mox.ReplayAll()
+
+        self.assertRaises(exception.Duplicate3PARHost,
+                          self.driver._create_host,
+                          self.volume,
+                          self.connector)
+
+    def test_create_modify_host(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_host_cmd = 'showhost -verbose fakehost'
+        _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_NO_HOST_RET), ''])
+
+        create_host_cmd = ('createhost -iscsi -add fakehost '
+                           'iqn.1993-08.org.debian:01:222')
+        _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
+        _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_HOST_RET), ''])
+        self.mox.ReplayAll()
+
+        host = self.driver._create_host(self.volume, self.connector)
+        self.assertEqual(host['name'], self.FAKE_HOST)
+
+    def test_iscsi_discover_target_iqn(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_port_cmd = 'showport -ids'
+        _run_ssh(show_port_cmd, False).AndReturn([pack(ISCSI_PORT_IDS_RET),
+                                                 ''])
+        self.mox.ReplayAll()
+
+        iqn = self.driver._iscsi_discover_target_iqn('10.10.120.253')
+        self.assertEqual(iqn, self.TARGET_IQN)
+
+    def test_get_volume_state(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_vv_cmd = ('showvv -state '
+                       'volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7')
+        _run_ssh(show_vv_cmd, False).AndReturn([pack(VOLUME_STATE_RET), ''])
+        self.mox.ReplayAll()
+
+        status = self.driver.common._get_volume_state(self.VOLUME_NAME)
+        self.assertEqual(status, 'normal')
+
+    def test_get_ports(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.stubs.UnsetAll()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_port_cmd = 'showport'
+        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
+
+        show_port_i_cmd = 'showport -iscsi'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(ISCSI_PORT_RET), ''])
+        self.mox.ReplayAll()
+
+        ports = self.driver.common.get_ports()
+        self.assertEqual(ports['FC'][0], '20210002AC00383D')
+
+
+def pack(arg):
+    header = '\r\n\r\n\r\n\r\n\r\n'
+    footer = '\r\n\r\n\r\n'
+    return header + arg + footer
+
+FC_HOST_RET = (
+    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
+    '75,fakehost,Generic,50014380242B8B4C,0:2:1,n/a\r\n'
+    '75,fakehost,Generic,50014380242B8B4E,---,n/a\r\n'
+    '75,fakehost,Generic,1000843497F90711,0:2:1,n/a \r\n'
+    '75,fakehost,Generic,1000843497F90715,1:2:1,n/a\r\n'
+    '\r\n'
+    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
+    '75,fakehost,--,--\r\n'
+    '\r\n'
+    '---------- Host fakehost ----------\r\n'
+    'Name       : fakehost\r\n'
+    'Domain     : FAKE_TEST\r\n'
+    'Id         : 75\r\n'
+    'Location   : --\r\n'
+    'IP Address : --\r\n'
+    'OS         : --\r\n'
+    'Model      : --\r\n'
+    'Contact    : --\r\n'
+    'Comment    : --  \r\n\r\n\r\n')
+
+NO_FC_HOST_RET = (
+    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
+    '\r\n'
+    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
+    '75,fakehost,--,--\r\n'
+    '\r\n'
+    '---------- Host fakehost ----------\r\n'
+    'Name       : fakehost\r\n'
+    'Domain     : FAKE_TEST\r\n'
+    'Id         : 75\r\n'
+    'Location   : --\r\n'
+    'IP Address : --\r\n'
+    'OS         : --\r\n'
+    'Model      : --\r\n'
+    'Contact    : --\r\n'
+    'Comment    : --  \r\n\r\n\r\n')
+
+ISCSI_HOST_RET = (
+    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
+    '75,fakehost,Generic,iqn.1993-08.org.debian:01:222,---,10.10.222.12\r\n'
+    '\r\n'
+    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
+    '75,fakehost,--,--\r\n'
+    '\r\n'
+    '---------- Host fakehost ----------\r\n'
+    'Name       : fakehost\r\n'
+    'Domain     : FAKE_TEST\r\n'
+    'Id         : 75\r\n'
+    'Location   : --\r\n'
+    'IP Address : --\r\n'
+    'OS         : --\r\n'
+    'Model      : --\r\n'
+    'Contact    : --\r\n'
+    'Comment    : --  \r\n\r\n\r\n')
+
+ISCSI_NO_HOST_RET = (
+    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
+    '\r\n'
+    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
+    '75,fakehost,--,--\r\n'
+    '\r\n'
+    '---------- Host fakehost ----------\r\n'
+    'Name       : fakehost\r\n'
+    'Domain     : FAKE_TEST\r\n'
+    'Id         : 75\r\n'
+    'Location   : --\r\n'
+    'IP Address : --\r\n'
+    'OS         : --\r\n'
+    'Model      : --\r\n'
+    'Contact    : --\r\n'
+    'Comment    : --  \r\n\r\n\r\n')
+
+ISCSI_PORT_IDS_RET = (
+    'N:S:P,-Node_WWN/IPAddr-,-----------Port_WWN/iSCSI_Name-----------\r\n'
+    '0:2:1,28210002AC00383D,20210002AC00383D\r\n'
+    '0:2:2,2FF70002AC00383D,20220002AC00383D\r\n'
+    '0:2:3,2FF70002AC00383D,20230002AC00383D\r\n'
+    '0:2:4,2FF70002AC00383D,20240002AC00383D\r\n'
+    '0:5:1,2FF70002AC00383D,20510002AC00383D\r\n'
+    '0:5:2,2FF70002AC00383D,20520002AC00383D\r\n'
+    '0:5:3,2FF70002AC00383D,20530002AC00383D\r\n'
+    '0:5:4,2FF70202AC00383D,20540202AC00383D\r\n'
+    '0:6:4,2FF70002AC00383D,20640002AC00383D\r\n'
+    '0:8:1,10.10.120.253,iqn.2000-05.com.3pardata:21810002ac00383d\r\n'
+    '0:8:2,0.0.0.0,iqn.2000-05.com.3pardata:20820002ac00383d\r\n'
+    '1:2:1,29210002AC00383D,21210002AC00383D\r\n'
+    '1:2:2,2FF70002AC00383D,21220002AC00383D\r\n'
+    '-----------------------------------------------------------------\r\n')
+
+VOLUME_STATE_RET = (
+    'Id,Name,Prov,Type,State,-Detailed_State-\r\n'
+    '410,volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7,snp,vcopy,normal,'
+    'normal\r\n'
+    '-----------------------------------------------------------------\r\n')
+
+PORT_RET = (
+    'N:S:P,Mode,State,----Node_WWN----,-Port_WWN/HW_Addr-,Type,Protocol,'
+    'Label,Partner,FailoverState\r\n'
+    '0:2:1,target,ready,28210002AC00383D,20210002AC00383D,host,FC,'
+    '-,1:2:1,none\r\n'
+    '0:2:2,initiator,loss_sync,2FF70002AC00383D,20220002AC00383D,free,FC,'
+    '-,-,-\r\n'
+    '0:2:3,initiator,loss_sync,2FF70002AC00383D,20230002AC00383D,free,FC,'
+    '-,-,-\r\n'
+    '0:2:4,initiator,loss_sync,2FF70002AC00383D,20240002AC00383D,free,FC,'
+    '-,-,-\r\n'
+    '0:5:1,initiator,loss_sync,2FF70002AC00383D,20510002AC00383D,free,FC,'
+    '-,-,-\r\n'
+    '0:5:2,initiator,loss_sync,2FF70002AC00383D,20520002AC00383D,free,FC,'
+    '-,-,-\r\n'
+    '0:5:3,initiator,loss_sync,2FF70002AC00383D,20530002AC00383D,free,FC,'
+    '-,-,-\r\n'
+    '0:5:4,initiator,ready,2FF70202AC00383D,20540202AC00383D,host,FC,'
+    '-,1:5:4,active\r\n'
+    '0:6:1,initiator,ready,2FF70002AC00383D,20610002AC00383D,disk,FC,'
+    '-,-,-\r\n'
+    '0:6:2,initiator,ready,2FF70002AC00383D,20620002AC00383D,disk,FC,'
+    '-,-,-\r\n')
+
+ISCSI_PORT_RET = (
+    'N:S:P,State,IPAddr,Netmask,Gateway,TPGT,MTU,Rate,DHCP,iSNS_Addr,'
+    'iSNS_Port\r\n'
+    '0:8:1,ready,10.10.120.253,255.255.224.0,0.0.0.0,81,1500,10Gbps,'
+    '0,0.0.0.0,3205\r\n'
+    '0:8:2,loss_sync,0.0.0.0,0.0.0.0,0.0.0.0,82,1500,n/a,0,0.0.0.0,3205\r\n'
+    '1:8:1,ready,10.10.220.253,255.255.224.0,0.0.0.0,181,1500,10Gbps,'
+    '0,0.0.0.0,3205\r\n'
+    '1:8:2,loss_sync,0.0.0.0,0.0.0.0,0.0.0.0,182,1500,n/a,0,0.0.0.0,3205\r\n')
