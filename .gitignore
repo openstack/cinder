@@ -23,4 +23,6 @@ keeper
 keys
 local_settings.py
 tools/conf/cinder.conf*
+tools/lintstack.head.py
+tools/pylint_exceptions
 tags
