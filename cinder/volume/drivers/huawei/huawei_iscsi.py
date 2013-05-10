@@ -168,7 +168,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             root = self._read_xml()
             pool_node = root.findall('LUN/StoragePool')
             if not pool_node:
-                err_msg = (_('_get_device_type: Storage Pool must be'
+                err_msg = (_('_get_device_type: Storage Pool must be '
                              'configured.'))
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
@@ -198,7 +198,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         if volume_id is not None:
             self._delete_volume(volume_name, volume_id)
         else:
-            err_msg = (_('delete_volume:No need to delete volume.'
+            err_msg = (_('delete_volume:No need to delete volume. '
                          'Volume %(name)s does not exist.')
                        % {'name': volume['name']})
             LOG.error(err_msg)
@@ -246,8 +246,8 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                 break
         if not target_ip:
             if not iscsi_conf['DefaultTargetIP']:
-                err_msg = (_('initialize_connection:Failed to find target ip'
-                             'for initiator:%(initiatorname)s,'
+                err_msg = (_('initialize_connection:Failed to find target ip '
+                             'for initiator:%(initiatorname)s, '
                              'please check config file.')
                            % {'initiatorname': initiator_name})
                 LOG.error(err_msg)
@@ -256,7 +256,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
         (target_iqn, controller) = self._get_tgt_iqn(target_ip)
         if not target_iqn:
-            err_msg = (_('initialize_connection:Failed to find target iSCSI'
+            err_msg = (_('initialize_connection:Failed to find target iSCSI '
                          'iqn. Target IP:%(ip)s')
                        % {'ip': target_ip})
             LOG.error(err_msg)
@@ -294,7 +294,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         if not portadded:
             self._add_hostport(port_name, host_id, port_info)
 
-        LOG.debug(_('initialize_connection:host name: %(host)s,'
+        LOG.debug(_('initialize_connection:host name: %(host)s, '
                     'initiator name: %(ini)s, '
                     'hostport name: %(port)s')
                   % {'host': host_name,
@@ -374,7 +374,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         # Delete host map.
         lun_id = self._find_lun(volume_name)
         if lun_id is None:
-            err_msg = (_('terminate_connection:volume does not exist.'
+            err_msg = (_('terminate_connection:volume does not exist. '
                          'volume name:%(volume)s')
                        % {'volume': volume_name})
             LOG.error(err_msg)
@@ -394,7 +394,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             mapnum = mapnum - 1
         else:
             LOG.error(_('terminate_connection:No map between host '
-                        'and volume. Host name:%(hostname)s,'
+                        'and volume. Host name:%(hostname)s, '
                         'volume name:%(volumename)s.')
                       % {'hostname': host_name,
                          'volumename': volume_name})
@@ -444,7 +444,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
         lun_id = self._find_lun(volume_name)
         if lun_id is None:
-            err_msg = (_('create_snapshot:Volume does not exist.'
+            err_msg = (_('create_snapshot:Volume does not exist. '
                          'Volume name:%(name)s')
                        % {'name': volume_name})
             LOG.error(err_msg)
@@ -453,7 +453,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         self._create_snapshot(snapshot_name, lun_id)
         snapshot_id = self._find_snapshot(snapshot_name)
         if not snapshot_id:
-            err_msg = (_('create_snapshot:Snapshot does not exist.'
+            err_msg = (_('create_snapshot:Snapshot does not exist. '
                          'Snapshot name:%(name)s')
                        % {'name': snapshot_name})
             LOG.error(err_msg)
@@ -513,8 +513,8 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
 
         snapshot_id = self._find_snapshot(snapshot_name)
         if snapshot_id is None:
-            err_msg = (_('create_volume_from_snapshot:Snapshot does not exist.'
-                         'Snapshot name:%(name)s')
+            err_msg = (_('create_volume_from_snapshot:Snapshot '
+                         'does not exist. Snapshot name:%(name)s')
                        % {'name': snapshot_name})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -609,7 +609,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                 try:
                     tree.write(filename, 'UTF-8')
                 except Exception as err:
-                    LOG.error(_('Write login informationto xml error. %s')
+                    LOG.error(_('Write login information to xml error. %s')
                               % err)
 
         except Exception as err:
@@ -635,7 +635,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             if luntype in ['Thick', 'Thin']:
                 lunsetinfo['LUNType'] = luntype
             elif luntype:
-                err_msg = (_('Config file is wrong. LUNType must be "Thin"'
+                err_msg = (_('Config file is wrong. LUNType must be "Thin" '
                              ' or "Thick". LUNType:%(type)s')
                            % {'type': luntype})
                 raise exception.VolumeBackendAPIException(data=err_msg)
@@ -733,7 +733,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         if maxpoolid is not None:
             return maxpoolid
         else:
-            err_msg = (_('_get_maximum_pool:maxpoolid is None.'
+            err_msg = (_('_get_maximum_pool:maxpoolid is None. '
                          'Please check config file and make sure '
                          'the "Name" in "StoragePool" is right.'))
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -898,7 +898,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                       'hostname': hostname})
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
-            err_msg = (_('_add_host:Failed to add host to hostgroup.'
+            err_msg = (_('_add_host:Failed to add host to hostgroup. '
                          'host name:%(host)s '
                          'hostgroup id:%(hostgroup)s '
                          'out:%(out)s')
@@ -924,7 +924,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                    % {'name': ininame})
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
-            err_msg = (_('_add_initiator:Failed to add initiator.'
+            err_msg = (_('_add_initiator:Failed to add initiator. '
                          'initiator name:%(name)s '
                          'out:%(out)s')
                        % {'name': ininame,
@@ -938,7 +938,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                    % {'name': ininame})
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
-            err_msg = (_('_delete_initiator:ERROE:Failed to delete initiator.'
+            err_msg = (_('_delete_initiator:ERROE:Failed to delete initiator. '
                          'initiator name:%(name)s '
                          'out:%(out)s')
                        % {'name': ininame,
@@ -989,9 +989,9 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
             err_msg = (_('_add_hostport:Failed to add hostport. '
-                         'port name:%(port)s'
+                         'port name:%(port)s '
                          'port information:%(info)s '
-                         'host id:%(host)s'
+                         'host id:%(host)s '
                          'out:%(out)s')
                        % {'port': portname,
                           'info': portinfo,
@@ -1083,10 +1083,10 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                       'hostlunid': new_hostlun_id})
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
-            err_msg = (_('_map_lun:Failed to add hostmap.'
-                         'hostid:%(host)s'
-                         'lunid:%(lun)s'
-                         'hostlunid:%(hostlunid)s.'
+            err_msg = (_('_map_lun:Failed to add hostmap. '
+                         'hostid:%(host)s '
+                         'lunid:%(lun)s '
+                         'hostlunid:%(hostlunid)s '
                          'out:%(out)s')
                        % {'host': hostid,
                           'lun': lunid,
@@ -1139,7 +1139,8 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                    % {'hostid': hostid})
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
-            err_msg = (_('_delete_host: Failed delete host.host id:%(hostid)s.'
+            err_msg = (_('_delete_host: Failed delete host. '
+                         'host id:%(hostid)s '
                          'out:%(out)s')
                        % {'hostid': hostid,
                           'out': out})
@@ -1378,7 +1379,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             if luncopy_info['state'] == 'Complete':
                 break
             elif luncopy_info['status'] != 'Normal':
-                err_msg = (_('_wait_for_luncopy:LUNcopy status isnot normal. '
+                err_msg = (_('_wait_for_luncopy:LUNcopy status is not normal. '
                              'LUNcopy name:%(luncopyname)s')
                            % {'luncopyname': luncopyname})
                 LOG.error(err_msg)
@@ -1464,7 +1465,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         cli_cmd = ('chglun -lun %s -c %s' % (lun_id, controller))
         out = self._execute_cli(cli_cmd)
         if not re.search('command operates successfully', out):
-            err_msg = (_('_change_lun_controller:Failed to change lun owning'
+            err_msg = (_('_change_lun_controller:Failed to change lun owning '
                          'controller. lun id:%(lunid)s. '
                          'new controller:%(controller)s. '
                          'out:%(out)s')
@@ -1480,7 +1481,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         out = self._execute_cli(cli_cmd)
         en = re.split('\r\n', out)
         if len(en) <= 6:
-            LOG.error(_('_is_resource_pool_enough:Resource pool for snapshot'
+            LOG.error(_('_is_resource_pool_enough:Resource pool for snapshot '
                         'not be added.'))
             return False
         resource_pools = []
