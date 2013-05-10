@@ -49,6 +49,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
     TEST_EXPORT1 = 'glusterfs-host1:/export'
     TEST_EXPORT2 = 'glusterfs-host2:/export'
+    TEST_EXPORT2_OPTIONS = '-o backupvolfile-server=glusterfs-backup1'
     TEST_SIZE_IN_GB = 1
     TEST_MNT_POINT = '/mnt/glusterfs'
     TEST_MNT_POINT_BASE = '/mnt/test'
@@ -71,6 +72,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         self.stubs = stubout.StubOutForTesting()
         self._driver = glusterfs.GlusterfsDriver(
                                     configuration=self._configuration)
+        self._driver.shares = {}
 
     def tearDown(self):
         self._mox.UnsetStubs()
@@ -272,19 +274,27 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        glusterfs.FLAGS.glusterfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+        drv.configuration.glusterfs_shares_config = (
+            self.TEST_SHARES_CONFIG_FILE)
 
-        mox.StubOutWithMock(__builtin__, 'open')
+        mox.StubOutWithMock(drv, '_read_config_file')
         config_data = []
         config_data.append(self.TEST_EXPORT1)
         config_data.append('#' + self.TEST_EXPORT2)
+        config_data.append(self.TEST_EXPORT2 + ' ' + self.TEST_EXPORT2_OPTIONS)
         config_data.append('')
-        __builtin__.open(self.TEST_SHARES_CONFIG_FILE).AndReturn(config_data)
+        drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
+            AndReturn(config_data)
         mox.ReplayAll()
 
-        shares = drv._load_shares_config()
+        drv._load_shares_config(drv.configuration.glusterfs_shares_config)
 
-        self.assertEqual([self.TEST_EXPORT1], shares)
+        self.assertIn(self.TEST_EXPORT1, drv.shares)
+        self.assertIn(self.TEST_EXPORT2, drv.shares)
+        self.assertEqual(len(drv.shares), 2)
+
+        self.assertEqual(drv.shares[self.TEST_EXPORT2],
+                         self.TEST_EXPORT2_OPTIONS)
 
         mox.VerifyAll()
 
@@ -312,8 +322,12 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_load_shares_config')
-        drv._load_shares_config().AndReturn([self.TEST_EXPORT1])
+        mox.StubOutWithMock(drv, '_read_config_file')
+        config_data = []
+        config_data.append(self.TEST_EXPORT1)
+        drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
+            AndReturn(config_data)
+
         mox.StubOutWithMock(drv, '_ensure_share_mounted')
         drv._ensure_share_mounted(self.TEST_EXPORT1)
 
@@ -331,8 +345,12 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_load_shares_config')
-        drv._load_shares_config().AndReturn([self.TEST_EXPORT1])
+        mox.StubOutWithMock(drv, '_read_config_file')
+        config_data = []
+        config_data.append(self.TEST_EXPORT1)
+        drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
+            AndReturn(config_data)
+
         mox.StubOutWithMock(drv, '_ensure_share_mounted')
         drv._ensure_share_mounted(self.TEST_EXPORT1).AndRaise(Exception())
 

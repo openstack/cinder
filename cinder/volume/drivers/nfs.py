@@ -124,6 +124,36 @@ class RemoteFsDriver(driver.VolumeDriver):
                                   image_meta,
                                   self.local_path(volume))
 
+    def _read_config_file(self, config_file):
+        # Returns list of lines in file
+        with open(config_file) as f:
+            return f.readlines()
+
+    def _load_shares_config(self, share_file):
+        self.shares = {}
+
+        for share in self._read_config_file(share_file):
+            # A configuration line may be either:
+            #  host:/vol_name
+            # or
+            #  host:/vol_name -o options=123,rw --other
+            if not share.strip():
+                # Skip blank or whitespace-only lines
+                continue
+            if share.startswith('#'):
+                continue
+
+            share_info = share.split(' ', 1)
+            # results in share_info =
+            #  [ 'address:/vol', '-o options=123,rw --other' ]
+
+            share_address = share_info[0].strip()
+            share_opts = share_info[1].strip() if len(share_info) > 1 else None
+
+            self.shares[share_address] = share_opts
+
+        LOG.debug("shares loaded: %s", self.shares)
+
 
 class NfsDriver(RemoteFsDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
@@ -146,6 +176,8 @@ class NfsDriver(RemoteFsDriver):
             msg = _("NFS config file at %(config)s doesn't exist") % locals()
             LOG.warn(msg)
             raise exception.NfsException(msg)
+
+        self.shares = {}  # address : options
 
         try:
             self._execute('mount.nfs', check_exit_code=False)
@@ -202,6 +234,8 @@ class NfsDriver(RemoteFsDriver):
         """Allow connection to connector and return connection info."""
         data = {'export': volume['provider_location'],
                 'name': volume['name']}
+        if volume['provider_location'] in self.shares:
+            data['options'] = self.shares[volume['provider_location']]
         return {
             'driver_volume_type': 'nfs',
             'data': data
@@ -229,7 +263,9 @@ class NfsDriver(RemoteFsDriver):
         """Look for NFS shares in the flags and tries to mount them locally"""
         self._mounted_shares = []
 
-        for share in self._load_shares_config():
+        self._load_shares_config(self.configuration.nfs_shares_config)
+
+        for share in self.shares.keys():
             try:
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
@@ -238,14 +274,9 @@ class NfsDriver(RemoteFsDriver):
 
         LOG.debug('Available shares %s' % str(self._mounted_shares))
 
-    def _load_shares_config(self):
-        return [share.strip() for share in
-                open(self.configuration.nfs_shares_config)
-                if share and not share.startswith('#')]
-
     def _ensure_share_mounted(self, nfs_share):
         """Mount NFS share
-        :param nfs_share:
+        :param nfs_share: string
         """
         mount_path = self._get_mount_point_for_share(nfs_share)
         self._mount_nfs(nfs_share, mount_path, ensure=True)
@@ -312,6 +343,8 @@ class NfsDriver(RemoteFsDriver):
         nfs_cmd = ['mount', '-t', 'nfs']
         if self.configuration.nfs_mount_options is not None:
             nfs_cmd.extend(['-o', self.configuration.nfs_mount_options])
+        if self.shares.get(nfs_share) is not None:
+            nfs_cmd.extend(self.shares[nfs_share].split())
         nfs_cmd.extend([nfs_share, mount_path])
 
         try:
