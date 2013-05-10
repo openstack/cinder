@@ -51,9 +51,9 @@ iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
                                ),
                     cfg.StrOpt('iscsi_iotype',
                                default='fileio',
-                               help=('Sets the behavior of the iSCSI target to'
-                                     'either perform blockio or fileio'
-                                     'optionally, auto can be set and Cinder'
+                               help=('Sets the behavior of the iSCSI target '
+                                     'to either perform blockio or fileio '
+                                     'optionally, auto can be set and Cinder '
                                      'will autodetect type of backing device')
                                )
                     ]
