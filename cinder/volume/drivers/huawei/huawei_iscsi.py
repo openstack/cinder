@@ -1525,7 +1525,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
             lun_type = 'Thick'
         poolinfo_dev = self._find_pool_info(lun_type)
         pools_conf = root.findall('LUN/StoragePool')
-        total_free_capacity = 0
+        total_free_capacity = 0.0
         for poolinfo in poolinfo_dev:
             if self.device_type['type'] == 'Dorado2100 G2':
                 total_free_capacity += float(poolinfo[2])
@@ -1544,4 +1544,4 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                         total_free_capacity += float(poolinfo[4])
                         break
 
-        return str(int(total_free_capacity / 1024))
+        return total_free_capacity / 1024
