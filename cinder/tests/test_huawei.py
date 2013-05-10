@@ -347,7 +347,7 @@ class HuaweiVolumeTestCase(test.TestCase):
     def _test_get_get_volume_stats(self):
         stats = self.driver.get_volume_stats(True)
 
-        fakecapacity = str(int(float(FakePoolInfo['Free Capacity']) / 1024))
+        fakecapacity = float(FakePoolInfo['Free Capacity']) / 1024
         self.assertEqual(stats['free_capacity_gb'], fakecapacity)
 
 
