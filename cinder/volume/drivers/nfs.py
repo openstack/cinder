@@ -29,11 +29,11 @@ LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('nfs_shares_config',
-               default=None,
+               default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
     cfg.StrOpt('nfs_mount_point_base',
                default='$state_path/mnt',
-               help='Base dir where nfs expected to be mounted'),
+               help='Base dir containing mount points for nfs shares'),
     cfg.StrOpt('nfs_disk_util',
                default='df',
                help='Use du or df for free space calculation'),

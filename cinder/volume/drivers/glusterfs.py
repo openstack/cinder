@@ -29,11 +29,11 @@ LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('glusterfs_shares_config',
-               default=None,
+               default='/etc/cinder/glusterfs_shares',
                help='File with the list of available gluster shares'),
     cfg.StrOpt('glusterfs_mount_point_base',
                default='$state_path/mnt',
-               help='Base dir where gluster expected to be mounted'),
+               help='Base dir containing mount points for gluster shares'),
     cfg.StrOpt('glusterfs_disk_util',
                default='df',
                help='Use du or df for free space calculation'),

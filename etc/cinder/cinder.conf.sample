@@ -837,7 +837,7 @@
 
 # File with the list of available gluster shares (string
 # value)
-#glusterfs_shares_config=<None>
+#glusterfs_shares_config=/etc/cinder/glusterfs_shares
 
 # Base dir where gluster expected to be mounted (string value)
 #glusterfs_mount_point_base=$state_path/mnt
@@ -1030,7 +1030,7 @@
 #
 
 # File with the list of available nfs shares (string value)
-#nfs_shares_config=<None>
+#nfs_shares_config=/etc/cinder/nfs_shares
 
 # Base dir where nfs expected to be mounted (string value)
 #nfs_mount_point_base=$state_path/mnt
