@@ -22,6 +22,7 @@ import os
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
@@ -340,3 +341,17 @@ class NfsDriver(RemoteFsDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        image_utils.fetch_to_raw(context,
+                                 image_service,
+                                 image_id,
+                                 self.local_path(volume))
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+        image_utils.upload_volume(context,
+                                  image_service,
+                                  image_meta,
+                                  self.local_path(volume))
