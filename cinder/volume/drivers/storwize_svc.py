@@ -95,6 +95,9 @@ storwize_svc_opts = [
     cfg.BoolOpt('storwize_svc_multipath_enabled',
                 default=False,
                 help='Connect with multipath (currently FC-only)'),
+    cfg.BoolOpt('storwize_svc_multihostmap_enabled',
+                default=True,
+                help='Allows vdisk to multi host mapping'),
 ]
 
 
@@ -600,10 +603,25 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                        {'host_name': host_name,
                         'result_lun': result_lun,
                         'volume_name': volume_name})
-            out, err = self._run_ssh(ssh_cmd)
-            self._assert_ssh_return('successfully created' in out,
-                                    '_map_vol_to_host', ssh_cmd, out, err)
-
+            out, err = self._run_ssh(ssh_cmd, check_exit_code=False)
+            if err and err.startswith('CMMVC6071E'):
+                if not self.configuration.storwize_svc_multihostmap_enabled:
+                    LOG.error(_('storwize_svc_multihostmap_enabled is set '
+                                'to Flase, Not allow multi host mapping'))
+                    exception_msg = 'CMMVC6071E The VDisk-to-host mapping '\
+                                    'was not created because the VDisk is '\
+                                    'already mapped to a host.\n"'
+                    raise exception.CinderException(data=exception_msg)
+                ssh_cmd = ssh_cmd.replace('mkvdiskhostmap',
+                                          'mkvdiskhostmap -force')
+                # try to map one volume to multiple hosts
+                out, err = self._run_ssh(ssh_cmd)
+                LOG.warn(_('volume %s mapping to multi host') % volume_name)
+                self._assert_ssh_return('successfully created' in out,
+                                        '_map_vol_to_host', ssh_cmd, out, err)
+            else:
+                self._assert_ssh_return('successfully created' in out,
+                                        '_map_vol_to_host', ssh_cmd, out, err)
         LOG.debug(_('leave: _map_vol_to_host: LUN %(result_lun)s, volume '
                     '%(volume_name)s, host %(host_name)s') %
                   {'result_lun': result_lun,
