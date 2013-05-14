@@ -46,12 +46,20 @@ class BrickLvmTestCase(test.TestCase):
     def failed_fake_execute(obj, *cmd, **kwargs):
         return ("\n", "fake-error")
 
+    def fake_pretend_lvm_version(obj, *cmd, **kwargs):
+        return ("  LVM version:     2.03.00 (2012-03-06)\n", "")
+
+    def fake_old_lvm_version(obj, *cmd, **kwargs):
+        return ("  LVM version:     2.02.65(2) (2012-03-06)\n", "")
+
     def fake_execute(obj, *cmd, **kwargs):
         cmd_string = ', '.join(cmd)
         data = "\n"
 
         if 'vgs, --noheadings, -o, name' == cmd_string:
             data = "  fake-volumes\n"
+        if 'vgs, --version' in cmd_string:
+            data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
         elif 'vgs, --noheadings, -o uuid, fake-volumes' in cmd_string:
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
         elif 'vgs, --noheadings, -o, name,size,free,lv_count,uuid' in\
@@ -124,3 +132,13 @@ class BrickLvmTestCase(test.TestCase):
         self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertEqual(self.vg.update_volume_group_info()['name'],
                          'fake-volumes')
+
+    def test_thin_support(self):
+        self.stubs.Set(processutils, 'execute', self.fake_execute)
+        self.assertTrue(self.vg.supports_thin_provisioning())
+
+        self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
+        self.assertTrue(self.vg.supports_thin_provisioning())
+
+        self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
+        self.assertFalse(self.vg.supports_thin_provisioning())

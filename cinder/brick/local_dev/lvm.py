@@ -121,6 +121,28 @@ class LVM(object):
             return []
 
     @staticmethod
+    def supports_thin_provisioning():
+        """Static method to check for thin LVM support on a system.
+
+        :returns: True if supported, False otherwise
+
+        """
+        cmd = ['vgs', '--version']
+        (out, err) = putils.execute(*cmd, root_helper='sudo', run_as_root=True)
+        lines = out.split('\n')
+
+        for line in lines:
+            if 'LVM version' in line:
+                version_list = line.split()
+                version = version_list[2]
+                if '(2)' in version:
+                    version = version.replace('(2)', '')
+                version_tuple = tuple(map(int, version.split('.')))
+                if version_tuple >= (2, 2, 95):
+                    return True
+        return False
+
+    @staticmethod
     def get_all_volumes(vg_name=None):
         """Static method to get all LV's on a system.
 
@@ -249,6 +271,29 @@ class LVM(object):
         self.vg_uuid = vg_list[0]['uuid']
 
         return vg_list[0]
+
+    def create_thin_pool(self, name=None, size_str=0):
+        """Creates a thin provisioning pool for this VG.
+
+        :param name: Name to use for pool, default is "<vg-name>-pool"
+        :param size_str: Size to allocate for pool, default is entire VG
+
+        """
+
+        if not self.supports_thin_provisioning():
+            LOG.error(_('Requested to setup thin provisioning, '
+                        'however current LVM version does not '
+                        'support it.'))
+            return None
+
+        if name is None:
+            name = '%s-pool' % self.vg_name
+
+        if size_str == 0:
+            self.update_volume_group_info()
+            size_str = self.vg_size
+
+        self.create_volume(name, size_str, 'thin')
 
     def create_volume(self, name, size_str, lv_type='default', mirror_count=0):
         """Creates a logical volume on the object's VG.
