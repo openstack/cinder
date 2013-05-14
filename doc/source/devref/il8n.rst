@@ -24,8 +24,8 @@ in cinder/tests/test_localization.py.
 
 The ``_()`` function is brought into the global scope by doing::
 
-    import gettext
-    gettext.install("cinder", unicode=1)
+    from cinder.openstack.common import gettextutils
+    gettextutils.install("cinder")
 
 These lines are needed in any toplevel script before any cinder modules are
 imported. If this code is missing, it may result in an error that looks like::

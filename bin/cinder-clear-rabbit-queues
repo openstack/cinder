@@ -24,7 +24,6 @@
 """
 
 import datetime
-import gettext
 import os
 import sys
 import time
@@ -37,8 +36,8 @@ POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
 if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
     sys.path.insert(0, POSSIBLE_TOPDIR)
 
-gettext.install('cinder', unicode=1)
-
+from cinder.openstack.common import gettextutils
+gettextutils.install('cinder')
 
 from oslo.config import cfg
 
