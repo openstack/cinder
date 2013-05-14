@@ -30,6 +30,7 @@ continue attempting to launch the rest of the services.
 import eventlet
 eventlet.monkey_patch()
 
+import gettext
 import os
 import sys
 
@@ -39,6 +40,7 @@ possible_topdir = os.path.normpath(os.path.join(os.path.abspath(
 if os.path.exists(os.path.join(possible_topdir, "cinder", "__init__.py")):
     sys.path.insert(0, possible_topdir)
 
+gettext.install('cinder', unicode=1)
 
 from cinder import flags
 from cinder.openstack.common import log as logging

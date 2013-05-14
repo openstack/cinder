@@ -30,8 +30,3 @@
 .. moduleauthor:: Manish Singh <yosh@gimp.org>
 .. moduleauthor:: Andy Smith <andy@anarkystic.com>
 """
-
-import gettext
-
-
-gettext.install('cinder', unicode=1)
