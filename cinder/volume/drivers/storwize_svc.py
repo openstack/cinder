@@ -1420,7 +1420,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                          'also be set (not equal to -1)'))
 
         # Check that the requested protocol is enabled
-        if not opts['protocol'] in self._enabled_protocols:
+        if opts['protocol'] not in self._enabled_protocols:
             raise exception.InvalidInput(
                 reason=_('Illegal value %(prot)s specified for '
                          'storwize_svc_connection_protocol: '
