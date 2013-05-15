@@ -182,6 +182,10 @@ class InvalidParameterValue(Invalid):
     message = _("%(err)s")
 
 
+class InvalidAuthKey(Invalid):
+    message = _("Invalid auth key") + ": %(reason)s"
+
+
 class ServiceUnavailable(Invalid):
     message = _("Service is unavailable at this time.")
 
@@ -554,3 +558,7 @@ class InvalidBackup(Invalid):
 
 class SwiftConnectionFailed(CinderException):
     message = _("Connection to swift failed") + ": %(reason)s"
+
+
+class TransferNotFound(NotFound):
+    message = _("Transfer %(transfer_id)s could not be found.")

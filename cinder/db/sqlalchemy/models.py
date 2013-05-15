@@ -387,6 +387,22 @@ class Backup(BASE, CinderBase):
     object_count = Column(Integer)
 
 
+class Transfer(BASE, CinderBase):
+    """Represents a volume transfer request."""
+    __tablename__ = 'transfers'
+    id = Column(String(36), primary_key=True)
+    volume_id = Column(String(36), ForeignKey('volumes.id'))
+    display_name = Column(String(255))
+    salt = Column(String(255))
+    crypt_hash = Column(String(255))
+    expires_at = Column(DateTime)
+    volume = relationship(Volume, backref="transfer",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'Transfer.volume_id == Volume.id,'
+                          'Transfer.deleted == False)')
+
+
 def register_models():
     """Register Models and create metadata.
 
@@ -404,6 +420,7 @@ def register_models():
               Volume,
               VolumeMetadata,
               SnapshotMetadata,
+              Transfer,
               VolumeTypeExtraSpecs,
               VolumeTypes,
               VolumeGlanceMetadata,

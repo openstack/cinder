@@ -628,3 +628,47 @@ class TestMigrations(test.TestCase):
 
             self.assertFalse(engine.dialect.has_table(engine.connect(),
                                                       "snapshot_metadata"))
+
+    def test_migration_010(self):
+        """Test adding transfers table works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 9)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 10)
+
+            self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                     "transfers"))
+            transfers = sqlalchemy.Table('transfers',
+                                         metadata,
+                                         autoload=True)
+
+            self.assertTrue(isinstance(transfers.c.created_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(transfers.c.updated_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(transfers.c.deleted_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(transfers.c.deleted.type,
+                                       sqlalchemy.types.BOOLEAN))
+            self.assertTrue(isinstance(transfers.c.id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(transfers.c.volume_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(transfers.c.display_name.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(transfers.c.salt.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(transfers.c.crypt_hash.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(transfers.c.expires_at.type,
+                                       sqlalchemy.types.DATETIME))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 9)
+
+            self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                      "transfers"))

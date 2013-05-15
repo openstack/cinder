@@ -757,3 +757,36 @@ def backup_update(context, backup_id, values):
 def backup_destroy(context, backup_id):
     """Destroy the backup or raise if it does not exist."""
     return IMPL.backup_destroy(context, backup_id)
+
+
+###################
+
+
+def transfer_get(context, transfer_id):
+    """Get a volume transfer record or raise if it does not exist."""
+    return IMPL.transfer_get(context, transfer_id)
+
+
+def transfer_get_all(context):
+    """Get all volume transfer records."""
+    return IMPL.transfer_get_all(context)
+
+
+def transfer_get_all_by_project(context, project_id):
+    """Get all volume transfer records for specified project."""
+    return IMPL.transfer_get_all_by_project(context, project_id)
+
+
+def transfer_create(context, values):
+    """Create an entry in the transfers table."""
+    return IMPL.transfer_create(context, values)
+
+
+def transfer_destroy(context, transfer_id):
+    """Destroy a record in the volume transfer table."""
+    return IMPL.transfer_destroy(context, transfer_id)
+
+
+def transfer_accept(context, transfer_id, user_id, project_id):
+    """Accept a volume transfer."""
+    return IMPL.transfer_accept(context, transfer_id, user_id, project_id)

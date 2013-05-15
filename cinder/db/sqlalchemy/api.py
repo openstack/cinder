@@ -2020,3 +2020,135 @@ def backup_destroy(context, backup_id):
                     'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})
+
+
+###############################
+
+
+@require_context
+def transfer_get(context, transfer_id, session=None):
+    query = model_query(context, models.Transfer,
+                         session=session).\
+        filter_by(id=transfer_id)
+
+    if not is_admin_context(context):
+        volume = models.Volume
+        query = query.options(joinedload('volume')).\
+            filter(volume.project_id == context.project_id)
+
+    result = query.first()
+
+    if not result:
+        raise exception.TransferNotFound(transfer_id=transfer_id)
+
+    return result
+
+
+def _translate_transfers(transfers):
+    results = []
+    for transfer in transfers:
+        r = {}
+        r['id'] = transfer['id']
+        r['volume_id'] = transfer['volume_id']
+        r['display_name'] = transfer['display_name']
+        r['created_at'] = transfer['created_at']
+        r['deleted'] = transfer['deleted']
+        results.append(r)
+    return results
+
+
+@require_admin_context
+def transfer_get_all(context):
+    results = model_query(context, models.Transfer).all()
+    return _translate_transfers(results)
+
+
+@require_context
+def transfer_get_all_by_project(context, project_id):
+    authorize_project_context(context, project_id)
+
+    volume = models.Volume
+    query = model_query(context, models.Transfer).\
+            options(joinedload('volume')).\
+            filter(volume.project_id == project_id)
+    results = query.all()
+    return _translate_transfers(results)
+
+
+@require_context
+def transfer_create(context, values):
+    transfer = models.Transfer()
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+    session = get_session()
+    with session.begin():
+        volume_ref = volume_get(context,
+                                values['volume_id'],
+                                session=session)
+        if volume_ref['status'] != 'available':
+            msg = _('Volume must be available')
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+        volume_ref['status'] = 'awaiting-transfer'
+        transfer.update(values)
+        transfer.save(session=session)
+        volume_ref.update(volume_ref)
+        volume_ref.save(session=session)
+    return transfer
+
+
+@require_context
+def transfer_destroy(context, transfer_id):
+    session = get_session()
+    with session.begin():
+        transfer_ref = transfer_get(context,
+                                    transfer_id,
+                                    session=session)
+        volume_ref = volume_get(context,
+                                transfer_ref['volume_id'],
+                                session=session)
+        # If the volume state is not 'awaiting-transfer' don't change it, but
+        # we can still mark the transfer record as deleted.
+        if volume_ref['status'] != 'awaiting-transfer':
+            msg = _('Volume in unexpected state %s, '
+                    'expected awaiting-transfer') % volume_ref['status']
+            LOG.error(msg)
+        else:
+            volume_ref['status'] = 'available'
+        volume_ref.update(volume_ref)
+        volume_ref.save(session=session)
+        session.query(models.Transfer).\
+            filter_by(id=transfer_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+@require_context
+def transfer_accept(context, transfer_id, user_id, project_id):
+    session = get_session()
+    with session.begin():
+        transfer_ref = transfer_get(context, transfer_id, session)
+        volume_id = transfer_ref['volume_id']
+        volume_ref = volume_get(context, volume_id, session=session)
+        if volume_ref['status'] != 'awaiting-transfer':
+            volume_status = volume_ref['status']
+            msg = _('Transfer %(transfer_id)s: Volume id %(volume_id)s in '
+                    'unexpected state %(status)s, expected '
+                    'awaiting-transfer') % {'transfer_id': transfer_id,
+                                            'volume_id': volume_ref['id'],
+                                            'status': volume_ref['status']}
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        volume_ref['status'] = 'available'
+        volume_ref['user_id'] = user_id
+        volume_ref['project_id'] = project_id
+        volume_ref['updated_at'] = literal_column('updated_at')
+        volume_ref.update(volume_ref)
+        volume_ref.save(session=session)
+        session.query(models.Transfer).\
+            filter_by(id=transfer_ref['id']).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
