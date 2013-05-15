@@ -56,6 +56,7 @@ from cinder import exception
 from cinder import flags
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 
@@ -64,6 +65,8 @@ LOG = logging.getLogger(__name__)
 ISO_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 PERFECT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 FLAGS = flags.FLAGS
+
+synchronized = lockutils.synchronized_with_prefix('cinder-')
 
 
 def find_config(config_path):

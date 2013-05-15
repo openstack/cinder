@@ -50,11 +50,11 @@ from cinder.image import glance
 from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
-from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 from cinder import quota
+from cinder import utils
 from cinder.volume.configuration import Configuration
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -541,7 +541,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
         """Updates db to show volume is attached"""
 
-        @lockutils.synchronized(volume_id, 'cinder-', external=True)
+        @utils.synchronized(volume_id, external=True)
         def do_attach():
             # check the volume status before attaching
             volume = self.db.volume_get(context, volume_id)
