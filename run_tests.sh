@@ -110,12 +110,7 @@ srcfiles+=" setup.py"
 
 function run_pep8 {
   echo "Running PEP8 and HACKING compliance check..."
-  # Just run PEP8 in current environment
-  #
-
-  # Until all these issues get fixed, ignore.
-  ignore='--ignore=N4,E125,E126,E711,E712'
-  ${wrapper} python tools/hacking.py ${ignore} ${srcfiles}
+  flake8 cinder* bin
 }
 
 
