@@ -99,7 +99,12 @@ class RBDDriver(driver.VolumeDriver):
         return 'clone' in stdout
 
     def create_cloned_volume(self, volume, src_vref):
-        raise NotImplementedError()
+        """Clone a logical volume"""
+        self._try_execute('rbd', 'cp',
+                          '--pool', self.configuration.rbd_pool,
+                          '--image', src_vref['name'],
+                          '--dest-pool', self.configuration.rbd_pool,
+                          '--dest', volume['name'])
 
     def create_volume(self, volume):
         """Creates a logical volume."""
