@@ -79,13 +79,12 @@ class NetappNfsDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(NetappNfsDriverTestCase, self).setUp()
-        self._mox = mox.Mox()
+
         self._driver = netapp_nfs.NetAppNFSDriver(
             configuration=create_configuration())
-        self.addCleanup(self._mox.UnsetStubs)
 
     def test_check_for_setup_error(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
         required_flags = ['netapp_wsdl_url',
                           'netapp_login',
@@ -118,7 +117,7 @@ class NetappNfsDriverTestCase(test.TestCase):
             delattr(drv.configuration, flag)
 
     def test_do_setup(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
@@ -135,7 +134,7 @@ class NetappNfsDriverTestCase(test.TestCase):
 
     def test_create_snapshot(self):
         """Test snapshot can be created and deleted."""
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, '_clone_volume')
@@ -149,7 +148,7 @@ class NetappNfsDriverTestCase(test.TestCase):
     def test_create_volume_from_snapshot(self):
         """Tests volume creation from snapshot."""
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
         volume = FakeVolume(1)
         snapshot = FakeSnapshot(2)
 
@@ -177,7 +176,7 @@ class NetappNfsDriverTestCase(test.TestCase):
 
     def _prepare_delete_snapshot_mock(self, snapshot_exists):
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
 
         mox.StubOutWithMock(drv, '_get_provider_location')
         mox.StubOutWithMock(drv, '_volume_not_present')
@@ -216,7 +215,7 @@ class NetappNfsDriverTestCase(test.TestCase):
 
     def _prepare_clone_mock(self, status):
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
 
         volume = FakeVolume()
         setattr(volume, 'provider_location', '127.0.0.1:/nfs')
@@ -286,16 +285,14 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(NetappCmodeNfsDriverTestCase, self).setUp()
-        self._mox = mox.Mox()
         self._custom_setup()
-        self.addCleanup(self._mox.UnsetStubs)
 
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppCmodeNfsDriver(
             configuration=create_configuration())
 
     def test_check_for_setup_error(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
         required_flags = [
             'netapp_wsdl_url',
@@ -326,7 +323,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
             delattr(drv.configuration, flag)
 
     def test_do_setup(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
@@ -343,7 +340,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
     def test_create_snapshot(self):
         """Test snapshot can be created and deleted"""
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, '_clone_volume')
@@ -357,7 +354,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
     def test_create_volume_from_snapshot(self):
         """Tests volume creation from snapshot"""
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
         volume = FakeVolume(1)
         snapshot = FakeSnapshot(2)
 
@@ -385,7 +382,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
     def _prepare_delete_snapshot_mock(self, snapshot_exists):
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
 
         mox.StubOutWithMock(drv, '_get_provider_location')
         mox.StubOutWithMock(drv, '_volume_not_present')
@@ -424,7 +421,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
     def _prepare_clone_mock(self, status):
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
 
         volume = FakeVolume()
         setattr(volume, 'provider_location', '127.0.0.1:/nfs')
@@ -478,7 +475,7 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
             configuration=create_configuration())
 
     def test_check_for_setup_error(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
         required_flags = [
             'netapp_transport_type',
@@ -509,7 +506,7 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
             delattr(drv.configuration, flag)
 
     def test_do_setup(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
@@ -528,7 +525,7 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
 
     def _prepare_clone_mock(self, status):
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
 
         volume = FakeVolume()
         setattr(volume, 'provider_location', '127.0.0.1:/nfs')
@@ -600,7 +597,7 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
             configuration=create_configuration())
 
     def test_check_for_setup_error(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
         required_flags = [
             'netapp_transport_type',
@@ -631,7 +628,7 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
             delattr(drv.configuration, flag)
 
     def test_do_setup(self):
-        mox = self._mox
+        mox = self.mox
         drv = self._driver
 
         mox.StubOutWithMock(drv, 'check_for_setup_error')
@@ -650,7 +647,7 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
 
     def _prepare_clone_mock(self, status):
         drv = self._driver
-        mox = self._mox
+        mox = self.mox
 
         volume = FakeVolume()
         setattr(volume, 'provider_location', '127.0.0.1:/nfs')

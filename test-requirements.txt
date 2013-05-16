@@ -5,15 +5,14 @@ flake8==2.0
 hacking>=0.5.3,<0.6
 
 coverage>=3.6
+discover
 fixtures>=0.3.12
 hp3parclient>=1.0.0
 mock>=0.8.0
 mox>=0.5.3
 mysql-python
-nose
-nosehtmloutput>=0.0.3
-nosexcover
-openstack.nose_plugin>=0.7
 psycopg2
 sphinx>=1.1.2
+python-subunit
 testtools>=0.9.29
+testrepository>=0.0.13

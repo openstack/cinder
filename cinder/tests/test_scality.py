@@ -18,6 +18,8 @@ Unit tests for the Scality SOFS Volume Driver.
 
 import errno
 import os
+import shutil
+import tempfile
 
 import mox as mox_lib
 
@@ -68,9 +70,6 @@ class ScalityDriverTestCase(test.TestCase):
         self._makedirs(os.path.join(self.TEST_MOUNT, 'sys'))
         self._makedirs(os.path.join(self.TEST_MOUNT, self.TEST_VOLDIR))
 
-    def _remove_fake_mount(self):
-        utils.execute('rm', '-rf', self.TEST_MOUNT)
-
     def _remove_fake_config(self):
         try:
             os.unlink(self.TEST_CONFIG)
@@ -103,7 +102,16 @@ class ScalityDriverTestCase(test.TestCase):
     def setUp(self):
         super(ScalityDriverTestCase, self).setUp()
 
-        self._remove_fake_mount()
+        self.tempdir = tempfile.mkdtemp()
+
+        self.TEST_MOUNT = self.tempdir
+        self.TEST_VOLPATH = os.path.join(self.TEST_MOUNT,
+                                         self.TEST_VOLDIR,
+                                         self.TEST_VOLNAME)
+        self.TEST_SNAPPATH = os.path.join(self.TEST_MOUNT,
+                                          self.TEST_VOLDIR,
+                                          self.TEST_SNAPNAME)
+
         self._driver = scality.ScalityDriver()
         self._driver.set_execute(self._execute_wrapper)
         self._mox = mox_lib.Mox()
@@ -113,7 +121,7 @@ class ScalityDriverTestCase(test.TestCase):
         self._configure_driver()
 
     def tearDown(self):
-        self._remove_fake_mount()
+        shutil.rmtree(self.tempdir)
         self._remove_fake_config()
         super(ScalityDriverTestCase, self).tearDown()
 

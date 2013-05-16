@@ -35,6 +35,7 @@ CONF = cfg.CONF
 class VolumeRpcAPITestCase(test.TestCase):
 
     def setUp(self):
+        super(VolumeRpcAPITestCase, self).setUp()
         self.context = context.get_admin_context()
         vol = {}
         vol['host'] = 'fake_host'
@@ -53,7 +54,6 @@ class VolumeRpcAPITestCase(test.TestCase):
         snapshot = db.snapshot_create(self.context, snpshot)
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
-        super(VolumeRpcAPITestCase, self).setUp()
 
     def test_serialized_volume_has_id(self):
         self.assertTrue('id' in self.fake_volume)

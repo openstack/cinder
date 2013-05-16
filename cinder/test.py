@@ -25,6 +25,7 @@ inline callbacks.
 
 import functools
 import os
+import shutil
 import uuid
 
 import fixtures
@@ -33,11 +34,12 @@ from oslo.config import cfg
 import stubout
 import testtools
 
+from cinder.db import migration
 from cinder import flags
+from cinder.openstack.common.db.sqlalchemy import session
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import service
-from cinder import tests
 from cinder.tests import fake_flags
 
 test_opts = [
@@ -53,9 +55,52 @@ FLAGS.register_opts(test_opts)
 
 LOG = logging.getLogger(__name__)
 
+_DB_CACHE = None
+
 
 class TestingException(Exception):
     pass
+
+
+class Database(fixtures.Fixture):
+
+    def __init__(self, db_session, db_migrate, sql_connection,
+                 sqlite_db, sqlite_clean_db):
+        self.sql_connection = sql_connection
+        self.sqlite_db = sqlite_db
+        self.sqlite_clean_db = sqlite_clean_db
+
+        self.engine = db_session.get_engine()
+        self.engine.dispose()
+        conn = self.engine.connect()
+        if sql_connection == "sqlite://":
+            if db_migrate.db_version() > db_migrate.INIT_VERSION:
+                return
+        else:
+            testdb = os.path.join(FLAGS.state_path, sqlite_db)
+            if os.path.exists(testdb):
+                return
+        db_migrate.db_sync()
+#        self.post_migrations()
+        if sql_connection == "sqlite://":
+            conn = self.engine.connect()
+            self._DB = "".join(line for line in conn.connection.iterdump())
+            self.engine.dispose()
+        else:
+            cleandb = os.path.join(FLAGS.state_path, sqlite_clean_db)
+            shutil.copyfile(testdb, cleandb)
+
+    def setUp(self):
+        super(Database, self).setUp()
+
+        if self.sql_connection == "sqlite://":
+            conn = self.engine.connect()
+            conn.connection.executescript(self._DB)
+            self.addCleanup(self.engine.dispose)
+        else:
+            shutil.copyfile(
+                os.path.join(FLAGS.state_path, self.sqlite_clean_db),
+                os.path.join(FLAGS.state_path, self.sqlite_db))
 
 
 class TestCase(testtools.TestCase):
@@ -94,7 +139,19 @@ class TestCase(testtools.TestCase):
         #             now that we have some required db setup for the system
         #             to work properly.
         self.start = timeutils.utcnow()
-        tests.reset_db()
+
+        FLAGS.set_default('connection', 'sqlite://', 'database')
+        FLAGS.set_default('sqlite_synchronous', False)
+
+        self.log_fixture = self.useFixture(fixtures.FakeLogger())
+
+        global _DB_CACHE
+        if not _DB_CACHE:
+            _DB_CACHE = Database(session, migration,
+                                 sql_connection=FLAGS.database.connection,
+                                 sqlite_db=FLAGS.sqlite_db,
+                                 sqlite_clean_db=FLAGS.sqlite_clean_db)
+        self.useFixture(_DB_CACHE)
 
         # emulate some of the mox stuff, we can't use the metaclass
         # because it screws with our generators
@@ -107,6 +164,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self.mox.VerifyAll)
         self.injected = []
         self._services = []
+
         FLAGS.set_override('fatal_exception_format_errors', True)
 
     def tearDown(self):
