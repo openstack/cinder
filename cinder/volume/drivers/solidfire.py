@@ -316,7 +316,7 @@ class SolidFire(SanISCSIDriver):
 
         attributes = {'uuid': v_ref['id'],
                       'is_clone': 'True',
-                      'src_uuid': 'src_uuid'}
+                      'src_uuid': src_uuid}
 
         if qos:
             for k, v in qos.items():
