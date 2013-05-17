@@ -45,7 +45,6 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
-from cinder import flags
 from cinder.image import glance
 from cinder import manager
 from cinder.openstack.common import excutils
@@ -57,7 +56,6 @@ from cinder import quota
 from cinder import utils
 from cinder.volume.configuration import Configuration
 from cinder.volume import utils as volume_utils
-from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -450,6 +448,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Commit the reservations
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
+
+        self.publish_service_capabilities(context)
 
         return True
 
