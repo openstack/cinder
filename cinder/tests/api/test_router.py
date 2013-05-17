@@ -64,13 +64,63 @@ class VolumeRouterTestCase(test.TestCase):
         response = req.get_response(self.app)
         self.assertEqual(200, response.status_int)
 
-    def test_versions_dispatch(self):
+    def test_versions_multi(self):
+        req = fakes.HTTPRequest.blank('/')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        resource = versions.Versions()
+        result = resource.dispatch(resource.multi, req, {})
+        ids = [v['id'] for v in result['choices']]
+        self.assertEqual(set(ids), set(['v1.0', 'v2.0']))
+
+    def test_versions_multi_disable_v1(self):
+        self.flags(enable_v1_api=False)
+        req = fakes.HTTPRequest.blank('/')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        resource = versions.Versions()
+        result = resource.dispatch(resource.multi, req, {})
+        ids = [v['id'] for v in result['choices']]
+        self.assertEqual(set(ids), set(['v2.0']))
+
+    def test_versions_multi_disable_v2(self):
+        self.flags(enable_v2_api=False)
+        req = fakes.HTTPRequest.blank('/')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        resource = versions.Versions()
+        result = resource.dispatch(resource.multi, req, {})
+        ids = [v['id'] for v in result['choices']]
+        self.assertEqual(set(ids), set(['v1.0']))
+
+    def test_versions_index(self):
         req = fakes.HTTPRequest.blank('/')
         req.method = 'GET'
         req.content_type = 'application/json'
         resource = versions.Versions()
         result = resource.dispatch(resource.index, req, {})
-        self.assertTrue(result)
+        ids = [v['id'] for v in result['versions']]
+        self.assertEqual(set(ids), set(['v1.0', 'v2.0']))
+
+    def test_versions_index_disable_v1(self):
+        self.flags(enable_v1_api=False)
+        req = fakes.HTTPRequest.blank('/')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        resource = versions.Versions()
+        result = resource.dispatch(resource.index, req, {})
+        ids = [v['id'] for v in result['versions']]
+        self.assertEqual(set(ids), set(['v2.0']))
+
+    def test_versions_index_disable_v2(self):
+        self.flags(enable_v2_api=False)
+        req = fakes.HTTPRequest.blank('/')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        resource = versions.Versions()
+        result = resource.dispatch(resource.index, req, {})
+        ids = [v['id'] for v in result['versions']]
+        self.assertEqual(set(ids), set(['v1.0']))
 
     def test_volumes(self):
         req = fakes.HTTPRequest.blank('/fake/volumes')
