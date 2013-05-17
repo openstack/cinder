@@ -14,7 +14,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""Unit tests for the NetApp-specific NFS driver module (netapp_nfs)."""
+"""Unit tests for the NetApp-specific NFS driver module."""
 
 from cinder import context
 from cinder import exception
@@ -23,15 +23,12 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
-from cinder.volume.drivers import nfs
 from lxml import etree
 from mox import IgnoreArg
 from mox import IsA
 from mox import MockObject
 
 import mox
-import suds
-import types
 
 
 def create_configuration():
@@ -74,63 +71,11 @@ class FakeResponce(object):
             self.Reason = 'Sample error'
 
 
-class NetappNfsDriverTestCase(test.TestCase):
-    """Test case for NetApp specific NFS clone driver."""
-
+class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
+    """Test direct NetApp C Mode driver."""
     def setUp(self):
-        super(NetappNfsDriverTestCase, self).setUp()
-
-        self._driver = netapp_nfs.NetAppNFSDriver(
-            configuration=create_configuration())
-
-    def test_check_for_setup_error(self):
-        mox = self.mox
-        drv = self._driver
-        required_flags = ['netapp_wsdl_url',
-                          'netapp_login',
-                          'netapp_password',
-                          'netapp_server_hostname',
-                          'netapp_server_port']
-
-        # set required flags
-        for flag in required_flags:
-            setattr(drv.configuration, flag, None)
-
-        # check exception raises when flags are not set
-        self.assertRaises(exception.CinderException,
-                          drv.check_for_setup_error)
-
-        # set required flags
-        for flag in required_flags:
-            setattr(drv.configuration, flag, 'val')
-
-        mox.StubOutWithMock(nfs.NfsDriver, 'check_for_setup_error')
-        nfs.NfsDriver.check_for_setup_error()
-        mox.ReplayAll()
-
-        drv.check_for_setup_error()
-
-        mox.VerifyAll()
-
-        # restore initial FLAGS
-        for flag in required_flags:
-            delattr(drv.configuration, flag)
-
-    def test_do_setup(self):
-        mox = self.mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, 'check_for_setup_error')
-        mox.StubOutWithMock(drv, '_get_client')
-
-        drv.check_for_setup_error()
-        drv._get_client()
-
-        mox.ReplayAll()
-
-        drv.do_setup(IsA(context.RequestContext))
-
-        mox.VerifyAll()
+        super(NetappDirectCmodeNfsDriverTestCase, self).setUp()
+        self._custom_setup()
 
     def test_create_snapshot(self):
         """Test snapshot can be created and deleted."""
@@ -147,212 +92,6 @@ class NetappNfsDriverTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot(self):
         """Tests volume creation from snapshot."""
-        drv = self._driver
-        mox = self.mox
-        volume = FakeVolume(1)
-        snapshot = FakeSnapshot(2)
-
-        self.assertRaises(exception.CinderException,
-                          drv.create_volume_from_snapshot,
-                          volume,
-                          snapshot)
-
-        snapshot = FakeSnapshot(1)
-
-        location = '127.0.0.1:/nfs'
-        expected_result = {'provider_location': location}
-        mox.StubOutWithMock(drv, '_clone_volume')
-        mox.StubOutWithMock(drv, '_get_volume_location')
-        drv._clone_volume(IgnoreArg(), IgnoreArg(), IgnoreArg())
-        drv._get_volume_location(IgnoreArg()).AndReturn(location)
-
-        mox.ReplayAll()
-
-        loc = drv.create_volume_from_snapshot(volume, snapshot)
-
-        self.assertEquals(loc, expected_result)
-
-        mox.VerifyAll()
-
-    def _prepare_delete_snapshot_mock(self, snapshot_exists):
-        drv = self._driver
-        mox = self.mox
-
-        mox.StubOutWithMock(drv, '_get_provider_location')
-        mox.StubOutWithMock(drv, '_volume_not_present')
-
-        if snapshot_exists:
-            mox.StubOutWithMock(drv, '_execute')
-            mox.StubOutWithMock(drv, '_get_volume_path')
-
-        drv._get_provider_location(IgnoreArg())
-        drv._volume_not_present(IgnoreArg(),
-                                IgnoreArg()).AndReturn(not snapshot_exists)
-
-        if snapshot_exists:
-            drv._get_volume_path(IgnoreArg(), IgnoreArg())
-            drv._execute('rm', None, run_as_root=True)
-
-        mox.ReplayAll()
-
-        return mox
-
-    def test_delete_existing_snapshot(self):
-        drv = self._driver
-        mox = self._prepare_delete_snapshot_mock(True)
-
-        drv.delete_snapshot(FakeSnapshot())
-
-        mox.VerifyAll()
-
-    def test_delete_missing_snapshot(self):
-        drv = self._driver
-        mox = self._prepare_delete_snapshot_mock(False)
-
-        drv.delete_snapshot(FakeSnapshot())
-
-        mox.VerifyAll()
-
-    def _prepare_clone_mock(self, status):
-        drv = self._driver
-        mox = self.mox
-
-        volume = FakeVolume()
-        setattr(volume, 'provider_location', '127.0.0.1:/nfs')
-
-        drv._client = MockObject(suds.client.Client)
-        drv._client.factory = MockObject(suds.client.Factory)
-        drv._client.service = MockObject(suds.client.ServiceSelector)
-
-        # ApiProxy() method is generated by ServiceSelector at runtime from the
-        # XML, so mocking is impossible.
-        setattr(drv._client.service,
-                'ApiProxy',
-                types.MethodType(lambda *args, **kwargs: FakeResponce(status),
-                                 suds.client.ServiceSelector))
-        mox.StubOutWithMock(drv, '_get_host_id')
-        mox.StubOutWithMock(drv, '_get_full_export_path')
-
-        drv._get_host_id(IgnoreArg()).AndReturn('10')
-        drv._get_full_export_path(IgnoreArg(), IgnoreArg()).AndReturn('/nfs')
-
-        return mox
-
-    def test_successfull_clone_volume(self):
-        drv = self._driver
-        mox = self._prepare_clone_mock('passed')
-        # set required flags
-        setattr(drv.configuration, 'synchronous_snapshot_create', False)
-        mox.ReplayAll()
-
-        volume_name = 'volume_name'
-        clone_name = 'clone_name'
-        volume_id = volume_name + str(hash(volume_name))
-
-        drv._clone_volume(volume_name, clone_name, volume_id)
-
-        mox.VerifyAll()
-
-    def test_failed_clone_volume(self):
-        drv = self._driver
-        mox = self._prepare_clone_mock('failed')
-
-        mox.ReplayAll()
-
-        volume_name = 'volume_name'
-        clone_name = 'clone_name'
-        volume_id = volume_name + str(hash(volume_name))
-
-        self.assertRaises(exception.CinderException,
-                          drv._clone_volume,
-                          volume_name, clone_name, volume_id)
-
-        mox.VerifyAll()
-
-    def test_cloned_volume_size_fail(self):
-        volume_clone_fail = FakeVolume(1)
-        volume_src = FakeVolume(2)
-        try:
-            self._driver.create_cloned_volume(volume_clone_fail,
-                                              volume_src)
-            raise AssertionError()
-        except exception.CinderException:
-            pass
-
-
-class NetappCmodeNfsDriverTestCase(test.TestCase):
-    """Test case for NetApp C Mode specific NFS clone driver"""
-
-    def setUp(self):
-        super(NetappCmodeNfsDriverTestCase, self).setUp()
-        self._custom_setup()
-
-    def _custom_setup(self):
-        self._driver = netapp_nfs.NetAppCmodeNfsDriver(
-            configuration=create_configuration())
-
-    def test_check_for_setup_error(self):
-        mox = self.mox
-        drv = self._driver
-        required_flags = [
-            'netapp_wsdl_url',
-            'netapp_login',
-            'netapp_password',
-            'netapp_server_hostname',
-            'netapp_server_port']
-
-        # set required flags
-        for flag in required_flags:
-            setattr(drv.configuration, flag, None)
-        # check exception raises when flags are not set
-        self.assertRaises(exception.CinderException,
-                          drv.check_for_setup_error)
-
-        # set required flags
-        for flag in required_flags:
-            setattr(drv.configuration, flag, 'val')
-
-        mox.ReplayAll()
-
-        drv.check_for_setup_error()
-
-        mox.VerifyAll()
-
-        # restore initial FLAGS
-        for flag in required_flags:
-            delattr(drv.configuration, flag)
-
-    def test_do_setup(self):
-        mox = self.mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, 'check_for_setup_error')
-        mox.StubOutWithMock(drv, '_get_client')
-
-        drv.check_for_setup_error()
-        drv._get_client()
-
-        mox.ReplayAll()
-
-        drv.do_setup(IsA(context.RequestContext))
-
-        mox.VerifyAll()
-
-    def test_create_snapshot(self):
-        """Test snapshot can be created and deleted"""
-        mox = self.mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_clone_volume')
-        drv._clone_volume(IgnoreArg(), IgnoreArg(), IgnoreArg())
-        mox.ReplayAll()
-
-        drv.create_snapshot(FakeSnapshot())
-
-        mox.VerifyAll()
-
-    def test_create_volume_from_snapshot(self):
-        """Tests volume creation from snapshot"""
         drv = self._driver
         mox = self.mox
         volume = FakeVolume(1)
@@ -419,44 +158,6 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-    def _prepare_clone_mock(self, status):
-        drv = self._driver
-        mox = self.mox
-
-        volume = FakeVolume()
-        setattr(volume, 'provider_location', '127.0.0.1:/nfs')
-
-        drv._client = MockObject(suds.client.Client)
-        drv._client.factory = MockObject(suds.client.Factory)
-        drv._client.service = MockObject(suds.client.ServiceSelector)
-        # CloneNasFile method is generated by ServiceSelector at runtime from
-        # the
-        # XML, so mocking is impossible.
-        setattr(drv._client.service,
-                'CloneNasFile',
-                types.MethodType(lambda *args, **kwargs: FakeResponce(status),
-                                 suds.client.ServiceSelector))
-        mox.StubOutWithMock(drv, '_get_host_ip')
-        mox.StubOutWithMock(drv, '_get_export_path')
-
-        drv._get_host_ip(IgnoreArg()).AndReturn('127.0.0.1')
-        drv._get_export_path(IgnoreArg()).AndReturn('/nfs')
-        return mox
-
-    def test_clone_volume(self):
-        drv = self._driver
-        mox = self._prepare_clone_mock('passed')
-
-        mox.ReplayAll()
-
-        volume_name = 'volume_name'
-        clone_name = 'clone_name'
-        volume_id = volume_name + str(hash(volume_name))
-
-        drv._clone_volume(volume_name, clone_name, volume_id)
-
-        mox.VerifyAll()
-
     def test_cloned_volume_size_fail(self):
         volume_clone_fail = FakeVolume(1)
         volume_src = FakeVolume(2)
@@ -467,12 +168,12 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
         except exception.CinderException:
             pass
 
-
-class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
-    """Test direct NetApp C Mode driver"""
     def _custom_setup(self):
+        kwargs = {}
+        kwargs['netapp_mode'] = 'proxy'
+        kwargs['configuration'] = create_configuration()
         self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver(
-            configuration=create_configuration())
+            **kwargs)
 
     def test_check_for_setup_error(self):
         mox = self.mox
@@ -591,7 +292,7 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
 
 
 class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
-    """Test direct NetApp C Mode driver"""
+    """Test direct NetApp C Mode driver."""
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppDirect7modeNfsDriver(
             configuration=create_configuration())
