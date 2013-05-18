@@ -815,17 +815,6 @@ def check_isinstance(obj, cls):
     return cls()  # Ugly PyLint hack
 
 
-def bool_from_str(val):
-    """Convert a string representation of a bool into a bool value"""
-
-    if not val:
-        return False
-    try:
-        return True if int(val) else False
-    except ValueError:
-        return val.lower() == 'true'
-
-
 def is_valid_boolstr(val):
     """Check if the provided string is a valid bool string or not. """
     val = str(val).lower()
