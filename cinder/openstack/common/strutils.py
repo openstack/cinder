@@ -19,10 +19,13 @@
 System-level utilities and helper functions.
 """
 
-import logging
 import sys
 
-LOG = logging.getLogger(__name__)
+from cinder.openstack.common.gettextutils import _
+
+
+TRUE_STRINGS = ('1', 't', 'true', 'on', 'y', 'yes')
+FALSE_STRINGS = ('0', 'f', 'false', 'off', 'n', 'no')
 
 
 def int_from_bool_as_string(subject):
@@ -40,24 +43,38 @@ def int_from_bool_as_string(subject):
     return bool_from_string(subject) and 1 or 0
 
 
-def bool_from_string(subject):
+def bool_from_string(subject, strict=False):
     """
     Interpret a string as a boolean.
 
-    Any string value in:
+    A case-insensitive match is performed such that strings matching 't',
+    'true', 'on', 'y', 'yes', or '1' are considered True and, when
+    `strict=False`, anything else is considered False.
 
-        ('True', 'true', 'On', 'on', 'Yes', 'yes', '1')
+    Useful for JSON-decoded stuff and config file parsing.
 
-    is interpreted as a boolean True.
-
-    Useful for JSON-decoded stuff and config file parsing
+    If `strict=True`, unrecognized values, including None, will raise a
+    ValueError which is useful when parsing values passed in from an API call.
+    Strings yielding False are 'f', 'false', 'off', 'n', 'no', or '0'.
     """
-    if isinstance(subject, bool):
-        return subject
-    if isinstance(subject, basestring):
-        if subject.strip().lower() in ('true', 'on', 'yes', '1'):
-            return True
-    return False
+    if not isinstance(subject, basestring):
+        subject = str(subject)
+
+    lowered = subject.strip().lower()
+
+    if lowered in TRUE_STRINGS:
+        return True
+    elif lowered in FALSE_STRINGS:
+        return False
+    elif strict:
+        acceptable = ', '.join(
+            "'%s'" % s for s in sorted(TRUE_STRINGS + FALSE_STRINGS))
+        msg = _("Unrecognized value '%(val)s', acceptable values are:"
+                " %(acceptable)s") % {'val': subject,
+                                      'acceptable': acceptable}
+        raise ValueError(msg)
+    else:
+        return False
 
 
 def safe_decode(text, incoming=None, errors='strict'):
