@@ -365,6 +365,34 @@ def volume_type_get_by_name(context, name):
     return IMPL.volume_type_get_by_name(context, name)
 
 
+def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
+    """Get volume types that are associated with specific qos specs."""
+    return IMPL.volume_type_qos_associations_get(context,
+                                                 qos_specs_id,
+                                                 inactive)
+
+
+def volume_type_qos_associate(context, type_id, qos_specs_id):
+    """Associate a volume type with specific qos specs."""
+    return IMPL.volume_type_qos_associate(context, type_id, qos_specs_id)
+
+
+def volume_type_qos_disassociate(context, qos_specs_id, type_id):
+    """Disassociate a volume type from specific qos specs."""
+    return IMPL.volume_type_qos_disassociate(context, qos_specs_id, type_id)
+
+
+def volume_type_qos_disassociate_all(context, qos_specs_id):
+    """Disassociate all volume types from specific qos specs."""
+    return IMPL.volume_type_qos_disassociate_all(context,
+                                                 qos_specs_id)
+
+
+def volume_type_qos_specs_get(context, type_id):
+    """Get all qos specs for given volume type."""
+    return IMPL.volume_type_qos_specs_get(context, type_id)
+
+
 def volume_type_destroy(context, id):
     """Delete a volume type."""
     return IMPL.volume_type_destroy(context, id)
@@ -426,11 +454,65 @@ def volume_type_encryption_volume_get(context, volume_type_id, session=None):
                                                   session)
 
 
+def volume_encryption_metadata_get(context, volume_id, session=None):
+    return IMPL.volume_encryption_metadata_get(context, volume_id, session)
+
+
 ###################
 
 
-def volume_encryption_metadata_get(context, volume_id, session=None):
-    return IMPL.volume_encryption_metadata_get(context, volume_id, session)
+def qos_specs_create(context, values):
+    """Create a qos_specs."""
+    return IMPL.qos_specs_create(context, values)
+
+
+def qos_specs_get(context, qos_specs_id):
+    """Get all specification for a given qos_specs."""
+    return IMPL.qos_specs_get(context, qos_specs_id)
+
+
+def qos_specs_get_all(context, inactive=False, filters=None):
+    """Get all qos_specs."""
+    return IMPL.qos_specs_get_all(context, inactive, filters)
+
+
+def qos_specs_get_by_name(context, name):
+    """Get all specification for a given qos_specs."""
+    return IMPL.qos_specs_get_by_name(context, name)
+
+
+def qos_specs_associations_get(context, qos_specs_id):
+    """Get all associated volume types for a given qos_specs."""
+    return IMPL.qos_specs_associations_get(context, qos_specs_id)
+
+
+def qos_specs_associate(context, qos_specs_id, type_id):
+    """Associate qos_specs from volume type."""
+    return IMPL.qos_specs_associate(context, qos_specs_id, type_id)
+
+
+def qos_specs_disassociate(context, qos_specs_id, type_id):
+    """Disassociate qos_specs from volume type."""
+    return IMPL.qos_specs_disassociate(context, qos_specs_id, type_id)
+
+
+def qos_specs_disassociate_all(context, qos_specs_id):
+    """Disassociate qos_specs from all entities."""
+    return IMPL.qos_specs_disassociate_all(context, qos_specs_id)
+
+
+def qos_specs_delete(context, qos_specs_id):
+    """Delete the qos_specs."""
+    IMPL.qos_specs_delete(context, qos_specs_id)
+
+
+def qos_specs_update(context, qos_specs_id, specs):
+    """Update qos specs.
+
+    This adds or modifies the key/value pairs specified in the
+    specs dict argument for a given qos_specs.
+    """
+    IMPL.qos_specs_update(context, qos_specs_id, specs)
 
 
 ###################

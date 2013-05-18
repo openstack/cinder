@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests import conf_fixture
+from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 
@@ -201,3 +202,22 @@ class VolumeTypeTestCase(test.TestCase):
                                                        volume_type_id,
                                                        encryption)
         self.assertTrue(volume_types.is_encrypted(self.ctxt, volume_type_id))
+
+    def test_get_volume_type_qos_specs(self):
+        qos_ref = qos_specs.create(self.ctxt, 'qos-specs-1', {'k1': 'v1',
+                                                              'k2': 'v2',
+                                                              'k3': 'v3'})
+        type_ref = volume_types.create(self.ctxt, "type1", {"key2": "val2",
+                                                  "key3": "val3"})
+        res = volume_types.get_volume_type_qos_specs(type_ref['id'])
+        self.assertEquals(res['qos_specs'], {})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+
+        expected = {'qos_specs': {'consumer': 'back-end',
+                                  'k1': 'v1',
+                                  'k2': 'v2',
+                                  'k3': 'v3'}}
+        res = volume_types.get_volume_type_qos_specs(type_ref['id'])
+        self.assertDictMatch(expected, res)

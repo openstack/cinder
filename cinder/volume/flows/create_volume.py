@@ -519,6 +519,14 @@ class ExtractVolumeRequestTask(CinderTask):
                                                         source_volume,
                                                         backup_source_volume)
 
+        specs = {}
+        if volume_type_id:
+            qos_specs = volume_types.get_volume_type_qos_specs(volume_type_id)
+            specs = qos_specs['qos_specs']
+        if not specs:
+            # to make sure we don't pass empty dict
+            specs = None
+
         self._check_metadata_properties(metadata)
 
         return {
@@ -529,6 +537,7 @@ class ExtractVolumeRequestTask(CinderTask):
             'volume_type': volume_type,
             'volume_type_id': volume_type_id,
             'encryption_key_id': encryption_key_id,
+            'qos_specs': specs,
         }
 
 

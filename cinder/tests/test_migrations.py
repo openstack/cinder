@@ -646,7 +646,6 @@ class TestMigrations(test.TestCase):
             metadata.bind = engine
 
             migration_api.upgrade(engine, TestMigrations.REPOSITORY, 10)
-
             self.assertTrue(engine.dialect.has_table(engine.connect(),
                                                      "transfers"))
             transfers = sqlalchemy.Table('transfers',
@@ -845,12 +844,12 @@ class TestMigrations(test.TestCase):
 
     def test_migration_017(self):
         """Test that added encryption information works correctly."""
+
+            # upgrade schema
         for (key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.INIT_VERSION)
-
-            # upgrade schema
             migration_api.upgrade(engine, TestMigrations.REPOSITORY, 16)
             metadata = sqlalchemy.schema.MetaData()
             metadata.bind = engine
@@ -897,3 +896,41 @@ class TestMigrations(test.TestCase):
 
             self.assertFalse(engine.dialect.has_table(engine.connect(),
                                                       'encryption'))
+
+    def test_migration_018(self):
+        """Test that added qos_specs table works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 17)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 18)
+            self.assertTrue(engine.dialect.has_table(
+                engine.connect(), "quality_of_service_specs"))
+            qos_specs = sqlalchemy.Table('quality_of_service_specs',
+                                         metadata,
+                                         autoload=True)
+            self.assertTrue(isinstance(qos_specs.c.created_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(qos_specs.c.updated_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(qos_specs.c.deleted_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(qos_specs.c.deleted.type,
+                                       sqlalchemy.types.BOOLEAN))
+            self.assertTrue(isinstance(qos_specs.c.id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(qos_specs.c.specs_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(qos_specs.c.key.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(qos_specs.c.value.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 17)
+
+            self.assertFalse(engine.dialect.has_table(
+                engine.connect(), "quality_of_service_specs"))
