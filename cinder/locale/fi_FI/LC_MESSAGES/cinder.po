@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-05-17 18:10+0000\n"
+"POT-Creation-Date: 2013-05-18 18:10+0000\n"
 "PO-Revision-Date: 2013-05-08 11:44+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Finnish (Finland) "
@@ -2822,122 +2822,122 @@ msgstr ""
 msgid "Driver must implement initialize_connection"
 msgstr ""
 
-#: cinder/volume/manager.py:124
+#: cinder/volume/manager.py:122
 #, python-format
 msgid "Driver path %s is deprecated, update your configuration to the new path."
 msgstr ""
 
-#: cinder/volume/manager.py:146
+#: cinder/volume/manager.py:144
 #, python-format
 msgid "Re-exporting %s volumes"
 msgstr ""
 
-#: cinder/volume/manager.py:151
+#: cinder/volume/manager.py:149
 #, python-format
 msgid "volume %s stuck in a downloading state"
 msgstr ""
 
-#: cinder/volume/manager.py:156
+#: cinder/volume/manager.py:154
 #, python-format
 msgid "volume %s: skipping export"
 msgstr ""
 
-#: cinder/volume/manager.py:158
+#: cinder/volume/manager.py:156
 msgid "Resuming any in progress delete operations"
 msgstr ""
 
-#: cinder/volume/manager.py:161
+#: cinder/volume/manager.py:159
 #, python-format
 msgid "Resuming delete on volume: %s"
 msgstr ""
 
-#: cinder/volume/manager.py:221
+#: cinder/volume/manager.py:219
 #, python-format
 msgid "volume %(vol_name)s: creating lv of size %(vol_size)sG"
 msgstr ""
 
-#: cinder/volume/manager.py:230
+#: cinder/volume/manager.py:228
 #, python-format
 msgid "volume %s: creating from snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:234
+#: cinder/volume/manager.py:232
 #, python-format
 msgid "volume %s: creating from existing volume"
 msgstr ""
 
-#: cinder/volume/manager.py:238
+#: cinder/volume/manager.py:236
 #, python-format
 msgid "volume %s: creating from image"
 msgstr ""
 
-#: cinder/volume/manager.py:247
+#: cinder/volume/manager.py:245
 #, python-format
 msgid "volume %s: creating"
 msgstr ""
 
-#: cinder/volume/manager.py:279
+#: cinder/volume/manager.py:277
 #, python-format
 msgid "volume %s: creating export"
 msgstr ""
 
-#: cinder/volume/manager.py:288
+#: cinder/volume/manager.py:286
 #, python-format
 msgid "volume %s: create failed"
 msgstr ""
 
-#: cinder/volume/manager.py:318
+#: cinder/volume/manager.py:316
 #, python-format
 msgid "volume %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:326
+#: cinder/volume/manager.py:324
 #, python-format
 msgid "Error: %s"
 msgstr ""
 
-#: cinder/volume/manager.py:352
+#: cinder/volume/manager.py:350
 #, python-format
 msgid "volume %s: Error trying to reschedule create"
 msgstr ""
 
-#: cinder/volume/manager.py:370
+#: cinder/volume/manager.py:368
 msgid "Retry info not present, will not reschedule"
 msgstr ""
 
-#: cinder/volume/manager.py:374
+#: cinder/volume/manager.py:372
 msgid "No request spec, will not reschedule"
 msgstr ""
 
-#: cinder/volume/manager.py:379
+#: cinder/volume/manager.py:377
 #, python-format
 msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
 msgstr ""
 
-#: cinder/volume/manager.py:408 cinder/volume/manager.py:421
+#: cinder/volume/manager.py:406 cinder/volume/manager.py:419
 #, python-format
 msgid "volume %s: deleting"
 msgstr ""
 
-#: cinder/volume/manager.py:414
+#: cinder/volume/manager.py:412
 msgid "volume is not local to this node"
 msgstr ""
 
-#: cinder/volume/manager.py:419
+#: cinder/volume/manager.py:417
 #, python-format
 msgid "volume %s: removing export"
 msgstr ""
 
-#: cinder/volume/manager.py:424
+#: cinder/volume/manager.py:422
 #, python-format
 msgid "volume %s: volume is busy"
 msgstr ""
 
-#: cinder/volume/manager.py:443
+#: cinder/volume/manager.py:441
 msgid "Failed to update usages deleting volume"
 msgstr ""
 
-#: cinder/volume/manager.py:447
+#: cinder/volume/manager.py:445
 #, python-format
 msgid "volume %s: deleted successfully"
 msgstr ""
@@ -3120,22 +3120,22 @@ msgstr ""
 msgid "mount.glusterfs is not installed"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:98 cinder/volume/drivers/nfs.py:154
+#: cinder/volume/drivers/glusterfs.py:98 cinder/volume/drivers/nfs.py:168
 #, python-format
 msgid "casted to %s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:108 cinder/volume/drivers/nfs.py:164
+#: cinder/volume/drivers/glusterfs.py:108 cinder/volume/drivers/nfs.py:178
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:168 cinder/volume/drivers/nfs.py:223
+#: cinder/volume/drivers/glusterfs.py:168 cinder/volume/drivers/nfs.py:237
 #, python-format
 msgid "Exception during mounting %s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:247 cinder/volume/drivers/nfs.py:307
+#: cinder/volume/drivers/glusterfs.py:247 cinder/volume/drivers/nfs.py:321
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
@@ -3205,12 +3205,12 @@ msgstr ""
 msgid "Error retrieving volume status: "
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:127
+#: cinder/volume/drivers/nfs.py:141
 #, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:132
+#: cinder/volume/drivers/nfs.py:146
 #, python-format
 msgid "NFS config file at %(config)s doesn't exist"
 msgstr ""
@@ -5560,102 +5560,4 @@ msgstr ""
 #, python-format
 msgid "The hostname must be called '%s'"
 msgstr ""
-
-#~ msgid "_get_device_type: Storage Pool must beconfigured."
-#~ msgstr ""
-
-#~ msgid "delete_volume:No need to delete volume.Volume %(name)s does not exist."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "initialize_connection:Failed to find target "
-#~ "ipfor initiator:%(initiatorname)s,please check "
-#~ "config file."
-#~ msgstr ""
-
-#~ msgid "initialize_connection:Failed to find target iSCSIiqn. Target IP:%(ip)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "initialize_connection:host name: %(host)s,initiator "
-#~ "name: %(ini)s, hostport name: %(port)s"
-#~ msgstr ""
-
-#~ msgid "terminate_connection:volume does not exist.volume name:%(volume)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "terminate_connection:No map between host and"
-#~ " volume. Host name:%(hostname)s,volume "
-#~ "name:%(volumename)s."
-#~ msgstr ""
-
-#~ msgid "create_snapshot:Volume does not exist.Volume name:%(name)s"
-#~ msgstr ""
-
-#~ msgid "create_snapshot:Snapshot does not exist.Snapshot name:%(name)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "create_volume_from_snapshot:Snapshot does not "
-#~ "exist.Snapshot name:%(name)s"
-#~ msgstr ""
-
-#~ msgid "Write login informationto xml error. %s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Config file is wrong. LUNType must "
-#~ "be \"Thin\" or \"Thick\". LUNType:%(type)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_get_maximum_pool:maxpoolid is None.Please check "
-#~ "config file and make sure the "
-#~ "\"Name\" in \"StoragePool\" is right."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_add_host:Failed to add host to "
-#~ "hostgroup.host name:%(host)s hostgroup "
-#~ "id:%(hostgroup)s out:%(out)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_add_initiator:Failed to add initiator.initiator "
-#~ "name:%(name)s out:%(out)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_delete_initiator:ERROE:Failed to delete "
-#~ "initiator.initiator name:%(name)s out:%(out)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_add_hostport:Failed to add hostport. port "
-#~ "name:%(port)sport information:%(info)s host "
-#~ "id:%(host)sout:%(out)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_map_lun:Failed to add "
-#~ "hostmap.hostid:%(host)slunid:%(lun)shostlunid:%(hostlunid)s.out:%(out)s"
-#~ msgstr ""
-
-#~ msgid "_delete_host: Failed delete host.host id:%(hostid)s.out:%(out)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_wait_for_luncopy:LUNcopy status isnot normal. "
-#~ "LUNcopy name:%(luncopyname)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "_change_lun_controller:Failed to change lun "
-#~ "owningcontroller. lun id:%(lunid)s. new "
-#~ "controller:%(controller)s. out:%(out)s"
-#~ msgstr ""
-
-#~ msgid "_is_resource_pool_enough:Resource pool for snapshotnot be added."
-#~ msgstr ""
 
