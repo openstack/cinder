@@ -110,7 +110,7 @@ srcfiles+=" setup.py"
 
 function run_pep8 {
   echo "Running PEP8 and HACKING compliance check..."
-  flake8 cinder* bin
+  bash -c "${wrapper} flake8 cinder* bin"
 }
 
 
