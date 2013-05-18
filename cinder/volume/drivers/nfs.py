@@ -110,6 +110,20 @@ class RemoteFsDriver(driver.VolumeDriver):
         (in a hex format)."""
         return hashlib.md5(base_str).hexdigest()
 
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        image_utils.fetch_to_raw(context,
+                                 image_service,
+                                 image_id,
+                                 self.local_path(volume))
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+        image_utils.upload_volume(context,
+                                  image_service,
+                                  image_meta,
+                                  self.local_path(volume))
+
 
 class NfsDriver(RemoteFsDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
@@ -341,17 +355,3 @@ class NfsDriver(RemoteFsDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        image_utils.fetch_to_raw(context,
-                                 image_service,
-                                 image_id,
-                                 self.local_path(volume))
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        image_utils.upload_volume(context,
-                                  image_service,
-                                  image_meta,
-                                  self.local_path(volume))
