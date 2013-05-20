@@ -29,6 +29,7 @@ import mox
 import cinder
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
 from cinder import test
 from cinder import utils
@@ -298,19 +299,6 @@ class GenericUtilsTestCase(test.TestCase):
     def test_hostname_translate(self):
         hostname = "<}\x1fh\x10e\x08l\x02l\x05o\x12!{>"
         self.assertEqual("hello", utils.sanitize_hostname(hostname))
-
-    def test_bool_from_str(self):
-        self.assertTrue(utils.bool_from_str('1'))
-        self.assertTrue(utils.bool_from_str('2'))
-        self.assertTrue(utils.bool_from_str('-1'))
-        self.assertTrue(utils.bool_from_str('true'))
-        self.assertTrue(utils.bool_from_str('True'))
-        self.assertTrue(utils.bool_from_str('tRuE'))
-        self.assertFalse(utils.bool_from_str('False'))
-        self.assertFalse(utils.bool_from_str('false'))
-        self.assertFalse(utils.bool_from_str('0'))
-        self.assertFalse(utils.bool_from_str(None))
-        self.assertFalse(utils.bool_from_str('junk'))
 
     def test_generate_glance_url(self):
         generated_url = utils.generate_glance_url()

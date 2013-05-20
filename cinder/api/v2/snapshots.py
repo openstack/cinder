@@ -25,6 +25,7 @@ from cinder.api import xmlutil
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 
@@ -187,7 +188,7 @@ class SnapshotsController(wsgi.Controller):
             msg = _("Invalid value '%s' for force. ") % force
             raise exception.InvalidParameterValue(err=msg)
 
-        if utils.bool_from_str(force):
+        if strutils.bool_from_string(force):
             new_snapshot = self.volume_api.create_snapshot_force(
                 context,
                 volume,
