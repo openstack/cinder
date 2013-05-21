@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-05-19 18:10+0000\n"
+"POT-Creation-Date: 2013-05-21 18:10+0000\n"
 "PO-Revision-Date: 2012-03-25 09:34+0000\n"
 "Last-Translator: Eugene Marshal <Unknown>\n"
 "Language-Team: Russian <ru@li.org>\n"
@@ -794,17 +794,17 @@ msgstr ""
 msgid "Expected object of type: %s"
 msgstr "Ожидался объект типа: %s"
 
-#: cinder/utils.py:914
+#: cinder/utils.py:903
 #, python-format
 msgid "timefunc: '%(name)s' took %(total_time).2f secs"
 msgstr "timefunc: '%(name)s' заняла %(total_time).2f с."
 
-#: cinder/utils.py:1116
+#: cinder/utils.py:1105
 #, fuzzy, python-format
 msgid "Could not remove tmpdir: %s"
 msgstr "Ошибка удаления контейнера: %s"
 
-#: cinder/utils.py:1224
+#: cinder/utils.py:1213
 #, python-format
 msgid "Unknown byte multiplier: %s"
 msgstr ""
@@ -1074,18 +1074,18 @@ msgstr "Узел не найден"
 msgid "Quota limit must be -1 or greater."
 msgstr ""
 
-#: cinder/api/contrib/types_extra_specs.py:98
+#: cinder/api/contrib/types_extra_specs.py:102
 #, fuzzy
 msgid "Request body empty"
 msgstr "Неправильный формат тела запроса"
 
-#: cinder/api/contrib/types_extra_specs.py:102
+#: cinder/api/contrib/types_extra_specs.py:106
 #: cinder/api/v1/snapshot_metadata.py:77 cinder/api/v1/volume_metadata.py:77
 #: cinder/api/v2/snapshot_metadata.py:77
 msgid "Request body and URI mismatch"
 msgstr "Тело запроса и URI не совпадают"
 
-#: cinder/api/contrib/types_extra_specs.py:105
+#: cinder/api/contrib/types_extra_specs.py:109
 #: cinder/api/v1/snapshot_metadata.py:81 cinder/api/v1/volume_metadata.py:81
 #: cinder/api/v2/snapshot_metadata.py:81
 msgid "Request body contains too many items"
@@ -1252,17 +1252,17 @@ msgstr "Копия не существует"
 msgid "Metadata item was not found"
 msgstr "Элемент метаданных не найден"
 
-#: cinder/api/v1/snapshots.py:122 cinder/api/v2/snapshots.py:122
+#: cinder/api/v1/snapshots.py:123 cinder/api/v2/snapshots.py:123
 #, python-format
 msgid "Delete snapshot with id: %s"
 msgstr "Удалить снимок с идентификатором: %s"
 
-#: cinder/api/v1/snapshots.py:172 cinder/api/v2/snapshots.py:178
+#: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:179
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr "Создать снимок из тома %s"
 
-#: cinder/api/v1/snapshots.py:176 cinder/api/v2/snapshots.py:187
+#: cinder/api/v1/snapshots.py:177 cinder/api/v2/snapshots.py:188
 #, python-format
 msgid "Invalid value '%s' for force. "
 msgstr ""
@@ -1750,12 +1750,18 @@ msgstr ""
 msgid "Unable to locate Volume Group %s"
 msgstr "Невозможно найти том %s"
 
-#: cinder/brick/local_dev/lvm.py:243
+#: cinder/brick/local_dev/lvm.py:265
 #, fuzzy, python-format
 msgid "Unable to find VG: %s"
 msgstr "Ошибка поиска vbd для vdi %s"
 
-#: cinder/brick/local_dev/lvm.py:292
+#: cinder/brick/local_dev/lvm.py:284
+msgid ""
+"Requested to setup thin provisioning, however current LVM version does "
+"not support it."
+msgstr ""
+
+#: cinder/brick/local_dev/lvm.py:337
 #, fuzzy, python-format
 msgid "Unable to find LV: %s"
 msgstr "Ошибка поиска vbd для vdi %s"
@@ -1999,6 +2005,11 @@ msgstr "Полный набор ФЛАГОВ:"
 #: cinder/openstack/common/service.py:261
 #, python-format
 msgid "Child %(pid)s exited with status %(code)d"
+msgstr ""
+
+#: cinder/openstack/common/strutils.py:72
+#, python-format
+msgid "Unrecognized value '%(val)s', acceptable values are: %(acceptable)s"
 msgstr ""
 
 #: cinder/openstack/common/notifier/api.py:125

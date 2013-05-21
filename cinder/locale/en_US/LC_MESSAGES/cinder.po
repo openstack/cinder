@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-05-19 18:10+0000\n"
+"POT-Creation-Date: 2013-05-21 18:10+0000\n"
 "PO-Revision-Date: 2013-05-08 11:44+0000\n"
 "Last-Translator: markmc <markmc@redhat.com>\n"
 "Language-Team: en_US <LL@li.org>\n"
@@ -789,17 +789,17 @@ msgstr "in looping call"
 msgid "Expected object of type: %s"
 msgstr "Expected object of type: %s"
 
-#: cinder/utils.py:914
+#: cinder/utils.py:903
 #, python-format
 msgid "timefunc: '%(name)s' took %(total_time).2f secs"
 msgstr "timefunc: '%(name)s' took %(total_time).2f secs"
 
-#: cinder/utils.py:1116
+#: cinder/utils.py:1105
 #, python-format
 msgid "Could not remove tmpdir: %s"
 msgstr "Could not remove tmpdir: %s"
 
-#: cinder/utils.py:1224
+#: cinder/utils.py:1213
 #, python-format
 msgid "Unknown byte multiplier: %s"
 msgstr "Unknown byte multiplier: %s"
@@ -1072,17 +1072,17 @@ msgstr "Host not found"
 msgid "Quota limit must be -1 or greater."
 msgstr "Quota limit must be -1 or greater."
 
-#: cinder/api/contrib/types_extra_specs.py:98
+#: cinder/api/contrib/types_extra_specs.py:102
 msgid "Request body empty"
 msgstr "Request body empty"
 
-#: cinder/api/contrib/types_extra_specs.py:102
+#: cinder/api/contrib/types_extra_specs.py:106
 #: cinder/api/v1/snapshot_metadata.py:77 cinder/api/v1/volume_metadata.py:77
 #: cinder/api/v2/snapshot_metadata.py:77
 msgid "Request body and URI mismatch"
 msgstr "Request body and URI mismatch"
 
-#: cinder/api/contrib/types_extra_specs.py:105
+#: cinder/api/contrib/types_extra_specs.py:109
 #: cinder/api/v1/snapshot_metadata.py:81 cinder/api/v1/volume_metadata.py:81
 #: cinder/api/v2/snapshot_metadata.py:81
 msgid "Request body contains too many items"
@@ -1248,17 +1248,17 @@ msgstr "snapshot does not exist"
 msgid "Metadata item was not found"
 msgstr "Metadata item was not found"
 
-#: cinder/api/v1/snapshots.py:122 cinder/api/v2/snapshots.py:122
+#: cinder/api/v1/snapshots.py:123 cinder/api/v2/snapshots.py:123
 #, python-format
 msgid "Delete snapshot with id: %s"
 msgstr "Delete snapshot with id: %s"
 
-#: cinder/api/v1/snapshots.py:172 cinder/api/v2/snapshots.py:178
+#: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:179
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr "Create snapshot from volume %s"
 
-#: cinder/api/v1/snapshots.py:176 cinder/api/v2/snapshots.py:187
+#: cinder/api/v1/snapshots.py:177 cinder/api/v2/snapshots.py:188
 #, python-format
 msgid "Invalid value '%s' for force. "
 msgstr "Invalid value '%s' for force. "
@@ -1786,12 +1786,18 @@ msgstr "casted to %s"
 msgid "Unable to locate Volume Group %s"
 msgstr "Fail to create volume %(volname)s"
 
-#: cinder/brick/local_dev/lvm.py:243
+#: cinder/brick/local_dev/lvm.py:265
 #, fuzzy, python-format
 msgid "Unable to find VG: %s"
 msgstr "Unable to find ca_file : %s"
 
-#: cinder/brick/local_dev/lvm.py:292
+#: cinder/brick/local_dev/lvm.py:284
+msgid ""
+"Requested to setup thin provisioning, however current LVM version does "
+"not support it."
+msgstr ""
+
+#: cinder/brick/local_dev/lvm.py:337
 #, fuzzy, python-format
 msgid "Unable to find LV: %s"
 msgstr "Unable to find ca_file : %s"
@@ -2038,6 +2044,11 @@ msgstr "Full set of CONF:"
 #, python-format
 msgid "Child %(pid)s exited with status %(code)d"
 msgstr "Child %(pid)s exited with status %(code)d"
+
+#: cinder/openstack/common/strutils.py:72
+#, python-format
+msgid "Unrecognized value '%(val)s', acceptable values are: %(acceptable)s"
+msgstr ""
 
 #: cinder/openstack/common/notifier/api.py:125
 #, python-format
