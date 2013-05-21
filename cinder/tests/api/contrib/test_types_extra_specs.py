@@ -21,6 +21,8 @@ from lxml import etree
 import webob
 
 from cinder.api.contrib import types_extra_specs
+from cinder.openstack.common.notifier import api as notifier_api
+from cinder.openstack.common.notifier import test_notifier
 from cinder import test
 from cinder.tests.api import fakes
 import cinder.wsgi
@@ -61,9 +63,19 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
     def setUp(self):
         super(VolumeTypesExtraSpecsTest, self).setUp()
+        self.flags(connection_type='fake',
+                   host='fake',
+                   notification_driver=[test_notifier.__name__])
         self.stubs.Set(cinder.db, 'volume_type_get', volume_type_get)
         self.api_path = '/v2/fake/os-volume-types/1/extra_specs'
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
+        """to reset notifier drivers left over from other api/contrib tests"""
+        notifier_api._reset_drivers()
+        test_notifier.NOTIFICATIONS = []
+
+    def tearDown(self):
+        notifier_api._reset_drivers()
+        super(VolumeTypesExtraSpecsTest, self).tearDown()
 
     def test_index(self):
         self.stubs.Set(cinder.db, 'volume_type_extra_specs_get',
@@ -104,8 +116,10 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.stubs.Set(cinder.db, 'volume_type_extra_specs_delete',
                        delete_volume_type_extra_specs)
 
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
         self.controller.delete(req, 1, 'key5')
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
 
     def test_create(self):
         self.stubs.Set(cinder.db,
@@ -113,8 +127,10 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                        return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
 
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
 
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
@@ -124,8 +140,10 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                        return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
         res_dict = self.controller.update(req, 1, 'key1', body)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
 
         self.assertEqual('value1', res_dict['key1'])
 
