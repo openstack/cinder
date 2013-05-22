@@ -98,6 +98,12 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.medium, req), self.medium)
         self.assertEqual(common.limited(self.large, req), self.large[:1000])
 
+    def test_limiter_limit_bad(self):
+        """ Test with a bad limit. """
+        req = webob.Request.blank(u'/?limit=hello')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
+
     def test_limiter_limit_medium(self):
         """ Test limit of 10. """
         req = webob.Request.blank('/?limit=10')
