@@ -444,10 +444,13 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Get reservations
         try:
+            reserve_opts = {'volumes': -1, 'gigabytes': -volume_ref['size']}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        volume_ref.get('volume_type_id'))
             reservations = QUOTAS.reserve(context,
                                           project_id=project_id,
-                                          volumes=-1,
-                                          gigabytes=-volume_ref['size'])
+                                          **reserve_opts)
         except Exception:
             reservations = None
             LOG.exception(_("Failed to update usages deleting volume"))
@@ -501,14 +504,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Deletes and unexports snapshot."""
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+        project_id = snapshot_ref['project_id']
         LOG.info(_("snapshot %s: deleting"), snapshot_ref['name'])
         self._notify_about_snapshot_usage(
             context, snapshot_ref, "delete.start")
-
-        if context.project_id != snapshot_ref['project_id']:
-            project_id = snapshot_ref['project_id']
-        else:
-            project_id = context.project_id
 
         try:
             LOG.debug(_("snapshot %s: deleting"), snapshot_ref['name'])
@@ -529,15 +528,19 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Get reservations
         try:
             if CONF.no_snapshot_gb_quota:
-                reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              snapshots=-1)
+                reserve_opts = {'snapshots': -1}
             else:
-                reservations = QUOTAS.reserve(
-                    context,
-                    project_id=project_id,
-                    snapshots=-1,
-                    gigabytes=-snapshot_ref['volume_size'])
+                reserve_opts = {
+                    'snapshots': -1,
+                    'gigabytes': -snapshot_ref['volume_size'],
+                }
+            volume_ref = self.db.volume_get(context, snapshot_ref['volume_id'])
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        volume_ref.get('volume_type_id'))
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          **reserve_opts)
         except Exception:
             reservations = None
             LOG.exception(_("Failed to update usages deleting snapshot"))
