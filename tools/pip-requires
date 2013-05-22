@@ -18,6 +18,7 @@ python-glanceclient>=0.5.0,<2
 python-keystoneclient>=0.2,<0.3
 python-swiftclient>=1.2,<2
 routes>=1.12.3
+six
 sqlalchemy>=0.7,<=0.7.99
 sqlalchemy-migrate>=0.7
 stevedore>=0.7
