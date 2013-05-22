@@ -262,10 +262,11 @@ class HostManager(object):
         topic = FLAGS.volume_topic
         volume_services = db.service_get_all_by_topic(context, topic)
         for service in volume_services:
-            if not utils.service_is_up(service) or service['disabled']:
-                LOG.warn(_("service is down or disabled."))
-                continue
             host = service['host']
+            if not utils.service_is_up(service) or service['disabled']:
+                LOG.warn(_("volume service is down or disabled. "
+                           "(host: %s)") % host)
+                continue
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)
             if host_state:
