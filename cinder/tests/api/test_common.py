@@ -161,6 +161,12 @@ class PaginationParamsTest(test.TestCase):
     GET params.
     """
 
+    def test_nonnumerical_limit(self):
+        """ Test nonnumerical limit param. """
+        req = webob.Request.blank('/?limit=hello')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest, common.get_pagination_params, req)
+
     def test_no_params(self):
         """ Test no params. """
         req = webob.Request.blank('/')
