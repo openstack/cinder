@@ -96,6 +96,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
             return [weights.WeighedHost(host_state, self.next_weight)]
 
         sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
