@@ -18,6 +18,8 @@
 
 """Extracts OpenStack config option info from module(s)."""
 
+import __builtin__
+setattr(__builtin__, '_', lambda x: x)
 import os
 import re
 import socket
