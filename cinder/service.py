@@ -142,12 +142,15 @@ class ServerWrapper(object):
         self.workers = workers
         self.children = set()
         self.forktimes = []
+        self.failed = False
 
 
 class ProcessLauncher(object):
     def __init__(self):
         self.children = {}
         self.sigcaught = None
+        self.totalwrap = 0
+        self.failedwrap = 0
         self.running = True
         rfd, self.writepipe = os.pipe()
         self.readpipe = eventlet.greenio.GreenPipe(rfd, 'r')
@@ -246,9 +249,10 @@ class ProcessLauncher(object):
 
     def launch_server(self, server, workers=1):
         wrap = ServerWrapper(server, workers)
-
+        self.totalwrap = self.totalwrap + 1
         LOG.info(_('Starting %d workers'), wrap.workers)
-        while self.running and len(wrap.children) < wrap.workers:
+        while (self.running and len(wrap.children) < wrap.workers
+               and not wrap.failed):
             self._start_child(wrap)
 
     def _wait_child(self):
@@ -262,6 +266,7 @@ class ProcessLauncher(object):
                 raise
             return None
 
+        code = 0
         if os.WIFSIGNALED(status):
             sig = os.WTERMSIG(status)
             LOG.info(_('Child %(pid)d killed by signal %(sig)d'), locals())
@@ -275,6 +280,12 @@ class ProcessLauncher(object):
 
         wrap = self.children.pop(pid)
         wrap.children.remove(pid)
+        if 2 == code:
+            wrap.failed = True
+            self.failedwrap = self.failedwrap + 1
+            LOG.info(_('_wait_child %d'), self.failedwrap)
+            if self.failedwrap == self.totalwrap:
+                self.running = False
         return wrap
 
     def wait(self):
@@ -288,7 +299,9 @@ class ProcessLauncher(object):
                 eventlet.greenthread.sleep(.01)
                 continue
 
-            while self.running and len(wrap.children) < wrap.workers:
+            LOG.info(_('wait wrap.failed %s'), wrap.failed)
+            while (self.running and len(wrap.children) < wrap.workers
+                   and not wrap.failed):
                 self._start_child(wrap)
 
         if self.sigcaught:
