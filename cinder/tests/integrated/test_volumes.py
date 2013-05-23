@@ -16,7 +16,6 @@
 #    under the License.
 
 import time
-import unittest
 
 from cinder.openstack.common import log as logging
 from cinder import service
@@ -193,6 +192,3 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         found_volume = self.api.get_volume(created_volume_id)
         self.assertEqual(created_volume_id, found_volume['id'])
         self.assertEqual(found_volume['display_name'], 'vol-one')
-
-if __name__ == "__main__":
-    unittest.main()

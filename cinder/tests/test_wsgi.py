@@ -21,7 +21,6 @@
 import os.path
 import ssl
 import tempfile
-import unittest
 import urllib2
 
 from oslo.config import cfg
@@ -54,7 +53,7 @@ class TestLoaderNothingExists(test.TestCase):
         )
 
 
-class TestLoaderNormalFilesystem(unittest.TestCase):
+class TestLoaderNormalFilesystem(test.TestCase):
     """Loader tests with normal filesystem (unmodified os.path module)."""
 
     _paste_config = """
@@ -64,11 +63,13 @@ document_root = /tmp
     """
 
     def setUp(self):
+        super(TestLoaderNormalFilesystem, self).setUp()
         self.config = tempfile.NamedTemporaryFile(mode="w+t")
         self.config.write(self._paste_config.lstrip())
         self.config.seek(0)
         self.config.flush()
         self.loader = cinder.wsgi.Loader(self.config.name)
+        self.addCleanup(self.config.close)
 
     def test_config_found(self):
         self.assertEquals(self.config.name, self.loader.config_path)
@@ -84,11 +85,8 @@ document_root = /tmp
         url_parser = self.loader.load_app("test_app")
         self.assertEquals("/tmp", url_parser.directory)
 
-    def tearDown(self):
-        self.config.close()
 
-
-class TestWSGIServer(unittest.TestCase):
+class TestWSGIServer(test.TestCase):
     """WSGI server tests."""
     def _ipv6_configured():
         try:

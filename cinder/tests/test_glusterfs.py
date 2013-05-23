@@ -59,6 +59,7 @@ class GlusterFsDriverTestCase(test.TestCase):
     ONE_GB_IN_BYTES = 1024 * 1024 * 1024
 
     def setUp(self):
+        super(GlusterFsDriverTestCase, self).setUp()
         self._mox = mox_lib.Mox()
         self._configuration = mox_lib.MockObject(conf.Configuration)
         self._configuration.append_config_values(mox_lib.IgnoreArg())
@@ -77,6 +78,7 @@ class GlusterFsDriverTestCase(test.TestCase):
     def tearDown(self):
         self._mox.UnsetStubs()
         self.stubs.UnsetAll()
+        super(GlusterFsDriverTestCase, self).tearDown()
 
     def stub_out_not_replaying(self, obj, attr_name):
         attr_to_replace = getattr(obj, attr_name)

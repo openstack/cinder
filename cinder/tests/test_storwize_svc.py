@@ -27,7 +27,6 @@ Tests for the IBM Storwize family and SVC volume driver.
 import random
 import re
 import socket
-import unittest
 
 from cinder import context
 from cinder import exception
@@ -1908,9 +1907,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertAlmostEqual(stats['free_capacity_gb'], 3287.5)
 
 
-# The test case does not rely on Openstack runtime,
-# so it should inherit from unittest.TestCase.
-class CLIResponseTestCase(unittest.TestCase):
+class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
         self.assertEqual(0, len(storwize_svc.CLIResponse('')))
         self.assertEqual(0, len(storwize_svc.CLIResponse(('', 'stderr'))))
@@ -1973,6 +1970,3 @@ port_speed!8Gb
         self.assertEqual(list(resp.select('port_id', 'port_status')),
                          [('500507680210C744', 'active'),
                           ('500507680240C744', 'inactive')])
-
-if __name__ == '__main__':
-    unittest.main()

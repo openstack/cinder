@@ -29,9 +29,6 @@ class AdminActionsTest(test.TestCase):
         self.flags(lock_path=self.tempdir)
         self.volume_api = volume_api.API()
 
-    def tearDown(self):
-        shutil.rmtree(self.tempdir)
-
     def test_reset_status_as_admin(self):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)

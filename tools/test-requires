@@ -6,6 +6,7 @@ hacking>=0.5.3,<0.6
 
 coverage>=3.6
 distribute>=0.6.24
+fixtures>=0.3.12
 hp3parclient>=1.0.0
 mock>=0.8.0
 mox>=0.5.3
@@ -16,3 +17,4 @@ nosexcover
 openstack.nose_plugin>=0.7
 psycopg2
 sphinx>=1.1.2
+testtools>=0.9.29

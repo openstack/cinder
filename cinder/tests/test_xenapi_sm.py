@@ -18,7 +18,6 @@
 
 import contextlib
 import StringIO
-import unittest
 
 import mock
 import mox
@@ -26,6 +25,7 @@ from oslo.config import cfg
 
 from cinder.db import api as db_api
 from cinder import exception
+from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume import driver as parent_driver
 from cinder.volume.drivers.xenapi import lib
@@ -51,7 +51,7 @@ def get_configured_driver(server='ignore_server', path='ignore_path'):
     return driver.XenAPINFSDriver(configuration=configuration)
 
 
-class DriverTestCase(unittest.TestCase):
+class DriverTestCase(test.TestCase):
 
     def assert_flag(self, flagname):
         self.assertTrue(hasattr(driver.FLAGS, flagname))
@@ -488,7 +488,7 @@ class DriverTestCase(unittest.TestCase):
         self.assertEquals('xensm', stats['storage_protocol'])
 
 
-class ToolsTest(unittest.TestCase):
+class ToolsTest(test.TestCase):
     @mock.patch('cinder.volume.drivers.xenapi.tools._stripped_first_line_of')
     def test_get_this_vm_uuid(self, mock_read_first_line):
         mock_read_first_line.return_value = 'someuuid'

@@ -51,12 +51,10 @@ class RemoteFsDriverTestCase(test.TestCase):
     TEST_FILE_NAME = 'test.txt'
 
     def setUp(self):
+        super(RemoteFsDriverTestCase, self).setUp()
         self._driver = nfs.RemoteFsDriver()
         self._mox = mox_lib.Mox()
-        pass
-
-    def tearDown(self):
-        self._mox.UnsetStubs()
+        self.addCleanup(self._mox.UnsetStubs)
 
     def test_create_sparsed_file(self):
         (mox, drv) = self._mox, self._driver
@@ -119,6 +117,7 @@ class NfsDriverTestCase(test.TestCase):
     ONE_GB_IN_BYTES = 1024 * 1024 * 1024
 
     def setUp(self):
+        super(NfsDriverTestCase, self).setUp()
         self._mox = mox_lib.Mox()
         self.stubs = stubout.StubOutForTesting()
         self.configuration = mox_lib.MockObject(conf.Configuration)
@@ -130,10 +129,8 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_sparsed_volumes = True
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
-
-    def tearDown(self):
-        self._mox.UnsetStubs()
-        self.stubs.UnsetAll()
+        self.addCleanup(self.stubs.UnsetAll)
+        self.addCleanup(self._mox.UnsetStubs)
 
     def stub_out_not_replaying(self, obj, attr_name):
         attr_to_replace = getattr(obj, attr_name)

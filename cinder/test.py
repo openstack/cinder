@@ -24,13 +24,14 @@ inline callbacks.
 """
 
 import functools
-import unittest
+import os
 import uuid
 
+import fixtures
 import mox
-import nose.plugins.skip
 from oslo.config import cfg
 import stubout
+import testtools
 
 from cinder import flags
 from cinder.openstack.common import log as logging
@@ -63,7 +64,7 @@ class skip_test(object):
         @functools.wraps(func)
         def _skipper(*args, **kw):
             """Wrapped skipper function."""
-            raise nose.SkipTest(self.message)
+            raise testtools.TestCase.skipException(self.message)
         return _skipper
 
 
@@ -78,7 +79,7 @@ class skip_if(object):
         def _skipper(*args, **kw):
             """Wrapped skipper function."""
             if self.condition:
-                raise nose.SkipTest(self.message)
+                raise testtools.TestCase.skipException(self.message)
             func(*args, **kw)
         return _skipper
 
@@ -94,7 +95,7 @@ class skip_unless(object):
         def _skipper(*args, **kw):
             """Wrapped skipper function."""
             if not self.condition:
-                raise nose.SkipTest(self.message)
+                raise testtools.TestCase.skipException(self.message)
             func(*args, **kw)
         return _skipper
 
@@ -104,7 +105,8 @@ def skip_if_fake(func):
     def _skipper(*args, **kw):
         """Wrapped skipper function."""
         if FLAGS.fake_tests:
-            raise unittest.SkipTest('Test cannot be run in fake mode')
+            raise testtools.TestCase.skipException(
+                'Test cannot be run in fake mode')
         else:
             return func(*args, **kw)
     return _skipper
@@ -114,12 +116,34 @@ class TestingException(Exception):
     pass
 
 
-class TestCase(unittest.TestCase):
+class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
+        try:
+            test_timeout = int(test_timeout)
+        except ValueError:
+            # If timeout value is invalid do not set a timeout.
+            test_timeout = 0
+        if test_timeout > 0:
+            self.useFixture(fixtures.Timeout(test_timeout, gentle=True))
+        self.useFixture(fixtures.NestedTempfile())
+        self.useFixture(fixtures.TempHomeDir())
+
+        if (os.environ.get('OS_STDOUT_CAPTURE') == 'True' or
+                os.environ.get('OS_STDOUT_CAPTURE') == '1'):
+            stdout = self.useFixture(fixtures.StringStream('stdout')).stream
+            self.useFixture(fixtures.MonkeyPatch('sys.stdout', stdout))
+        if (os.environ.get('OS_STDERR_CAPTURE') == 'True' or
+                os.environ.get('OS_STDERR_CAPTURE') == '1'):
+            stderr = self.useFixture(fixtures.StringStream('stderr')).stream
+            self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
+
+        self.log_fixture = self.useFixture(fixtures.FakeLogger())
 
         fake_flags.set_defaults(FLAGS)
         flags.parse_args([], default_config_files=[])
@@ -134,41 +158,38 @@ class TestCase(unittest.TestCase):
         # because it screws with our generators
         self.mox = mox.Mox()
         self.stubs = stubout.StubOutForTesting()
+        self.addCleanup(self.mox.UnsetStubs)
+        self.addCleanup(self.stubs.UnsetAll)
+        self.addCleanup(self.stubs.SmartUnsetAll)
+        self.addCleanup(self.mox.VerifyAll)
         self.injected = []
         self._services = []
         FLAGS.set_override('fatal_exception_format_errors', True)
+        self.addCleanup(FLAGS.reset)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
-        try:
-            self.mox.UnsetStubs()
-            self.stubs.UnsetAll()
-            self.stubs.SmartUnsetAll()
-            self.mox.VerifyAll()
-            super(TestCase, self).tearDown()
-        finally:
-            # Reset any overridden flags
-            FLAGS.reset()
 
-            # Stop any timers
-            for x in self.injected:
-                try:
-                    x.stop()
-                except AssertionError:
-                    pass
+        # Stop any timers
+        for x in self.injected:
+            try:
+                x.stop()
+            except AssertionError:
+                pass
 
-            # Kill any services
-            for x in self._services:
-                try:
-                    x.kill()
-                except Exception:
-                    pass
+        # Kill any services
+        for x in self._services:
+            try:
+                x.kill()
+            except Exception:
+                pass
 
-            # Delete attributes that don't start with _ so they don't pin
-            # memory around unnecessarily for the duration of the test
-            # suite
-            for key in [k for k in self.__dict__.keys() if k[0] != '_']:
-                del self.__dict__[key]
+        # Delete attributes that don't start with _ so they don't pin
+        # memory around unnecessarily for the duration of the test
+        # suite
+        for key in [k for k in self.__dict__.keys() if k[0] != '_']:
+            del self.__dict__[key]
+        super(TestCase, self).tearDown()
 
     def flags(self, **kw):
         """Override flag variables for a test."""

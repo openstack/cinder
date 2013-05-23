@@ -78,12 +78,11 @@ class NetappNfsDriverTestCase(test.TestCase):
     """Test case for NetApp specific NFS clone driver."""
 
     def setUp(self):
+        super(NetappNfsDriverTestCase, self).setUp()
         self._mox = mox.Mox()
         self._driver = netapp_nfs.NetAppNFSDriver(
             configuration=create_configuration())
-
-    def tearDown(self):
-        self._mox.UnsetStubs()
+        self.addCleanup(self._mox.UnsetStubs)
 
     def test_check_for_setup_error(self):
         mox = self._mox
@@ -286,15 +285,14 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
     """Test case for NetApp C Mode specific NFS clone driver"""
 
     def setUp(self):
+        super(NetappCmodeNfsDriverTestCase, self).setUp()
         self._mox = mox.Mox()
         self._custom_setup()
+        self.addCleanup(self._mox.UnsetStubs)
 
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppCmodeNfsDriver(
             configuration=create_configuration())
-
-    def tearDown(self):
-        self._mox.UnsetStubs()
 
     def test_check_for_setup_error(self):
         mox = self._mox
