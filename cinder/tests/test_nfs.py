@@ -33,6 +33,8 @@ from cinder.exception import ProcessExecutionError
 from cinder import test
 from cinder import units
 
+from cinder.image import image_utils
+
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 
@@ -164,6 +166,37 @@ class NfsDriverTestCase(test.TestCase):
         mox.ReplayAll()
 
         drv._mount_nfs(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT)
+
+        mox.VerifyAll()
+
+    def test_copy_image_to_volume(self):
+        """resize_image common case usage."""
+        mox = self._mox
+        drv = self._driver
+
+        TEST_IMG_SOURCE = 'foo.img'
+
+        volume = {'size': self.TEST_SIZE_IN_GB, 'name': TEST_IMG_SOURCE}
+
+        def fake_local_path(volume):
+            return volume['name']
+
+        self.stubs.Set(drv, 'local_path', fake_local_path)
+
+        mox.StubOutWithMock(image_utils, 'fetch_to_raw')
+        image_utils.fetch_to_raw(None, None, None, TEST_IMG_SOURCE)
+
+        mox.StubOutWithMock(image_utils, 'resize_image')
+        image_utils.resize_image(TEST_IMG_SOURCE, self.TEST_SIZE_IN_GB)
+
+        mox.StubOutWithMock(image_utils, 'qemu_img_info')
+        data = mox_lib.MockAnything()
+        data.virtual_size = 1024 ** 3
+        image_utils.qemu_img_info(TEST_IMG_SOURCE).AndReturn(data)
+
+        mox.ReplayAll()
+
+        drv.copy_image_to_volume(None, volume, None, None)
 
         mox.VerifyAll()
 
