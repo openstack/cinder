@@ -304,6 +304,9 @@ class SolidFire(SanISCSIDriver):
         if sf_vol is None:
             raise exception.VolumeNotFound(volume_id=uuid)
 
+        if src_project_id != v_ref['project_id']:
+            sfaccount = self._create_sfaccount(v_ref['project_id'])
+
         if 'qos' in sf_vol:
             qos = sf_vol['qos']
 
@@ -318,6 +321,7 @@ class SolidFire(SanISCSIDriver):
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
                   'attributes': attributes,
+                  'newAccountID': sfaccount['accountID'],
                   'qos': qos}
 
         data = self._issue_api_request('CloneVolume', params)
