@@ -32,6 +32,7 @@ import uuid
 
 from migrate.versioning import repository
 import sqlalchemy
+import testtools
 
 import cinder.db.migration as migration
 import cinder.db.sqlalchemy.migrate_repo
@@ -235,7 +236,7 @@ class TestMigrations(test.TestCase):
         if _is_mysql_avail(user="openstack_cifail"):
             self.fail("Shouldn't have connected")
 
-    @test.skip_unless(_have_mysql(), "mysql not available")
+    @testtools.skipUnless(_have_mysql(), "mysql not available")
     def test_mysql_innodb(self):
         """
         Test that table creation on mysql only builds InnoDB tables
@@ -276,8 +277,8 @@ class TestMigrations(test.TestCase):
         if _is_backend_avail('postgres', user="openstack_cifail"):
             self.fail("Shouldn't have connected")
 
-    @test.skip_unless(_is_backend_avail('postgres'),
-                      "postgresql not available")
+    @testtools.skipUnless(_is_backend_avail('postgres'),
+                          "postgresql not available")
     def test_postgresql_opportunistically(self):
         # add this to the global lists to make reset work with it, it's removed
         # automatically in tearDown so no need to clean it up here.

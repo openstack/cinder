@@ -16,6 +16,8 @@
 Tests For Filter Scheduler.
 """
 
+import testtools
+
 from cinder import context
 from cinder import exception
 from cinder import test
@@ -37,8 +39,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
     driver_cls = filter_scheduler.FilterScheduler
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_no_hosts(self):
         """
         Ensure empty hosts & child_zones result in NoValidHosts exception.
@@ -56,8 +58,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, {})
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_non_admin(self):
         """Test creating an instance locally using run_instance, passing
         a non-admin context.  DB actions should work."""
@@ -82,8 +84,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, request_spec, {})
         self.assertTrue(self.was_admin)
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
     def test_schedule_happy_day(self):
         """Make sure there's nothing glaringly wrong with _schedule()
         by doing a happy day pass through."""
@@ -125,8 +127,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           fakes.FakeFilterScheduler)
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
     def test_retry_disabled(self):
         # Retry info should not get populated when re-scheduling is off.
         self.flags(scheduler_max_attempts=1)
@@ -143,8 +145,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         # should not have retry info in the populated filter properties:
         self.assertFalse("retry" in filter_properties)
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
     def test_retry_attempt_one(self):
         # Test retry logic on initial scheduling attempt.
         self.flags(scheduler_max_attempts=2)
@@ -161,8 +163,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         num_attempts = filter_properties['retry']['num_attempts']
         self.assertEqual(1, num_attempts)
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
     def test_retry_attempt_two(self):
         # Test retry logic when re-scheduling.
         self.flags(scheduler_max_attempts=2)

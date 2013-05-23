@@ -17,6 +17,7 @@ Tests For Scheduler Host Filters.
 
 import httplib
 import stubout
+import testtools
 
 from cinder import context
 from cinder import db
@@ -76,8 +77,8 @@ class HostFiltersTestCase(test.TestCase):
             return ret_value
         self.stubs.Set(utils, 'service_is_up', fake_service_is_up)
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_capacity_filter_passes(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
@@ -89,8 +90,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_capacity_filter_fails(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
@@ -103,8 +104,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_capacity_filter_passes_infinite(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
@@ -116,8 +117,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_capacity_filter_passes_unknown(self):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
@@ -129,8 +130,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_retry_filter_disabled(self):
         # Test case where retry/re-scheduling is disabled.
         filt_cls = self.class_map['RetryFilter']()
@@ -138,8 +139,8 @@ class HostFiltersTestCase(test.TestCase):
         filter_properties = {}
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_retry_filter_pass(self):
         # Node not previously tried.
         filt_cls = self.class_map['RetryFilter']()
@@ -148,8 +149,8 @@ class HostFiltersTestCase(test.TestCase):
         filter_properties = dict(retry=retry)
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @test.skip_if(not test_utils.is_cinder_installed(),
-                  'Test requires Cinder installed')
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed')
     def test_retry_filter_fail(self):
         # Node was already tried.
         filt_cls = self.class_map['RetryFilter']()

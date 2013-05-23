@@ -24,6 +24,7 @@ import tempfile
 import urllib2
 
 from oslo.config import cfg
+import testtools
 import webob
 import webob.dec
 
@@ -110,8 +111,8 @@ class TestWSGIServer(test.TestCase):
         server.stop()
         server.wait()
 
-    @test.skip_if(not _ipv6_configured(),
-                  "Test requires an IPV6 configured interface")
+    @testtools.skipIf(not _ipv6_configured(),
+                      "Test requires an IPV6 configured interface")
     def test_start_random_port_with_ipv6(self):
         server = cinder.wsgi.Server("test_random_port",
                                     None,
@@ -161,8 +162,8 @@ class TestWSGIServer(test.TestCase):
 
         server.stop()
 
-    @test.skip_if(not _ipv6_configured(),
-                  "Test requires an IPV6 configured interface")
+    @testtools.skipIf(not _ipv6_configured(),
+                      "Test requires an IPV6 configured interface")
     def test_app_using_ipv6_and_ssl(self):
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))

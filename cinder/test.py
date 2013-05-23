@@ -54,64 +54,6 @@ FLAGS.register_opts(test_opts)
 LOG = logging.getLogger(__name__)
 
 
-class skip_test(object):
-    """Decorator that skips a test."""
-    # TODO(tr3buchet): remember forever what comstud did here
-    def __init__(self, msg):
-        self.message = msg
-
-    def __call__(self, func):
-        @functools.wraps(func)
-        def _skipper(*args, **kw):
-            """Wrapped skipper function."""
-            raise testtools.TestCase.skipException(self.message)
-        return _skipper
-
-
-class skip_if(object):
-    """Decorator that skips a test if condition is true."""
-    def __init__(self, condition, msg):
-        self.condition = condition
-        self.message = msg
-
-    def __call__(self, func):
-        @functools.wraps(func)
-        def _skipper(*args, **kw):
-            """Wrapped skipper function."""
-            if self.condition:
-                raise testtools.TestCase.skipException(self.message)
-            func(*args, **kw)
-        return _skipper
-
-
-class skip_unless(object):
-    """Decorator that skips a test if condition is not true."""
-    def __init__(self, condition, msg):
-        self.condition = condition
-        self.message = msg
-
-    def __call__(self, func):
-        @functools.wraps(func)
-        def _skipper(*args, **kw):
-            """Wrapped skipper function."""
-            if not self.condition:
-                raise testtools.TestCase.skipException(self.message)
-            func(*args, **kw)
-        return _skipper
-
-
-def skip_if_fake(func):
-    """Decorator that skips a test if running in fake mode."""
-    def _skipper(*args, **kw):
-        """Wrapped skipper function."""
-        if FLAGS.fake_tests:
-            raise testtools.TestCase.skipException(
-                'Test cannot be run in fake mode')
-        else:
-            return func(*args, **kw)
-    return _skipper
-
-
 class TestingException(Exception):
     pass
 
