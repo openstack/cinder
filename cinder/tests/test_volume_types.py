@@ -19,8 +19,8 @@ Unit Tests for volume types code
 import time
 
 from cinder import context
+from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
-from cinder.db.sqlalchemy import session as sql_session
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
@@ -75,7 +75,7 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_get_all_volume_types(self):
         """Ensures that all volume types can be retrieved."""
-        session = sql_session.get_session()
+        session = db_api.get_session()
         total_volume_types = session.query(models.VolumeTypes).count()
         vol_types = volume_types.get_all_types(self.ctxt)
         self.assertEqual(total_volume_types, len(vol_types))
@@ -92,7 +92,7 @@ class VolumeTypeTestCase(test.TestCase):
     def test_default_volume_type_missing_in_db(self):
         """Ensures proper exception raised if default volume type
         is not in database."""
-        session = sql_session.get_session()
+        session = db_api.get_session()
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type, {})
 

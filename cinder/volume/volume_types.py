@@ -25,6 +25,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common.db import exception as db_exc
 from cinder.openstack.common import log as logging
 
 FLAGS = flags.FLAGS
@@ -37,7 +38,7 @@ def create(context, name, extra_specs={}):
         type_ref = db.volume_type_create(context,
                                          dict(name=name,
                                               extra_specs=extra_specs))
-    except exception.DBError, e:
+    except db_exc.DBError as e:
         LOG.exception(_('DB error: %s') % e)
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)

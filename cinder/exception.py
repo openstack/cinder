@@ -28,6 +28,7 @@ from oslo.config import cfg
 import webob.exc
 
 from cinder import flags
+from cinder.openstack.common import exception as com_exception
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -69,28 +70,7 @@ class ProcessExecutionError(IOError):
         IOError.__init__(self, message)
 
 
-class Error(Exception):
-    pass
-
-
-class DBError(Error):
-    """Wraps an implementation specific exception."""
-    def __init__(self, inner_exception=None):
-        self.inner_exception = inner_exception
-        super(DBError, self).__init__(str(inner_exception))
-
-
-def wrap_db_error(f):
-    def _wrap(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except UnicodeEncodeError:
-            raise InvalidUnicodeParameter()
-        except Exception, e:
-            LOG.exception(_('DB exception wrapped.'))
-            raise DBError(e)
-    _wrap.func_name = f.func_name
-    return _wrap
+Error = com_exception.Error
 
 
 class CinderException(Exception):
@@ -194,11 +174,6 @@ class InvalidVolume(Invalid):
 
 class InvalidContentType(Invalid):
     message = _("Invalid content type %(content_type)s.")
-
-
-class InvalidUnicodeParameter(Invalid):
-    message = _("Invalid Parameter: "
-                "Unicode is not supported by the current database.")
 
 
 # Cannot be templated as the error syntax varies.

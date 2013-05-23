@@ -32,11 +32,11 @@ these objects be simple dictionaries.
 
 **Related Flags**
 
-:db_backend:  string to lookup in the list of LazyPluggable backends.
-              `sqlalchemy` is the only supported backend right now.
+:backend:  string to lookup in the list of LazyPluggable backends.
+           `sqlalchemy` is the only supported backend right now.
 
-:sql_connection:  string specifying the sqlalchemy connection to use, like:
-                  `sqlite:///var/lib/cinder/cinder.sqlite`.
+:connection:  string specifying the sqlalchemy connection to use, like:
+              `sqlite:///var/lib/cinder/cinder.sqlite`.
 
 :enable_new_services:  when adding a new service to the database, is it in the
                        pool of available hardware (Default: True)
@@ -47,9 +47,15 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder import flags
-from cinder import utils
+from cinder.openstack.common.db import api as db_api
+
 
 db_opts = [
+    # TODO(rpodolyaka): this option is deprecated but still passed to
+    #                   LazyPluggable class which doesn't support retrieving
+    #                   of options put into groups. Nova's version of this
+    #                   class supports this. Perhaps, we should put it to Oslo
+    #                   and then reuse here.
     cfg.StrOpt('db_backend',
                default='sqlalchemy',
                help='The backend to use for db'),
@@ -69,8 +75,11 @@ db_opts = [
 FLAGS = flags.FLAGS
 FLAGS.register_opts(db_opts)
 
-IMPL = utils.LazyPluggable('db_backend',
-                           sqlalchemy='cinder.db.sqlalchemy.api')
+
+_BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
+
+
+IMPL = db_api.DBAPI(backend_mapping=_BACKEND_MAPPING)
 
 
 class NoMoreTargets(exception.CinderException):

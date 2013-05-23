@@ -20,6 +20,7 @@
 """Implementation of SQLAlchemy backend."""
 
 import datetime
+import sys
 import uuid
 import warnings
 
@@ -32,9 +33,10 @@ from sqlalchemy.sql import func
 from cinder.common import sqlalchemyutils
 from cinder import db
 from cinder.db.sqlalchemy import models
-from cinder.db.sqlalchemy.session import get_session
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common.db import exception as db_exc
+from cinder.openstack.common.db.sqlalchemy import session as db_session
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
@@ -43,6 +45,15 @@ from cinder.openstack.common import uuidutils
 FLAGS = flags.FLAGS
 
 LOG = logging.getLogger(__name__)
+
+get_engine = db_session.get_engine
+get_session = db_session.get_session
+
+
+def get_backend():
+    """The backend is this module itself."""
+
+    return sys.modules[__name__]
 
 
 def is_admin_context(context):
@@ -1219,6 +1230,7 @@ def snapshot_destroy(context, snapshot_id):
 def snapshot_get(context, snapshot_id, session=None):
     result = model_query(context, models.Snapshot, session=session,
                          project_only=True).\
+        options(joinedload('volume')).\
         filter_by(id=snapshot_id).\
         first()
 
@@ -1230,14 +1242,18 @@ def snapshot_get(context, snapshot_id, session=None):
 
 @require_admin_context
 def snapshot_get_all(context):
-    return model_query(context, models.Snapshot).all()
+    return model_query(context, models.Snapshot).\
+        options(joinedload('snapshot_metadata')).\
+        all()
 
 
 @require_context
 def snapshot_get_all_for_volume(context, volume_id):
     return model_query(context, models.Snapshot, read_deleted='no',
                        project_only=True).\
-        filter_by(volume_id=volume_id).all()
+        filter_by(volume_id=volume_id).\
+        options(joinedload('snapshot_metadata')).\
+        all()
 
 
 @require_context
@@ -1245,6 +1261,7 @@ def snapshot_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
     return model_query(context, models.Snapshot).\
         filter_by(project_id=project_id).\
+        options(joinedload('snapshot_metadata')).\
         all()
 
 
@@ -1460,7 +1477,7 @@ def volume_type_create(context, values):
             volume_type_ref.update(values)
             volume_type_ref.save()
         except Exception, e:
-            raise exception.DBError(e)
+            raise db_exc.DBError(e)
         return volume_type_ref
 
 
