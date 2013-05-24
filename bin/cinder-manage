@@ -108,7 +108,10 @@ def param2id(object_id):
         # FIXME(ja): mapping occurs in nova?
         pass
     else:
-        return int(object_id)
+        try:
+            return int(object_id)
+        except ValueError:
+            return object_id
 
 
 class ShellCommands(object):
