@@ -496,6 +496,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                            'target_lun': 186,
                            'target_portal': '1.1.1.2:1234'},
                            'driver_volume_type': 'fibre_channel'}
+        return hostname
 
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
@@ -602,14 +603,17 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         create_host_cmd = ('createhost -persona 1 -domain (\'OpenStack\',) '
                            'fakehost 123456789012345 123456789054321')
-        create_host_ret = pack(CLI_CR + 'already used by host fakehost.foo ')
+        create_host_ret = pack(CLI_CR +
+                               'already used by host fakehost.foo (19)')
         _run_ssh(create_host_cmd, False).AndReturn([create_host_ret, ''])
+
+        show_3par_cmd = 'showhost -verbose fakehost.foo'
+        _run_ssh(show_3par_cmd, False).AndReturn([pack(FC_SHOWHOST_RET), ''])
         self.mox.ReplayAll()
 
-        self.assertRaises(exception.Duplicate3PARHost,
-                          self.driver._create_host,
-                          self.volume,
-                          self.connector)
+        host = self.driver._create_host(self.volume, self.connector)
+
+        self.assertEquals(host['name'], 'fakehost.foo')
 
     def test_create_modify_host(self):
         self.flags(lock_path=self.tempdir)
@@ -714,6 +718,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 'id': 11,
                 'name': hostname}
         self._hosts[hostname] = host
+        return hostname
 
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
@@ -830,12 +835,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                            'fakehost iqn.1993-08.org.debian:01:222')
         in_use_ret = pack('\r\nalready used by host fakehost.foo ')
         _run_ssh(create_host_cmd, False).AndReturn([in_use_ret, ''])
+
+        show_3par_cmd = 'showhost -verbose fakehost.foo'
+        _run_ssh(show_3par_cmd, False).AndReturn([pack(ISCSI_3PAR_RET), ''])
         self.mox.ReplayAll()
 
-        self.assertRaises(exception.Duplicate3PARHost,
-                          self.driver._create_host,
-                          self.volume,
-                          self.connector)
+        host = self.driver._create_host(self.volume, self.connector)
+
+        self.assertEquals(host['name'], 'fakehost.foo')
 
     def test_create_modify_host(self):
         self.flags(lock_path=self.tempdir)
@@ -925,6 +932,27 @@ FC_HOST_RET = (
     '\r\n'
     '---------- Host fakehost ----------\r\n'
     'Name       : fakehost\r\n'
+    'Domain     : FAKE_TEST\r\n'
+    'Id         : 75\r\n'
+    'Location   : --\r\n'
+    'IP Address : --\r\n'
+    'OS         : --\r\n'
+    'Model      : --\r\n'
+    'Contact    : --\r\n'
+    'Comment    : --  \r\n\r\n\r\n')
+
+FC_SHOWHOST_RET = (
+    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
+    '75,fakehost.foo,Generic,50014380242B8B4C,0:2:1,n/a\r\n'
+    '75,fakehost.foo,Generic,50014380242B8B4E,---,n/a\r\n'
+    '75,fakehost.foo,Generic,1000843497F90711,0:2:1,n/a \r\n'
+    '75,fakehost.foo,Generic,1000843497F90715,1:2:1,n/a\r\n'
+    '\r\n'
+    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
+    '75,fakehost.foo,--,--\r\n'
+    '\r\n'
+    '---------- Host fakehost.foo ----------\r\n'
+    'Name       : fakehost.foo\r\n'
     'Domain     : FAKE_TEST\r\n'
     'Id         : 75\r\n'
     'Location   : --\r\n'
@@ -1042,3 +1070,22 @@ ISCSI_PORT_RET = (
     '1:8:1,ready,10.10.220.253,255.255.224.0,0.0.0.0,181,1500,10Gbps,'
     '0,0.0.0.0,3205\r\n'
     '1:8:2,loss_sync,0.0.0.0,0.0.0.0,0.0.0.0,182,1500,n/a,0,0.0.0.0,3205\r\n')
+
+ISCSI_3PAR_RET = (
+    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
+    '75,fakehost.foo,Generic,iqn.1993-08.org.debian:01:222,---,'
+        '10.10.222.12\r\n'
+    '\r\n'
+    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
+    '75,fakehost.foo,--,--\r\n'
+    '\r\n'
+    '---------- Host fakehost.foo ----------\r\n'
+    'Name       : fakehost.foo\r\n'
+    'Domain     : FAKE_TEST\r\n'
+    'Id         : 75\r\n'
+    'Location   : --\r\n'
+    'IP Address : --\r\n'
+    'OS         : --\r\n'
+    'Model      : --\r\n'
+    'Contact    : --\r\n'
+    'Comment    : --  \r\n\r\n\r\n')

@@ -202,21 +202,26 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
 
     @utils.synchronized('3par-attach', external=True)
     def terminate_connection(self, volume, connector, force):
-        """
-        Driver entry point to unattach a volume from an instance.
-        """
-        self.common.delete_vlun(volume, connector, self.client)
-        pass
+        """Driver entry point to unattach a volume from an instance."""
+        self.common.terminate_connection(volume,
+                                         connector['host'],
+                                         connector['wwpns'],
+                                         self.client)
 
     def _create_3par_fibrechan_host(self, hostname, wwn, domain, persona_id):
+        """Create a 3PAR host.
+
+        Create a 3PAR host, if there is already a host on the 3par using
+        the same wwn but with a different hostname, return the hostname
+        used by 3PAR.
+        """
         out = self.common._cli_run('createhost -persona %s -domain %s %s %s'
                                    % (persona_id, domain,
                                       hostname, " ".join(wwn)), None)
         if out and len(out) > 1:
-            if "already used by host" in out[1]:
-                err = out[1].strip()
-                info = _("The hostname must be called '%s'") % hostname
-                raise exception.Duplicate3PARHost(err=err, info=info)
+            return self.common.parse_create_host_error(hostname, out)
+
+        return hostname
 
     def _modify_3par_fibrechan_host(self, hostname, wwn):
         # when using -add, you can not send the persona or domain options
@@ -224,10 +229,7 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
                                    % (hostname, " ".join(wwn)), None)
 
     def _create_host(self, volume, connector):
-        """
-        This is a 3PAR host entry for exporting volumes
-        via active VLUNs.
-        """
+        """Creates or modifies existing 3PAR host."""
         host = None
         hostname = self.common._safe_hostname(connector['host'])
         try:
@@ -239,9 +241,11 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
             # get persona from the volume type extra specs
             persona_id = self.common.get_persona_type(volume)
             # host doesn't exist, we have to create it
-            self._create_3par_fibrechan_host(hostname, connector['wwpns'],
-                                             self.configuration.hp3par_domain,
-                                             persona_id)
+            hostname = self._create_3par_fibrechan_host(hostname,
+                                                        connector['wwpns'],
+                                                        self.configuration.
+                                                        hp3par_domain,
+                                                        persona_id)
             host = self.common._get_3par_host(hostname)
 
         return host

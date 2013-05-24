@@ -41,6 +41,7 @@ import json
 import paramiko
 import pprint
 from random import randint
+import re
 import time
 import uuid
 
@@ -111,6 +112,7 @@ class HP3PARCommon():
     def __init__(self, config):
         self.sshpool = None
         self.config = config
+        self.hosts_naming_dict = dict()
 
     def check_flags(self, options, required_flags):
         for flag in required_flags:
@@ -459,9 +461,7 @@ exit
         self._create_3par_vlun(volume_name, host['name'])
         return client.getVLUN(volume_name)
 
-    def delete_vlun(self, volume, connector, client):
-        hostname = self._safe_hostname(connector['host'])
-
+    def delete_vlun(self, volume, hostname, client):
         volume_name = self._get_3par_vol_name(volume['id'])
         vlun = client.getVLUN(volume_name)
         client.deleteVLUN(volume_name, vlun['lun'], hostname)
@@ -594,6 +594,16 @@ exit
             status = info[5]
 
         return status
+
+    def get_next_word(self, s, search_string):
+        """Return the next word.
+
+           Search 's' for 'search_string', if found
+           return the word preceding 'search_string'
+           from 's'.
+        """
+        word = re.search(search_string.strip(' ') + ' ([^ ]*)', s)
+        return word.groups()[0].strip(' ')
 
     @utils.synchronized('3parclone', external=True)
     def create_cloned_volume(self, volume, src_vref, client):
@@ -740,3 +750,47 @@ exit
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
             LOG.error(str(ex))
+
+    def _get_3par_hostname_from_wwn_iqn(self, wwns_iqn):
+        out = self._cli_run('showhost -d', None)
+        # wwns_iqn may be a list of strings or a single
+        # string. So, if necessary, create a list to loop.
+        if not isinstance(wwns_iqn, list):
+            wwn_iqn_list = [wwns_iqn]
+        else:
+            wwn_iqn_list = wwns_iqn
+
+        for wwn_iqn in wwn_iqn_list:
+            for showhost in out:
+                if (wwn_iqn.upper() in showhost.upper()):
+                    return showhost.split(',')[1]
+
+    def terminate_connection(self, volume, hostname, wwn_iqn, client):
+        """ Driver entry point to unattach a volume from an instance."""
+        try:
+            # does 3par know this host by a different name?
+            if hostname in self.hosts_naming_dict:
+                hostname = self.hosts_naming_dict.get(hostname)
+            self.delete_vlun(volume, hostname, client)
+            return
+        except hpexceptions.HTTPNotFound as e:
+            if 'host does not exist' in e.get_description():
+                # use the wwn to see if we can find the hostname
+                hostname = self._get_3par_hostname_from_wwn_iqn(wwn_iqn)
+                # no 3par host, re-throw
+                if (hostname == None):
+                    raise
+            else:
+            # not a 'host does not exist' HTTPNotFound exception, re-throw
+                raise
+
+        #try again with name retrieved from 3par
+        self.delete_vlun(volume, hostname, client)
+
+    def parse_create_host_error(self, hostname, out):
+        search_str = "already used by host "
+        if search_str in out[1]:
+            #host exists, return name used by 3par
+            hostname_3par = self.get_next_word(out[1], search_str)
+            self.hosts_naming_dict[hostname] = hostname_3par
+            return hostname_3par
