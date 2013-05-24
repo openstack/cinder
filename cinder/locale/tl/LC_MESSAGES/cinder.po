@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-05-21 18:10+0000\n"
+"POT-Creation-Date: 2013-05-24 18:10+0000\n"
 "PO-Revision-Date: 2011-08-23 11:21+0000\n"
 "Last-Translator: Thierry Carrez <thierry.carrez+lp@gmail.com>\n"
 "Language-Team: Tagalog <tl@li.org>\n"
@@ -41,7 +41,7 @@ msgid ""
 "Stderr: %(stderr)r"
 msgstr ""
 
-#: cinder/exception.py:90
+#: cinder/exception.py:90 cinder/openstack/common/db/sqlalchemy/session.py:487
 msgid "DB exception wrapped."
 msgstr ""
 
@@ -117,7 +117,7 @@ msgstr ""
 msgid "Invalid content type %(content_type)s."
 msgstr ""
 
-#: cinder/exception.py:200
+#: cinder/exception.py:200 cinder/openstack/common/db/exception.py:44
 msgid "Invalid Parameter: Unicode is not supported by the current database."
 msgstr ""
 
@@ -1736,10 +1736,12 @@ msgid "Unable to find LV: %s"
 msgstr ""
 
 #: cinder/common/sqlalchemyutils.py:68
+#: cinder/openstack/common/db/sqlalchemy/utils.py:72
 msgid "Id not in sort_keys; is sort_keys unique?"
 msgstr ""
 
 #: cinder/common/sqlalchemyutils.py:116
+#: cinder/openstack/common/db/sqlalchemy/utils.py:120
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr ""
 
@@ -1786,11 +1788,13 @@ msgid "Upgrade DB using Essex release first."
 msgstr ""
 
 #: cinder/db/sqlalchemy/session.py:71
+#: cinder/openstack/common/db/sqlalchemy/session.py:538
 #, python-format
 msgid "Got mysql server has gone away: %s"
 msgstr ""
 
 #: cinder/db/sqlalchemy/session.py:132
+#: cinder/openstack/common/db/sqlalchemy/session.py:610
 #, python-format
 msgid "SQL connection failed. %s attempts left."
 msgstr ""
@@ -1904,22 +1908,22 @@ msgstr ""
 msgid "Released file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
 msgstr ""
 
-#: cinder/openstack/common/log.py:226
+#: cinder/openstack/common/log.py:244
 #, fuzzy, python-format
 msgid "Deprecated: %s"
 msgstr "natanggap %s"
 
-#: cinder/openstack/common/log.py:329
+#: cinder/openstack/common/log.py:336
 #, python-format
 msgid "Error loading logging config %(log_config)s: %(err_msg)s"
 msgstr ""
 
-#: cinder/openstack/common/log.py:379
+#: cinder/openstack/common/log.py:386
 #, python-format
 msgid "syslog facility must be one of: %s"
 msgstr ""
 
-#: cinder/openstack/common/log.py:537
+#: cinder/openstack/common/log.py:555
 #, python-format
 msgid "Fatal call to deprecated config: %(msg)s"
 msgstr ""
@@ -1977,6 +1981,10 @@ msgstr ""
 #: cinder/openstack/common/strutils.py:72
 #, python-format
 msgid "Unrecognized value '%(val)s', acceptable values are: %(acceptable)s"
+msgstr ""
+
+#: cinder/openstack/common/db/sqlalchemy/utils.py:33
+msgid "Sort key supplied was not valid."
 msgstr ""
 
 #: cinder/openstack/common/notifier/api.py:125
@@ -2553,17 +2561,17 @@ msgid ""
 "\t%s"
 msgstr ""
 
-#: cinder/tests/test_storwize_svc.py:243
+#: cinder/tests/test_storwize_svc.py:242
 #, python-format
 msgid "unrecognized argument %s"
 msgstr ""
 
-#: cinder/tests/test_storwize_svc.py:1217
+#: cinder/tests/test_storwize_svc.py:1216
 #, python-format
 msgid "Run CLI command: %s"
 msgstr ""
 
-#: cinder/tests/test_storwize_svc.py:1220
+#: cinder/tests/test_storwize_svc.py:1219
 #, python-format
 msgid ""
 "CLI output:\n"
@@ -2571,7 +2579,7 @@ msgid ""
 " stderr: %(stderr)s"
 msgstr ""
 
-#: cinder/tests/test_storwize_svc.py:1225
+#: cinder/tests/test_storwize_svc.py:1224
 #, python-format
 msgid ""
 "CLI Exception output:\n"
@@ -3126,26 +3134,26 @@ msgstr ""
 msgid "Gluster config file at %(config)s doesn't exist"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:80
+#: cinder/volume/drivers/glusterfs.py:82
 msgid "mount.glusterfs is not installed"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:98 cinder/volume/drivers/nfs.py:168
+#: cinder/volume/drivers/glusterfs.py:100 cinder/volume/drivers/nfs.py:200
 #, python-format
 msgid "casted to %s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:108 cinder/volume/drivers/nfs.py:178
+#: cinder/volume/drivers/glusterfs.py:110 cinder/volume/drivers/nfs.py:210
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:168 cinder/volume/drivers/nfs.py:237
+#: cinder/volume/drivers/glusterfs.py:174 cinder/volume/drivers/nfs.py:273
 #, python-format
 msgid "Exception during mounting %s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:247 cinder/volume/drivers/nfs.py:321
+#: cinder/volume/drivers/glusterfs.py:252 cinder/volume/drivers/nfs.py:354
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
@@ -3215,12 +3223,12 @@ msgstr ""
 msgid "Error retrieving volume status: "
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:141
+#: cinder/volume/drivers/nfs.py:171
 #, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:146
+#: cinder/volume/drivers/nfs.py:176
 #, python-format
 msgid "NFS config file at %(config)s doesn't exist"
 msgstr ""
@@ -3337,65 +3345,65 @@ msgstr ""
 msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:338
+#: cinder/volume/drivers/solidfire.py:342
 msgid "Failed to get model update from clone"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:364
+#: cinder/volume/drivers/solidfire.py:368
 #, python-format
 msgid "More than one valid preset was detected, using %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:397
+#: cinder/volume/drivers/solidfire.py:401
 #, python-format
 msgid "Mapped SolidFire volumeID %(sfid)s to cinder ID %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:406
+#: cinder/volume/drivers/solidfire.py:410
 #, python-format
 msgid "Volume %s, not found on SF Cluster."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:409
+#: cinder/volume/drivers/solidfire.py:413
 #, python-format
 msgid "Found %(count)s volumes mapped to id: %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:476
+#: cinder/volume/drivers/solidfire.py:480
 msgid "Enter SolidFire delete_volume..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:480
+#: cinder/volume/drivers/solidfire.py:484
 #, python-format
 msgid "Account for Volume ID %s was not found on the SolidFire Cluster!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:482
+#: cinder/volume/drivers/solidfire.py:486
 msgid "This usually means the volume was never succesfully created."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:497
+#: cinder/volume/drivers/solidfire.py:501
 #, python-format
 msgid "Volume ID %s was not found on the SolidFire Cluster!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:500
+#: cinder/volume/drivers/solidfire.py:504
 msgid "Leaving SolidFire delete_volume"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:504
+#: cinder/volume/drivers/solidfire.py:508
 msgid "Executing SolidFire ensure_export..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:509
+#: cinder/volume/drivers/solidfire.py:513
 msgid "Executing SolidFire create_export..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:558
+#: cinder/volume/drivers/solidfire.py:562
 msgid "Updating cluster status info"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:566
+#: cinder/volume/drivers/solidfire.py:570
 msgid "Failed to get updated stats"
 msgstr ""
 
