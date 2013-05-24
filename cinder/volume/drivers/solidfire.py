@@ -317,26 +317,27 @@ class SolidFire(SanISCSIDriver):
         if 'qos' in sf_vol:
             qos = sf_vol['qos']
 
-        attributes = {'uuid': v_ref['id'],
-                      'is_clone': 'True',
-                      'src_uuid': src_uuid}
-
-        if qos:
-            for k, v in qos.items():
-                            attributes[k] = str(v)
-
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
-                  'attributes': attributes,
                   'newAccountID': sfaccount['accountID'],
                   'qos': qos}
-
         data = self._issue_api_request('CloneVolume', params)
 
         if (('result' not in data) or ('volumeID' not in data['result'])):
             raise exception.SolidFireAPIDataException(data=data)
-
         sf_volume_id = data['result']['volumeID']
+
+        # NOTE(jdg): all attributes are copied via clone, need to do an update
+        # to set any that were provided
+        attributes = {'uuid': v_ref['id'],
+                      'is_clone': 'True',
+                      'src_uuid': src_uuid}
+
+        params = {'volumeID': sf_volume_id,
+                  'attributes': attributes}
+
+        data = self._issue_api_request('ModifyVolume', params)
+
         model_update = self._get_model_info(sfaccount, sf_volume_id)
         if model_update is None:
             mesg = _('Failed to get model update from clone')
