@@ -307,27 +307,38 @@ class SolidFire(SanISCSIDriver):
         if src_project_id != v_ref['project_id']:
             sfaccount = self._create_sfaccount(v_ref['project_id'])
 
-        if 'qos' in sf_vol:
-            qos = sf_vol['qos']
-
-        attributes = {'uuid': v_ref['id'],
-                      'is_clone': 'True',
-                      'src_uuid': 'src_uuid'}
-
-        if qos:
-            for k, v in qos.items():
-                            attributes[k] = str(v)
-
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
-                  'attributes': attributes,
-                  'newAccountID': sfaccount['accountID'],
-                  'qos': qos}
-
+                  'newAccountID': sfaccount['accountID']}
         data = self._issue_api_request('CloneVolume', params)
 
         if (('result' not in data) or ('volumeID' not in data['result'])):
             raise exception.SolidFireAPIDataException(data=data)
+        sf_volume_id = data['result']['volumeID']
+
+        if (self.configuration.sf_allow_tenant_qos and
+                v_ref.get('volume_metadata')is not None):
+            qos = self._set_qos_presets(v_ref)
+
+        ctxt = context.get_admin_context()
+        type_id = v_ref['volume_type_id']
+        if type_id is not None:
+            qos = self._set_qos_by_volume_type(ctxt, type_id)
+
+        # NOTE(jdg): all attributes are copied via clone, need to do an update
+        # to set any that were provided
+        params = {'volumeID': sf_volume_id}
+
+        attributes = {'uuid': v_ref['id'],
+                      'is_clone': 'True',
+                      'src_uuid': src_uuid}
+        if qos:
+            params['qos'] = qos
+            for k, v in qos.items():
+                attributes[k] = str(v)
+
+        params['attributes'] = attributes
+        data = self._issue_api_request('ModifyVolume', params)
 
         sf_volume_id = data['result']['volumeID']
         model_update = self._get_model_info(sfaccount, sf_volume_id)
