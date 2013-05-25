@@ -1035,9 +1035,6 @@
 # Base dir where nfs expected to be mounted (string value)
 #nfs_mount_point_base=$state_path/mnt
 
-# Use du or df for free space calculation (string value)
-#nfs_disk_util=df
-
 # Create volumes as sparsed files which take no space.If set
 # to False volume is created as regular file.In such case
 # volume creation takes a lot of time. (boolean value)
@@ -1046,6 +1043,16 @@
 # Mount options passed to the nfs client. See section of the
 # nfs man page for details (string value)
 #nfs_mount_options=<None>
+
+# Percent of ACTUAL usage of the underlying volume before no
+# new volumes can be allocated to the volume destination. (floating point
+# value)
+#nfs_used_ratio=0.95
+
+# This will compare the allocated to available space on the
+# volume destination.  If the ratio exceeds this number, the
+# destination will no longer be valid. (floating point value)
+#nfs_oversub_ratio=1.0
 
 
 #
