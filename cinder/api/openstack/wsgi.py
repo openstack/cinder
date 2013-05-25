@@ -179,6 +179,16 @@ class XMLDeserializer(TextDeserializer):
                                                                  listnames)
             return result
 
+    def find_first_child_named_in_namespace(self, parent, namespace, name):
+        """Search a nodes children for the first child with a given name."""
+        for node in parent.childNodes:
+            if (node.localName == name and
+                node.namespaceURI and
+                node.namespaceURI == namespace):
+                return node
+        return None
+
+
     def find_first_child_named(self, parent, name):
         """Search a nodes children for the first child with a given name"""
         for node in parent.childNodes:

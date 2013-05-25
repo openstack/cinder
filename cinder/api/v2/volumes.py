@@ -32,8 +32,8 @@ from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
-
-
+SCHEDULER_HINTS_NAMESPACE =\
+        "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2"
 FLAGS = flags.FLAGS
 
 
@@ -92,6 +92,20 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
 
     metadata_deserializer = common.MetadataXMLDeserializer()
 
+    def _extract_scheduler_hints(self, volume_node):
+        """Marshal the scheduler hints attribute of a parsed request."""
+        node = self.find_first_child_named_in_namespace(volume_node,
+                SCHEDULER_HINTS_NAMESPACE, "scheduler_hints")
+        if node:
+            scheduler_hints = {}
+            for child in self.extract_elements(node):
+                scheduler_hints.setdefault(child.nodeName, [])
+                value = self.extract_text(child).strip()
+                scheduler_hints[child.nodeName].append(value)
+            return scheduler_hints
+        else:
+            return None
+
     def _extract_volume(self, node):
         """Marshal the volume attribute of a parsed request."""
         volume = {}
@@ -106,6 +120,10 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
         metadata_node = self.find_first_child_named(volume_node, 'metadata')
         if metadata_node is not None:
             volume['metadata'] = self.extract_metadata(metadata_node)
+
+        scheduler_hints = self._extract_scheduler_hints(volume_node)
+        if scheduler_hints:
+            volume['scheduler_hints'] = scheduler_hints
 
         return volume
 
@@ -280,6 +298,7 @@ class VolumeController(wsgi.Controller):
                 kwargs['image_id'] = image_uuid
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
+        kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
 
         new_volume = self.volume_api.create(context,
                                             size,
