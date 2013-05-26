@@ -522,7 +522,7 @@ class EMCSMISCommon():
         if rc != 0L:
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
-                exception_message = (_('Error Create Snapshot: (snapshot)s '
+                exception_message = (_('Error Create Snapshot: %(snapshot)s '
                                      'Volume: %(volume)s Error: %(errordesc)s')
                                      % {'snapshot': snapshotname, 'volume':
                                         volumename, 'errordesc': errordesc})
