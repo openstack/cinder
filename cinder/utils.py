@@ -271,6 +271,13 @@ def ssh_execute(ssh, cmd, process_input=None,
     return (stdout, stderr)
 
 
+def create_channel(client, width, height):
+    """Invoke an interactive shell session on server."""
+    channel = client.invoke_shell()
+    channel.resize_pty(width, height)
+    return channel
+
+
 class SSHPool(pools.Pool):
     """A simple eventlet pool to hold ssh connections."""
 
@@ -343,6 +350,16 @@ class SSHPool(pools.Pool):
             self.current_size += 1
             return created
         return self.channel.get()
+
+    def remove(self, ssh):
+        """Close an ssh client and remove it if in free_items."""
+        ssh.close()
+        if ssh in self.free_items:
+            self.free_items.pop(ssh)
+        ssh = None
+
+        if self.current_size > 0:
+            self.current_size -= 1
 
 
 def cinderdir():
