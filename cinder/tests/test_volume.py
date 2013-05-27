@@ -1307,7 +1307,7 @@ class VolumePolicyTestCase(test.TestCase):
         cinder.policy.reset()
 
     def _set_rules(self, rules):
-        cinder.common.policy.set_brain(cinder.common.policy.HttpBrain(rules))
+        cinder.common.policy.set_brain(cinder.common.policy.Brain(rules))
 
     def test_check_policy(self):
         self.mox.StubOutWithMock(cinder.policy, 'enforce')

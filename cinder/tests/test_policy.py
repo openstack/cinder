@@ -82,7 +82,7 @@ class PolicyTestCase(test.TestCase):
             "example:uppercase_admin": [["role:ADMIN"], ["role:sysadmin"]],
         }
         # NOTE(vish): then overload underlying brain
-        common_policy.set_brain(common_policy.HttpBrain(rules))
+        common_policy.set_brain(common_policy.Brain(rules))
         self.context = context.RequestContext('fake', 'fake', roles=['member'])
         self.target = {}
 
@@ -170,7 +170,7 @@ class DefaultPolicyTestCase(test.TestCase):
         self.context = context.RequestContext('fake', 'fake')
 
     def _set_brain(self, default_rule):
-        brain = cinder.openstack.common.policy.HttpBrain(self.rules,
+        brain = cinder.openstack.common.policy.Brain(self.rules,
                                                          default_rule)
         cinder.openstack.common.policy.set_brain(brain)
 

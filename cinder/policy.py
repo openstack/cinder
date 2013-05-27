@@ -58,7 +58,7 @@ def init():
 
 def _set_brain(data):
     default_rule = FLAGS.policy_default_rule
-    policy.set_brain(policy.HttpBrain.load_json(data, default_rule))
+    policy.set_brain(policy.Brain.load_json(data, default_rule))
 
 
 def enforce(context, action, target):
