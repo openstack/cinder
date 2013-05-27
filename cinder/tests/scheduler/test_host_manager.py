@@ -145,7 +145,8 @@ class HostManagerTestCase(test.TestCase):
         ret_services = fakes.VOLUME_SERVICES
         db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
         # Disabled service
-        host_manager.LOG.warn("service is down or disabled.")
+        host_manager.LOG.warn("volume service is down or disabled. "
+                              "(host: host5)")
 
         self.mox.ReplayAll()
         self.host_manager.get_all_host_states(context)
