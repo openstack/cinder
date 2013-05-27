@@ -562,7 +562,7 @@ class GlanceMetadataExists(Invalid):
 
 
 class ImageCopyFailure(Invalid):
-    message = _("Failed to copy image to volume")
+    message = _("Failed to copy image to volume: %(reason)s")
 
 
 class BackupNotFound(NotFound):
