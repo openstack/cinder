@@ -1,0 +1,458 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+"""Unit tests for cinder.db.api."""
+
+
+from cinder import context
+from cinder import db
+from cinder import exception
+from cinder import flags
+from cinder.openstack.common import uuidutils
+from cinder.quota import ReservableResource
+from cinder import test
+from datetime import datetime
+from datetime import timedelta
+
+FLAGS = flags.FLAGS
+
+
+class ModelsObjectComparatorMixin(object):
+    def _dict_from_object(self, obj, ignored_keys):
+        if ignored_keys is None:
+            ignored_keys = []
+        return dict([(k, v) for k, v in obj.iteritems()
+                                if k not in ignored_keys])
+
+    def _assertEqualObjects(self, obj1, obj2, ignored_keys=None):
+        obj1 = self._dict_from_object(obj1, ignored_keys)
+        obj2 = self._dict_from_object(obj2, ignored_keys)
+
+        self.assertEqual(len(obj1), len(obj2))
+        for key, value in obj1.iteritems():
+            self.assertEqual(value, obj2[key])
+
+    def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None):
+        self.assertEqual(len(objs1), len(objs2))
+        objs2 = dict([(o['id'], o) for o in objs2])
+        for o1 in objs1:
+            self._assertEqualObjects(o1, objs2[o1['id']], ignored_keys)
+
+    def _assertEqualListsOfPrimitivesAsSets(self, primitives1, primitives2):
+        self.assertEqual(len(primitives1), len(primitives2))
+        for primitive in primitives1:
+            self.assertIn(primitive, primitives2)
+
+        for primitive in primitives2:
+            self.assertIn(primitive, primitives1)
+
+
+class BaseTest(test.TestCase, ModelsObjectComparatorMixin):
+    def setUp(self):
+        super(BaseTest, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+
+class DBAPIServiceTestCase(BaseTest):
+
+    """Unit tests for cinder.db.api.service_*."""
+
+    def _get_base_values(self):
+        return {
+            'host': 'fake_host',
+            'binary': 'fake_binary',
+            'topic': 'fake_topic',
+            'report_count': 3,
+            'disabled': False
+        }
+
+    def _create_service(self, values):
+        v = self._get_base_values()
+        v.update(values)
+        return db.service_create(self.ctxt, v)
+
+    def test_service_create(self):
+        service = self._create_service({})
+        self.assertFalse(service['id'] is None)
+        for key, value in self._get_base_values().iteritems():
+            self.assertEqual(value, service[key])
+
+    def test_service_destroy(self):
+        service1 = self._create_service({})
+        service2 = self._create_service({'host': 'fake_host2'})
+
+        db.service_destroy(self.ctxt, service1['id'])
+        self.assertRaises(exception.ServiceNotFound,
+                          db.service_get, self.ctxt, service1['id'])
+        self._assertEqualObjects(db.service_get(self.ctxt, service2['id']),
+                                 service2)
+
+    def test_service_update(self):
+        service = self._create_service({})
+        new_values = {
+            'host': 'fake_host1',
+            'binary': 'fake_binary1',
+            'topic': 'fake_topic1',
+            'report_count': 4,
+            'disabled': True
+        }
+        db.service_update(self.ctxt, service['id'], new_values)
+        updated_service = db.service_get(self.ctxt, service['id'])
+        for key, value in new_values.iteritems():
+            self.assertEqual(value, updated_service[key])
+
+    def test_service_update_not_found_exception(self):
+        self.assertRaises(exception.ServiceNotFound,
+                          db.service_update, self.ctxt, 100500, {})
+
+    def test_service_get(self):
+        service1 = self._create_service({})
+        service2 = self._create_service({'host': 'some_other_fake_host'})
+        real_service1 = db.service_get(self.ctxt, service1['id'])
+        self._assertEqualObjects(service1, real_service1)
+
+    def test_service_get_not_found_exception(self):
+        self.assertRaises(exception.ServiceNotFound,
+                          db.service_get, self.ctxt, 100500)
+
+    def test_service_get_by_host_and_topic(self):
+        service1 = self._create_service({'host': 'host1', 'topic': 'topic1'})
+        service2 = self._create_service({'host': 'host2', 'topic': 'topic2'})
+
+        real_service1 = db.service_get_by_host_and_topic(self.ctxt,
+                                                         host='host1',
+                                                         topic='topic1')
+        self._assertEqualObjects(service1, real_service1)
+
+    def test_service_get_all(self):
+        values = [
+            {'host': 'host1', 'topic': 'topic1'},
+            {'host': 'host2', 'topic': 'topic2'},
+            {'disabled': True}
+        ]
+        services = [self._create_service(vals) for vals in values]
+        disabled_services = [services[-1]]
+        non_disabled_services = services[:-1]
+
+        compares = [
+            (services, db.service_get_all(self.ctxt)),
+            (disabled_services, db.service_get_all(self.ctxt, True)),
+            (non_disabled_services, db.service_get_all(self.ctxt, False))
+        ]
+        for comp in compares:
+            self._assertEqualListsOfObjects(*comp)
+
+    def test_service_get_all_by_topic(self):
+        values = [
+            {'host': 'host1', 'topic': 't1'},
+            {'host': 'host2', 'topic': 't1'},
+            {'disabled': True, 'topic': 't1'},
+            {'host': 'host3', 'topic': 't2'}
+        ]
+        services = [self._create_service(vals) for vals in values]
+        expected = services[:2]
+        real = db.service_get_all_by_topic(self.ctxt, 't1')
+        self._assertEqualListsOfObjects(expected, real)
+
+    def test_service_get_all_by_host(self):
+        values = [
+            {'host': 'host1', 'topic': 't1'},
+            {'host': 'host1', 'topic': 't1'},
+            {'host': 'host2', 'topic': 't1'},
+            {'host': 'host3', 'topic': 't2'}
+        ]
+        services = [self._create_service(vals) for vals in values]
+
+        expected = services[:2]
+        real = db.service_get_all_by_host(self.ctxt, 'host1')
+        self._assertEqualListsOfObjects(expected, real)
+
+    def test_service_get_by_args(self):
+        values = [
+            {'host': 'host1', 'binary': 'a'},
+            {'host': 'host2', 'binary': 'b'}
+        ]
+        services = [self._create_service(vals) for vals in values]
+
+        service1 = db.service_get_by_args(self.ctxt, 'host1', 'a')
+        self._assertEqualObjects(services[0], service1)
+
+        service2 = db.service_get_by_args(self.ctxt, 'host2', 'b')
+        self._assertEqualObjects(services[1], service2)
+
+    def test_service_get_by_args_not_found_exception(self):
+        self.assertRaises(exception.HostBinaryNotFound,
+                          db.service_get_by_args,
+                          self.ctxt, 'non-exists-host', 'a')
+
+    def test_service_get_all_volume_sorted(self):
+        values = [
+            ({'host': 'h1', 'binary': 'a', 'topic': FLAGS.volume_topic}, 100),
+            ({'host': 'h2', 'binary': 'b', 'topic': FLAGS.volume_topic}, 200),
+            ({'host': 'h3', 'binary': 'b', 'topic': FLAGS.volume_topic}, 300)]
+        services = []
+        for vals, size in values:
+            services.append(self._create_service(vals))
+            db.volume_create(self.ctxt, {'host': vals['host'], 'size': size})
+        for service, size in db.service_get_all_volume_sorted(self.ctxt):
+            self._assertEqualObjects(services.pop(0), service)
+            self.assertEqual(values.pop(0)[1], size)
+
+
+class DBAPIVolumeTestCase(BaseTest):
+
+    """Unit tests for cinder.db.api.volume_*."""
+
+    def test_volume_create(self):
+        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        self.assertTrue(uuidutils.is_uuid_like(volume['id']))
+        self.assertEqual(volume.host, 'host1')
+
+    def test_volume_allocate_iscsi_target_no_more_targets(self):
+        self.assertRaises(db.NoMoreTargets,
+                          db.volume_allocate_iscsi_target,
+                          self.ctxt, 42, 'host1')
+
+    def test_volume_allocate_iscsi_target(self):
+        host = 'host1'
+        volume = db.volume_create(self.ctxt, {'host': host})
+        db.iscsi_target_create_safe(self.ctxt, {'host': host,
+                                                'target_num': 42})
+        target_num = db.volume_allocate_iscsi_target(self.ctxt, volume['id'],
+                                                 host)
+        self.assertEqual(target_num, 42)
+
+    @test.testtools.skip("bug 1184870")
+    def test_volume_attached_invalid_uuid(self):
+        self.assertRaises(exception.InvalidUUID, db.volume_attached, self.ctxt,
+                          42, 'invalid-uuid', '/tmp')
+
+    def test_volume_attached(self):
+        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        db.volume_attached(self.ctxt, volume['id'],
+                           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '/tmp')
+        volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertEqual(volume['status'], 'in-use')
+        self.assertEqual(volume['mountpoint'], '/tmp')
+        self.assertEqual(volume['attach_status'], 'attached')
+        self.assertEqual(volume['instance_uuid'],
+                         'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+
+    def test_volume_data_get_for_host(self):
+        for i in xrange(3):
+            for j in xrange(3):
+                db.volume_create(self.ctxt, {'host': 'h%d' % i, 'size': 100})
+        for i in xrange(3):
+            self.assertEqual((3, 300), db.volume_data_get_for_host(
+                                                        self.ctxt, 'h%d' % i))
+
+    def test_volume_data_get_for_project(self):
+        for i in xrange(3):
+            for j in xrange(3):
+                db.volume_create(self.ctxt, {'project_id': 'p%d' % i,
+                                             'size': 100,
+                                             'host': 'h-%d-%d' % (i, j),
+                                             })
+        for i in xrange(3):
+            self.assertEqual((3, 300), db.volume_data_get_for_project(
+                                                        self.ctxt, 'p%d' % i))
+
+    def test_volume_detached(self):
+        volume = db.volume_create(self.ctxt, {})
+        db.volume_attached(self.ctxt, volume['id'],
+                        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '/tmp')
+        db.volume_detached(self.ctxt, volume['id'])
+        volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertEqual('available', volume['status'])
+        self.assertEqual('detached', volume['attach_status'])
+        self.assertIsNone(volume['mountpoint'])
+        self.assertIsNone(volume['instance_uuid'])
+
+    def test_volume_get(self):
+        volume = db.volume_create(self.ctxt, {})
+        self._assertEqualObjects(volume, db.volume_get(self.ctxt,
+                                                        volume['id']))
+
+    def test_volume_destroy(self):
+        volume = db.volume_create(self.ctxt, {})
+        db.volume_destroy(self.ctxt, volume['id'])
+        self.assertRaises(exception.VolumeNotFound, db.volume_get,
+                          self.ctxt, volume['id'])
+
+    def test_volume_get_all(self):
+        volumes = [db.volume_create(self.ctxt, {'host': 'h%d' % i, 'size': i})
+                            for i in xrange(3)]
+        self._assertEqualListsOfObjects(volumes, db.volume_get_all(
+                                        self.ctxt, None, None, 'host', None))
+
+    def test_volume_get_all_by_host(self):
+        volumes = []
+        for i in xrange(3):
+            volumes.append([db.volume_create(self.ctxt, {'host': 'h%d' % i})
+                                                    for j in xrange(3)])
+        for i in xrange(3):
+            self._assertEqualListsOfObjects(volumes[i],
+                                            db.volume_get_all_by_host(
+                                            self.ctxt, 'h%d' % i))
+
+    def test_volume_get_all_by_instance_uuid(self):
+        instance_uuids = []
+        volumes = []
+        for i in xrange(3):
+            instance_uuid = str(uuidutils.uuid.uuid1())
+            instance_uuids.append(instance_uuid)
+            volumes.append([db.volume_create(self.ctxt,
+                        {'instance_uuid': instance_uuid}) for j in xrange(3)])
+        for i in xrange(3):
+            self._assertEqualListsOfObjects(volumes[i],
+                                            db.volume_get_all_by_instance_uuid(
+                                            self.ctxt, instance_uuids[i]))
+
+    def test_volume_get_all_by_project(self):
+        volumes = []
+        for i in xrange(3):
+            volumes.append([db.volume_create(self.ctxt, {
+                        'project_id': 'p%d' % i}) for j in xrange(3)])
+        for i in xrange(3):
+            self._assertEqualListsOfObjects(volumes[i],
+                                            db.volume_get_all_by_project(
+                                            self.ctxt, 'p%d' % i, None,
+                                            None, 'host', None))
+
+    def test_volume_get_iscsi_target_num(self):
+        target = db.iscsi_target_create_safe(self.ctxt, {'volume_id': 42,
+                                                         'target_num': 43})
+        self.assertEqual(43, db.volume_get_iscsi_target_num(self.ctxt, 42))
+
+    def test_volume_get_iscsi_target_num_nonexistent(self):
+        self.assertRaises(exception.ISCSITargetNotFoundForVolume,
+                        db.volume_get_iscsi_target_num, self.ctxt, 42)
+
+    def test_volume_update(self):
+        volume = db.volume_create(self.ctxt, {'host': 'h1'})
+        db.volume_update(self.ctxt, volume['id'], {'host': 'h2'})
+        volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertEqual('h2', volume['host'])
+
+    def test_volume_update_nonexistent(self):
+        self.assertRaises(exception.VolumeNotFound, db.volume_update,
+                          self.ctxt, 42, {})
+
+
+class DBAPIReservationTestCase(BaseTest):
+
+    """Tests for db.api.reservation_* methods."""
+
+    def setUp(self):
+        super(DBAPIReservationTestCase, self).setUp()
+        self.values = {'uuid': 'sample-uuid',
+                'project_id': 'project1',
+                'resource': 'resource',
+                'delta': 42,
+                'expire': datetime.utcnow() + timedelta(days=1),
+                'usage': {'id': 1}}
+
+    def _quota_reserve(self):
+        """Create sample Quota, QuotaUsage and Reservation objects.
+
+        There is no method db.quota_usage_create(), so we have to use
+        db.quota_reserve() for creating QuotaUsage objects.
+
+        Returns reservations uuids.
+
+        """
+        def get_sync(resource, usage):
+            def sync(elevated, project_id, session):
+                return {resource: usage}
+            return sync
+        quotas = {}
+        resources = {}
+        deltas = {}
+        for i in xrange(3):
+            resource = 'resource%d' % i
+            quotas[resource] = db.quota_create(self.ctxt, 'project1',
+                                                            resource, i)
+            resources[resource] = ReservableResource(resource,
+                                get_sync(resource, i), 'quota_res_%d' % i)
+            deltas[resource] = i
+        return db.quota_reserve(self.ctxt, resources, quotas, deltas,
+                        datetime.utcnow(), datetime.utcnow(),
+                        timedelta(days=1), self.values['project_id'])
+
+    def test_reservation_create(self):
+        reservation = db.reservation_create(self.ctxt, **self.values)
+        self._assertEqualObjects(self.values, reservation, ignored_keys=(
+                        'deleted', 'updated_at',
+                        'deleted_at', 'id',
+                        'created_at', 'usage',
+                        'usage_id'))
+        self.assertEqual(reservation['usage_id'], self.values['usage']['id'])
+
+    def test_reservation_get(self):
+        reservation = db.reservation_create(self.ctxt, **self.values)
+        reservation_db = db.reservation_get(self.ctxt, self.values['uuid'])
+        self._assertEqualObjects(reservation, reservation_db)
+
+    def test_reservation_get_nonexistent(self):
+        self.assertRaises(exception.ReservationNotFound, db.reservation_get,
+                                    self.ctxt, 'non-exitent-resevation-uuid')
+
+    def test_reservation_commit(self):
+        reservations = self._quota_reserve()
+        expected = {'project_id': 'project1',
+                'resource0': {'reserved': 0, 'in_use': 0},
+                'resource1': {'reserved': 1, 'in_use': 1},
+                'resource2': {'reserved': 2, 'in_use': 2}}
+        self.assertEqual(expected, db.quota_usage_get_all_by_project(
+                                            self.ctxt, 'project1'))
+        db.reservation_get(self.ctxt, reservations[0])
+        db.reservation_commit(self.ctxt, reservations, 'project1')
+        self.assertRaises(exception.ReservationNotFound,
+            db.reservation_get, self.ctxt, reservations[0])
+        expected = {'project_id': 'project1',
+                'resource0': {'reserved': 0, 'in_use': 0},
+                'resource1': {'reserved': 0, 'in_use': 2},
+                'resource2': {'reserved': 0, 'in_use': 4}}
+        self.assertEqual(expected, db.quota_usage_get_all_by_project(
+                                            self.ctxt, 'project1'))
+
+    def test_reservation_rollback(self):
+        reservations = self._quota_reserve()
+        expected = {'project_id': 'project1',
+                'resource0': {'reserved': 0, 'in_use': 0},
+                'resource1': {'reserved': 1, 'in_use': 1},
+                'resource2': {'reserved': 2, 'in_use': 2}}
+        self.assertEqual(expected, db.quota_usage_get_all_by_project(
+                                            self.ctxt, 'project1'))
+        db.reservation_get(self.ctxt, reservations[0])
+        db.reservation_rollback(self.ctxt, reservations, 'project1')
+        self.assertRaises(exception.ReservationNotFound,
+            db.reservation_get, self.ctxt, reservations[0])
+        expected = {'project_id': 'project1',
+                'resource0': {'reserved': 0, 'in_use': 0},
+                'resource1': {'reserved': 0, 'in_use': 1},
+                'resource2': {'reserved': 0, 'in_use': 2}}
+        self.assertEqual(expected, db.quota_usage_get_all_by_project(
+                                            self.ctxt, 'project1'))
+
+    @test.testtools.skip("bug 1185325")
+    def test_reservation_expire(self):
+        self.values['expire'] = datetime.utcnow() + timedelta(days=1)
+        reservations = self._quota_reserve()
+        db.reservation_expire(self.ctxt)
+
+        expected = {'project_id': 'project1',
+                'resource0': {'reserved': 0, 'in_use': 0},
+                'resource1': {'reserved': 0, 'in_use': 1},
+                'resource2': {'reserved': 0, 'in_use': 2}}
+        self.assertEqual(expected, db.quota_usage_get_all_by_project(
+                                            self.ctxt, 'project1'))
