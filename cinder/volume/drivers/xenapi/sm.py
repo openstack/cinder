@@ -194,7 +194,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
             FLAGS.xenapi_sr_base_path)
 
         if overwrite_result is False:
-            raise exception.ImageCopyFailure()
+            raise exception.ImageCopyFailure(reason='Overwriting volume '
+                                                    'failed.')
 
         self.nfs_ops.resize_volume(
             FLAGS.xenapi_nfs_server,

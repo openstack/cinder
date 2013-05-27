@@ -183,7 +183,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume_ref = self.db.volume_update(context,
                                                    volume_ref['id'],
                                                    updates)
-
                 self._copy_image_to_volume(context,
                                            volume_ref,
                                            image_service,
@@ -249,6 +248,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                            image_service,
                                                            image_id,
                                                            image_location)
+            except exception.ImageCopyFailure as ex:
+                LOG.error(_('Setting volume: %s status to error '
+                            'after failed image copy.'), volume_ref['id'])
+                self.db.volume_update(context,
+                                      volume_ref['id'],
+                                      {'status': 'error'})
+                return
             except Exception:
                 # restore source volume status before reschedule
                 if sourcevol_ref is not None:
@@ -275,7 +281,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             model_update = self.driver.create_export(context, volume_ref)
             if model_update:
                 self.db.volume_update(context, volume_ref['id'], model_update)
-
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context,
@@ -591,11 +596,24 @@ class VolumeManager(manager.SchedulerDependentManager):
     def _copy_image_to_volume(self, context, volume, image_service, image_id):
         """Downloads Glance image to the specified volume. """
         volume_id = volume['id']
-        self.driver.copy_image_to_volume(context, volume,
-                                         image_service,
-                                         image_id)
-        LOG.debug(_("Downloaded image %(image_id)s to %(volume_id)s "
-                    "successfully") % locals())
+        try:
+            self.driver.copy_image_to_volume(context, volume,
+                                             image_service,
+                                             image_id)
+        except exception.ProcessExecutionError as ex:
+            LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
+                        "error: %(error)s") % {'volume_id': volume_id,
+                                               'error': ex.stderr})
+            raise exception.ImageCopyFailure(reason=ex.stderr)
+        except exception.ImageUnacceptable as ex:
+            LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
+                        "error: %(error)s") % {'volume_id': volume_id,
+                                               'error': ex})
+            raise exception.ImageCopyFailure(reason=ex)
+
+        LOG.info(_("Downloaded image %(image_id)s to %(volume_id)s "
+                   "successfully.") % {'image_id': image_id,
+                                       'volume_id': volume_id})
 
     def copy_volume_to_image(self, context, volume_id, image_meta):
         """Uploads the specified volume to Glance.
