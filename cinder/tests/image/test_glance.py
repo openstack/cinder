@@ -547,11 +547,18 @@ class TestGlanceClientVersion(test.TestCase):
     def setUp(self):
         super(TestGlanceClientVersion, self).setUp()
 
-        def fake_get_image_model(self):
+        def fake_get_model(self):
             return
 
         self.stubs.Set(glanceclient_v2, '_get_image_model',
-                       fake_get_image_model)
+                       fake_get_model)
+
+        try:
+            self.stubs.Set(glanceclient_v2, '_get_member_model',
+                           fake_get_model)
+        except AttributeError:
+            # method requires stubbing only with newer glanceclients.
+            pass
 
     def test_glance_version_by_flag(self):
         """Test glance version set by flag is honoured"""
