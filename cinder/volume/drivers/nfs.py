@@ -152,7 +152,7 @@ class RemoteFsDriver(driver.VolumeDriver):
             # results in share_info =
             #  [ 'address:/vol', '-o options=123,rw --other' ]
 
-            share_address = share_info[0].strip()
+            share_address = share_info[0].strip().decode('unicode_escape')
             share_opts = share_info[1].strip() if len(share_info) > 1 else None
 
             self.shares[share_address] = share_opts
@@ -384,11 +384,11 @@ class NfsDriver(RemoteFsDriver):
         """
         mount_point = self._get_mount_point_for_share(nfs_share)
 
-        df, _ = self._execute('df', '-P', '-B', '1', mount_point,
+        df, _ = self._execute('stat', '-f', '-c', '%S %b %a', mount_point,
                               run_as_root=True)
-        df = df.splitlines()[1]
-        total_available = float(df.split()[3])
-        total_size = float(df.split()[1])
+        block_size, blocks_total, blocks_avail = map(float, df.split())
+        total_available = block_size * blocks_avail
+        total_size = block_size * blocks_total
 
         du, _ = self._execute('du', '-sb', '--apparent-size', '--exclude',
                               '*snapshot*', mount_point, run_as_root=True)
