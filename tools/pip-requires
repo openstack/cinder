@@ -1,5 +1,5 @@
 d2to1>=0.2.10,<0.3
-pbr>=0.5,<0.6
+pbr>=0.5.10,<0.6
 amqplib>=0.6.1
 anyjson>=0.2.4
 argparse
