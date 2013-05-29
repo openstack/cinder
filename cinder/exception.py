@@ -216,7 +216,7 @@ class ImageUnacceptable(Invalid):
 
 
 class InvalidUUID(Invalid):
-    message = _("Expected a uuid but received %(uuid).")
+    message = _("Expected a uuid but received %(uuid)s.")
 
 
 class NotFound(CinderException):

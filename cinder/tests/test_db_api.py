@@ -258,7 +258,6 @@ class DBAPIVolumeTestCase(BaseTest):
                                                  host)
         self.assertEqual(target_num, 42)
 
-    @test.testtools.skip("bug 1184870")
     def test_volume_attached_invalid_uuid(self):
         self.assertRaises(exception.InvalidUUID, db.volume_attached, self.ctxt,
                           42, 'invalid-uuid', '/tmp')
