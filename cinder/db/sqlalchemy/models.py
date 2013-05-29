@@ -245,6 +245,12 @@ class Reservation(BASE, CinderBase):
     delta = Column(Integer)
     expire = Column(DateTime, nullable=False)
 
+    usage = relationship(
+        "QuotaUsage",
+        foreign_keys=usage_id,
+        primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
+                         'QuotaUsage.deleted == 0)')
+
 
 class Snapshot(BASE, CinderBase):
     """Represents a block storage device that can be attached to a VM."""

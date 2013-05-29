@@ -443,7 +443,6 @@ class DBAPIReservationTestCase(BaseTest):
         self.assertEqual(expected, db.quota_usage_get_all_by_project(
                                             self.ctxt, 'project1'))
 
-    @test.testtools.skip("bug 1185325")
     def test_reservation_expire(self):
         self.values['expire'] = datetime.utcnow() + timedelta(days=1)
         reservations = _quota_reserve(self.ctxt, 'project1')
