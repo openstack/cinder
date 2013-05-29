@@ -296,23 +296,22 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                           volume_ref['id'],
                                                           snapshot_id)
 
-        if image_id and not cloned:
-            if image_meta:
-                # Copy all of the Glance image properties to the
-                # volume_glance_metadata table for future reference.
+        if image_id and image_meta:
+            # Copy all of the Glance image properties to the
+            # volume_glance_metadata table for future reference.
+            self.db.volume_glance_metadata_create(context,
+                                                  volume_ref['id'],
+                                                  'image_id', image_id)
+            name = image_meta.get('name', None)
+            if name:
                 self.db.volume_glance_metadata_create(context,
                                                       volume_ref['id'],
-                                                      'image_id', image_id)
-                name = image_meta.get('name', None)
-                if name:
-                    self.db.volume_glance_metadata_create(context,
-                                                          volume_ref['id'],
-                                                          'image_name', name)
-                image_properties = image_meta.get('properties', {})
-                for key, value in image_properties.items():
-                    self.db.volume_glance_metadata_create(context,
-                                                          volume_ref['id'],
-                                                          key, value)
+                                                      'image_name', name)
+            image_properties = image_meta.get('properties', {})
+            for key, value in image_properties.items():
+                self.db.volume_glance_metadata_create(context,
+                                                      volume_ref['id'],
+                                                      key, value)
 
         now = timeutils.utcnow()
         self.db.volume_update(context,
