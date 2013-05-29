@@ -94,6 +94,10 @@ class _IntegratedTestBase(test.TestCase):
         # Auto-assign ports to allow concurrent tests
         f['osapi_volume_listen_port'] = 0
 
+        # Use simple scheduler to avoid complications - we test schedulers
+        # separately
+        f['scheduler_driver'] = 'cinder.scheduler.simple.SimpleScheduler'
+
         return f
 
     def get_unused_server_name(self):
