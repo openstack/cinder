@@ -35,6 +35,34 @@ from cinder.volume.drivers.rbd import VERSION as DRIVER_VERSION
 LOG = logging.getLogger(__name__)
 
 
+CEPH_MON_DUMP = """dumped monmap epoch 1
+{ "epoch": 1,
+  "fsid": "33630410-6d93-4d66-8e42-3b953cf194aa",
+  "modified": "2013-05-22 17:44:56.343618",
+  "created": "2013-05-22 17:44:56.343618",
+  "mons": [
+        { "rank": 0,
+          "name": "a",
+          "addr": "[::1]:6789\/0"},
+        { "rank": 1,
+          "name": "b",
+          "addr": "[::1]:6790\/0"},
+        { "rank": 2,
+          "name": "c",
+          "addr": "[::1]:6791\/0"},
+        { "rank": 3,
+          "name": "d",
+          "addr": "127.0.0.1:6792\/0"},
+        { "rank": 4,
+          "name": "e",
+          "addr": "example.com:6791\/0"}],
+  "quorum": [
+        0,
+        1,
+        2]}
+"""
+
+
 class FakeImageService:
     def download(self, context, image_id, path):
         pass
@@ -188,6 +216,34 @@ class RBDTestCase(test.TestCase):
             free_capacity_gb='unknown',
             reserved_percentage=0)
         actual = self.driver.get_volume_stats(True)
+        self.assertDictMatch(expected, actual)
+
+    def test_get_mon_addrs(self):
+        self.stubs.Set(self.driver, '_execute',
+                       lambda *a: (CEPH_MON_DUMP, ''))
+        hosts = ['::1', '::1', '::1', '127.0.0.1', 'example.com']
+        ports = ['6789', '6790', '6791', '6792', '6791']
+        self.assertEqual((hosts, ports), self.driver._get_mon_addrs())
+
+    def test_initialize_connection(self):
+        name = 'volume-00000001'
+        hosts = ['::1', '::1', '::1', '127.0.0.1', 'example.com']
+        ports = ['6789', '6790', '6791', '6792', '6791']
+        self.stubs.Set(self.driver, '_get_mon_addrs', lambda: (hosts, ports))
+        expected = {
+            'driver_volume_type': 'rbd',
+            'data': {
+                'name': '%s/%s' % (self.configuration.rbd_pool,
+                                   name),
+                'hosts': hosts,
+                'ports': ports,
+                'auth_enabled': False,
+                'auth_username': None,
+                'secret_type': 'ceph',
+                'secret_uuid': None,
+                }
+        }
+        actual = self.driver.initialize_connection(dict(name=name), None)
         self.assertDictMatch(expected, actual)
 
 

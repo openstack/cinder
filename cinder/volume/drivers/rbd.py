@@ -65,6 +65,23 @@ class RBDDriver(driver.VolumeDriver):
                                  self.configuration.rbd_pool)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
+    def _get_mon_addrs(self):
+        args = ['ceph', 'mon', 'dump', '--format=json']
+        out, _ = self._execute(*args)
+        lines = out.split('\n')
+        if lines[0].startswith('dumped monmap epoch'):
+            lines = lines[1:]
+        monmap = json.loads('\n'.join(lines))
+        addrs = [mon['addr'] for mon in monmap['mons']]
+        hosts = []
+        ports = []
+        for addr in addrs:
+            host_port = addr[:addr.rindex('/')]
+            host, port = host_port.rsplit(':', 1)
+            hosts.append(host.strip('[]'))
+            ports.append(port)
+        return hosts, ports
+
     def _update_volume_stats(self):
         stats = {'vendor_name': 'Open Source',
                  'driver_version': VERSION,
@@ -199,11 +216,14 @@ class RBDDriver(driver.VolumeDriver):
         pass
 
     def initialize_connection(self, volume, connector):
+        hosts, ports = self._get_mon_addrs()
         return {
             'driver_volume_type': 'rbd',
             'data': {
                 'name': '%s/%s' % (self.configuration.rbd_pool,
                                    volume['name']),
+                'hosts': hosts,
+                'ports': ports,
                 'auth_enabled': (self.configuration.rbd_secret_uuid
                                  is not None),
                 'auth_username': self.configuration.rbd_user,
