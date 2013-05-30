@@ -76,7 +76,7 @@ class FakeRequestWithHostService(object):
         GET = {"host": "host1", "service": "cinder-volume"}
 
 
-def fake_servcie_get_all(context):
+def fake_service_get_all(context):
     return fake_services_list
 
 
@@ -116,7 +116,7 @@ class ServicesTest(test.TestCase):
     def setUp(self):
         super(ServicesTest, self).setUp()
 
-        self.stubs.Set(db, "service_get_all", fake_servcie_get_all)
+        self.stubs.Set(db, "service_get_all", fake_service_get_all)
         self.stubs.Set(timeutils, "utcnow", fake_utcnow)
         self.stubs.Set(db, "service_get_by_args",
                        fake_service_get_by_host_binary)
