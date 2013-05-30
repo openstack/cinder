@@ -30,7 +30,6 @@ Set the following in the cinder.conf file to enable the
 volume_driver=cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver
 """
 
-from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
 
 from cinder import exception
@@ -53,7 +52,6 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     """
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
-        self.client = None
         self.common = None
         self.configuration.append_config_values(hpcommon.hp3par_opts)
         self.configuration.append_config_values(san.san_opts)
@@ -69,48 +67,20 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                           'san_password']
         self.common.check_flags(self.configuration, required_flags)
 
-    def _create_client(self):
-        return client.HP3ParClient(self.configuration.hp3par_api_url)
-
+    @utils.synchronized('3par', external=True)
     def get_volume_stats(self, refresh):
-        stats = self.common.get_volume_stats(refresh, self.client)
+        self.common.client_login()
+        stats = self.common.get_volume_stats(refresh)
         stats['storage_protocol'] = 'iSCSI'
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or self.__class__.__name__
+        self.common.client_logout()
         return stats
 
     def do_setup(self, context):
         self.common = self._init_common()
         self._check_flags()
-        self.client = self._create_client()
-        if self.configuration.hp3par_debug:
-            self.client.debug_rest(True)
-
-        try:
-            LOG.debug("Connecting to 3PAR")
-            self.client.login(self.configuration.hp3par_username,
-                              self.configuration.hp3par_password)
-        except hpexceptions.HTTPUnauthorized as ex:
-            LOG.warning("Failed to connect to 3PAR (%s) because %s" %
-                       (self.configuration.hp3par_api_url, str(ex)))
-            msg = _("Login to 3PAR array invalid")
-            raise exception.InvalidInput(reason=msg)
-
-        # make sure the CPG exists
-        try:
-            cpg = self.client.getCPG(self.configuration.hp3par_cpg)
-        except hpexceptions.HTTPNotFound as ex:
-            err = (_("CPG (%s) doesn't exist on array")
-                   % self.configuration.hp3par_cpg)
-            LOG.error(err)
-            raise exception.InvalidInput(reason=err)
-
-        if ('domain' not in cpg and
-            cpg['domain'] != self.configuration.hp3par_domain):
-            err = "CPG's domain '%s' and config option hp3par_domain '%s' \
-must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
-            LOG.error(err)
-            raise exception.InvalidInput(reason=err)
+        self.common.do_setup(context)
 
         # make sure ssh works.
         self._iscsi_discover_target_iqn(self.configuration.iscsi_ip_address)
@@ -119,46 +89,59 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
         """Returns an error if prerequisites aren't met."""
         self._check_flags()
 
-    @utils.synchronized('3par-vol', external=True)
+    @utils.synchronized('3par', external=True)
     def create_volume(self, volume):
-        metadata = self.common.create_volume(volume, self.client)
+        self.common.client_login()
+        metadata = self.common.create_volume(volume)
+        self.common.client_logout()
 
         return {'provider_location': "%s:%s" %
                 (self.configuration.iscsi_ip_address,
                  self.configuration.iscsi_port),
                 'metadata': metadata}
 
+    @utils.synchronized('3par', external=True)
     def create_cloned_volume(self, volume, src_vref):
         """ Clone an existing volume. """
-        new_vol = self.common.create_cloned_volume(volume, src_vref,
-                                                   self.client)
+        self.common.client_login()
+        new_vol = self.common.create_cloned_volume(volume, src_vref)
+        self.common.client_logout()
+
         return {'provider_location': "%s:%s" %
                 (self.configuration.iscsi_ip_address,
                  self.configuration.iscsi_port),
                 'metadata': new_vol}
 
-    @utils.synchronized('3par-vol', external=True)
+    @utils.synchronized('3par', external=True)
     def delete_volume(self, volume):
-        self.common.delete_volume(volume, self.client)
+        self.common.client_login()
+        self.common.delete_volume(volume)
+        self.common.client_logout()
 
-    @utils.synchronized('3par-vol', external=True)
+    @utils.synchronized('3par', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
         """
         Creates a volume from a snapshot.
 
         TODO: support using the size from the user.
         """
-        self.common.create_volume_from_snapshot(volume, snapshot, self.client)
+        self.common.client_login()
+        self.common.create_volume_from_snapshot(volume, snapshot)
+        self.common.client_logout()
 
-    @utils.synchronized('3par-snap', external=True)
+    @utils.synchronized('3par', external=True)
     def create_snapshot(self, snapshot):
-        self.common.create_snapshot(snapshot, self.client)
+        self.common.client_login()
+        self.common.create_snapshot(snapshot)
+        self.common.client_logout()
 
-    @utils.synchronized('3par-snap', external=True)
+    @utils.synchronized('3par', external=True)
     def delete_snapshot(self, snapshot):
-        self.common.delete_snapshot(snapshot, self.client)
+        self.common.client_login()
+        self.common.delete_snapshot(snapshot)
+        self.common.client_logout()
 
-    @utils.synchronized('3par-attach', external=True)
+    @utils.synchronized('3par', external=True)
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -184,6 +167,7 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
           * Create a host on the 3par
           * create vlun on the 3par
         """
+        self.common.client_login()
         # get the target_iqn on the 3par interface.
         target_iqn = self._iscsi_discover_target_iqn(
             self.configuration.iscsi_ip_address)
@@ -192,8 +176,9 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
         host = self._create_host(volume, connector)
 
         # now that we have a host, create the VLUN
-        vlun = self.common.create_vlun(volume, host, self.client)
+        vlun = self.common.create_vlun(volume, host)
 
+        self.common.client_logout()
         info = {'driver_volume_type': 'iscsi',
                 'data': {'target_portal': "%s:%s" %
                          (self.configuration.iscsi_ip_address,
@@ -205,13 +190,14 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
                 }
         return info
 
-    @utils.synchronized('3par-attach', external=True)
+    @utils.synchronized('3par', external=True)
     def terminate_connection(self, volume, connector, force):
         """Driver entry point to unattach a volume from an instance."""
+        self.common.client_login()
         self.common.terminate_connection(volume,
                                          connector['host'],
-                                         connector['initiator'],
-                                         self.client)
+                                         connector['initiator'])
+        self.common.client_logout()
 
     def _iscsi_discover_target_iqn(self, remote_ip):
         result = self.common._cli_run('showport -ids', None)
@@ -270,14 +256,14 @@ must be the same" % (cpg['domain'], self.configuration.hp3par_domain)
 
         return host
 
-    @utils.synchronized('3par-exp', external=True)
+    @utils.synchronized('3par', external=True)
     def create_export(self, context, volume):
         pass
 
-    @utils.synchronized('3par-exp', external=True)
+    @utils.synchronized('3par', external=True)
     def ensure_export(self, context, volume):
         pass
 
-    @utils.synchronized('3par-exp', external=True)
+    @utils.synchronized('3par', external=True)
     def remove_export(self, context, volume):
         pass

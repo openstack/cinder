@@ -350,10 +350,10 @@ class HP3PARBaseDriver():
                    'desc': "HOST '%s' was not found" % hostname}
             raise hpexceptions.HTTPNotFound(msg)
         else:
-            self._hosts[hostname] = None
+            del self._hosts[hostname]
 
     def fake_create_3par_vlun(self, volume, hostname):
-        self.driver.client.createVLUN(volume, 19, hostname)
+        self.driver.common.client.createVLUN(volume, 19, hostname)
 
     def fake_get_ports(self):
         return {'FC': self.FAKE_FC_PORTS, 'iSCSI': self.FAKE_ISCSI_PORTS}
@@ -368,7 +368,7 @@ class HP3PARBaseDriver():
         self.flags(lock_path=self.tempdir)
         self.driver.delete_volume(self.volume)
         self.assertRaises(hpexceptions.HTTPNotFound,
-                          self.driver.client.getVolume,
+                          self.driver.common.client.getVolume,
                           self.VOLUME_ID)
 
     def test_create_snapshot(self):
@@ -376,7 +376,7 @@ class HP3PARBaseDriver():
         self.driver.create_snapshot(self.snapshot)
 
         # check to see if the snapshot was created
-        snap_vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        snap_vol = self.driver.common.client.getVolume(self.SNAPSHOT_3PAR_NAME)
         self.assertEqual(snap_vol['name'], self.SNAPSHOT_3PAR_NAME)
 
     def test_delete_snapshot(self):
@@ -384,20 +384,20 @@ class HP3PARBaseDriver():
 
         self.driver.create_snapshot(self.snapshot)
         #make sure it exists first
-        vol = self.driver.client.getVolume(self.SNAPSHOT_3PAR_NAME)
+        vol = self.driver.common.client.getVolume(self.SNAPSHOT_3PAR_NAME)
         self.assertEqual(vol['name'], self.SNAPSHOT_3PAR_NAME)
         self.driver.delete_snapshot(self.snapshot)
 
         # the snapshot should be deleted now
         self.assertRaises(hpexceptions.HTTPNotFound,
-                          self.driver.client.getVolume,
+                          self.driver.common.client.getVolume,
                           self.SNAPSHOT_3PAR_NAME)
 
     def test_create_volume_from_snapshot(self):
         self.flags(lock_path=self.tempdir)
         self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
 
-        snap_vol = self.driver.client.getVolume(self.VOLUME_3PAR_NAME)
+        snap_vol = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
         self.assertEqual(snap_vol['name'], self.VOLUME_3PAR_NAME)
 
         volume = self.volume.copy()
@@ -410,12 +410,12 @@ class HP3PARBaseDriver():
         self.flags(lock_path=self.tempdir)
         #setup the connections
         self.driver.initialize_connection(self.volume, self.connector)
-        vlun = self.driver.client.getVLUN(self.VOLUME_3PAR_NAME)
+        vlun = self.driver.common.client.getVLUN(self.VOLUME_3PAR_NAME)
         self.assertEqual(vlun['volumeName'], self.VOLUME_3PAR_NAME)
         self.driver.terminate_connection(self.volume, self.connector, True)
         # vlun should be gone.
         self.assertRaises(hpexceptions.HTTPNotFound,
-                          self.driver.client.getVLUN,
+                          self.driver.common.client.getVLUN,
                           self.VOLUME_3PAR_NAME)
 
 
@@ -442,7 +442,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         configuration.san_password = 'test'
         configuration.hp3par_snapshot_expiration = ""
         configuration.hp3par_snapshot_retention = ""
-        self.stubs.Set(hpfcdriver.HP3PARFCDriver, "_create_client",
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "_create_client",
                        self.fake_create_client)
         self.stubs.Set(hpfcdriver.HP3PARFCDriver,
                        "_create_3par_fibrechan_host",
@@ -515,7 +515,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         host = self.fake_get_3par_host(self.FAKE_HOST)
         self.assertEquals(self.FAKE_HOST, host['name'])
         self.assertEquals(HP3PAR_DOMAIN, host['domain'])
-        vlun = self.driver.client.getVLUN(self.VOLUME_3PAR_NAME)
+        vlun = self.driver.common.client.getVLUN(self.VOLUME_3PAR_NAME)
 
         self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
         self.assertEquals(self.FAKE_HOST, vlun['hostname'])
@@ -554,10 +554,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['free_capacity_gb'], 'infinite')
 
         #modify the CPG to have a limit
-        old_cpg = self.driver.client.getCPG(HP3PAR_CPG)
+        old_cpg = self.driver.common.client.getCPG(HP3PAR_CPG)
         options = {'SDGrowth': {'limitMiB': 8192}}
-        self.driver.client.deleteCPG(HP3PAR_CPG)
-        self.driver.client.createCPG(HP3PAR_CPG, options)
+        self.driver.common.client.deleteCPG(HP3PAR_CPG)
+        self.driver.common.client.createCPG(HP3PAR_CPG, options)
 
         const = 0.0009765625
         stats = self.driver.get_volume_stats(True)
@@ -566,8 +566,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['total_capacity_gb'], total_capacity_gb)
         free_capacity_gb = int((8192 - old_cpg['UsrUsage']['usedMiB']) * const)
         self.assertEquals(stats['free_capacity_gb'], free_capacity_gb)
-        self.driver.client.deleteCPG(HP3PAR_CPG)
-        self.driver.client.createCPG(HP3PAR_CPG, {})
+        self.driver.common.client.deleteCPG(HP3PAR_CPG)
+        self.driver.common.client.createCPG(HP3PAR_CPG, {})
 
     def test_create_host(self):
         self.flags(lock_path=self.tempdir)
@@ -664,7 +664,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         configuration.hp3par_snapshot_expiration = ""
         configuration.hp3par_snapshot_retention = ""
 
-        self.stubs.Set(hpdriver.HP3PARISCSIDriver, "_create_client",
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
                        self.fake_create_client)
         self.stubs.Set(hpdriver.HP3PARISCSIDriver,
                        "_iscsi_discover_target_iqn",
@@ -743,7 +743,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         host = self.fake_get_3par_host(self.FAKE_HOST)
         self.assertEquals(self.FAKE_HOST, host['name'])
         self.assertEquals(HP3PAR_DOMAIN, host['domain'])
-        vlun = self.driver.client.getVLUN(self.VOLUME_3PAR_NAME)
+        vlun = self.driver.common.client.getVLUN(self.VOLUME_3PAR_NAME)
 
         self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
         self.assertEquals(self.FAKE_HOST, vlun['hostname'])
@@ -782,10 +782,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['free_capacity_gb'], 'infinite')
 
         #modify the CPG to have a limit
-        old_cpg = self.driver.client.getCPG(HP3PAR_CPG)
+        old_cpg = self.driver.common.client.getCPG(HP3PAR_CPG)
         options = {'SDGrowth': {'limitMiB': 8192}}
-        self.driver.client.deleteCPG(HP3PAR_CPG)
-        self.driver.client.createCPG(HP3PAR_CPG, options)
+        self.driver.common.client.deleteCPG(HP3PAR_CPG)
+        self.driver.common.client.createCPG(HP3PAR_CPG, options)
 
         const = 0.0009765625
         stats = self.driver.get_volume_stats(True)
@@ -794,8 +794,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(stats['total_capacity_gb'], total_capacity_gb)
         free_capacity_gb = int((8192 - old_cpg['UsrUsage']['usedMiB']) * const)
         self.assertEquals(stats['free_capacity_gb'], free_capacity_gb)
-        self.driver.client.deleteCPG(HP3PAR_CPG)
-        self.driver.client.createCPG(HP3PAR_CPG, {})
+        self.driver.common.client.deleteCPG(HP3PAR_CPG)
+        self.driver.common.client.createCPG(HP3PAR_CPG, {})
 
     def test_create_host(self):
         self.flags(lock_path=self.tempdir)

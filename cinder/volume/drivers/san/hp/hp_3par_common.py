@@ -46,6 +46,7 @@ import time
 import uuid
 
 from eventlet import greenthread
+from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
 from oslo.config import cfg
 
@@ -93,7 +94,7 @@ hp3par_opts = [
 ]
 
 
-class HP3PARCommon():
+class HP3PARCommon(object):
 
     stats = {}
 
@@ -113,11 +114,56 @@ class HP3PARCommon():
         self.sshpool = None
         self.config = config
         self.hosts_naming_dict = dict()
+        self.client = None
 
     def check_flags(self, options, required_flags):
         for flag in required_flags:
             if not getattr(options, flag, None):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
+
+    def _create_client(self):
+        return client.HP3ParClient(self.config.hp3par_api_url)
+
+    def client_login(self):
+        try:
+            LOG.debug("Connecting to 3PAR")
+            self.client.login(self.config.hp3par_username,
+                              self.config.hp3par_password)
+        except hpexceptions.HTTPUnauthorized as ex:
+            LOG.warning("Failed to connect to 3PAR (%s) because %s" %
+                       (self.config.hp3par_api_url, str(ex)))
+            msg = _("Login to 3PAR array invalid")
+            raise exception.InvalidInput(reason=msg)
+
+    def client_logout(self):
+        self.client.logout()
+        LOG.debug("Disconnect from 3PAR")
+
+    def do_setup(self, context):
+        self.client = self._create_client()
+        if self.config.hp3par_debug:
+            self.client.debug_rest(True)
+
+        self.client_login()
+
+        # make sure the CPG exists
+        try:
+            cpg = self.client.getCPG(self.config.hp3par_cpg)
+        except hpexceptions.HTTPNotFound as ex:
+            err = (_("CPG (%s) doesn't exist on array")
+                   % self.config.hp3par_cpg)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        if ('domain' not in cpg
+            and cpg['domain'] != self.config.hp3par_domain):
+            err = ("CPG's domain '%s' and config option hp3par_domain '%s'"
+                   " must be the same" %
+                   (cpg['domain'], self.config.hp3par_domain))
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        self.client_logout()
 
     def _get_3par_vol_name(self, volume_id):
         """
@@ -412,13 +458,13 @@ exit
         LOG.debug("PORTS = %s" % pprint.pformat(ports))
         return ports
 
-    def get_volume_stats(self, refresh, client):
+    def get_volume_stats(self, refresh):
         if refresh:
-            self._update_volume_stats(client)
+            self._update_volume_stats()
 
         return self.stats
 
-    def _update_volume_stats(self, client):
+    def _update_volume_stats(self):
         # const to convert MiB to GB
         const = 0.0009765625
 
@@ -433,7 +479,7 @@ exit
                  'volume_backend_name': None}
 
         try:
-            cpg = client.getCPG(self.config.hp3par_cpg)
+            cpg = self.client.getCPG(self.config.hp3par_cpg)
             if 'limitMiB' not in cpg['SDGrowth']:
                 total_capacity = 'infinite'
                 free_capacity = 'infinite'
@@ -452,19 +498,19 @@ exit
 
         self.stats = stats
 
-    def create_vlun(self, volume, host, client):
+    def create_vlun(self, volume, host):
         """
         In order to export a volume on a 3PAR box, we have to
         create a VLUN.
         """
         volume_name = self._get_3par_vol_name(volume['id'])
         self._create_3par_vlun(volume_name, host['name'])
-        return client.getVLUN(volume_name)
+        return self.client.getVLUN(volume_name)
 
-    def delete_vlun(self, volume, hostname, client):
+    def delete_vlun(self, volume, hostname):
         volume_name = self._get_3par_vol_name(volume['id'])
-        vlun = client.getVLUN(volume_name)
-        client.deleteVLUN(volume_name, vlun['lun'], hostname)
+        vlun = self.client.getVLUN(volume_name)
+        self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
         self._delete_3par_host(hostname)
 
     def _get_volume_type(self, type_id):
@@ -500,7 +546,7 @@ exit
         persona_id = persona_value.split(' ')
         return persona_id[0]
 
-    def create_volume(self, volume, client):
+    def create_volume(self, volume):
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
                   (volume['display_name'], volume['name'],
                    self._get_3par_vol_name(volume['id'])))
@@ -563,7 +609,7 @@ exit
 
             capacity = self._capacity_from_size(volume['size'])
             volume_name = self._get_3par_vol_name(volume['id'])
-            client.createVolume(volume_name, cpg, capacity, extras)
+            self.client.createVolume(volume_name, cpg, capacity, extras)
 
         except hpexceptions.HTTPConflict:
             raise exception.Duplicate(_("Volume (%s) already exists on array")
@@ -605,15 +651,14 @@ exit
         word = re.search(search_string.strip(' ') + ' ([^ ]*)', s)
         return word.groups()[0].strip(' ')
 
-    @utils.synchronized('3parclone', external=True)
-    def create_cloned_volume(self, volume, src_vref, client):
+    def create_cloned_volume(self, volume, src_vref):
 
         try:
             orig_name = self._get_3par_vol_name(volume['source_volid'])
             vol_name = self._get_3par_vol_name(volume['id'])
             # We need to create a new volume first.  Otherwise you
             # can't delete the original
-            new_vol = self.create_volume(volume, client)
+            new_vol = self.create_volume(volume)
 
             # make the 3PAR copy the contents.
             # can't delete the original until the copy is done.
@@ -648,10 +693,10 @@ exit
 
         return None
 
-    def delete_volume(self, volume, client):
+    def delete_volume(self, volume):
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
-            client.deleteVolume(volume_name)
+            self.client.deleteVolume(volume_name)
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
@@ -663,7 +708,7 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
-    def create_volume_from_snapshot(self, volume, snapshot, client):
+    def create_volume_from_snapshot(self, volume, snapshot):
         """
         Creates a volume from a snapshot.
 
@@ -696,13 +741,13 @@ exit
             optional = {'comment': json.dumps(extra),
                         'readOnly': False}
 
-            client.createSnapshot(vol_name, snap_name, optional)
+            self.client.createSnapshot(vol_name, snap_name, optional)
         except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
 
-    def create_snapshot(self, snapshot, client):
+    def create_snapshot(self, snapshot):
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
@@ -734,18 +779,18 @@ exit
                 optional['retentionHours'] = (
                     self.config.hp3par_snapshot_retention)
 
-            client.createSnapshot(snap_name, vol_name, optional)
+            self.client.createSnapshot(snap_name, vol_name, optional)
         except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
 
-    def delete_snapshot(self, snapshot, client):
+    def delete_snapshot(self, snapshot):
         LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))
 
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
-            client.deleteVolume(snap_name)
+            self.client.deleteVolume(snap_name)
         except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
@@ -765,13 +810,13 @@ exit
                 if (wwn_iqn.upper() in showhost.upper()):
                     return showhost.split(',')[1]
 
-    def terminate_connection(self, volume, hostname, wwn_iqn, client):
+    def terminate_connection(self, volume, hostname, wwn_iqn):
         """ Driver entry point to unattach a volume from an instance."""
         try:
             # does 3par know this host by a different name?
             if hostname in self.hosts_naming_dict:
                 hostname = self.hosts_naming_dict.get(hostname)
-            self.delete_vlun(volume, hostname, client)
+            self.delete_vlun(volume, hostname)
             return
         except hpexceptions.HTTPNotFound as e:
             if 'host does not exist' in e.get_description():
@@ -785,7 +830,7 @@ exit
                 raise
 
         #try again with name retrieved from 3par
-        self.delete_vlun(volume, hostname, client)
+        self.delete_vlun(volume, hostname)
 
     def parse_create_host_error(self, hostname, out):
         search_str = "already used by host "
