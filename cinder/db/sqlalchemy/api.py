@@ -1575,6 +1575,8 @@ def volume_type_extra_specs_get(context, volume_type_id):
 
 @require_context
 def volume_type_extra_specs_delete(context, volume_type_id, key):
+    session = get_session()
+    volume_type_extra_specs_get_item(context, volume_type_id, key, session)
     _volume_type_extra_specs_query(context, volume_type_id).\
         filter_by(key=key).\
         update({'deleted': True,
