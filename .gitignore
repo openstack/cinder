@@ -6,6 +6,7 @@
 *.swp
 .cinder-venv
 .coverage
+.testrepository
 .tox
 .venv
 AUTHORS
