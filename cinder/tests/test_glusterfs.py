@@ -87,7 +87,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
     def test_local_path(self):
         """local_path common use case."""
-        glusterfs.FLAGS.glusterfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        glusterfs.CONF.glusterfs_mount_point_base = self.TEST_MNT_POINT_BASE
         drv = self._driver
 
         volume = DumbVolume()
@@ -188,7 +188,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         """_get_mount_point_for_share should calculate correct value."""
         drv = self._driver
 
-        glusterfs.FLAGS.glusterfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        glusterfs.CONF.glusterfs_mount_point_base = self.TEST_MNT_POINT_BASE
 
         self.assertEqual('/mnt/test/ab03ab34eaca46a5fb81878f7e9b91fc',
                          drv._get_mount_point_for_share(
@@ -206,7 +206,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                   (df_total_size, df_avail)
         df_output = df_head + df_data
 
-        setattr(glusterfs.FLAGS, 'glusterfs_disk_util', 'df')
+        setattr(glusterfs.CONF, 'glusterfs_disk_util', 'df')
 
         mox.StubOutWithMock(drv, '_get_mount_point_for_share')
         drv._get_mount_point_for_share(self.TEST_EXPORT1).\
@@ -225,7 +225,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(glusterfs.FLAGS, 'glusterfs_disk_util')
+        delattr(glusterfs.CONF, 'glusterfs_disk_util')
 
     def test_get_available_capacity_with_du(self):
         """_get_available_capacity should calculate correct value."""
@@ -368,7 +368,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         """do_setup should throw error if shares config is not configured."""
         drv = self._driver
 
-        glusterfs.FLAGS.glusterfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+        glusterfs.CONF.glusterfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         self.assertRaises(exception.GlusterfsException,
                           drv.do_setup, IsA(context.RequestContext))
@@ -378,7 +378,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        glusterfs.FLAGS.glusterfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+        glusterfs.CONF.glusterfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         mox.StubOutWithMock(os.path, 'exists')
         os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
@@ -457,7 +457,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
         volume = self._simple_volume()
 
-        setattr(glusterfs.FLAGS, 'glusterfs_sparsed_volumes', True)
+        setattr(glusterfs.CONF, 'glusterfs_sparsed_volumes', True)
 
         mox.StubOutWithMock(drv, '_create_sparsed_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
@@ -471,7 +471,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(glusterfs.FLAGS, 'glusterfs_sparsed_volumes')
+        delattr(glusterfs.CONF, 'glusterfs_sparsed_volumes')
 
     def test_create_nonsparsed_volume(self):
         mox = self._mox

@@ -59,6 +59,9 @@ volume_opts = [
 
 VERSION = '1.1'
 
+CONF = cfg.CONF
+CONF.register_opts(volume_opts)
+
 
 class RemoteFsDriver(driver.VolumeDriver):
     """Common base for drivers that work like NFS."""

@@ -20,13 +20,14 @@ Unit tests for Windows Server 2012 OpenStack Cinder volume driver
 """
 import sys
 
-import cinder.flags
+from oslo.config import cfg
+
 from cinder.tests.windows import basetestcase
 from cinder.tests.windows import db_fakes
 from cinder.tests.windows import windowsutils
 from cinder.volume.drivers import windows
 
-FLAGS = cinder.flags.FLAGS
+CONF = cfg.CONF
 
 
 class TestWindowsDriver(basetestcase.BaseTestCase):
@@ -88,19 +89,19 @@ class TestWindowsDriver(basetestcase.BaseTestCase):
                 self._wutils.delete_snapshot(self._snapshot_data['name'])
             if (self._connector_data and
                     self._wutils.initiator_id_exists(
-                        "%s%s" % (FLAGS.iscsi_target_prefix,
+                        "%s%s" % (CONF.iscsi_target_prefix,
                                   self._volume_data['name']),
                         self._connector_data['initiator'])):
-                target_name = "%s%s" % (FLAGS.iscsi_target_prefix,
+                target_name = "%s%s" % (CONF.iscsi_target_prefix,
                                         self._volume_data['name'])
                 initiator_name = self._connector_data['initiator']
                 self._wutils.delete_initiator_id(target_name, initiator_name)
             if (self._volume_data and
                     self._wutils.export_exists("%s%s" %
-                                               (FLAGS.iscsi_target_prefix,
+                                               (CONF.iscsi_target_prefix,
                                                 self._volume_data['name']))):
                 self._wutils.delete_export(
-                    "%s%s" % (FLAGS.iscsi_target_prefix,
+                    "%s%s" % (CONF.iscsi_target_prefix,
                               self._volume_data['name']))
 
         finally:
@@ -182,7 +183,7 @@ class TestWindowsDriver(basetestcase.BaseTestCase):
         volume_name = self._volume_data['name']
         self.assertEquals(
             retval,
-            {'provider_location': "%s%s" % (FLAGS.iscsi_target_prefix,
+            {'provider_location': "%s%s" % (CONF.iscsi_target_prefix,
                                             volume_name)})
 
     def test_initialize_connection(self):

@@ -20,19 +20,13 @@ ISCSI Drivers for EMC VNX and VMAX arrays based on SMI-S.
 
 """
 
-import os
-import time
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_smis_common
 
 LOG = logging.getLogger(__name__)
-
-FLAGS = flags.FLAGS
 
 
 class EMCSMISISCSIDriver(driver.ISCSIDriver):
@@ -42,8 +36,8 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         super(EMCSMISISCSIDriver, self).__init__(*args, **kwargs)
         self.common = emc_smis_common.EMCSMISCommon(
-                                        'iSCSI',
-                                        configuration=self.configuration)
+            'iSCSI',
+            configuration=self.configuration)
 
     def check_for_setup_error(self):
         pass

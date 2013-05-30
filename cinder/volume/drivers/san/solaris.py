@@ -15,7 +15,6 @@
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
@@ -26,8 +25,8 @@ solaris_opts = [
                default='rpool/',
                help='The ZFS path under which to create zvols for volumes.'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(solaris_opts)
+CONF = cfg.CONF
+CONF.register_opts(solaris_opts)
 
 
 class SolarisISCSIDriver(SanISCSIDriver):
@@ -61,6 +60,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
         super(SolarisISCSIDriver, self).__init__(*cmd,
                                                  execute=self._execute,
                                                  **kwargs)
+        self.configuration.append_config_values(solaris_opts)
 
     def _execute(self, *cmd, **kwargs):
         new_cmd = ['pfexec']
@@ -123,7 +123,8 @@ class SolarisISCSIDriver(SanISCSIDriver):
         return iscsi_target_name in self._get_iscsi_targets()
 
     def _build_zfs_poolname(self, volume):
-        zfs_poolname = '%s%s' % (FLAGS.san_zfs_volume_base, volume['name'])
+        zfs_poolname = '%s%s' % (self.configuration.san_zfs_volume_base,
+                                 volume['name'])
         return zfs_poolname
 
     def create_volume(self, volume):
@@ -137,7 +138,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
 
         # Create a zfs volume
         cmd = ['/usr/sbin/zfs', 'create']
-        if FLAGS.san_thin_provision:
+        if self.configuration.san_thin_provision:
             cmd.append('-s')
         cmd.extend(['-V', sizestr])
         cmd.append(zfs_poolname)
@@ -186,7 +187,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
 
     def local_path(self, volume):
         # TODO(justinsb): Is this needed here?
-        escaped_group = FLAGS.volume_group.replace('-', '--')
+        escaped_group = self.configuration.volume_group.replace('-', '--')
         escaped_name = volume['name'].replace('-', '--')
         return "/dev/mapper/%s-%s" % (escaped_group, escaped_name)
 
@@ -233,7 +234,8 @@ class SolarisISCSIDriver(SanISCSIDriver):
 
         #TODO(justinsb): Is this always 1? Does it matter?
         iscsi_portal_interface = '1'
-        iscsi_portal = FLAGS.san_ip + ":3260," + iscsi_portal_interface
+        iscsi_portal = \
+            self.configuration.san_ip + ":3260," + iscsi_portal_interface
 
         db_update = {}
         db_update['provider_location'] = ("%s %s" %

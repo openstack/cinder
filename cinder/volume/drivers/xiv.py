@@ -27,7 +27,6 @@ Volume driver for IBM XIV storage systems.
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
@@ -38,8 +37,8 @@ ibm_xiv_opts = [
                help='Proxy driver'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(ibm_xiv_opts)
+CONF = cfg.CONF
+CONF.register_opts(ibm_xiv_opts)
 
 LOG = logging.getLogger('cinder.volume.xiv')
 
@@ -50,12 +49,12 @@ class XIVDriver(san.SanISCSIDriver):
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
 
-        proxy = importutils.import_class(FLAGS.xiv_proxy)
+        proxy = importutils.import_class(CONF.xiv_proxy)
 
-        self.xiv_proxy = proxy({"xiv_user": FLAGS.san_login,
-                                "xiv_pass": FLAGS.san_password,
-                                "xiv_address": FLAGS.san_ip,
-                                "xiv_vol_pool": FLAGS.san_clustername},
+        self.xiv_proxy = proxy({"xiv_user": CONF.san_login,
+                                "xiv_pass": CONF.san_password,
+                                "xiv_address": CONF.san_ip,
+                                "xiv_vol_pool": CONF.san_clustername},
                                LOG,
                                exception)
         san.SanISCSIDriver.__init__(self, *args, **kwargs)

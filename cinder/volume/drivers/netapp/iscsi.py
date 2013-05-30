@@ -85,6 +85,10 @@ netapp_opts = [
                     ' 7 mode'), ]
 
 
+CONF = cfg.CONF
+CONF.register_opts(netapp_opts)
+
+
 class DfmDataset(object):
     def __init__(self, id, name, project, type):
         self.id = id

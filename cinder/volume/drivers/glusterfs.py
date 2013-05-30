@@ -21,7 +21,6 @@ import os
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nfs
 
@@ -44,8 +43,8 @@ volume_opts = [
                       'In such case volume creation takes a lot of time.'))]
 VERSION = '1.0'
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(volume_opts)
+CONF = cfg.CONF
+CONF.register_opts(volume_opts)
 
 
 class GlusterfsDriver(nfs.RemoteFsDriver):

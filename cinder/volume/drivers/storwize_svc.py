@@ -101,6 +101,10 @@ storwize_svc_opts = [
 ]
 
 
+CONF = cfg.CONF
+CONF.register_opts(storwize_svc_opts)
+
+
 class StorwizeSVCDriver(san.SanISCSIDriver):
     """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
 

@@ -48,6 +48,10 @@ VOL_AND_SNAP_NAME_PREFIX = 'OpenStack_'
 READBUFFERSIZE = 8192
 
 
+CONF = cfg.CONF
+CONF.register_opts(huawei_opt)
+
+
 class SSHConn(utils.SSHPool):
     """Define a new class inherited to SSHPool.
 

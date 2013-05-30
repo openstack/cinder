@@ -27,7 +27,6 @@ from eventlet import greenthread
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.driver import ISCSIDriver
@@ -72,8 +71,8 @@ san_opts = [
                help='Maximum ssh connections in the pool'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(san_opts)
+CONF = cfg.CONF
+CONF.register_opts(san_opts)
 
 
 class SanISCSIDriver(ISCSIDriver):
