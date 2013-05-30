@@ -134,7 +134,12 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         self._check_type(context, type_id)
         authorize(context)
-        db.volume_type_extra_specs_delete(context, type_id, id)
+
+        try:
+            db.volume_type_extra_specs_delete(context, type_id, id)
+        except exception.VolumeTypeExtraSpecsNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=unicode(error))
+
         notifier_info = dict(type_id=type_id, id=id)
         notifier_api.notify(context, 'volumeTypeExtraSpecs',
                             'volume_type_extra_specs.delete',
