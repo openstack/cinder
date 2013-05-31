@@ -46,6 +46,15 @@ General
     if not (X in Y or X in Z):  # OKAY, still better than all those 'not's
         pass
 
+- Do not use locals(). Example::
+
+    LOG.debug(_("volume %(vol_name)s: creating size %(vol_size)sG") %
+              locals()) # BAD
+
+    LOG.debug(_("volume %(vol_name)s: creating size %(vol_size)sG") %
+              {'vol_name': vol_name,
+               'vol_size': vol_size}) # OKAY
+
 
 Imports
 -------
