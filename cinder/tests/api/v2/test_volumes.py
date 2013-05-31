@@ -658,6 +658,16 @@ class VolumeApiTest(test.TestCase):
         resp = self.controller.delete(req, 1)
         self.assertEqual(resp.status_int, 202)
 
+    def test_volume_delete_attached(self):
+        def stub_volume_attached(self, context, volume, force=False):
+            raise exception.VolumeAttached(volume_id=volume['id'])
+        self.stubs.Set(volume_api.API, "delete", stub_volume_attached)
+
+        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete,
+                          req, 1)
+
     def test_volume_delete_no_volume(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 

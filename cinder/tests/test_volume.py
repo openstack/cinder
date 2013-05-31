@@ -561,6 +561,24 @@ class VolumeTestCase(test.TestCase):
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
 
+    def test_cant_force_delete_attached_volume(self):
+        """Test volume can't be force delete in attached state"""
+        volume = self._create_volume()
+        self.volume.create_volume(self.context, volume['id'])
+        volume['status'] = 'in-use'
+        volume['attach_status'] = 'attached'
+        volume['host'] = 'fakehost'
+
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.VolumeAttached,
+                          volume_api.delete,
+                          self.context,
+                          volume,
+                          force=True)
+
+        self.volume.delete_volume(self.context, volume['id'])
+
     def test_cant_delete_volume_with_snapshots(self):
         """Test volume can't be deleted with dependent snapshots."""
         volume = self._create_volume()

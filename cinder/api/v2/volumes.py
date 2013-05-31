@@ -175,6 +175,9 @@ class VolumeController(wsgi.Controller):
             self.volume_api.delete(context, volume)
         except exception.NotFound:
             raise exc.HTTPNotFound()
+        except exception.VolumeAttached:
+            explanation = 'Volume cannot be deleted while in attached state'
+            raise exc.HTTPBadRequest(explanation=explanation)
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=VolumesTemplate)
