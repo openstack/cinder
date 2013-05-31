@@ -134,7 +134,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                               for char in invalid_ch_in_host)
 
     def _get_iscsi_ip_addrs(self):
-        generator = self._port_conf_generator('lsportip')
+        generator = self._port_conf_generator('svcinfo lsportip')
         header = next(generator, None)
         if not header:
             return
@@ -157,24 +157,27 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                     node['ipv6'].append(port_ipv6)
 
     def _get_fc_wwpns(self):
-        generator = self._port_conf_generator('lsportfc')
-        header = next(generator, None)
-        if not header:
-            return
-
-        for port_data in generator:
-            try:
-                port_node_id = port_data['node_id']
-                wwpn = port_data['WWPN']
-                status = port_data['status']
-            except KeyError as e:
-                self._handle_keyerror('lsportfc', header)
-
-            if (port_node_id in self._storage_nodes and
-                'unconfigured' not in status):
-                node = self._storage_nodes[port_node_id]
-                if len(wwpn) and wwpn not in node['WWPN']:
-                    node['WWPN'].append(wwpn)
+        for key in self._storage_nodes:
+            node = self._storage_nodes[key]
+            ssh_cmd = 'svcinfo lsnode -delim ! %s' % node['id']
+            stdout, stderr = self._run_ssh(ssh_cmd)
+            self._assert_ssh_return(len(stdout), '_get_fc_wwpns',
+                                    ssh_cmd, stdout, stderr)
+            wwpns = set(node['WWPN'])
+            port_id = []
+            port_status = []
+            for line in stdout.lstrip().splitlines():
+                attr = line.lstrip().split('!')
+                if attr[0] == 'port_id':
+                    port_id.append(attr[1])
+                elif attr[0] == 'port_status':
+                    port_status.append(attr[1])
+            for i, s in zip(port_id, port_status):
+                if 'unconfigured' != s:
+                    wwpns.add(i)
+            node['WWPN'] = list(wwpns)
+            LOG.info(_('WWPN on node %(node)s: %(wwpn)s')
+                     % {'node': node['id'], 'wwpn': node['WWPN']})
 
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
@@ -183,7 +186,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         self._context = ctxt
 
         # Validate that the pool exists
-        ssh_cmd = 'lsmdiskgrp -delim ! -nohdr'
+        ssh_cmd = 'svcinfo lsmdiskgrp -delim ! -nohdr'
         out, err = self._run_ssh(ssh_cmd)
         self._assert_ssh_return(len(out.strip()), 'do_setup',
                                 ssh_cmd, out, err)
@@ -194,15 +197,19 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                         % self.configuration.storwize_svc_volpool_name))
 
         # Check if compression is supported
-        ssh_cmd = 'lslicense -delim !'
-        out, err = self._run_ssh(ssh_cmd)
-        license_lines = out.strip().split('\n')
         self._compression_enabled = False
-        for license_line in license_lines:
-            name, foo, value = license_line.partition('!')
-            if ((name == "license_compression_enclosures" and value != '0') or
-                (name == "license_compression_capacity" and value != '0')):
-                self._compression_enabled = True
+        try:
+            ssh_cmd = 'svcinfo lslicense -delim !'
+            out, err = self._run_ssh(ssh_cmd)
+            license_lines = out.strip().split('\n')
+            for license_line in license_lines:
+                name, foo, value = license_line.partition('!')
+                if name in ('license_compression_enclosures',
+                            'license_compression_capacity') and value != '0':
+                    self._compression_enabled = True
+                    break
+        except exception.ProcessExecutionError:
+            LOG.exception(_('Failed to get license information.'))
 
         # Get the iSCSI and FC names of the Storwize/SVC nodes
         ssh_cmd = 'svcinfo lsnode -delim !'
@@ -341,7 +348,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         """Generate and store a randomly-generated CHAP secret for the host."""
 
         chap_secret = utils.generate_password()
-        ssh_cmd = ('chhost -chapsecret "%(chap_secret)s" %(host_name)s'
+        ssh_cmd = ('svctask chhost -chapsecret "%(chap_secret)s" %(host_name)s'
                    % {'chap_secret': chap_secret, 'host_name': host_name})
         out, err = self._run_ssh(ssh_cmd)
         # No output should be returned from chhost
@@ -355,7 +362,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         LOG.debug(_('enter: _get_chap_secret_for_host: host name %s')
                   % host_name)
 
-        ssh_cmd = 'lsiscsiauth -delim !'
+        ssh_cmd = 'svcinfo lsiscsiauth -delim !'
         out, err = self._run_ssh(ssh_cmd)
 
         if not len(out.strip()):
@@ -421,7 +428,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _find_host_from_wwpn(self, connector):
         for wwpn in connector['wwpns']:
-            ssh_cmd = 'lsfabric -wwpn %s -delim !' % wwpn
+            ssh_cmd = 'svcinfo lsfabric -wwpn %s -delim !' % wwpn
             out, err = self._run_ssh(ssh_cmd)
 
             if not len(out.strip()):
@@ -451,7 +458,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _find_host_exhaustive(self, connector, hosts):
         for host in hosts:
-            ssh_cmd = 'lshost -delim ! %s' % host
+            ssh_cmd = 'svcinfo lshost -delim ! %s' % host
             out, err = self._run_ssh(ssh_cmd)
             self._assert_ssh_return(len(out.strip()),
                                     '_find_host_exhaustive',
@@ -482,7 +489,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         LOG.debug(_('enter: _get_host_from_connector: prefix %s') % prefix)
 
         # Get list of host in the storage
-        ssh_cmd = 'lshost -delim !'
+        ssh_cmd = 'svcinfo lshost -delim !'
         out, err = self._run_ssh(ssh_cmd)
 
         if not len(out.strip()):
@@ -536,7 +543,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         # When creating a host, we need one port
         self._driver_assert(len(ports), _('_create_host: No connector ports'))
         port1 = ports.pop(0)
-        ssh_cmd = ('mkhost -force %(port1)s -name "%(host_name)s"' %
+        ssh_cmd = ('svctask mkhost -force %(port1)s -name "%(host_name)s"' %
                    {'port1': port1, 'host_name': host_name})
         out, err = self._run_ssh(ssh_cmd)
         self._assert_ssh_return('successfully created' in out,
@@ -544,7 +551,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         # Add any additional ports to the host
         for port in ports:
-            ssh_cmd = ('addhostport -force %s %s' % (port, host_name))
+            ssh_cmd = ('svctask addhostport -force %s %s' % (port, host_name))
             out, err = self._run_ssh(ssh_cmd)
 
         LOG.debug(_('leave: _create_host: host %(host)s - %(host_name)s') %
@@ -555,7 +562,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         """Return the defined storage mappings for a host."""
 
         return_data = {}
-        ssh_cmd = 'lshostvdiskmap -delim ! %s' % host_name
+        ssh_cmd = 'svcinfo lshostvdiskmap -delim ! %s' % host_name
         out, err = self._run_ssh(ssh_cmd)
 
         mappings = out.strip().split('\n')
@@ -597,7 +604,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         # Volume is not mapped to host, create a new LUN
         if not mapped_flag:
-            ssh_cmd = ('mkvdiskhostmap -host %(host_name)s -scsi '
+            ssh_cmd = ('svctask mkvdiskhostmap -host %(host_name)s -scsi '
                        '%(result_lun)s %(volume_name)s' %
                        {'host_name': host_name,
                         'result_lun': result_lun,
@@ -618,7 +625,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         LOG.debug(_('enter: _delete_host: host %s ') % host_name)
 
-        ssh_cmd = 'rmhost %s ' % host_name
+        ssh_cmd = 'svctask rmhost %s ' % host_name
         out, err = self._run_ssh(ssh_cmd)
         # No output should be returned from rmhost
         self._assert_ssh_return(len(out.strip()) == 0,
@@ -628,7 +635,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _get_conn_fc_wwpns(self, host_name):
         wwpns = []
-        cmd = 'lsfabric -host %s' % host_name
+        cmd = 'svcinfo lsfabric -host %s' % host_name
         generator = self._port_conf_generator(cmd)
         header = next(generator, None)
         if not header:
@@ -789,7 +796,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         # Check if vdisk-host mapping exists, remove if it does
         mapping_data = self._get_hostvdisk_mappings(host_name)
         if vol_name in mapping_data:
-            ssh_cmd = 'rmvdiskhostmap -host %s %s' % (host_name, vol_name)
+            ssh_cmd = 'svctask rmvdiskhostmap -host %s %s' % \
+                (host_name, vol_name)
             out, err = self._run_ssh(ssh_cmd)
             # Verify CLI behaviour - no output is returned from
             # rmvdiskhostmap
@@ -820,13 +828,13 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         parsed/matched to a single vdisk.
         """
 
-        ssh_cmd = 'lsvdisk -bytes -delim ! %s ' % vdisk_name
+        ssh_cmd = 'svcinfo lsvdisk -bytes -delim ! %s ' % vdisk_name
         return self._execute_command_and_parse_attributes(ssh_cmd)
 
     def _get_vdisk_fc_mappings(self, vdisk_name):
         """Return FlashCopy mappings that this vdisk is associated with."""
 
-        ssh_cmd = 'lsvdiskfcmappings -nohdr %s' % vdisk_name
+        ssh_cmd = 'svcinfo lsvdiskfcmappings -nohdr %s' % vdisk_name
         out, err = self._run_ssh(ssh_cmd)
 
         mapping_ids = []
@@ -908,7 +916,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                 ssh_cmd_se_opt = ssh_cmd_se_opt + (
                     ' -grainsize %d' % opts['grainsize'])
 
-        ssh_cmd = ('mkvdisk -name %(name)s -mdiskgrp %(mdiskgrp)s '
+        ssh_cmd = ('svctask mkvdisk -name %(name)s -mdiskgrp %(mdiskgrp)s '
                    '-iogrp 0 -size %(size)s -unit '
                    '%(unit)s %(easytier)s %(ssh_cmd_se_opt)s'
                    % {'name': name,
@@ -934,7 +942,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _make_fc_map(self, source, target, full_copy):
         copyflag = '' if full_copy else '-copyrate 0'
-        fc_map_cli_cmd = ('mkfcmap -source %(src)s -target %(tgt)s '
+        fc_map_cli_cmd = ('svctask mkfcmap -source %(src)s -target %(tgt)s '
                           '-autodelete %(copyflag)s' %
                           {'src': source,
                            'tgt': target,
@@ -989,7 +997,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _call_prepare_fc_map(self, fc_map_id, source, target):
         try:
-            out, err = self._run_ssh('prestartfcmap %s' % fc_map_id)
+            out, err = self._run_ssh('svctask prestartfcmap %s' % fc_map_id)
         except exception.ProcessExecutionError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_('_prepare_fc_map: Failed to prepare FlashCopy '
@@ -1046,7 +1054,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
     def _start_fc_map(self, fc_map_id, source, target):
         try:
-            out, err = self._run_ssh('startfcmap %s' % fc_map_id)
+            out, err = self._run_ssh('svctask startfcmap %s' % fc_map_id)
         except exception.ProcessExecutionError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_('_start_fc_map: Failed to start FlashCopy '
@@ -1117,7 +1125,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         LOG.debug(_('enter: _get_flashcopy_mapping_attributes: mapping %s')
                   % fc_map_id)
 
-        fc_ls_map_cmd = ('lsfcmap -filtervalue id=%s -delim !' % fc_map_id)
+        fc_ls_map_cmd = 'svcinfo lsfcmap -filtervalue id=%s -delim !' % \
+            fc_map_id
         out, err = self._run_ssh(fc_ls_map_cmd)
         if not len(out.strip()):
             return None
@@ -1198,8 +1207,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                 if copy_rate == '0':
                     # Case #2: A vdisk that has snapshots
                     if source == name:
-                            ssh_cmd = ('chfcmap -copyrate 50 -autodelete '
-                                       'on %s' % map_id)
+                            ssh_cmd = ('svctask chfcmap -copyrate 50 '
+                                       '-autodelete on %s' % map_id)
                             out, err = self._run_ssh(ssh_cmd)
                             wait_for_copy = True
                     # Case #3: A snapshot
@@ -1209,19 +1218,19 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                                {'name': name, 'src': source, 'tgt': target})
                         self._driver_assert(target == name, msg)
                         if status in ['copying', 'prepared']:
-                            self._run_ssh('stopfcmap %s' % map_id)
+                            self._run_ssh('svctask stopfcmap %s' % map_id)
                         elif status == 'stopping':
                             wait_for_copy = True
                         else:
-                            self._run_ssh('rmfcmap -force %s' % map_id)
+                            self._run_ssh('svctask rmfcmap -force %s' % map_id)
                 # Case 4: Copy in progress - wait and will autodelete
                 else:
                     if status == 'prepared':
-                        self._run_ssh('stopfcmap %s' % map_id)
-                        self._run_ssh('rmfcmap -force %s' % map_id)
+                        self._run_ssh('svctask stopfcmap %s' % map_id)
+                        self._run_ssh('svctask rmfcmap -force %s' % map_id)
                     elif status == 'idle_or_copied':
                         # Prepare failed
-                        self._run_ssh('rmfcmap -force %s' % map_id)
+                        self._run_ssh('svctask rmfcmap -force %s' % map_id)
                     else:
                         wait_for_copy = True
             if wait_for_copy:
@@ -1229,7 +1238,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             mapping_ids = self._get_vdisk_fc_mappings(name)
 
         forceflag = '-force' if force else ''
-        ssh_cmd = 'rmvdisk %(frc)s %(name)s' % {'frc': forceflag, 'name': name}
+        cmd_params = {'frc': forceflag, 'name': name}
+        ssh_cmd = 'svctask rmvdisk %(frc)s %(name)s' % cmd_params
         out, err = self._run_ssh(ssh_cmd)
         # No output should be returned from rmvdisk
         self._assert_ssh_return(len(out.strip()) == 0,
@@ -1336,7 +1346,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         pool = self.configuration.storwize_svc_volpool_name
         #Get storage system name
-        ssh_cmd = 'lssystem -delim !'
+        ssh_cmd = 'svcinfo lssystem -delim !'
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
         if not attributes or not attributes['name']:
             exception_message = (_('_update_volume_status: '
@@ -1348,7 +1358,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             backend_name = '%s_%s' % (attributes['name'], pool)
         data['volume_backend_name'] = backend_name
 
-        ssh_cmd = 'lsmdiskgrp -bytes -delim ! %s' % pool
+        ssh_cmd = 'svcinfo lsmdiskgrp -bytes -delim ! %s' % pool
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
         if not attributes:
             LOG.error(_('Could not get pool data from the storage'))
