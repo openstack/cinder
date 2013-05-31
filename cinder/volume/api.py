@@ -320,6 +320,10 @@ class API(base.Base):
             msg = _("Volume status must be available or error")
             raise exception.InvalidVolume(reason=msg)
 
+        if volume['attach_status'] == "attached":
+            # Volume is still attached, need to detach first
+            raise exception.VolumeAttached(volume_id=volume_id)
+
         snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
         if len(snapshots):
             msg = _("Volume still has %d dependent snapshots") % len(snapshots)
