@@ -40,7 +40,7 @@ setattr(__builtin__, '_', lambda x: x)
 import os
 import shutil
 
-from cinder.db.sqlalchemy.session import get_engine
+from cinder.db.sqlalchemy.api import get_engine
 from cinder import flags
 
 FLAGS = flags.FLAGS
@@ -49,7 +49,7 @@ _DB = None
 
 
 def reset_db():
-    if FLAGS.sql_connection == "sqlite://":
+    if FLAGS.database.connection == "sqlite://":
         engine = get_engine()
         engine.dispose()
         conn = engine.connect()
@@ -66,7 +66,7 @@ def setup():
     from cinder.tests import fake_flags
     fake_flags.set_defaults(FLAGS)
 
-    if FLAGS.sql_connection == "sqlite://":
+    if FLAGS.database.connection == "sqlite://":
         if migration.db_version() > 1:
             return
     else:
@@ -75,7 +75,7 @@ def setup():
             return
     migration.db_sync()
 
-    if FLAGS.sql_connection == "sqlite://":
+    if FLAGS.database.connection == "sqlite://":
         global _DB
         engine = get_engine()
         conn = engine.connect()

@@ -78,15 +78,6 @@ core_opts = [
                default=None,
                help='Virtualization api connection type : libvirt, xenapi, '
                     'or fake'),
-    cfg.StrOpt('sql_connection',
-               default='sqlite:///$state_path/$sqlite_db',
-               help='The SQLAlchemy connection string used to connect to the '
-                    'database',
-               secret=True),
-    cfg.IntOpt('sql_connection_debug',
-               default=0,
-               help='Verbosity of SQL debugging information. 0=None, '
-                    '100=Everything'),
     cfg.StrOpt('api_paste_config',
                default="api-paste.ini",
                help='File name for the paste.deploy config for cinder-api'),
@@ -166,22 +157,6 @@ global_opts = [
                default=1000,
                help='the maximum number of items returned in a single '
                     'response from a collection resource'),
-    cfg.StrOpt('sqlite_db',
-               default='cinder.sqlite',
-               help='the filename to use with sqlite'),
-    cfg.BoolOpt('sqlite_synchronous',
-                default=True,
-                help='If passed, use synchronous mode for sqlite'),
-    cfg.IntOpt('sql_idle_timeout',
-               default=3600,
-               help='timeout before idle sql connections are reaped'),
-    cfg.IntOpt('sql_max_retries',
-               default=10,
-               help='maximum db connection retries during startup. '
-                    '(setting -1 implies an infinite retry count)'),
-    cfg.IntOpt('sql_retry_interval',
-               default=10,
-               help='interval between retries of opening a sql connection'),
     cfg.StrOpt('volume_manager',
                default='cinder.volume.manager.VolumeManager',
                help='full class name for the Manager for volume'),

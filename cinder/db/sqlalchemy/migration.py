@@ -20,7 +20,7 @@ import distutils.version as dist_version
 import os
 
 from cinder.db import migration
-from cinder.db.sqlalchemy.session import get_engine
+from cinder.db.sqlalchemy.api import get_engine
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
