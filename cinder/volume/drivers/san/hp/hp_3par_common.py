@@ -709,12 +709,12 @@ exit
 
             try:
                 extra['name'] = snapshot['display_name']
-            except AttribteError:
+            except AttributeError:
                 pass
 
             try:
                 extra['description'] = snapshot['display_description']
-            except AttribteError:
+            except AttributeError:
                 pass
 
             optional = {'comment': json.dumps(extra),
