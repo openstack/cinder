@@ -80,8 +80,8 @@ if __name__ == '__main__':
     print _("Found %d volumes") % len(volumes)
     for volume_ref in volumes:
         try:
-            cinder.volume.utils.notify_usage_exists(
-                    admin_context, volume_ref)
+            cinder.volume.utils.notify_usage_exists(admin_context,
+                                                    volume_ref)
         except Exception, e:
             print traceback.format_exc(e)
 

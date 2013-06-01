@@ -543,9 +543,9 @@ class VolumeTransferAPITestCase(test.TestCase):
     def test_accept_transfer_with_VolumeLimitExceeded(self):
 
         def fake_transfer_api_accept_throwing_VolumeLimitExceeded(cls,
-                                                                 context,
-                                                                 transfer,
-                                                                 volume_id):
+                                                                  context,
+                                                                  transfer,
+                                                                  volume_id):
             raise exception.VolumeLimitExceeded(allowed=1)
 
         self.stubs.Set(cinder.transfer.API, 'accept',

@@ -132,7 +132,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         for num in range(0, 128):
             ch = str(chr(num))
             if (not ch.isalnum() and ch != ' ' and ch != '.'
-                and ch != '-' and ch != '_'):
+                    and ch != '-' and ch != '_'):
                 invalid_ch_in_host = invalid_ch_in_host + ch
         self._string_host_name_filter = string.maketrans(
             invalid_ch_in_host, '-' * len(invalid_ch_in_host))
@@ -465,9 +465,9 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                 # If '!' not found, return the string and two empty strings
                 attr_name, foo, attr_val = attr_line.partition('!')
                 if (attr_name == 'iscsi_name' and
-                    'initiator' in connector and
-                    attr_val == connector['initiator']):
-                        return host
+                        'initiator' in connector and
+                        attr_val == connector['initiator']):
+                    return host
                 elif (attr_name == 'WWPN' and
                       'wwpns' in connector and
                       attr_val.lower() in
@@ -1315,7 +1315,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         if opts['protocol'] == 'iSCSI':
             # Implemented in base iSCSI class
             return super(StorwizeSVCDriver, self).copy_image_to_volume(
-                    context, volume, image_service, image_id)
+                context, volume, image_service, image_id)
         else:
             raise NotImplementedError()
 
@@ -1324,7 +1324,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         if opts['protocol'] == 'iSCSI':
             # Implemented in base iSCSI class
             return super(StorwizeSVCDriver, self).copy_volume_to_image(
-                    context, volume, image_service, image_meta)
+                context, volume, image_service, image_meta)
         else:
             raise NotImplementedError()
 

@@ -161,8 +161,9 @@ class VolumeTransferController(wsgi.Controller):
 
         name = transfer.get('name', None)
 
-        LOG.audit(_("Creating transfer of volume %(volume_id)s"), locals(),
-                    context=context)
+        LOG.audit(_("Creating transfer of volume %s"),
+                  volume_id,
+                  context=context)
 
         try:
             new_transfer = self.transfer_api.create(context, volume_id, name)
@@ -194,8 +195,8 @@ class VolumeTransferController(wsgi.Controller):
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.audit(_("Accepting transfer %(transfer_id)s"), locals(),
-                    context=context)
+        LOG.audit(_("Accepting transfer %s"), transfer_id,
+                  context=context)
 
         try:
             accepted_transfer = self.transfer_api.accept(context, transfer_id,
@@ -206,8 +207,9 @@ class VolumeTransferController(wsgi.Controller):
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=unicode(error))
 
-        transfer = self._view_builder.summary(req,
-              dict(accepted_transfer.iteritems()))
+        transfer = \
+            self._view_builder.summary(req,
+                                       dict(accepted_transfer.iteritems()))
         return transfer
 
     def delete(self, req, id):

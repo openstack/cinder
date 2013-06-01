@@ -227,7 +227,7 @@ class ISCSIDriver(VolumeDriver):
                                     run_as_root=True)
         for target in out.splitlines():
             if (self.configuration.iscsi_ip_address in target
-                and volume_name in target):
+                    and volume_name in target):
                 return target
         return None
 

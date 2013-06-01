@@ -165,7 +165,7 @@ class HP3PARCommon(object):
             raise exception.InvalidInput(reason=err)
 
         if ('domain' not in cpg
-            or cpg['domain'] != self.config.hp3par_domain):
+                or cpg['domain'] != self.config.hp3par_domain):
             err = ("CPG's domain '%s' and config option hp3par_domain '%s'"
                    " must be the same" %
                    (cpg['domain'], self.config.hp3par_domain))

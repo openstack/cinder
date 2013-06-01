@@ -18,8 +18,7 @@
 
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from cinder.volume import <foo>' elsewhere.
-import cinder.flags
-import cinder.openstack.common.importutils
+import cinder.flags as flags
+import cinder.openstack.common.importutils as import_utils
 
-API = cinder.openstack.common.importutils.import_class(
-        cinder.flags.FLAGS.volume_api_class)
+API = import_utils.import_class(flags.FLAGS.volume_api_class)

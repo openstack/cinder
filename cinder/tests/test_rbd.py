@@ -350,8 +350,7 @@ class RBDTestCase(test.TestCase):
                 'auth_enabled': False,
                 'auth_username': None,
                 'secret_type': 'ceph',
-                'secret_uuid': None,
-                }
+                'secret_uuid': None, }
         }
         actual = self.driver.initialize_connection(dict(name=name), None)
         self.assertDictMatch(expected, actual)

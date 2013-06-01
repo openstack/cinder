@@ -33,7 +33,7 @@ from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 SCHEDULER_HINTS_NAMESPACE =\
-        "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2"
+    "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2"
 FLAGS = flags.FLAGS
 
 
@@ -94,8 +94,10 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
 
     def _extract_scheduler_hints(self, volume_node):
         """Marshal the scheduler hints attribute of a parsed request."""
-        node = self.find_first_child_named_in_namespace(volume_node,
-                SCHEDULER_HINTS_NAMESPACE, "scheduler_hints")
+        node =\
+            self.find_first_child_named_in_namespace(volume_node,
+                                                     SCHEDULER_HINTS_NAMESPACE,
+                                                     "scheduler_hints")
         if node:
             scheduler_hints = {}
             for child in self.extract_elements(node):

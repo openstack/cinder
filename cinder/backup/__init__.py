@@ -20,4 +20,4 @@ import cinder.flags
 import cinder.openstack.common.importutils
 
 API = cinder.openstack.common.importutils.import_class(
-        cinder.flags.FLAGS.backup_api_class)
+    cinder.flags.FLAGS.backup_api_class)

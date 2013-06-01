@@ -1074,7 +1074,7 @@ ISCSI_PORT_RET = (
 ISCSI_3PAR_RET = (
     'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
     '75,fakehost.foo,Generic,iqn.1993-08.org.debian:01:222,---,'
-        '10.10.222.12\r\n'
+    '10.10.222.12\r\n'
     '\r\n'
     'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
     '75,fakehost.foo,--,--\r\n'

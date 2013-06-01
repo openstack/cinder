@@ -62,8 +62,9 @@ class HostFiltersTestCase(test.TestCase):
         stub_out_https_backend(self.stubs)
         self.context = context.RequestContext('fake', 'fake')
         self.json_query = jsonutils.dumps(
-                ['and', ['>=', '$free_capacity_gb', 1024],
-                 ['>=', '$total_capacity_gb', 10 * 1024]])
+            ['and',
+                ['>=', '$free_capacity_gb', 1024],
+                ['>=', '$total_capacity_gb', 10 * 1024]])
         # This has a side effect of testing 'get_filter_classes'
         # when specifying a method (in this case, our standard filters)
         filter_handler = filters.HostFilterHandler('cinder.scheduler.filters')

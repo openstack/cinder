@@ -71,8 +71,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         self._configuration.glusterfs_sparsed_volumes = True
 
         self.stubs = stubout.StubOutForTesting()
-        self._driver = glusterfs.GlusterfsDriver(
-                                    configuration=self._configuration)
+        self._driver =\
+            glusterfs.GlusterfsDriver(configuration=self._configuration)
         self._driver.shares = {}
 
     def tearDown(self):

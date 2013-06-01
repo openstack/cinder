@@ -132,16 +132,16 @@ class SanISCSIDriver(ISCSIDriver):
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 try:
                     raise exception.ProcessExecutionError(
-                            exit_code=last_exception.exit_code,
-                            stdout=last_exception.stdout,
-                            stderr=last_exception.stderr,
-                            cmd=last_exception.cmd)
+                        exit_code=last_exception.exit_code,
+                        stdout=last_exception.stdout,
+                        stderr=last_exception.stderr,
+                        cmd=last_exception.cmd)
                 except AttributeError:
                     raise exception.ProcessExecutionError(
-                            exit_code=-1,
-                            stdout="",
-                            stderr="Error running SSH command",
-                            cmd=command)
+                        exit_code=-1,
+                        stdout="",
+                        stderr="Error running SSH command",
+                        cmd=command)
 
         except Exception as e:
             LOG.error(_("Error running SSH command: %s") % command)

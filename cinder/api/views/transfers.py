@@ -79,8 +79,8 @@ class ViewBuilder(common.ViewBuilder):
         transfers_list = [func(request, transfer)['transfer'] for transfer in
                           transfers]
         transfers_links = self._get_collection_links(request,
-                                                   transfers,
-                                                   self._collection_name)
+                                                     transfers,
+                                                     self._collection_name)
         transfers_dict = dict(transfers=transfers_list)
 
         if transfers_links:

@@ -186,5 +186,5 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.flags(iscsi_helper='lioadm')
         self.script_template = "\n".join([
             'rtstool create '
-                '/foo iqn.2011-09.org.foo.bar:blaa test_id test_pass',
+            '/foo iqn.2011-09.org.foo.bar:blaa test_id test_pass',
             'rtstool delete iqn.2010-10.org.openstack:volume-blaa'])

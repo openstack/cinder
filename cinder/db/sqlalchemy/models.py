@@ -251,7 +251,7 @@ class Reservation(BASE, CinderBase):
         "QuotaUsage",
         foreign_keys=usage_id,
         primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
-                         'QuotaUsage.deleted == 0)')
+                    'QuotaUsage.deleted == 0)')
 
 
 class Snapshot(BASE, CinderBase):

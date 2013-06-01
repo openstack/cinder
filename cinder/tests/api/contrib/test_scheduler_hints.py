@@ -33,7 +33,7 @@ class SchedulerHintsTestCase(test.TestCase):
         super(SchedulerHintsTestCase, self).setUp()
         self.fake_instance = stubs.stub_volume(1, uuid=UUID)
         self.fake_instance['created_at'] =\
-                datetime.datetime(2013, 1, 1, 1, 1, 1)
+            datetime.datetime(2013, 1, 1, 1, 1, 1)
         self.flags(
             osapi_volume_extension=[
                 'cinder.api.contrib.select_extensions'],
@@ -55,8 +55,7 @@ class SchedulerHintsTestCase(test.TestCase):
         req.content_type = 'application/json'
         body = {'id': id,
                 'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
-                'volume_id': '1',
-               }
+                'volume_id': '1', }
         req.body = jsonutils.dumps(body)
         res = req.get_response(self.app)
         self.assertEqual(202, res.status_int)
@@ -78,8 +77,7 @@ class SchedulerHintsTestCase(test.TestCase):
         body = {'id': id,
                 'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
                 'volume_id': '1',
-                'scheduler_hints': {'a': 'b'},
-               }
+                'scheduler_hints': {'a': 'b'}, }
 
         req.body = jsonutils.dumps(body)
         res = req.get_response(self.app)
@@ -90,11 +88,10 @@ class SchedulerHintsTestCase(test.TestCase):
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'volume': {
-                  'id': id,
-                  'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
-                  'volume_id': '1',
-                  'scheduler_hints': 'a', }
-               }
+            'id': id,
+            'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
+            'volume_id': '1',
+            'scheduler_hints': 'a', }}
 
         req.body = jsonutils.dumps(body)
         res = req.get_response(self.app)

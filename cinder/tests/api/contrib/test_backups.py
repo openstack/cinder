@@ -277,7 +277,7 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(backup_detail.item(0).attributes.length, 11)
         self.assertEqual(
-                backup_detail.item(0).getAttribute('availability_zone'), 'az1')
+            backup_detail.item(0).getAttribute('availability_zone'), 'az1')
         self.assertEqual(
             backup_detail.item(0).getAttribute('container'), 'volumebackups')
         self.assertEqual(
@@ -288,17 +288,17 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(
             backup_detail.item(0).getAttribute('id'), backup_id1)
         self.assertEqual(
-                int(backup_detail.item(0).getAttribute('object_count')), 0)
+            int(backup_detail.item(0).getAttribute('object_count')), 0)
         self.assertEqual(
-                int(backup_detail.item(0).getAttribute('size')), 0)
+            int(backup_detail.item(0).getAttribute('size')), 0)
         self.assertEqual(
             backup_detail.item(0).getAttribute('status'), 'creating')
         self.assertEqual(
-                int(backup_detail.item(0).getAttribute('volume_id')), 1)
+            int(backup_detail.item(0).getAttribute('volume_id')), 1)
 
         self.assertEqual(backup_detail.item(1).attributes.length, 11)
         self.assertEqual(
-                backup_detail.item(1).getAttribute('availability_zone'), 'az1')
+            backup_detail.item(1).getAttribute('availability_zone'), 'az1')
         self.assertEqual(
             backup_detail.item(1).getAttribute('container'), 'volumebackups')
         self.assertEqual(
@@ -330,13 +330,13 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(
             backup_detail.item(2).getAttribute('id'), backup_id3)
         self.assertEqual(
-                int(backup_detail.item(2).getAttribute('object_count')), 0)
+            int(backup_detail.item(2).getAttribute('object_count')), 0)
         self.assertEqual(
-                int(backup_detail.item(2).getAttribute('size')), 0)
+            int(backup_detail.item(2).getAttribute('size')), 0)
         self.assertEqual(
             backup_detail.item(2).getAttribute('status'), 'creating')
         self.assertEqual(
-                int(backup_detail.item(2).getAttribute('volume_id')), 1)
+            int(backup_detail.item(2).getAttribute('volume_id')), 1)
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
         db.backup_destroy(context.get_admin_context(), backup_id2)

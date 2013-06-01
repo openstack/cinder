@@ -51,12 +51,11 @@ def delete_volume_type_extra_specs_not_found(context, volume_type_id, key):
 
 
 def stub_volume_type_extra_specs():
-    specs = {
-            "key1": "value1",
-            "key2": "value2",
-            "key3": "value3",
-            "key4": "value4",
-            "key5": "value5"}
+    specs = {"key1": "value1",
+             "key2": "value2",
+             "key3": "value3",
+             "key4": "value4",
+             "key5": "value5"}
     return specs
 
 

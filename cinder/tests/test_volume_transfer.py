@@ -108,9 +108,9 @@ class VolumeTransferTestCase(test.TestCase):
                           'Unexpected user id')
 
         self.assertEquals(volume['id'], response['volume_id'],
-                         'Unexpected volume id in response.')
+                          'Unexpected volume id in response.')
         self.assertEquals(transfer['id'], response['id'],
-                         'Unexpected transfer id in response.')
+                          'Unexpected transfer id in response.')
 
     def test_transfer_get(self):
         tx_api = transfer_api.API()

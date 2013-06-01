@@ -181,7 +181,7 @@ class PaginationParamsTest(test.TestCase):
     def test_valid_marker(self):
         """ Test valid marker param. """
         req = webob.Request.blank(
-                '/?marker=263abb28-1de6-412f-b00b-f0ee0c4333c2')
+            '/?marker=263abb28-1de6-412f-b00b-f0ee0c4333c2')
         self.assertEqual(common.get_pagination_params(req),
                          {'marker': '263abb28-1de6-412f-b00b-f0ee0c4333c2'})
 

@@ -171,7 +171,7 @@ class DefaultPolicyTestCase(test.TestCase):
 
     def _set_brain(self, default_rule):
         brain = cinder.openstack.common.policy.Brain(self.rules,
-                                                         default_rule)
+                                                     default_rule)
         cinder.openstack.common.policy.set_brain(brain)
 
     def tearDown(self):

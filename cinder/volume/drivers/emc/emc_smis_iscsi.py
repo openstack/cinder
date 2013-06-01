@@ -35,9 +35,9 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
 
         super(EMCSMISISCSIDriver, self).__init__(*args, **kwargs)
-        self.common = emc_smis_common.EMCSMISCommon(
-            'iSCSI',
-            configuration=self.configuration)
+        self.common =\
+            emc_smis_common.EMCSMISCommon('iSCSI',
+                                          configuration=self.configuration)
 
     def check_for_setup_error(self):
         pass

@@ -79,7 +79,7 @@ class HostManagerTestCase(test.TestCase):
 
         self.stubs.Set(FakeFilterClass1, '_filter_one', fake_filter_one)
         self.host_manager._choose_host_filters(specified_filters).AndReturn(
-                [FakeFilterClass1])
+            [FakeFilterClass1])
 
     def _verify_result(self, info, result):
         for x in info['got_fprops']:

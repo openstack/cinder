@@ -77,7 +77,7 @@ class TransfersTableTestCase(test.TestCase):
         self.assertEquals(xfer.volume_id, volume_id1, "Unexpected volume_id")
 
         nctxt = context.RequestContext(user_id='new_user_id',
-                                          project_id='new_project_id')
+                                       project_id='new_project_id')
         self.assertRaises(exception.TransferNotFound,
                           db.transfer_get, nctxt, xfer_id1)
 
@@ -102,7 +102,7 @@ class TransfersTableTestCase(test.TestCase):
                           "Unexpected number of transfer records")
 
         nctxt = context.RequestContext(user_id='new_user_id',
-                                          project_id='new_project_id')
+                                       project_id='new_project_id')
         self.assertRaises(exception.NotAuthorized,
                           db.transfer_get_all_by_project,
                           nctxt, self.ctxt.project_id)

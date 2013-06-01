@@ -51,9 +51,8 @@ if __name__ == '__main__':
     if FLAGS.enabled_backends:
         for backend in FLAGS.enabled_backends:
             host = "%s@%s" % (FLAGS.host, backend)
-            server = service.Service.create(
-                                        host=host,
-                                        service_name=backend)
+            server = service.Service.create(host=host,
+                                            service_name=backend)
             launcher.launch_server(server)
     else:
         server = service.Service.create(binary='cinder-volume')

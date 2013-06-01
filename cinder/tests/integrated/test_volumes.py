@@ -116,8 +116,8 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         LOG.debug("Logs: %s" % fake_driver.LoggingVolumeDriver.all_logs())
 
         create_actions = fake_driver.LoggingVolumeDriver.logs_like(
-                            'create_volume',
-                            id=created_volume_id)
+            'create_volume',
+            id=created_volume_id)
         LOG.debug("Create_Actions: %s" % create_actions)
 
         self.assertEquals(1, len(create_actions))
@@ -127,16 +127,16 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         self.assertEquals(create_action['size'], 1)
 
         export_actions = fake_driver.LoggingVolumeDriver.logs_like(
-                            'create_export',
-                            id=created_volume_id)
+            'create_export',
+            id=created_volume_id)
         self.assertEquals(1, len(export_actions))
         export_action = export_actions[0]
         self.assertEquals(export_action['id'], created_volume_id)
         self.assertEquals(export_action['availability_zone'], 'nova')
 
         delete_actions = fake_driver.LoggingVolumeDriver.logs_like(
-                            'delete_volume',
-                            id=created_volume_id)
+            'delete_volume',
+            id=created_volume_id)
         self.assertEquals(1, len(delete_actions))
         delete_action = export_actions[0]
         self.assertEquals(delete_action['id'], created_volume_id)

@@ -2028,7 +2028,7 @@ def backup_destroy(context, backup_id):
 @require_context
 def transfer_get(context, transfer_id, session=None):
     query = model_query(context, models.Transfer,
-                         session=session).\
+                        session=session).\
         filter_by(id=transfer_id)
 
     if not is_admin_context(context):
@@ -2069,8 +2069,8 @@ def transfer_get_all_by_project(context, project_id):
 
     volume = models.Volume
     query = model_query(context, models.Transfer).\
-            options(joinedload('volume')).\
-            filter(volume.project_id == project_id)
+        options(joinedload('volume')).\
+        filter(volume.project_id == project_id)
     results = query.all()
     return _translate_transfers(results)
 

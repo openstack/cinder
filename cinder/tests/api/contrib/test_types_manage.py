@@ -25,12 +25,11 @@ from cinder.volume import volume_types
 
 
 def stub_volume_type(id):
-    specs = {
-            "key1": "value1",
-            "key2": "value2",
-            "key3": "value3",
-            "key4": "value4",
-            "key5": "value5"}
+    specs = {"key1": "value1",
+             "key2": "value2",
+             "key3": "value3",
+             "key4": "value4",
+             "key5": "value5"}
     return dict(id=id, name='vol_type_%s' % str(id), extra_specs=specs)
 
 

@@ -348,7 +348,7 @@ class FakeEcomConnection():
         syncs = self._enum_syncsvsvs()
         for sync in syncs:
             if (sync['SyncedElement'] == objectpath['SyncedElement'] and
-                sync['SystemElement'] == objectpath['SystemElement']):
+                    sync['SystemElement'] == objectpath['SystemElement']):
                 foundsync = sync
                 break
         return foundsync

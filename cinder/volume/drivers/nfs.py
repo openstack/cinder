@@ -195,7 +195,7 @@ class NfsDriver(RemoteFsDriver):
             raise exception.NfsException(msg)
 
         if ((not self.configuration.nfs_used_ratio > 0) and
-                 (self.configuration.nfs_used_ratio <= 1)):
+                (self.configuration.nfs_used_ratio <= 1)):
             msg = _("NFS config 'nfs_used_ratio' invalid.  Must be > 0 "
                     "and <= 1.0: %s") % self.configuration.nfs_used_ratio
             LOG.error(msg)
