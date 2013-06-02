@@ -401,6 +401,10 @@ class ConfigNotFound(NotFound):
     message = _("Could not find config at %(path)s")
 
 
+class ParameterNotFound(NotFound):
+    message = _("Could not find parameter %(param)s")
+
+
 class PasteAppNotFound(NotFound):
     message = _("Could not load paste app '%(name)s' from %(path)s")
 
