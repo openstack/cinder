@@ -46,7 +46,6 @@ these objects be simple dictionaries.
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common.db import api as db_api
 
 
@@ -72,12 +71,10 @@ db_opts = [
                default='backup-%s',
                help='Template string to be used to generate backup names'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(db_opts)
-
+CONF = cfg.CONF
+CONF.register_opts(db_opts)
 
 _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
-
 
 IMPL = db_api.DBAPI(backend_mapping=_BACKEND_MAPPING)
 

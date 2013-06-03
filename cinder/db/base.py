@@ -18,17 +18,18 @@
 
 """Base class for classes that need modular database access."""
 
+
 from oslo.config import cfg
 
-from cinder import flags
 from cinder.openstack.common import importutils
+
 
 db_driver_opt = cfg.StrOpt('db_driver',
                            default='cinder.db',
                            help='driver to use for database access')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(db_driver_opt)
+CONF = cfg.CONF
+CONF.register_opt(db_driver_opt)
 
 
 class Base(object):
@@ -36,5 +37,5 @@ class Base(object):
 
     def __init__(self, db_driver=None):
         if not db_driver:
-            db_driver = FLAGS.db_driver
+            db_driver = CONF.db_driver
         self.db = importutils.import_module(db_driver)  # pylint: disable=C0103

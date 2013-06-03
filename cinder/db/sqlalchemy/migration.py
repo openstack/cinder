@@ -16,19 +16,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import distutils.version as dist_version
+
 import os
+
+import distutils.version as dist_version
+import migrate
+from migrate.versioning import util as migrate_util
+import sqlalchemy
 
 from cinder.db import migration
 from cinder.db.sqlalchemy.api import get_engine
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
-
-
-import migrate
-from migrate.versioning import util as migrate_util
-import sqlalchemy
 
 
 LOG = logging.getLogger(__name__)
@@ -61,7 +60,6 @@ from migrate import exceptions as versioning_exceptions
 from migrate.versioning import api as versioning_api
 from migrate.versioning.repository import Repository
 
-FLAGS = flags.FLAGS
 
 _REPOSITORY = None
 
