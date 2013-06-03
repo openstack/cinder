@@ -3,13 +3,13 @@ cinder-manage
 ===========
 
 ------------------------------------------------------
-control and manage cloud computer instances and images
+Control and manage OpenStack block storage
 ------------------------------------------------------
 
 :Author: openstack@lists.launchpad.net
-:Date:   2012-04-05
+:Date:   2013-05-30
 :Copyright: OpenStack LLC
-:Version: 2012.1
+:Version: 2013.2
 :Manual section: 1
 :Manual group: cloud computing
 
@@ -21,7 +21,7 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-cinder-manage controls cloud computing instances by managing cinder users, cinder projects, cinder roles, shell selection, vpn connections, and floating IP address configuration. More information about OpenStack Cinder is at http://cinder.openstack.org.
+cinder-manage provides control of cinder database migration, and provides an interface to get information about the current state of cinder.  More information about OpenStack Cinder is available at http://cinder.openstack.org.
 
 OPTIONS
 =======
@@ -29,16 +29,16 @@ OPTIONS
 The standard pattern for executing a cinder-manage command is:
 ``cinder-manage <category> <command> [<args>]``
 
-For example, to obtain a list of all projects:
-``cinder-manage project list``
+For example, to obtain a list of the cinder services currently running:
+``cinder-manage service list``
 
 Run without arguments to see a list of available command categories:
 ``cinder-manage``
 
-Categories are user, project, role, shell, vpn, and floating. Detailed descriptions are below.
+Categories are shell, logs, migrate, db, volume, host, service, backup, version, sm and config. Detailed descriptions are below.
 
-You can also run with a category argument such as user to see a list of all commands in that category:
-``cinder-manage user``
+You can also run with a category argument such as 'db' to see a list of all commands in that category:
+``cinder-manage db``
 
 These sections describe the available categories and arguments for cinder-manage.
 
@@ -53,80 +53,6 @@ Cinder Db
 
     Sync the database up to the most recent version. This is the standard way to create the db as well.
 
-Cinder User
-~~~~~~~~~
-
-``cinder-manage user admin <username>``
-
-    Create an admin user with the name <username>.
-
-``cinder-manage user create <username>``
-
-    Create a normal user with the name <username>.
-
-``cinder-manage user delete <username>``
-
-    Delete the user with the name <username>.
-
-``cinder-manage user exports <username>``
-
-    Outputs a list of access key and secret keys for user to the screen
-
-``cinder-manage user list``
-
-    Outputs a list of all the user names to the screen.
-
-``cinder-manage user modify <accesskey> <secretkey> <admin?T/F>``
-
-    Updates the indicated user keys, indicating with T or F if the user is an admin user. Leave any argument blank if you do not want to update it.
-
-Cinder Project
-~~~~~~~~~~~~
-
-``cinder-manage project add <projectname>``
-
-    Add a cinder project with the name <projectname> to the database.
-
-``cinder-manage project create <projectname>``
-
-    Create a new cinder project with the name <projectname> (you still need to do cinder-manage project add <projectname> to add it to the database).
-
-``cinder-manage project delete <projectname>``
-
-    Delete a cinder project with the name <projectname>.
-
-``cinder-manage project environment <projectname> <username>``
-
-    Exports environment variables for the named project to a file named cinderrc.
-
-``cinder-manage project list``
-
-    Outputs a list of all the projects to the screen.
-
-``cinder-manage project quota <projectname>``
-
-    Outputs the size and specs of the project's instances including gigabytes, instances, floating IPs, volumes, and cores.
-
-``cinder-manage project remove <projectname>``
-
-    Deletes the project with the name <projectname>.
-
-``cinder-manage project zipfile``
-
-    Compresses all related files for a created project into a zip file cinder.zip.
-
-Cinder Role
-~~~~~~~~~
-
-``cinder-manage role add <username> <rolename> <(optional) projectname>``
-
-    Add a user to either a global or project-based role with the indicated <rolename> assigned to the named user. Role names can be one of the following five roles: cloudadmin, itsec, sysadmin, netadmin, developer. If you add the project name as the last argument then the role is assigned just for that project, otherwise the user is assigned the named role for all projects.
-
-``cinder-manage role has <username> <projectname>``
-    Checks the user or project and responds with True if the user has a global role with a particular project.
-
-``cinder-manage role remove <username> <rolename>``
-    Remove the indicated role from the user.
 
 Cinder Logs
 ~~~~~~~~~
@@ -135,9 +61,9 @@ Cinder Logs
 
     Displays cinder errors from log files.
 
-``cinder-manage logs syslog <number>``
+``cinder-manage logs syslog [<number>]``
 
-    Displays cinder alerts from syslog.
+    Displays cinder the most recent entries from syslog.  The optional number argument specifies the number of entries to display (default 10).
 
 Cinder Shell
 ~~~~~~~~~~
@@ -162,120 +88,92 @@ Cinder Shell
 
     Runs the named script from the specified path with flags set.
 
-Cinder VPN
-~~~~~~~~
+Cinder Volume
+~~~~~~~~~~
 
-``cinder-manage vpn list``
+``cinder-manage volume reattach <volume_id>``
 
-    Displays a list of projects, their IP prot numbers, and what state they're in.
+    Re-attach a volume that has previously been attached to an instance.
 
-``cinder-manage vpn run <projectname>``
+``cinder-manage volume delete <volume_id>``
 
-    Starts the VPN for the named project.
+    Delete a volume without first checking that the volume is available.
 
-``cinder-manage vpn spawn``
+Cinder Host
+~~~~~~~~~~
 
-    Runs all VPNs.
+``cinder-manage host list [<zone>]``
 
-Cinder Floating IPs
-~~~~~~~~~~~~~~~~~
+    Displays a list of all physical hosts and their zone.  The optional zone argument allows the list to be filtered on the requested zone.
 
-``cinder-manage floating create <ip_range> [--pool <pool>] [--interface <interface>]``
+Cinder Service
+~~~~~~~~~~
 
-    Creates floating IP addresses for the given range, optionally specifying
-    a floating pool and a network interface.
+``cinder-manage service list``
 
-``cinder-manage floating delete <ip_range>``
+    Displays a list of all cinder services and their host, zone, status, state and when the information was last updated.
 
-    Deletes floating IP addresses in the range given.
+Cinder Backup
+~~~~~~~~~~
 
-``cinder-manage floating list``
+``cinder-manage backup list``
 
-    Displays a list of all floating IP addresses.
+    Displays a list of all backups (including ones in progress) and the host on which the backup operation is running.
 
-Cinder Flavor
-~~~~~~~~~~~
+Cinder Version
+~~~~~~~~~~
 
-``cinder-manage flavor list``
+``cinder-manage version list``
 
-    Outputs a list of all active flavors to the screen.
+    Displays the codebase version cinder is running upon.
 
-``cinder-manage flavor list --all``
+Cinder Storage Management
+~~~~~~~~~~
 
-    Outputs a list of all flavors (active and inactive) to the screen.
+``cinder-manage sm flavor_create <label> <desc>``
 
-``cinder-manage flavor create <name> <memory> <vCPU> <local_storage> <flavorID> <(optional) swap> <(optional) RXTX Quota> <(optional) RXTX Cap>``
+    Creates a Storage Management flavor with the requested label and description.
 
-    creates a flavor with the following positional arguments:
-     * memory (expressed in megabytes)
-     * vcpu(s) (integer)
-     * local storage (expressed in gigabytes)
-     * flavorid (unique integer)
-     * swap space (expressed in megabytes, defaults to zero, optional)
-     * RXTX quotas (expressed in gigabytes, defaults to zero, optional)
-     * RXTX cap (expressed in gigabytes, defaults to zero, optional)
+``cinder-manage sm flavor_list [<flavor id>]``
 
-``cinder-manage flavor delete <name>``
+    Displays a list of all available flavors.  The optional flavor ID parameter may be used to display information for a specific flavor.
 
-    Delete the flavor with the name <name>. This marks the flavor as inactive and cannot be launched. However, the record stays in the database for archival and billing purposes.
+``cinder-manage sm flavor_delete <label>``
 
-``cinder-manage flavor delete <name> --purge``
+    Deletes the requested flavor.
 
-    Purges the flavor with the name <name>. This removes this flavor from the database.
+``cinder-manage sm backend_add <flavor_label> <sr_type> [<config connection parameters>]``
 
-Cinder Instance_type
-~~~~~~~~~~~~~~~~~~
+    Creates a backend using the requested flavor, sr_type and optional arguments.
 
-The instance_type command is provided as an alias for the flavor command. All the same subcommands and arguments from cinder-manage flavor can be used.
+``cinder-manage sm backend_list [<backend_conf_id>]``
 
-Cinder Images
-~~~~~~~~~~~
+    Displays a list of all backends.  The optional backend ID parameter may be used to display information for a specific backend.
 
-``cinder-manage image image_register <path> <owner>``
+``cinder-manage sm backend_remove <backend_conf_id>``
 
-    Registers an image with the image service.
+    Removes the specified backend.
 
-``cinder-manage image kernel_register <path> <owner>``
+Cinder Config
+~~~~~~~~~~
 
-    Registers a kernel with the image service.
+``cinder-manage config list``
 
-``cinder-manage image ramdisk_register <path> <owner>``
-
-    Registers a ramdisk with the image service.
-
-``cinder-manage image all_register <image_path> <kernel_path> <ramdisk_path> <owner>``
-
-    Registers an image kernel and ramdisk with the image service.
-
-``cinder-manage image convert <directory>``
-
-    Converts all images in directory from the old (Bexar) format to the new format.
-
-Cinder VM
-~~~~~~~~~~~
-
-``cinder-manage vm list [host]``
-    Show a list of all instances. Accepts optional hostname (to show only instances on specific host).
-
-``cinder-manage live-migration <ec2_id> <destination host name>``
-    Live migrate instance from current host to destination host. Requires instance id (which comes from euca-describe-instance) and destination host name (which can be found from cinder-manage service list).
-
+    Displays the current configuration parameters (options) for Cinder.
 
 FILES
 ========
 
-The cinder-manage.conf file contains configuration information in the form of python-gflags.
+The cinder.conf file contains configuration information in the form of python-gflags.
+
+The cinder-manage.log file logs output from cinder-manage.
 
 SEE ALSO
 ========
 
 * `OpenStack Cinder <http://cinder.openstack.org>`__
-* `OpenStack Swift <http://swift.openstack.org>`__
 
 BUGS
 ====
 
-* Cinder is sourced in Launchpad so you can view current bugs at `OpenStack Cinder <http://cinder.openstack.org>`__
-
-
-
+* Cinder is hosted on Launchpad so you can view current bugs at `Bugs : Cinder <https://bugs.launchpad.net/cinder/>`__
