@@ -20,17 +20,14 @@ You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
 
-import operator
+from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
 
-
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -108,7 +105,7 @@ class FilterScheduler(driver.Scheduler):
         hosts.append(host)
 
     def _max_attempts(self):
-        max_attempts = FLAGS.scheduler_max_attempts
+        max_attempts = CONF.scheduler_max_attempts
         if max_attempts < 1:
             msg = _("Invalid value for 'scheduler_max_attempts', "
                     "must be >=1")

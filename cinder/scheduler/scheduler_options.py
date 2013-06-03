@@ -28,17 +28,18 @@ import os
 
 from oslo.config import cfg
 
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+
 
 scheduler_json_config_location_opt = cfg.StrOpt(
         'scheduler_json_config_location',
         default='',
         help='Absolute path to scheduler configuration JSON file.')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(scheduler_json_config_location_opt)
+
+CONF = cfg.CONF
+CONF.register_opt(scheduler_json_config_location_opt)
 
 LOG = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class SchedulerOptions(object):
     def get_configuration(self, filename=None):
         """Check the json file for changes and load it if needed."""
         if not filename:
-            filename = FLAGS.scheduler_json_config_location
+            filename = CONF.scheduler_json_config_location
         if not filename:
             return self.data
         if self.last_checked:

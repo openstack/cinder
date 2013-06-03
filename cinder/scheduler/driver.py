@@ -24,11 +24,11 @@ Scheduler base class that all Schedulers should inherit from
 from oslo.config import cfg
 
 from cinder import db
-from cinder import flags
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
+
 
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',
@@ -39,8 +39,8 @@ scheduler_driver_opts = [
                help='Maximum number of attempts to schedule an volume'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(scheduler_driver_opts)
+CONF = cfg.CONF
+CONF.register_opts(scheduler_driver_opts)
 
 
 def volume_update_db(context, volume_id, host):
@@ -58,7 +58,7 @@ class Scheduler(object):
 
     def __init__(self):
         self.host_manager = importutils.import_object(
-            FLAGS.scheduler_host_manager)
+            CONF.scheduler_host_manager)
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
     def get_host_list(self):

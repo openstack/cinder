@@ -15,6 +15,7 @@
 RADOS Block Device Driver
 """
 
+
 from __future__ import absolute_import
 
 import json
@@ -36,6 +37,7 @@ try:
 except ImportError:
     rados = None
     rbd = None
+
 
 LOG = logging.getLogger(__name__)
 
