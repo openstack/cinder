@@ -601,3 +601,84 @@ class DBAPIIscsiTargetTestCase(BaseTest):
         db.iscsi_target_create_safe(self.ctxt, self._get_base_values())
         self.assertFalse(db.iscsi_target_create_safe(self.ctxt,
                                                      self._get_base_values()))
+
+
+class DBAPIBackupTestCase(BaseTest):
+
+    """Tests for db.api.backup_* methods."""
+
+    _ignored_keys = ['id', 'deleted', 'deleted_at', 'created_at', 'updated_at']
+
+    def setUp(self):
+        super(DBAPIBackupTestCase, self).setUp()
+        self.created = [db.backup_create(self.ctxt, values)
+                        for values in self._get_values()]
+
+    def _get_values(self, one=False):
+        base_values = {
+            'user_id': 'user',
+            'project_id': 'project',
+            'volume_id': 'volume',
+            'host': 'host',
+            'availability_zone': 'zone',
+            'display_name': 'display',
+            'display_description': 'description',
+            'container': 'container',
+            'status': 'status',
+            'fail_reason': 'test',
+            'service_metadata': 'metadata',
+            'service': 'service',
+            'size': 1000,
+            'object_count': 100}
+        if one:
+            return base_values
+
+        def compose(val, step):
+            if isinstance(val, str):
+                step = str(step)
+            return val + step
+
+        return [dict([(k, compose(v, i)) for k, v in base_values.items()])
+                for i in range(1, 4)]
+
+    def test_backup_create(self):
+        values = self._get_values()
+        for i, backup in enumerate(self.created):
+            self.assertTrue(backup['id'])
+            self._assertEqualObjects(values[i], backup, self._ignored_keys)
+
+    def test_backup_get(self):
+        for backup in self.created:
+            backup_get = db.backup_get(self.ctxt, backup['id'])
+            self._assertEqualObjects(backup, backup_get)
+
+    def tests_backup_get_all(self):
+        all_backups = db.backup_get_all(self.ctxt)
+        self._assertEqualListsOfObjects(self.created, all_backups)
+
+    def test_backup_get_all_by_host(self):
+        byhost = db.backup_get_all_by_host(self.ctxt,
+                                           self.created[1]['host'])
+        self._assertEqualObjects(self.created[1], byhost[0])
+
+    def test_backup_get_all_by_project(self):
+        byproj = db.backup_get_all_by_project(self.ctxt,
+                                              self.created[1]['project_id'])
+        self._assertEqualObjects(self.created[1], byproj[0])
+
+    def test_backup_update(self):
+        updated_values = self._get_values(one=True)
+        update_id = self.created[1]['id']
+        updated_backup = db.backup_update(self.ctxt, update_id,
+                                          updated_values)
+        self._assertEqualObjects(updated_values, updated_backup,
+                                 self._ignored_keys)
+
+    def test_backup_destroy(self):
+        for backup in self.created:
+            db.backup_destroy(self.ctxt, backup['id'])
+        self.assertFalse(db.backup_get_all(self.ctxt))
+
+    def test_backup_not_found(self):
+        self.assertRaises(exception.BackupNotFound, db.backup_get, self.ctxt,
+                          'notinbase')
