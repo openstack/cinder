@@ -166,7 +166,7 @@ class API(base.Base):
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
         try:
             donor_id = vol_ref['project_id']
-            donor_reservations = QUOTAS.reserve(context,
+            donor_reservations = QUOTAS.reserve(context.elevated(),
                                                 project_id=donor_id,
                                                 volumes=-1,
                                                 gigabytes=-vol_ref['size'])
