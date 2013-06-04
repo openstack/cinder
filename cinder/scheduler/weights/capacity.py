@@ -20,28 +20,29 @@ stacking, you can set the 'capacity_weight_multiplier' option to a negative
 number and the weighing has the opposite effect of the default.
 """
 
+
 import math
 
 from oslo.config import cfg
 
-from cinder import flags
 from cinder.openstack.common.scheduler import weights
 
+
 capacity_weight_opts = [
-        cfg.FloatOpt('capacity_weight_multiplier',
-                     default=1.0,
-                     help='Multiplier used for weighing volume capacity. '
-                          'Negative numbers mean to stack vs spread.'),
+    cfg.FloatOpt('capacity_weight_multiplier',
+                 default=1.0,
+                 help='Multiplier used for weighing volume capacity. '
+                      'Negative numbers mean to stack vs spread.'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(capacity_weight_opts)
+CONF = cfg.CONF
+CONF.register_opts(capacity_weight_opts)
 
 
 class CapacityWeigher(weights.BaseHostWeigher):
     def _weight_multiplier(self):
         """Override the weight multiplier."""
-        return FLAGS.capacity_weight_multiplier
+        return CONF.capacity_weight_multiplier
 
     def _weigh_object(self, host_state, weight_properties):
         """Higher weights win.  We want spreading to be the default."""

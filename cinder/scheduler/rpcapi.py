@@ -18,12 +18,13 @@
 Client side of the scheduler manager RPC API.
 """
 
-from cinder import flags
+from oslo.config import cfg
+
 from cinder.openstack.common import jsonutils
 import cinder.openstack.common.rpc.proxy
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
@@ -41,7 +42,7 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
 
     def __init__(self):
         super(SchedulerAPI, self).__init__(
-            topic=FLAGS.scheduler_topic,
+            topic=CONF.scheduler_topic,
             default_version=self.RPC_API_VERSION)
 
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,

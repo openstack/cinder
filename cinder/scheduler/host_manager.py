@@ -23,12 +23,12 @@ from oslo.config import cfg
 
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
 from cinder.openstack.common import timeutils
 from cinder import utils
+
 
 host_manager_opts = [
     cfg.ListOpt('scheduler_default_filters',
@@ -46,8 +46,8 @@ host_manager_opts = [
                 help='Which weigher class names to use for weighing hosts.')
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(host_manager_opts)
+CONF = cfg.CONF
+CONF.register_opts(host_manager_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ class HostManager(object):
         of acceptable filters.
         """
         if filter_cls_names is None:
-            filter_cls_names = FLAGS.scheduler_default_filters
+            filter_cls_names = CONF.scheduler_default_filters
         if not isinstance(filter_cls_names, (list, tuple)):
             filter_cls_names = [filter_cls_names]
         good_filters = []
@@ -198,7 +198,7 @@ class HostManager(object):
         of acceptable weighers.
         """
         if weight_cls_names is None:
-            weight_cls_names = FLAGS.scheduler_default_weighers
+            weight_cls_names = CONF.scheduler_default_weighers
         if not isinstance(weight_cls_names, (list, tuple)):
             weight_cls_names = [weight_cls_names]
 
@@ -259,7 +259,7 @@ class HostManager(object):
         """
 
         # Get resource usage across the available volume nodes:
-        topic = FLAGS.volume_topic
+        topic = CONF.volume_topic
         volume_services = db.service_get_all_by_topic(context, topic)
         for service in volume_services:
             host = service['host']

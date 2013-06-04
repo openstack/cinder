@@ -23,12 +23,13 @@ Chance (Random) Scheduler implementation
 
 import random
 
+from oslo.config import cfg
+
 from cinder import exception
-from cinder import flags
 from cinder.scheduler import driver
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ChanceScheduler(driver.Scheduler):
@@ -60,7 +61,7 @@ class ChanceScheduler(driver.Scheduler):
 
     def schedule_create_volume(self, context, request_spec, filter_properties):
         """Picks a host that is up at random."""
-        topic = FLAGS.volume_topic
+        topic = CONF.volume_topic
         host = self._schedule(context, topic, request_spec,
                               filter_properties=filter_properties)
         volume_id = request_spec['volume_id']

@@ -25,18 +25,18 @@ from oslo.config import cfg
 
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.scheduler import chance
 from cinder.scheduler import driver
 from cinder import utils
+
 
 simple_scheduler_opts = [
     cfg.IntOpt("max_gigabytes",
                default=10000,
                help="maximum number of volume gigabytes to allow per host"), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(simple_scheduler_opts)
+CONF = cfg.CONF
+CONF.register_opts(simple_scheduler_opts)
 
 
 class SimpleScheduler(chance.ChanceScheduler):
@@ -57,7 +57,7 @@ class SimpleScheduler(chance.ChanceScheduler):
         if availability_zone:
             zone, _x, host = availability_zone.partition(':')
         if host and context.is_admin:
-            topic = FLAGS.volume_topic
+            topic = CONF.volume_topic
             service = db.service_get_by_args(elevated, host, topic)
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
@@ -75,7 +75,7 @@ class SimpleScheduler(chance.ChanceScheduler):
                        if service['availability_zone'] == zone]
         for result in results:
             (service, volume_gigabytes) = result
-            if volume_gigabytes + volume_size > FLAGS.max_gigabytes:
+            if volume_gigabytes + volume_size > CONF.max_gigabytes:
                 msg = _("Not enough allocatable volume gigabytes remaining")
                 raise exception.NoValidHost(reason=msg)
             if utils.service_is_up(service) and not service['disabled']:

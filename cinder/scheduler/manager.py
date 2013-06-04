@@ -26,7 +26,6 @@ from oslo.config import cfg
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
@@ -34,15 +33,16 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
 from cinder.volume import rpcapi as volume_rpcapi
 
-LOG = logging.getLogger(__name__)
 
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
                                   default='cinder.scheduler.filter_scheduler.'
                                           'FilterScheduler',
                                   help='Default scheduler driver to use')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(scheduler_driver_opt)
+CONF = cfg.CONF
+CONF.register_opt(scheduler_driver_opt)
+
+LOG = logging.getLogger(__name__)
 
 
 class SchedulerManager(manager.Manager):
@@ -53,7 +53,7 @@ class SchedulerManager(manager.Manager):
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
         if not scheduler_driver:
-            scheduler_driver = FLAGS.scheduler_driver
+            scheduler_driver = CONF.scheduler_driver
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
 
