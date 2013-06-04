@@ -518,6 +518,10 @@ class API(base.Base):
                                                        connector,
                                                        force)
 
+    def accept_transfer(self, context, volume):
+        return self.volume_rpcapi.accept_transfer(context,
+                                                  volume)
+
     def _create_snapshot(self, context,
                          volume, name, description,
                          force=False, metadata=None):

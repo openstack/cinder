@@ -170,3 +170,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               connector='fake_connector',
                               force=False)
+
+    def test_accept_transfer(self):
+        self._test_volume_api('accept_transfer',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              version='1.5')

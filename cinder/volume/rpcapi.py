@@ -38,6 +38,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
         1.3 - Pass all image metadata (not just ID) in copy_volume_to_image
         1.4 - Add request_spec, filter_properties and
               allow_reschedule arguments to create_volume().
+        1.5 - Add accept_transfer
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -128,3 +129,10 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     def publish_service_capabilities(self, ctxt):
         self.fanout_cast(ctxt, self.make_msg('publish_service_capabilities'),
                          version='1.2')
+
+    def accept_transfer(self, ctxt, volume):
+        self.cast(ctxt,
+                  self.make_msg('accept_transfer',
+                                volume_id=volume['id']),
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
+                  version='1.5')
