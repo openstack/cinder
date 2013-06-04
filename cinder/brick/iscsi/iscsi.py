@@ -385,7 +385,7 @@ class LioAdm(TargetAdmin):
         chap_auth_userid = 'test_id'
         chap_auth_password = 'test_pass'
 
-        if chap_auth != None:
+        if chap_auth is not None:
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
         extra_args = []
