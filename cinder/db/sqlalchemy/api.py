@@ -19,11 +19,13 @@
 
 """Implementation of SQLAlchemy backend."""
 
+
 import datetime
 import sys
 import uuid
 import warnings
 
+from oslo.config import cfg
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -34,7 +36,6 @@ from cinder.common import sqlalchemyutils
 from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common.db import exception as db_exc
 from cinder.openstack.common.db.sqlalchemy import session as db_session
 from cinder.openstack.common import log as logging
@@ -42,8 +43,7 @@ from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 
 
-FLAGS = flags.FLAGS
-
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 get_engine = db_session.get_engine
@@ -318,7 +318,7 @@ def _service_get_all_topic_subquery(context, session, topic, subq, label):
 def service_get_all_volume_sorted(context):
     session = get_session()
     with session.begin():
-        topic = FLAGS.volume_topic
+        topic = CONF.volume_topic
         label = 'volume_gigabytes'
         subq = model_query(context, models.Volume.host,
                            func.sum(models.Volume.size).label(label),
@@ -349,7 +349,7 @@ def service_get_by_args(context, host, binary):
 def service_create(context, values):
     service_ref = models.Service()
     service_ref.update(values)
-    if not FLAGS.enable_new_services:
+    if not CONF.enable_new_services:
         service_ref.disabled = True
     service_ref.save()
     return service_ref

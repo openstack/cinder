@@ -21,17 +21,19 @@
 SQLAlchemy models for cinder data.
 """
 
+
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref
 
-from cinder import flags
+from oslo.config import cfg
+
 from cinder.openstack.common.db.sqlalchemy import models
 from cinder.openstack.common import timeutils
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 BASE = declarative_base()
 
 
@@ -82,7 +84,7 @@ class Volume(BASE, CinderBase):
 
     @property
     def name(self):
-        return FLAGS.volume_name_template % self.id
+        return CONF.volume_name_template % self.id
 
     ec2_id = Column(Integer)
     user_id = Column(String(255))
@@ -259,11 +261,11 @@ class Snapshot(BASE, CinderBase):
 
     @property
     def name(self):
-        return FLAGS.snapshot_name_template % self.id
+        return CONF.snapshot_name_template % self.id
 
     @property
     def volume_name(self):
-        return FLAGS.volume_name_template % self.volume_id
+        return CONF.volume_name_template % self.volume_id
 
     user_id = Column(String(255))
     project_id = Column(String(255))
@@ -368,7 +370,7 @@ class Backup(BASE, CinderBase):
 
     @property
     def name(self):
-        return FLAGS.backup_name_template % self.id
+        return CONF.backup_name_template % self.id
 
     user_id = Column(String(255), nullable=False)
     project_id = Column(String(255), nullable=False)
@@ -425,6 +427,6 @@ def register_models():
               VolumeTypes,
               VolumeGlanceMetadata,
               )
-    engine = create_engine(FLAGS.database.connection, echo=False)
+    engine = create_engine(CONF.database.connection, echo=False)
     for model in models:
         model.metadata.create_all(engine)

@@ -14,13 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table
 
-from cinder import flags
 from cinder.openstack.common import log as logging
 
-FLAGS = flags.FLAGS
 
 LOG = logging.getLogger(__name__)
 
