@@ -60,6 +60,7 @@ class API(base.Base):
         """
         Make the RPC call to delete a volume transfer.
         """
+        volume_api.check_policy(context, 'delete_transfer')
         transfer = self.db.transfer_get(context, transfer_id)
 
         volume_ref = self.db.volume_get(context, transfer.volume_id)
@@ -69,6 +70,7 @@ class API(base.Base):
         self.db.transfer_destroy(context, transfer_id)
 
     def get_all(self, context, filters={}):
+        volume_api.check_policy(context, 'get_all_transfers')
         if context.is_admin and 'all_tenants' in filters:
             transfers = self.db.transfer_get_all(context)
         else:
@@ -93,6 +95,7 @@ class API(base.Base):
 
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
+        volume_api.check_policy(context, 'create_transfer')
         LOG.info("Generating transfer record for volume %s" % volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
         if volume_ref['status'] != "available":
@@ -125,6 +128,7 @@ class API(base.Base):
         """Accept a volume that has been offered for transfer."""
         # We must use an elevated context to see the volume that is still
         # owned by the donor.
+        volume_api.check_policy(context, 'accept_transfer')
         transfer = self.db.transfer_get(context.elevated(), transfer_id)
 
         crypt_hash = self._get_crypt_hash(transfer['salt'], auth_key)
