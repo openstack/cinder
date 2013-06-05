@@ -167,9 +167,10 @@ class TgtAdm(TargetAdmin):
                                        '--update',
                                        name,
                                        run_as_root=True)
-        except exception.ProcessExecutionError, e:
+        except exception.ProcessExecutionError as e:
             LOG.error(_("Failed to create iscsi target for volume "
-                        "id:%(vol_id)s.") % locals())
+                        "id:%(vol_id)s: %(e)s")
+                      % {'vol_id': vol_id, 'e': str(e)})
 
             #Don't forget to remove the persistent file we created
             os.unlink(volume_path)
@@ -205,9 +206,10 @@ class TgtAdm(TargetAdmin):
                           '--delete',
                           iqn,
                           run_as_root=True)
-        except exception.ProcessExecutionError, e:
+        except exception.ProcessExecutionError as e:
             LOG.error(_("Failed to remove iscsi target for volume "
-                        "id:%(vol_id)s.") % locals())
+                        "id:%(vol_id)s: %(e)s")
+                      % {'vol_id': vol_id, 'e': str(e)})
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
         os.unlink(volume_path)
@@ -259,10 +261,11 @@ class IetAdm(TargetAdmin):
                     f = open(conf_file, 'a+')
                     f.write(volume_conf)
                     f.close()
-            except exception.ProcessExecutionError, e:
+            except exception.ProcessExecutionError as e:
                 vol_id = name.split(':')[1]
                 LOG.error(_("Failed to create iscsi target for volume "
-                            "id:%(vol_id)s.") % locals())
+                            "id:%(vol_id)s: %(e)s")
+                          % {'vol_id': vol_id, 'e': str(e)})
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
         return tid
 
