@@ -701,6 +701,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.terminate_connection(volume_ref, connector, force=force)
 
+    def accept_transfer(self, context, volume_id):
+        volume_ref = self.db.volume_get(context, volume_id)
+        self.driver.accept_transfer(volume_ref)
+
     @manager.periodic_task
     def _report_driver_status(self, context):
         LOG.info(_("Updating volume status"))

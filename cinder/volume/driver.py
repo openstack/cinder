@@ -480,6 +480,9 @@ class ISCSIDriver(VolumeDriver):
         data['QoS_support'] = False
         self._stats = data
 
+    def accept_transfer(self, volume):
+        pass
+
 
 class FakeISCSIDriver(ISCSIDriver):
     """Logs calls instead of executing."""
