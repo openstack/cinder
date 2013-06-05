@@ -146,24 +146,27 @@ class HP3PARCommon(object):
 
         self.client_login()
 
-        # make sure the CPG exists
         try:
-            cpg = self.client.getCPG(self.config.hp3par_cpg)
+            # make sure the default CPG exists
+            self.validate_cpg(self.config.hp3par_cpg)
+        finally:
+            self.client_logout()
+
+    def validate_cpg(self, cpg_name):
+        try:
+            cpg = self.client.getCPG(cpg_name)
         except hpexceptions.HTTPNotFound as ex:
-            err = (_("CPG (%s) doesn't exist on array")
-                   % self.config.hp3par_cpg)
+            err = (_("CPG (%s) doesn't exist on array") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
         if ('domain' not in cpg
-            and cpg['domain'] != self.config.hp3par_domain):
+            or cpg['domain'] != self.config.hp3par_domain):
             err = ("CPG's domain '%s' and config option hp3par_domain '%s'"
                    " must be the same" %
                    (cpg['domain'], self.config.hp3par_domain))
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
-
-        self.client_logout()
 
     def _get_3par_vol_name(self, volume_id):
         """
@@ -567,6 +570,23 @@ exit
 
             cpg = self._get_volume_type_value(volume_type, 'cpg',
                                               self.config.hp3par_cpg)
+            if cpg is not self.config.hp3par_cpg:
+                # The cpg was specified in a volume type extra spec so it
+                # needs to be validiated that it's in the correct domain.
+                self.validate_cpg(cpg)
+                # Also, look to see if the snap_cpg was specified in volume
+                # type extra spec, if not use the extra spec cpg as the
+                # default.
+                snap_cpg = self._get_volume_type_value(volume_type,
+                                                       'snap_cpg', cpg)
+            else:
+                # default snap_cpg to hp3par_cpg_snap if it's not specified
+                # in the volume type extra specs.
+                snap_cpg = self.config.hp3par_cpg_snap
+                # if it's still not set or empty then set it to the cpg
+                # specified in the cinder.conf file.
+                if not self.config.hp3par_cpg_snap:
+                    snap_cpg = cpg
 
             # if provisioning is not set use thin
             default_prov = self.valid_prov_values[0]
@@ -584,15 +604,6 @@ exit
             ttpv = True
             if prov_value == "full":
                 ttpv = False
-
-            # default to hp3par_cpg if hp3par_cpg_snap is not set.
-            if self.config.hp3par_cpg_snap == "":
-                snap_default = self.config.hp3par_cpg
-            else:
-                snap_default = self.config.hp3par_cpg_snap
-            snap_cpg = self._get_volume_type_value(volume_type,
-                                                   'snap_cpg',
-                                                   snap_default)
 
             # check for valid persona even if we don't use it until
             # attach time, this will given end user notice that the
@@ -624,7 +635,7 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
-        metadata = {'3ParName': volume_name, 'CPG': self.config.hp3par_cpg,
+        metadata = {'3ParName': volume_name, 'CPG': cpg,
                     'snapCPG': extras['snapCPG']}
         return metadata
 
