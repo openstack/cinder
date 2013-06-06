@@ -194,6 +194,10 @@ class ImageUnacceptable(Invalid):
     message = _("Image %(image_id)s is unacceptable: %(reason)s")
 
 
+class DeviceUnavailable(Invalid):
+    message = _("The device in the path %(path)s is unavailable: %(reason)s")
+
+
 class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 

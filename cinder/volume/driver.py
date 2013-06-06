@@ -310,6 +310,16 @@ class ISCSIDriver(VolumeDriver):
                   (iscsi_command, out, err))
         return (out, err)
 
+    def _run_iscsiadm_bare(self, iscsi_command, **kwargs):
+        check_exit_code = kwargs.pop('check_exit_code', 0)
+        (out, err) = utils.execute('iscsiadm',
+                                   *iscsi_command,
+                                   run_as_root=True,
+                                   check_exit_code=check_exit_code)
+        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
+                  (iscsi_command, out, err))
+        return (out, err)
+
     def _iscsiadm_update(self, iscsi_properties, property_key, property_value,
                          **kwargs):
         iscsi_command = ('--op', 'update', '-n', property_key,
@@ -346,6 +356,22 @@ class ISCSIDriver(VolumeDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
+
+    def _check_valid_device(self, path):
+        cmd = ('dd', 'if=%(path)s' % {"path": path},
+               'of=/dev/null', 'count=1')
+        out, info = None, None
+        try:
+            out, info = utils.execute(*cmd, run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            LOG.error(_("Failed to access the device on the path "
+                        "%(path)s: %(error)s.") %
+                      {"path": path, "error": e.stderr})
+            return False
+        # If the info is none, the path does not exist.
+        if info is None:
+            return False
+        return True
 
     def _get_iscsi_initiator(self):
         """Get iscsi initiator name for this machine"""
@@ -418,40 +444,71 @@ class ISCSIDriver(VolumeDriver):
                                   "node.session.auth.password",
                                   iscsi_properties['auth_password'])
 
-        # NOTE(vish): If we have another lun on the same target, we may
-        #             have a duplicate login
-        self._run_iscsiadm(iscsi_properties, ("--login",),
-                           check_exit_code=[0, 255])
-
-        self._iscsiadm_update(iscsi_properties, "node.startup", "automatic")
-
         host_device = ("/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" %
                        (iscsi_properties['target_portal'],
                         iscsi_properties['target_iqn'],
                         iscsi_properties.get('target_lun', 0)))
 
-        tries = 0
-        while not os.path.exists(host_device):
-            if tries >= self.configuration.num_iscsi_scan_tries:
-                raise exception.CinderException(
-                    _("iSCSI device not found at %s") % (host_device))
+        out = self._run_iscsiadm_bare(["-m", "session"],
+                                      run_as_root=True,
+                                      check_exit_code=[0, 1, 21])[0] or ""
 
-            LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
-                     "Will rescan & retry.  Try number: %(tries)s") %
-                     locals())
+        portals = [{'portal': p.split(" ")[2], 'iqn': p.split(" ")[3]}
+                   for p in out.splitlines() if p.startswith("tcp:")]
 
-            # The rescan isn't documented as being necessary(?), but it helps
-            self._run_iscsiadm(iscsi_properties, ("--rescan",))
+        stripped_portal = iscsi_properties['target_portal'].split(",")[0]
+        length_iqn = [s for s in portals
+                      if stripped_portal ==
+                      s['portal'].split(",")[0] and
+                      s['iqn'] == iscsi_properties['target_iqn']]
+        if len(portals) == 0 or len(length_iqn) == 0:
+            try:
+                self._run_iscsiadm(iscsi_properties, ("--login",),
+                                   check_exit_code=[0, 255])
+            except exception.ProcessExecutionError as err:
+                if err.exit_code in [15]:
+                    self._iscsiadm_update(iscsi_properties,
+                                          "node.startup",
+                                          "automatic")
+                    return iscsi_properties, host_device
+                else:
+                    raise
 
-            tries = tries + 1
-            if not os.path.exists(host_device):
-                time.sleep(tries ** 2)
+            self._iscsiadm_update(iscsi_properties,
+                                  "node.startup", "automatic")
 
-        if tries != 0:
-            LOG.debug(_("Found iSCSI node %(host_device)s "
-                      "(after %(tries)s rescans)") %
-                      locals())
+            tries = 0
+            while not os.path.exists(host_device):
+                if tries >= self.configuration.num_iscsi_scan_tries:
+                    raise exception.CinderException(_("iSCSI device "
+                                                      "not found "
+                                                      "at %s") % (host_device))
 
+                LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
+                           "Will rescan & retry.  Try number: %(tries)s.") %
+                         {'host_device': host_device, 'tries': tries})
+
+                # The rescan isn't documented as being necessary(?),
+                # but it helps
+                self._run_iscsiadm(iscsi_properties, ("--rescan",))
+
+                tries = tries + 1
+                if not os.path.exists(host_device):
+                    time.sleep(tries ** 2)
+
+            if tries != 0:
+                LOG.debug(_("Found iSCSI node %(host_device)s "
+                            "(after %(tries)s rescans).") %
+                          {'host_device': host_device,
+                           'tries': tries})
+
+        if not self._check_valid_device(host_device):
+            raise exception.DeviceUnavailable(path=host_device,
+                                              reason=(_("Unable to access "
+                                                        "the backend storage "
+                                                        "via the path "
+                                                        "%(path)s.") %
+                                                      {'path': host_device}))
         return iscsi_properties, host_device
 
     def get_volume_stats(self, refresh=False):
