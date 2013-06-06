@@ -54,7 +54,7 @@ def get_configured_driver(server='ignore_server', path='ignore_path'):
 class DriverTestCase(test.TestCase):
 
     def assert_flag(self, flagname):
-        self.assertTrue(hasattr(driver.FLAGS, flagname))
+        self.assertTrue(hasattr(driver.CONF, flagname))
 
     def test_config_options(self):
         self.assert_flag('xenapi_connection_url')
@@ -210,10 +210,10 @@ class DriverTestCase(test.TestCase):
         drv.nfs_ops = ops
         drv.db = db
 
-        mock.StubOutWithMock(driver, 'FLAGS')
-        driver.FLAGS.xenapi_nfs_server = server
-        driver.FLAGS.xenapi_nfs_serverpath = serverpath
-        driver.FLAGS.xenapi_sr_base_path = sr_base_path
+        mock.StubOutWithMock(driver, 'CONF')
+        driver.CONF.xenapi_nfs_server = server
+        driver.CONF.xenapi_nfs_serverpath = serverpath
+        driver.CONF.xenapi_sr_base_path = sr_base_path
 
         return mock, drv
 

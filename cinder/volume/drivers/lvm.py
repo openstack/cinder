@@ -28,7 +28,6 @@ from oslo.config import cfg
 
 from cinder.brick.iscsi import iscsi
 from cinder import exception
-from cinder import flags
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -60,8 +59,8 @@ volume_opts = [
                     'this requires lvm_mirrors + 2 pvs with available space'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(volume_opts)
+CONF = cfg.CONF
+CONF.register_opts(volume_opts)
 
 
 class LVMVolumeDriver(driver.VolumeDriver):
@@ -266,7 +265,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
-        volume_name = FLAGS.volume_name_template % src_vref['id']
+        volume_name = self.configuration.volume_name_template % src_vref['id']
         temp_id = 'tmp-snap-%s' % src_vref['id']
         temp_snapshot = {'volume_name': volume_name,
                          'size': src_vref['size'],
@@ -346,8 +345,10 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                            "provision for volume: %s"), volume['id'])
                 return
 
-            iscsi_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
-            volume_path = "/dev/%s/%s" % (FLAGS.volume_group, volume['name'])
+            iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                                   volume['name'])
+            volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
+                                          volume['name'])
             iscsi_target = 1
 
             self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
@@ -611,17 +612,22 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
         out, err = self._execute('lvs', '--option',
                                  'name', '--noheadings',
                                  run_as_root=True)
-        pool_name = "%s-pool" % FLAGS.volume_group
+        pool_name = "%s-pool" % self.configuration.volume_group
         if pool_name not in out:
-            if not FLAGS.pool_size:
-                out, err = self._execute('vgs', FLAGS.volume_group,
-                                         '--noheadings', '--options',
-                                         'name,size', run_as_root=True)
+            if not self.configuration.pool_size:
+                out, err = self._execute('vgs',
+                                         self.configuration.volume_group,
+                                         '--noheadings',
+                                         '--options',
+                                         'name,size',
+                                         run_as_root=True)
+
                 size = re.sub(r'[\.][\d][\d]', '', out.split()[1])
             else:
-                size = "%s" % FLAGS.pool_size
+                size = "%s" % self.configuration.pool_size
 
-            pool_path = '%s/%s' % (FLAGS.volume_group, pool_name)
+            pool_path = '%s/%s' % (self.configuration.volume_group,
+                                   pool_name)
             out, err = self._execute('lvcreate', '-T', '-L', size,
                                      pool_path, run_as_root=True)
 
@@ -638,7 +644,8 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
         """Creates a logical volume. Can optionally return a Dictionary of
         changes to the volume object to be persisted."""
         sizestr = self._sizestr(volume['size'])
-        vg_name = ("%s/%s-pool" % (FLAGS.volume_group, FLAGS.volume_group))
+        vg_name = ("%s/%s-pool" % (self.configuration.volume_group,
+                                   self.configuration.volume_group))
         self._try_execute('lvcreate', '-T', '-V', sizestr, '-n',
                           volume['name'], vg_name, run_as_root=True)
 
@@ -647,19 +654,21 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
         if self._volume_not_present(volume['name']):
             return True
         self._try_execute('lvremove', '-f', "%s/%s" %
-                          (FLAGS.volume_group,
+                          (self.configuration.volume_group,
                            self._escape_snapshot(volume['name'])),
                           run_as_root=True)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
-        orig_lv_name = "%s/%s" % (FLAGS.volume_group, src_vref['name'])
+        orig_lv_name = "%s/%s" % (self.configuration.volume_group,
+                                  src_vref['name'])
         self._do_lvm_snapshot(orig_lv_name, volume, False)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot of a volume."""
-        orig_lv_name = "%s/%s" % (FLAGS.volume_group, snapshot['volume_name'])
+        orig_lv_name = "%s/%s" % (self.configuration.volume_group,
+                                  snapshot['volume_name'])
         self._do_lvm_snapshot(orig_lv_name, snapshot)
 
     def get_volume_stats(self, refresh=False):

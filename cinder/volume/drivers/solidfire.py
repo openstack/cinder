@@ -50,6 +50,10 @@ sf_opts = [
                help='Create SolidFire accounts with this prefix'), ]
 
 
+CONF = cfg.CONF
+CONF.register_opts(sf_opts)
+
+
 class SolidFire(SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 

@@ -29,12 +29,11 @@ from oslo.config import cfg
 from xml.dom.minidom import parseString
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 try:
     import pywbem
@@ -62,7 +61,7 @@ class EMCSMISCommon():
                          default=CINDER_EMC_CONFIG_FILE,
                          help='use this file for cinder emc plugin '
                          'config data')
-        FLAGS.register_opt(opt)
+        CONF.register_opt(opt)
         self.protocol = prtcl
         self.configuration = configuration
         self.configuration.append_config_values([opt])

@@ -22,15 +22,11 @@ Contrib : Larry Matter <support@coraid.com>
 """
 
 import cookielib
-import os
 import time
 import urllib2
 
 from oslo.config import cfg
 
-from cinder import context
-from cinder import exception
-from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
@@ -38,7 +34,6 @@ from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
-FLAGS = flags.FLAGS
 coraid_opts = [
     cfg.StrOpt('coraid_esm_address',
                default='',
@@ -57,7 +52,9 @@ coraid_opts = [
                default='coraid_repository',
                help='Volume Type key name to store ESM Repository Name'),
 ]
-FLAGS.register_opts(coraid_opts)
+
+CONF = cfg.CONF
+CONF.register_opts(coraid_opts)
 
 
 class CoraidException(Exception):
@@ -325,11 +322,11 @@ class CoraidDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Create a Snapshot."""
+        volume_name = (self.configuration.volume_name_template
+                       % snapshot['volume_id'])
+        snapshot_name = (self.configuration.snapshot_name_template
+                         % snapshot['id'])
         try:
-            volume_name = (FLAGS.volume_name_template
-                           % snapshot['volume_id'])
-            snapshot_name = (FLAGS.snapshot_name_template
-                             % snapshot['id'])
             self.esm.create_snapshot(volume_name, snapshot_name)
         except Exception, e:
             msg = _('Failed to Create Snapshot %(snapname)s')
@@ -339,9 +336,9 @@ class CoraidDriver(driver.VolumeDriver):
 
     def delete_snapshot(self, snapshot):
         """Delete a Snapshot."""
+        snapshot_name = (self.configuration.snapshot_name_template
+                         % snapshot['id'])
         try:
-            snapshot_name = (FLAGS.snapshot_name_template
-                             % snapshot['id'])
             self.esm.delete_snapshot(snapshot_name)
         except Exception:
             msg = _('Failed to Delete Snapshot %(snapname)s')
@@ -351,10 +348,10 @@ class CoraidDriver(driver.VolumeDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a Volume from a Snapshot."""
+        snapshot_name = (self.configuration.snapshot_name_template
+                         % snapshot['id'])
+        repository = self._get_repository(volume['volume_type'])
         try:
-            snapshot_name = (FLAGS.snapshot_name_template
-                             % snapshot['id'])
-            repository = self._get_repository(volume['volume_type'])
             self.esm.create_volume_from_snapshot(snapshot_name,
                                                  volume['name'],
                                                  repository)

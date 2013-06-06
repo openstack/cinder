@@ -19,7 +19,6 @@
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.image import glance
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
@@ -53,9 +52,9 @@ xenapi_nfs_opts = [
                help='Path of exported NFS, used by XenAPINFSDriver'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(xenapi_opts)
-FLAGS.register_opts(xenapi_nfs_opts)
+CONF = cfg.CONF
+CONF.register_opts(xenapi_opts)
+CONF.register_opts(xenapi_nfs_opts)
 
 
 class XenAPINFSDriver(driver.VolumeDriver):
@@ -166,8 +165,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
     def _use_image_utils_to_pipe_bytes_to_volume(self, context, volume,
                                                  image_service, image_id):
         sr_uuid, vdi_uuid = volume['provider_location'].split('/')
-        with self.nfs_ops.volume_attached_here(FLAGS.xenapi_nfs_server,
-                                               FLAGS.xenapi_nfs_serverpath,
+        with self.nfs_ops.volume_attached_here(CONF.xenapi_nfs_server,
+                                               CONF.xenapi_nfs_serverpath,
                                                sr_uuid, vdi_uuid,
                                                False) as device:
             image_utils.fetch_to_raw(context,
@@ -184,22 +183,22 @@ class XenAPINFSDriver(driver.VolumeDriver):
         auth_token = context.auth_token
 
         overwrite_result = self.nfs_ops.use_glance_plugin_to_overwrite_volume(
-            FLAGS.xenapi_nfs_server,
-            FLAGS.xenapi_nfs_serverpath,
+            CONF.xenapi_nfs_server,
+            CONF.xenapi_nfs_serverpath,
             sr_uuid,
             vdi_uuid,
             glance_server,
             image_id,
             auth_token,
-            FLAGS.xenapi_sr_base_path)
+            CONF.xenapi_sr_base_path)
 
         if overwrite_result is False:
             raise exception.ImageCopyFailure(reason='Overwriting volume '
                                                     'failed.')
 
         self.nfs_ops.resize_volume(
-            FLAGS.xenapi_nfs_server,
-            FLAGS.xenapi_nfs_serverpath,
+            CONF.xenapi_nfs_server,
+            CONF.xenapi_nfs_serverpath,
             sr_uuid,
             vdi_uuid,
             volume['size'])
@@ -215,8 +214,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
     def _use_image_utils_to_upload_volume(self, context, volume, image_service,
                                           image_meta):
         sr_uuid, vdi_uuid = volume['provider_location'].split('/')
-        with self.nfs_ops.volume_attached_here(FLAGS.xenapi_nfs_server,
-                                               FLAGS.xenapi_nfs_serverpath,
+        with self.nfs_ops.volume_attached_here(CONF.xenapi_nfs_server,
+                                               CONF.xenapi_nfs_serverpath,
                                                sr_uuid, vdi_uuid,
                                                True) as device:
             image_utils.upload_volume(context,
@@ -235,14 +234,14 @@ class XenAPINFSDriver(driver.VolumeDriver):
         auth_token = context.auth_token
 
         self.nfs_ops.use_glance_plugin_to_upload_volume(
-            FLAGS.xenapi_nfs_server,
-            FLAGS.xenapi_nfs_serverpath,
+            CONF.xenapi_nfs_server,
+            CONF.xenapi_nfs_serverpath,
             sr_uuid,
             vdi_uuid,
             glance_server,
             image_id,
             auth_token,
-            FLAGS.xenapi_sr_base_path)
+            CONF.xenapi_sr_base_path)
 
     def get_volume_stats(self, refresh=False):
         if refresh or not self._stats:

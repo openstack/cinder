@@ -94,6 +94,10 @@ hp3par_opts = [
 ]
 
 
+CONF = cfg.CONF
+CONF.register_opts(hp3par_opts)
+
+
 class HP3PARCommon(object):
 
     stats = {}
@@ -834,7 +838,7 @@ exit
                 # use the wwn to see if we can find the hostname
                 hostname = self._get_3par_hostname_from_wwn_iqn(wwn_iqn)
                 # no 3par host, re-throw
-                if (hostname == None):
+                if (hostname is None):
                     raise
             else:
             # not a 'host does not exist' HTTPNotFound exception, re-throw

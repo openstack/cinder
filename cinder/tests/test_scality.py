@@ -77,9 +77,9 @@ class ScalityDriverTestCase(test.TestCase):
                 raise e
 
     def _configure_driver(self):
-        scality.FLAGS.scality_sofs_config = self.TEST_CONFIG
-        scality.FLAGS.scality_sofs_mount_point = self.TEST_MOUNT
-        scality.FLAGS.scality_sofs_volume_dir = self.TEST_VOLDIR
+        scality.CONF.scality_sofs_config = self.TEST_CONFIG
+        scality.CONF.scality_sofs_mount_point = self.TEST_MOUNT
+        scality.CONF.scality_sofs_volume_dir = self.TEST_VOLDIR
 
     def _execute_wrapper(self, cmd, *args, **kwargs):
         try:
@@ -116,13 +116,13 @@ class ScalityDriverTestCase(test.TestCase):
 
     def test_setup_no_config(self):
         """Missing SOFS configuration shall raise an error."""
-        scality.FLAGS.scality_sofs_config = None
+        scality.CONF.scality_sofs_config = None
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.do_setup, None)
 
     def test_setup_missing_config(self):
         """Non-existent SOFS configuration file shall raise an error."""
-        scality.FLAGS.scality_sofs_config = 'nonexistent.conf'
+        scality.CONF.scality_sofs_config = 'nonexistent.conf'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.do_setup, None)
 

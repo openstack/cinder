@@ -42,6 +42,10 @@ netapp_nfs_opts = [
                help='Does snapshot creation call returns immediately')]
 
 
+CONF = cfg.CONF
+CONF.register_opts(netapp_nfs_opts)
+
+
 class NetAppNFSDriver(nfs.NfsDriver):
     """Executes commands relating to Volumes."""
     def __init__(self, *args, **kwargs):

@@ -128,6 +128,9 @@ class RADOSClient(object):
     def __exit__(self, type_, value, traceback):
         self.driver._disconnect_from_rados(self.cluster, self.ioctx)
 
+CONF = cfg.CONF
+CONF.register_opts(rbd_opts)
+
 
 class RBDDriver(driver.VolumeDriver):
     """Implements RADOS block device (RBD) volume commands"""

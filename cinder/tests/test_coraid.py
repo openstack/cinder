@@ -120,6 +120,8 @@ class TestCoraidDriver(test.TestCase):
         configuration.coraid_user = fake_esm_username
         configuration.coraid_group = fake_esm_group
         configuration.coraid_password = fake_esm_password
+        configuration.volume_name_template = "volume-%s"
+        configuration.snapshot_name_template = "snapshot-%s"
 
         self.drv = CoraidDriver(configuration=configuration)
         self.drv.do_setup({})

@@ -18,14 +18,14 @@ SheepDog Volume Driver.
 """
 import re
 
+from oslo.config import cfg
+
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
 
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
 
 
 class SheepdogDriver(driver.VolumeDriver):
