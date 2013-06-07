@@ -732,6 +732,60 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         }
         self.assertEquals(request['body'], expected)
 
+    def test_imageref(self):
+        self_request = """
+<volume xmlns="http://docs.openstack.org/volume/api/v1"
+        size="1"
+        display_name="Volume-xml"
+        display_description="description"
+        imageRef="4a90189d-d702-4c7c-87fc-6608c554d737"></volume>"""
+        request = self.deserializer.deserialize(self_request)
+        expected = {
+            "volume": {
+                "size": "1",
+                "display_name": "Volume-xml",
+                "display_description": "description",
+                "imageRef": "4a90189d-d702-4c7c-87fc-6608c554d737",
+            },
+        }
+        self.assertEquals(expected, request['body'])
+
+    def test_snapshot_id(self):
+        self_request = """
+<volume xmlns="http://docs.openstack.org/volume/api/v1"
+        size="1"
+        display_name="Volume-xml"
+        display_description="description"
+        snapshot_id="4a90189d-d702-4c7c-87fc-6608c554d737"></volume>"""
+        request = self.deserializer.deserialize(self_request)
+        expected = {
+            "volume": {
+                "size": "1",
+                "display_name": "Volume-xml",
+                "display_description": "description",
+                "snapshot_id": "4a90189d-d702-4c7c-87fc-6608c554d737",
+            },
+        }
+        self.assertEquals(expected, request['body'])
+
+    def test_source_volid(self):
+        self_request = """
+<volume xmlns="http://docs.openstack.org/volume/api/v1"
+        size="1"
+        display_name="Volume-xml"
+        display_description="description"
+        source_volid="4a90189d-d702-4c7c-87fc-6608c554d737"></volume>"""
+        request = self.deserializer.deserialize(self_request)
+        expected = {
+            "volume": {
+                "size": "1",
+                "display_name": "Volume-xml",
+                "display_description": "description",
+                "source_volid": "4a90189d-d702-4c7c-87fc-6608c554d737",
+            },
+        }
+        self.assertEquals(expected, request['body'])
+
 
 class VolumesUnprocessableEntityTestCase(test.TestCase):
 
