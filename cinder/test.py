@@ -100,6 +100,7 @@ class TestCase(testtools.TestCase):
         # because it screws with our generators
         self.mox = mox.Mox()
         self.stubs = stubout.StubOutForTesting()
+        self.addCleanup(FLAGS.reset)
         self.addCleanup(self.mox.UnsetStubs)
         self.addCleanup(self.stubs.UnsetAll)
         self.addCleanup(self.stubs.SmartUnsetAll)
@@ -107,7 +108,6 @@ class TestCase(testtools.TestCase):
         self.injected = []
         self._services = []
         FLAGS.set_override('fatal_exception_format_errors', True)
-        self.addCleanup(FLAGS.reset)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
