@@ -27,8 +27,8 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder import utils
 from cinder.volume import driver
 
 try:
@@ -420,7 +420,7 @@ class RBDDriver(driver.VolumeDriver):
         tmp_dir = self.configuration.volume_tmp_dir or '/tmp'
         tmp_file = os.path.join(tmp_dir,
                                 volume['name'] + '-' + image_meta['id'])
-        with utils.remove_path_on_error(tmp_file):
+        with fileutils.remove_path_on_error(tmp_file):
             args = ['rbd', 'export',
                     '--pool', self.configuration.rbd_pool,
                     volume['name'], tmp_file]

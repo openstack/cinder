@@ -26,6 +26,7 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import utils as volume_utils
@@ -132,7 +133,7 @@ class TgtAdm(TargetAdmin):
         # Note(jdg) tid and lun aren't used by TgtAdm but remain for
         # compatibility
 
-        utils.ensure_tree(FLAGS.volumes_dir)
+        fileutils.ensure_tree(FLAGS.volumes_dir)
 
         vol_id = name.split(':')[1]
         if chap_auth is None:
