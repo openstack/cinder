@@ -572,3 +572,32 @@ class DBAPIQuotaTestCase(BaseTest):
                     'res2': {'in_use': 2, 'reserved': 2}}
         self.assertEqual(expected, db.quota_usage_get_all_by_project(
                          self.ctxt, 'p1'))
+
+
+class DBAPIIscsiTargetTestCase(BaseTest):
+
+    """Unit tests for cinder.db.api.iscsi_target_*."""
+
+    def _get_base_values(self):
+        return {'target_num': 10, 'host': 'fake_host'}
+
+    def test_iscsi_target_create_safe(self):
+        target = db.iscsi_target_create_safe(self.ctxt,
+                                             self._get_base_values())
+        self.assertTrue(target['id'])
+        self.assertEqual(target['host'], 'fake_host')
+        self.assertEqual(target['target_num'], 10)
+
+    def test_iscsi_target_count_by_host(self):
+        for i in range(3):
+            values = self._get_base_values()
+            values['target_num'] += i
+            db.iscsi_target_create_safe(self.ctxt, values)
+        self.assertEqual(db.iscsi_target_count_by_host(self.ctxt, 'fake_host'),
+                         3)
+
+    @test.testtools.skip("bug 1187367")
+    def test_integrity_error(self):
+        db.iscsi_target_create_safe(self.ctxt, self._get_base_values())
+        self.assertFalse(db.iscsi_target_create_safe(self.ctxt,
+                                                     self._get_base_values()))
