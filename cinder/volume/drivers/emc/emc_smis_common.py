@@ -1314,7 +1314,7 @@ class EMCSMISCommon():
                      'connector': connector,
                      'ctrl': str(ctrl)})
 
-        associators = conn.Associators(
+        associators = self.conn.Associators(
             ctrl,
             resultClass='EMC_StorageVolume')
 
