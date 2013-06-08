@@ -346,10 +346,10 @@ class NfsDriver(RemoteFsDriver):
                 # NOTE(morganfainberg): If we are setup for oversubscription
                 # we need to calculate the apparent available space instead
                 # of just using the _actual_ available space.
-                if (total_available * oversub_ratio) < requested_volume_size:
+                if (total_allocated * oversub_ratio) < requested_volume_size:
                     LOG.debug(_('%s is above nfs_oversub_ratio'), nfs_share)
                     continue
-            elif total_available <= requested_volume_size:
+            elif total_allocated <= requested_volume_size:
                 LOG.debug(_('%s is above nfs_oversub_ratio'), nfs_share)
                 continue
 
