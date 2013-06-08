@@ -155,7 +155,7 @@ class Server(object):
                 if use_ssl:
                     sock = wrap_ssl(sock)
 
-            except socket.error, err:
+            except socket.error as err:
                 if err.args[0] != errno.EADDRINUSE:
                     raise
                 eventlet.sleep(0.1)

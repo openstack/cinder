@@ -169,7 +169,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             try:
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
-            except Exception, exc:
+            except Exception as exc:
                 LOG.warning(_('Exception during mounting %s') % (exc,))
 
         LOG.debug('Available shares %s' % str(self._mounted_shares))

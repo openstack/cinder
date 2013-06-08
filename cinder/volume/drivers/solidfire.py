@@ -145,7 +145,7 @@ class SolidFire(SanISCSIDriver):
                 data = response.read()
                 try:
                     data = json.loads(data)
-                except (TypeError, ValueError), exc:
+                except (TypeError, ValueError) as exc:
                     connection.close()
                     msg = _("Call to json.loads() raised "
                             "an exception: %s") % exc

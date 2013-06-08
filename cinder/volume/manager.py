@@ -645,7 +645,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              image_meta)
             LOG.debug(_("Uploaded volume %(volume_id)s to "
                         "image (%(image_id)s) successfully") % locals())
-        except Exception, error:
+        except Exception as error:
             with excutils.save_and_reraise_exception():
                 payload['message'] = unicode(error)
         finally:

@@ -220,7 +220,7 @@ def trycmd(*args, **kwargs):
     try:
         out, err = execute(*args, **kwargs)
         failed = False
-    except exception.ProcessExecutionError, exn:
+    except exception.ProcessExecutionError as exn:
         out, err = '', str(exn)
         LOG.debug(err)
         failed = True
@@ -620,7 +620,7 @@ class LoopingCall(object):
                     if not self._running:
                         break
                     greenthread.sleep(interval)
-            except LoopingCallDone, e:
+            except LoopingCallDone as e:
                 self.stop()
                 done.send(e.retvalue)
             except Exception:
@@ -1062,7 +1062,7 @@ def tempdir(**kwargs):
     finally:
         try:
             shutil.rmtree(tmpdir)
-        except OSError, e:
+        except OSError as e:
             LOG.debug(_('Could not remove tmpdir: %s'), str(e))
 
 

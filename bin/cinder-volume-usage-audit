@@ -82,7 +82,7 @@ if __name__ == '__main__':
         try:
             cinder.volume.utils.notify_usage_exists(admin_context,
                                                     volume_ref)
-        except Exception, e:
+        except Exception as e:
             print traceback.format_exc(e)
 
     snapshots = db.snapshot_get_active_by_window(admin_context,
@@ -95,7 +95,7 @@ if __name__ == '__main__':
                                                             snapshot_ref,
                                                             'exists',
                                                             extra_info)
-        except Exception, e:
+        except Exception as e:
             print traceback.fromat_exc(e)
 
     print _("Volume usage audit completed")
