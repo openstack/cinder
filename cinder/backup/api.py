@@ -24,12 +24,22 @@ from cinder.db import base
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
+import cinder.policy
 import cinder.volume
 
 
 FLAGS = flags.FLAGS
 
 LOG = logging.getLogger(__name__)
+
+
+def check_policy(context, action):
+        target = {
+            'project_id': context.project_id,
+            'user_id': context.user_id,
+        }
+        _action = 'backup:%s' % action
+        cinder.policy.enforce(context, _action, target)
 
 
 class API(base.Base):
@@ -41,6 +51,7 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def get(self, context, backup_id):
+        check_policy(context, 'get')
         rv = self.db.backup_get(context, backup_id)
         return dict(rv.iteritems())
 
@@ -48,6 +59,7 @@ class API(base.Base):
         """
         Make the RPC call to delete a volume backup.
         """
+        check_policy(context, 'delete')
         backup = self.get(context, backup_id)
         if backup['status'] not in ['available', 'error']:
             msg = _('Backup status must be available or error')
@@ -60,6 +72,7 @@ class API(base.Base):
 
     # TODO(moorehef): Add support for search_opts, discarded atm
     def get_all(self, context, search_opts={}):
+        check_policy(context, 'get_all')
         if context.is_admin:
             backups = self.db.backup_get_all(context)
         else:
@@ -73,6 +86,7 @@ class API(base.Base):
         """
         Make the RPC call to create a volume backup.
         """
+        check_policy(context, 'create')
         volume = self.volume_api.get(context, volume_id)
         if volume['status'] != "available":
             msg = _('Volume to be backed up must be available')
@@ -107,6 +121,7 @@ class API(base.Base):
         """
         Make the RPC call to restore a volume backup.
         """
+        check_policy(context, 'restore')
         backup = self.get(context, backup_id)
         if backup['status'] != 'available':
             msg = _('Backup status must be available')

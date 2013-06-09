@@ -43,6 +43,11 @@
     "volume:create_transfer": [],
     "volume:accept_transfer": [],
     "volume:delete_transfer": [],
-    "volume:get_all_transfers": []
-
+    "volume:get_all_transfers": [],
+    
+    "backup:create" : [],
+    "backup:delete": [],
+    "backup:get": [],
+    "backup:get_all": [],
+    "backup:restore": []
 }
