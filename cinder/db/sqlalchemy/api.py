@@ -742,18 +742,17 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     #            a best-effort mechanism.
 
         # Check for deltas that would go negative
-        unders = [resource for resource, delta in deltas.items()
-                  if delta < 0 and
-                  delta + usages[resource].in_use < 0]
+        unders = [r for r, delta in deltas.items()
+                  if delta < 0 and delta + usages[r].in_use < 0]
 
         # Now, let's check the quotas
         # NOTE(Vek): We're only concerned about positive increments.
         #            If a project has gone over quota, we want them to
         #            be able to reduce their usage without any
         #            problems.
-        overs = [resource for resource, delta in deltas.items()
-                 if quotas[resource] >= 0 and delta >= 0 and
-                 quotas[resource] < delta + usages[resource].total]
+        overs = [r for r, delta in deltas.items()
+                 if quotas[r] >= 0 and delta >= 0 and
+                 quotas[r] < delta + usages[r].total]
 
         # NOTE(Vek): The quota check needs to be in the transaction,
         #            but the transaction doesn't fail just because
