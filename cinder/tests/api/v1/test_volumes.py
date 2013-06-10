@@ -61,6 +61,8 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stubs.stub_volume_get_all_by_project)
+        self.stubs.Set(db, 'service_get_all_by_topic',
+                       stubs.stub_service_get_all_by_topic)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
 
@@ -122,6 +124,17 @@ class VolumeApiTest(test.TestCase):
                           self.controller.create,
                           req,
                           body)
+
+    def test_volume_creation_fails_with_bad_availability_zone(self):
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "zonen:hostn"}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.create,
+                          req, body)
 
     def test_volume_create_with_image_id(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)

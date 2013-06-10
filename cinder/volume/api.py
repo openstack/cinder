@@ -24,6 +24,7 @@ import functools
 
 from oslo.config import cfg
 
+from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder import flags
@@ -83,6 +84,7 @@ class API(base.Base):
                               glance.get_default_image_service())
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
+        self.availability_zones = set()
         super(API, self).__init__(db_driver)
 
     def create(self, context, size, name, description, snapshot=None,
@@ -184,6 +186,8 @@ class API(base.Base):
 
         if availability_zone is None:
             availability_zone = FLAGS.storage_availability_zone
+        else:
+            self._check_availabilty_zone(availability_zone)
 
         if not volume_type and not source_volume:
             volume_type = volume_types.get_default_volume_type()
@@ -290,6 +294,25 @@ class API(base.Base):
                 image_id,
                 request_spec=request_spec,
                 filter_properties=filter_properties)
+
+    def _check_availabilty_zone(self, availability_zone):
+        if availability_zone in self.availability_zones:
+            return
+
+        ctxt = context.get_admin_context()
+        topic = FLAGS.volume_topic
+        volume_services = self.db.service_get_all_by_topic(ctxt, topic)
+
+        # NOTE(haomai): In case of volume services isn't init or
+        # availability_zones is updated in the backend
+        self.availability_zones = set()
+        for service in volume_services:
+            self.availability_zones.add(service['availability_zone'])
+
+        if availability_zone not in self.availability_zones:
+            msg = _("Availability zone is invalid")
+            LOG.warn(msg)
+            raise exception.InvalidInput(reason=msg)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):

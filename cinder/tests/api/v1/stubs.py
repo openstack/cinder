@@ -129,3 +129,7 @@ def stub_snapshot_get_all_by_project(self, context):
 
 def stub_snapshot_update(self, context, *args, **param):
     pass
+
+
+def stub_service_get_all_by_topic(context, topic):
+    return [{'availability_zone': "zone1:host1"}]
