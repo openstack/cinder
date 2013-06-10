@@ -50,6 +50,7 @@ from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import periodic_task
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 from cinder import quota
@@ -705,7 +706,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.accept_transfer(volume_ref)
 
-    @manager.periodic_task
+    @periodic_task.periodic_task
     def _report_driver_status(self, context):
         LOG.info(_("Updating volume status"))
         volume_stats = self.driver.get_volume_stats(refresh=True)
