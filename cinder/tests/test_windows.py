@@ -18,6 +18,8 @@
 """
 Unit tests for Windows Server 2012 OpenStack Cinder volume driver
 """
+
+
 import sys
 
 from oslo.config import cfg
@@ -26,6 +28,7 @@ from cinder.tests.windows import basetestcase
 from cinder.tests.windows import db_fakes
 from cinder.tests.windows import windowsutils
 from cinder.volume.drivers import windows
+
 
 CONF = cfg.CONF
 

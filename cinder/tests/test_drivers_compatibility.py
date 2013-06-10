@@ -12,13 +12,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
+from oslo.config import cfg
+
 from cinder import context
-from cinder import flags
 from cinder.openstack.common import importutils
 from cinder import test
 from cinder.volume.drivers.solidfire import SolidFire
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 RBD_MODULE = "cinder.volume.drivers.rbd.RBDDriver"
 SHEEPDOG_MODULE = "cinder.volume.drivers.sheepdog.SheepdogDriver"
@@ -46,7 +49,7 @@ class VolumeDriverCompatibility(test.TestCase):
 
     def setUp(self):
         super(VolumeDriverCompatibility, self).setUp()
-        self.manager = importutils.import_object(FLAGS.volume_manager)
+        self.manager = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
 
     def tearDown(self):

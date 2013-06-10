@@ -23,13 +23,11 @@ import webob.exc
 from cinder.api.contrib import hosts as os_hosts
 from cinder import context
 from cinder import db
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
 
 
-FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
 created_time = datetime.datetime(2012, 11, 14, 1, 20, 41, 95099)
 curr_time = timeutils.utcnow()

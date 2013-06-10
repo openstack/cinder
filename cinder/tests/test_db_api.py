@@ -13,17 +13,19 @@
 """Unit tests for cinder.db.api."""
 
 
+import datetime
+
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import uuidutils
 from cinder.quota import ReservableResource
 from cinder import test
-from datetime import datetime
-from datetime import timedelta
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 
 def _quota_reserve(context, project_id):
@@ -49,9 +51,11 @@ def _quota_reserve(context, project_id):
             resource,
             get_sync(resource, i), 'quota_res_%d' % i)
         deltas[resource] = i
-    return db.quota_reserve(context, resources, quotas, deltas,
-                            datetime.utcnow(), datetime.utcnow(),
-                            timedelta(days=1), project_id)
+    return db.quota_reserve(
+        context, resources, quotas, deltas,
+        datetime.datetime.utcnow(), datetime.datetime.utcnow(),
+        datetime.timedelta(days=1), project_id
+    )
 
 
 class ModelsObjectComparatorMixin(object):
@@ -224,9 +228,12 @@ class DBAPIServiceTestCase(BaseTest):
 
     def test_service_get_all_volume_sorted(self):
         values = [
-            ({'host': 'h1', 'binary': 'a', 'topic': FLAGS.volume_topic}, 100),
-            ({'host': 'h2', 'binary': 'b', 'topic': FLAGS.volume_topic}, 200),
-            ({'host': 'h3', 'binary': 'b', 'topic': FLAGS.volume_topic}, 300)]
+            ({'host': 'h1', 'binary': 'a', 'topic': CONF.volume_topic},
+             100),
+            ({'host': 'h2', 'binary': 'b', 'topic': CONF.volume_topic},
+             200),
+            ({'host': 'h3', 'binary': 'b', 'topic': CONF.volume_topic},
+             300)]
         services = []
         for vals, size in values:
             services.append(self._create_service(vals))
@@ -386,12 +393,15 @@ class DBAPIReservationTestCase(BaseTest):
 
     def setUp(self):
         super(DBAPIReservationTestCase, self).setUp()
-        self.values = {'uuid': 'sample-uuid',
-                       'project_id': 'project1',
-                       'resource': 'resource',
-                       'delta': 42,
-                       'expire': datetime.utcnow() + timedelta(days=1),
-                       'usage': {'id': 1}}
+        self.values = {
+            'uuid': 'sample-uuid',
+            'project_id': 'project1',
+            'resource': 'resource',
+            'delta': 42,
+            'expire': (datetime.datetime.utcnow() +
+                       datetime.timedelta(days=1)),
+            'usage': {'id': 1}
+        }
 
     def test_reservation_create(self):
         reservation = db.reservation_create(self.ctxt, **self.values)
@@ -463,7 +473,8 @@ class DBAPIReservationTestCase(BaseTest):
                              'project1'))
 
     def test_reservation_expire(self):
-        self.values['expire'] = datetime.utcnow() + timedelta(days=1)
+        self.values['expire'] = datetime.datetime.utcnow() + \
+            datetime.timedelta(days=1)
         reservations = _quota_reserve(self.ctxt, 'project1')
         db.reservation_expire(self.ctxt)
 

@@ -14,11 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #
 
+
 import os
 
 import cinder.context
-
-FLAGS = cinder.flags.FLAGS
 
 
 def get_test_admin_context():

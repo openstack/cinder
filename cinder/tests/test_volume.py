@@ -22,16 +22,16 @@ Tests for Volume Code.
 
 import datetime
 import os
-
-import mox
 import shutil
 import tempfile
+
+import mox
+from oslo.config import cfg
 
 from cinder.brick.iscsi import iscsi
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.image import image_utils
 from cinder.openstack.common import importutils
 from cinder.openstack.common.notifier import api as notifier_api
@@ -45,8 +45,10 @@ from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 
+
 QUOTAS = quota.QUOTAS
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 
 class VolumeTestCase(test.TestCase):
@@ -58,7 +60,7 @@ class VolumeTestCase(test.TestCase):
         self.flags(connection_type='fake',
                    volumes_dir=vol_tmpdir,
                    notification_driver=[test_notifier.__name__])
-        self.volume = importutils.import_object(FLAGS.volume_manager)
+        self.volume = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         fake_image.stub_out_image_service(self.stubs)
@@ -66,7 +68,7 @@ class VolumeTestCase(test.TestCase):
 
     def tearDown(self):
         try:
-            shutil.rmtree(FLAGS.volumes_dir)
+            shutil.rmtree(CONF.volumes_dir)
         except OSError:
             pass
         notifier_api._reset_drivers()
@@ -85,10 +87,10 @@ class VolumeTestCase(test.TestCase):
         vol['image_id'] = image_id
         vol['user_id'] = 'fake'
         vol['project_id'] = 'fake'
-        vol['availability_zone'] = FLAGS.storage_availability_zone
+        vol['availability_zone'] = CONF.storage_availability_zone
         vol['status'] = status
         vol['attach_status'] = "detached"
-        vol['host'] = FLAGS.host
+        vol['host'] = CONF.host
         if metadata is not None:
             vol['metadata'] = metadata
         return db.volume_create(context.get_admin_context(), vol)
@@ -408,7 +410,7 @@ class VolumeTestCase(test.TestCase):
             self.assert_(iscsi_target not in targets)
             targets.append(iscsi_target)
 
-        total_slots = FLAGS.iscsi_num_targets
+        total_slots = CONF.iscsi_num_targets
         for _index in xrange(total_slots):
             self._create_volume()
         for volume_id in volume_ids:
@@ -1184,7 +1186,7 @@ class DriverTestCase(test.TestCase):
         vol_tmpdir = tempfile.mkdtemp()
         self.flags(volume_driver=self.driver_name,
                    volumes_dir=vol_tmpdir)
-        self.volume = importutils.import_object(FLAGS.volume_manager)
+        self.volume = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
         self.output = ""
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
@@ -1196,7 +1198,7 @@ class DriverTestCase(test.TestCase):
 
     def tearDown(self):
         try:
-            shutil.rmtree(FLAGS.volumes_dir)
+            shutil.rmtree(CONF.volumes_dir)
         except OSError:
             pass
         super(DriverTestCase, self).tearDown()
@@ -1267,7 +1269,7 @@ class ISCSITestCase(DriverTestCase):
 
         iscsi_driver = driver.ISCSIDriver(configuration=configuration)
         iscsi_driver._execute = lambda *a, **kw: \
-            ("%s dummy" % FLAGS.iscsi_ip_address, '')
+            ("%s dummy" % CONF.iscsi_ip_address, '')
         volume = {"name": "dummy",
                   "host": "0.0.0.0"}
         iscsi_driver._do_iscsi_discovery(volume)

@@ -16,7 +16,7 @@
 #    under the License.
 """Unit tests for the GlusterFS driver module."""
 
-import __builtin__
+
 import errno
 import os
 
@@ -29,7 +29,6 @@ from cinder import context
 from cinder import exception
 from cinder.exception import ProcessExecutionError
 from cinder import test
-
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import glusterfs
 

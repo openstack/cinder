@@ -16,10 +16,10 @@
 Tests For HostManager
 """
 
+from oslo.config import cfg
 
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common import timeutils
 from cinder.scheduler import host_manager
@@ -27,7 +27,7 @@ from cinder import test
 from cinder.tests.scheduler import fakes
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class FakeFilterClass1(filters.BaseHostFilter):
@@ -137,7 +137,7 @@ class HostManagerTestCase(test.TestCase):
 
     def test_get_all_host_states(self):
         context = 'fake_context'
-        topic = FLAGS.volume_topic
+        topic = CONF.volume_topic
 
         self.mox.StubOutWithMock(db, 'service_get_all_by_topic')
         self.mox.StubOutWithMock(host_manager.LOG, 'warn')

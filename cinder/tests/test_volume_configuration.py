@@ -18,17 +18,15 @@
 
 """Tests for the configuration wrapper in volume drivers."""
 
+
 from oslo.config import cfg
 
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration
-from cinder.volume import driver
 
 
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
 
 
 volume_opts = [
@@ -39,8 +37,9 @@ more_volume_opts = [
     cfg.IntOpt('int_opt', default=1),
 ]
 
-FLAGS.register_opts(volume_opts)
-FLAGS.register_opts(more_volume_opts)
+CONF = cfg.CONF
+CONF.register_opts(volume_opts)
+CONF.register_opts(more_volume_opts)
 
 
 class VolumeConfigurationTest(test.TestCase):
@@ -52,20 +51,20 @@ class VolumeConfigurationTest(test.TestCase):
 
     def test_group_grafts_opts(self):
         c = configuration.Configuration(volume_opts, config_group='foo')
-        self.assertEquals(c.str_opt, FLAGS.foo.str_opt)
-        self.assertEquals(c.bool_opt, FLAGS.foo.bool_opt)
+        self.assertEquals(c.str_opt, CONF.foo.str_opt)
+        self.assertEquals(c.bool_opt, CONF.foo.bool_opt)
 
     def test_opts_no_group(self):
         c = configuration.Configuration(volume_opts)
-        self.assertEquals(c.str_opt, FLAGS.str_opt)
-        self.assertEquals(c.bool_opt, FLAGS.bool_opt)
+        self.assertEquals(c.str_opt, CONF.str_opt)
+        self.assertEquals(c.bool_opt, CONF.bool_opt)
 
     def test_grafting_multiple_opts(self):
         c = configuration.Configuration(volume_opts, config_group='foo')
         c.append_config_values(more_volume_opts)
-        self.assertEquals(c.str_opt, FLAGS.foo.str_opt)
-        self.assertEquals(c.bool_opt, FLAGS.foo.bool_opt)
-        self.assertEquals(c.int_opt, FLAGS.foo.int_opt)
+        self.assertEquals(c.str_opt, CONF.foo.str_opt)
+        self.assertEquals(c.bool_opt, CONF.foo.bool_opt)
+        self.assertEquals(c.int_opt, CONF.foo.int_opt)
 
     def test_safe_get(self):
         c = configuration.Configuration(volume_opts, config_group='foo')

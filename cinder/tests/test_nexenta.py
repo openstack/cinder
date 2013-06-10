@@ -22,13 +22,15 @@ Unit tests for OpenStack Cinder volume driver
 import base64
 import urllib2
 
-import cinder.flags
+from oslo.config import cfg
+
 from cinder import test
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import volume
 
-FLAGS = cinder.flags.FLAGS
+
+CONF = cfg.CONF
 
 
 class TestNexentaDriver(test.TestCase):
@@ -148,9 +150,9 @@ class TestNexentaDriver(test.TestCase):
         self.assertEquals(
             retval,
             {'provider_location':
-                '%s:%s,1 %s%s 0' % (FLAGS.nexenta_host,
-                                    FLAGS.nexenta_iscsi_target_portal_port,
-                                    FLAGS.nexenta_target_prefix,
+                '%s:%s,1 %s%s 0' % (CONF.nexenta_host,
+                                    CONF.nexenta_iscsi_target_portal_port,
+                                    CONF.nexenta_target_prefix,
                                     self.TEST_VOLUME_NAME)})
 
     def __get_test(i):
@@ -203,7 +205,7 @@ class TestNexentaDriver(test.TestCase):
                  'available': '5368709120G',
                  'health': 'ONLINE'}
         self.nms_mock.volume.get_child_props(
-            FLAGS.nexenta_volume,
+            CONF.nexenta_volume,
             'health|size|used|available').AndReturn(stats)
         self.mox.ReplayAll()
         stats = self.drv.get_volume_stats(True)

@@ -13,16 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Unit Tests for volume transfers."""
+
+
 import datetime
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.transfer import api as transfer_api
-from cinder.volume import api as cinder_api
+
 
 LOG = logging.getLogger(__name__)
 

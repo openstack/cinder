@@ -19,16 +19,19 @@ Tests for Backup code.
 
 import tempfile
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
 
 
@@ -45,7 +48,7 @@ class BackupTestCase(test.TestCase):
         self.flags(connection_type='fake',
                    volumes_dir=vol_tmpdir)
         self.backup_mgr = \
-            importutils.import_object(FLAGS.backup_manager)
+            importutils.import_object(CONF.backup_manager)
         self.backup_mgr.host = 'testhost'
         self.ctxt = context.get_admin_context()
 
@@ -74,7 +77,7 @@ class BackupTestCase(test.TestCase):
         backup['container'] = container
         backup['status'] = status
         backup['fail_reason'] = ''
-        backup['service'] = FLAGS.backup_service
+        backup['service'] = CONF.backup_service
         backup['size'] = size
         backup['object_count'] = object_count
         return db.backup_create(self.ctxt, backup)['id']

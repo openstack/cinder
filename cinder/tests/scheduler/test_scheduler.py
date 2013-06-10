@@ -19,19 +19,14 @@
 Tests For Scheduler
 """
 
-
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import timeutils
 from cinder.scheduler import driver
 from cinder.scheduler import manager
 from cinder import test
 from cinder import utils
-
-
-FLAGS = flags.FLAGS
 
 
 class SchedulerManagerTestCase(test.TestCase):

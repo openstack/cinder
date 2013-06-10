@@ -14,28 +14,27 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import __builtin__
 import datetime
 import hashlib
 import os
-import os.path
 import paramiko
 import StringIO
 import tempfile
 import uuid
 
 import mox
+from oslo.config import cfg
 
 import cinder
 from cinder import exception
-from cinder import flags
-from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
 from cinder import test
 from cinder import utils
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ExecuteTestCase(test.TestCase):
@@ -302,7 +301,8 @@ class GenericUtilsTestCase(test.TestCase):
 
     def test_generate_glance_url(self):
         generated_url = utils.generate_glance_url()
-        actual_url = "http://%s:%d" % (FLAGS.glance_host, FLAGS.glance_port)
+        actual_url = "http://%s:%d" % (CONF.glance_host,
+                                       CONF.glance_port)
         self.assertEqual(generated_url, actual_url)
 
     def test_read_cached_file(self):

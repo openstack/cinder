@@ -18,14 +18,16 @@
 Unit Tests for cinder.scheduler.rpcapi
 """
 
+
+from oslo.config import cfg
+
 from cinder import context
-from cinder import flags
 from cinder.openstack.common import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class SchedulerRpcAPITestCase(test.TestCase):
@@ -58,7 +60,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
         self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, FLAGS.scheduler_topic, expected_msg]
+        expected_args = [ctxt, CONF.scheduler_topic, expected_msg]
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(arg, expected_arg)
 

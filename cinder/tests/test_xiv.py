@@ -20,16 +20,15 @@
 #   Erik Zaadi <erikz@il.ibm.com>
 #   Avishay Traeger <avishay@il.ibm.com>
 
+
 import mox
+from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import xiv
 
-
-FLAGS = flags.FLAGS
 
 FAKE = "fake"
 VOLUME = {'size': 16,
@@ -37,6 +36,8 @@ VOLUME = {'size': 16,
           'id': 1}
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
+
+CONF = cfg.CONF
 
 
 class XIVFakeProxyDriver(object):
@@ -56,10 +57,10 @@ class XIVFakeProxyDriver(object):
         self.volumes = {}
 
     def setup(self, context):
-        if self.xiv_info['xiv_user'] != FLAGS.san_login:
+        if self.xiv_info['xiv_user'] != CONF.san_login:
             raise self.exception.NotAuthorized()
 
-        if self.xiv_info['xiv_address'] != FLAGS.san_ip:
+        if self.xiv_info['xiv_address'] != CONF.san_ip:
             raise self.exception.HostNotFound(host='fake')
 
     def create_volume(self, volume):
@@ -127,13 +128,13 @@ class XIVVolumeDriverTest(test.TestCase):
         """Test that the san flags are passed to the XIV proxy."""
 
         self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_user'],
-                          FLAGS.san_login)
+                          CONF.san_login)
         self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_pass'],
-                          FLAGS.san_password)
+                          CONF.san_password)
         self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_address'],
-                          FLAGS.san_ip)
+                          CONF.san_ip)
         self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_vol_pool'],
-                          FLAGS.san_clustername)
+                          CONF.san_clustername)
 
     def test_setup_should_fail_if_credentials_are_invalid(self):
         """Test that the xiv_proxy validates credentials."""

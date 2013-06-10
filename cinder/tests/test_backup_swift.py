@@ -23,18 +23,17 @@ import os
 import tempfile
 import zlib
 
+from swiftclient import client as swift
+
 from cinder.backup.services.swift import SwiftBackupService
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.backup.fake_swift_client import FakeSwiftClient
-from swiftclient import client as swift
 
 
-FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
 
 
