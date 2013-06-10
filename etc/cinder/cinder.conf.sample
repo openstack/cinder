@@ -1083,6 +1083,8 @@
 # does not write them directly to the volume (string value)
 #volume_tmp_dir=<None>
 
+# Flatten images created from snapshots (to remove dependency)
+#rbd_flatten_volume_from_snapshot=False
 
 #
 # Options defined in cinder.volume.drivers.san.hp.hp_3par_common

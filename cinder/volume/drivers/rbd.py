@@ -52,6 +52,10 @@ rbd_opts = [
     cfg.StrOpt('rbd_ceph_conf',
                default='',  # default determined by librados
                help='path to the ceph configuration file to use'),
+    cfg.BoolOpt('rbd_flatten_volume_from_snapshot',
+                default=False,
+                help='flatten volumes created from snapshots to remove '
+                     'dependency'),
     cfg.StrOpt('rbd_secret_uuid',
                default=None,
                help='the libvirt uuid of the secret for the rbd_user'
@@ -254,6 +258,12 @@ class RBDDriver(driver.VolumeDriver):
                                   old_format=old_format,
                                   features=features)
 
+    def _flatten(self, pool, volume_name):
+        LOG.debug(_('flattening %(pool)s/%(img)s') %
+                  dict(pool=pool, img=volume_name))
+        with RBDVolumeProxy(self, volume_name, pool) as vol:
+            vol.flatten()
+
     def _clone(self, volume, src_pool, src_image, src_snap):
         LOG.debug(_('cloning %(pool)s/%(img)s@%(snap)s to %(dst)s') %
                   dict(pool=src_pool, img=src_image, snap=src_snap,
@@ -276,6 +286,8 @@ class RBDDriver(driver.VolumeDriver):
         """Creates a volume from a snapshot."""
         self._clone(volume, self.configuration.rbd_pool,
                     snapshot['volume_name'], snapshot['name'])
+        if self.configuration.rbd_flatten_volume_from_snapshot:
+            self._flatten(self.configuration.rbd_pool, volume['name'])
         if int(volume['size']):
             self._resize(volume)
 
