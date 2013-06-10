@@ -15,6 +15,8 @@
 
 """The hosts admin extension."""
 
+
+from oslo.config import cfg
 import webob.exc
 from xml.parsers import expat
 
@@ -23,13 +25,14 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import api as volume_api
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('volume', 'hosts')
 
@@ -103,7 +106,7 @@ def _list_hosts(req, service=None):
     hosts = []
     for host in services:
         delta = curr_time - (host['updated_at'] or host['created_at'])
-        alive = abs(utils.total_seconds(delta)) <= FLAGS.service_down_time
+        alive = abs(utils.total_seconds(delta)) <= CONF.service_down_time
         status = (alive and "available") or "unavailable"
         active = 'enabled'
         if host['disabled']:
@@ -205,7 +208,7 @@ class HostController(object):
         try:
             host_ref = db.service_get_by_host_and_topic(context,
                                                         host,
-                                                        FLAGS.volume_topic)
+                                                        CONF.volume_topic)
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound(explanation=_("Host not found"))
 

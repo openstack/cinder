@@ -18,6 +18,7 @@
 
 import os
 
+from oslo.config import cfg
 import webob.dec
 import webob.exc
 
@@ -25,15 +26,15 @@ import cinder.api.openstack
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import exception as common_exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 import cinder.policy
 
 
+CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
 
 
 class ExtensionDescriptor(object):
@@ -183,7 +184,7 @@ class ExtensionManager(object):
     def __init__(self):
         LOG.audit(_('Initializing extension manager.'))
 
-        self.cls_list = FLAGS.osapi_volume_extension
+        self.cls_list = CONF.osapi_volume_extension
         self.extensions = {}
         self._load_extensions()
 

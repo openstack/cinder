@@ -14,18 +14,17 @@
 
 """The Extended Snapshot Attributes API extension."""
 
+
 from webob import exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import volume
 
 
-FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
 authorize = extensions.soft_extension_authorizer(
     'volume',

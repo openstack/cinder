@@ -15,6 +15,7 @@
 
 """The volumes api."""
 
+
 import webob
 from webob import exc
 
@@ -23,7 +24,6 @@ from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
 from cinder.api import xmlutil
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
@@ -34,7 +34,6 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 SCHEDULER_HINTS_NAMESPACE =\
     "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2"
-FLAGS = flags.FLAGS
 
 
 def make_attachment(elem):

@@ -15,6 +15,7 @@
 
 """The backups api."""
 
+
 import webob
 from webob import exc
 from xml.dom import minidom
@@ -26,10 +27,9 @@ from cinder.api.views import backups as backup_views
 from cinder.api import xmlutil
 from cinder import backup as backupAPI
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 
-FLAGS = flags.FLAGS
+
 LOG = logging.getLogger(__name__)
 
 

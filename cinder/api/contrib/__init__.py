@@ -21,12 +21,13 @@ It can't be called 'extensions' because that causes namespacing problems.
 
 """
 
+from oslo.config import cfg
+
 from cinder.api import extensions
-from cinder import flags
 from cinder.openstack.common import log as logging
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -36,4 +37,4 @@ def standard_extensions(ext_mgr):
 
 def select_extensions(ext_mgr):
     extensions.load_standard_extensions(ext_mgr, LOG, __path__, __package__,
-                                        FLAGS.osapi_volume_ext_list)
+                                        CONF.osapi_volume_ext_list)
