@@ -108,7 +108,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.4'
+    RPC_API_VERSION = '1.6'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -747,3 +747,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_utils.notify_about_snapshot_usage(
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
+
+    def extend_volume(self, context, volume_id, new_size):
+        volume_ref = self.db.volume_get(context, volume_id)
+        self.driver.extend_volume(volume_ref, new_size)

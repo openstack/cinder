@@ -195,6 +195,10 @@ class VolumeDriver(object):
         """Clean up after an interrupted image copy."""
         pass
 
+    def extend_volume(self, volume, new_size):
+        msg = _("Extend volume not implemented")
+        raise NotImplementedError(msg)
+
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.

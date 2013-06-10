@@ -1176,6 +1176,39 @@ class VolumeTestCase(test.TestCase):
         self.assertEqual(snapshots[1].id, u'3')
         self.assertEqual(snapshots[2].id, u'4')
 
+    def test_extend_volume(self):
+        """Test volume can be extended."""
+        # create a volume and assign to host
+        volume = self._create_volume(2)
+        self.volume.create_volume(self.context, volume['id'])
+        volume['status'] = 'available'
+        volume['host'] = 'fakehost'
+
+        volume_api = cinder.volume.api.API()
+
+        # Extend fails when new_size < orig_size
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.extend,
+                          self.context,
+                          volume,
+                          1)
+
+        # Extend fails when new_size == orig_size
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.extend,
+                          self.context,
+                          volume,
+                          2)
+
+        # works when new_size > orig_size
+        volume_api.extend(self.context, volume, 3)
+
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEquals(volume['size'], 3)
+
+        # clean up
+        self.volume.delete_volume(self.context, volume['id'])
+
 
 class DriverTestCase(test.TestCase):
     """Base Test class for Drivers."""

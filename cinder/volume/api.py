@@ -780,6 +780,55 @@ class API(base.Base):
                     "image_name": recv_metadata.get('name', None)}
         return response
 
+    @wrap_check_policy
+    def extend(self, context, volume, new_size):
+        if volume['status'] != 'available':
+            msg = _('Volume status must be available to extend.')
+            raise exception.InvalidVolume(reason=msg)
+
+        size_increase = (int(new_size)) - volume['size']
+        if size_increase <= 0:
+            msg = (_("New size for extend must be greater "
+                     "than current size. (current: %(size)s, "
+                     "extended: %(new_size)s)") % {'new_size': new_size,
+                                                   'size': volume['size']})
+            raise exception.InvalidInput(reason=msg)
+        try:
+            reservations = QUOTAS.reserve(context, gigabytes=+size_increase)
+        except exception.OverQuota as exc:
+            overs = exc.kwargs['overs']
+            usages = exc.kwargs['usages']
+            quotas = exc.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'gigabytes' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, "
+                        "tried to extend volume by "
+                        "%(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                's_size': size_increase,
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
+                raise exception.VolumeSizeExceedsAvailableQuota()
+
+        self.update(context, volume, {'status': 'extending'})
+
+        try:
+            self.volume_rpcapi.extend_volume(context, volume, new_size)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.update(context, volume, {'status': 'error_extending'})
+                finally:
+                    QUOTAS.rollback(context, reservations)
+
+        self.update(context, volume, {'size': new_size})
+        QUOTAS.commit(context, reservations)
+        self.update(context, volume, {'status': 'available'})
+
 
 class HostAPI(base.Base):
     def __init__(self):
