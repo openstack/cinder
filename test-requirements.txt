@@ -5,7 +5,6 @@ flake8==2.0
 hacking>=0.5.3,<0.6
 
 coverage>=3.6
-distribute>=0.6.24
 fixtures>=0.3.12
 hp3parclient>=1.0.0
 mock>=0.8.0
