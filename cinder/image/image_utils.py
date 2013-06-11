@@ -191,6 +191,12 @@ def convert_image(source, dest, out_format):
     utils.execute(*cmd, run_as_root=True)
 
 
+def resize_image(source, size):
+    """Changes the virtual size of the image."""
+    cmd = ('qemu-img', 'resize', source, '%sG' % size)
+    utils.execute(*cmd, run_as_root=False)
+
+
 def fetch(context, image_service, image_id, path, _user_id, _project_id):
     # TODO(vish): Improve context handling and add owner and auth data
     #             when it is added to glance.  Right now there is no

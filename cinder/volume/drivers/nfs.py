@@ -125,6 +125,23 @@ class RemoteFsDriver(driver.VolumeDriver):
                                  image_id,
                                  self.local_path(volume))
 
+        # NOTE (leseb): Set the virtual size of the image
+        # the raw conversion overwrote the destination file
+        # (which had the correct size)
+        # with the fetched glance image size,
+        # thus the initial 'size' parameter is not honored
+        # this sets the size to the one asked in the first place by the user
+        # and then verify the final virtual size
+        image_utils.resize_image(self.local_path(volume), volume['size'])
+
+        data = image_utils.qemu_img_info(self.local_path(volume))
+        virt_size = data.virtual_size / units.GiB
+        if virt_size != volume['size']:
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=(_("Expected volume size was %d") % volume['size'])
+                + (_(" but size is now %d") % virt_size))
+
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         image_utils.upload_volume(context,
