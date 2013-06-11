@@ -18,14 +18,12 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.rpc import common as rpc_common
 from cinder import utils
 from cinder import volume
 
 
-FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
 
 

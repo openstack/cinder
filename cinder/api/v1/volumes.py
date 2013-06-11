@@ -22,7 +22,6 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
@@ -31,9 +30,6 @@ from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
-
-
-FLAGS = flags.FLAGS
 
 
 def _translate_attachment_detail_view(_context, vol):

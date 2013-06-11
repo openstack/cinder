@@ -15,15 +15,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import datetime
+
 from lxml import etree
+from oslo.config import cfg
 
 from cinder.api.openstack import wsgi
 from cinder.api.views import versions as views_versions
 from cinder.api import xmlutil
-from cinder import flags
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 
 _KNOWN_VERSIONS = {
@@ -87,16 +90,15 @@ _KNOWN_VERSIONS = {
             }
         ],
     }
-
 }
 
 
 def get_supported_versions():
     versions = {}
 
-    if FLAGS.enable_v1_api:
+    if CONF.enable_v1_api:
         versions['v1.0'] = _KNOWN_VERSIONS['v1.0']
-    if FLAGS.enable_v2_api:
+    if CONF.enable_v2_api:
         versions['v2.0'] = _KNOWN_VERSIONS['v2.0']
 
     return versions

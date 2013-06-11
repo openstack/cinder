@@ -23,7 +23,6 @@ from cinder.api.openstack import wsgi
 from cinder.api.v1 import volumes
 from cinder.api import xmlutil
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import strutils
 from cinder import utils
@@ -31,9 +30,6 @@ from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
-
-
-FLAGS = flags.FLAGS
 
 
 def _translate_snapshot_detail_view(context, snapshot):

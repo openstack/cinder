@@ -16,17 +16,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
+from oslo.config import cfg
 import paste.urlmap
 
-from cinder import flags
 
-
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 def root_app_factory(loader, global_conf, **local_conf):
-    if not FLAGS.enable_v1_api:
+    if not CONF.enable_v1_api:
         del local_conf['/v1']
-    if not FLAGS.enable_v2_api:
+    if not CONF.enable_v2_api:
         del local_conf['/v2']
     return paste.urlmap.urlmap_factory(loader, global_conf, **local_conf)

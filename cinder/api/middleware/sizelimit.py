@@ -18,21 +18,23 @@ Request Body limiting middleware.
 
 """
 
+
 from oslo.config import cfg
 import webob.dec
 import webob.exc
 
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import wsgi
+
 
 #default request size is 112k
 max_request_body_size_opt = cfg.IntOpt('osapi_max_request_body_size',
                                        default=114688,
                                        help='Max size for body of a request')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(max_request_body_size_opt)
+CONF = cfg.CONF
+CONF.register_opt(max_request_body_size_opt)
+
 LOG = logging.getLogger(__name__)
 
 
@@ -73,11 +75,11 @@ class RequestBodySizeLimiter(wsgi.Middleware):
 
     @webob.dec.wsgify(RequestClass=wsgi.Request)
     def __call__(self, req):
-        if req.content_length > FLAGS.osapi_max_request_body_size:
+        if req.content_length > CONF.osapi_max_request_body_size:
             msg = _("Request is too large.")
             raise webob.exc.HTTPRequestEntityTooLarge(explanation=msg)
         if req.content_length is None and req.is_body_readable:
             limiter = LimitingReader(req.body_file,
-                                     FLAGS.osapi_max_request_body_size)
+                                     CONF.osapi_max_request_body_size)
             req.body_file = limiter
         return self.application
