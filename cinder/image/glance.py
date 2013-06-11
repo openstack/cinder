@@ -60,12 +60,14 @@ def _create_glance_client(context, netloc, use_ssl,
     """Instantiate a new glanceclient.Client object."""
     if version is None:
         version = FLAGS.glance_api_version
+    params = {}
     if use_ssl:
         scheme = 'https'
+        # https specific params
+        params['insecure'] = FLAGS.glance_api_insecure
+        params['ssl_compression'] = FLAGS.glance_api_ssl_compression
     else:
         scheme = 'http'
-    params = {}
-    params['insecure'] = FLAGS.glance_api_insecure
     if FLAGS.auth_strategy == 'keystone':
         params['token'] = context.auth_token
     endpoint = '%s://%s' % (scheme, netloc)
