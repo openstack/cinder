@@ -56,3 +56,8 @@ lvs: CommandFilter, lvs, root
 
 # cinder/volumes/drivers/hds/hds.py: 
 hus_cmd: CommandFilter, hus_cmd, root
+
+# cinder/brick/initiator/connector.py:
+ls: CommandFilter, ls, root
+tee: CommandFilter, tee, root
+multipath: CommandFilter, multipath, root
