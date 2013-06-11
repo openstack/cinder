@@ -144,6 +144,10 @@ class InvalidSnapshot(Invalid):
     message = _("Invalid snapshot") + ": %(reason)s"
 
 
+class InvalidSourceVolume(Invalid):
+    message = _("Invalid source volume %(reason)s.")
+
+
 class VolumeAttached(Invalid):
     message = _("Volume %(volume_id)s is still attached, detach volume first.")
 
