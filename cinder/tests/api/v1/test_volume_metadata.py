@@ -28,6 +28,7 @@ from cinder import exception
 from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
+from cinder.tests.api.v1 import stubs
 
 
 CONF = cfg.CONF
@@ -95,6 +96,8 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(cinder.db, 'volume_get', return_volume)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic',
+                       stubs.stub_service_get_all_by_topic)
 
         self.stubs.Set(self.volume_api, 'update_volume_metadata',
                        fake_update_volume_metadata)

@@ -163,7 +163,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         """Creates a volume in availability_zone."""
 
         # Create volume
-        availability_zone = 'zone1:host1'
+        availability_zone = 'nova'
         created_volume = self.api.post_volume(
             {'volume': {'size': 1,
                         'availability_zone': availability_zone}})
