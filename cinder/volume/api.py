@@ -541,6 +541,7 @@ class API(base.Base):
                                                        connector,
                                                        force)
 
+    @wrap_check_policy
     def accept_transfer(self, context, volume):
         return self.volume_rpcapi.accept_transfer(context,
                                                   volume)
