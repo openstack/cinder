@@ -581,7 +581,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                                      self.configuration.volume_group,
                                      run_as_root=True)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error retrieving volume status: "), exc.stderr)
+            LOG.error(_("Error retrieving volume status: %s"), exc.stderr)
             out = False
 
         if out:
