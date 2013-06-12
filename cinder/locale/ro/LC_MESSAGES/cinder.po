@@ -1,4 +1,4 @@
-# Swahili (Kenya) translations for cinder.
+# Romanian translations for cinder.
 # Copyright (C) 2013 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
 #
@@ -8,11 +8,12 @@ msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2013-06-12 18:09+0000\n"
-"PO-Revision-Date: 2013-05-29 08:13+0000\n"
+"PO-Revision-Date: 2013-06-12 07:55+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
-"Language-Team: Swahili (Kenya) "
-"(http://www.transifex.com/projects/p/openstack/language/sw_KE/)\n"
-"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"Language-Team: Romanian "
+"(http://www.transifex.com/projects/p/openstack/language/ro/)\n"
+"Plural-Forms: nplurals=3; "
+"plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?2:1))\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -5863,21 +5864,4 @@ msgstr ""
 #, python-format
 msgid "Unexpected state while cloning %s"
 msgstr ""
-
-#~ msgid ""
-#~ "Skipping %(full_task_name)s, %(ticks_to_skip)s ticks"
-#~ " left until next run"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "ISCSI volume not yet found at: "
-#~ "%(host_device)s. Will rescan & retry.  "
-#~ "Try number: %(tries)s"
-#~ msgstr ""
-
-#~ msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
-#~ msgstr ""
-
-#~ msgid "Error retrieving volume status: "
-#~ msgstr ""
 
