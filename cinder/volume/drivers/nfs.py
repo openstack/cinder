@@ -350,6 +350,8 @@ class NfsDriver(RemoteFsDriver):
         for nfs_share in self._mounted_shares:
             total_size, total_available, total_allocated = \
                 self._get_capacity_info(nfs_share)
+            apparent_size = max(0, total_size * oversub_ratio)
+            apparent_available = max(0, apparent_size - total_allocated)
             used = (total_size - total_available) / total_size
             if used > used_ratio:
                 # NOTE(morganfainberg): We check the used_ratio first since
@@ -359,17 +361,9 @@ class NfsDriver(RemoteFsDriver):
                 # target.
                 LOG.debug(_('%s is above nfs_used_ratio'), nfs_share)
                 continue
-            if oversub_ratio >= 1.0:
-                # NOTE(morganfainberg): If we are setup for oversubscription
-                # we need to calculate the apparent available space instead
-                # of just using the _actual_ available space.
-                if (total_allocated * oversub_ratio) < requested_volume_size:
-                    LOG.debug(_('%s is above nfs_oversub_ratio'), nfs_share)
-                    continue
-            elif total_allocated <= requested_volume_size:
+            if apparent_available <= requested_volume_size:
                 LOG.debug(_('%s is above nfs_oversub_ratio'), nfs_share)
                 continue
-
             if total_allocated / total_size >= oversub_ratio:
                 LOG.debug(_('%s reserved space is above nfs_oversub_ratio'),
                           nfs_share)
