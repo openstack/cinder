@@ -23,16 +23,18 @@ context or provide additional information in their specific WSGI pipeline.
 """
 
 import itertools
-import uuid
+
+from cinder.openstack.common import uuidutils
 
 
 def generate_request_id():
-    return 'req-' + str(uuid.uuid4())
+    return 'req-%s' % uuidutils.generate_uuid()
 
 
 class RequestContext(object):
 
-    """
+    """Helper class to represent useful information about a request context.
+
     Stores information about the security context under which the user
     accesses the system, as well as additional request information.
     """

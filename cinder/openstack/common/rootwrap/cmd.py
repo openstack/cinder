@@ -33,6 +33,8 @@
    they are needed, to avoid allowing more than is necessary.
 """
 
+from __future__ import print_function
+
 import ConfigParser
 import logging
 import os
@@ -55,7 +57,7 @@ def _subprocess_setup():
 
 
 def _exit_error(execname, message, errorcode, log=True):
-    print "%s: %s" % (execname, message)
+    print("%s: %s" % (execname, message))
     if log:
         logging.error(message)
     sys.exit(errorcode)

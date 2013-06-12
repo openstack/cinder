@@ -98,7 +98,7 @@ def wrap_exception(f):
     def _wrap(*args, **kw):
         try:
             return f(*args, **kw)
-        except Exception, e:
+        except Exception as e:
             if not isinstance(e, Error):
                 #exc_type, exc_value, exc_traceback = sys.exc_info()
                 logging.exception(_('Uncaught exception'))
@@ -110,8 +110,7 @@ def wrap_exception(f):
 
 
 class OpenstackException(Exception):
-    """
-    Base Exception
+    """Base Exception class.
 
     To correctly use this class, inherit from it and define
     a 'message' property. That message will get printf'd
