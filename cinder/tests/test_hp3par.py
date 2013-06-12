@@ -412,7 +412,8 @@ class HP3PARBaseDriver():
         self.driver.initialize_connection(self.volume, self.connector)
         vlun = self.driver.common.client.getVLUN(self.VOLUME_3PAR_NAME)
         self.assertEqual(vlun['volumeName'], self.VOLUME_3PAR_NAME)
-        self.driver.terminate_connection(self.volume, self.connector, True)
+        self.driver.terminate_connection(self.volume, self.connector,
+                                         force=True)
         # vlun should be gone.
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.common.client.getVLUN,
