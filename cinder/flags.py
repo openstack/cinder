@@ -121,7 +121,15 @@ global_opts = [
     cfg.BoolOpt('glance_api_insecure',
                 default=False,
                 help='Allow to perform insecure SSL (https) requests to '
-                'glance'),
+                     'glance'),
+    cfg.BoolOpt('glance_api_ssl_compression',
+                default=False,
+                help='Whether to attempt to negotiate SSL layer compression '
+                     'when using SSL (https) requests. Set to False to '
+                     'disable SSL layer compression. In some cases disabling '
+                     'this may improve data throughput, eg when high network '
+                     'bandwidth is available and you are using already '
+                     'compressed image formats such as qcow2 .'),
     cfg.StrOpt('scheduler_topic',
                default='cinder-scheduler',
                help='the topic scheduler nodes listen on'),
