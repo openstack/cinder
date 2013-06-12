@@ -312,7 +312,7 @@ class ISCSIDriver(VolumeDriver):
 
     def _run_iscsiadm_bare(self, iscsi_command, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', 0)
-        (out, err) = utils.execute('iscsiadm',
+        (out, err) = self._execute('iscsiadm',
                                    *iscsi_command,
                                    run_as_root=True,
                                    check_exit_code=check_exit_code)
@@ -362,7 +362,7 @@ class ISCSIDriver(VolumeDriver):
                'of=/dev/null', 'count=1')
         out, info = None, None
         try:
-            out, info = utils.execute(*cmd, run_as_root=True)
+            out, info = self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError as e:
             LOG.error(_("Failed to access the device on the path "
                         "%(path)s: %(error)s.") %
