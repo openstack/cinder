@@ -113,7 +113,8 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
         volume_node = self.find_first_child_named(node, 'volume')
 
         attributes = ['name', 'description', 'size',
-                      'volume_type', 'availability_zone']
+                      'volume_type', 'availability_zone', 'imageRef',
+                      'snapshot_id', 'source_volid']
         for attr in attributes:
             if volume_node.getAttribute(attr):
                 volume[attr] = volume_node.getAttribute(attr)
@@ -245,6 +246,7 @@ class VolumeController(wsgi.Controller):
         if not self.is_valid_body(body, 'volume'):
             raise exc.HTTPBadRequest()
 
+        LOG.debug('Create volume request body: %s', body)
         context = req.environ['cinder.context']
         volume = body['volume']
 

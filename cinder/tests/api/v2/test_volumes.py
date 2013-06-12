@@ -976,3 +976,57 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
             },
         }
         self.assertEquals(request['body'], expected)
+
+    def test_imageref(self):
+        self_request = """
+<volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
+        size="1"
+        name="Volume-xml"
+        description="description"
+        imageRef="4a90189d-d702-4c7c-87fc-6608c554d737"></volume>"""
+        request = self.deserializer.deserialize(self_request)
+        expected = {
+            "volume": {
+                "size": "1",
+                "name": "Volume-xml",
+                "description": "description",
+                "imageRef": "4a90189d-d702-4c7c-87fc-6608c554d737",
+            },
+        }
+        self.assertEquals(expected, request['body'])
+
+    def test_snapshot_id(self):
+        self_request = """
+<volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
+        size="1"
+        name="Volume-xml"
+        description="description"
+        snapshot_id="4a90189d-d702-4c7c-87fc-6608c554d737"></volume>"""
+        request = self.deserializer.deserialize(self_request)
+        expected = {
+            "volume": {
+                "size": "1",
+                "name": "Volume-xml",
+                "description": "description",
+                "snapshot_id": "4a90189d-d702-4c7c-87fc-6608c554d737",
+            },
+        }
+        self.assertEquals(expected, request['body'])
+
+    def test_source_volid(self):
+        self_request = """
+<volume xmlns="http://docs.openstack.org/api/openstack-volume/2.0/content"
+        size="1"
+        name="Volume-xml"
+        description="description"
+        source_volid="4a90189d-d702-4c7c-87fc-6608c554d737"></volume>"""
+        request = self.deserializer.deserialize(self_request)
+        expected = {
+            "volume": {
+                "size": "1",
+                "name": "Volume-xml",
+                "description": "description",
+                "source_volid": "4a90189d-d702-4c7c-87fc-6608c554d737",
+            },
+        }
+        self.assertEquals(expected, request['body'])
