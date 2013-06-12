@@ -19,7 +19,7 @@ The Database Layer
 ==================
 
 The :mod:`cinder.db.api` Module
------------------------------
+-------------------------------
 
 .. automodule:: cinder.db.api
     :noindex:
@@ -32,13 +32,13 @@ The Sqlalchemy Driver
 ---------------------
 
 The :mod:`cinder.db.sqlalchemy.api` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.db.sqlalchemy.api
     :noindex:
 
 The :mod:`cinder.db.sqlalchemy.models` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.db.sqlalchemy.models
     :noindex:
@@ -47,7 +47,7 @@ The :mod:`cinder.db.sqlalchemy.models` Module
     :show-inheritance:
 
 The :mod:`cinder.db.sqlalchemy.session` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.db.sqlalchemy.session
     :noindex:

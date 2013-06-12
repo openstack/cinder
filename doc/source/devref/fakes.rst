@@ -25,7 +25,7 @@ fake implementations of various drivers let you get on with your day.
 
 
 The :mod:`cinder.virt.fake` Module
---------------------------------
+----------------------------------
 
 .. automodule:: cinder.virt.fake
     :noindex:
@@ -35,7 +35,7 @@ The :mod:`cinder.virt.fake` Module
 
 
 The :mod:`cinder.auth.fakeldap` Module
-------------------------------------
+--------------------------------------
 
 .. automodule:: cinder.auth.fakeldap
     :noindex:
@@ -45,7 +45,7 @@ The :mod:`cinder.auth.fakeldap` Module
     
 
 The :mod:`cinder.testing.fake.rabbit` Module
-------------------------------------------
+--------------------------------------------
 
 .. automodule:: cinder.testing.fake.rabbit
     :noindex:
@@ -55,7 +55,7 @@ The :mod:`cinder.testing.fake.rabbit` Module
 
 
 The :class:`cinder.volume.driver.FakeAOEDriver` Class
----------------------------------------------------
+-----------------------------------------------------
 
 .. autoclass:: cinder.volume.driver.FakeAOEDriver
     :noindex:
@@ -65,7 +65,7 @@ The :class:`cinder.volume.driver.FakeAOEDriver` Class
 
 
 The :class:`cinder.tests.service_unittest.FakeManager` Class
-----------------------------------------------------------
+------------------------------------------------------------
 
 .. autoclass:: cinder.tests.service_unittest.FakeManager
     :noindex:
@@ -75,7 +75,7 @@ The :class:`cinder.tests.service_unittest.FakeManager` Class
 
 
 The :mod:`cinder.tests.api.openstack.fakes` Module
-------------------------------------------------
+--------------------------------------------------
 
 .. automodule:: cinder.tests.api.openstack.fakes
     :noindex:

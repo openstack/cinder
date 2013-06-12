@@ -1,6 +1,6 @@
-===========
+=============
 cinder-manage
-===========
+=============
 
 ------------------------------------------------------
 Control and manage OpenStack block storage
@@ -43,7 +43,7 @@ You can also run with a category argument such as 'db' to see a list of all comm
 These sections describe the available categories and arguments for cinder-manage.
 
 Cinder Db
-~~~~~~~
+~~~~~~~~~
 
 ``cinder-manage db version``
 
@@ -55,7 +55,7 @@ Cinder Db
 
 
 Cinder Logs
-~~~~~~~~~
+~~~~~~~~~~~
 
 ``cinder-manage logs errors``
 
@@ -66,7 +66,7 @@ Cinder Logs
     Displays cinder the most recent entries from syslog.  The optional number argument specifies the number of entries to display (default 10).
 
 Cinder Shell
-~~~~~~~~~~
+~~~~~~~~~~~~
 
 ``cinder-manage shell bpython``
 
@@ -89,7 +89,7 @@ Cinder Shell
     Runs the named script from the specified path with flags set.
 
 Cinder Volume
-~~~~~~~~~~
+~~~~~~~~~~~~~
 
 ``cinder-manage volume reattach <volume_id>``
 
@@ -100,35 +100,35 @@ Cinder Volume
     Delete a volume without first checking that the volume is available.
 
 Cinder Host
-~~~~~~~~~~
+~~~~~~~~~~~
 
 ``cinder-manage host list [<zone>]``
 
     Displays a list of all physical hosts and their zone.  The optional zone argument allows the list to be filtered on the requested zone.
 
 Cinder Service
-~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 ``cinder-manage service list``
 
     Displays a list of all cinder services and their host, zone, status, state and when the information was last updated.
 
 Cinder Backup
-~~~~~~~~~~
+~~~~~~~~~~~~~
 
 ``cinder-manage backup list``
 
     Displays a list of all backups (including ones in progress) and the host on which the backup operation is running.
 
 Cinder Version
-~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 ``cinder-manage version list``
 
     Displays the codebase version cinder is running upon.
 
 Cinder Storage Management
-~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``cinder-manage sm flavor_create <label> <desc>``
 
@@ -155,14 +155,14 @@ Cinder Storage Management
     Removes the specified backend.
 
 Cinder Config
-~~~~~~~~~~
+~~~~~~~~~~~~~
 
 ``cinder-manage config list``
 
     Displays the current configuration parameters (options) for Cinder.
 
 FILES
-========
+=====
 
 The cinder.conf file contains configuration information in the form of python-gflags.
 
