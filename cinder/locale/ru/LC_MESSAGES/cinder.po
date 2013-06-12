@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-06-07 18:10+0000\n"
+"POT-Creation-Date: 2013-06-12 18:09+0000\n"
 "PO-Revision-Date: 2012-03-25 09:34+0000\n"
 "Last-Translator: Eugene Marshal <Unknown>\n"
 "Language-Team: Russian <ru@li.org>\n"
@@ -86,118 +86,128 @@ msgid "Invalid snapshot"
 msgstr "Недопустимый снимок"
 
 #: cinder/exception.py:148
+#, python-format
+msgid "Invalid source volume %(reason)s."
+msgstr ""
+
+#: cinder/exception.py:152
 #, fuzzy, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
 msgstr "Том %(volume_id)s никуда не присоединён"
 
-#: cinder/exception.py:152
+#: cinder/exception.py:156
 msgid "Failed to load data into json format"
 msgstr "Ошибка загрузки данных в формат json"
 
-#: cinder/exception.py:156
+#: cinder/exception.py:160
 msgid "The request is invalid."
 msgstr "Недопустимый запрос."
 
-#: cinder/exception.py:160
+#: cinder/exception.py:164
 #, fuzzy
 msgid "The results are invalid."
 msgstr "Недопустимый запрос."
 
-#: cinder/exception.py:164
+#: cinder/exception.py:168
 msgid "Invalid input received"
 msgstr ""
 
-#: cinder/exception.py:168
+#: cinder/exception.py:172
 msgid "Invalid volume type"
 msgstr "Недопустимый тип тома"
 
-#: cinder/exception.py:172
+#: cinder/exception.py:176
 msgid "Invalid volume"
 msgstr "Недопустимый том"
 
-#: cinder/exception.py:176
+#: cinder/exception.py:180
 #, python-format
 msgid "Invalid content type %(content_type)s."
 msgstr "Недопустимый тип содержимого %(content_type)s."
 
-#: cinder/exception.py:182
+#: cinder/exception.py:186
 #, python-format
 msgid "%(err)s"
 msgstr ""
 
-#: cinder/exception.py:186
+#: cinder/exception.py:190
 #, fuzzy
 msgid "Invalid auth key"
 msgstr "Недопустимый снимок"
 
-#: cinder/exception.py:190
+#: cinder/exception.py:194
 msgid "Service is unavailable at this time."
 msgstr "В данный момент служба недоступна."
 
-#: cinder/exception.py:194
+#: cinder/exception.py:198
 #, python-format
 msgid "Image %(image_id)s is unacceptable: %(reason)s"
 msgstr "Образ %(image_id)s недопустим: %(reason)s"
 
-#: cinder/exception.py:198
+#: cinder/exception.py:202
+#, python-format
+msgid "The device in the path %(path)s is unavailable: %(reason)s"
+msgstr ""
+
+#: cinder/exception.py:206
 #, python-format
 msgid "Expected a uuid but received %(uuid)s."
 msgstr ""
 
-#: cinder/exception.py:202
+#: cinder/exception.py:210
 msgid "Resource could not be found."
 msgstr "Ресурс не может быть найден."
 
-#: cinder/exception.py:208
+#: cinder/exception.py:216
 #, fuzzy, python-format
 msgid "Volume %(volume_id)s persistence file could not be found."
 msgstr "Том %(volume_id)s не найден."
 
-#: cinder/exception.py:212
+#: cinder/exception.py:220
 #, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr "Том %(volume_id)s не найден."
 
-#: cinder/exception.py:216
+#: cinder/exception.py:224
 #, python-format
 msgid "Unable to locate account %(account_name)s on Solidfire device"
 msgstr ""
 
-#: cinder/exception.py:221
+#: cinder/exception.py:229
 #, python-format
 msgid "Volume not found for instance %(instance_id)s."
 msgstr "Не найден том для копии %(instance_id)s."
 
-#: cinder/exception.py:225
+#: cinder/exception.py:233
 #, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr "Том %(volume_id)s не имеет метаданных с ключом %(metadata_key)s."
 
-#: cinder/exception.py:230 cinder/exception.py:243
+#: cinder/exception.py:238 cinder/exception.py:251
 msgid "Invalid metadata"
 msgstr "Недопустимые метаданные"
 
-#: cinder/exception.py:234 cinder/exception.py:247
+#: cinder/exception.py:242 cinder/exception.py:255
 #, fuzzy
 msgid "Invalid metadata size"
 msgstr "Неправильный ключ метаданных"
 
-#: cinder/exception.py:238
+#: cinder/exception.py:246
 #, fuzzy, python-format
 msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr "Копия %(instance_id)s не имеет метаданных с ключом %(metadata_key)s."
 
-#: cinder/exception.py:251
+#: cinder/exception.py:259
 #, python-format
 msgid "Volume type %(volume_type_id)s could not be found."
 msgstr "Тип тома %(volume_type_id)s не может быть найден."
 
-#: cinder/exception.py:255
+#: cinder/exception.py:263
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "Тип тома под названием %(volume_type_name)s не может быть найден."
 
-#: cinder/exception.py:260
+#: cinder/exception.py:268
 #, python-format
 msgid ""
 "Volume Type %(volume_type_id)s has no extra specs with key "
@@ -206,383 +216,366 @@ msgstr ""
 "Тип тома %(volume_type_id)s не имеет дополнительных особенностей с ключом"
 " %(extra_specs_key)s."
 
-#: cinder/exception.py:265
+#: cinder/exception.py:273
 #, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
 msgstr "Снимок %(snapshot_id)s не может быть найден."
 
-#: cinder/exception.py:269
+#: cinder/exception.py:277
 #, python-format
 msgid "deleting volume %(volume_name)s that has snapshot"
 msgstr "удаление тома %(volume_name)s, который имеет снимок"
 
-#: cinder/exception.py:273
+#: cinder/exception.py:281
 #, python-format
 msgid "deleting snapshot %(snapshot_name)s that has dependent volumes"
 msgstr ""
 
-#: cinder/exception.py:278
+#: cinder/exception.py:286
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:282
+#: cinder/exception.py:290
 #, fuzzy, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/exception.py:286
+#: cinder/exception.py:294
 #, python-format
 msgid "Failed to attach iSCSI target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:290
+#: cinder/exception.py:298
 #, fuzzy, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/exception.py:294
+#: cinder/exception.py:302
 #, python-format
 msgid "No disk at %(location)s"
 msgstr "Отсутствует диск в %(location)s"
 
-#: cinder/exception.py:298
+#: cinder/exception.py:306
 #, python-format
 msgid "Invalid image href %(image_href)s."
 msgstr "Недопустимый образ href %(image_href)s."
 
-#: cinder/exception.py:302
+#: cinder/exception.py:310
 #, python-format
 msgid "Image %(image_id)s could not be found."
 msgstr "Образ %(image_id)s не найден."
 
-#: cinder/exception.py:306
+#: cinder/exception.py:314
 #, python-format
 msgid "Service %(service_id)s could not be found."
 msgstr "Служба %(service_id)s не найдена."
 
-#: cinder/exception.py:310
+#: cinder/exception.py:318
 #, python-format
 msgid "Host %(host)s could not be found."
 msgstr "Узел %(host)s не найден."
 
-#: cinder/exception.py:314
+#: cinder/exception.py:322
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
 msgstr ""
 
-#: cinder/exception.py:318
+#: cinder/exception.py:326
 #, fuzzy, python-format
 msgid "Scheduler Host Weigher %(weigher_name)s could not be found."
 msgstr "Узел сompute %(host)s не найден."
 
-#: cinder/exception.py:322
+#: cinder/exception.py:330
 #, python-format
 msgid "Could not find binary %(binary)s on host %(host)s."
 msgstr ""
 
-#: cinder/exception.py:326
+#: cinder/exception.py:334
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr ""
 
-#: cinder/exception.py:330
+#: cinder/exception.py:338
 #, python-format
 msgid ""
 "Change would make usage less than 0 for the following resources: "
 "%(unders)s"
 msgstr ""
 
-#: cinder/exception.py:335
+#: cinder/exception.py:343
 msgid "Quota could not be found"
 msgstr "Квота не найдена"
 
-#: cinder/exception.py:339
+#: cinder/exception.py:347
 #, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr ""
 
-#: cinder/exception.py:343
+#: cinder/exception.py:351
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "Квота проекта %(project_id)s не найдена."
 
-#: cinder/exception.py:347
+#: cinder/exception.py:355
 #, fuzzy, python-format
 msgid "Quota class %(class_name)s could not be found."
 msgstr "Класс %(class_name)s не найден: %(exception)s"
 
-#: cinder/exception.py:351
+#: cinder/exception.py:359
 #, fuzzy, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
 msgstr "Квота проекта %(project_id)s не найдена."
 
-#: cinder/exception.py:355
+#: cinder/exception.py:363
 #, fuzzy, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr "Пользователь %(user_id)s не найден."
 
-#: cinder/exception.py:359
+#: cinder/exception.py:367
 #, fuzzy, python-format
 msgid "Quota exceeded for resources: %(overs)s"
 msgstr "Превышена квота"
 
-#: cinder/exception.py:363
+#: cinder/exception.py:371
 #, python-format
 msgid "Migration %(migration_id)s could not be found."
 msgstr "Перемещение %(migration_id)s не найдено."
 
-#: cinder/exception.py:367
+#: cinder/exception.py:375
 #, python-format
 msgid "Migration not found for instance %(instance_id)s with status %(status)s."
 msgstr "Перемещение не найдено для копии %(instance_id)s в состоянии %(status)s."
 
-#: cinder/exception.py:372
+#: cinder/exception.py:380
 #, python-format
 msgid "File %(file_path)s could not be found."
 msgstr "Файл %(file_path)s не может быть найден."
 
-#: cinder/exception.py:376
+#: cinder/exception.py:384
 #, python-format
 msgid "Class %(class_name)s could not be found: %(exception)s"
 msgstr "Класс %(class_name)s не найден: %(exception)s"
 
-#: cinder/exception.py:380
+#: cinder/exception.py:388
 msgid "Action not allowed."
 msgstr "Действие не разрешено."
 
-#: cinder/exception.py:389
+#: cinder/exception.py:397
 #, python-format
 msgid "Key pair %(key_name)s already exists."
 msgstr ""
 
-#: cinder/exception.py:393
+#: cinder/exception.py:401
 #, fuzzy, python-format
 msgid "Volume Type %(id)s already exists."
 msgstr "Тип тома %(name)s уже существует."
 
-#: cinder/exception.py:397
+#: cinder/exception.py:405
 msgid "Migration error"
 msgstr "Ошибка перемещения"
 
-#: cinder/exception.py:401
+#: cinder/exception.py:409
 #, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "Неправильное тело сообщения: %(reason)s"
 
-#: cinder/exception.py:405
+#: cinder/exception.py:413
 #, python-format
 msgid "Could not find config at %(path)s"
 msgstr "Невозможно найти конфигурацию по адресу %(path)s"
 
-#: cinder/exception.py:409
+#: cinder/exception.py:417
 #, fuzzy, python-format
 msgid "Could not find parameter %(param)s"
 msgstr "Невозможно найти конфигурацию по адресу %(path)s"
 
-#: cinder/exception.py:413
+#: cinder/exception.py:421
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr ""
 
-#: cinder/exception.py:417
+#: cinder/exception.py:425
 #, python-format
 msgid "No valid host was found. %(reason)s"
 msgstr "Допустимый узел не найден. %(reason)s"
 
-#: cinder/exception.py:421
+#: cinder/exception.py:429
 #, python-format
 msgid "Host %(host)s is not up or doesn't exist."
 msgstr "Узел %(host)s не работает или не существует."
 
-#: cinder/exception.py:425
+#: cinder/exception.py:433
 msgid "Quota exceeded"
 msgstr "Превышена квота"
 
-#: cinder/exception.py:432
+#: cinder/exception.py:440
 msgid "Requested volume or snapshot exceeds allowed Gigabytes quota"
 msgstr ""
 
-#: cinder/exception.py:437
-msgid "Maximum volume/snapshot size exceeded"
-msgstr ""
-
-#: cinder/exception.py:441
-#, python-format
-msgid "Maximum number of volumes allowed (%(allowed)d) exceeded"
-msgstr ""
-
 #: cinder/exception.py:445
-#, python-format
-msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
+msgid "Maximum volume/snapshot size exceeded"
 msgstr ""
 
 #: cinder/exception.py:449
 #, python-format
-msgid "Detected more than one volume with name %(vol_name)s"
+msgid "Maximum number of volumes allowed (%(allowed)d) exceeded"
 msgstr ""
 
 #: cinder/exception.py:453
 #, python-format
-msgid "3PAR Host already exists: %(err)s.  %(info)s"
+msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
 msgstr ""
 
 #: cinder/exception.py:457
 #, python-format
-msgid "Invalid 3PAR Domain: %(err)s"
+msgid "Detected more than one volume with name %(vol_name)s"
 msgstr ""
 
 #: cinder/exception.py:461
+#, python-format
+msgid "3PAR Host already exists: %(err)s.  %(info)s"
+msgstr ""
+
+#: cinder/exception.py:465
+#, python-format
+msgid "Invalid 3PAR Domain: %(err)s"
+msgstr ""
+
+#: cinder/exception.py:469
 #, python-format
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "Невозможно создать volume_type с именем %(name)s и спецификациями "
 "%(extra_specs)s"
 
-#: cinder/exception.py:466
+#: cinder/exception.py:474
 msgid "Bad response from SolidFire API"
 msgstr ""
 
-#: cinder/exception.py:470
+#: cinder/exception.py:478
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr ""
 
-#: cinder/exception.py:474
+#: cinder/exception.py:482
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr ""
 
-#: cinder/exception.py:478
+#: cinder/exception.py:486
 #, fuzzy, python-format
 msgid "Malformed response to command %(cmd)s: %(reason)s"
 msgstr "Неправильное тело сообщения: %(reason)s"
 
-#: cinder/exception.py:482
+#: cinder/exception.py:490
 #, fuzzy, python-format
 msgid "Bad HTTP response status %(status)s"
 msgstr "Недопустимое состояние сервера: %(status)s"
 
-#: cinder/exception.py:486
+#: cinder/exception.py:494
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr ""
 
-#: cinder/exception.py:490
+#: cinder/exception.py:498
 #, fuzzy, python-format
 msgid "Unable to create server object for initiator %(name)s"
 msgstr "Невозможно создать VDI на SR %(sr_ref)s для копии %(instance_name)s"
 
-#: cinder/exception.py:494
+#: cinder/exception.py:502
 #, fuzzy, python-format
 msgid "Unable to find server object for initiator %(name)s"
 msgstr "Невозможно найти узел для копии %s"
 
-#: cinder/exception.py:498
-msgid "Unable to find any active VPSA controller"
-msgstr ""
-
-#: cinder/exception.py:502
-#, python-format
-msgid "Failed to retrieve attachments for volume %(name)s"
-msgstr ""
-
 #: cinder/exception.py:506
-#, python-format
-msgid "Invalid attachment info for volume %(name)s: %(reason)s"
+msgid "Unable to find any active VPSA controller"
 msgstr ""
 
 #: cinder/exception.py:510
 #, python-format
+msgid "Failed to retrieve attachments for volume %(name)s"
+msgstr ""
+
+#: cinder/exception.py:514
+#, python-format
+msgid "Invalid attachment info for volume %(name)s: %(reason)s"
+msgstr ""
+
+#: cinder/exception.py:518
+#, python-format
 msgid "Instance %(instance_id)s could not be found."
 msgstr "Копия %(instance_id)s не найдена."
 
-#: cinder/exception.py:514
+#: cinder/exception.py:522
 #, python-format
 msgid "Bad or unexpected response from the storage volume backend API: %(data)s"
 msgstr ""
 
-#: cinder/exception.py:519
+#: cinder/exception.py:527
 #, fuzzy
 msgid "Unknown NFS exception"
 msgstr "Обнаружено неизвестное исключение."
 
-#: cinder/exception.py:523
+#: cinder/exception.py:531
 msgid "No mounted NFS shares found"
 msgstr ""
 
-#: cinder/exception.py:527 cinder/exception.py:539
+#: cinder/exception.py:535 cinder/exception.py:547
 #, python-format
 msgid "There is no share which can host %(volume_size)sG"
 msgstr ""
 
-#: cinder/exception.py:531
+#: cinder/exception.py:539
 #, fuzzy
 msgid "Unknown Gluster exception"
 msgstr "Обнаружено неизвестное исключение."
 
-#: cinder/exception.py:535
+#: cinder/exception.py:543
 msgid "No mounted Gluster shares found"
 msgstr ""
 
-#: cinder/exception.py:543
+#: cinder/exception.py:551
 #, python-format
 msgid ""
 "Glance metadata cannot be updated, key %(key)s exists for volume id "
 "%(volume_id)s"
 msgstr ""
 
-#: cinder/exception.py:548
+#: cinder/exception.py:556
 #, fuzzy, python-format
 msgid "Failed to copy image to volume: %(reason)s"
 msgstr "Невозможно найти том %s"
 
-#: cinder/exception.py:552
+#: cinder/exception.py:560
 #, fuzzy, python-format
 msgid "Backup %(backup_id)s could not be found."
 msgstr "Группа LDAP %(group_id)s не найдена."
 
-#: cinder/exception.py:556
+#: cinder/exception.py:564
 #, fuzzy, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "Недопустимый внутренний интерфейс: %s"
 
-#: cinder/exception.py:560
+#: cinder/exception.py:568
 #, fuzzy
 msgid "Connection to swift failed"
 msgstr "Сбой соединения с glance"
 
-#: cinder/exception.py:564
+#: cinder/exception.py:572
 #, fuzzy, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "Образ %(image_id)s не найден."
 
-#: cinder/flags.py:136
+#: cinder/flags.py:144
 msgid "Deploy v1 of the Cinder API. "
 msgstr ""
 
-#: cinder/flags.py:139
+#: cinder/flags.py:147
 msgid "Deploy v2 of the Cinder API. "
 msgstr ""
 
-#: cinder/manager.py:158
-#, python-format
-msgid "Skipping %(full_task_name)s, %(ticks_to_skip)s ticks left until next run"
-msgstr ""
-"Пропуск %(full_task_name)s, %(ticks_to_skip)s раз осталось, для "
-"произведения следующего запуска"
-
-#: cinder/manager.py:164
-#, python-format
-msgid "Running periodic task %(full_task_name)s"
-msgstr "Запуск повторяющегося задания %(full_task_name)s"
-
-#: cinder/manager.py:171
-#, python-format
-msgid "Error during %(full_task_name)s: %(e)s"
-msgstr "Ошибка во время %(full_task_name)s: %(e)s"
-
-#: cinder/manager.py:216
+#: cinder/manager.py:135
 msgid "Notifying Schedulers of capabilities ..."
 msgstr ""
 
@@ -798,22 +791,22 @@ msgstr "внутренний интерфейс %s"
 msgid "in looping call"
 msgstr ""
 
-#: cinder/utils.py:813
+#: cinder/utils.py:801
 #, python-format
 msgid "Expected object of type: %s"
 msgstr "Ожидался объект типа: %s"
 
-#: cinder/utils.py:903
+#: cinder/utils.py:891
 #, python-format
 msgid "timefunc: '%(name)s' took %(total_time).2f secs"
 msgstr "timefunc: '%(name)s' заняла %(total_time).2f с."
 
-#: cinder/utils.py:1105
+#: cinder/utils.py:1069
 #, fuzzy, python-format
 msgid "Could not remove tmpdir: %s"
 msgstr "Ошибка удаления контейнера: %s"
 
-#: cinder/utils.py:1213
+#: cinder/utils.py:1162
 #, python-format
 msgid "Unknown byte multiplier: %s"
 msgstr ""
@@ -873,104 +866,104 @@ msgid ""
 "cinder.api.middleware.auth:pipeline_factory instead."
 msgstr ""
 
-#: cinder/api/common.py:63 cinder/api/common.py:97 cinder/volume/api.py:367
+#: cinder/api/common.py:64 cinder/api/common.py:98 cinder/volume/api.py:390
 msgid "limit param must be an integer"
 msgstr ""
 
-#: cinder/api/common.py:66 cinder/api/common.py:101 cinder/volume/api.py:364
+#: cinder/api/common.py:67 cinder/api/common.py:102 cinder/volume/api.py:387
 msgid "limit param must be positive"
 msgstr ""
 
-#: cinder/api/common.py:91
+#: cinder/api/common.py:92
 msgid "offset param must be an integer"
 msgstr ""
 
-#: cinder/api/common.py:105
+#: cinder/api/common.py:106
 msgid "offset param must be positive"
 msgstr ""
 
-#: cinder/api/common.py:133
+#: cinder/api/common.py:134
 #, python-format
 msgid "marker [%s] not found"
 msgstr "маркер [%s] не найден"
 
-#: cinder/api/common.py:160
+#: cinder/api/common.py:161
 #, python-format
 msgid "href %s does not contain version"
 msgstr "href %s не содержит версию"
 
-#: cinder/api/extensions.py:184
+#: cinder/api/extensions.py:185
 msgid "Initializing extension manager."
 msgstr "Инициализация диспетчера расширений."
 
-#: cinder/api/extensions.py:199
+#: cinder/api/extensions.py:200
 #, python-format
 msgid "Loaded extension: %s"
 msgstr "Загруженное расширение: %s"
 
-#: cinder/api/extensions.py:237
+#: cinder/api/extensions.py:238
 #, python-format
 msgid "Ext name: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:238
+#: cinder/api/extensions.py:239
 #, python-format
 msgid "Ext alias: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:239
+#: cinder/api/extensions.py:240
 #, python-format
 msgid "Ext description: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:241
+#: cinder/api/extensions.py:242
 #, python-format
 msgid "Ext namespace: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:242
+#: cinder/api/extensions.py:243
 #, python-format
 msgid "Ext updated: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:244
+#: cinder/api/extensions.py:245
 #, python-format
 msgid "Exception loading extension: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:258
+#: cinder/api/extensions.py:259
 #, python-format
 msgid "Loading extension %s"
 msgstr "Загрузка расширения %s"
 
-#: cinder/api/extensions.py:264
+#: cinder/api/extensions.py:265
 #, python-format
 msgid "Calling extension factory %s"
 msgstr ""
 
-#: cinder/api/extensions.py:278
+#: cinder/api/extensions.py:279
 #, python-format
 msgid "osapi_volume_extension is set to deprecated path: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:280
+#: cinder/api/extensions.py:281
 #, python-format
 msgid ""
 "Please set your flag or cinder.conf settings for osapi_volume_extension "
 "to: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:289
+#: cinder/api/extensions.py:290
 #, python-format
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
 msgstr "Ошибка загрузки расширения %(ext_factory)s: %(exc)s"
 
-#: cinder/api/extensions.py:357
+#: cinder/api/extensions.py:358
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:381
+#: cinder/api/extensions.py:382
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
 msgstr "Ошибка загрузки расширения %(ext_name)s: %(exc)s"
@@ -1044,40 +1037,40 @@ msgstr ""
 msgid "Restoring backup %(backup_id)s to volume %(volume_id)s"
 msgstr ""
 
-#: cinder/api/contrib/extended_snapshot_attributes.py:61
+#: cinder/api/contrib/extended_snapshot_attributes.py:60
 #, fuzzy
 msgid "Snapshot not found."
 msgstr "Узел не найден"
 
-#: cinder/api/contrib/hosts.py:83 cinder/api/openstack/wsgi.py:158
+#: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:158
 msgid "cannot understand XML"
 msgstr ""
 
-#: cinder/api/contrib/hosts.py:133
+#: cinder/api/contrib/hosts.py:136
 #, fuzzy, python-format
 msgid "Host '%s' could not be found."
 msgstr "Узел %(host)s не найден."
 
-#: cinder/api/contrib/hosts.py:162
+#: cinder/api/contrib/hosts.py:165
 #, python-format
 msgid "Invalid status: '%s'"
 msgstr "Недопустимое состояние: '%s'"
 
-#: cinder/api/contrib/hosts.py:165
+#: cinder/api/contrib/hosts.py:168
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "Недопустимый параметр обновления: '%s'"
 
-#: cinder/api/contrib/hosts.py:177
+#: cinder/api/contrib/hosts.py:180
 #, python-format
 msgid "Setting host %(host)s to %(state)s."
 msgstr "Перевод узла %(host)s в %(state)s."
 
-#: cinder/api/contrib/hosts.py:202
+#: cinder/api/contrib/hosts.py:205
 msgid "Describe-resource is admin only functionality"
 msgstr ""
 
-#: cinder/api/contrib/hosts.py:210
+#: cinder/api/contrib/hosts.py:213
 msgid "Host not found"
 msgstr "Узел не найден"
 
@@ -1106,11 +1099,11 @@ msgstr "Тело запроса и URI не совпадают"
 msgid "Request body contains too many items"
 msgstr "Тело запроса содержит избыточное количество объектов"
 
-#: cinder/api/contrib/volume_actions.py:159
+#: cinder/api/contrib/volume_actions.py:157
 msgid "Invalid request body"
 msgstr "Недопустимый запрос тела"
 
-#: cinder/api/contrib/volume_actions.py:163
+#: cinder/api/contrib/volume_actions.py:161
 msgid "No image_name was specified in request."
 msgstr ""
 
@@ -1154,8 +1147,8 @@ msgstr "Обнаружена ошибка: %s"
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr "%(url)s возвратил с HTTP %(status)d"
 
-#: cinder/api/middleware/sizelimit.py:54 cinder/api/middleware/sizelimit.py:63
-#: cinder/api/middleware/sizelimit.py:77
+#: cinder/api/middleware/sizelimit.py:56 cinder/api/middleware/sizelimit.py:65
+#: cinder/api/middleware/sizelimit.py:79
 msgid "Request is too large."
 msgstr ""
 
@@ -1297,17 +1290,17 @@ msgstr "Копия не существует"
 msgid "Metadata item was not found"
 msgstr "Элемент метаданных не найден"
 
-#: cinder/api/v1/snapshots.py:123 cinder/api/v2/snapshots.py:123
+#: cinder/api/v1/snapshots.py:119 cinder/api/v2/snapshots.py:119
 #, python-format
 msgid "Delete snapshot with id: %s"
 msgstr "Удалить снимок с идентификатором: %s"
 
-#: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:179
+#: cinder/api/v1/snapshots.py:169 cinder/api/v2/snapshots.py:175
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr "Создать снимок из тома %s"
 
-#: cinder/api/v1/snapshots.py:177 cinder/api/v2/snapshots.py:188
+#: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:184
 #, python-format
 msgid "Invalid value '%s' for force. "
 msgstr ""
@@ -1318,32 +1311,32 @@ msgstr ""
 msgid "volume does not exist"
 msgstr "Сервер не существует"
 
-#: cinder/api/v1/volumes.py:106
+#: cinder/api/v1/volumes.py:102
 #, python-format
 msgid "vol=%s"
 msgstr "vol=%s"
 
-#: cinder/api/v1/volumes.py:236 cinder/api/v2/volumes.py:173
+#: cinder/api/v1/volumes.py:233 cinder/api/v2/volumes.py:173
 #, python-format
 msgid "Delete volume with id: %s"
 msgstr "Удалить том с идентификатором: %s"
 
-#: cinder/api/v1/volumes.py:278 cinder/api/v1/volumes.py:282
+#: cinder/api/v1/volumes.py:275 cinder/api/v1/volumes.py:279
 #: cinder/api/v2/volumes.py:232 cinder/api/v2/volumes.py:236
 msgid "Invalid imageRef provided."
 msgstr ""
 
-#: cinder/api/v1/volumes.py:339 cinder/api/v2/volumes.py:295
+#: cinder/api/v1/volumes.py:337 cinder/api/v2/volumes.py:296
 #, python-format
 msgid "Create volume of %s GB"
 msgstr "Создание раздела %s ГБ"
 
-#: cinder/api/v1/volumes.py:418
+#: cinder/api/v1/volumes.py:416
 #, fuzzy, python-format
 msgid "Removing options '%(bad_options)s' from query"
 msgstr "Удаление параметров '%(unk_opt_str)s' из запроса"
 
-#: cinder/api/v2/volumes.py:383
+#: cinder/api/v2/volumes.py:384
 #, fuzzy, python-format
 msgid "Removing options '%s' from query"
 msgstr "Удаление параметров '%(unk_opt_str)s' из запроса"
@@ -1705,67 +1698,67 @@ msgstr ""
 msgid "delete %s finished"
 msgstr "_удалить: %s"
 
-#: cinder/brick/iscsi/iscsi.py:152
+#: cinder/brick/iscsi/iscsi.py:153
 #, python-format
 msgid "Creating iscsi_target for: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:171 cinder/brick/iscsi/iscsi.py:266
+#: cinder/brick/iscsi/iscsi.py:172 cinder/brick/iscsi/iscsi.py:267
 #, fuzzy, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/brick/iscsi/iscsi.py:182
+#: cinder/brick/iscsi/iscsi.py:183
 #, python-format
 msgid ""
 "Failed to create iscsi target for volume id:%(vol_id)s. Please ensure "
 "your tgtd config file contains 'include %(volumes_dir)s/*'"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:193
+#: cinder/brick/iscsi/iscsi.py:194
 #, python-format
 msgid "Removing iscsi_target for: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:210
+#: cinder/brick/iscsi/iscsi.py:211
 #, fuzzy, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/brick/iscsi/iscsi.py:220 cinder/brick/iscsi/iscsi.py:437
+#: cinder/brick/iscsi/iscsi.py:221 cinder/brick/iscsi/iscsi.py:438
 msgid "valid iqn needed for show_target"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:273
+#: cinder/brick/iscsi/iscsi.py:274
 #, python-format
 msgid "Removing iscsi_target for volume: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:359
+#: cinder/brick/iscsi/iscsi.py:360
 msgid "rtstool is not installed correctly"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:379
+#: cinder/brick/iscsi/iscsi.py:380
 #, python-format
 msgid "Creating iscsi_target for volume: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:403 cinder/brick/iscsi/iscsi.py:412
+#: cinder/brick/iscsi/iscsi.py:404 cinder/brick/iscsi/iscsi.py:413
 #, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:419
+#: cinder/brick/iscsi/iscsi.py:420
 #, fuzzy, python-format
 msgid "Removing iscsi_target: %s"
 msgstr "Перезагрузка копии %s"
 
-#: cinder/brick/iscsi/iscsi.py:429
+#: cinder/brick/iscsi/iscsi.py:430
 #, fuzzy, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s."
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/brick/iscsi/iscsi.py:458
+#: cinder/brick/iscsi/iscsi.py:459
 #, python-format
 msgid "Failed to add initiator iqn %s to target"
 msgstr ""
@@ -1830,51 +1823,51 @@ msgstr ""
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:62
+#: cinder/db/sqlalchemy/api.py:65
 msgid "Use of empty request context is deprecated"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:189
+#: cinder/db/sqlalchemy/api.py:192
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "Нераспознанное значение read_deleted '%s'"
 
-#: cinder/db/sqlalchemy/api.py:797
+#: cinder/db/sqlalchemy/api.py:800
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %(unders)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1816 cinder/db/sqlalchemy/api.py:1842
+#: cinder/db/sqlalchemy/api.py:1819 cinder/db/sqlalchemy/api.py:1845
 #, python-format
 msgid "No backend config with id %(sm_backend_id)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1899
+#: cinder/db/sqlalchemy/api.py:1902
 #, python-format
 msgid "No sm_flavor called %(sm_flavor)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1943
+#: cinder/db/sqlalchemy/api.py:1946
 #, python-format
 msgid "No sm_volume with id %(volume_id)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2006
+#: cinder/db/sqlalchemy/api.py:2009
 #, python-format
 msgid "No backup with id %(backup_id)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2089
+#: cinder/db/sqlalchemy/api.py:2092
 #, fuzzy
 msgid "Volume must be available"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/db/sqlalchemy/api.py:2113
+#: cinder/db/sqlalchemy/api.py:2116
 #, python-format
 msgid "Volume in unexpected state %s, expected awaiting-transfer"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2136
+#: cinder/db/sqlalchemy/api.py:2139
 #, python-format
 msgid ""
 "Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
@@ -1939,30 +1932,30 @@ msgstr ""
 msgid "transfers table not dropped"
 msgstr ""
 
-#: cinder/image/glance.py:149
+#: cinder/image/glance.py:151
 #, python-format
 msgid "Error contacting glance server '%(netloc)s' for '%(method)s', %(extra)s."
 msgstr ""
 
-#: cinder/image/image_utils.py:116
+#: cinder/image/image_utils.py:117
 msgid "Snapshot list encountered but no header found!"
 msgstr ""
 
-#: cinder/image/image_utils.py:224
+#: cinder/image/image_utils.py:231
 msgid "'qemu-img info' parsing failed."
 msgstr "Ошибка анализа 'qemu-img info'."
 
-#: cinder/image/image_utils.py:231
+#: cinder/image/image_utils.py:238
 #, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr ""
 
-#: cinder/image/image_utils.py:248
+#: cinder/image/image_utils.py:255
 #, python-format
 msgid "Converted to raw, but format is now %s"
 msgstr "Преобразование в необработанный, но текущий формат %s"
 
-#: cinder/image/image_utils.py:278
+#: cinder/image/image_utils.py:285
 #, fuzzy, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Преобразование в необработанный, но текущий формат %s"
@@ -1976,6 +1969,11 @@ msgstr "Исключение: %s"
 #, fuzzy, python-format
 msgid "Original exception being dropped: %s"
 msgstr "Исходное исключение было сброшено"
+
+#: cinder/openstack/common/fileutils.py:64
+#, python-format
+msgid "Reloading cached file %s"
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:102
 #, python-format
@@ -2039,6 +2037,31 @@ msgstr ""
 #: cinder/openstack/common/loopingcall.py:138
 msgid "in dynamic looping call"
 msgstr ""
+
+#: cinder/openstack/common/periodic_task.py:42
+#, python-format
+msgid "Unexpected argument for periodic task creation: %(arg)s."
+msgstr ""
+
+#: cinder/openstack/common/periodic_task.py:133
+#, python-format
+msgid "Skipping periodic task %(task)s because its interval is negative"
+msgstr ""
+
+#: cinder/openstack/common/periodic_task.py:138
+#, python-format
+msgid "Skipping periodic task %(task)s because it is disabled"
+msgstr ""
+
+#: cinder/openstack/common/periodic_task.py:176
+#, python-format
+msgid "Running periodic task %(full_task_name)s"
+msgstr "Запуск повторяющегося задания %(full_task_name)s"
+
+#: cinder/openstack/common/periodic_task.py:184
+#, python-format
+msgid "Error during %(full_task_name)s: %(e)s"
+msgstr "Ошибка во время %(full_task_name)s: %(e)s"
 
 #: cinder/openstack/common/policy.py:149
 #, python-format
@@ -2653,7 +2676,7 @@ msgstr ""
 msgid "Host %(host)s %(pass_msg)s.  Previously tried hosts: %(hosts)s"
 msgstr ""
 
-#: cinder/tests/fake_driver.py:45 cinder/volume/driver.py:509
+#: cinder/tests/fake_driver.py:45 cinder/volume/driver.py:566
 #, python-format
 msgid "FAKE ISCSI: %s"
 msgstr ""
@@ -2716,12 +2739,12 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
-#: cinder/tests/test_volume_types.py:58
+#: cinder/tests/test_volume_types.py:59
 #, python-format
 msgid "Given data: %s"
 msgstr "Заданные данные: %s"
 
-#: cinder/tests/test_volume_types.py:59
+#: cinder/tests/test_volume_types.py:60
 #, python-format
 msgid "Result data: %s"
 msgstr "Итоговые данные: %s"
@@ -2788,153 +2811,157 @@ msgstr "Непредвиденный код состояния"
 msgid "Decoding JSON: %s"
 msgstr "Декодирование JSON: %s"
 
-#: cinder/transfer/api.py:67
+#: cinder/transfer/api.py:68
 #, fuzzy
 msgid "Volume in unexpected state"
 msgstr "Непредвиденный код состояния"
 
-#: cinder/transfer/api.py:99 cinder/volume/api.py:104 cinder/volume/api.py:457
-#: cinder/volume/manager.py:558
+#: cinder/transfer/api.py:102 cinder/volume/api.py:106 cinder/volume/api.py:480
+#: cinder/volume/manager.py:559
 msgid "status must be available"
 msgstr ""
 
-#: cinder/transfer/api.py:116
+#: cinder/transfer/api.py:119
 #, fuzzy, python-format
 msgid "Failed to create transfer record for %s"
 msgstr "Ошибка получения метаданных для ip: %s"
 
-#: cinder/transfer/api.py:132
+#: cinder/transfer/api.py:136
 #, python-format
 msgid "Attempt to transfer %s with invalid auth key."
 msgstr ""
 
-#: cinder/transfer/api.py:152 cinder/volume/api.py:169
+#: cinder/transfer/api.py:156 cinder/volume/api.py:171
 #, fuzzy, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr "Превышена квота для %(pid)s, попытка создания тома %(size)sG"
 
-#: cinder/transfer/api.py:161 cinder/volume/api.py:178
+#: cinder/transfer/api.py:165 cinder/volume/api.py:180
 #, fuzzy, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d "
 "volumes already consumed)"
 msgstr "Превышена квота для %(pid)s, попытка создания тома %(size)sG"
 
-#: cinder/transfer/api.py:175
+#: cinder/transfer/api.py:179
 #, fuzzy, python-format
 msgid "Failed to update quota donating volumetransfer id %s"
 msgstr "Ошибка обновления агента: %(resp)r"
 
-#: cinder/transfer/api.py:189
+#: cinder/transfer/api.py:193
 #, python-format
 msgid "Volume %s has been transferred."
 msgstr ""
 
-#: cinder/volume/api.py:97
+#: cinder/volume/api.py:99
 msgid "May specify only one of snapshot, imageRef or source volume"
 msgstr ""
 
-#: cinder/volume/api.py:109
+#: cinder/volume/api.py:111
 msgid "Volume size cannot be lesser than the Snapshot size"
 msgstr ""
 
-#: cinder/volume/api.py:118
+#: cinder/volume/api.py:120
 msgid "Unable to clone volumes that are in an error state"
 msgstr ""
 
-#: cinder/volume/api.py:124
+#: cinder/volume/api.py:126
 msgid "Clones currently must be >= original volume size."
 msgstr ""
 
-#: cinder/volume/api.py:141
+#: cinder/volume/api.py:143
 #, python-format
 msgid "Volume size '%s' must be an integer and greater than 0"
 msgstr ""
 
-#: cinder/volume/api.py:151
+#: cinder/volume/api.py:153
 msgid "Size of specified image is larger than volume size."
 msgstr ""
 
-#: cinder/volume/api.py:155
+#: cinder/volume/api.py:157
 msgid "Image minDisk size is larger than the volume size."
 msgstr ""
 
-#: cinder/volume/api.py:312
+#: cinder/volume/api.py:313
+msgid "Availability zone is invalid"
+msgstr ""
+
+#: cinder/volume/api.py:335
 msgid "Failed to update quota for deleting volume"
 msgstr ""
 
-#: cinder/volume/api.py:320
+#: cinder/volume/api.py:343
 #, fuzzy
 msgid "Volume status must be available or error"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/volume/api.py:329
+#: cinder/volume/api.py:352
 #, python-format
 msgid "Volume still has %d dependent snapshots"
 msgstr ""
 
-#: cinder/volume/api.py:382 cinder/volume/api.py:440
+#: cinder/volume/api.py:405 cinder/volume/api.py:463
 #: cinder/volume/volume_types.py:66
 #, python-format
 msgid "Searching by: %s"
 msgstr "Поиск по: %s"
 
-#: cinder/volume/api.py:460
+#: cinder/volume/api.py:483
 msgid "already attached"
 msgstr ""
 
-#: cinder/volume/api.py:467
+#: cinder/volume/api.py:490
 msgid "already detached"
 msgstr ""
 
-#: cinder/volume/api.py:478
+#: cinder/volume/api.py:501
 #, fuzzy
 msgid "Volume status must be available to reserve"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/volume/api.py:531
+#: cinder/volume/api.py:555
 msgid "must be available"
 msgstr ""
 
-#: cinder/volume/api.py:549
+#: cinder/volume/api.py:573
 #, fuzzy, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr "Превышена квота для %(pid)s, попытка создания тома %(size)sG"
 
-#: cinder/volume/api.py:558
+#: cinder/volume/api.py:582
 #, fuzzy, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr "Превышена квота для %(pid)s, попытка выполнить %(min_count)s копий"
 
-#: cinder/volume/api.py:607
+#: cinder/volume/api.py:631
 #, fuzzy
 msgid "Volume Snapshot status must be available or error"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/volume/api.py:635
+#: cinder/volume/api.py:659
 msgid "Metadata property key blank"
 msgstr ""
 
-#: cinder/volume/api.py:639
+#: cinder/volume/api.py:663
 msgid "Metadata property key greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:643
+#: cinder/volume/api.py:667
 msgid "Metadata property value greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:728
+#: cinder/volume/api.py:752
 #, fuzzy
 msgid "Volume status must be available/in-use."
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/volume/api.py:731
+#: cinder/volume/api.py:755
 #, fuzzy
 msgid "Volume status is in-use."
 msgstr "том %s: том занят"
@@ -2958,37 +2985,45 @@ msgstr "Невозможно найти экспортирование iSCSI д�
 msgid "ISCSI Discovery: Found %s"
 msgstr ""
 
-#: cinder/volume/driver.py:361
+#: cinder/volume/driver.py:367
+#, python-format
+msgid "Failed to access the device on the path %(path)s: %(error)s."
+msgstr ""
+
+#: cinder/volume/driver.py:387
 #, python-format
 msgid "copy_image_to_volume %s."
 msgstr ""
 
-#: cinder/volume/driver.py:378
+#: cinder/volume/driver.py:404
 #, python-format
 msgid "copy_volume_to_image %s."
 msgstr ""
 
-#: cinder/volume/driver.py:437
+#: cinder/volume/driver.py:483
 #, python-format
 msgid "iSCSI device not found at %s"
 msgstr "iSCSI-устройство не найдено в %s"
 
-#: cinder/volume/driver.py:439
-#, fuzzy, python-format
+#: cinder/volume/driver.py:487
+#, python-format
 msgid ""
 "ISCSI volume not yet found at: %(host_device)s. Will rescan & retry.  Try"
-" number: %(tries)s"
+" number: %(tries)s."
 msgstr ""
-"Том ISCSI не найден в: %(mount_device)s. Будет выполнена повторная "
-"проверка и попытка.  Повторение: %(tries)s"
 
-#: cinder/volume/driver.py:451
-#, fuzzy, python-format
-msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
-msgstr "Найден узел iSCSI %(mount_device)s (после %(tries)s повторных проверок)"
+#: cinder/volume/driver.py:500
+#, python-format
+msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)."
+msgstr ""
 
-#: cinder/volume/driver.py:469 cinder/volume/manager.py:710
-#: cinder/volume/drivers/lvm.py:561 cinder/volume/drivers/lvm.py:685
+#: cinder/volume/driver.py:507
+#, python-format
+msgid "Unable to access the backend storage via the path %(path)s."
+msgstr ""
+
+#: cinder/volume/driver.py:526 cinder/volume/manager.py:711
+#: cinder/volume/drivers/lvm.py:562 cinder/volume/drivers/lvm.py:686
 #: cinder/volume/drivers/storwize_svc.py:1348
 #: cinder/volume/drivers/emc/emc_smis_common.py:857
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:235
@@ -3002,195 +3037,195 @@ msgstr "Найден узел iSCSI %(mount_device)s (после %(tries)s по�
 msgid "Updating volume status"
 msgstr "Обновление состояния узла"
 
-#: cinder/volume/driver.py:547
+#: cinder/volume/driver.py:604
 msgid "Driver must implement initialize_connection"
 msgstr ""
 
-#: cinder/volume/manager.py:122
+#: cinder/volume/manager.py:123
 #, python-format
 msgid "Driver path %s is deprecated, update your configuration to the new path."
 msgstr ""
 
-#: cinder/volume/manager.py:144
+#: cinder/volume/manager.py:145
 #, python-format
 msgid "Re-exporting %s volumes"
 msgstr "Повторное экспортирование %s томов"
 
-#: cinder/volume/manager.py:149
+#: cinder/volume/manager.py:150
 #, python-format
 msgid "volume %s stuck in a downloading state"
 msgstr ""
 
-#: cinder/volume/manager.py:154
+#: cinder/volume/manager.py:155
 #, python-format
 msgid "volume %s: skipping export"
 msgstr "том %s: пропуск экспортирования"
 
-#: cinder/volume/manager.py:156
+#: cinder/volume/manager.py:157
 msgid "Resuming any in progress delete operations"
 msgstr ""
 
-#: cinder/volume/manager.py:159
+#: cinder/volume/manager.py:160
 #, python-format
 msgid "Resuming delete on volume: %s"
 msgstr ""
 
-#: cinder/volume/manager.py:218
+#: cinder/volume/manager.py:219
 #, python-format
 msgid "volume %(vol_name)s: creating lv of size %(vol_size)sG"
 msgstr "том %(vol_name)s: создание lv объёмом %(vol_size)sG"
 
-#: cinder/volume/manager.py:227
+#: cinder/volume/manager.py:228
 #, fuzzy, python-format
 msgid "volume %s: creating from snapshot"
 msgstr "том %s: создание экспортирования"
 
-#: cinder/volume/manager.py:231
+#: cinder/volume/manager.py:232
 #, fuzzy, python-format
 msgid "volume %s: creating from existing volume"
 msgstr "том %s: создание экспортирования"
 
-#: cinder/volume/manager.py:235
+#: cinder/volume/manager.py:236
 #, fuzzy, python-format
 msgid "volume %s: creating from image"
 msgstr "том %s: создание"
 
-#: cinder/volume/manager.py:244
+#: cinder/volume/manager.py:245
 #, python-format
 msgid "volume %s: creating"
 msgstr "том %s: создание"
 
-#: cinder/volume/manager.py:255
+#: cinder/volume/manager.py:256
 #, python-format
 msgid "Setting volume: %s status to error after failed image copy."
 msgstr ""
 
-#: cinder/volume/manager.py:283
+#: cinder/volume/manager.py:284
 #, python-format
 msgid "volume %s: creating export"
 msgstr "том %s: создание экспортирования"
 
-#: cinder/volume/manager.py:291
+#: cinder/volume/manager.py:292
 #, fuzzy, python-format
 msgid "volume %s: create failed"
 msgstr "том %s: создание"
 
-#: cinder/volume/manager.py:320
+#: cinder/volume/manager.py:321
 #, python-format
 msgid "volume %s: created successfully"
 msgstr "том %s: создание завершено"
 
-#: cinder/volume/manager.py:328
+#: cinder/volume/manager.py:329
 #, fuzzy, python-format
 msgid "Error: %s"
 msgstr "Ошибка БД: %s"
 
-#: cinder/volume/manager.py:354
+#: cinder/volume/manager.py:355
 #, python-format
 msgid "volume %s: Error trying to reschedule create"
 msgstr ""
 
-#: cinder/volume/manager.py:372
+#: cinder/volume/manager.py:373
 msgid "Retry info not present, will not reschedule"
 msgstr ""
 
-#: cinder/volume/manager.py:376
+#: cinder/volume/manager.py:377
 msgid "No request spec, will not reschedule"
 msgstr ""
 
-#: cinder/volume/manager.py:381
+#: cinder/volume/manager.py:382
 #, python-format
 msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
 msgstr ""
 
-#: cinder/volume/manager.py:410 cinder/volume/manager.py:423
+#: cinder/volume/manager.py:411 cinder/volume/manager.py:424
 #, python-format
 msgid "volume %s: deleting"
 msgstr "том %s: удаление"
 
-#: cinder/volume/manager.py:416
+#: cinder/volume/manager.py:417
 #, fuzzy
 msgid "volume is not local to this node"
 msgstr "Том до сих пор присоединён"
 
-#: cinder/volume/manager.py:421
+#: cinder/volume/manager.py:422
 #, python-format
 msgid "volume %s: removing export"
 msgstr "том %s: удаление экспортирования"
 
-#: cinder/volume/manager.py:426
+#: cinder/volume/manager.py:427
 #, python-format
 msgid "volume %s: volume is busy"
 msgstr "том %s: том занят"
 
-#: cinder/volume/manager.py:445
+#: cinder/volume/manager.py:446
 #, fuzzy
 msgid "Failed to update usages deleting volume"
 msgstr "Ошибка обновления агента: %(resp)r"
 
-#: cinder/volume/manager.py:449
+#: cinder/volume/manager.py:450
 #, python-format
 msgid "volume %s: deleted successfully"
 msgstr "том %s: удаление завершено"
 
-#: cinder/volume/manager.py:464
+#: cinder/volume/manager.py:465
 #, python-format
 msgid "snapshot %s: creating"
 msgstr "снимок %s: создание"
 
-#: cinder/volume/manager.py:470
+#: cinder/volume/manager.py:471
 #, python-format
 msgid "snapshot %(snap_name)s: creating"
 msgstr "снимок %(snap_name)s: создание"
 
-#: cinder/volume/manager.py:488
+#: cinder/volume/manager.py:489
 #, python-format
 msgid "snapshot %s: created successfully"
 msgstr "снимок %s: создание завершено"
 
-#: cinder/volume/manager.py:496 cinder/volume/manager.py:506
+#: cinder/volume/manager.py:497 cinder/volume/manager.py:507
 #, python-format
 msgid "snapshot %s: deleting"
 msgstr "снимок %s: удаление"
 
-#: cinder/volume/manager.py:509
+#: cinder/volume/manager.py:510
 #, fuzzy, python-format
 msgid "snapshot %s: snapshot is busy"
 msgstr "снимок %s: создание завершено"
 
-#: cinder/volume/manager.py:534
+#: cinder/volume/manager.py:535
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:537
+#: cinder/volume/manager.py:538
 #, python-format
 msgid "snapshot %s: deleted successfully"
 msgstr "снимок %s: удаление выполнено"
 
-#: cinder/volume/manager.py:555
+#: cinder/volume/manager.py:556
 msgid "being attached by another instance"
 msgstr ""
 
-#: cinder/volume/manager.py:614 cinder/volume/manager.py:619
+#: cinder/volume/manager.py:615 cinder/volume/manager.py:620
 #, fuzzy, python-format
 msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/volume/manager.py:624
+#: cinder/volume/manager.py:625
 #, python-format
 msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:643
+#: cinder/volume/manager.py:644
 #, fuzzy, python-format
 msgid "Uploaded volume %(volume_id)s to image (%(image_id)s) successfully"
 msgstr "Подключить том %(volume_id)s для копии %(instance_id)s на %(device)s"
 
-#: cinder/volume/manager.py:723
+#: cinder/volume/manager.py:724
 msgid "Clear capabilities"
 msgstr "Очистить возможности"
 
-#: cinder/volume/manager.py:727
+#: cinder/volume/manager.py:728
 #, python-format
 msgid "Notification {%s} received"
 msgstr "Принято уведомление {%s}"
@@ -3317,127 +3352,138 @@ msgstr ""
 msgid "mount.glusterfs is not installed"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:99 cinder/volume/drivers/nfs.py:224
+#: cinder/volume/drivers/glusterfs.py:99 cinder/volume/drivers/nfs.py:241
 #, fuzzy, python-format
 msgid "casted to %s"
 msgstr "_создать: %s"
 
-#: cinder/volume/drivers/glusterfs.py:109 cinder/volume/drivers/nfs.py:234
+#: cinder/volume/drivers/glusterfs.py:109 cinder/volume/drivers/nfs.py:251
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:173 cinder/volume/drivers/nfs.py:297
+#: cinder/volume/drivers/glusterfs.py:173 cinder/volume/drivers/nfs.py:314
 #, fuzzy, python-format
 msgid "Exception during mounting %s"
 msgstr "Расширенный ресурс: %s"
 
-#: cinder/volume/drivers/glusterfs.py:251 cinder/volume/drivers/nfs.py:417
+#: cinder/volume/drivers/glusterfs.py:251 cinder/volume/drivers/nfs.py:428
 #, fuzzy, python-format
 msgid "%s is already mounted"
 msgstr "образ уже присоединён"
 
-#: cinder/volume/drivers/lvm.py:81
+#: cinder/volume/drivers/lvm.py:82
 #, python-format
 msgid "volume group %s doesn't exist"
 msgstr "том группы %s не существует"
 
-#: cinder/volume/drivers/lvm.py:196
+#: cinder/volume/drivers/lvm.py:197
 #, python-format
 msgid "Size for volume: %s not found, skipping secure delete."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:203
+#: cinder/volume/drivers/lvm.py:204
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:217
+#: cinder/volume/drivers/lvm.py:218
 #, python-format
 msgid "Error unrecognized volume_clear option: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:237
+#: cinder/volume/drivers/lvm.py:238
 #, python-format
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:267 cinder/volume/drivers/lvm.py:663
+#: cinder/volume/drivers/lvm.py:268 cinder/volume/drivers/lvm.py:664
 #, fuzzy, python-format
 msgid "Creating clone of volume: %s"
 msgstr "Создать снимок тома %s"
 
-#: cinder/volume/drivers/lvm.py:344
+#: cinder/volume/drivers/lvm.py:345
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:365
+#: cinder/volume/drivers/lvm.py:366
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:379
+#: cinder/volume/drivers/lvm.py:380
 msgid "Detected inconsistency in provider_location id"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:431
+#: cinder/volume/drivers/lvm.py:432
 #, fuzzy, python-format
 msgid "Symbolic link %s not found"
 msgstr "маркер [%s] не найден"
 
-#: cinder/volume/drivers/lvm.py:511 cinder/volume/drivers/lvm.py:525
+#: cinder/volume/drivers/lvm.py:512 cinder/volume/drivers/lvm.py:526
 #, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:543
+#: cinder/volume/drivers/lvm.py:544
 #, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume:"
 " %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:584
-msgid "Error retrieving volume status: "
+#: cinder/volume/drivers/lvm.py:585
+#, python-format
+msgid "Error retrieving volume status: %s"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:182
+#: cinder/volume/drivers/nfs.py:142
 #, python-format
-msgid "There's no NFS config file configured (%s)"
+msgid "Expected volume size was %d"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:187
+#: cinder/volume/drivers/nfs.py:143
 #, python-format
-msgid "NFS config file at %(config)s doesn't exist"
-msgstr ""
-
-#: cinder/volume/drivers/nfs.py:191
-#, python-format
-msgid "NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: %s"
+msgid " but size is now %d"
 msgstr ""
 
 #: cinder/volume/drivers/nfs.py:199
 #, python-format
+msgid "There's no NFS config file configured (%s)"
+msgstr ""
+
+#: cinder/volume/drivers/nfs.py:204
+#, python-format
+msgid "NFS config file at %(config)s doesn't exist"
+msgstr ""
+
+#: cinder/volume/drivers/nfs.py:208
+#, python-format
+msgid "NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: %s"
+msgstr ""
+
+#: cinder/volume/drivers/nfs.py:216
+#, python-format
 msgid "NFS config 'nfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:343
+#: cinder/volume/drivers/nfs.py:362
 #, python-format
 msgid "%s is above nfs_used_ratio"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:350 cinder/volume/drivers/nfs.py:353
+#: cinder/volume/drivers/nfs.py:365
 #, python-format
 msgid "%s is above nfs_oversub_ratio"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:357
+#: cinder/volume/drivers/nfs.py:368
 #, python-format
 msgid "%s reserved space is above nfs_oversub_ratio"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:373
+#: cinder/volume/drivers/nfs.py:384
 #, python-format
 msgid "Selected %s as target nfs share."
 msgstr ""
@@ -5905,11 +5951,26 @@ msgstr "группа %s уже существует"
 msgid "Unexpected state while cloning %s"
 msgstr "Неожиданная ошибка при выполнении команды."
 
-#~ msgid "Accepting transfer %(transfer_id)s"
+#~ msgid ""
+#~ "Skipping %(full_task_name)s, %(ticks_to_skip)s ticks"
+#~ " left until next run"
 #~ msgstr ""
+#~ "Пропуск %(full_task_name)s, %(ticks_to_skip)s раз"
+#~ " осталось, для произведения следующего "
+#~ "запуска"
 
 #~ msgid ""
-#~ "Error contacting glance server "
-#~ "'%(host)s:%(port)s' for '%(method)s', %(extra)s."
+#~ "ISCSI volume not yet found at: "
+#~ "%(host_device)s. Will rescan & retry.  "
+#~ "Try number: %(tries)s"
+#~ msgstr ""
+#~ "Том ISCSI не найден в: %(mount_device)s."
+#~ " Будет выполнена повторная проверка и "
+#~ "попытка.  Повторение: %(tries)s"
+
+#~ msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
+#~ msgstr "Найден узел iSCSI %(mount_device)s (после %(tries)s повторных проверок)"
+
+#~ msgid "Error retrieving volume status: "
 #~ msgstr ""
 
