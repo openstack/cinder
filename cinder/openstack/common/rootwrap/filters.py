@@ -20,7 +20,7 @@ import re
 
 
 class CommandFilter(object):
-    """Command filter only checking that the 1st argument matches exec_path"""
+    """Command filter only checking that the 1st argument matches exec_path."""
 
     def __init__(self, exec_path, run_as, *args):
         self.name = ''
@@ -30,7 +30,7 @@ class CommandFilter(object):
         self.real_exec = None
 
     def get_exec(self, exec_dirs=[]):
-        """Returns existing executable, or empty string if none found"""
+        """Returns existing executable, or empty string if none found."""
         if self.real_exec is not None:
             return self.real_exec
         self.real_exec = ""
@@ -46,10 +46,8 @@ class CommandFilter(object):
         return self.real_exec
 
     def match(self, userargs):
-        """Only check that the first argument (command) matches exec_path"""
-        if (os.path.basename(self.exec_path) == userargs[0]):
-            return True
-        return False
+        """Only check that the first argument (command) matches exec_path."""
+        return os.path.basename(self.exec_path) == userargs[0]
 
     def get_command(self, userargs, exec_dirs=[]):
         """Returns command to execute (with sudo -u if run_as != root)."""
@@ -60,12 +58,12 @@ class CommandFilter(object):
         return [to_exec] + userargs[1:]
 
     def get_environment(self, userargs):
-        """Returns specific environment to set, None if none"""
+        """Returns specific environment to set, None if none."""
         return None
 
 
 class RegExpFilter(CommandFilter):
-    """Command filter doing regexp matching for every argument"""
+    """Command filter doing regexp matching for every argument."""
 
     def match(self, userargs):
         # Early skip if command or number of args don't match
@@ -135,7 +133,7 @@ class PathFilter(CommandFilter):
 
 
 class DnsmasqFilter(CommandFilter):
-    """Specific filter for the dnsmasq call (which includes env)"""
+    """Specific filter for the dnsmasq call (which includes env)."""
 
     CONFIG_FILE_ARG = 'CONFIG_FILE'
 
@@ -160,7 +158,7 @@ class DnsmasqFilter(CommandFilter):
 
 
 class DeprecatedDnsmasqFilter(DnsmasqFilter):
-    """Variant of dnsmasq filter to support old-style FLAGFILE"""
+    """Variant of dnsmasq filter to support old-style FLAGFILE."""
     CONFIG_FILE_ARG = 'FLAGFILE'
 
 
@@ -196,6 +194,10 @@ class KillFilter(CommandFilter):
                 return False
         try:
             command = os.readlink("/proc/%d/exe" % int(args[1]))
+            # NOTE(yufang521247): /proc/PID/exe may have '\0' on the
+            # end, because python doen't stop at '\0' when read the
+            # target path.
+            command = command.split('\0')[0]
             # NOTE(dprince): /proc/PID/exe may have ' (deleted)' on
             # the end if an executable is updated or deleted
             if command.endswith(" (deleted)"):
@@ -210,7 +212,7 @@ class KillFilter(CommandFilter):
 
 
 class ReadFileFilter(CommandFilter):
-    """Specific filter for the utils.read_file_as_root call"""
+    """Specific filter for the utils.read_file_as_root call."""
 
     def __init__(self, file_path, *args):
         self.file_path = file_path
