@@ -33,6 +33,7 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder import flags
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 
@@ -202,7 +203,7 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     #             when it is added to glance.  Right now there is no
     #             auth checking in glance, so we assume that access was
     #             checked before we got here.
-    with utils.remove_path_on_error(path):
+    with fileutils.remove_path_on_error(path):
         with open(path, "wb") as image_file:
             image_service.download(context, image_id, image_file)
 
@@ -220,7 +221,7 @@ def fetch_to_raw(context, image_service,
     # it seeks. Maybe we can think of something for a future version.
     fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
     os.close(fd)
-    with utils.remove_path_on_error(tmp):
+    with fileutils.remove_path_on_error(tmp):
         fetch(context, image_service, image_id, tmp, user_id, project_id)
 
         data = qemu_img_info(tmp)
@@ -262,7 +263,7 @@ def upload_volume(context, image_service, image_meta, volume_path):
         LOG.debug("%s was raw, no need to convert to %s" %
                   (image_id, image_meta['disk_format']))
         with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path) as image_file:
+            with fileutils.file_open(volume_path) as image_file:
                 image_service.update(context, image_id, {}, image_file)
         return
 
@@ -272,7 +273,7 @@ def upload_volume(context, image_service, image_meta, volume_path):
 
     fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
     os.close(fd)
-    with utils.remove_path_on_error(tmp):
+    with fileutils.remove_path_on_error(tmp):
         LOG.debug("%s was raw, converting to %s" %
                   (image_id, image_meta['disk_format']))
         convert_image(volume_path, tmp, image_meta['disk_format'])
@@ -284,6 +285,6 @@ def upload_volume(context, image_service, image_meta, volume_path):
                 reason=_("Converted to %(f1)s, but format is now %(f2)s") %
                 {'f1': image_meta['disk_format'], 'f2': data.file_format})
 
-        with utils.file_open(tmp) as image_file:
+        with fileutils.file_open(tmp) as image_file:
             image_service.update(context, image_id, {}, image_file)
         os.unlink(tmp)

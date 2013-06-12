@@ -29,6 +29,7 @@ from oslo.config import cfg
 from cinder.brick.iscsi import iscsi
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
@@ -289,14 +290,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
         volume = self.db.volume_get(context, backup['volume_id'])
         volume_path = self.local_path(volume)
         with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path) as volume_file:
+            with fileutils.file_open(volume_path) as volume_file:
                 backup_service.backup(backup, volume_file)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
         volume_path = self.local_path(volume)
         with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path, 'wb') as volume_file:
+            with fileutils.file_open(volume_path, 'wb') as volume_file:
                 backup_service.restore(backup, volume['id'], volume_file)
 
 

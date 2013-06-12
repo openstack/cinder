@@ -705,18 +705,6 @@ def utf8(value):
     return value
 
 
-def delete_if_exists(pathname):
-    """delete a file, but ignore file not found error"""
-
-    try:
-        os.unlink(pathname)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            return
-        else:
-            raise
-
-
 def get_from_path(items, path):
     """Returns a list of items matching the specified path.
 
@@ -925,18 +913,6 @@ def logging_error(message):
             LOG.exception(message)
 
 
-@contextlib.contextmanager
-def remove_path_on_error(path):
-    """Protect code that wants to operate on PATH atomically.
-    Any exception will cause PATH to be removed.
-    """
-    try:
-        yield
-    except Exception:
-        with excutils.save_and_reraise_exception():
-            delete_if_exists(path)
-
-
 def make_dev_path(dev, partition=None, base='/dev'):
     """Return a path to a particular device.
 
@@ -992,18 +968,6 @@ def read_cached_file(filename, cache_info, reload_func=None):
         if reload_func:
             reload_func(cache_info['data'])
     return cache_info['data']
-
-
-def file_open(*args, **kwargs):
-    """Open file
-
-    see built-in file() documentation for more details
-
-    Note: The reason this is kept in a separate module is to easily
-          be able to provide a stub module that doesn't alter system
-          state at all (for unit tests)
-    """
-    return file(*args, **kwargs)
 
 
 def hash_file(file_like_object):
@@ -1163,21 +1127,6 @@ class UndoManager(object):
                 LOG.exception(msg, **kwargs)
 
             self._rollback()
-
-
-def ensure_tree(path):
-    """Create a directory (and any ancestor directories required)
-
-    :param path: Directory to create
-    """
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST:
-            if not os.path.isdir(path):
-                raise
-        else:
-            raise
 
 
 def to_bytes(text, default=0):
