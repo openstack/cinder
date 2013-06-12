@@ -46,6 +46,9 @@ from cinder.openstack.common import uuidutils
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
+db_session.set_defaults(sql_connection='sqlite:///$state_path/$sqlite_db',
+                        sqlite_db='cinder.sqlite')
+
 get_engine = db_session.get_engine
 get_session = db_session.get_session
 
