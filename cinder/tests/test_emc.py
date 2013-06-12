@@ -16,19 +16,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mox
 import os
 import shutil
 import tempfile
 from xml.dom.minidom import Document
 
+import mox
+
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc.emc_smis_common import EMCSMISCommon
 from cinder.volume.drivers.emc.emc_smis_iscsi import EMCSMISISCSIDriver
+
 
 CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_emc_config.xml'
 LOG = logging.getLogger(__name__)

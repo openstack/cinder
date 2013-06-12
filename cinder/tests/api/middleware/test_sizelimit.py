@@ -13,14 +13,17 @@
 #    under the License.
 
 import StringIO
+
+from oslo.config import cfg
 import webob
 
 from cinder.api.middleware import sizelimit
-from cinder import flags
 from cinder import test
 
-FLAGS = flags.FLAGS
-MAX_REQUEST_BODY_SIZE = FLAGS.osapi_max_request_body_size
+
+CONF = cfg.CONF
+
+MAX_REQUEST_BODY_SIZE = CONF.osapi_max_request_body_size
 
 
 class TestLimitingReader(test.TestCase):

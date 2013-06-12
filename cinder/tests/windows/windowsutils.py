@@ -19,15 +19,15 @@ Windows storage classes to be used in testing.
 """
 
 import os
-import sys
 
-from cinder import flags
+from oslo.config import cfg
 
 # Check needed for unit testing on Unix
 if os.name == 'nt':
     import wmi
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 
 class WindowsUtils(object):
@@ -89,7 +89,7 @@ class WindowsUtils(object):
     def _get_vhd_path(self, volume_name):
         '''Gets the path disk of the volume.'''
 
-        base_vhd_folder = FLAGS.windows_iscsi_lun_path
+        base_vhd_folder = CONF.windows_iscsi_lun_path
         return os.path.join(base_vhd_folder, volume_name + ".vhd")
 
     def delete_snapshot(self, name):

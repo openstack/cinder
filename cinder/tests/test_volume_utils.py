@@ -17,9 +17,11 @@
 
 """Tests For miscellaneous util methods used with volume."""
 
+
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
-from cinder import flags
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
@@ -29,7 +31,8 @@ from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 
 class UsageInfoTestCase(test.TestCase):
@@ -45,7 +48,7 @@ class UsageInfoTestCase(test.TestCase):
         self.flags(connection_type='fake',
                    host='fake',
                    notification_driver=[test_notifier.__name__])
-        self.volume = importutils.import_object(FLAGS.volume_manager)
+        self.volume = importutils.import_object(CONF.volume_manager)
         self.user_id = 'fake'
         self.project_id = 'fake'
         self.snapshot_id = 'fake'
@@ -63,8 +66,8 @@ class UsageInfoTestCase(test.TestCase):
         vol['snapshot_id'] = self.snapshot_id
         vol['user_id'] = self.user_id
         vol['project_id'] = self.project_id
-        vol['host'] = FLAGS.host
-        vol['availability_zone'] = FLAGS.storage_availability_zone
+        vol['host'] = CONF.host
+        vol['availability_zone'] = CONF.storage_availability_zone
         vol['status'] = "creating"
         vol['attach_status'] = "detached"
         vol['size'] = self.volume_size

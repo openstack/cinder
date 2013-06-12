@@ -15,19 +15,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder import flags
+
+from oslo.config import cfg
+
 from cinder.openstack.common import log as logging
 from cinder.tests.integrated import integrated_helpers
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
 
 
 class ExtensionsTest(integrated_helpers._IntegratedTestBase):
     def _get_flags(self):
         f = super(ExtensionsTest, self)._get_flags()
-        f['osapi_volume_extension'] = FLAGS.osapi_volume_extension[:]
+        f['osapi_volume_extension'] = CONF.osapi_volume_extension[:]
         f['osapi_volume_extension'].append(
             'cinder.tests.api.extensions.foxinsocks.Foxinsocks')
         return f

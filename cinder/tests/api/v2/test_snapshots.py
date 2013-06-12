@@ -21,7 +21,6 @@ import webob
 from cinder.api.v2 import snapshots
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
@@ -29,7 +28,6 @@ from cinder.tests.api.v2 import stubs
 from cinder import volume
 
 
-FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
 
 UUID = '00000000-0000-0000-0000-000000000001'

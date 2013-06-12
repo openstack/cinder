@@ -20,7 +20,6 @@ import webob
 
 from cinder.api.contrib import volume_actions
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common.rpc import common as rpc_common
 from cinder import test
@@ -28,9 +27,6 @@ from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder import volume
 from cinder.volume import api as volume_api
-
-
-FLAGS = flags.FLAGS
 
 
 def fake_volume_api(*args, **kwargs):

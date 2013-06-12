@@ -16,18 +16,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import contextlib
 import StringIO
 
 import mock
 import mox
-from oslo.config import cfg
 
 from cinder.db import api as db_api
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume import driver as parent_driver
 from cinder.volume.drivers.xenapi import lib
 from cinder.volume.drivers.xenapi import sm as driver
 from cinder.volume.drivers.xenapi import tools

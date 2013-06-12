@@ -19,16 +19,17 @@ Unit Tests for cinder.volume.rpcapi
 """
 
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
-from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import rpc
 from cinder import test
 from cinder.volume import rpcapi as volume_rpcapi
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class VolumeRpcAPITestCase(test.TestCase):
@@ -37,7 +38,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.context = context.get_admin_context()
         vol = {}
         vol['host'] = 'fake_host'
-        vol['availability_zone'] = FLAGS.storage_availability_zone
+        vol['availability_zone'] = CONF.storage_availability_zone
         vol['status'] = "available"
         vol['attach_status'] = "detached"
         volume = db.volume_create(self.context, vol)
@@ -87,7 +88,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             host = kwargs['host']
         else:
             host = kwargs['volume']['host']
-        expected_topic = '%s.%s' % (FLAGS.volume_topic, host)
+        expected_topic = '%s.%s' % (CONF.volume_topic, host)
 
         self.fake_args = None
         self.fake_kwargs = None

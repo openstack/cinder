@@ -16,14 +16,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import datetime
+
+from oslo.config import cfg
 
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqa_api
 from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
 from cinder import quota
@@ -32,7 +34,7 @@ import cinder.tests.image.fake
 from cinder import volume
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class QuotaIntegrationTestCase(test.TestCase):
@@ -82,7 +84,7 @@ class QuotaIntegrationTestCase(test.TestCase):
 
     def test_too_many_volumes(self):
         volume_ids = []
-        for i in range(FLAGS.quota_volumes):
+        for i in range(CONF.quota_volumes):
             vol_ref = self._create_volume()
             volume_ids.append(vol_ref['id'])
         self.assertRaises(exception.QuotaError,
@@ -130,7 +132,7 @@ class QuotaIntegrationTestCase(test.TestCase):
 
         # Make sure the snapshot volume_size isn't included in usage.
         vol_type = db.volume_type_create(self.context,
-                                         dict(name=FLAGS.default_volume_type))
+                                         dict(name=CONF.default_volume_type))
         vol_ref2 = volume.API().create(self.context, 10, '', '')
         usages = db.quota_usage_get_all_by_project(self.context,
                                                    self.project_id)

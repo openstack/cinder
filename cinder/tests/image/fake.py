@@ -23,15 +23,11 @@ import datetime
 import uuid
 
 from cinder import exception
-from cinder import flags
 import cinder.image.glance
 from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
-
-
-FLAGS = flags.FLAGS
 
 
 class _FakeImageService(object):

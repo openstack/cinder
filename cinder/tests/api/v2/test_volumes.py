@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import datetime
 
 from lxml import etree
+from oslo.config import cfg
 import webob
 
 from cinder.api import extensions
@@ -23,7 +25,6 @@ from cinder.api.v2 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
@@ -31,7 +32,8 @@ from cinder.tests.image import fake as fake_image
 from cinder.volume import api as volume_api
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
+
 NS = '{http://docs.openstack.org/api/openstack-volume/2.0/content}'
 
 TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
@@ -100,9 +102,10 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_create_with_type(self):
-        vol_type = db.volume_type_create(context.get_admin_context(),
-                                         dict(name=FLAGS.default_volume_type,
-                                              extra_specs={}))
+        vol_type = db.volume_type_create(
+            context.get_admin_context(),
+            dict(name=CONF.default_volume_type, extra_specs={})
+        )
 
         db_vol_type = db.volume_type_get(context.get_admin_context(),
                                          vol_type.id)

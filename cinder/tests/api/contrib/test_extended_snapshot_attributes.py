@@ -13,19 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 from lxml import etree
 import webob
 
 from cinder.api.contrib import extended_snapshot_attributes
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder import volume
-
-
-FLAGS = flags.FLAGS
 
 
 UUID1 = '00000000-0000-0000-0000-000000000001'

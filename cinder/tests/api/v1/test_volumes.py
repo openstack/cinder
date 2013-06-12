@@ -16,6 +16,7 @@
 import datetime
 
 from lxml import etree
+from oslo.config import cfg
 import webob
 
 from cinder.api import extensions
@@ -23,7 +24,6 @@ from cinder.api.v1 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
@@ -31,10 +31,11 @@ from cinder.tests.image import fake as fake_image
 from cinder.volume import api as volume_api
 
 
-FLAGS = flags.FLAGS
 NS = '{http://docs.openstack.org/volume/api/v1}'
 
 TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
+
+CONF = cfg.CONF
 
 
 def stub_snapshot_get(self, context, snapshot_id):
@@ -96,7 +97,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_create_with_type(self):
-        vol_type = FLAGS.default_volume_type
+        vol_type = CONF.default_volume_type
         db.volume_type_create(context.get_admin_context(),
                               dict(name=vol_type, extra_specs={}))
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
