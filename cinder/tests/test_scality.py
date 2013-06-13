@@ -19,6 +19,8 @@ Unit tests for the Scality SOFS Volume Driver.
 import errno
 import os
 
+import mox as mox_lib
+
 from cinder import exception
 from cinder import test
 from cinder import utils
@@ -104,6 +106,7 @@ class ScalityDriverTestCase(test.TestCase):
         self._remove_fake_mount()
         self._driver = scality.ScalityDriver()
         self._driver.set_execute(self._execute_wrapper)
+        self._mox = mox_lib.Mox()
 
         self._create_fake_mount()
         self._create_fake_config()
@@ -163,18 +166,35 @@ class ScalityDriverTestCase(test.TestCase):
 
     def test_create_snapshot(self):
         """Expected behaviour for create_snapshot."""
-        self._driver.create_volume(self.TEST_VOLUME)
+        mox = self._mox
+
+        vol_size = self._driver._size_bytes(self.TEST_VOLSIZE)
+
+        mox.StubOutWithMock(self._driver, '_create_file')
+        self._driver._create_file(self.TEST_SNAPPATH, vol_size)
+        mox.StubOutWithMock(self._driver, '_copy_file')
+        self._driver._copy_file(self.TEST_VOLPATH, self.TEST_SNAPPATH)
+
+        mox.ReplayAll()
+
         self._driver.create_snapshot(self.TEST_SNAPSHOT)
-        self.assertTrue(os.path.isfile(self.TEST_SNAPPATH))
-        self.assertEqual(os.stat(self.TEST_SNAPPATH).st_size,
-                         100 * 1024 * 1024)
+
+        mox.UnsetStubs()
+        mox.VerifyAll()
 
     def test_delete_snapshot(self):
         """Expected behaviour for delete_snapshot."""
-        self._driver.create_volume(self.TEST_VOLUME)
-        self._driver.create_snapshot(self.TEST_SNAPSHOT)
+        mox = self._mox
+
+        mox.StubOutWithMock(os, 'remove')
+        os.remove(self.TEST_SNAPPATH)
+
+        mox.ReplayAll()
+
         self._driver.delete_snapshot(self.TEST_SNAPSHOT)
-        self.assertFalse(os.path.isfile(self.TEST_SNAPPATH))
+
+        mox.UnsetStubs()
+        mox.VerifyAll()
 
     def test_initialize_connection(self):
         """Expected behaviour for initialize_connection."""
