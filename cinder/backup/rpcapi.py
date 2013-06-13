@@ -19,15 +19,17 @@
 Client side of the volume backup RPC API.
 """
 
-from cinder import flags
+
+from oslo.config import cfg
+
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 import cinder.openstack.common.rpc.proxy
 
 
-LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
 
-FLAGS = flags.FLAGS
+LOG = logging.getLogger(__name__)
 
 
 class BackupAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
@@ -42,7 +44,7 @@ class BackupAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
 
     def __init__(self):
         super(BackupAPI, self).__init__(
-            topic=FLAGS.backup_topic,
+            topic=CONF.backup_topic,
             default_version=self.BASE_RPC_API_VERSION)
 
     def create_backup(self, ctxt, host, backup_id, volume_id):

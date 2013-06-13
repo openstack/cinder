@@ -27,9 +27,9 @@ SHOULD include dedicated exception logging.
 from oslo.config import cfg
 import webob.exc
 
-from cinder import flags
 from cinder.openstack.common import exception as com_exception
 from cinder.openstack.common import log as logging
+
 
 LOG = logging.getLogger(__name__)
 
@@ -39,8 +39,8 @@ exc_log_opts = [
                 help='make exception message format errors fatal'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(exc_log_opts)
+CONF = cfg.CONF
+CONF.register_opts(exc_log_opts)
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
@@ -105,7 +105,7 @@ class CinderException(Exception):
                 LOG.exception(_('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
                     LOG.error("%s: %s" % (name, value))
-                if FLAGS.fatal_exception_format_errors:
+                if CONF.fatal_exception_format_errors:
                     raise e
                 else:
                     # at least get the core message out if something happened

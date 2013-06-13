@@ -19,17 +19,19 @@
 Helper code for the iSCSI volume driver.
 
 """
+
+
 import os
 import re
 
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import utils as volume_utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -59,9 +61,9 @@ iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
                                )
                     ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(iscsi_helper_opt)
-FLAGS.import_opt('volume_name_template', 'cinder.db')
+CONF = cfg.CONF
+CONF.register_opts(iscsi_helper_opt)
+CONF.import_opt('volume_name_template', 'cinder.db')
 
 
 class TargetAdmin(object):
@@ -133,7 +135,7 @@ class TgtAdm(TargetAdmin):
         # Note(jdg) tid and lun aren't used by TgtAdm but remain for
         # compatibility
 
-        fileutils.ensure_tree(FLAGS.volumes_dir)
+        fileutils.ensure_tree(CONF.volumes_dir)
 
         vol_id = name.split(':')[1]
         if chap_auth is None:
@@ -151,7 +153,7 @@ class TgtAdm(TargetAdmin):
             """ % (name, path, chap_auth)
 
         LOG.info(_('Creating iscsi_target for: %s') % vol_id)
-        volumes_dir = FLAGS.volumes_dir
+        volumes_dir = CONF.volumes_dir
         volume_path = os.path.join(volumes_dir, vol_id)
 
         f = open(volume_path, 'w+')
@@ -177,7 +179,7 @@ class TgtAdm(TargetAdmin):
             os.unlink(volume_path)
             raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
-        iqn = '%s%s' % (FLAGS.iscsi_target_prefix, vol_id)
+        iqn = '%s%s' % (CONF.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
             LOG.error(_("Failed to create iscsi target for volume "
@@ -192,10 +194,10 @@ class TgtAdm(TargetAdmin):
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
         LOG.info(_('Removing iscsi_target for: %s') % vol_id)
-        vol_uuid_file = FLAGS.volume_name_template % vol_id
-        volume_path = os.path.join(FLAGS.volumes_dir, vol_uuid_file)
+        vol_uuid_file = CONF.volume_name_template % vol_id
+        volume_path = os.path.join(CONF.volumes_dir, vol_uuid_file)
         if os.path.isfile(volume_path):
-            iqn = '%s%s' % (FLAGS.iscsi_target_prefix,
+            iqn = '%s%s' % (CONF.iscsi_target_prefix,
                             vol_uuid_file)
         else:
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
@@ -232,10 +234,10 @@ class IetAdm(TargetAdmin):
         super(IetAdm, self).__init__('ietadm', execute)
 
     def _iotype(self, path):
-        if FLAGS.iscsi_iotype == 'auto':
+        if CONF.iscsi_iotype == 'auto':
             return 'blockio' if volume_utils.is_block(path) else 'fileio'
         else:
-            return FLAGS.iscsi_iotype
+            return CONF.iscsi_iotype
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
@@ -249,7 +251,7 @@ class IetAdm(TargetAdmin):
             (type, username, password) = chap_auth.split()
             self._new_auth(tid, type, username, password, **kwargs)
 
-        conf_file = FLAGS.iet_conf
+        conf_file = CONF.iet_conf
         if os.path.exists(conf_file):
             try:
                 volume_conf = """
@@ -274,8 +276,8 @@ class IetAdm(TargetAdmin):
         LOG.info(_('Removing iscsi_target for volume: %s') % vol_id)
         self._delete_logicalunit(tid, lun, **kwargs)
         self._delete_target(tid, **kwargs)
-        vol_uuid_file = FLAGS.volume_name_template % vol_id
-        conf_file = FLAGS.iet_conf
+        vol_uuid_file = CONF.volume_name_template % vol_id
+        conf_file = CONF.iet_conf
         if os.path.exists(conf_file):
             with utils.temporary_chown(conf_file):
                 try:
@@ -387,8 +389,8 @@ class LioAdm(TargetAdmin):
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
         extra_args = []
-        if FLAGS.lio_initiator_iqns:
-            extra_args.append(FLAGS.lio_initiator_iqns)
+        if CONF.lio_initiator_iqns:
+            extra_args.append(CONF.lio_initiator_iqns)
 
         try:
             command_args = ['rtstool',
@@ -407,7 +409,7 @@ class LioAdm(TargetAdmin):
 
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
-        iqn = '%s%s' % (FLAGS.iscsi_target_prefix, vol_id)
+        iqn = '%s%s' % (CONF.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
             LOG.error(_("Failed to create iscsi target for volume "
@@ -419,7 +421,7 @@ class LioAdm(TargetAdmin):
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
         LOG.info(_('Removing iscsi_target: %s') % vol_id)
         vol_uuid_name = 'volume-%s' % vol_id
-        iqn = '%s%s' % (FLAGS.iscsi_target_prefix, vol_uuid_name)
+        iqn = '%s%s' % (CONF.iscsi_target_prefix, vol_uuid_name)
 
         try:
             self._execute('rtstool',
@@ -462,11 +464,11 @@ class LioAdm(TargetAdmin):
 
 
 def get_target_admin():
-    if FLAGS.iscsi_helper == 'tgtadm':
+    if CONF.iscsi_helper == 'tgtadm':
         return TgtAdm()
-    elif FLAGS.iscsi_helper == 'fake':
+    elif CONF.iscsi_helper == 'fake':
         return FakeIscsiHelper()
-    elif FLAGS.iscsi_helper == 'lioadm':
+    elif CONF.iscsi_helper == 'lioadm':
         return LioAdm()
     else:
         return IetAdm()

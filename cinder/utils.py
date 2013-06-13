@@ -19,13 +19,13 @@
 
 """Utilities and helper functions."""
 
+
 import contextlib
 import datetime
 import errno
 import functools
 import hashlib
 import inspect
-import itertools
 import os
 import paramiko
 import pyclbr
@@ -34,13 +34,9 @@ import re
 import shlex
 import shutil
 import signal
-import socket
-import struct
 import sys
 import tempfile
 import time
-import types
-import warnings
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
@@ -52,8 +48,9 @@ from eventlet.green import subprocess
 from eventlet import greenthread
 from eventlet import pools
 
+from oslo.config import cfg
+
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
@@ -61,10 +58,10 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 ISO_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 PERFECT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
-FLAGS = flags.FLAGS
 
 synchronized = lockutils.synchronized_with_prefix('cinder-')
 
@@ -79,9 +76,9 @@ def find_config(config_path):
     """
     possible_locations = [
         config_path,
-        os.path.join(FLAGS.state_path, "etc", "cinder", config_path),
-        os.path.join(FLAGS.state_path, "etc", config_path),
-        os.path.join(FLAGS.state_path, config_path),
+        os.path.join(CONF.state_path, "etc", "cinder", config_path),
+        os.path.join(CONF.state_path, "etc", config_path),
+        os.path.join(CONF.state_path, config_path),
         "/etc/cinder/%s" % config_path,
     ]
 
@@ -121,7 +118,7 @@ def execute(*cmd, **kwargs):
     :param attempts:           How many times to retry cmd.
     :param run_as_root:        True | False. Defaults to False. If set to True,
                                the command is prefixed by the command specified
-                               in the root_helper FLAG.
+                               in the root_helper CONF.
 
     :raises exception.Error: on receiving unknown arguments
     :raises exception.ProcessExecutionError:
@@ -149,18 +146,18 @@ def execute(*cmd, **kwargs):
 
     if run_as_root:
 
-        if FLAGS.rootwrap_config is None or FLAGS.root_helper != 'sudo':
+        if CONF.rootwrap_config is None or CONF.root_helper != 'sudo':
             LOG.deprecated(_('The root_helper option (which lets you specify '
                              'a root wrapper different from cinder-rootwrap, '
                              'and defaults to using sudo) is now deprecated. '
                              'You should use the rootwrap_config option '
                              'instead.'))
 
-        if (FLAGS.rootwrap_config is not None):
+        if (CONF.rootwrap_config is not None):
             cmd = ['sudo', 'cinder-rootwrap',
-                   FLAGS.rootwrap_config] + list(cmd)
+                   CONF.rootwrap_config] + list(cmd)
         else:
-            cmd = shlex.split(FLAGS.root_helper) + list(cmd)
+            cmd = shlex.split(CONF.root_helper) + list(cmd)
     cmd = map(str, cmd)
 
     while attempts > 0:
@@ -410,7 +407,7 @@ def last_completed_audit_period(unit=None):
               The begin timestamp of this audit period is the same as the
               end of the previous."""
     if not unit:
-        unit = FLAGS.volume_usage_audit_period
+        unit = CONF.volume_usage_audit_period
 
     offset = 0
     if '@' in unit:
@@ -564,7 +561,7 @@ class LazyPluggable(object):
 
     def __get_backend(self):
         if not self.__backend:
-            backend_name = FLAGS[self.__pivot]
+            backend_name = CONF[self.__pivot]
             if backend_name not in self.__backends:
                 raise exception.Error(_('Invalid backend: %s') % backend_name)
 
@@ -829,11 +826,11 @@ def is_valid_ipv4(address):
 
 
 def monkey_patch():
-    """  If the Flags.monkey_patch set as True,
+    """  If the CONF.monkey_patch set as True,
     this function patches a decorator
     for all functions in specified modules.
     You can set decorators for each modules
-    using FLAGS.monkey_patch_modules.
+    using CONF.monkey_patch_modules.
     The format is "Module path:Decorator function".
     Example: 'cinder.api.ec2.cloud:' \
      cinder.openstack.common.notifier.api.notify_decorator'
@@ -844,11 +841,11 @@ def monkey_patch():
     name - name of the function
     function - object of the function
     """
-    # If FLAGS.monkey_patch is not True, this function do nothing.
-    if not FLAGS.monkey_patch:
+    # If CONF.monkey_patch is not True, this function do nothing.
+    if not CONF.monkey_patch:
         return
     # Get list of modules and decorators
-    for module_and_decorator in FLAGS.monkey_patch_modules:
+    for module_and_decorator in CONF.monkey_patch_modules:
         module, decorator_name = module_and_decorator.split(':')
         # import decorator function
         decorator = importutils.import_class(decorator_name)
@@ -897,7 +894,7 @@ def generate_glance_url():
     """Generate the URL to glance."""
     # TODO(jk0): This will eventually need to take SSL into consideration
     # when supported in glance.
-    return "http://%s:%d" % (FLAGS.glance_host, FLAGS.glance_port)
+    return "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
 
 
 @contextlib.contextmanager
@@ -1010,7 +1007,7 @@ def service_is_up(service):
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
     elapsed = total_seconds(timeutils.utcnow() - last_heartbeat)
-    return abs(elapsed) <= FLAGS.service_down_time
+    return abs(elapsed) <= CONF.service_down_time
 
 
 def generate_mac_address():
