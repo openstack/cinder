@@ -424,7 +424,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.debug(_("volume %s: deleting"), volume_ref['name'])
             self.driver.delete_volume(volume_ref)
         except exception.VolumeIsBusy:
-            LOG.debug(_("volume %s: volume is busy"), volume_ref['name'])
+            LOG.error(_("Cannot delete volume %s: volume is busy"),
+                      volume_ref['name'])
             self.driver.ensure_export(context, volume_ref)
             self.db.volume_update(context, volume_ref['id'],
                                   {'status': 'available'})
@@ -507,7 +508,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.debug(_("snapshot %s: deleting"), snapshot_ref['name'])
             self.driver.delete_snapshot(snapshot_ref)
         except exception.SnapshotIsBusy:
-            LOG.debug(_("snapshot %s: snapshot is busy"), snapshot_ref['name'])
+            LOG.error(_("Cannot delete snapshot %s: snapshot is busy"),
+                      snapshot_ref['name'])
             self.db.snapshot_update(context,
                                     snapshot_ref['id'],
                                     {'status': 'available'})
