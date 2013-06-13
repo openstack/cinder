@@ -17,12 +17,13 @@
 
 """Policy Engine For Cinder"""
 
+
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import policy
 from cinder import utils
+
 
 policy_opts = [
     cfg.StrOpt('policy_file',
@@ -32,8 +33,8 @@ policy_opts = [
                default='default',
                help=_('Rule checked when requested rule is not found')), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(policy_opts)
+CONF = cfg.CONF
+CONF.register_opts(policy_opts)
 
 _POLICY_PATH = None
 _POLICY_CACHE = {}
@@ -51,13 +52,13 @@ def init():
     global _POLICY_PATH
     global _POLICY_CACHE
     if not _POLICY_PATH:
-        _POLICY_PATH = utils.find_config(FLAGS.policy_file)
+        _POLICY_PATH = utils.find_config(CONF.policy_file)
     utils.read_cached_file(_POLICY_PATH, _POLICY_CACHE,
                            reload_func=_set_brain)
 
 
 def _set_brain(data):
-    default_rule = FLAGS.policy_default_rule
+    default_rule = CONF.policy_default_rule
     policy.set_brain(policy.Brain.load_json(data, default_rule))
 
 

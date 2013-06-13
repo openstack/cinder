@@ -22,13 +22,10 @@ from eventlet import greenthread
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.db import base
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 import cinder.policy
 import cinder.volume
 
-
-FLAGS = flags.FLAGS
 
 LOG = logging.getLogger(__name__)
 

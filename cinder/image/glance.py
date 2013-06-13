@@ -17,6 +17,7 @@
 
 """Implementation of an image service that uses Glance as the backend"""
 
+
 from __future__ import absolute_import
 
 import copy
@@ -28,16 +29,17 @@ import urlparse
 
 import glanceclient
 import glanceclient.exc
+from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 
 
+CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
 
 
 def _parse_image_ref(image_href):
@@ -56,19 +58,19 @@ def _parse_image_ref(image_href):
 
 
 def _create_glance_client(context, netloc, use_ssl,
-                          version=FLAGS.glance_api_version):
+                          version=CONF.glance_api_version):
     """Instantiate a new glanceclient.Client object."""
     if version is None:
-        version = FLAGS.glance_api_version
+        version = CONF.glance_api_version
     params = {}
     if use_ssl:
         scheme = 'https'
         # https specific params
-        params['insecure'] = FLAGS.glance_api_insecure
-        params['ssl_compression'] = FLAGS.glance_api_ssl_compression
+        params['insecure'] = CONF.glance_api_insecure
+        params['ssl_compression'] = CONF.glance_api_ssl_compression
     else:
         scheme = 'http'
-    if FLAGS.auth_strategy == 'keystone':
+    if CONF.auth_strategy == 'keystone':
         params['token'] = context.auth_token
     endpoint = '%s://%s' % (scheme, netloc)
     return glanceclient.Client(str(version), endpoint, **params)
@@ -77,12 +79,12 @@ def _create_glance_client(context, netloc, use_ssl,
 def get_api_servers():
     """Return Iterable over shuffled api servers.
 
-    Shuffle a list of FLAGS.glance_api_servers and return an iterator
+    Shuffle a list of CONF.glance_api_servers and return an iterator
     that will cycle through the list, looping around to the beginning
     if necessary.
     """
     api_servers = []
-    for api_server in FLAGS.glance_api_servers:
+    for api_server in CONF.glance_api_servers:
         if '//' not in api_server:
             api_server = 'http://' + api_server
         url = urlparse.urlparse(api_server)
@@ -129,7 +131,7 @@ class GlanceClientWrapper(object):
         """Call a glance client method.
 
         If we get a connection error,
-        retry the request according to FLAGS.glance_num_retries.
+        retry the request according to CONF.glance_num_retries.
         """
         version = self.version
         if version in kwargs:
@@ -138,7 +140,7 @@ class GlanceClientWrapper(object):
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
                       glanceclient.exc.CommunicationError)
-        num_attempts = 1 + FLAGS.glance_num_retries
+        num_attempts = 1 + CONF.glance_num_retries
 
         for attempt in xrange(1, num_attempts + 1):
             client = self.client or self._create_onetime_client(context,

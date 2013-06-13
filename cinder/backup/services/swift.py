@@ -42,10 +42,10 @@ from oslo.config import cfg
 
 from cinder.db import base
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from swiftclient import client as swift
+
 
 LOG = logging.getLogger(__name__)
 
@@ -70,8 +70,8 @@ swiftbackup_service_opts = [
                help='Compression algorithm (None to disable)'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(swiftbackup_service_opts)
+CONF = cfg.CONF
+CONF.register_opts(swiftbackup_service_opts)
 
 
 class SwiftBackupService(base.Base):
@@ -98,14 +98,14 @@ class SwiftBackupService(base.Base):
 
     def __init__(self, context, db_driver=None):
         self.context = context
-        self.swift_url = '%s%s' % (FLAGS.backup_swift_url,
+        self.swift_url = '%s%s' % (CONF.backup_swift_url,
                                    self.context.project_id)
-        self.az = FLAGS.storage_availability_zone
-        self.data_block_size_bytes = FLAGS.backup_swift_object_size
-        self.swift_attempts = FLAGS.backup_swift_retry_attempts
-        self.swift_backoff = FLAGS.backup_swift_retry_backoff
+        self.az = CONF.storage_availability_zone
+        self.data_block_size_bytes = CONF.backup_swift_object_size
+        self.swift_attempts = CONF.backup_swift_retry_attempts
+        self.swift_backoff = CONF.backup_swift_retry_backoff
         self.compressor = \
-            self._get_compressor(FLAGS.backup_compression_algorithm)
+            self._get_compressor(CONF.backup_compression_algorithm)
         self.conn = swift.Connection(None, None, None,
                                      retries=self.swift_attempts,
                                      preauthurl=self.swift_url,
@@ -133,7 +133,7 @@ class SwiftBackupService(base.Base):
         LOG.debug(_('_create_container started, container: %(container)s,'
                     'backup: %(backup_id)s') % locals())
         if container is None:
-            container = FLAGS.backup_swift_container
+            container = CONF.backup_swift_container
             self.db.backup_update(context, backup_id, {'container': container})
         if not self._check_container_exists(container):
             self.conn.put_container(container)
@@ -236,7 +236,7 @@ class SwiftBackupService(base.Base):
                 break
             LOG.debug(_('reading chunk of data from volume'))
             if self.compressor is not None:
-                algorithm = FLAGS.backup_compression_algorithm.lower()
+                algorithm = CONF.backup_compression_algorithm.lower()
                 obj[object_name]['compression'] = algorithm
                 data_size_bytes = len(data)
                 data = self.compressor.compress(data)

@@ -36,11 +36,11 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
-from cinder import flags
 from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+
 
 LOG = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ backup_manager_opts = [
                help='Service to use for backups.'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(backup_manager_opts)
+CONF = cfg.CONF
+CONF.register_opts(backup_manager_opts)
 
 
 class BackupManager(manager.SchedulerDependentManager):
@@ -60,9 +60,10 @@ class BackupManager(manager.SchedulerDependentManager):
     RPC_API_VERSION = '1.0'
 
     def __init__(self, service_name=None, *args, **kwargs):
-        self.service = importutils.import_module(FLAGS.backup_service)
-        self.az = FLAGS.storage_availability_zone
-        self.volume_manager = importutils.import_object(FLAGS.volume_manager)
+        self.service = importutils.import_module(CONF.backup_service)
+        self.az = CONF.storage_availability_zone
+        self.volume_manager = importutils.import_object(
+            CONF.volume_manager)
         self.driver = self.volume_manager.driver
         super(BackupManager, self).__init__(service_name='backup',
                                             *args, **kwargs)
@@ -120,7 +121,7 @@ class BackupManager(manager.SchedulerDependentManager):
                    'volume: %(volume_id)s') % locals())
         self.db.backup_update(context, backup_id, {'host': self.host,
                                                    'service':
-                                                   FLAGS.backup_service})
+                                                   CONF.backup_service})
 
         expected_status = 'backing-up'
         actual_status = volume['status']
@@ -194,7 +195,7 @@ class BackupManager(manager.SchedulerDependentManager):
                      backup['id'], backup['size'])
 
         backup_service = backup['service']
-        configured_service = FLAGS.backup_service
+        configured_service = CONF.backup_service
         if backup_service != configured_service:
             err = _('restore_backup aborted, the backup service currently'
                     ' configured [%(configured_service)s] is not the'
@@ -239,7 +240,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         backup_service = backup['service']
         if backup_service is not None:
-            configured_service = FLAGS.backup_service
+            configured_service = CONF.backup_service
             if backup_service != configured_service:
                 err = _('delete_backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'

@@ -53,8 +53,10 @@ This module provides Manager, a base class for managers.
 
 """
 
+
+from oslo.config import cfg
+
 from cinder.db import base
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
 from cinder.openstack.common.rpc import dispatcher as rpc_dispatcher
@@ -62,9 +64,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 
 
-FLAGS = flags.FLAGS
-
-
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -74,7 +74,7 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
 
     def __init__(self, host=None, db_driver=None):
         if not host:
-            host = FLAGS.host
+            host = CONF.host
         self.host = host
         super(Manager, self).__init__(db_driver)
 
@@ -103,8 +103,8 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
 
     def service_config(self, context):
         config = {}
-        for key in FLAGS:
-            config[key] = FLAGS.get(key, None)
+        for key in CONF:
+            config[key] = CONF.get(key, None)
         return config
 
 

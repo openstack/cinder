@@ -25,6 +25,7 @@ Some slight modifications, but at some point
 we should look at maybe pushign this up to OSLO
 """
 
+
 import os
 import re
 import tempfile
@@ -32,10 +33,10 @@ import tempfile
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -43,8 +44,8 @@ image_helper_opt = [cfg.StrOpt('image_conversion_dir',
                     default='/tmp',
                     help='parent dir for tempdir used for image conversion'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(image_helper_opt)
+CONF = cfg.CONF
+CONF.register_opts(image_helper_opt)
 
 
 class QemuImgInfo(object):
@@ -211,15 +212,15 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
 def fetch_to_raw(context, image_service,
                  image_id, dest,
                  user_id=None, project_id=None):
-    if (FLAGS.image_conversion_dir and not
-            os.path.exists(FLAGS.image_conversion_dir)):
-        os.makedirs(FLAGS.image_conversion_dir)
+    if (CONF.image_conversion_dir and not
+            os.path.exists(CONF.image_conversion_dir)):
+        os.makedirs(CONF.image_conversion_dir)
 
     # NOTE(avishay): I'm not crazy about creating temp files which may be
     # large and cause disk full errors which would confuse users.
     # Unfortunately it seems that you can't pipe to 'qemu-img convert' because
     # it seeks. Maybe we can think of something for a future version.
-    fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
+    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
     os.close(fd)
     with fileutils.remove_path_on_error(tmp):
         fetch(context, image_service, image_id, tmp, user_id, project_id)
@@ -267,11 +268,11 @@ def upload_volume(context, image_service, image_meta, volume_path):
                 image_service.update(context, image_id, {}, image_file)
         return
 
-    if (FLAGS.image_conversion_dir and not
-            os.path.exists(FLAGS.image_conversion_dir)):
-        os.makedirs(FLAGS.image_conversion_dir)
+    if (CONF.image_conversion_dir and not
+            os.path.exists(CONF.image_conversion_dir)):
+        os.makedirs(CONF.image_conversion_dir)
 
-    fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
+    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
     os.close(fd)
     with fileutils.remove_path_on_error(tmp):
         LOG.debug("%s was raw, converting to %s" %

@@ -18,16 +18,17 @@
 
 """Quotas for volumes."""
 
+
 import datetime
 
 from oslo.config import cfg
 
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -55,8 +56,8 @@ quota_opts = [
                default='cinder.quota.DbQuotaDriver',
                help='default driver to use for quota checks'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(quota_opts)
+CONF = cfg.CONF
+CONF.register_opts(quota_opts)
 
 
 class DbQuotaDriver(object):
@@ -296,7 +297,7 @@ class DbQuotaDriver(object):
 
         # Set up the reservation expiration
         if expire is None:
-            expire = FLAGS.reservation_expire
+            expire = CONF.reservation_expire
         if isinstance(expire, (int, long)):
             expire = datetime.timedelta(seconds=expire)
         if isinstance(expire, datetime.timedelta):
@@ -321,7 +322,7 @@ class DbQuotaDriver(object):
         #            session isn't available outside the DBAPI, we
         #            have to do the work there.
         return db.quota_reserve(context, resources, quotas, deltas, expire,
-                                FLAGS.until_refresh, FLAGS.max_age,
+                                CONF.until_refresh, CONF.max_age,
                                 project_id=project_id)
 
     def commit(self, context, reservations, project_id=None):
@@ -446,7 +447,7 @@ class BaseResource(object):
     def default(self):
         """Return the default value of the quota."""
 
-        return FLAGS[self.flag] if self.flag else -1
+        return CONF[self.flag] if self.flag else -1
 
 
 class ReservableResource(BaseResource):
@@ -538,7 +539,7 @@ class QuotaEngine(object):
         """Initialize a Quota object."""
 
         if not quota_driver_class:
-            quota_driver_class = FLAGS.quota_driver
+            quota_driver_class = CONF.quota_driver
 
         if isinstance(quota_driver_class, basestring):
             quota_driver_class = importutils.import_object(quota_driver_class)
@@ -792,7 +793,7 @@ def _sync_gigabytes(context, project_id, session):
     (_junk, vol_gigs) = db.volume_data_get_for_project(context,
                                                        project_id,
                                                        session=session)
-    if FLAGS.no_snapshot_gb_quota:
+    if CONF.no_snapshot_gb_quota:
         return {'gigabytes': vol_gigs}
 
     (_junk, snap_gigs) = db.snapshot_data_get_for_project(context,
