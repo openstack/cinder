@@ -191,7 +191,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         return info
 
     @utils.synchronized('3par', external=True)
-    def terminate_connection(self, volume, connector, force):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         self.common.client_login()
         self.common.terminate_connection(volume,
