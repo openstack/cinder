@@ -20,6 +20,7 @@
 Handles all requests relating to volumes.
 """
 
+
 import functools
 
 from oslo.config import cfg
@@ -27,7 +28,6 @@ from oslo.config import cfg
 from cinder import context
 from cinder.db import base
 from cinder import exception
-from cinder import flags
 from cinder.image import glance
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
@@ -35,20 +35,22 @@ from cinder.openstack.common import timeutils
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
+from cinder import units
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_types
+
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
                               default=True,
                               help='Create volume from snapshot at the host '
                                    'where snapshot resides')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(volume_host_opt)
-flags.DECLARE('storage_availability_zone', 'cinder.volume.manager')
+CONF = cfg.CONF
+CONF.register_opt(volume_host_opt)
+CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
-GB = 1048576 * 1024
+GB = units.GiB
 QUOTAS = quota.QUOTAS
 
 
@@ -185,7 +187,7 @@ class API(base.Base):
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
 
         if availability_zone is None:
-            availability_zone = FLAGS.storage_availability_zone
+            availability_zone = CONF.storage_availability_zone
         else:
             self._check_availabilty_zone(availability_zone)
 
@@ -249,7 +251,7 @@ class API(base.Base):
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
 
-        if snapshot_id and FLAGS.snapshot_same_host:
+        if snapshot_id and CONF.snapshot_same_host:
             snapshot_ref = self.db.snapshot_get(context, snapshot_id)
             source_volume_ref = self.db.volume_get(context,
                                                    snapshot_ref['volume_id'])
@@ -288,7 +290,7 @@ class API(base.Base):
         else:
             self.scheduler_rpcapi.create_volume(
                 context,
-                FLAGS.volume_topic,
+                CONF.volume_topic,
                 volume_id,
                 snapshot_id,
                 image_id,
@@ -300,7 +302,7 @@ class API(base.Base):
             return
 
         ctxt = context.get_admin_context()
-        topic = FLAGS.volume_topic
+        topic = CONF.volume_topic
         volume_services = self.db.service_get_all_by_topic(ctxt, topic)
 
         # NOTE(haomai): In case of volume services isn't init or
@@ -556,7 +558,7 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         try:
-            if FLAGS.no_snapshot_gb_quota:
+            if CONF.no_snapshot_gb_quota:
                 reservations = QUOTAS.reserve(context, snapshots=1)
             else:
                 reservations = QUOTAS.reserve(context, snapshots=1,

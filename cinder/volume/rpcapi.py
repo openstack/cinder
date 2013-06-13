@@ -18,13 +18,14 @@
 Client side of the volume RPC API.
 """
 
-from cinder import exception
-from cinder import flags
+
+from oslo.config import cfg
+
 from cinder.openstack.common import rpc
 import cinder.openstack.common.rpc.proxy
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
@@ -45,7 +46,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
 
     def __init__(self, topic=None):
         super(VolumeAPI, self).__init__(
-            topic=topic or FLAGS.volume_topic,
+            topic=topic or CONF.volume_topic,
             default_version=self.BASE_RPC_API_VERSION)
 
     def create_volume(self, ctxt, volume, host,

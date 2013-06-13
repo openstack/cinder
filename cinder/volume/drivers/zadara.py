@@ -21,16 +21,16 @@ Volume driver for Zadara Virtual Private Storage Array (VPSA).
 This driver requires VPSA with API ver.12.06 or higher.
 """
 
+
 import httplib
 
 from lxml import etree
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
-from cinder import utils
 from cinder.volume import driver
+
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -78,8 +78,8 @@ zadara_opts = [
                 default=True,
                 help="Don't halt on deletion of non-existing volumes"), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(zadara_opts)
+CONF = cfg.CONF
+CONF.register_opts(zadara_opts)
 
 
 class ZadaraVPSAConnection(object):
@@ -117,12 +117,12 @@ class ZadaraVPSAConnection(object):
                               '/api/volumes.xml',
                               {'display_name': kwargs.get('name'),
                                'virtual_capacity': kwargs.get('size'),
-                               'raid_group_name[]': FLAGS.zadara_vpsa_poolname,
+                               'raid_group_name[]': CONF.zadara_vpsa_poolname,
                                'quantity': 1,
-                               'cache': FLAGS.zadara_default_cache_policy,
-                               'crypt': FLAGS.zadara_default_encryption,
-                               'mode': FLAGS.zadara_default_striping_mode,
-                               'stripesize': FLAGS.zadara_default_stripesize,
+                               'cache': CONF.zadara_default_cache_policy,
+                               'crypt': CONF.zadara_default_encryption,
+                               'mode': CONF.zadara_default_striping_mode,
+                               'stripesize': CONF.zadara_default_stripesize,
                                'force': 'NO'}),
             'delete_volume': ('DELETE',
                               '/api/volumes/%s.xml' % kwargs.get('vpsa_vol'),
@@ -252,11 +252,11 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         Any initialization the volume driver does while starting.
         Establishes initial connection with VPSA and retrieves access_key.
         """
-        self.vpsa = ZadaraVPSAConnection(FLAGS.zadara_vpsa_ip,
-                                         FLAGS.zadara_vpsa_port,
-                                         FLAGS.zadara_vpsa_use_ssl,
-                                         FLAGS.zadara_user,
-                                         FLAGS.zadara_password)
+        self.vpsa = ZadaraVPSAConnection(CONF.zadara_vpsa_ip,
+                                         CONF.zadara_vpsa_port,
+                                         CONF.zadara_vpsa_use_ssl,
+                                         CONF.zadara_user,
+                                         CONF.zadara_password)
 
     def check_for_setup_error(self):
         """Returns an error (exception) if prerequisites aren't met."""
@@ -334,7 +334,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         """Create volume."""
         self.vpsa.send_cmd(
             'create_volume',
-            name=FLAGS.zadara_vol_name_template % volume['name'],
+            name=CONF.zadara_vol_name_template % volume['name'],
             size=volume['size'])
 
     def delete_volume(self, volume):
@@ -344,13 +344,13 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         Return ok if doesn't exist. Auto detach from all servers.
         """
         # Get volume name
-        name = FLAGS.zadara_vol_name_template % volume['name']
+        name = CONF.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             msg = _('Volume %(name)s could not be found. '
                     'It might be already deleted') % locals()
             LOG.warning(msg)
-            if FLAGS.zadara_vpsa_allow_nonexistent_delete:
+            if CONF.zadara_vpsa_allow_nonexistent_delete:
                 return
             else:
                 raise exception.VolumeNotFound(volume_id=name)
@@ -361,7 +361,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         servers = self._xml_parse_helper(xml_tree, 'servers',
                                          ('iqn', None), first=False)
         if servers:
-            if not FLAGS.zadara_vpsa_auto_detach_on_delete:
+            if not CONF.zadara_vpsa_auto_detach_on_delete:
                 raise exception.VolumeAttached(volume_id=name)
 
             for server in servers:
@@ -404,7 +404,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             raise exception.ZadaraServerCreateFailure(name=initiator_name)
 
         # Get volume name
-        name = FLAGS.zadara_vol_name_template % volume['name']
+        name = CONF.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             raise exception.VolumeNotFound(volume_id=name)
@@ -459,7 +459,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             raise exception.ZadaraServerNotFound(name=initiator_name)
 
         # Get volume name
-        name = FLAGS.zadara_vol_name_template % volume['name']
+        name = CONF.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             raise exception.VolumeNotFound(volume_id=name)

@@ -21,14 +21,17 @@
 
 """Built-in volume type properties."""
 
+
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common.db import exception as db_exc
 from cinder.openstack.common import log as logging
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -115,7 +118,7 @@ def get_volume_type_by_name(context, name):
 
 def get_default_volume_type():
     """Get the default volume type."""
-    name = FLAGS.default_volume_type
+    name = CONF.default_volume_type
     vol_type = {}
 
     if name is not None:

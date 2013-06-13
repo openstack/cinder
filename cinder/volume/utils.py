@@ -16,17 +16,19 @@
 
 """Volume-related Utilities and helpers."""
 
+
 import os
 import stat
 
-from cinder import flags
+from oslo.config import cfg
+
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import timeutils
 from cinder import utils
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -81,7 +83,7 @@ def _usage_from_volume(context, volume_ref, **kw):
 def notify_about_volume_usage(context, volume, event_suffix,
                               extra_usage_info=None, host=None):
     if not host:
-        host = FLAGS.host
+        host = CONF.host
 
     if not extra_usage_info:
         extra_usage_info = {}
@@ -114,7 +116,7 @@ def _usage_from_snapshot(context, snapshot_ref, **extra_usage_info):
 def notify_about_snapshot_usage(context, snapshot, event_suffix,
                                 extra_usage_info=None, host=None):
     if not host:
-        host = FLAGS.host
+        host = CONF.host
 
     if not extra_usage_info:
         extra_usage_info = {}
