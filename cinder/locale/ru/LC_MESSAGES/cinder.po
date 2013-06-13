@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-06-12 18:09+0000\n"
+"POT-Creation-Date: 2013-06-13 18:10+0000\n"
 "PO-Revision-Date: 2012-03-25 09:34+0000\n"
 "Last-Translator: Eugene Marshal <Unknown>\n"
 "Language-Team: Russian <ru@li.org>\n"
@@ -606,36 +606,36 @@ msgstr ""
 msgid "SIGTERM received"
 msgstr ""
 
-#: cinder/service.py:174 cinder/openstack/common/service.py:164
+#: cinder/service.py:174 cinder/openstack/common/service.py:165
 msgid "Parent process has died unexpectedly, exiting"
 msgstr ""
 
-#: cinder/service.py:213 cinder/openstack/common/service.py:200
+#: cinder/service.py:213 cinder/openstack/common/service.py:201
 msgid "Forking too fast, sleeping"
 msgstr ""
 
-#: cinder/service.py:231 cinder/openstack/common/service.py:121
-#: cinder/openstack/common/service.py:218
+#: cinder/service.py:231 cinder/openstack/common/service.py:122
+#: cinder/openstack/common/service.py:219
 #, fuzzy, python-format
 msgid "Caught %s, exiting"
 msgstr "снимок %s: удаление"
 
-#: cinder/service.py:236 cinder/openstack/common/service.py:223
+#: cinder/service.py:236 cinder/openstack/common/service.py:224
 #, fuzzy
 msgid "Unhandled exception"
 msgstr "Вложенное исключение: %s"
 
-#: cinder/service.py:243 cinder/openstack/common/service.py:230
+#: cinder/service.py:243 cinder/openstack/common/service.py:231
 #, python-format
 msgid "Started child %d"
 msgstr ""
 
-#: cinder/service.py:253 cinder/openstack/common/service.py:240
+#: cinder/service.py:253 cinder/openstack/common/service.py:241
 #, fuzzy, python-format
 msgid "Starting %d workers"
 msgstr "установка сетевого узла"
 
-#: cinder/service.py:272 cinder/openstack/common/service.py:257
+#: cinder/service.py:272 cinder/openstack/common/service.py:258
 #, python-format
 msgid "Child %(pid)d killed by signal %(sig)d"
 msgstr ""
@@ -645,7 +645,7 @@ msgstr ""
 msgid "Child %(pid)d exited with status %(code)d"
 msgstr ""
 
-#: cinder/service.py:278 cinder/openstack/common/service.py:265
+#: cinder/service.py:278 cinder/openstack/common/service.py:266
 #, python-format
 msgid "pid %d not in child list"
 msgstr ""
@@ -660,12 +660,12 @@ msgstr ""
 msgid "wait wrap.failed %s"
 msgstr ""
 
-#: cinder/service.py:310 cinder/openstack/common/service.py:293
+#: cinder/service.py:310 cinder/openstack/common/service.py:294
 #, python-format
 msgid "Caught %s, stopping children"
 msgstr ""
 
-#: cinder/service.py:321 cinder/openstack/common/service.py:304
+#: cinder/service.py:321 cinder/openstack/common/service.py:305
 #, python-format
 msgid "Waiting on %d children to exit"
 msgstr ""
@@ -710,7 +710,7 @@ msgstr ""
 msgid "Fetching %s"
 msgstr "Получение %s"
 
-#: cinder/utils.py:147 cinder/openstack/common/processutils.py:122
+#: cinder/utils.py:147 cinder/openstack/common/processutils.py:127
 #, python-format
 msgid "Got unknown keyword args to utils.execute: %r"
 msgstr "Приняты неизвестные аргументы ключевого слова для utils.execute: %r"
@@ -722,33 +722,35 @@ msgid ""
 "should use the rootwrap_config option instead."
 msgstr ""
 
-#: cinder/utils.py:169 cinder/openstack/common/processutils.py:137
+#: cinder/utils.py:169 cinder/openstack/common/processutils.py:142
 #, python-format
 msgid "Running cmd (subprocess): %s"
 msgstr "Выполнение команды (субпроцесс): %s"
 
 #: cinder/utils.py:186 cinder/utils.py:267
-#: cinder/openstack/common/processutils.py:162
+#: cinder/openstack/common/processutils.py:167
+#: cinder/openstack/common/processutils.py:239
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:279
 #, python-format
 msgid "Result was %s"
 msgstr "Результат %s"
 
-#: cinder/utils.py:199 cinder/openstack/common/processutils.py:174
+#: cinder/utils.py:199 cinder/openstack/common/processutils.py:179
 #, python-format
 msgid "%r failed. Retrying."
 msgstr "%r ошибка. Выполняется повтор."
 
-#: cinder/utils.py:241 cinder/volume/drivers/san/hp/hp_3par_common.py:252
+#: cinder/utils.py:241 cinder/openstack/common/processutils.py:218
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:252
 #, python-format
 msgid "Running cmd (SSH): %s"
 msgstr "Выполнение команды (SSH): %s"
 
-#: cinder/utils.py:243
+#: cinder/utils.py:243 cinder/openstack/common/processutils.py:220
 msgid "Environment not supported over SSH"
 msgstr "Среда не поддерживается с использованием SSH"
 
-#: cinder/utils.py:247
+#: cinder/utils.py:247 cinder/openstack/common/processutils.py:224
 msgid "process_input not supported over SSH"
 msgstr "process_input не поддерживается с использованием SSH"
 
@@ -806,7 +808,7 @@ msgstr "timefunc: '%(name)s' заняла %(total_time).2f с."
 msgid "Could not remove tmpdir: %s"
 msgstr "Ошибка удаления контейнера: %s"
 
-#: cinder/utils.py:1162
+#: cinder/utils.py:1162 cinder/openstack/common/strutils.py:186
 #, python-format
 msgid "Unknown byte multiplier: %s"
 msgstr ""
@@ -1341,47 +1343,47 @@ msgstr "Удаление параметров '%(unk_opt_str)s' из запро�
 msgid "Removing options '%s' from query"
 msgstr "Удаление параметров '%(unk_opt_str)s' из запроса"
 
-#: cinder/backup/api.py:53
+#: cinder/backup/api.py:65
 #, fuzzy
 msgid "Backup status must be available or error"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/backup/api.py:78
+#: cinder/backup/api.py:92
 #, fuzzy
 msgid "Volume to be backed up must be available"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/backup/api.py:112
+#: cinder/backup/api.py:127
 #, fuzzy
 msgid "Backup status must be available"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/backup/api.py:117
+#: cinder/backup/api.py:132
 msgid "Backup to be restored has invalid size"
 msgstr ""
 
-#: cinder/backup/api.py:126
+#: cinder/backup/api.py:141
 #, python-format
 msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s"
 msgstr ""
 
-#: cinder/backup/api.py:140
+#: cinder/backup/api.py:155
 #, python-format
 msgid ""
 "volume size %(volume_size)d is too small to restore backup of size "
 "%(size)d."
 msgstr ""
 
-#: cinder/backup/api.py:145
+#: cinder/backup/api.py:160
 #, fuzzy
 msgid "Volume to be restored to must be available"
 msgstr "Состояние тома должно быть доступно"
 
-#: cinder/backup/api.py:151
+#: cinder/backup/api.py:166
 msgid "Volume to be restored to is smaller than the backup to be restored"
 msgstr ""
 
-#: cinder/backup/api.py:155
+#: cinder/backup/api.py:170
 #, python-format
 msgid "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
 msgstr ""
@@ -1980,22 +1982,22 @@ msgstr ""
 msgid "Could not release the acquired lock `%s`"
 msgstr ""
 
-#: cinder/openstack/common/lockutils.py:188
+#: cinder/openstack/common/lockutils.py:189
 #, python-format
 msgid "Got semaphore \"%(lock)s\" for method \"%(method)s\"..."
 msgstr ""
 
-#: cinder/openstack/common/lockutils.py:199
+#: cinder/openstack/common/lockutils.py:200
 #, python-format
 msgid "Attempting to grab file lock \"%(lock)s\" for method \"%(method)s\"..."
 msgstr ""
 
-#: cinder/openstack/common/lockutils.py:226
+#: cinder/openstack/common/lockutils.py:227
 #, python-format
 msgid "Got file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
 msgstr ""
 
-#: cinder/openstack/common/lockutils.py:234
+#: cinder/openstack/common/lockutils.py:235
 #, python-format
 msgid "Released file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
 msgstr ""
@@ -2015,7 +2017,7 @@ msgstr ""
 msgid "syslog facility must be one of: %s"
 msgstr ""
 
-#: cinder/openstack/common/log.py:555
+#: cinder/openstack/common/log.py:556
 #, fuzzy, python-format
 msgid "Fatal call to deprecated config: %(msg)s"
 msgstr "Класс %(fullname)s устарел: %(msg)s"
@@ -2085,18 +2087,18 @@ msgstr ""
 msgid "No handler for matches of kind %s"
 msgstr ""
 
-#: cinder/openstack/common/service.py:112
-#: cinder/openstack/common/service.py:275
+#: cinder/openstack/common/service.py:113
+#: cinder/openstack/common/service.py:276
 #, fuzzy
 msgid "Full set of CONF:"
 msgstr "Полный набор ФЛАГОВ:"
 
-#: cinder/openstack/common/service.py:261
+#: cinder/openstack/common/service.py:262
 #, python-format
 msgid "Child %(pid)s exited with status %(code)d"
 msgstr ""
 
-#: cinder/openstack/common/strutils.py:72
+#: cinder/openstack/common/strutils.py:86
 #, python-format
 msgid "Unrecognized value '%(val)s', acceptable values are: %(acceptable)s"
 msgstr ""
@@ -2817,7 +2819,7 @@ msgid "Volume in unexpected state"
 msgstr "Непредвиденный код состояния"
 
 #: cinder/transfer/api.py:102 cinder/volume/api.py:106 cinder/volume/api.py:480
-#: cinder/volume/manager.py:559
+#: cinder/volume/manager.py:561
 msgid "status must be available"
 msgstr ""
 
@@ -3022,7 +3024,7 @@ msgstr ""
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr ""
 
-#: cinder/volume/driver.py:526 cinder/volume/manager.py:711
+#: cinder/volume/driver.py:526 cinder/volume/manager.py:713
 #: cinder/volume/drivers/lvm.py:562 cinder/volume/drivers/lvm.py:686
 #: cinder/volume/drivers/storwize_svc.py:1348
 #: cinder/volume/drivers/emc/emc_smis_common.py:857
@@ -3155,77 +3157,77 @@ msgstr "том %s: удаление экспортирования"
 
 #: cinder/volume/manager.py:427
 #, python-format
-msgid "volume %s: volume is busy"
-msgstr "том %s: том занят"
+msgid "Cannot delete volume %s: volume is busy"
+msgstr ""
 
-#: cinder/volume/manager.py:446
+#: cinder/volume/manager.py:447
 #, fuzzy
 msgid "Failed to update usages deleting volume"
 msgstr "Ошибка обновления агента: %(resp)r"
 
-#: cinder/volume/manager.py:450
+#: cinder/volume/manager.py:451
 #, python-format
 msgid "volume %s: deleted successfully"
 msgstr "том %s: удаление завершено"
 
-#: cinder/volume/manager.py:465
+#: cinder/volume/manager.py:466
 #, python-format
 msgid "snapshot %s: creating"
 msgstr "снимок %s: создание"
 
-#: cinder/volume/manager.py:471
+#: cinder/volume/manager.py:472
 #, python-format
 msgid "snapshot %(snap_name)s: creating"
 msgstr "снимок %(snap_name)s: создание"
 
-#: cinder/volume/manager.py:489
+#: cinder/volume/manager.py:490
 #, python-format
 msgid "snapshot %s: created successfully"
 msgstr "снимок %s: создание завершено"
 
-#: cinder/volume/manager.py:497 cinder/volume/manager.py:507
+#: cinder/volume/manager.py:498 cinder/volume/manager.py:508
 #, python-format
 msgid "snapshot %s: deleting"
 msgstr "снимок %s: удаление"
 
-#: cinder/volume/manager.py:510
-#, fuzzy, python-format
-msgid "snapshot %s: snapshot is busy"
-msgstr "снимок %s: создание завершено"
+#: cinder/volume/manager.py:511
+#, python-format
+msgid "Cannot delete snapshot %s: snapshot is busy"
+msgstr ""
 
-#: cinder/volume/manager.py:535
+#: cinder/volume/manager.py:537
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:538
+#: cinder/volume/manager.py:540
 #, python-format
 msgid "snapshot %s: deleted successfully"
 msgstr "снимок %s: удаление выполнено"
 
-#: cinder/volume/manager.py:556
+#: cinder/volume/manager.py:558
 msgid "being attached by another instance"
 msgstr ""
 
-#: cinder/volume/manager.py:615 cinder/volume/manager.py:620
+#: cinder/volume/manager.py:617 cinder/volume/manager.py:622
 #, fuzzy, python-format
 msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
 msgstr "Выполнена попытка удаления несуществующей консоли %(console_id)s."
 
-#: cinder/volume/manager.py:625
+#: cinder/volume/manager.py:627
 #, python-format
 msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:644
+#: cinder/volume/manager.py:646
 #, fuzzy, python-format
 msgid "Uploaded volume %(volume_id)s to image (%(image_id)s) successfully"
 msgstr "Подключить том %(volume_id)s для копии %(instance_id)s на %(device)s"
 
-#: cinder/volume/manager.py:724
+#: cinder/volume/manager.py:726
 msgid "Clear capabilities"
 msgstr "Очистить возможности"
 
-#: cinder/volume/manager.py:728
+#: cinder/volume/manager.py:730
 #, python-format
 msgid "Notification {%s} received"
 msgstr "Принято уведомление {%s}"
@@ -5951,26 +5953,9 @@ msgstr "группа %s уже существует"
 msgid "Unexpected state while cloning %s"
 msgstr "Неожиданная ошибка при выполнении команды."
 
-#~ msgid ""
-#~ "Skipping %(full_task_name)s, %(ticks_to_skip)s ticks"
-#~ " left until next run"
-#~ msgstr ""
-#~ "Пропуск %(full_task_name)s, %(ticks_to_skip)s раз"
-#~ " осталось, для произведения следующего "
-#~ "запуска"
+#~ msgid "volume %s: volume is busy"
+#~ msgstr "том %s: том занят"
 
-#~ msgid ""
-#~ "ISCSI volume not yet found at: "
-#~ "%(host_device)s. Will rescan & retry.  "
-#~ "Try number: %(tries)s"
-#~ msgstr ""
-#~ "Том ISCSI не найден в: %(mount_device)s."
-#~ " Будет выполнена повторная проверка и "
-#~ "попытка.  Повторение: %(tries)s"
-
-#~ msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
-#~ msgstr "Найден узел iSCSI %(mount_device)s (после %(tries)s повторных проверок)"
-
-#~ msgid "Error retrieving volume status: "
-#~ msgstr ""
+#~ msgid "snapshot %s: snapshot is busy"
+#~ msgstr "снимок %s: создание завершено"
 
