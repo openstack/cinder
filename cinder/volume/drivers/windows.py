@@ -20,13 +20,13 @@ Volume driver for Windows Server 2012
 This driver requires ISCSI target role installed
 
 """
+
+
 import os
-import sys
 
 from oslo.config import cfg
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
@@ -37,15 +37,14 @@ if os.name == 'nt':
 
 LOG = logging.getLogger(__name__)
 
-FLAGS = flags.FLAGS
-
 windows_opts = [
     cfg.StrOpt('windows_iscsi_lun_path',
                default='C:\iSCSIVirtualDisks',
                help='Path to store VHD backed volumes'),
 ]
 
-FLAGS.register_opts(windows_opts)
+CONF = cfg.CONF
+CONF.register_opts(windows_opts)
 
 
 class WindowsDriver(driver.ISCSIDriver):
@@ -137,7 +136,7 @@ class WindowsDriver(driver.ISCSIDriver):
                      SizeInMB=volume['size'] * 1024)
 
     def _get_vhd_path(self, volume):
-        base_vhd_folder = FLAGS.windows_iscsi_lun_path
+        base_vhd_folder = CONF.windows_iscsi_lun_path
         if not os.path.exists(base_vhd_folder):
                 LOG.debug(_('Creating folder %s '), base_vhd_folder)
                 os.makedirs(base_vhd_folder)
@@ -194,7 +193,7 @@ class WindowsDriver(driver.ISCSIDriver):
             resources
         :return: iscsiadm-formatted provider location string
         """
-        target_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
+        target_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
         #ISCSI target creation
         try:
             cl = self._conn_wmi.__getattr__("WT_Host")
@@ -230,7 +229,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def remove_export(self, context, volume):
         """Driver exntry point to remove an export for a volume.
         """
-        target_name = "%s%s" % (FLAGS.iscsi_target_prefix, volume['name'])
+        target_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
 
         #Get ISCSI target
         wt_host = self._conn_wmi.WT_Host(HostName=target_name)[0]

@@ -19,15 +19,14 @@
 iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS) platform.
 """
 
+
 from oslo.config import cfg
 from xml.etree import ElementTree as ETree
 
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
-
 from cinder.volume.drivers.hds.hus_backend import HusBackend
 
 
@@ -38,8 +37,8 @@ HUS_OPTS = [
                default='/opt/hds/hus/cinder_hus_conf.xml',
                help='configuration file for HDS cinder plugin for HUS'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(HUS_OPTS)
+CONF = cfg.CONF
+CONF.register_opts(HUS_OPTS)
 
 HI_IQN = 'iqn.1994-04.jp.co.hitachi:'  # fixed string, for now.
 
