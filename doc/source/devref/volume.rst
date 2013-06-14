@@ -22,7 +22,7 @@ Storage Volumes, Disks
 
 
 The :mod:`cinder.volume.manager` Module
--------------------------------------
+---------------------------------------
 
 .. automodule:: cinder.volume.manager
     :noindex:
@@ -31,7 +31,7 @@ The :mod:`cinder.volume.manager` Module
     :show-inheritance:
 
 The :mod:`cinder.volume.driver` Module
--------------------------------------
+--------------------------------------
 
 .. automodule:: cinder.volume.driver
     :noindex:

@@ -26,7 +26,8 @@ Common Components
 -----------------
 
 The :mod:`cinder.api` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. automodule:: cinder.api
     :noindex:
     :members:
@@ -34,7 +35,7 @@ The :mod:`cinder.api` Module
     :show-inheritance:
 
 The :mod:`cinder.api.cloud` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.api.cloud
     :noindex:
@@ -46,7 +47,8 @@ OpenStack API
 -------------
 
 The :mod:`openstack` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. automodule:: cinder.api.openstack
     :noindex:
     :members:
@@ -54,7 +56,8 @@ The :mod:`openstack` Module
     :show-inheritance:
 
 The :mod:`auth` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+
 .. automodule:: cinder.api.openstack.auth
     :noindex:
     :members:
@@ -65,7 +68,7 @@ EC2 API
 -------
 
 The :mod:`cinder.api.ec2` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.api.ec2
     :noindex:

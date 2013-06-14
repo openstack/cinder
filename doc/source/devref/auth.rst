@@ -21,7 +21,7 @@ Authentication and Authorization
 ================================
 
 The :mod:`cinder.quota` Module
-----------------------------
+------------------------------
 
 .. automodule:: cinder.quota
     :noindex:
@@ -31,7 +31,7 @@ The :mod:`cinder.quota` Module
 
 
 The :mod:`cinder.auth.signer` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.auth.signer
     :noindex:
@@ -44,7 +44,7 @@ Auth Manager
 ------------
 
 The :mod:`cinder.auth.manager` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.auth.manager
     :noindex:

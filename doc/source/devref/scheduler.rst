@@ -19,7 +19,7 @@ Scheduler
 =========
 
 The :mod:`cinder.scheduler.manager` Module
-----------------------------------------
+------------------------------------------
 
 .. automodule:: cinder.scheduler.manager
     :noindex:
@@ -29,7 +29,7 @@ The :mod:`cinder.scheduler.manager` Module
 
 
 The :mod:`cinder.scheduler.driver` Module
----------------------------------------
+-----------------------------------------
 
 .. automodule:: cinder.scheduler.driver
     :noindex:
@@ -39,7 +39,7 @@ The :mod:`cinder.scheduler.driver` Module
 
 
 The :mod:`cinder.scheduler.simple` Driver
----------------------------------------
+-----------------------------------------
 
 .. automodule:: cinder.scheduler.simple
     :noindex:
