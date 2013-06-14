@@ -164,6 +164,10 @@ class VolumeDriver(object):
         """Any initialization the volume driver does while starting"""
         pass
 
+    def validate_connector(self, connector):
+        """Fail if connector doesn't contain all the data needed by driver"""
+        pass
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         raise NotImplementedError()
@@ -353,6 +357,14 @@ class ISCSIDriver(VolumeDriver):
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
         }
+
+    def validate_connector(self, connector):
+        # iSCSI drivers require the initiator information
+        if 'initiator' not in connector:
+            err_msg = (_('The volume driver requires the iSCSI initiator '
+                         'name in the connector.'))
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass

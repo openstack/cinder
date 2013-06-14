@@ -694,6 +694,7 @@ class VolumeManager(manager.SchedulerDependentManager):
               data types.
         """
         volume_ref = self.db.volume_get(context, volume_id)
+        self.driver.validate_connector(connector)
         return self.driver.initialize_connection(volume_ref, connector)
 
     def terminate_connection(self, context, volume_id, connector, force=False):
