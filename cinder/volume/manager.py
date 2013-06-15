@@ -287,9 +287,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.db.volume_update(context, volume_ref['id'], model_update)
         except Exception:
             with excutils.save_and_reraise_exception():
+                volume_ref['status'] = 'error'
                 self.db.volume_update(context,
-                                      volume_ref['id'], {'status': 'error'})
+                                      volume_ref['id'],
+                                      {'status': volume_ref['status']})
                 LOG.error(_("volume %s: create failed"), volume_ref['name'])
+                self._notify_about_volume_usage(context, volume_ref,
+                                                "create.end")
 
         if snapshot_id:
             # Copy any Glance metadata from the original volume
@@ -315,9 +319,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                       key, value)
 
         now = timeutils.utcnow()
+        volume_ref['status'] = status
         self.db.volume_update(context,
-                              volume_ref['id'], {'status': status,
-                                                 'launched_at': now})
+                              volume_ref['id'],
+                              {'status': volume_ref['status'],
+                              'launched_at': now})
         LOG.info(_("volume %s: created successfully"), volume_ref['name'])
         self._reset_stats()
 

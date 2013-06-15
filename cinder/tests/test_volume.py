@@ -144,7 +144,7 @@ class VolumeTestCase(test.TestCase):
         msg = test_notifier.NOTIFICATIONS[1]
         self.assertEqual(msg['event_type'], 'volume.create.end')
         expected = {
-            'status': 'creating',
+            'status': 'available',
             'display_name': None,
             'availability_zone': 'nova',
             'tenant_id': 'fake',
