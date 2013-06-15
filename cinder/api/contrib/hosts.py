@@ -177,7 +177,8 @@ class HostController(object):
         """Sets the specified host's ability to accept new volumes."""
         context = req.environ['cinder.context']
         state = "enabled" if enabled else "disabled"
-        LOG.audit(_("Setting host %(host)s to %(state)s.") % locals())
+        LOG.audit(_("Setting host %(host)s to %(state)s."),
+                  {'host': host, 'state': state})
         result = self.api.set_host_enabled(context,
                                            host=host,
                                            enabled=enabled)
