@@ -530,7 +530,8 @@ def get_my_linklocal(interface):
                                   % if_str)
     except Exception as ex:
         raise exception.Error(_("Couldn't get Link Local IP of %(interface)s"
-                                " :%(ex)s") % locals())
+                                " :%(ex)s") %
+                              {'interface': interface, 'ex': ex, })
 
 
 def parse_mailmap(mailmap='.mailmap'):

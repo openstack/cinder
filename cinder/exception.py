@@ -66,7 +66,13 @@ class ProcessExecutionError(IOError):
             exit_code = '-'
         message = _('%(description)s\nCommand: %(cmd)s\n'
                     'Exit code: %(exit_code)s\nStdout: %(stdout)r\n'
-                    'Stderr: %(stderr)r') % locals()
+                    'Stderr: %(stderr)r') % {
+                        'description': description,
+                        'cmd': cmd,
+                        'exit_code': exit_code,
+                        'stdout': stdout,
+                        'stderr': stderr,
+                    }
         IOError.__init__(self, message)
 
 
