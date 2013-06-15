@@ -131,7 +131,8 @@ class SwiftBackupService(base.Base):
         backup_id = backup['id']
         container = backup['container']
         LOG.debug(_('_create_container started, container: %(container)s,'
-                    'backup: %(backup_id)s') % locals())
+                    'backup: %(backup_id)s') %
+                  {'container': container, 'backup_id': backup_id})
         if container is None:
             container = CONF.backup_swift_container
             self.db.backup_update(context, backup_id, {'container': container})
@@ -167,7 +168,8 @@ class SwiftBackupService(base.Base):
     def _write_metadata(self, backup, volume_id, container, object_list):
         filename = self._metadata_filename(backup)
         LOG.debug(_('_write_metadata started, container name: %(container)s,'
-                    ' metadata filename: %(filename)s') % locals())
+                    ' metadata filename: %(filename)s') %
+                  {'container': container, 'filename': filename})
         metadata = {}
         metadata['version'] = self.SERVICE_VERSION
         metadata['backup_id'] = backup['id']
@@ -183,7 +185,8 @@ class SwiftBackupService(base.Base):
         if etag != md5:
             err = _('error writing metadata file to swift, MD5 of metadata'
                     ' file in swift [%(etag)s] is not the same as MD5 of '
-                    'metadata file sent to swift [%(md5)s]') % locals()
+                    'metadata file sent to swift [%(md5)s]') % {'etag': etag,
+                                                                'md5': md5}
             raise exception.InvalidBackup(reason=err)
         LOG.debug(_('_write_metadata finished'))
 
@@ -191,7 +194,8 @@ class SwiftBackupService(base.Base):
         container = backup['container']
         filename = self._metadata_filename(backup)
         LOG.debug(_('_read_metadata started, container name: %(container)s, '
-                    'metadata filename: %(filename)s') % locals())
+                    'metadata filename: %(filename)s') %
+                  {'container': container, 'filename': filename})
         (resp, body) = self.conn.get_object(container, filename)
         metadata = json.loads(body)
         LOG.debug(_('_read_metadata finished (%s)') % metadata)
@@ -221,7 +225,13 @@ class SwiftBackupService(base.Base):
         LOG.debug(_('starting backup of volume: %(volume_id)s to swift,'
                     ' volume size: %(volume_size_bytes)d, swift object names'
                     ' prefix %(object_prefix)s, availability zone:'
-                    ' %(availability_zone)s') % locals())
+                    ' %(availability_zone)s') %
+                  {
+                      'volume_id': volume_id,
+                      'volume_size_bytes': volume_size_bytes,
+                      'object_prefix': object_prefix,
+                      'availability_zone': availability_zone,
+                  })
         object_id = 1
         object_list = []
         while True:
@@ -243,7 +253,12 @@ class SwiftBackupService(base.Base):
                 comp_size_bytes = len(data)
                 LOG.debug(_('compressed %(data_size_bytes)d bytes of data'
                             ' to %(comp_size_bytes)d bytes using '
-                            '%(algorithm)s') % locals())
+                            '%(algorithm)s') %
+                          {
+                              'data_size_bytes': data_size_bytes,
+                              'comp_size_bytes': comp_size_bytes,
+                              'algorithm': algorithm,
+                          })
             else:
                 LOG.debug(_('not compressing data'))
                 obj[object_name]['compression'] = 'none'
@@ -254,14 +269,16 @@ class SwiftBackupService(base.Base):
                 etag = self.conn.put_object(container, object_name, reader)
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=str(err))
-            LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') % locals())
+            LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') %
+                      {'object_name': object_name, 'etag': etag, })
             md5 = hashlib.md5(data).hexdigest()
             obj[object_name]['md5'] = md5
-            LOG.debug(_('backup MD5 for %(object_name)s: %(md5)s') % locals())
+            LOG.debug(_('backup MD5 for %(object_name)s: %(md5)s') %
+                      {'object_name': object_name, 'md5': md5})
             if etag != md5:
                 err = _('error writing object to swift, MD5 of object in '
                         'swift %(etag)s is not the same as MD5 of object sent '
-                        'to swift %(md5)s') % locals()
+                        'to swift %(md5)s') % {'etag': etag, 'md5': md5}
                 raise exception.InvalidBackup(reason=err)
             object_list.append(obj)
             object_id += 1
@@ -298,7 +315,13 @@ class SwiftBackupService(base.Base):
             object_name = metadata_object.keys()[0]
             LOG.debug(_('restoring object from swift. backup: %(backup_id)s, '
                         'container: %(container)s, swift object name: '
-                        '%(object_name)s, volume: %(volume_id)s') % locals())
+                        '%(object_name)s, volume: %(volume_id)s') %
+                      {
+                          'backup_id': backup_id,
+                          'container': container,
+                          'object_name': object_name,
+                          'volume_id': volume_id,
+                      })
             try:
                 (resp, body) = self.conn.get_object(container, object_name)
             except socket.error as err:
@@ -330,7 +353,13 @@ class SwiftBackupService(base.Base):
         object_prefix = backup['service_metadata']
         LOG.debug(_('starting restore of backup %(object_prefix)s from swift'
                     ' container: %(container)s, to volume %(volume_id)s, '
-                    'backup: %(backup_id)s') % locals())
+                    'backup: %(backup_id)s') %
+                  {
+                      'object_prefix': object_prefix,
+                      'container': container,
+                      'volume_id': volume_id,
+                      'backup_id': backup_id,
+                  })
         try:
             metadata = self._read_metadata(backup)
         except socket.error as err:
@@ -346,7 +375,7 @@ class SwiftBackupService(base.Base):
             raise exception.InvalidBackup(reason=err)
         restore_func(backup, volume_id, metadata, volume_file)
         LOG.debug(_('restore %(backup_id)s to %(volume_id)s finished.') %
-                  locals())
+                  {'backup_id': backup_id, 'volume_id': volume_id})
 
     def delete(self, backup):
         """Delete the given backup from swift."""
@@ -372,7 +401,11 @@ class SwiftBackupService(base.Base):
                                'continuing with delete') % swift_object_name)
                 else:
                     LOG.debug(_('deleted swift object: %(swift_object_name)s'
-                                ' in container: %(container)s') % locals())
+                                ' in container: %(container)s') %
+                              {
+                                  'swift_object_name': swift_object_name,
+                                  'container': container
+                              })
                 # Deleting a backup's objects from swift can take some time.
                 # Yield so other threads can run
                 eventlet.sleep(0)

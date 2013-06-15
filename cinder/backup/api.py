@@ -136,7 +136,9 @@ class API(base.Base):
             description = 'auto-created_from_restore_from_swift'
 
             LOG.audit(_("Creating volume of %(size)s GB for restore of "
-                        "backup %(backup_id)s"), locals(), context=context)
+                        "backup %(backup_id)s"),
+                      {'size': size, 'backup_id': backup_id},
+                      context=context)
             volume = self.volume_api.create(context, size, name, description)
             volume_id = volume['id']
 
@@ -149,8 +151,9 @@ class API(base.Base):
             volume = self.volume_api.get(context, volume_id)
             volume_size = volume['size']
             if volume_size < size:
-                err = _('volume size %(volume_size)d is too small to restore '
-                        'backup of size %(size)d.') % locals()
+                err = (_('volume size %(volume_size)d is too small to restore '
+                         'backup of size %(size)d.') %
+                       {'volume_size': volume_size, 'size': size})
                 raise exception.InvalidVolume(reason=err)
 
         if volume['status'] != "available":
@@ -165,7 +168,9 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         LOG.audit(_("Overwriting volume %(volume_id)s with restore of "
-                    "backup %(backup_id)s"), locals(), context=context)
+                    "backup %(backup_id)s"),
+                  {'volume_id': volume_id, 'backup_id': backup_id},
+                  context=context)
 
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window

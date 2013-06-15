@@ -118,7 +118,8 @@ class BackupManager(manager.SchedulerDependentManager):
         volume_id = backup['volume_id']
         volume = self.db.volume_get(context, volume_id)
         LOG.info(_('create_backup started, backup: %(backup_id)s for '
-                   'volume: %(volume_id)s') % locals())
+                   'volume: %(volume_id)s') %
+                 {'backup_id': backup_id, 'volume_id': volume_id})
         self.db.backup_update(context, backup_id, {'host': self.host,
                                                    'service':
                                                    CONF.backup_service})
@@ -127,7 +128,10 @@ class BackupManager(manager.SchedulerDependentManager):
         actual_status = volume['status']
         if actual_status != expected_status:
             err = _('create_backup aborted, expected volume status '
-                    '%(expected_status)s but got %(actual_status)s') % locals()
+                    '%(expected_status)s but got %(actual_status)s') % {
+                        'expected_status': expected_status,
+                        'actual_status': actual_status,
+                    }
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             raise exception.InvalidVolume(reason=err)
@@ -136,7 +140,10 @@ class BackupManager(manager.SchedulerDependentManager):
         actual_status = backup['status']
         if actual_status != expected_status:
             err = _('create_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s') % locals()
+                    '%(expected_status)s but got %(actual_status)s') % {
+                        'expected_status': expected_status,
+                        'actual_status': actual_status,
+                    }
             self.db.volume_update(context, volume_id, {'status': 'available'})
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
@@ -165,7 +172,8 @@ class BackupManager(manager.SchedulerDependentManager):
         Restore volume backups from configured backup service.
         """
         LOG.info(_('restore_backup started, restoring backup: %(backup_id)s'
-                   ' to volume: %(volume_id)s') % locals())
+                   ' to volume: %(volume_id)s') %
+                 {'backup_id': backup_id, 'volume_id': volume_id})
         backup = self.db.backup_get(context, backup_id)
         volume = self.db.volume_get(context, volume_id)
         self.db.backup_update(context, backup_id, {'host': self.host})
@@ -174,7 +182,10 @@ class BackupManager(manager.SchedulerDependentManager):
         actual_status = volume['status']
         if actual_status != expected_status:
             err = _('restore_backup aborted, expected volume status '
-                    '%(expected_status)s but got %(actual_status)s') % locals()
+                    '%(expected_status)s but got %(actual_status)s') % {
+                        'expected_status': expected_status,
+                        'actual_status': actual_status
+                    }
             self.db.backup_update(context, backup_id, {'status': 'available'})
             raise exception.InvalidVolume(reason=err)
 
@@ -182,7 +193,10 @@ class BackupManager(manager.SchedulerDependentManager):
         actual_status = backup['status']
         if actual_status != expected_status:
             err = _('restore_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s') % locals()
+                    '%(expected_status)s but got %(actual_status)s') % {
+                        'expected_status': expected_status,
+                        'actual_status': actual_status
+                    }
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             self.db.volume_update(context, volume_id, {'status': 'error'})
@@ -200,7 +214,10 @@ class BackupManager(manager.SchedulerDependentManager):
             err = _('restore_backup aborted, the backup service currently'
                     ' configured [%(configured_service)s] is not the'
                     ' backup service that was used to create this'
-                    ' backup [%(backup_service)s]') % locals()
+                    ' backup [%(backup_service)s]') % {
+                        'configured_service': configured_service,
+                        'backup_service': backup_service,
+                    }
             self.db.backup_update(context, backup_id, {'status': 'available'})
             self.db.volume_update(context, volume_id, {'status': 'error'})
             raise exception.InvalidBackup(reason=err)
@@ -219,7 +236,8 @@ class BackupManager(manager.SchedulerDependentManager):
         self.db.volume_update(context, volume_id, {'status': 'available'})
         self.db.backup_update(context, backup_id, {'status': 'available'})
         LOG.info(_('restore_backup finished, backup: %(backup_id)s restored'
-                   ' to volume: %(volume_id)s') % locals())
+                   ' to volume: %(volume_id)s') %
+                 {'backup_id': backup_id, 'volume_id': volume_id})
 
     def delete_backup(self, context, backup_id):
         """
@@ -233,7 +251,10 @@ class BackupManager(manager.SchedulerDependentManager):
         actual_status = backup['status']
         if actual_status != expected_status:
             err = _('delete_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s') % locals()
+                    '%(expected_status)s but got %(actual_status)s') % {
+                        'expected_status': expected_status,
+                        'actual_status': actual_status,
+                    }
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             raise exception.InvalidBackup(reason=err)
@@ -245,7 +266,10 @@ class BackupManager(manager.SchedulerDependentManager):
                 err = _('delete_backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'
                         ' backup service that was used to create this'
-                        ' backup [%(backup_service)s]') % locals()
+                        ' backup [%(backup_service)s]') % {
+                            'configured_service': configured_service,
+                            'backup_service': backup_service,
+                        }
                 self.db.backup_update(context, backup_id,
                                       {'status': 'error'})
                 raise exception.InvalidBackup(reason=err)
