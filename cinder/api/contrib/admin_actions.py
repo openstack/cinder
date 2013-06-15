@@ -82,7 +82,7 @@ class AdminController(wsgi.Controller):
                         'update': update})
         try:
             self._update(context, id, update)
-        except exception.NotFound, e:
+        except exception.NotFound as e:
             raise exc.HTTPNotFound(e)
         return webob.Response(status_int=202)
 

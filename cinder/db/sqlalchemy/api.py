@@ -1479,7 +1479,7 @@ def volume_type_create(context, values):
             volume_type_ref = models.VolumeTypes()
             volume_type_ref.update(values)
             volume_type_ref.save()
-        except Exception, e:
+        except Exception as e:
             raise db_exc.DBError(e)
         return volume_type_ref
 
@@ -1629,7 +1629,7 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
         try:
             spec_ref = volume_type_extra_specs_get_item(
                 context, volume_type_id, key, session)
-        except exception.VolumeTypeExtraSpecsNotFound, e:
+        except exception.VolumeTypeExtraSpecsNotFound as e:
             spec_ref = models.VolumeTypeExtraSpecs()
         spec_ref.update({"key": key, "value": value,
                          "volume_type_id": volume_type_id,

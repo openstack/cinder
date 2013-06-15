@@ -328,7 +328,7 @@ class CoraidDriver(driver.VolumeDriver):
                          % snapshot['id'])
         try:
             self.esm.create_snapshot(volume_name, snapshot_name)
-        except Exception, e:
+        except Exception as e:
             msg = _('Failed to Create Snapshot %(snapname)s')
             LOG.debug(msg % dict(snapname=snapshot_name))
             raise

@@ -472,7 +472,7 @@ class StorageManagerCommands(object):
             db.sm_flavor_create(context.get_admin_context(),
                                 dict(label=label,
                                      description=desc))
-        except exception.DBError, e:
+        except exception.DBError as e:
             _db_error(e)
 
     @args('label', help='label of flavor to be deleted')
@@ -480,7 +480,7 @@ class StorageManagerCommands(object):
         try:
             db.sm_flavor_delete(context.get_admin_context(), label)
 
-        except exception.DBError, e:
+        except exception.DBError as e:
             _db_error(e)
 
     def _splitfun(self, item):
@@ -541,7 +541,7 @@ class StorageManagerCommands(object):
             sr_uuid = params['sr_uuid']
             try:
                 backend = db.sm_backend_conf_get_by_sr(ctxt, sr_uuid)
-            except exception.DBError, e:
+            except exception.DBError as e:
                 _db_error(e)
 
             if backend:
@@ -556,7 +556,7 @@ class StorageManagerCommands(object):
                                  flavor_id=flavors['id'],
                                  sr_type=sr_type,
                                  config_params=config_params))
-                    except exception.DBError, e:
+                    except exception.DBError as e:
                         _db_error(e)
                 return
 
@@ -572,7 +572,7 @@ class StorageManagerCommands(object):
                                                sr_uuid=sr_uuid,
                                                sr_type=sr_type,
                                                config_params=config_params))
-            except exception.DBError, e:
+            except exception.DBError as e:
                 _db_error(e)
 
     @args('backend_conf_id')
@@ -581,7 +581,7 @@ class StorageManagerCommands(object):
             db.sm_backend_conf_delete(context.get_admin_context(),
                                       backend_conf_id)
 
-        except exception.DBError, e:
+        except exception.DBError as e:
             _db_error(e)
 
 
