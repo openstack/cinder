@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-06-13 18:10+0000\n"
+"POT-Creation-Date: 2013-06-14 18:09+0000\n"
 "PO-Revision-Date: 2013-05-29 08:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Georgian (Georgia) "
@@ -564,154 +564,155 @@ msgstr ""
 msgid "Notifying Schedulers of capabilities ..."
 msgstr ""
 
-#: cinder/policy.py:30
+#: cinder/policy.py:31
 msgid "JSON file representing policy"
 msgstr ""
 
-#: cinder/policy.py:33
+#: cinder/policy.py:34
 msgid "Rule checked when requested rule is not found"
 msgstr ""
 
-#: cinder/quota.py:704
+#: cinder/quota.py:705
 #, python-format
 msgid "Created reservations %(reservations)s"
 msgstr ""
 
-#: cinder/quota.py:726
+#: cinder/quota.py:727
 #, python-format
 msgid "Failed to commit reservations %(reservations)s"
 msgstr ""
 
-#: cinder/quota.py:747
+#: cinder/quota.py:748
 #, python-format
 msgid "Failed to roll back reservations %(reservations)s"
 msgstr ""
 
-#: cinder/service.py:124
+#: cinder/service.py:125
 msgid "SIGTERM received"
 msgstr ""
 
-#: cinder/service.py:174 cinder/openstack/common/service.py:165
+#: cinder/service.py:175 cinder/openstack/common/service.py:165
 msgid "Parent process has died unexpectedly, exiting"
 msgstr ""
 
-#: cinder/service.py:213 cinder/openstack/common/service.py:201
+#: cinder/service.py:214 cinder/openstack/common/service.py:201
 msgid "Forking too fast, sleeping"
 msgstr ""
 
-#: cinder/service.py:231 cinder/openstack/common/service.py:122
+#: cinder/service.py:232 cinder/openstack/common/service.py:122
 #: cinder/openstack/common/service.py:219
 #, python-format
 msgid "Caught %s, exiting"
 msgstr ""
 
-#: cinder/service.py:236 cinder/openstack/common/service.py:224
+#: cinder/service.py:237 cinder/openstack/common/service.py:224
 msgid "Unhandled exception"
 msgstr ""
 
-#: cinder/service.py:243 cinder/openstack/common/service.py:231
+#: cinder/service.py:244 cinder/openstack/common/service.py:231
 #, python-format
 msgid "Started child %d"
 msgstr ""
 
-#: cinder/service.py:253 cinder/openstack/common/service.py:241
+#: cinder/service.py:254 cinder/openstack/common/service.py:241
 #, python-format
 msgid "Starting %d workers"
 msgstr ""
 
-#: cinder/service.py:272 cinder/openstack/common/service.py:258
+#: cinder/service.py:273 cinder/openstack/common/service.py:258
 #, python-format
 msgid "Child %(pid)d killed by signal %(sig)d"
 msgstr ""
 
-#: cinder/service.py:275
+#: cinder/service.py:276
 #, python-format
 msgid "Child %(pid)d exited with status %(code)d"
 msgstr ""
 
-#: cinder/service.py:278 cinder/openstack/common/service.py:266
+#: cinder/service.py:279 cinder/openstack/common/service.py:266
 #, python-format
 msgid "pid %d not in child list"
 msgstr ""
 
-#: cinder/service.py:286
+#: cinder/service.py:287
 #, python-format
 msgid "_wait_child %d"
 msgstr ""
 
-#: cinder/service.py:302
+#: cinder/service.py:303
 #, python-format
 msgid "wait wrap.failed %s"
 msgstr ""
 
-#: cinder/service.py:310 cinder/openstack/common/service.py:294
+#: cinder/service.py:311 cinder/openstack/common/service.py:294
 #, python-format
 msgid "Caught %s, stopping children"
 msgstr ""
 
-#: cinder/service.py:321 cinder/openstack/common/service.py:305
+#: cinder/service.py:322 cinder/openstack/common/service.py:305
 #, python-format
 msgid "Waiting on %d children to exit"
 msgstr ""
 
-#: cinder/service.py:353
+#: cinder/service.py:354
 #, python-format
 msgid "Starting %(topic)s node (version %(version_string)s)"
 msgstr ""
 
-#: cinder/service.py:367 cinder/openstack/common/rpc/service.py:47
+#: cinder/service.py:368 cinder/openstack/common/rpc/service.py:47
 #, python-format
 msgid "Creating Consumer connection for Service %s"
 msgstr ""
 
-#: cinder/service.py:458
+#: cinder/service.py:459
 msgid "Service killed that has no database entry"
 msgstr ""
 
-#: cinder/service.py:495
+#: cinder/service.py:496
 msgid "The service database object disappeared, Recreating it."
 msgstr ""
 
-#: cinder/service.py:510
+#: cinder/service.py:511
 msgid "Recovered model server connection!"
 msgstr ""
 
-#: cinder/service.py:516
+#: cinder/service.py:517
 msgid "model server went away"
 msgstr ""
 
-#: cinder/service.py:608
-msgid "Full set of FLAGS:"
+#: cinder/service.py:609 cinder/openstack/common/service.py:113
+#: cinder/openstack/common/service.py:276
+msgid "Full set of CONF:"
 msgstr ""
 
-#: cinder/service.py:615
+#: cinder/service.py:616
 #, python-format
 msgid "%(flag)s : FLAG SET "
 msgstr ""
 
-#: cinder/utils.py:96
+#: cinder/utils.py:93
 #, python-format
 msgid "Fetching %s"
 msgstr ""
 
-#: cinder/utils.py:147 cinder/openstack/common/processutils.py:127
+#: cinder/utils.py:144 cinder/openstack/common/processutils.py:127
 #, python-format
 msgid "Got unknown keyword args to utils.execute: %r"
 msgstr ""
 
-#: cinder/utils.py:153
+#: cinder/utils.py:150
 msgid ""
 "The root_helper option (which lets you specify a root wrapper different "
 "from cinder-rootwrap, and defaults to using sudo) is now deprecated. You "
 "should use the rootwrap_config option instead."
 msgstr ""
 
-#: cinder/utils.py:169 cinder/openstack/common/processutils.py:142
+#: cinder/utils.py:166 cinder/openstack/common/processutils.py:142
 #, python-format
 msgid "Running cmd (subprocess): %s"
 msgstr ""
 
-#: cinder/utils.py:186 cinder/utils.py:267
+#: cinder/utils.py:183 cinder/utils.py:264
 #: cinder/openstack/common/processutils.py:167
 #: cinder/openstack/common/processutils.py:239
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:279
@@ -719,79 +720,79 @@ msgstr ""
 msgid "Result was %s"
 msgstr ""
 
-#: cinder/utils.py:199 cinder/openstack/common/processutils.py:179
+#: cinder/utils.py:196 cinder/openstack/common/processutils.py:179
 #, python-format
 msgid "%r failed. Retrying."
 msgstr ""
 
-#: cinder/utils.py:241 cinder/openstack/common/processutils.py:218
+#: cinder/utils.py:238 cinder/openstack/common/processutils.py:218
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:252
 #, python-format
 msgid "Running cmd (SSH): %s"
 msgstr ""
 
-#: cinder/utils.py:243 cinder/openstack/common/processutils.py:220
+#: cinder/utils.py:240 cinder/openstack/common/processutils.py:220
 msgid "Environment not supported over SSH"
 msgstr ""
 
-#: cinder/utils.py:247 cinder/openstack/common/processutils.py:224
+#: cinder/utils.py:244 cinder/openstack/common/processutils.py:224
 msgid "process_input not supported over SSH"
 msgstr ""
 
-#: cinder/utils.py:316 cinder/volume/drivers/huawei/huawei_iscsi.py:95
+#: cinder/utils.py:313 cinder/volume/drivers/huawei/huawei_iscsi.py:95
 msgid "Specify a password or private_key"
 msgstr ""
 
-#: cinder/utils.py:332 cinder/volume/drivers/huawei/huawei_iscsi.py:103
+#: cinder/utils.py:329 cinder/volume/drivers/huawei/huawei_iscsi.py:103
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr ""
 
-#: cinder/utils.py:373
+#: cinder/utils.py:370
 #, python-format
 msgid "debug in callback: %s"
 msgstr ""
 
-#: cinder/utils.py:532
+#: cinder/utils.py:529
 #, python-format
 msgid "Link Local address is not found.:%s"
 msgstr ""
 
-#: cinder/utils.py:535
+#: cinder/utils.py:532
 #, python-format
 msgid "Couldn't get Link Local IP of %(interface)s :%(ex)s"
 msgstr ""
 
-#: cinder/utils.py:569
+#: cinder/utils.py:566
 #, python-format
 msgid "Invalid backend: %s"
 msgstr ""
 
-#: cinder/utils.py:580
+#: cinder/utils.py:577
 #, python-format
 msgid "backend %s"
 msgstr ""
 
-#: cinder/utils.py:630
+#: cinder/utils.py:627
 msgid "in looping call"
 msgstr ""
 
-#: cinder/utils.py:801
+#: cinder/utils.py:798
 #, python-format
 msgid "Expected object of type: %s"
 msgstr ""
 
-#: cinder/utils.py:891
+#: cinder/utils.py:888
 #, python-format
 msgid "timefunc: '%(name)s' took %(total_time).2f secs"
 msgstr ""
 
-#: cinder/utils.py:1069
+#: cinder/utils.py:1066
 #, python-format
 msgid "Could not remove tmpdir: %s"
 msgstr ""
 
-#: cinder/utils.py:1162 cinder/openstack/common/strutils.py:186
+#: cinder/utils.py:1159 cinder/openstack/common/strutils.py:186
 #, python-format
 msgid "Unknown byte multiplier: %s"
 msgstr ""
@@ -851,11 +852,11 @@ msgid ""
 "cinder.api.middleware.auth:pipeline_factory instead."
 msgstr ""
 
-#: cinder/api/common.py:64 cinder/api/common.py:98 cinder/volume/api.py:390
+#: cinder/api/common.py:64 cinder/api/common.py:98 cinder/volume/api.py:392
 msgid "limit param must be an integer"
 msgstr ""
 
-#: cinder/api/common.py:67 cinder/api/common.py:102 cinder/volume/api.py:387
+#: cinder/api/common.py:67 cinder/api/common.py:102 cinder/volume/api.py:389
 msgid "limit param must be positive"
 msgstr ""
 
@@ -1317,122 +1318,122 @@ msgstr ""
 msgid "Removing options '%s' from query"
 msgstr ""
 
-#: cinder/backup/api.py:65
+#: cinder/backup/api.py:62
 msgid "Backup status must be available or error"
 msgstr ""
 
-#: cinder/backup/api.py:92
+#: cinder/backup/api.py:89
 msgid "Volume to be backed up must be available"
 msgstr ""
 
-#: cinder/backup/api.py:127
+#: cinder/backup/api.py:124
 msgid "Backup status must be available"
 msgstr ""
 
-#: cinder/backup/api.py:132
+#: cinder/backup/api.py:129
 msgid "Backup to be restored has invalid size"
 msgstr ""
 
-#: cinder/backup/api.py:141
+#: cinder/backup/api.py:138
 #, python-format
 msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s"
 msgstr ""
 
-#: cinder/backup/api.py:155
+#: cinder/backup/api.py:152
 #, python-format
 msgid ""
 "volume size %(volume_size)d is too small to restore backup of size "
 "%(size)d."
 msgstr ""
 
-#: cinder/backup/api.py:160
+#: cinder/backup/api.py:157
 msgid "Volume to be restored to must be available"
 msgstr ""
 
-#: cinder/backup/api.py:166
+#: cinder/backup/api.py:163
 msgid "Volume to be restored to is smaller than the backup to be restored"
 msgstr ""
 
-#: cinder/backup/api.py:170
+#: cinder/backup/api.py:167
 #, python-format
 msgid "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
 msgstr ""
 
-#: cinder/backup/manager.py:79
+#: cinder/backup/manager.py:80
 msgid "Cleaning up incomplete backup operations"
 msgstr ""
 
-#: cinder/backup/manager.py:83
+#: cinder/backup/manager.py:84
 #, python-format
 msgid "Resetting volume %s to available (was backing-up)"
 msgstr ""
 
-#: cinder/backup/manager.py:87
+#: cinder/backup/manager.py:88
 #, python-format
 msgid "Resetting volume %s to error_restoring (was restoring-backup)"
 msgstr ""
 
-#: cinder/backup/manager.py:98
+#: cinder/backup/manager.py:99
 #, python-format
 msgid "Resetting backup %s to error (was creating)"
 msgstr ""
 
-#: cinder/backup/manager.py:104
+#: cinder/backup/manager.py:105
 #, python-format
 msgid "Resetting backup %s to available (was restoring)"
 msgstr ""
 
-#: cinder/backup/manager.py:109
+#: cinder/backup/manager.py:110
 #, python-format
 msgid "Resuming delete on backup: %s"
 msgstr ""
 
-#: cinder/backup/manager.py:119
+#: cinder/backup/manager.py:120
 #, python-format
 msgid "create_backup started, backup: %(backup_id)s for volume: %(volume_id)s"
 msgstr ""
 
-#: cinder/backup/manager.py:128
+#: cinder/backup/manager.py:129
 #, python-format
 msgid ""
 "create_backup aborted, expected volume status %(expected_status)s but got"
 " %(actual_status)s"
 msgstr ""
 
-#: cinder/backup/manager.py:137
+#: cinder/backup/manager.py:138
 #, python-format
 msgid ""
 "create_backup aborted, expected backup status %(expected_status)s but got"
 " %(actual_status)s"
 msgstr ""
 
-#: cinder/backup/manager.py:160
+#: cinder/backup/manager.py:161
 #, python-format
 msgid "create_backup finished. backup: %s"
 msgstr ""
 
-#: cinder/backup/manager.py:166
+#: cinder/backup/manager.py:167
 #, python-format
 msgid ""
 "restore_backup started, restoring backup: %(backup_id)s to volume: "
 "%(volume_id)s"
 msgstr ""
 
-#: cinder/backup/manager.py:175
+#: cinder/backup/manager.py:176
 #, python-format
 msgid ""
 "restore_backup aborted, expected volume status %(expected_status)s but "
 "got %(actual_status)s"
 msgstr ""
 
-#: cinder/backup/manager.py:183
+#: cinder/backup/manager.py:184
 #, python-format
 msgid ""
 "restore_backup aborted, expected backup status %(expected_status)s but "
 "got %(actual_status)s"
 msgstr ""
 
-#: cinder/backup/manager.py:199
+#: cinder/backup/manager.py:200
 #, python-format
 msgid ""
 "restore_backup aborted, the backup service currently configured "
@@ -1440,26 +1441,26 @@ msgid ""
 "create this backup [%(backup_service)s]"
 msgstr ""
 
-#: cinder/backup/manager.py:220
+#: cinder/backup/manager.py:221
 #, python-format
 msgid ""
 "restore_backup finished, backup: %(backup_id)s restored to volume: "
 "%(volume_id)s"
 msgstr ""
 
-#: cinder/backup/manager.py:228
+#: cinder/backup/manager.py:229
 #, python-format
 msgid "delete_backup started, backup: %s"
 msgstr ""
 
-#: cinder/backup/manager.py:234
+#: cinder/backup/manager.py:235
 #, python-format
 msgid ""
 "delete_backup aborted, expected backup status %(expected_status)s but got"
 " %(actual_status)s"
 msgstr ""
 
-#: cinder/backup/manager.py:244
+#: cinder/backup/manager.py:245
 #, python-format
 msgid ""
 "delete_backup aborted, the backup service currently configured "
@@ -1467,7 +1468,7 @@ msgid ""
 "create this backup [%(backup_service)s]"
 msgstr ""
 
-#: cinder/backup/manager.py:264
+#: cinder/backup/manager.py:265
 #, python-format
 msgid "delete_backup finished, backup %s deleted"
 msgstr ""
@@ -1670,67 +1671,67 @@ msgstr ""
 msgid "delete %s finished"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:153
+#: cinder/brick/iscsi/iscsi.py:155
 #, python-format
 msgid "Creating iscsi_target for: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:172 cinder/brick/iscsi/iscsi.py:267
+#: cinder/brick/iscsi/iscsi.py:174 cinder/brick/iscsi/iscsi.py:269
 #, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:183
+#: cinder/brick/iscsi/iscsi.py:185
 #, python-format
 msgid ""
 "Failed to create iscsi target for volume id:%(vol_id)s. Please ensure "
 "your tgtd config file contains 'include %(volumes_dir)s/*'"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:194
+#: cinder/brick/iscsi/iscsi.py:196
 #, python-format
 msgid "Removing iscsi_target for: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:211
+#: cinder/brick/iscsi/iscsi.py:213
 #, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:221 cinder/brick/iscsi/iscsi.py:438
+#: cinder/brick/iscsi/iscsi.py:223 cinder/brick/iscsi/iscsi.py:440
 msgid "valid iqn needed for show_target"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:274
+#: cinder/brick/iscsi/iscsi.py:276
 #, python-format
 msgid "Removing iscsi_target for volume: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:360
+#: cinder/brick/iscsi/iscsi.py:362
 msgid "rtstool is not installed correctly"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:380
+#: cinder/brick/iscsi/iscsi.py:382
 #, python-format
 msgid "Creating iscsi_target for volume: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:404 cinder/brick/iscsi/iscsi.py:413
+#: cinder/brick/iscsi/iscsi.py:406 cinder/brick/iscsi/iscsi.py:415
 #, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:420
+#: cinder/brick/iscsi/iscsi.py:422
 #, python-format
 msgid "Removing iscsi_target: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:430
+#: cinder/brick/iscsi/iscsi.py:432
 #, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:459
+#: cinder/brick/iscsi/iscsi.py:461
 #, python-format
 msgid "Failed to add initiator iqn %s to target"
 msgstr ""
@@ -1903,30 +1904,30 @@ msgstr ""
 msgid "transfers table not dropped"
 msgstr ""
 
-#: cinder/image/glance.py:151
+#: cinder/image/glance.py:153
 #, python-format
 msgid "Error contacting glance server '%(netloc)s' for '%(method)s', %(extra)s."
 msgstr ""
 
-#: cinder/image/image_utils.py:117
+#: cinder/image/image_utils.py:118
 msgid "Snapshot list encountered but no header found!"
 msgstr ""
 
-#: cinder/image/image_utils.py:231
+#: cinder/image/image_utils.py:232
 msgid "'qemu-img info' parsing failed."
 msgstr ""
 
-#: cinder/image/image_utils.py:238
+#: cinder/image/image_utils.py:239
 #, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr ""
 
-#: cinder/image/image_utils.py:255
+#: cinder/image/image_utils.py:256
 #, python-format
 msgid "Converted to raw, but format is now %s"
 msgstr ""
 
-#: cinder/image/image_utils.py:285
+#: cinder/image/image_utils.py:286
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr ""
@@ -2053,11 +2054,6 @@ msgstr ""
 #: cinder/openstack/common/policy.py:180
 #, python-format
 msgid "No handler for matches of kind %s"
-msgstr ""
-
-#: cinder/openstack/common/service.py:113
-#: cinder/openstack/common/service.py:276
-msgid "Full set of CONF:"
 msgstr ""
 
 #: cinder/openstack/common/service.py:262
@@ -2761,152 +2757,152 @@ msgstr ""
 msgid "Decoding JSON: %s"
 msgstr ""
 
-#: cinder/transfer/api.py:68
+#: cinder/transfer/api.py:69
 msgid "Volume in unexpected state"
 msgstr ""
 
-#: cinder/transfer/api.py:102 cinder/volume/api.py:106 cinder/volume/api.py:480
+#: cinder/transfer/api.py:103 cinder/volume/api.py:108 cinder/volume/api.py:482
 #: cinder/volume/manager.py:561
 msgid "status must be available"
 msgstr ""
 
-#: cinder/transfer/api.py:119
+#: cinder/transfer/api.py:120
 #, python-format
 msgid "Failed to create transfer record for %s"
 msgstr ""
 
-#: cinder/transfer/api.py:136
+#: cinder/transfer/api.py:137
 #, python-format
 msgid "Attempt to transfer %s with invalid auth key."
 msgstr ""
 
-#: cinder/transfer/api.py:156 cinder/volume/api.py:171
+#: cinder/transfer/api.py:157 cinder/volume/api.py:173
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/transfer/api.py:165 cinder/volume/api.py:180
+#: cinder/transfer/api.py:166 cinder/volume/api.py:182
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d "
 "volumes already consumed)"
 msgstr ""
 
-#: cinder/transfer/api.py:179
+#: cinder/transfer/api.py:180
 #, python-format
 msgid "Failed to update quota donating volumetransfer id %s"
 msgstr ""
 
-#: cinder/transfer/api.py:193
+#: cinder/transfer/api.py:194
 #, python-format
 msgid "Volume %s has been transferred."
 msgstr ""
 
-#: cinder/volume/api.py:99
+#: cinder/volume/api.py:101
 msgid "May specify only one of snapshot, imageRef or source volume"
 msgstr ""
 
-#: cinder/volume/api.py:111
+#: cinder/volume/api.py:113
 msgid "Volume size cannot be lesser than the Snapshot size"
 msgstr ""
 
-#: cinder/volume/api.py:120
+#: cinder/volume/api.py:122
 msgid "Unable to clone volumes that are in an error state"
 msgstr ""
 
-#: cinder/volume/api.py:126
+#: cinder/volume/api.py:128
 msgid "Clones currently must be >= original volume size."
 msgstr ""
 
-#: cinder/volume/api.py:143
+#: cinder/volume/api.py:145
 #, python-format
 msgid "Volume size '%s' must be an integer and greater than 0"
 msgstr ""
 
-#: cinder/volume/api.py:153
+#: cinder/volume/api.py:155
 msgid "Size of specified image is larger than volume size."
 msgstr ""
 
-#: cinder/volume/api.py:157
+#: cinder/volume/api.py:159
 msgid "Image minDisk size is larger than the volume size."
 msgstr ""
 
-#: cinder/volume/api.py:313
+#: cinder/volume/api.py:315
 msgid "Availability zone is invalid"
 msgstr ""
 
-#: cinder/volume/api.py:335
+#: cinder/volume/api.py:337
 msgid "Failed to update quota for deleting volume"
 msgstr ""
 
-#: cinder/volume/api.py:343
+#: cinder/volume/api.py:345
 msgid "Volume status must be available or error"
 msgstr ""
 
-#: cinder/volume/api.py:352
+#: cinder/volume/api.py:354
 #, python-format
 msgid "Volume still has %d dependent snapshots"
 msgstr ""
 
-#: cinder/volume/api.py:405 cinder/volume/api.py:463
-#: cinder/volume/volume_types.py:66
+#: cinder/volume/api.py:407 cinder/volume/api.py:465
+#: cinder/volume/volume_types.py:69
 #, python-format
 msgid "Searching by: %s"
 msgstr ""
 
-#: cinder/volume/api.py:483
+#: cinder/volume/api.py:485
 msgid "already attached"
 msgstr ""
 
-#: cinder/volume/api.py:490
+#: cinder/volume/api.py:492
 msgid "already detached"
 msgstr ""
 
-#: cinder/volume/api.py:501
+#: cinder/volume/api.py:503
 msgid "Volume status must be available to reserve"
 msgstr ""
 
-#: cinder/volume/api.py:555
+#: cinder/volume/api.py:557
 msgid "must be available"
 msgstr ""
 
-#: cinder/volume/api.py:573
+#: cinder/volume/api.py:575
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/volume/api.py:582
+#: cinder/volume/api.py:584
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr ""
 
-#: cinder/volume/api.py:631
+#: cinder/volume/api.py:633
 msgid "Volume Snapshot status must be available or error"
 msgstr ""
 
-#: cinder/volume/api.py:659
+#: cinder/volume/api.py:661
 msgid "Metadata property key blank"
 msgstr ""
 
-#: cinder/volume/api.py:663
+#: cinder/volume/api.py:665
 msgid "Metadata property key greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:667
+#: cinder/volume/api.py:669
 msgid "Metadata property value greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:752
+#: cinder/volume/api.py:754
 msgid "Volume status must be available/in-use."
 msgstr ""
 
-#: cinder/volume/api.py:755
+#: cinder/volume/api.py:757
 msgid "Volume status is in-use."
 msgstr ""
 
@@ -3171,20 +3167,20 @@ msgstr ""
 msgid "Notification {%s} received"
 msgstr ""
 
-#: cinder/volume/volume_types.py:42
+#: cinder/volume/volume_types.py:45
 #, python-format
 msgid "DB error: %s"
 msgstr ""
 
-#: cinder/volume/volume_types.py:51 cinder/volume/volume_types.py:98
+#: cinder/volume/volume_types.py:54 cinder/volume/volume_types.py:101
 msgid "id cannot be None"
 msgstr ""
 
-#: cinder/volume/volume_types.py:110
+#: cinder/volume/volume_types.py:113
 msgid "name cannot be None"
 msgstr ""
 
-#: cinder/volume/volume_types.py:129
+#: cinder/volume/volume_types.py:132
 #, python-format
 msgid ""
 "Default volume type is not found, please check default_volume_type "
@@ -3428,56 +3424,61 @@ msgstr ""
 msgid "Selected %s as target nfs share."
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:97
+#: cinder/volume/drivers/rbd.py:101
 #, python-format
 msgid "error opening rbd image %s"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:148
+#: cinder/volume/drivers/rbd.py:152
 msgid "rados and rbd python libraries not found"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:154
+#: cinder/volume/drivers/rbd.py:158
 msgid "error connecting to ceph cluster"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:219 cinder/volume/drivers/sheepdog.py:134
+#: cinder/volume/drivers/rbd.py:223 cinder/volume/drivers/sheepdog.py:134
 msgid "error refreshing volume stats"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:258
+#: cinder/volume/drivers/rbd.py:262
+#, python-format
+msgid "flattening %(pool)s/%(img)s"
+msgstr ""
+
+#: cinder/volume/drivers/rbd.py:268
 #, python-format
 msgid "cloning %(pool)s/%(img)s@%(snap)s to %(dst)s"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:335
+#: cinder/volume/drivers/rbd.py:347
 #, python-format
 msgid "connection data: %s"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:344
+#: cinder/volume/drivers/rbd.py:356
 msgid "Not stored in rbd"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:348
+#: cinder/volume/drivers/rbd.py:360
 msgid "Blank components"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:351
+#: cinder/volume/drivers/rbd.py:363
 msgid "Not an rbd snapshot"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:363
+#: cinder/volume/drivers/rbd.py:375
 #, python-format
 msgid "not cloneable: %s"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:367
+#: cinder/volume/drivers/rbd.py:379
 #, python-format
 msgid "%s is in a different ceph cluster"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:379
+#: cinder/volume/drivers/rbd.py:391
 #, python-format
 msgid "Unable to open image %(loc)s: %(err)s"
 msgstr ""
@@ -4108,18 +4109,18 @@ msgstr ""
 msgid "Did not find expected column in %(fun)s: %(hdr)s"
 msgstr ""
 
-#: cinder/volume/drivers/windows.py:142
+#: cinder/volume/drivers/windows.py:141
 #, python-format
 msgid "Creating folder %s "
 msgstr ""
 
-#: cinder/volume/drivers/windows.py:207
+#: cinder/volume/drivers/windows.py:206
 #: cinder/volume/drivers/nexenta/volume.py:203
 #, python-format
 msgid "Ignored target creation error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/windows.py:213
+#: cinder/volume/drivers/windows.py:212
 #, python-format
 msgid "Disk not found: %s"
 msgstr ""
@@ -4877,77 +4878,77 @@ msgstr ""
 msgid "ISCSI properties: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:58
+#: cinder/volume/drivers/hds/hds.py:57
 #, python-format
 msgid "Range: start LU: %(start)s, end LU: %(end)s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:72
+#: cinder/volume/drivers/hds/hds.py:71
 #, python-format
 msgid "setting LU uppper (end) limit to %s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:80
+#: cinder/volume/drivers/hds/hds.py:79
 #, python-format
 msgid "%(element)s: %(val)s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:90 cinder/volume/drivers/hds/hds.py:93
+#: cinder/volume/drivers/hds/hds.py:89 cinder/volume/drivers/hds/hds.py:92
 #, python-format
 msgid "XML exception reading parameter: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:162
+#: cinder/volume/drivers/hds/hds.py:161
 #, python-format
 msgid "portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(port)s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:181
+#: cinder/volume/drivers/hds/hds.py:180
 #, python-format
 msgid "No configuration found for service: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:232
+#: cinder/volume/drivers/hds/hds.py:231
 #, python-format
 msgid "HDP not found: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:265
+#: cinder/volume/drivers/hds/hds.py:264
 #, python-format
 msgid "iSCSI portal not found for service: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:302
+#: cinder/volume/drivers/hds/hds.py:301
 #, python-format
 msgid "LUN %(lun)s of size %(sz)s MB is created."
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:316
+#: cinder/volume/drivers/hds/hds.py:315
 #, python-format
 msgid "Array Mismatch %(myid)s vs %(arid)s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:322
+#: cinder/volume/drivers/hds/hds.py:321
 #, python-format
 msgid "delete lun %(lun)s on %(name)s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:399
+#: cinder/volume/drivers/hds/hds.py:398
 #, python-format
 msgid "LUN %(lun)s of size %(sz)s MB is created from snapshot."
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:421
+#: cinder/volume/drivers/hds/hds.py:420
 #, python-format
 msgid "LUN %(lun)s of size %(size)s MB is created."
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:435
+#: cinder/volume/drivers/hds/hds.py:434
 #, python-format
 msgid "Array mismatch %(myid)s vs %(arid)s"
 msgstr ""
 
-#: cinder/volume/drivers/hds/hds.py:446
+#: cinder/volume/drivers/hds/hds.py:445
 #, python-format
 msgid "LUN %s is deleted."
 msgstr ""
@@ -5866,9 +5867,6 @@ msgstr ""
 msgid "Unexpected state while cloning %s"
 msgstr ""
 
-#~ msgid "volume %s: volume is busy"
-#~ msgstr ""
-
-#~ msgid "snapshot %s: snapshot is busy"
+#~ msgid "Full set of FLAGS:"
 #~ msgstr ""
 
