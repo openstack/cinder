@@ -238,11 +238,13 @@ class HostManager(object):
         """Update the per-service capabilities based on this notification."""
         if service_name != 'volume':
             LOG.debug(_('Ignoring %(service_name)s service update '
-                        'from %(host)s'), locals())
+                        'from %(host)s'),
+                      {'service_name': service_name, 'host': host})
             return
 
         LOG.debug(_("Received %(service_name)s service update from "
-                    "%(host)s.") % locals())
+                    "%(host)s.") %
+                  {'service_name': service_name, 'host': host})
 
         # Copy the capabilities, so we don't modify the original dict
         capab_copy = dict(capabilities)
