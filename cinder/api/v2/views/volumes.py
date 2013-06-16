@@ -84,6 +84,7 @@ class ViewBuilder(common.ViewBuilder):
 
             d['volume_id'] = volume_id
             d['server_id'] = volume['instance_uuid']
+            d['host_name'] = volume['attached_host']
             if volume.get('mountpoint'):
                 d['device'] = volume['mountpoint']
             attachments.append(d)

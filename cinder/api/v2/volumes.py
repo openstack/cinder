@@ -39,6 +39,7 @@ SCHEDULER_HINTS_NAMESPACE =\
 def make_attachment(elem):
     elem.set('id')
     elem.set('server_id')
+    elem.set('host_name')
     elem.set('volume_id')
     elem.set('device')
 

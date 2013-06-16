@@ -942,8 +942,8 @@ def volume_allocate_iscsi_target(context, volume_id, host):
 
 
 @require_admin_context
-def volume_attached(context, volume_id, instance_uuid, mountpoint):
-    if not uuidutils.is_uuid_like(instance_uuid):
+def volume_attached(context, volume_id, instance_uuid, host_name, mountpoint):
+    if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
         raise exception.InvalidUUID(uuid=instance_uuid)
 
     session = get_session()
@@ -953,6 +953,7 @@ def volume_attached(context, volume_id, instance_uuid, mountpoint):
         volume_ref['mountpoint'] = mountpoint
         volume_ref['attach_status'] = 'attached'
         volume_ref['instance_uuid'] = instance_uuid
+        volume_ref['attached_host'] = host_name
         volume_ref.save(session=session)
 
 
@@ -1029,6 +1030,7 @@ def volume_detached(context, volume_id):
         volume_ref['mountpoint'] = None
         volume_ref['attach_status'] = 'detached'
         volume_ref['instance_uuid'] = None
+        volume_ref['attached_host'] = None
         volume_ref.save(session=session)
 
 

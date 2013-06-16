@@ -96,6 +96,7 @@ class Volume(BASE, CinderBase):
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
     instance_uuid = Column(String(36))
+    attached_host = Column(String(255))
     mountpoint = Column(String(255))
     attach_time = Column(String(255))  # TODO(vish): datetime
     status = Column(String(255))  # TODO(vish): enum?

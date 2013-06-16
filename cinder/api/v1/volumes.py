@@ -53,6 +53,7 @@ def _translate_attachment_summary_view(_context, vol):
 
     d['volume_id'] = volume_id
     d['server_id'] = vol['instance_uuid']
+    d['host_name'] = vol['attached_host']
     if vol.get('mountpoint'):
         d['device'] = vol['mountpoint']
 
@@ -117,6 +118,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
 def make_attachment(elem):
     elem.set('id')
     elem.set('server_id')
+    elem.set('host_name')
     elem.set('volume_id')
     elem.set('device')
 

@@ -268,18 +268,31 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_attached_invalid_uuid(self):
         self.assertRaises(exception.InvalidUUID, db.volume_attached, self.ctxt,
-                          42, 'invalid-uuid', '/tmp')
+                          42, 'invalid-uuid', None, '/tmp')
 
-    def test_volume_attached(self):
+    def test_volume_attached_to_instance(self):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         db.volume_attached(self.ctxt, volume['id'],
-                           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '/tmp')
+                           instance_uuid, None, '/tmp')
         volume = db.volume_get(self.ctxt, volume['id'])
         self.assertEqual(volume['status'], 'in-use')
         self.assertEqual(volume['mountpoint'], '/tmp')
         self.assertEqual(volume['attach_status'], 'attached')
-        self.assertEqual(volume['instance_uuid'],
-                         'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+        self.assertEqual(volume['instance_uuid'], instance_uuid)
+        self.assertEqual(volume['attached_host'], None)
+
+    def test_volume_attached_to_host(self):
+        volume = db.volume_create(self.ctxt, {'host': 'host1'})
+        host_name = 'fake_host'
+        db.volume_attached(self.ctxt, volume['id'],
+                           None, host_name, '/tmp')
+        volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertEqual(volume['status'], 'in-use')
+        self.assertEqual(volume['mountpoint'], '/tmp')
+        self.assertEqual(volume['attach_status'], 'attached')
+        self.assertEqual(volume['instance_uuid'], None)
+        self.assertEqual(volume['attached_host'], host_name)
 
     def test_volume_data_get_for_host(self):
         for i in xrange(3):
@@ -302,17 +315,30 @@ class DBAPIVolumeTestCase(BaseTest):
                              db.volume_data_get_for_project(
                                  self.ctxt, 'p%d' % i))
 
-    def test_volume_detached(self):
+    def test_volume_detached_from_instance(self):
         volume = db.volume_create(self.ctxt, {})
-        db.volume_attached(self.ctxt,
-                           volume['id'],
-                           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '/tmp')
+        db.volume_attached(self.ctxt, volume['id'],
+                           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                           None, '/tmp')
         db.volume_detached(self.ctxt, volume['id'])
         volume = db.volume_get(self.ctxt, volume['id'])
         self.assertEqual('available', volume['status'])
         self.assertEqual('detached', volume['attach_status'])
         self.assertIsNone(volume['mountpoint'])
         self.assertIsNone(volume['instance_uuid'])
+        self.assertIsNone(volume['attached_host'])
+
+    def test_volume_detached_from_host(self):
+        volume = db.volume_create(self.ctxt, {})
+        db.volume_attached(self.ctxt, volume['id'],
+                           None, 'fake_host', '/tmp')
+        db.volume_detached(self.ctxt, volume['id'])
+        volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertEqual('available', volume['status'])
+        self.assertEqual('detached', volume['attach_status'])
+        self.assertIsNone(volume['mountpoint'])
+        self.assertIsNone(volume['instance_uuid'])
+        self.assertIsNone(volume['attached_host'])
 
     def test_volume_get(self):
         volume = db.volume_create(self.ctxt, {})

@@ -210,10 +210,6 @@ class ScalityDriver(driver.VolumeDriver):
         """Disallow connection from connector."""
         pass
 
-    def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
-        """Callback for volume attached to instance."""
-        pass
-
     def detach_volume(self, context, volume_id):
         """Callback for volume detached."""
         pass

@@ -93,7 +93,7 @@ class VolumeActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 202)
 
-    def test_attach(self):
+    def test_attach_to_instance(self):
         body = {'os-attach': {'instance_uuid': 'fake',
                               'mountpoint': '/dev/vdc'}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
@@ -103,6 +103,38 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 202)
+
+    def test_attach_to_host(self):
+        body = {'os-attach': {'host_name': 'fake_host',
+                              'mountpoint': '/dev/vdc'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 202)
+
+    def test_attach_with_invalid_arguments(self):
+        # Invalid request to attach volume an invalid target
+        body = {'os-attach': {'mountpoint': '/dev/vdc'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.headers["content-type"] = "application/json"
+        req.body = jsonutils.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+
+        # Invalid request to attach volume to an instance and a host
+        body = {'os-attach': {'instance_uuid': 'fake',
+                              'host_name': 'fake_host',
+                              'mountpoint': '/dev/vdc'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.headers["content-type"] = "application/json"
+        req.body = jsonutils.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
 
     def test_extend_volume(self):
         def fake_extend_volume(*args, **kwargs):

@@ -102,7 +102,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.6'
+    RPC_API_VERSION = '1.7'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -572,9 +572,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, reservations, project_id=project_id)
         return True
 
-    def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
+    def attach_volume(self, context, volume_id, instance_uuid, host_name,
+                      mountpoint):
         """Updates db to show volume is attached"""
-
         @utils.synchronized(volume_id, external=True)
         def do_attach():
             # check the volume status before attaching
@@ -584,23 +584,32 @@ class VolumeManager(manager.SchedulerDependentManager):
                         instance_uuid):
                     msg = _("being attached by another instance")
                     raise exception.InvalidVolume(reason=msg)
+                if (volume['attached_host'] and volume['attached_host'] !=
+                        host_name):
+                    msg = _("being attached by another host")
+                    raise exception.InvalidVolume(reason=msg)
             elif volume['status'] != "available":
                 msg = _("status must be available")
                 raise exception.InvalidVolume(reason=msg)
             self.db.volume_update(context, volume_id,
                                   {"instance_uuid": instance_uuid,
+                                   "attached_host": host_name,
                                    "status": "attaching"})
 
-            if not uuidutils.is_uuid_like(instance_uuid):
+            if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
                 self.db.volume_update(context,
                                       volume_id,
                                       {'status': 'error_attaching'})
                 raise exception.InvalidUUID(uuid=instance_uuid)
 
+            host_name_sanitized = utils.sanitize_hostname(
+                host_name) if host_name else None
+
             try:
                 self.driver.attach_volume(context,
                                           volume_id,
                                           instance_uuid,
+                                          host_name_sanitized,
                                           mountpoint)
             except Exception:
                 with excutils.save_and_reraise_exception():
@@ -611,6 +620,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.db.volume_attached(context.elevated(),
                                     volume_id,
                                     instance_uuid,
+                                    host_name_sanitized,
                                     mountpoint)
         return do_attach()
 
@@ -678,7 +688,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 payload['message'] = unicode(error)
         finally:
-            if volume['instance_uuid'] is None:
+            if (volume['instance_uuid'] is None and
+                    volume['attached_host'] is None):
                 self.db.volume_update(context, volume_id,
                                       {'status': 'available'})
             else:
