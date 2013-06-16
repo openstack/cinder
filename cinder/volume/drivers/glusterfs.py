@@ -67,7 +67,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             raise exception.GlusterfsException(msg)
         if not os.path.exists(config):
             msg = (_("Gluster config file at %(config)s doesn't exist") %
-                   locals())
+                   {'config': config})
             LOG.warn(msg)
             raise exception.GlusterfsException(msg)
 

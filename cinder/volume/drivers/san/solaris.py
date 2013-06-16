@@ -173,7 +173,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
                 return luid
 
         msg = _('LUID not found for %(zfs_poolname)s. '
-                'Output=%(out)s') % locals()
+                'Output=%(out)s') % {'zfs_poolname': zfs_poolname, 'out': out}
         raise exception.VolumeBackendAPIException(data=msg)
 
     def _is_lu_created(self, volume):

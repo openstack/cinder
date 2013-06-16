@@ -79,7 +79,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
             if response_node is None:
                 msg = (_("Malformed response to CLIQ command "
                          "%(verb)s %(cliq_args)s. Result=%(out)s") %
-                       locals())
+                       {'verb': verb, 'cliq_args': cliq_args, 'out': out})
                 raise exception.VolumeBackendAPIException(data=msg)
 
             result_code = response_node.attrib.get("result")
@@ -87,7 +87,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
             if result_code != "0":
                 msg = (_("Error running CLIQ command %(verb)s %(cliq_args)s. "
                          " Result=%(out)s") %
-                       locals())
+                       {'verb': verb, 'cliq_args': cliq_args, 'out': out})
                 raise exception.VolumeBackendAPIException(data=msg)
 
         return result_xml
@@ -117,7 +117,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         _xml = etree.tostring(cluster_xml)
         msg = (_("Unexpected number of virtual ips for cluster "
                  " %(cluster_name)s. Result=%(_xml)s") %
-               locals())
+               {'cluster_name': cluster_name, '_xml': _xml})
         raise exception.VolumeBackendAPIException(data=msg)
 
     def _cliq_get_volume_info(self, volume_name):
@@ -169,7 +169,8 @@ class HpSanISCSIDriver(SanISCSIDriver):
                 volume_attributes["permission." + k] = v
 
         LOG.debug(_("Volume info: %(volume_name)s => %(volume_attributes)s") %
-                  locals())
+                  {'volume_name': volume_name,
+                   'volume_attributes': volume_attributes})
         return volume_attributes
 
     def create_volume(self, volume):

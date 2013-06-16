@@ -214,10 +214,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         cloned = False
 
         try:
-            vol_name = volume_ref['name']
-            vol_size = volume_ref['size']
             LOG.debug(_("volume %(vol_name)s: creating lv of"
-                        " size %(vol_size)sG") % locals())
+                        " size %(vol_size)sG"),
+                      {'vol_name': volume_ref['name'],
+                       'vol_size': volume_ref['size']})
             snapshot_ref = None
             sourcevol_ref = None
             image_service = None
@@ -474,8 +474,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, snapshot_ref, "create.start")
 
         try:
-            snap_name = snapshot_ref['name']
-            LOG.debug(_("snapshot %(snap_name)s: creating") % locals())
+            LOG.debug(_("snapshot %(snap_name)s: creating"),
+                      {'snap_name': snapshot_ref['name']})
             model_update = self.driver.create_snapshot(snapshot_ref)
             if model_update:
                 self.db.snapshot_update(context, snapshot_ref['id'],
@@ -650,7 +650,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.driver.copy_volume_to_image(context, volume, image_service,
                                              image_meta)
             LOG.debug(_("Uploaded volume %(volume_id)s to "
-                        "image (%(image_id)s) successfully") % locals())
+                        "image (%(image_id)s) successfully"),
+                      {'volume_id': volume_id, 'image_id': image_id})
         except Exception as error:
             with excutils.save_and_reraise_exception():
                 payload['message'] = unicode(error)
