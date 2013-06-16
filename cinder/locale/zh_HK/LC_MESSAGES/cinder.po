@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-06-14 18:09+0000\n"
+"POT-Creation-Date: 2013-06-15 18:10+0000\n"
 "PO-Revision-Date: 2013-05-29 08:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Chinese (Hong Kong) "
@@ -792,11 +792,6 @@ msgstr ""
 msgid "Could not remove tmpdir: %s"
 msgstr ""
 
-#: cinder/utils.py:1159 cinder/openstack/common/strutils.py:186
-#, python-format
-msgid "Unknown byte multiplier: %s"
-msgstr ""
-
 #: cinder/wsgi.py:121
 #, python-format
 msgid "Unable to find cert_file : %s"
@@ -944,12 +939,12 @@ msgstr ""
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:358
+#: cinder/api/extensions.py:359
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:382
+#: cinder/api/extensions.py:384
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
 msgstr ""
@@ -968,7 +963,7 @@ msgstr ""
 msgid "root element selecting a list"
 msgstr ""
 
-#: cinder/api/xmlutil.py:742
+#: cinder/api/xmlutil.py:740
 #, python-format
 msgid "Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
 msgstr ""
@@ -1002,7 +997,7 @@ msgstr ""
 msgid "Creating new backup %s"
 msgstr ""
 
-#: cinder/api/contrib/backups.py:195 cinder/api/contrib/backups.py:230
+#: cinder/api/contrib/backups.py:195 cinder/api/contrib/backups.py:232
 #: cinder/api/contrib/volume_transfer.py:159
 #: cinder/api/contrib/volume_transfer.py:195
 msgid "Incorrect request body format"
@@ -1013,12 +1008,12 @@ msgstr ""
 msgid "Creating backup of volume %(volume_id)s in container %(container)s"
 msgstr ""
 
-#: cinder/api/contrib/backups.py:221
+#: cinder/api/contrib/backups.py:222
 #, python-format
 msgid "Restoring backup %(backup_id)s (%(body)s)"
 msgstr ""
 
-#: cinder/api/contrib/backups.py:234
+#: cinder/api/contrib/backups.py:236
 #, python-format
 msgid "Restoring backup %(backup_id)s to volume %(volume_id)s"
 msgstr ""
@@ -1051,11 +1046,11 @@ msgstr ""
 msgid "Setting host %(host)s to %(state)s."
 msgstr ""
 
-#: cinder/api/contrib/hosts.py:205
+#: cinder/api/contrib/hosts.py:206
 msgid "Describe-resource is admin only functionality"
 msgstr ""
 
-#: cinder/api/contrib/hosts.py:213
+#: cinder/api/contrib/hosts.py:214
 msgid "Host not found"
 msgstr ""
 
@@ -1135,28 +1130,28 @@ msgstr ""
 msgid "Request is too large."
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:74
+#: cinder/api/openstack/__init__.py:73
 msgid "Must specify an ExtensionManager class"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:85
+#: cinder/api/openstack/__init__.py:84
 #, python-format
 msgid "Extended resource: %s"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:110
+#: cinder/api/openstack/__init__.py:108
 #, python-format
 msgid ""
 "Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
 "resource"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:115
+#: cinder/api/openstack/__init__.py:114
 #, python-format
 msgid "Extension %(ext_name)s extending resource: %(collection)s"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:128
+#: cinder/api/openstack/__init__.py:130
 msgid ""
 "cinder.api.openstack:FaultWrapper is deprecated. Please use "
 "cinder.api.middleware.fault:FaultWrapper instead."
@@ -1909,25 +1904,25 @@ msgstr ""
 msgid "Error contacting glance server '%(netloc)s' for '%(method)s', %(extra)s."
 msgstr ""
 
-#: cinder/image/image_utils.py:118
+#: cinder/image/image_utils.py:119
 msgid "Snapshot list encountered but no header found!"
 msgstr ""
 
-#: cinder/image/image_utils.py:232
+#: cinder/image/image_utils.py:233
 msgid "'qemu-img info' parsing failed."
 msgstr ""
 
-#: cinder/image/image_utils.py:239
+#: cinder/image/image_utils.py:240
 #, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr ""
 
-#: cinder/image/image_utils.py:256
+#: cinder/image/image_utils.py:257
 #, python-format
 msgid "Converted to raw, but format is now %s"
 msgstr ""
 
-#: cinder/image/image_utils.py:286
+#: cinder/image/image_utils.py:287
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr ""
@@ -2064,6 +2059,16 @@ msgstr ""
 #: cinder/openstack/common/strutils.py:86
 #, python-format
 msgid "Unrecognized value '%(val)s', acceptable values are: %(acceptable)s"
+msgstr ""
+
+#: cinder/openstack/common/strutils.py:182
+#, python-format
+msgid "Invalid string format: %s"
+msgstr ""
+
+#: cinder/openstack/common/strutils.py:189
+#, python-format
+msgid "Unknown byte multiplier: %s"
 msgstr ""
 
 #: cinder/openstack/common/db/exception.py:44
@@ -2762,7 +2767,7 @@ msgid "Volume in unexpected state"
 msgstr ""
 
 #: cinder/transfer/api.py:103 cinder/volume/api.py:108 cinder/volume/api.py:482
-#: cinder/volume/manager.py:561
+#: cinder/volume/manager.py:567
 msgid "status must be available"
 msgstr ""
 
@@ -2962,7 +2967,7 @@ msgstr ""
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr ""
 
-#: cinder/volume/driver.py:526 cinder/volume/manager.py:713
+#: cinder/volume/driver.py:526 cinder/volume/manager.py:719
 #: cinder/volume/drivers/lvm.py:562 cinder/volume/drivers/lvm.py:686
 #: cinder/volume/drivers/storwize_svc.py:1348
 #: cinder/volume/drivers/emc/emc_smis_common.py:857
@@ -3044,125 +3049,125 @@ msgstr ""
 msgid "volume %s: creating export"
 msgstr ""
 
-#: cinder/volume/manager.py:292
+#: cinder/volume/manager.py:294
 #, python-format
 msgid "volume %s: create failed"
 msgstr ""
 
-#: cinder/volume/manager.py:321
+#: cinder/volume/manager.py:327
 #, python-format
 msgid "volume %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:329
+#: cinder/volume/manager.py:335
 #, python-format
 msgid "Error: %s"
 msgstr ""
 
-#: cinder/volume/manager.py:355
+#: cinder/volume/manager.py:361
 #, python-format
 msgid "volume %s: Error trying to reschedule create"
 msgstr ""
 
-#: cinder/volume/manager.py:373
+#: cinder/volume/manager.py:379
 msgid "Retry info not present, will not reschedule"
 msgstr ""
 
-#: cinder/volume/manager.py:377
+#: cinder/volume/manager.py:383
 msgid "No request spec, will not reschedule"
 msgstr ""
 
-#: cinder/volume/manager.py:382
+#: cinder/volume/manager.py:388
 #, python-format
 msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
 msgstr ""
 
-#: cinder/volume/manager.py:411 cinder/volume/manager.py:424
+#: cinder/volume/manager.py:417 cinder/volume/manager.py:430
 #, python-format
 msgid "volume %s: deleting"
 msgstr ""
 
-#: cinder/volume/manager.py:417
+#: cinder/volume/manager.py:423
 msgid "volume is not local to this node"
 msgstr ""
 
-#: cinder/volume/manager.py:422
+#: cinder/volume/manager.py:428
 #, python-format
 msgid "volume %s: removing export"
 msgstr ""
 
-#: cinder/volume/manager.py:427
+#: cinder/volume/manager.py:433
 #, python-format
 msgid "Cannot delete volume %s: volume is busy"
 msgstr ""
 
-#: cinder/volume/manager.py:447
+#: cinder/volume/manager.py:453
 msgid "Failed to update usages deleting volume"
 msgstr ""
 
-#: cinder/volume/manager.py:451
+#: cinder/volume/manager.py:457
 #, python-format
 msgid "volume %s: deleted successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:466
+#: cinder/volume/manager.py:472
 #, python-format
 msgid "snapshot %s: creating"
 msgstr ""
 
-#: cinder/volume/manager.py:472
+#: cinder/volume/manager.py:478
 #, python-format
 msgid "snapshot %(snap_name)s: creating"
 msgstr ""
 
-#: cinder/volume/manager.py:490
+#: cinder/volume/manager.py:496
 #, python-format
 msgid "snapshot %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:498 cinder/volume/manager.py:508
+#: cinder/volume/manager.py:504 cinder/volume/manager.py:514
 #, python-format
 msgid "snapshot %s: deleting"
 msgstr ""
 
-#: cinder/volume/manager.py:511
+#: cinder/volume/manager.py:517
 #, python-format
 msgid "Cannot delete snapshot %s: snapshot is busy"
 msgstr ""
 
-#: cinder/volume/manager.py:537
+#: cinder/volume/manager.py:543
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:540
+#: cinder/volume/manager.py:546
 #, python-format
 msgid "snapshot %s: deleted successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:558
+#: cinder/volume/manager.py:564
 msgid "being attached by another instance"
 msgstr ""
 
-#: cinder/volume/manager.py:617 cinder/volume/manager.py:622
+#: cinder/volume/manager.py:623 cinder/volume/manager.py:628
 #, python-format
 msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
 msgstr ""
 
-#: cinder/volume/manager.py:627
+#: cinder/volume/manager.py:633
 #, python-format
 msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:646
+#: cinder/volume/manager.py:652
 #, python-format
 msgid "Uploaded volume %(volume_id)s to image (%(image_id)s) successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:726
+#: cinder/volume/manager.py:732
 msgid "Clear capabilities"
 msgstr ""
 
-#: cinder/volume/manager.py:730
+#: cinder/volume/manager.py:736
 #, python-format
 msgid "Notification {%s} received"
 msgstr ""
@@ -5866,7 +5871,4 @@ msgstr ""
 #, python-format
 msgid "Unexpected state while cloning %s"
 msgstr ""
-
-#~ msgid "Full set of FLAGS:"
-#~ msgstr ""
 
