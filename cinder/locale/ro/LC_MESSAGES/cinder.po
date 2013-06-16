@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-06-15 18:10+0000\n"
+"POT-Creation-Date: 2013-06-16 18:10+0000\n"
 "PO-Revision-Date: 2013-06-12 07:55+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Romanian "
@@ -1801,41 +1801,41 @@ msgstr ""
 msgid "Unrecognized read_deleted value '%s'"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:800
+#: cinder/db/sqlalchemy/api.py:799
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %(unders)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1819 cinder/db/sqlalchemy/api.py:1845
+#: cinder/db/sqlalchemy/api.py:1818 cinder/db/sqlalchemy/api.py:1844
 #, python-format
 msgid "No backend config with id %(sm_backend_id)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1902
+#: cinder/db/sqlalchemy/api.py:1901
 #, python-format
 msgid "No sm_flavor called %(sm_flavor)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1946
+#: cinder/db/sqlalchemy/api.py:1945
 #, python-format
 msgid "No sm_volume with id %(volume_id)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2009
+#: cinder/db/sqlalchemy/api.py:2008
 #, python-format
 msgid "No backup with id %(backup_id)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2092
+#: cinder/db/sqlalchemy/api.py:2091
 msgid "Volume must be available"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2116
+#: cinder/db/sqlalchemy/api.py:2115
 #, python-format
 msgid "Volume in unexpected state %s, expected awaiting-transfer"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2139
+#: cinder/db/sqlalchemy/api.py:2138
 #, python-format
 msgid ""
 "Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
