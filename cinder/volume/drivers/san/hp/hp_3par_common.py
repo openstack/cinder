@@ -309,9 +309,10 @@ exit
                     except Exception as e:
                         LOG.error(e)
                         greenthread.sleep(randint(20, 500) / 100.0)
-                raise paramiko.SSHException(_("SSH Command failed after "
-                                              "'%(total_attempts)r' attempts"
-                                              ": '%(command)s'"), locals())
+                msg = (_("SSH Command failed after '%(total_attempts)r' "
+                         "attempts : '%(command)s'") %
+                       {'total_attempts': total_attempts, 'command': command})
+                raise paramiko.SSHException(msg)
         except Exception as e:
             LOG.error(_("Error running ssh command: %s") % command)
             raise e

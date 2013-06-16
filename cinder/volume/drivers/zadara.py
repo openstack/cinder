@@ -215,8 +215,8 @@ class ZadaraVPSAConnection(object):
         self.ensure_connection(cmd)
 
         (method, url, body) = self._generate_vpsa_cmd(cmd, **kwargs)
-        LOG.debug(_('Sending %(method)s to %(url)s. Body "%(body)s"')
-                  % locals())
+        LOG.debug(_('Sending %(method)s to %(url)s. Body "%(body)s"'),
+                  {'method': method, 'url': url, 'body': body})
 
         if self.use_ssl:
             connection = httplib.HTTPSConnection(self.host, self.port)
@@ -237,7 +237,7 @@ class ZadaraVPSAConnection(object):
             raise exception.FailedCmdWithDump(status=status, data=data)
 
         if method in ['POST', 'DELETE']:
-            LOG.debug(_('Operation completed. %(data)s') % locals())
+            LOG.debug(_('Operation completed. %(data)s'), {'data': data})
         return xml_tree
 
 
@@ -348,7 +348,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             msg = _('Volume %(name)s could not be found. '
-                    'It might be already deleted') % locals()
+                    'It might be already deleted') % {'name': name}
             LOG.warning(msg)
             if CONF.zadara_vpsa_allow_nonexistent_delete:
                 return
@@ -444,7 +444,8 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         properties['auth_username'] = ctrl['chap_user']
         properties['auth_password'] = ctrl['chap_passwd']
 
-        LOG.debug(_('Attach properties: %(properties)s') % locals())
+        LOG.debug(_('Attach properties: %(properties)s'),
+                  {'properties': properties})
         return {'driver_volume_type': 'iscsi',
                 'data': properties}
 

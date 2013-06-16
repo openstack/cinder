@@ -122,10 +122,9 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
     def _check_fail(self, request, response):
         """Utility routine to handle checking ZAPI failures."""
         if 'failed' == response.Status:
-            name = request.Name
-            reason = response.Reason
             msg = _('API %(name)s failed: %(reason)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg_fmt = {'name': request.Name, 'reason': response.Reason}
+            raise exception.VolumeBackendAPIException(msg % msg_fmt)
 
     def _create_client(self, **kwargs):
         """Instantiate a web services client.
@@ -281,10 +280,10 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
                             project, type)
             self.discovered_datasets.append(ds)
             self._discover_dataset_luns(ds, None)
-        dataset_count = len(self.discovered_datasets)
-        lun_count = len(self.discovered_luns)
-        msg = _("Discovered %(dataset_count)s datasets and %(lun_count)s LUNs")
-        LOG.debug(msg % locals())
+        msg = (_("Discovered %(dataset_count)s datasets and %(lun_count)s"
+                 "LUNs") % {'dataset_count': len(self.discovered_datasets),
+                            'lun_count': len(self.discovered_luns)})
+        LOG.debug(msg)
         self.lun_table = {}
 
     def _get_job_progress(self, job_id):
@@ -464,8 +463,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
             lun = self._lookup_lun_for_volume(name, project)
             lun_details = self._get_lun_details(lun.id)
         except exception.VolumeBackendAPIException:
-            msg = _("No entry in LUN table for volume %(name)s.")
-            LOG.debug(msg % locals())
+            LOG.debug(_("No entry in LUN table for volume %(name)s."),
+                      {'name': name})
             return
 
         member = self.client.factory.create('DatasetMemberParameter')
@@ -1045,7 +1044,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         if vol_size != snap_size:
             msg = _('Cannot create volume of size %(vol_size)s from '
                     'snapshot of size %(snap_size)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg_fmt = {'vol_size': vol_size, 'snap_size': snap_size}
+            raise exception.VolumeBackendAPIException(msg % msg_fmt)
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
         project = snapshot['project_id']
@@ -1057,7 +1057,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         if new_type != old_type:
             msg = _('Cannot create volume of type %(new_type)s from '
                     'snapshot of type %(old_type)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg_fmt = {'vol_size': vol_size, 'snap_size': snap_size}
+            raise exception.VolumeBackendAPIException(msg % msg_fmt)
         lun = self._get_lun_details(lun_id)
         extra_gb = vol_size
         new_size = '+%dg' % extra_gb
@@ -1078,7 +1079,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         if vol_size != src_vol_size:
             msg = _('Cannot create clone of size %(vol_size)s from '
                     'volume of size %(src_vol_size)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg_fmt = {'vol_size': vol_size, 'src_vol_size': src_vol_size}
+            raise exception.VolumeBackendAPIException(msg % msg_fmt)
         src_vol_name = src_vref['name']
         project = src_vref['project_id']
         lun = self._lookup_lun_for_volume(src_vol_name, project)
@@ -1087,9 +1089,10 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
         old_type = dataset.type
         new_type = self._get_ss_type(volume)
         if new_type != old_type:
-            msg = _('Cannot create clone of type %(new_type)s from '
-                    'volume of type %(old_type)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg = (_('Cannot create clone of type %(new_type)s from '
+                     'volume of type %(old_type)s') %
+                   {'new_type': new_type, 'old_type': old_type})
+            raise exception.VolumeBackendAPIException(data=msg)
         lun = self._get_lun_details(lun_id)
         extra_gb = vol_size
         new_size = '+%dg' % extra_gb
@@ -1144,8 +1147,9 @@ class NetAppLun(object):
         if prop in self.metadata:
             return self.metadata[prop]
         name = self.name
-        msg = _("No metadata property %(prop)s defined for the LUN %(name)s")
-        LOG.debug(msg % locals())
+        msg = _("No metadata property %(prop)s defined for the LUN "
+                "%(name)s") % {'prop': prop, 'name': name}
+        LOG.debug(msg)
 
     def __str__(self, *args, **kwargs):
         return 'NetApp Lun[handle:%s, name:%s, size:%s, metadata:%s]'\
@@ -1251,8 +1255,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         name = volume['name']
         handle = self._get_lun_handle(name)
         if not handle:
-            msg = _("No entry in LUN table for volume %(name)s.")
-            LOG.warn(msg % locals())
+            LOG.warn(_("No entry in LUN table for volume %(name)s."),
+                     {'name': name})
             return
         self.client.service.DestroyLun(Handle=handle)
         LOG.debug(_("Destroyed LUN %s") % handle)
@@ -1292,16 +1296,17 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         server = self.client.service
         server.MapLun(Handle=handle, InitiatorType="iscsi",
                       InitiatorName=initiator_name)
-        msg = _("Mapped LUN %(handle)s to the initiator %(initiator_name)s")
-        LOG.debug(msg % locals())
+        LOG.debug(_("Mapped LUN %(handle)s to the initiator "
+                    "%(initiator_name)s"),
+                  {'handle': handle, 'initiator_name': initiator_name})
 
         target_details_list = server.GetLunTargetDetails(
             Handle=handle,
             InitiatorType="iscsi",
             InitiatorName=initiator_name)
-        msg = _("Succesfully fetched target details for LUN %(handle)s and "
-                "initiator %(initiator_name)s")
-        LOG.debug(msg % locals())
+        LOG.debug(_("Succesfully fetched target details for LUN %(handle)s and"
+                    " initiator %(initiator_name)s"),
+                  {'handle': handle, 'initiator_name': initiator_name})
 
         if not target_details_list:
             msg = _('Failed to get LUN target details for the LUN %s')
@@ -1346,8 +1351,9 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         self.client.service.UnmapLun(Handle=handle, InitiatorType="iscsi",
                                      InitiatorName=initiator_name)
         msg = _("Unmapped LUN %(handle)s from the initiator "
-                "%(initiator_name)s")
-        LOG.debug(msg % locals())
+                "%(initiator_name)s") % {'handle': handle,
+                                         'initiator_name': initiator_name}
+        LOG.debug(msg)
 
     def create_snapshot(self, snapshot):
         """Driver entry point for creating a snapshot.
@@ -1366,8 +1372,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         name = snapshot['name']
         handle = self._get_lun_handle(name)
         if not handle:
-            msg = _("No entry in LUN table for snapshot %(name)s.")
-            LOG.warn(msg % locals())
+            LOG.warn(_("No entry in LUN table for snapshot %(name)s."),
+                     {'name': name})
             return
         self.client.service.DestroyLun(Handle=handle)
         LOG.debug(_("Destroyed LUN %s") % handle)
@@ -1384,7 +1390,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         if vol_size != snap_size:
             msg = _('Cannot create volume of size %(vol_size)s from '
                     'snapshot of size %(snap_size)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg_fmt = {'vol_size': vol_size, 'snap_size': snap_size}
+            raise exception.VolumeBackendAPIException(msg % msg_fmt)
         snapshot_name = snapshot['name']
         lun = self.lun_table[snapshot_name]
         new_name = volume['name']
@@ -1461,7 +1468,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
         if vol_size != src_vol_size:
             msg = _('Cannot clone volume of size %(vol_size)s from '
                     'src volume of size %(src_vol_size)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg_fmt = {'vol_size': vol_size, 'src_vol_size': src_vol_size}
+            raise exception.VolumeBackendAPIException(msg % msg_fmt)
         new_name = volume['name']
         extra_args = {}
         extra_args['OsType'] = 'linux'
@@ -1586,8 +1594,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         name = volume['name']
         metadata = self._get_lun_attr(name, 'metadata')
         if not metadata:
-            msg = _("No entry in LUN table for volume/snapshot %(name)s.")
-            LOG.warn(msg % locals())
+            LOG.warn(_("No entry in LUN table for volume/snapshot %(name)s."),
+                     {'name': name})
             return
         lun_destroy = NaElement.create_node_with_children(
             'lun-destroy',
@@ -1629,13 +1637,15 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         initiator_name = connector['initiator']
         name = volume['name']
         lun_id = self._map_lun(name, initiator_name, 'iscsi', None)
-        msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
-        LOG.debug(msg % locals())
+        msg = (_("Mapped LUN %(name)s to the initiator %(initiator_name)s") %
+               {'name': name, 'initiator_name': initiator_name})
+        LOG.debug(msg)
         iqn = self._get_iscsi_service_details()
         target_details_list = self._get_target_details()
-        msg = _("Succesfully fetched target details for LUN %(name)s and "
-                "initiator %(initiator_name)s")
-        LOG.debug(msg % locals())
+        msg = (_("Succesfully fetched target details for LUN %(name)s and "
+                 "initiator %(initiator_name)s") %
+               {'name': name, 'initiator_name': initiator_name})
+        LOG.debug(msg)
 
         if not target_details_list:
             msg = _('Failed to get LUN target details for the LUN %s')
@@ -1700,9 +1710,10 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         vol_size = volume['size']
         snap_size = snapshot['volume_size']
         if vol_size != snap_size:
-            msg = _('Cannot create volume of size %(vol_size)s from '
-                    'snapshot of size %(snap_size)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg = (_('Cannot create volume of size %(vol_size)s from '
+                     'snapshot of size %(snap_size)s') %
+                   {'vol_size': vol_size, 'snap_size': snap_size})
+            raise exception.VolumeBackendAPIException(data=msg)
         snapshot_name = snapshot['name']
         new_name = volume['name']
         self._clone_lun(snapshot_name, new_name, 'true')
@@ -1718,9 +1729,10 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
         self._unmap_lun(path, initiator_name)
-        msg = _("Unmapped LUN %(name)s from the initiator "
-                "%(initiator_name)s")
-        LOG.debug(msg % locals())
+        msg = (_("Unmapped LUN %(name)s from the initiator "
+                 "%(initiator_name)s") %
+               {'name': name, 'initiator_name': initiator_name})
+        LOG.debug(msg)
 
     def _get_ontapi_version(self):
         """Gets the supported ontapi version."""
@@ -1810,10 +1822,10 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             result = self.client.invoke_successfully(lun_map, True)
             return result.get_child_content('lun-id-assigned')
         except NaApiError as e:
-            code = e.code
-            message = e.message
-            msg = _('Error mapping lun. Code :%(code)s, Message:%(message)s')
-            LOG.warn(msg % locals())
+            msg = (_("Error mapping lun. Code :%(code)s,"
+                     " Message:%(message)s") %
+                   {'code': e.code, 'message': e.message})
+            LOG.warn(msg)
             (igroup, lun_id) = self._find_mapped_lun_igroup(path, initiator)
             if lun_id is not None:
                 return lun_id
@@ -1830,10 +1842,10 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         try:
             self.client.invoke_successfully(lun_unmap, True)
         except NaApiError as e:
-            msg = _("Error unmapping lun. Code :%(code)s, Message:%(message)s")
-            code = e.code
-            message = e.message
-            LOG.warn(msg % locals())
+            msg = (_("Error unmapping lun. Code :%(code)s,"
+                     " Message:%(message)s") %
+                   {'code': e.code, 'message': e.message})
+            LOG.warn(msg)
             # if the lun is already unmapped
             if e.code == '13115' or e.code == '9016':
                 pass
@@ -1937,9 +1949,10 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         src_vol = self.lun_table[src_vref['name']]
         src_vol_size = src_vref['size']
         if vol_size != src_vol_size:
-            msg = _('Cannot clone volume of size %(vol_size)s from '
-                    'src volume of size %(src_vol_size)s')
-            raise exception.VolumeBackendAPIException(data=msg % locals())
+            msg = (_("Cannot clone volume of size %(vol_size)s from "
+                     "src volume of size %(src_vol_size)s") %
+                   {'vol_size': vol_size, 'src_vol_size': src_vol_size})
+            raise exception.VolumeBackendAPIException(data=msg)
         new_name = volume['name']
         self._clone_lun(src_vol.name, new_name, 'true')
 
@@ -2379,7 +2392,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                         lun_list.extend(luns)
                 except NaApiError:
                     LOG.warn(_("Error finding luns for volume %(vol)s."
-                               " Verify volume exists.") % locals())
+                               " Verify volume exists."), {'vol': vol})
         else:
             luns = self._get_vol_luns(None)
             lun_list.extend(luns)
@@ -2483,10 +2496,12 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                 if clone_ops_info.get_child_content('clone-state')\
                         == 'completed':
                     LOG.debug(_("Clone operation with src %(name)s"
-                                " and dest %(new_name)s completed") % locals())
+                                " and dest %(new_name)s completed"),
+                              {'name': name, 'new_name': new_name})
                 else:
                     LOG.debug(_("Clone operation with src %(name)s"
-                                " and dest %(new_name)s failed") % locals())
+                                " and dest %(new_name)s failed"),
+                              {'name': name, 'new_name': new_name})
                     raise NaApiError(
                         clone_ops_info.get_child_content('error'),
                         clone_ops_info.get_child_content('reason'))

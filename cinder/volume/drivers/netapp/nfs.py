@@ -75,9 +75,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         snap_size = snapshot.volume_size
 
         if vol_size != snap_size:
-            msg = _('Cannot create volume of size %(vol_size)s from '
-                    'snapshot of size %(snap_size)s')
-            raise exception.CinderException(msg % locals())
+            msg = (_('Cannot create volume of size %(vol_size)s from '
+                     'snapshot of size %(snap_size)s') %
+                   {'vol_size': vol_size, 'snap_size': snap_size})
+            raise exception.CinderException(msg)
 
         self._clone_volume(snapshot.name, volume.name, snapshot.volume_id)
         share = self._get_volume_location(snapshot.volume_id)
@@ -274,9 +275,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         src_vol_size = src_vref.size
 
         if vol_size != src_vol_size:
-            msg = _('Cannot create clone of size %(vol_size)s from '
-                    'volume of size %(src_vol_size)s')
-            raise exception.CinderException(msg % locals())
+            msg = (_('Cannot create clone of size %(vol_size)s from '
+                     'volume of size %(src_vol_size)s') %
+                   {'vol_size': vol_size, 'src_vol_size': src_vol_size})
+            raise exception.CinderException(msg)
 
         self._clone_volume(src_vref.name, volume.name, src_vref.id)
         share = self._get_volume_location(src_vref.id)
@@ -313,9 +315,11 @@ class NetAppCmodeNfsDriver (NetAppNFSDriver):
         """Clones mounted volume with NetApp Cloud Services."""
         host_ip = self._get_host_ip(volume_id)
         export_path = self._get_export_path(volume_id)
-        LOG.debug(_("""Cloning with params ip %(host_ip)s, exp_path
-                    %(export_path)s, vol %(volume_name)s,
-                    clone_name %(clone_name)s""") % locals())
+        LOG.debug(_("Cloning with params ip %(host_ip)s, exp_path"
+                    "%(export_path)s, vol %(volume_name)s, "
+                    "clone_name %(clone_name)s"),
+                  {'host_ip': host_ip, 'export_path': export_path,
+                   'volume_name': volume_name, 'clone_name': clone_name})
         self._client.service.CloneNasFile(host_ip, export_path,
                                           volume_name, clone_name)
 
@@ -488,15 +492,17 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             vols = attr_list.get_children()
             vol_id = vols[0].get_child_by_name('volume-id-attributes')
             return vol_id.get_child_content('name')
-        raise exception.NotFound(_("""No volume on cluster with vserver
-                                   %(vserver)s and junction path %(junction)s
-                                   """) % locals())
+        raise exception.NotFound(_("No volume on cluster with vserver"
+                                   "%(vserver)s and junction path "
+                                   "%(junction)s"), {'vserver': vserver,
+                                                     'junction': junction})
 
     def _clone_file(self, volume, src_path, dest_path, vserver=None):
         """Clones file on vserver."""
-        LOG.debug(_("""Cloning with params volume %(volume)s,src %(src_path)s,
-                    dest %(dest_path)s, vserver %(vserver)s""")
-                  % locals())
+        LOG.debug(_("Cloning with params volume %(volume)s,src %(src_path)s,"
+                    "dest %(dest_path)s, vserver %(vserver)s"),
+                  {'volume': volume, 'src_path': src_path,
+                   'dest_path': dest_path, 'vserver': vserver})
         clone_create = NaElement.create_node_with_children(
             'clone-create',
             **{'volume': volume, 'source-path': src_path,
@@ -556,8 +562,8 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
         :returns: clone-id
         """
-        LOG.debug(_("""Cloning with src %(src_path)s, dest %(dest_path)s""")
-                  % locals())
+        LOG.debug(_("Cloning with src %(src_path)s, dest %(dest_path)s"),
+                  {'src_path': src_path, 'dest_path': dest_path})
         clone_start = NaElement.create_node_with_children(
             'clone-start',
             **{'source-path': src_path,

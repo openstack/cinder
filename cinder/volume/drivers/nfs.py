@@ -201,7 +201,8 @@ class NfsDriver(RemoteFsDriver):
             LOG.warn(msg)
             raise exception.NfsException(msg)
         if not os.path.exists(config):
-            msg = _("NFS config file at %(config)s doesn't exist") % locals()
+            msg = (_("NFS config file at %(config)s doesn't exist") %
+                   {'config': config})
             LOG.warn(msg)
             raise exception.NfsException(msg)
         if not self.configuration.nfs_oversub_ratio > 0:

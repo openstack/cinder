@@ -943,7 +943,8 @@ class EMCSMISCommon():
             ecomPort = ecomPorts[0].toxml().replace('<EcomServerPort>', '')
             ecomPort = ecomPort.replace('</EcomServerPort>', '')
         if ecomIp is not None and ecomPort is not None:
-            LOG.debug(_("Ecom IP: %(ecomIp)s Port: %(ecomPort)s") % (locals()))
+            LOG.debug(_("Ecom IP: %(ecomIp)s Port: %(ecomPort)s"),
+                      {'ecomIp': ecomIp, 'ecomPort': ecomPort})
             return ecomIp, ecomPort
         else:
             LOG.debug(_("Ecom server not found."))
