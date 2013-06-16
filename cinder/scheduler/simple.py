@@ -71,8 +71,8 @@ class SimpleScheduler(chance.ChanceScheduler):
 
         results = db.service_get_all_volume_sorted(elevated)
         if zone:
-            results = [(service, gigs) for (service, gigs) in results
-                       if service['availability_zone'] == zone]
+            results = [(s, gigs) for (s, gigs) in results
+                       if s['availability_zone'] == zone]
         for result in results:
             (service, volume_gigabytes) = result
             if volume_gigabytes + volume_size > CONF.max_gigabytes:
