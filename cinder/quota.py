@@ -54,7 +54,10 @@ quota_opts = [
                help='number of seconds between subsequent usage refreshes'),
     cfg.StrOpt('quota_driver',
                default='cinder.quota.DbQuotaDriver',
-               help='default driver to use for quota checks'), ]
+               help='default driver to use for quota checks'),
+    cfg.BoolOpt('use_default_quota_class',
+                default='True',
+                help='whether to use default quota class for default quota'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts)
@@ -79,14 +82,26 @@ class DbQuotaDriver(object):
 
     def get_defaults(self, context, resources):
         """Given a list of resources, retrieve the default quotas.
+        Use the class quotas named `_DEFAULT_QUOTA_NAME` as default quotas,
+        if it exists.
 
         :param context: The request context, for access checks.
         :param resources: A dictionary of the registered resources.
         """
 
         quotas = {}
+        default_quotas = {}
+        if CONF.use_default_quota_class:
+            default_quotas = db.quota_class_get_default(context)
         for resource in resources.values():
-            quotas[resource.name] = resource.default
+            if resource.name not in default_quotas:
+                LOG.deprecated(_("Default quota for resource: %(res)s is set "
+                                 "by the default quota flag: quota_%(res)s, "
+                                 "it is now deprecated. Please use the "
+                                 "the default quota class for default "
+                                 "quota.") % {'res': resource.name})
+            quotas[resource.name] = default_quotas.get(resource.name,
+                                                       resource.default)
 
         return quotas
 
@@ -154,15 +169,19 @@ class DbQuotaDriver(object):
         else:
             class_quotas = {}
 
+        default_quotas = self.get_defaults(context, resources)
+
         for resource in resources.values():
             # Omit default/quota class values
             if not defaults and resource.name not in project_quotas:
                 continue
 
             quotas[resource.name] = dict(
-                limit=project_quotas.get(resource.name,
-                                         class_quotas.get(resource.name,
-                                                          resource.default)), )
+                limit=project_quotas.get(
+                    resource.name,
+                    class_quotas.get(resource.name,
+                                     default_quotas[resource.name])),
+            )
 
             # Include usages if desired.  This is optional because one
             # internal consumer of this interface wants to access the

@@ -210,6 +210,11 @@
 # Options defined in cinder.quota
 #
 
+# If True, uses the default quota class for default quota, the
+# quota_* option will be deprecated if the default quota for
+# the related resource is set by default quota class (boolean value)
+#use_default_quota_class=true
+
 # number of volumes allowed per project (integer value)
 #quota_volumes=10
 

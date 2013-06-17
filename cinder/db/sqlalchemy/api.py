@@ -52,6 +52,8 @@ db_session.set_defaults(sql_connection='sqlite:///$state_path/$sqlite_db',
 get_engine = db_session.get_engine
 get_session = db_session.get_session
 
+_DEFAULT_QUOTA_NAME = 'default'
+
 
 def get_backend():
     """The backend is this module itself."""
@@ -495,6 +497,18 @@ def quota_class_get(context, class_name, resource, session=None):
 
     if not result:
         raise exception.QuotaClassNotFound(class_name=class_name)
+
+    return result
+
+
+def quota_class_get_default(context):
+    rows = model_query(context, models.QuotaClass,
+                       read_deleted="no").\
+        filter_by(class_name=_DEFAULT_QUOTA_NAME).all()
+
+    result = {'class_name': _DEFAULT_QUOTA_NAME}
+    for row in rows:
+        result[row.resource] = row.hard_limit
 
     return result
 

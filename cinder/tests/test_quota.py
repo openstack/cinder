@@ -666,6 +666,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_defaults(self):
         # Use our pre-defined resources
+        self._stub_quota_class_get_default()
         result = self.driver.get_defaults(None, quota.QUOTAS._resources)
 
         self.assertEqual(
@@ -674,6 +675,15 @@ class DbQuotaDriverTestCase(test.TestCase):
                 volumes=10,
                 snapshots=10,
                 gigabytes=1000, ))
+
+    def _stub_quota_class_get_default(self):
+        # Stub out quota_class_get_default
+        def fake_qcgd(context):
+            self.calls.append('quota_class_get_default')
+            return dict(volumes=10,
+                        snapshots=10,
+                        gigabytes=1000,)
+        self.stubs.Set(db, 'quota_class_get_default', fake_qcgd)
 
     def _stub_quota_class_get_all_by_name(self):
         # Stub out quota_class_get_all_by_name
@@ -720,6 +730,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.stubs.Set(db, 'quota_usage_get_all_by_project', fake_qugabp)
 
         self._stub_quota_class_get_all_by_name()
+        self._stub_quota_class_get_default()
 
     def test_get_project_quotas(self):
         self._stub_get_by_project()
@@ -729,7 +740,8 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
                                       'quota_usage_get_all_by_project',
-                                      'quota_class_get_all_by_name', ])
+                                      'quota_class_get_all_by_name',
+                                      'quota_class_get_default', ])
         self.assertEqual(result, dict(volumes=dict(limit=10,
                                                    in_use=2,
                                                    reserved=0, ),
@@ -747,7 +759,8 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project')
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
-                                      'quota_usage_get_all_by_project', ])
+                                      'quota_usage_get_all_by_project',
+                                      'quota_class_get_default', ])
         self.assertEqual(result, dict(volumes=dict(limit=10,
                                                    in_use=2,
                                                    reserved=0, ),
@@ -766,7 +779,8 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
                                       'quota_usage_get_all_by_project',
-                                      'quota_class_get_all_by_name', ])
+                                      'quota_class_get_all_by_name',
+                                      'quota_class_get_default', ])
         self.assertEqual(result, dict(volumes=dict(limit=10,
                                                    in_use=2,
                                                    reserved=0, ),
@@ -785,7 +799,8 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
                                       'quota_usage_get_all_by_project',
-                                      'quota_class_get_all_by_name', ])
+                                      'quota_class_get_all_by_name',
+                                      'quota_class_get_default', ])
         self.assertEqual(result,
                          dict(gigabytes=dict(limit=50,
                                              in_use=10,
@@ -804,7 +819,8 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project', usages=False)
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
-                                      'quota_class_get_all_by_name', ])
+                                      'quota_class_get_all_by_name',
+                                      'quota_class_get_default', ])
         self.assertEqual(result, dict(volumes=dict(limit=10, ),
                                       snapshots=dict(limit=10, ),
                                       gigabytes=dict(limit=50, ), ))
