@@ -109,7 +109,7 @@ class ScalityDriver(driver.VolumeDriver):
     def _create_file(self, path, size):
         with open(path, "ab") as f:
             f.truncate(size)
-        os.chmod(path, 0666)
+        os.chmod(path, 0o666)
 
     def _copy_file(self, src_path, dest_path):
         self._execute('dd', 'if=%s' % src_path, 'of=%s' % dest_path,
