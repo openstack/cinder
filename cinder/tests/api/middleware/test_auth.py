@@ -40,16 +40,16 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
         self.assertEqual(response.status, '401 Unauthorized')
 
     def test_user_only(self):
-        self.request.headers['X_USER_ID'] = 'testuserid'
-        response = self.request.get_response(self.middleware)
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(self.context.user_id, 'testuserid')
-
-    def test_user_id_only(self):
         self.request.headers['X_USER'] = 'testuser'
         response = self.request.get_response(self.middleware)
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(self.context.user_id, 'testuser')
+
+    def test_user_id_only(self):
+        self.request.headers['X_USER_ID'] = 'testuserid'
+        response = self.request.get_response(self.middleware)
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(self.context.user_id, 'testuserid')
 
     def test_user_id_trumps_user(self):
         self.request.headers['X_USER_ID'] = 'testuserid'
@@ -57,3 +57,11 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
         response = self.request.get_response(self.middleware)
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(self.context.user_id, 'testuserid')
+
+    def test_tenant_id_name(self):
+        self.request.headers['X_USER_ID'] = 'testuserid'
+        self.request.headers['X_TENANT_NAME'] = 'testtenantname'
+        response = self.request.get_response(self.middleware)
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(self.context.project_id, 'testtenantid')
+        self.assertEqual(self.context.project_name, 'testtenantname')
