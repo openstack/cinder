@@ -270,10 +270,12 @@ class ProcessLauncher(object):
         code = 0
         if os.WIFSIGNALED(status):
             sig = os.WTERMSIG(status)
-            LOG.info(_('Child %(pid)d killed by signal %(sig)d'), locals())
+            LOG.info(_('Child %(pid)d killed by signal %(sig)d'),
+                     {'pid': pid, 'sig': sig})
         else:
             code = os.WEXITSTATUS(status)
-            LOG.info(_('Child %(pid)d exited with status %(code)d'), locals())
+            LOG.info(_('Child %(pid)d exited with status %(code)d'),
+                     {'pid': pid, 'code': code})
 
         if pid not in self.children:
             LOG.warning(_('pid %d not in child list'), pid)
@@ -613,9 +615,10 @@ def wait():
         # should use secret flag when switch over to openstack-common
         if ("_password" in flag or "_key" in flag or
                 (flag == "sql_connection" and "mysql:" in flag_get)):
-            LOG.debug(_('%(flag)s : FLAG SET ') % locals())
+            LOG.debug(_('%s : FLAG SET ') % flag)
         else:
-            LOG.debug('%(flag)s : %(flag_get)s' % locals())
+            LOG.debug('%(flag)s : %(flag_get)s' %
+                      {'flag': flag, 'flag_get': flag_get})
     try:
         _launcher.wait()
     except KeyboardInterrupt:
