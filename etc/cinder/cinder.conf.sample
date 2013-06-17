@@ -812,6 +812,24 @@
 # value)
 #iscsi_port=3260
 
+# number of times to rescan iSER target to find volume
+# (integer value)
+#num_iser_scan_tries=3
+
+# Number of iser target ids per host (integer value)
+#iser_num_targets=100
+
+# prefix for iser volumes (string value)
+#iser_target_prefix=iqn.2010-10.org.iser.openstack:
+
+# The port that the iSER daemon is listening on (string
+# value)
+#iser_ip_address=$my_ip
+
+# The port that the iSER daemon is listening on (integer
+# value)
+#iser_port=3260
+
 # The backend name for a given driver implementation (string
 # value)
 #volume_backend_name=<None>
@@ -1339,6 +1357,9 @@
 # iscsi target user-land tool to use (string value)
 #iscsi_helper=tgtadm
 
+# iser target user-land tool to use (string value)
+#iser_helper=tgtadm
+
 # Volume configuration file storage directory (string value)
 #volumes_dir=$state_path/volumes
 
@@ -1360,6 +1381,6 @@
 #
 
 # Driver to use for volume creation (string value)
-#volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
+#volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver,cinder.volume.drivers.lvm.LVMISERDriver
 
 # Total option count: 300

@@ -298,6 +298,22 @@ class ISCSITargetRemoveFailed(CinderException):
     message = _("Failed to remove iscsi target for volume %(volume_id)s.")
 
 
+class ISERTargetNotFoundForVolume(NotFound):
+    message = _("No target id found for volume %(volume_id)s.")
+
+
+class ISERTargetCreateFailed(CinderException):
+    message = _("Failed to create iser target for volume %(volume_id)s.")
+
+
+class ISERTargetAttachFailed(CinderException):
+    message = _("Failed to attach iser target for volume %(volume_id)s.")
+
+
+class ISERTargetRemoveFailed(CinderException):
+    message = _("Failed to remove iser target for volume %(volume_id)s.")
+
+
 class DiskNotFound(NotFound):
     message = _("No disk at %(location)s")
 
