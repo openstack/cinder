@@ -76,7 +76,7 @@ class SchedulerOptions(object):
         """Decode the JSON file. Broken out for testing."""
         try:
             return json.load(handle)
-        except ValueError, e:
+        except ValueError as e:
             LOG.exception(_("Could not decode scheduler options: '%s'") % e)
             return {}
 
