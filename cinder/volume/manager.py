@@ -570,9 +570,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   {"instance_uuid": instance_uuid,
                                    "status": "attaching"})
 
-            # TODO(vish): refactor this into a more general "reserve"
-            # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
             if not uuidutils.is_uuid_like(instance_uuid):
+                self.db.volume_update(context,
+                                      volume_id,
+                                      {'status': 'error_attaching'})
                 raise exception.InvalidUUID(uuid=instance_uuid)
 
             try:
