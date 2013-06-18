@@ -84,6 +84,10 @@ class Scheduler(object):
                 for service in services
                 if utils.service_is_up(service)]
 
+    def host_passes_filters(self, context, volume_id, host, filter_properties):
+        """Check if the specified host passes the filters."""
+        raise NotImplementedError(_("Must implement host_passes_filters"))
+
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement a fallback schedule"))

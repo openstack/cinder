@@ -83,7 +83,7 @@ class SchedulerManagerTestCase(test.TestCase):
             capabilities=capabilities)
 
     def test_create_volume_exception_puts_volume_in_error_state(self):
-        """Test that a NoValideHost exception for create_volume.
+        """Test NoValidHost exception behavior for create_volume.
 
         Puts the volume in 'error' state and eats the exception.
         """
@@ -104,6 +104,31 @@ class SchedulerManagerTestCase(test.TestCase):
         self.manager.create_volume(self.context, topic, volume_id,
                                    request_spec=request_spec,
                                    filter_properties={})
+
+    def test_migrate_volume_exception_puts_volume_in_error_state(self):
+        """Test NoValidHost exception behavior for migrate_volume_to_host.
+
+        Puts the volume in 'error_migrating' state and eats the exception.
+        """
+        fake_volume_id = 1
+        self._mox_schedule_method_helper('host_passes_filters')
+        self.mox.StubOutWithMock(db, 'volume_update')
+
+        topic = 'fake_topic'
+        volume_id = fake_volume_id
+        request_spec = {'volume_id': fake_volume_id}
+
+        self.manager.driver.host_passes_filters(
+            self.context, 'host',
+            request_spec, {}).AndRaise(exception.NoValidHost(reason=""))
+        db.volume_update(self.context, fake_volume_id,
+                         {'status': 'error_migrating'})
+
+        self.mox.ReplayAll()
+        self.manager.migrate_volume_to_host(self.context, topic, volume_id,
+                                            'host', True,
+                                            request_spec=request_spec,
+                                            filter_properties={})
 
     def _mox_schedule_method_helper(self, method_name):
         # Make sure the method exists that we're going to test call

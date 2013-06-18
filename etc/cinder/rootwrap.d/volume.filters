@@ -24,6 +24,9 @@ lvremove: CommandFilter, lvremove, root
 # cinder/volume/driver.py: 'lvdisplay', '--noheading', '-C', '-o', 'Attr',..
 lvdisplay: CommandFilter, lvdisplay, root
 
+# cinder/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
+lvrename: CommandFilter, lvrename, root
+
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root

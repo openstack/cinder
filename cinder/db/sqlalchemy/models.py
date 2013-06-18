@@ -81,10 +81,19 @@ class Volume(BASE, CinderBase):
     """Represents a block storage device that can be attached to a vm."""
     __tablename__ = 'volumes'
     id = Column(String(36), primary_key=True)
+    _name_id = Column(String(36))  # Don't access/modify this directly!
+
+    @property
+    def name_id(self):
+        return self.id if not self._name_id else self._name_id
+
+    @name_id.setter
+    def name_id(self, value):
+        self._name_id = value
 
     @property
     def name(self):
-        return CONF.volume_name_template % self.id
+        return CONF.volume_name_template % self.name_id
 
     ec2_id = Column(Integer)
     user_id = Column(String(255))

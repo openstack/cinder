@@ -18,7 +18,6 @@
 Client side of the volume RPC API.
 """
 
-
 from oslo.config import cfg
 
 from cinder.openstack.common import rpc
@@ -43,6 +42,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
         1.6 - Add extend_volume.
         1.7 - Adds host_name parameter to attach_volume()
               to allow attaching to host rather than instance.
+        1.8 - Add migrate_volume, rename_volume.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -151,3 +151,22 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                                 new_size=new_size),
                   topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
                   version='1.6')
+
+    def migrate_volume(self, ctxt, volume, dest_host, force_host_copy):
+        host_p = {'host': dest_host.host,
+                  'capabilities': dest_host.capabilities}
+        self.cast(ctxt,
+                  self.make_msg('migrate_volume',
+                                volume_id=volume['id'],
+                                host=host_p,
+                                force_host_copy=force_host_copy),
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
+                  version='1.8')
+
+    def rename_volume(self, ctxt, volume, new_name_id):
+        self.call(ctxt,
+                  self.make_msg('rename_volume',
+                                volume_id=volume['id'],
+                                new_name_id=new_name_id),
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
+                  version='1.8')

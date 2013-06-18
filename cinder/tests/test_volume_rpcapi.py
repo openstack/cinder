@@ -81,6 +81,12 @@ class VolumeRpcAPITestCase(test.TestCase):
             expected_msg['args']['snapshot_id'] = snapshot['id']
         if 'host' in expected_msg['args']:
             del expected_msg['args']['host']
+        if 'dest_host' in expected_msg['args']:
+            dest_host = expected_msg['args']['dest_host']
+            dest_host_dict = {'host': dest_host.host,
+                              'capabilities': dest_host.capabilities}
+            del expected_msg['args']['dest_host']
+            expected_msg['args']['host'] = dest_host_dict
 
         expected_msg['version'] = expected_version
 
@@ -195,3 +201,23 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               new_size=1,
                               version='1.6')
+
+    def test_migrate_volume(self):
+        class FakeHost(object):
+            def __init__(self):
+                self.host = 'host'
+                self.capabilities = {}
+        dest_host = FakeHost()
+        self._test_volume_api('migrate_volume',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              dest_host=dest_host,
+                              force_host_copy=True,
+                              version='1.8')
+
+    def test_rename_volume(self):
+        self._test_volume_api('rename_volume',
+                              rpc_method='call',
+                              volume=self.fake_volume,
+                              new_name_id='new_id',
+                              version='1.8')

@@ -188,6 +188,10 @@ class InvalidContentType(Invalid):
     message = _("Invalid content type %(content_type)s.")
 
 
+class InvalidHost(Invalid):
+    message = _("Invalid host") + ": %(reason)s"
+
+
 # Cannot be templated as the error syntax varies.
 # msg needs to be constructed when raised.
 class InvalidParameterValue(Invalid):
@@ -594,3 +598,11 @@ class SwiftConnectionFailed(CinderException):
 
 class TransferNotFound(NotFound):
     message = _("Transfer %(transfer_id)s could not be found.")
+
+
+class VolumeMigrationFailed(CinderException):
+    message = _("Volume migration failed") + ": %(reason)s"
+
+
+class ProtocolNotSupported(CinderException):
+    message = _("Connect to volume via protocol %(protocol)s not supported.")
