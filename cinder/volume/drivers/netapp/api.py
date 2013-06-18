@@ -366,7 +366,8 @@ class NaElement(object):
     def add_new_child(self, name, content, convert=False):
         """Add child with tag name and context.
 
-           Convert replaces entity refs to chars."""
+           Convert replaces entity refs to chars.
+        """
         child = NaElement(name)
         if convert:
             content = NaElement._convert_entity_refs(content)

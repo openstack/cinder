@@ -225,7 +225,8 @@ class RBDDriver(driver.VolumeDriver):
 
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is
-           True, run the update first."""
+           True, run the update first.
+        """
         if refresh:
             self._update_volume_stats()
         return self._stats

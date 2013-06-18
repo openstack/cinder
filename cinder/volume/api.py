@@ -799,5 +799,6 @@ class HostAPI(base.Base):
 
     def set_host_maintenance(self, context, host, mode):
         """Start/Stop host maintenance window. On start, it triggers
-        volume evacuation."""
+        volume evacuation.
+        """
         raise NotImplementedError()

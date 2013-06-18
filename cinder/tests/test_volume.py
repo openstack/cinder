@@ -675,7 +675,8 @@ class VolumeTestCase(test.TestCase):
     def _create_volume_from_image(self, expected_status,
                                   fakeout_copy_image_to_volume=False):
         """Call copy image to volume, Test the status of volume after calling
-        copying image to volume."""
+        copying image to volume.
+        """
         def fake_local_path(volume):
             return dst_path
 
@@ -719,12 +720,14 @@ class VolumeTestCase(test.TestCase):
 
     def test_create_volume_from_image_status_available(self):
         """Verify that before copying image to volume, it is in available
-        state."""
+        state.
+        """
         self._create_volume_from_image('available')
 
     def test_create_volume_from_image_exception(self):
         """Verify that create volume from image, the volume status is
-        'downloading'."""
+        'downloading'.
+        """
         dst_fd, dst_path = tempfile.mkstemp()
         os.close(dst_fd)
 
@@ -869,7 +872,8 @@ class VolumeTestCase(test.TestCase):
 
     def test_create_volume_from_exact_sized_image(self):
         """Verify that an image which is exactly the same size as the
-        volume, will work correctly."""
+        volume, will work correctly.
+        """
         class _FakeImageService:
             def __init__(self, db_driver=None, image_service=None):
                 pass

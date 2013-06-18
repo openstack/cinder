@@ -1109,7 +1109,8 @@ class NetAppISCSIDriver(driver.ISCSIDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_volume_status()
 
@@ -1959,7 +1960,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_volume_status()
 

@@ -103,7 +103,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _check_dfm_flags(self):
         """Raises error if any required configuration flag for OnCommand proxy
-        is missing."""
+        is missing.
+        """
         required_flags = ['netapp_wsdl_url',
                           'netapp_login',
                           'netapp_password',
@@ -325,7 +326,8 @@ class NetAppCmodeNfsDriver (NetAppNFSDriver):
 
     def _check_flags(self):
         """Raises error if any required configuration flag for NetApp Cloud
-        Webservices is missing."""
+        Webservices is missing.
+        """
         required_flags = ['netapp_wsdl_url',
                           'netapp_login',
                           'netapp_password',
@@ -376,7 +378,8 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
 
     def _check_flags(self):
         """Raises error if any required configuration flag for NetApp
-        filer is missing."""
+        filer is missing.
+        """
         required_flags = ['netapp_login',
                           'netapp_password',
                           'netapp_server_hostname',

@@ -56,7 +56,8 @@ class Configuration(object):
 
     def __init__(self, volume_opts, config_group=None):
         """This takes care of grafting the implementation's config
-           values into the config group"""
+           values into the config group
+        """
         self.config_group = config_group
 
         # set the local conf so that __call__'s know what to use

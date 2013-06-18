@@ -451,7 +451,8 @@ class ManagedRBDTestCase(DriverTestCase):
     def _clone_volume_from_image(self, expected_status,
                                  clone_works=True):
         """Try to clone a volume from an image, and check the status
-        afterwards"""
+        afterwards.
+        """
         def fake_clone_image(volume, image_location):
             return True
 

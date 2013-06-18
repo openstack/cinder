@@ -298,7 +298,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_volume_status()
 

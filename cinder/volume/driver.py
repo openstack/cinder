@@ -100,7 +100,8 @@ class VolumeDriver(object):
 
     def create_volume(self, volume):
         """Creates a volume. Can optionally return a Dictionary of
-        changes to the volume object to be persisted."""
+        changes to the volume object to be persisted.
+        """
         raise NotImplementedError()
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -132,7 +133,8 @@ class VolumeDriver(object):
 
     def create_export(self, context, volume):
         """Exports the volume. Can optionally return a Dictionary of changes
-        to the volume object to be persisted."""
+        to the volume object to be persisted.
+        """
         raise NotImplementedError()
 
     def remove_export(self, context, volume):
@@ -157,7 +159,8 @@ class VolumeDriver(object):
 
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is
-           True, run the update first."""
+           True, run the update first.
+        """
         return None
 
     def do_setup(self, context):
@@ -514,7 +517,8 @@ class ISCSIDriver(VolumeDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_volume_status()
 

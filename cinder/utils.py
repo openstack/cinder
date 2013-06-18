@@ -301,7 +301,8 @@ def last_completed_audit_period(unit=None):
 
     returns:  2 tuple of datetimes (begin, end)
               The begin timestamp of this audit period is the same as the
-              end of the previous."""
+              end of the previous.
+    """
     if not unit:
         unit = CONF.volume_usage_audit_period
 

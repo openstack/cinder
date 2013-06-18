@@ -71,7 +71,8 @@ class BackupManager(manager.SchedulerDependentManager):
 
     def init_host(self):
         """Do any initialization that needs to be run if this is a
-           standalone service."""
+           standalone service.
+        """
 
         ctxt = context.get_admin_context()
         self.driver.do_setup(ctxt)

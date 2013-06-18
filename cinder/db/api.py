@@ -326,7 +326,8 @@ def snapshot_data_get_for_project(context, project_id, session=None):
 def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
     """Get all the snapshots inside the window.
 
-    Specifying a project_id will filter for a certain project."""
+    Specifying a project_id will filter for a certain project.
+    """
     return IMPL.snapshot_get_active_by_window(context, begin, end, project_id)
 
 
@@ -397,7 +398,8 @@ def volume_type_destroy(context, id):
 def volume_get_active_by_window(context, begin, end=None, project_id=None):
     """Get all the volumes inside the window.
 
-    Specifying a project_id will filter for a certain project."""
+    Specifying a project_id will filter for a certain project.
+    """
     return IMPL.volume_get_active_by_window(context, begin, end, project_id)
 
 
@@ -418,7 +420,8 @@ def volume_type_extra_specs_update_or_create(context,
                                              volume_type_id,
                                              extra_specs):
     """Create or update volume type extra specs. This adds or modifies the
-    key/value pairs specified in the extra specs dict argument"""
+    key/value pairs specified in the extra specs dict argument
+    """
     IMPL.volume_type_extra_specs_update_or_create(context,
                                                   volume_type_id,
                                                   extra_specs)

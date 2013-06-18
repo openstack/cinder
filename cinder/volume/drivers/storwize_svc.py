@@ -1336,7 +1336,8 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         """Get volume status.
 
         If we haven't gotten stats yet or 'refresh' is True,
-        run update the stats first."""
+        run update the stats first.
+        """
         if not self._stats or refresh:
             self._update_volume_status()
 

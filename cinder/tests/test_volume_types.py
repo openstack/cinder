@@ -92,7 +92,8 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_default_volume_type_missing_in_db(self):
         """Ensures proper exception raised if default volume type
-        is not in database."""
+        is not in database.
+        """
         session = db_api.get_session()
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type, {})

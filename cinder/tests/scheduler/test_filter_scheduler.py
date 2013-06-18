@@ -62,7 +62,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                       'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_non_admin(self):
         """Test creating an instance locally using run_instance, passing
-        a non-admin context.  DB actions should work."""
+        a non-admin context.  DB actions should work.
+        """
         self.was_admin = False
 
         def fake_get(context, *args, **kwargs):
@@ -88,7 +89,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                       'Test requires Cinder installed (try setup.py develop')
     def test_schedule_happy_day(self):
         """Make sure there's nothing glaringly wrong with _schedule()
-        by doing a happy day pass through."""
+        by doing a happy day pass through.
+        """
 
         self.next_weight = 1.0
 

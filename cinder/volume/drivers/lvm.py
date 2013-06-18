@@ -156,7 +156,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         """Creates a logical volume. Can optionally return a Dictionary of
-        changes to the volume object to be persisted."""
+        changes to the volume object to be persisted.
+        """
         self._create_volume(volume['name'], self._sizestr(volume['size']))
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -550,7 +551,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_volume_status()
 
@@ -643,7 +645,8 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
 
     def create_volume(self, volume):
         """Creates a logical volume. Can optionally return a Dictionary of
-        changes to the volume object to be persisted."""
+        changes to the volume object to be persisted.
+        """
         sizestr = self._sizestr(volume['size'])
         vg_name = ("%s/%s-pool" % (self.configuration.volume_group,
                                    self.configuration.volume_group))
@@ -674,7 +677,8 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
 
     def get_volume_stats(self, refresh=False):
         """Get volume status.
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_volume_status()
 

@@ -43,7 +43,8 @@ def notify_usage_exists(context, volume_ref, current_period=False):
         purposes.
 
         Generates usage for last completed period, unless 'current_period'
-        is True."""
+        is True.
+    """
     begin, end = utils.last_completed_audit_period()
     if current_period:
         audit_start = end

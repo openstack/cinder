@@ -49,7 +49,8 @@ CONF.register_opts(volume_opts)
 
 class GlusterfsDriver(nfs.RemoteFsDriver):
     """Gluster based cinder driver. Creates file on Gluster share for using it
-    as block device on hypervisor."""
+    as block device on hypervisor.
+    """
 
     def __init__(self, *args, **kwargs):
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
@@ -122,7 +123,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
     def create_export(self, ctx, volume):
         """Exports the volume. Can optionally return a Dictionary of changes
-        to the volume object to be persisted."""
+        to the volume object to be persisted.
+        """
         pass
 
     def remove_export(self, ctx, volume):
@@ -160,7 +162,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
     def _ensure_shares_mounted(self):
         """Look for GlusterFS shares in the flags and try to mount them
-           locally."""
+           locally.
+        """
         self._mounted_shares = []
 
         self._load_shares_config(self.configuration.glusterfs_shares_config)
@@ -255,7 +258,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
 
-        If 'refresh' is True, update the stats first."""
+        If 'refresh' is True, update the stats first.
+        """
         if refresh or not self._stats:
             self._update_volume_stats()
 

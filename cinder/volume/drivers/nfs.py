@@ -78,7 +78,8 @@ class RemoteFsDriver(driver.VolumeDriver):
 
     def delete_snapshot(self, snapshot):
         """Do nothing for this driver, but allow manager to handle deletion
-           of snapshot in error state."""
+           of snapshot in error state.
+        """
         pass
 
     def ensure_export(self, ctx, volume):
@@ -91,7 +92,8 @@ class RemoteFsDriver(driver.VolumeDriver):
 
     def _create_regular_file(self, path, size):
         """Creates regular file of given size. Takes a lot of time for large
-        files."""
+        files.
+        """
 
         block_size_mb = 1
         block_count = size * units.GiB / (block_size_mb * units.MiB)
@@ -115,7 +117,8 @@ class RemoteFsDriver(driver.VolumeDriver):
 
     def _get_hash_str(self, base_str):
         """returns string that represents hash of base_str
-        (in a hex format)."""
+        (in a hex format).
+        """
         return hashlib.md5(base_str).hexdigest()
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
@@ -185,7 +188,8 @@ class RemoteFsDriver(driver.VolumeDriver):
 
 class NfsDriver(RemoteFsDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
-    as block device on hypervisor."""
+    as block device on hypervisor.
+    """
     def __init__(self, *args, **kwargs):
         super(NfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
@@ -265,7 +269,8 @@ class NfsDriver(RemoteFsDriver):
 
     def create_export(self, ctx, volume):
         """Exports the volume. Can optionally return a Dictionary of changes
-        to the volume object to be persisted."""
+        to the volume object to be persisted.
+        """
         pass
 
     def remove_export(self, ctx, volume):
@@ -433,7 +438,8 @@ class NfsDriver(RemoteFsDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh or not self._stats:
             self._update_volume_status()
 
