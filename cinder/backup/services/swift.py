@@ -248,13 +248,12 @@ class SwiftBackupService(base.Base):
             else:
                 LOG.debug(_('not compressing data'))
                 obj[object_name]['compression'] = 'none'
-            data_size_bytes = len(data)
 
             reader = StringIO.StringIO(data)
             LOG.debug(_('About to put_object'))
             try:
                 etag = self.conn.put_object(container, object_name, reader,
-                                            content_length=data_size_bytes)
+                                            content_length=len(data))
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=str(err))
             LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') % locals())
