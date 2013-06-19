@@ -104,6 +104,21 @@ class VolumeActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 202)
 
+    def test_extend_volume(self):
+        def fake_extend_volume(*args, **kwargs):
+            return {}
+        self.stubs.Set(volume.API, 'extend',
+                       fake_extend_volume)
+
+        body = {'os-extend': {'new_size': 5}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 202)
+
 
 def stub_volume_get(self, context, volume_id):
     volume = stubs.stub_volume(volume_id)

@@ -186,6 +186,21 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
         return {'os-volume_upload_image': response}
 
+    @wsgi.action('os-extend')
+    def _extend(self, req, id, body):
+        """Extend size of volume."""
+        context = req.environ['cinder.context']
+        volume = self.volume_api.get(context, id)
+        try:
+            val = int(body['os-extend']['new_size'])
+        except ValueError:
+            msg = _("New volume size must be specified as an integer.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        size = body['os-extend']['new_size']
+        self.volume_api.extend(context, volume, size)
+        return webob.Response(status_int=202)
+
 
 class Volume_actions(extensions.ExtensionDescriptor):
     """Enable volume actions
