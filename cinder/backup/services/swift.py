@@ -178,7 +178,8 @@ class SwiftBackupService(base.Base):
         metadata['objects'] = object_list
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
         reader = StringIO.StringIO(metadata_json)
-        etag = self.conn.put_object(container, filename, reader)
+        etag = self.conn.put_object(container, filename, reader,
+                                    content_length=reader.len)
         md5 = hashlib.md5(metadata_json).hexdigest()
         if etag != md5:
             err = _('error writing metadata file to swift, MD5 of metadata'
@@ -251,7 +252,8 @@ class SwiftBackupService(base.Base):
             reader = StringIO.StringIO(data)
             LOG.debug(_('About to put_object'))
             try:
-                etag = self.conn.put_object(container, object_name, reader)
+                etag = self.conn.put_object(container, object_name, reader,
+                                            content_length=len(data))
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=str(err))
             LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') % locals())
