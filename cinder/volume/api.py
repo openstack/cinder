@@ -366,16 +366,8 @@ class API(base.Base):
 
     def get(self, context, volume_id):
         rv = self.db.volume_get(context, volume_id)
-        glance_meta = rv.get('volume_glance_metadata', None)
         volume = dict(rv.iteritems())
         check_policy(context, 'get', volume)
-
-        # NOTE(jdg): As per bug 1115629 iteritems doesn't pick
-        # up the glance_meta dependency, add it explicitly if
-        # it exists in the rv
-        if glance_meta:
-            volume['volume_glance_metadata'] = glance_meta
-
         return volume
 
     def get_all(self, context, marker=None, limit=None, sort_key='created_at',
