@@ -356,7 +356,6 @@ class Service(object):
         version_string = version.version_string()
         LOG.audit(_('Starting %(topic)s node (version %(version_string)s)'),
                   {'topic': self.topic, 'version_string': version_string})
-        self.manager.init_host()
         self.model_disconnected = False
         ctxt = context.get_admin_context()
         try:
@@ -376,13 +375,14 @@ class Service(object):
         # Share this same connection for these Consumers
         self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=False)
 
-        node_topic = '%s.%s' % (self.topic, self.host)
+        node_topic = '%s:%s' % (self.topic, self.host)
         self.conn.create_consumer(node_topic, rpc_dispatcher, fanout=False)
 
         self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=True)
 
         # Consume from all consumers in a thread
         self.conn.consume_in_thread()
+        self.manager.init_host()
 
         if self.report_interval:
             pulse = utils.LoopingCall(self.report_state)
