@@ -450,9 +450,21 @@ class ConfigCommands(object):
     def __init__(self):
         pass
 
-    def list(self):
-        for key, value in CONF.iteritems():
-            if value is not None:
+    @args('param', nargs='?', default=None,
+          help='Configuration parameter to display (default: %(default)s)')
+    def list(self, param=None):
+        """List parameters configured for cinder.
+
+        Lists all parameters configured for cinder unless an optional argument
+        is specified.  If the parameter is specified we only print the
+        requested parameter.  If the parameter is not found an appropriate
+        error is produced by .get*().
+        """
+        param = param and param.strip()
+        if param:
+            print '%s = %s' % (param, CONF.get(param))
+        else:
+            for key, value in CONF.iteritems():
                 print '%s = %s' % (key, value)
 
 
