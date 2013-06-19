@@ -1,13 +1,13 @@
 d2to1>=0.2.10,<0.3
 pbr>=0.5.10,<0.6
 amqplib>=0.6.1
-anyjson>=0.2.4
+anyjson>=0.3.3
 argparse
 babel>=0.9.6
 eventlet>=0.9.12
 greenlet>=0.3.1
 iso8601>=0.1.4
-kombu>=1.0.4
+kombu>2.4.7
 lockfile>=0.8
 lxml>=2.3
 oslo.config>=1.1.0
