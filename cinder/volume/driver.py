@@ -78,19 +78,32 @@ class VolumeDriver(object):
     def set_execute(self, execute):
         self._execute = execute
 
+    def _is_non_recoverable(self, err, non_recoverable_list):
+        for item in non_recoverable_list:
+            if item in err:
+                return True
+
+        return False
+
     def _try_execute(self, *command, **kwargs):
         # NOTE(vish): Volume commands can partially fail due to timing, but
         #             running them a second time on failure will usually
         #             recover nicely.
+
+        non_recoverable = kwargs.pop('no_retry_list', [])
+
         tries = 0
         while True:
             try:
                 self._execute(*command, **kwargs)
                 return True
-            except exception.ProcessExecutionError:
+            except exception.ProcessExecutionError as ex:
                 tries = tries + 1
-                if tries >= self.configuration.num_shell_tries:
+
+                if tries >= self.configuration.num_shell_tries or\
+                        self._is_non_recoverable(ex.stderr, non_recoverable):
                     raise
+
                 LOG.exception(_("Recovering from a failed execute.  "
                                 "Try number %s"), tries)
                 time.sleep(tries ** 2)
@@ -554,6 +567,9 @@ class FakeISCSIDriver(ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
+
+    def create_volume(self, volume):
+        pass
 
     def check_for_setup_error(self):
         """No setup necessary in fake mode."""

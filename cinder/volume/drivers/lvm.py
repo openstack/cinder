@@ -84,6 +84,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
     def _create_volume(self, volume_name, sizestr):
+
+        no_retry_list = ['Insufficient free extents',
+                         'One or more specified logical volume(s) not found']
+
         cmd = ['lvcreate', '-L', sizestr, '-n', volume_name,
                self.configuration.volume_group]
         if self.configuration.lvm_mirrors:
@@ -95,7 +99,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 #             http://red.ht/U2BPOD
                 cmd += ['-R', str(rsize)]
 
-        self._try_execute(*cmd, run_as_root=True)
+        self._try_execute(*cmd, run_as_root=True, no_retry_list=no_retry_list)
 
     def _copy_volume(self, srcstr, deststr, size_in_g, clearing=False):
         # Use O_DIRECT to avoid thrashing the system buffer cache
