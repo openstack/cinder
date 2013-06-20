@@ -177,3 +177,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               volume=self.fake_volume,
                               version='1.5')
+
+    def test_extend_volume(self):
+        self._test_volume_api('extend_volume',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              new_size=1,
+                              version='1.6')
