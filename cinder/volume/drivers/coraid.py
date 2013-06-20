@@ -265,6 +265,19 @@ class CoraidRESTClient(object):
                                         volume_name, repository)
         return self._configure(data)
 
+    def resize_volume(self, volume_name, volume_size):
+        volume_info = self._get_volume_info(volume_name)
+        repository = volume_info['repo']
+        data = '[{"addr":"cms","data":"{' \
+               '\\"lvName\\":\\"%s\\",' \
+               '\\"newLvSize\\":\\"%s\\"}",' \
+               '\\"repoName\\":\\"%s\\"}",' \
+               '"op":"orchStrLunMods",' \
+               '"args":"resizeVolume"}]' % (volume_name,
+                                            volume_size,
+                                            repository)
+        return self._configure(data)
+
 
 class CoraidDriver(driver.VolumeDriver):
     """This is the Class to set in cinder.conf (volume_driver)."""
@@ -355,9 +368,22 @@ class CoraidDriver(driver.VolumeDriver):
             self.esm.create_volume_from_snapshot(snapshot_name,
                                                  volume['name'],
                                                  repository)
+            resize = volume['size'] > snapshot['volume_size']
+            if resize:
+                self.esm.resize_volume(volume['name'], volume['size'])
         except Exception:
             msg = _('Failed to Create Volume from Snapshot %(snapname)s')
             LOG.debug(msg % dict(snapname=snapshot_name))
+            raise
+        return
+
+    def extend_volume(self, volume, new_size):
+        """Extend an Existing Volume."""
+        try:
+            self.esm.resize_volume(volume['name'], new_size)
+        except Exception:
+            msg = _('Failed to Extend Volume %(volname)s')
+            LOG.debug(msg % dict(volname=volume['name']))
             raise
         return
 
