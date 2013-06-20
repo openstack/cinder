@@ -53,6 +53,15 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_url',
                default='http://localhost:8080/v1/AUTH_',
                help='The URL of the Swift endpoint'),
+    cfg.StrOpt('backup_swift_auth',
+               default='per_user',
+               help='Swift authentication mechanism'),
+    cfg.StrOpt('backup_swift_user',
+               default=None,
+               help='Swift user name'),
+    cfg.StrOpt('backup_swift_key',
+               default=None,
+               help='Swift key for authentication'),
     cfg.StrOpt('backup_swift_container',
                default='volumebackups',
                help='The default Swift container to use'),
@@ -106,11 +115,25 @@ class SwiftBackupService(base.Base):
         self.swift_backoff = CONF.backup_swift_retry_backoff
         self.compressor = \
             self._get_compressor(CONF.backup_compression_algorithm)
-        self.conn = swift.Connection(None, None, None,
-                                     retries=self.swift_attempts,
-                                     preauthurl=self.swift_url,
-                                     preauthtoken=self.context.auth_token,
-                                     starting_backoff=self.swift_backoff)
+        LOG.debug('Connect to %s in "%s" mode' % (CONF.backup_swift_url,
+                                                  CONF.backup_swift_auth))
+        if CONF.backup_swift_auth == 'single_user':
+            if CONF.backup_swift_user is None:
+                LOG.error(_("single_user auth mode enabled, "
+                            "but %(param)s not set")
+                          % {'param': 'backup_swift_user'})
+                raise exception.ParameterNotFound(param='backup_swift_user')
+            self.conn = swift.Connection(authurl=CONF.backup_swift_url,
+                                         user=CONF.backup_swift_user,
+                                         key=CONF.backup_swift_key,
+                                         retries=self.swift_attempts,
+                                         starting_backoff=self.swift_backoff)
+        else:
+            self.conn = swift.Connection(retries=self.swift_attempts,
+                                         preauthurl=self.swift_url,
+                                         preauthtoken=self.context.auth_token,
+                                         starting_backoff=self.swift_backoff)
+
         super(SwiftBackupService, self).__init__(db_driver)
 
     def _check_container_exists(self, container):

@@ -333,6 +333,17 @@
 # The URL of the Swift endpoint (string value)
 #backup_swift_url=http://localhost:8080/v1/AUTH_
 
+# The Swift authentication mechanism
+#  - Set to "per_user": uses keystone authentication for every user
+#  - Set to "single_user": uses one user+pw for all backups
+#backup_swift_auth=per_user
+
+# The Swift user name (use only if backup_swift_auth is set to single_user)
+#backup_swift_user=username
+
+# The Swift password (use only if backup_swift_auth is set to single_user)
+#backup_swift_key=his9ZxhZuabG1rqv3vjRqOXf2/iSg4KFUZEp3net
+
 # The default Swift container to use (string value)
 #backup_swift_container=volumebackups
 
