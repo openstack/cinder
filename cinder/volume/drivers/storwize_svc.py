@@ -588,9 +588,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             mapped_flag = True
             result_lun = mapping_data[volume_name]['SCSI_id']
         else:
-            lun_used = []
-            for k, v in mapping_data.iteritems():
-                lun_used.append(int(v['SCSI_id']))
+            lun_used = [int(v['SCSI_id']) for v in mapping_data.values()]
             lun_used.sort()
             # Assume all luns are taken to this point, and then try to find
             # an unused one
@@ -853,8 +851,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
         mapping_ids = []
         if (len(out.strip())):
             lines = out.strip().split('\n')
-            for line in lines:
-                mapping_ids.append(line.split()[0])
+            mapping_ids = [line.split()[0] for line in lines]
         return mapping_ids
 
     def _get_vdisk_params(self, type_id):
@@ -1513,9 +1510,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
               'Headers: %(header)s\n Values: %(row)s')
             % {'header': str(header),
                'row': str(row)})
-        dic = {}
-        for attribute, value in map(None, attributes, values):
-            dic[attribute] = value
+        dic = dict((a, v) for a, v in map(None, attributes, values))
         return dic
 
     def _log_cli_output_error(self, function, cmd, out, err):

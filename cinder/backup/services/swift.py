@@ -154,9 +154,7 @@ class SwiftBackupService(base.Base):
         swift_objects = self.conn.get_container(backup['container'],
                                                 prefix=prefix,
                                                 full_listing=True)[1]
-        swift_object_names = []
-        for swift_object in swift_objects:
-            swift_object_names.append(swift_object['name'])
+        swift_object_names = [swift_obj['name'] for swift_obj in swift_objects]
         LOG.debug(_('generated object list: %s') % swift_object_names)
         return swift_object_names
 
@@ -298,9 +296,8 @@ class SwiftBackupService(base.Base):
         LOG.debug(_('v1 swift volume backup restore of %s started'), backup_id)
         container = backup['container']
         metadata_objects = metadata['objects']
-        metadata_object_names = []
-        for metadata_object in metadata_objects:
-            metadata_object_names.extend(metadata_object.keys())
+        metadata_object_names = sum((obj.keys() for obj in metadata_objects),
+                                    [])
         LOG.debug(_('metadata_object_names = %s') % metadata_object_names)
         prune_list = [self._metadata_filename(backup)]
         swift_object_names = [swift_object_name for swift_object_name in

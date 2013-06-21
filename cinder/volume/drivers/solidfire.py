@@ -462,7 +462,7 @@ class SolidFire(SanISCSIDriver):
                       'is_clone': 'False'}
         if qos:
             for k, v in qos.items():
-                            attributes[k] = str(v)
+                attributes[k] = str(v)
 
         params = {'name': 'UUID-%s' % volume['id'],
                   'accountID': None,
