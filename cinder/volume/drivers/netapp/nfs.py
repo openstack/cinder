@@ -22,52 +22,52 @@ import copy
 import os
 import time
 
-from oslo.config import cfg
-import suds
-from suds.sax import text
-
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
-from cinder.volume.drivers.netapp.iscsi import netapp_opts
+from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
+from cinder.volume.drivers.netapp.options import netapp_connection_opts
+from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp.utils import provide_ems
+from cinder.volume.drivers.netapp.utils import validate_instantiation
 from cinder.volume.drivers import nfs
+from oslo.config import cfg
+
 
 LOG = logging.getLogger(__name__)
 
-netapp_nfs_opts = [
-    cfg.IntOpt('synchronous_snapshot_create',
-               default=0,
-               help='Does snapshot creation call returns immediately')]
-
 
 CONF = cfg.CONF
-CONF.register_opts(netapp_nfs_opts)
+CONF.register_opts(netapp_connection_opts)
+CONF.register_opts(netapp_transport_opts)
+CONF.register_opts(netapp_basicauth_opts)
 
 
 class NetAppNFSDriver(nfs.NfsDriver):
-    """Executes commands relating to Volumes."""
+    """Base class for NetApp NFS driver.
+      Executes commands relating to Volumes.
+    """
     def __init__(self, *args, **kwargs):
         # NOTE(vish): db is set by Manager
+        validate_instantiation(**kwargs)
         self._execute = None
         self._context = None
         super(NetAppNFSDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(netapp_opts)
-        self.configuration.append_config_values(netapp_nfs_opts)
+        self.configuration.append_config_values(netapp_connection_opts)
+        self.configuration.append_config_values(netapp_basicauth_opts)
+        self.configuration.append_config_values(netapp_transport_opts)
 
     def set_execute(self, execute):
         self._execute = execute
 
     def do_setup(self, context):
-        self._context = context
-        self.check_for_setup_error()
-        self._client = self._get_client()
+        raise NotImplementedError()
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
-        self._check_dfm_flags()
-        super(NetAppNFSDriver, self).check_for_setup_error()
+        raise NotImplementedError()
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -75,10 +75,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         snap_size = snapshot.volume_size
 
         if vol_size != snap_size:
-            msg = (_('Cannot create volume of size %(vol_size)s from '
-                     'snapshot of size %(snap_size)s') %
-                   {'vol_size': vol_size, 'snap_size': snap_size})
-            raise exception.CinderException(msg)
+            msg = _('Cannot create volume of size %(vol_size)s from '
+                    'snapshot of size %(snap_size)s')
+            msg_fmt = {'vol_size': vol_size, 'snap_size': snap_size}
+            raise exception.CinderException(msg % msg_fmt)
 
         self._clone_volume(snapshot.name, volume.name, snapshot.volume_id)
         share = self._get_volume_location(snapshot.volume_id)
@@ -101,95 +101,22 @@ class NetAppNFSDriver(nfs.NfsDriver):
         self._execute('rm', self._get_volume_path(nfs_mount, snapshot.name),
                       run_as_root=True)
 
-    def _check_dfm_flags(self):
-        """Raises error if any required configuration flag for OnCommand proxy
-        is missing.
-        """
-        required_flags = ['netapp_wsdl_url',
-                          'netapp_login',
-                          'netapp_password',
-                          'netapp_server_hostname',
-                          'netapp_server_port']
-        for flag in required_flags:
-            if not getattr(self.configuration, flag, None):
-                raise exception.CinderException(_('%s is not set') % flag)
-
     def _get_client(self):
-        """Creates SOAP _client for ONTAP-7 DataFabric Service."""
-        client = suds.client.Client(
-            self.configuration.netapp_wsdl_url,
-            username=self.configuration.netapp_login,
-            password=self.configuration.netapp_password)
-        soap_url = 'http://%s:%s/apis/soap/v1' % (
-            self.configuration.netapp_server_hostname,
-            self.configuration.netapp_server_port)
-        client.set_options(location=soap_url)
-
-        return client
+        """Creates client for server."""
+        raise NotImplementedError()
 
     def _get_volume_location(self, volume_id):
-        """Returns NFS mount address as <nfs_ip_address>:<nfs_mount_dir>"""
+        """Returns NFS mount address as <nfs_ip_address>:<nfs_mount_dir>."""
         nfs_server_ip = self._get_host_ip(volume_id)
         export_path = self._get_export_path(volume_id)
         return (nfs_server_ip + ':' + export_path)
 
     def _clone_volume(self, volume_name, clone_name, volume_id):
         """Clones mounted volume with OnCommand proxy API."""
-        host_id = self._get_host_id(volume_id)
-        export_path = self._get_full_export_path(volume_id, host_id)
-
-        request = self._client.factory.create('Request')
-        request.Name = 'clone-start'
-
-        clone_start_args = ('<source-path>%s/%s</source-path>'
-                            '<destination-path>%s/%s</destination-path>')
-
-        request.Args = text.Raw(clone_start_args % (export_path,
-                                                    volume_name,
-                                                    export_path,
-                                                    clone_name))
-
-        resp = self._client.service.ApiProxy(Target=host_id,
-                                             Request=request)
-
-        if (resp.Status == 'passed' and
-                self.configuration.synchronous_snapshot_create):
-            clone_id = resp.Results['clone-id'][0]
-            clone_id_info = clone_id['clone-id-info'][0]
-            clone_operation_id = int(clone_id_info['clone-op-id'][0])
-
-            self._wait_for_clone_finished(clone_operation_id, host_id)
-        elif resp.Status == 'failed':
-            raise exception.CinderException(resp.Reason)
-
-    def _wait_for_clone_finished(self, clone_operation_id, host_id):
-        """
-        Polls ONTAP7 for clone status. Returns once clone is finished.
-        :param clone_operation_id: Identifier of ONTAP clone operation
-        """
-        clone_list_options = ('<clone-id>'
-                              '<clone-id-info>'
-                              '<clone-op-id>%d</clone-op-id>'
-                              '<volume-uuid></volume-uuid>'
-                              '</clone-id>'
-                              '</clone-id-info>')
-
-        request = self._client.factory.create('Request')
-        request.Name = 'clone-list-status'
-        request.Args = text.Raw(clone_list_options % clone_operation_id)
-
-        resp = self._client.service.ApiProxy(Target=host_id, Request=request)
-
-        while resp.Status != 'passed':
-            time.sleep(1)
-            resp = self._client.service.ApiProxy(Target=host_id,
-                                                 Request=request)
+        raise NotImplementedError()
 
     def _get_provider_location(self, volume_id):
-        """
-        Returns provider location for given volume
-        :param volume_id:
-        """
+        """Returns provider location for given volume."""
         volume = self.db.volume_get(self._context, volume_id)
         return volume.provider_location
 
@@ -200,38 +127,6 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _get_export_path(self, volume_id):
         """Returns NFS export path for the given volume."""
         return self._get_provider_location(volume_id).split(':')[1]
-
-    def _get_host_id(self, volume_id):
-        """Returns ID of the ONTAP-7 host."""
-        host_ip = self._get_host_ip(volume_id)
-        server = self._client.service
-
-        resp = server.HostListInfoIterStart(ObjectNameOrId=host_ip)
-        tag = resp.Tag
-
-        try:
-            res = server.HostListInfoIterNext(Tag=tag, Maximum=1)
-            if hasattr(res, 'Hosts') and res.Hosts.HostInfo:
-                return res.Hosts.HostInfo[0].HostId
-        finally:
-            server.HostListInfoIterEnd(Tag=tag)
-
-    def _get_full_export_path(self, volume_id, host_id):
-        """Returns full path to the NFS share, e.g. /vol/vol0/home."""
-        export_path = self._get_export_path(volume_id)
-        command_args = '<pathname>%s</pathname>'
-
-        request = self._client.factory.create('Request')
-        request.Name = 'nfs-exportfs-storage-path'
-        request.Args = text.Raw(command_args % export_path)
-
-        resp = self._client.service.ApiProxy(Target=host_id,
-                                             Request=request)
-
-        if resp.Status == 'passed':
-            return resp.Results['actual-pathname'][0]
-        elif resp.Status == 'failed':
-            raise exception.CinderException(resp.Reason)
 
     def _volume_not_present(self, nfs_mount, volume_name):
         """Check if volume exists."""
@@ -262,7 +157,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _get_volume_path(self, nfs_share, volume_name):
         """Get volume path (local fs path) for given volume name on given nfs
-        share
+        share.
+
         @param nfs_share string, example 172.18.194.100:/var/nfs
         @param volume_name string,
             example volume-91ee65ec-c473-4391-8c09-162b00c68a8c
@@ -276,10 +172,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         src_vol_size = src_vref.size
 
         if vol_size != src_vol_size:
-            msg = (_('Cannot create clone of size %(vol_size)s from '
-                     'volume of size %(src_vol_size)s') %
-                   {'vol_size': vol_size, 'src_vol_size': src_vol_size})
-            raise exception.CinderException(msg)
+            msg = _('Cannot create clone of size %(vol_size)s from '
+                    'volume of size %(src_vol_size)s')
+            msg_fmt = {'vol_size': vol_size, 'src_vol_size': src_vol_size}
+            raise exception.CinderException(msg % msg_fmt)
 
         self._clone_volume(src_vref.name, volume.name, src_vref.id)
         share = self._get_volume_location(src_vref.id)
@@ -289,71 +185,6 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
         super(NetAppNFSDriver, self)._update_volume_status()
-
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        self._stats["volume_backend_name"] = (backend_name or
-                                              'NetApp_NFS_7mode')
-        self._stats["vendor_name"] = 'NetApp'
-        self._stats["driver_version"] = '1.0'
-
-
-class NetAppCmodeNfsDriver (NetAppNFSDriver):
-    """Executes commands related to volumes on c mode."""
-
-    def __init__(self, *args, **kwargs):
-        super(NetAppCmodeNfsDriver, self).__init__(*args, **kwargs)
-
-    def do_setup(self, context):
-        self._context = context
-        self.check_for_setup_error()
-        self._client = self._get_client()
-
-    def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met."""
-        self._check_flags()
-
-    def _clone_volume(self, volume_name, clone_name, volume_id):
-        """Clones mounted volume with NetApp Cloud Services."""
-        host_ip = self._get_host_ip(volume_id)
-        export_path = self._get_export_path(volume_id)
-        LOG.debug(_("Cloning with params ip %(host_ip)s, exp_path"
-                    "%(export_path)s, vol %(volume_name)s, "
-                    "clone_name %(clone_name)s"),
-                  {'host_ip': host_ip, 'export_path': export_path,
-                   'volume_name': volume_name, 'clone_name': clone_name})
-        self._client.service.CloneNasFile(host_ip, export_path,
-                                          volume_name, clone_name)
-
-    def _check_flags(self):
-        """Raises error if any required configuration flag for NetApp Cloud
-        Webservices is missing.
-        """
-        required_flags = ['netapp_wsdl_url',
-                          'netapp_login',
-                          'netapp_password',
-                          'netapp_server_hostname',
-                          'netapp_server_port']
-        for flag in required_flags:
-            if not getattr(self.configuration, flag, None):
-                raise exception.CinderException(_('%s is not set') % flag)
-
-    def _get_client(self):
-        """Creates SOAP _client for NetApp Cloud service."""
-        client = suds.client.Client(
-            self.configuration.netapp_wsdl_url,
-            username=self.configuration.netapp_login,
-            password=self.configuration.netapp_password)
-        return client
-
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
-        super(NetAppCmodeNfsDriver, self)._update_volume_status()
-
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        self._stats["volume_backend_name"] = (backend_name or
-                                              'NetApp_NFS_Cluster')
-        self._stats["vendor_name"] = 'NetApp'
-        self._stats["driver_version"] = '1.0'
 
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
@@ -409,26 +240,10 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
         if not isinstance(elem, NaElement):
             raise ValueError('Expects NaElement')
 
-    def _invoke_successfully(self, na_element, vserver=None):
-        """Invoke the api for successful result.
-
-        If vserver is present then invokes vserver/vfiler api
-        else filer/Cluster api.
-        :param vserver: vserver/vfiler name.
-        """
-        self._is_naelement(na_element)
-        server = copy.copy(self._client)
-        if vserver:
-            server.set_vserver(vserver)
-        else:
-            server.set_vserver(None)
-        result = server.invoke_successfully(na_element, True)
-        return result
-
     def _get_ontapi_version(self):
         """Gets the supported ontapi version."""
         ontapi_version = NaElement('system-get-ontapi-version')
-        res = self._invoke_successfully(ontapi_version, False)
+        res = self._client.invoke_successfully(ontapi_version, False)
         major = res.get_child_content('major-version')
         minor = res.get_child_content('minor-version')
         return (major, minor)
@@ -446,6 +261,22 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         client.set_api_version(1, 15)
         (major, minor) = self._get_ontapi_version()
         client.set_api_version(major, minor)
+
+    def _invoke_successfully(self, na_element, vserver=None):
+        """Invoke the api for successful result.
+
+        If vserver is present then invokes vserver api
+        else Cluster api.
+        :param vserver: vserver name.
+        """
+        self._is_naelement(na_element)
+        server = copy.copy(self._client)
+        if vserver:
+            server.set_vserver(vserver)
+        else:
+            server.set_vserver(None)
+        result = server.invoke_successfully(na_element, True)
+        return result
 
     def _clone_volume(self, volume_name, clone_name, volume_id):
         """Clones mounted volume on NetApp Cluster."""
@@ -495,17 +326,18 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             vols = attr_list.get_children()
             vol_id = vols[0].get_child_by_name('volume-id-attributes')
             return vol_id.get_child_content('name')
-        raise exception.NotFound(_("No volume on cluster with vserver"
-                                   "%(vserver)s and junction path "
-                                   "%(junction)s"), {'vserver': vserver,
-                                                     'junction': junction})
+        msg_fmt = {'vserver': vserver, 'junction': junction}
+        raise exception.NotFound(_("""No volume on cluster with vserver
+                                   %(vserver)s and junction path %(junction)s
+                                   """) % msg_fmt)
 
     def _clone_file(self, volume, src_path, dest_path, vserver=None):
         """Clones file on vserver."""
-        LOG.debug(_("Cloning with params volume %(volume)s,src %(src_path)s,"
-                    "dest %(dest_path)s, vserver %(vserver)s"),
-                  {'volume': volume, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver})
+        msg = _("""Cloning with params volume %(volume)s,src %(src_path)s,
+                    dest %(dest_path)s, vserver %(vserver)s""")
+        msg_fmt = {'volume': volume, 'src_path': src_path,
+                   'dest_path': dest_path, 'vserver': vserver}
+        LOG.debug(msg % msg_fmt)
         clone_create = NaElement.create_node_with_children(
             'clone-create',
             **{'volume': volume, 'source-path': src_path,
@@ -515,12 +347,13 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
         super(NetAppDirectCmodeNfsDriver, self)._update_volume_status()
-
+        netapp_backend = 'NetApp_NFS_cluster_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._stats["volume_backend_name"] = (backend_name or
-                                              'NetApp_NFS_cluster_direct')
+                                              netapp_backend)
         self._stats["vendor_name"] = 'NetApp'
         self._stats["driver_version"] = '1.0'
+        provide_ems(self, self._client, self._stats, netapp_backend)
 
 
 class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
@@ -533,6 +366,22 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         """Do the customized set up on client if any for 7 mode."""
         (major, minor) = self._get_ontapi_version()
         client.set_api_version(major, minor)
+
+    def _invoke_successfully(self, na_element, vfiler=None):
+        """Invoke the api for successful result.
+
+        If vfiler is present then invokes vfiler api
+        else filer api.
+        :param vfiler: vfiler name.
+        """
+        self._is_naelement(na_element)
+        server = copy.copy(self._client)
+        if vfiler:
+            server.set_vfiler(vfiler)
+        else:
+            server.set_vfiler(None)
+        result = server.invoke_successfully(na_element, True)
+        return result
 
     def _clone_volume(self, volume_name, clone_name, volume_id):
         """Clones mounted volume with NetApp filer."""
@@ -565,8 +414,9 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
         :returns: clone-id
         """
-        LOG.debug(_("Cloning with src %(src_path)s, dest %(dest_path)s"),
-                  {'src_path': src_path, 'dest_path': dest_path})
+        msg_fmt = {'src_path': src_path, 'dest_path': dest_path}
+        LOG.debug(_("""Cloning with src %(src_path)s, dest %(dest_path)s""")
+                  % msg_fmt)
         clone_start = NaElement.create_node_with_children(
             'clone-start',
             **{'source-path': src_path,
@@ -629,9 +479,11 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
         super(NetAppDirect7modeNfsDriver, self)._update_volume_status()
-
+        netapp_backend = 'NetApp_NFS_7mode_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._stats["volume_backend_name"] = (backend_name or
                                               'NetApp_NFS_7mode_direct')
         self._stats["vendor_name"] = 'NetApp'
         self._stats["driver_version"] = '1.0'
+        provide_ems(self, self._client, self._stats, netapp_backend,
+                    server_type="7mode")

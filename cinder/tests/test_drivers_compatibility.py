@@ -29,10 +29,6 @@ NEXENTA_MODULE = "cinder.volume.drivers.nexenta.volume.NexentaDriver"
 SAN_MODULE = "cinder.volume.drivers.san.san.SanISCSIDriver"
 SOLARIS_MODULE = "cinder.volume.drivers.san.solaris.SolarisISCSIDriver"
 LEFTHAND_MODULE = "cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver"
-NETAPP_MODULE = "cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver"
-NETAPP_CMODE_MODULE =\
-    "cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver"
-NETAPP_NFS_MODULE = "cinder.volume.drivers.netapp.nfs.NetAppNFSDriver"
 NFS_MODULE = "cinder.volume.drivers.nfs.NfsDriver"
 SOLIDFIRE_MODULE = "cinder.volume.drivers.solidfire.SolidFire"
 STORWIZE_SVC_MODULE = "cinder.volume.drivers.storwize_svc.StorwizeSVCDriver"
@@ -113,30 +109,6 @@ class VolumeDriverCompatibility(test.TestCase):
     def test_hp_lefthand_new(self):
         self._load_driver(LEFTHAND_MODULE)
         self.assertEquals(self._driver_module_name(), LEFTHAND_MODULE)
-
-    def test_netapp_old(self):
-        self._load_driver('cinder.volume.netapp.NetAppISCSIDriver')
-        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
-
-    def test_netapp_new(self):
-        self._load_driver(NETAPP_MODULE)
-        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
-
-    def test_netapp_cmode_old(self):
-        self._load_driver('cinder.volume.netapp.NetAppCmodeISCSIDriver')
-        self.assertEquals(self._driver_module_name(), NETAPP_CMODE_MODULE)
-
-    def test_netapp_cmode_new(self):
-        self._load_driver(NETAPP_CMODE_MODULE)
-        self.assertEquals(self._driver_module_name(), NETAPP_CMODE_MODULE)
-
-    def test_netapp_nfs_old(self):
-        self._load_driver('cinder.volume.netapp_nfs.NetAppNFSDriver')
-        self.assertEquals(self._driver_module_name(), NETAPP_NFS_MODULE)
-
-    def test_netapp_nfs_new(self):
-        self._load_driver(NETAPP_NFS_MODULE)
-        self.assertEquals(self._driver_module_name(), NETAPP_NFS_MODULE)
 
     def test_nfs_old(self):
         self._load_driver('cinder.volume.nfs.NfsDriver')

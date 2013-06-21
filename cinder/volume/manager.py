@@ -83,12 +83,6 @@ MAPPING = {
     'cinder.volume.drivers.san.solaris.SolarisISCSIDriver',
     'cinder.volume.san.HpSanISCSIDriver':
     'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver',
-    'cinder.volume.netapp.NetAppISCSIDriver':
-    'cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver',
-    'cinder.volume.netapp.NetAppCmodeISCSIDriver':
-    'cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver',
-    'cinder.volume.netapp_nfs.NetAppNFSDriver':
-    'cinder.volume.drivers.netapp.nfs.NetAppNFSDriver',
     'cinder.volume.nfs.NfsDriver':
     'cinder.volume.drivers.nfs.NfsDriver',
     'cinder.volume.solidfire.SolidFire':
