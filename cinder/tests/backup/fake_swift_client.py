@@ -98,7 +98,9 @@ class FakeSwiftConnection(object):
         fake_object_body = os.urandom(1024 * 1024)
         return (fake_header, zlib.compress(fake_object_body))
 
-    def put_object(self, container, name, reader):
+    def put_object(self, container, name, reader, content_length=None,
+                   etag=None, chunk_size=None, content_type=None,
+                   headers=None, query_string=None):
         LOG.debug("fake put_object(%s, %s)" % (container, name))
         if container == 'socket_error_on_put':
             raise socket.error(111, 'ECONNREFUSED')

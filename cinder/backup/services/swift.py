@@ -201,8 +201,8 @@ class SwiftBackupService(base.Base):
         LOG.debug(_('_read_metadata finished (%s)') % metadata)
         return metadata
 
-    def backup(self, backup, volume_file):
-        """Backup the given volume to swift using the given backup metadata."""
+    def prepare_backup(self, backup):
+        """Prepare the backup process and return the backup metadata"""
         backup_id = backup['id']
         volume_id = backup['volume_id']
         volume = self.db.volume_get(self.context, volume_id)
@@ -232,65 +232,88 @@ class SwiftBackupService(base.Base):
                       'object_prefix': object_prefix,
                       'availability_zone': availability_zone,
                   })
-        object_id = 1
-        object_list = []
-        while True:
-            data_block_size_bytes = self.data_block_size_bytes
-            object_name = '%s-%05d' % (object_prefix, object_id)
-            obj = {}
-            obj[object_name] = {}
-            obj[object_name]['offset'] = volume_file.tell()
-            data = volume_file.read(data_block_size_bytes)
-            obj[object_name]['length'] = len(data)
-            if data == '':
-                break
-            LOG.debug(_('reading chunk of data from volume'))
-            if self.compressor is not None:
-                algorithm = CONF.backup_compression_algorithm.lower()
-                obj[object_name]['compression'] = algorithm
-                data_size_bytes = len(data)
-                data = self.compressor.compress(data)
-                comp_size_bytes = len(data)
-                LOG.debug(_('compressed %(data_size_bytes)d bytes of data'
-                            ' to %(comp_size_bytes)d bytes using '
-                            '%(algorithm)s') %
-                          {
-                              'data_size_bytes': data_size_bytes,
-                              'comp_size_bytes': comp_size_bytes,
-                              'algorithm': algorithm,
-                          })
-            else:
-                LOG.debug(_('not compressing data'))
-                obj[object_name]['compression'] = 'none'
+        object_meta = {'id': 1, 'list': [], 'prefix': object_prefix}
+        return object_meta, container
 
-            reader = StringIO.StringIO(data)
-            LOG.debug(_('About to put_object'))
-            try:
-                etag = self.conn.put_object(container, object_name, reader)
-            except socket.error as err:
-                raise exception.SwiftConnectionFailed(reason=str(err))
-            LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') %
-                      {'object_name': object_name, 'etag': etag, })
-            md5 = hashlib.md5(data).hexdigest()
-            obj[object_name]['md5'] = md5
-            LOG.debug(_('backup MD5 for %(object_name)s: %(md5)s') %
-                      {'object_name': object_name, 'md5': md5})
-            if etag != md5:
-                err = _('error writing object to swift, MD5 of object in '
-                        'swift %(etag)s is not the same as MD5 of object sent '
-                        'to swift %(md5)s') % {'etag': etag, 'md5': md5}
-                raise exception.InvalidBackup(reason=err)
-            object_list.append(obj)
-            object_id += 1
-            LOG.debug(_('Calling eventlet.sleep(0)'))
-            eventlet.sleep(0)
+    def backup_chunk(self, backup, container, data, data_offset, object_meta):
+        """Backup data chunk based on the object metadata and offset"""
+        object_prefix = object_meta['prefix']
+        object_list = object_meta['list']
+        object_id = object_meta['id']
+        object_name = '%s-%05d' % (object_prefix, object_id)
+        obj = {}
+        obj[object_name] = {}
+        obj[object_name]['offset'] = data_offset
+        obj[object_name]['length'] = len(data)
+        LOG.debug(_('reading chunk of data from volume'))
+        if self.compressor is not None:
+            algorithm = CONF.backup_compression_algorithm.lower()
+            obj[object_name]['compression'] = algorithm
+            data_size_bytes = len(data)
+            data = self.compressor.compress(data)
+            comp_size_bytes = len(data)
+            LOG.debug(_('compressed %(data_size_bytes)d bytes of data '
+                        'to %(comp_size_bytes)d bytes using '
+                        '%(algorithm)s') %
+                      {
+                          'data_size_bytes': data_size_bytes,
+                          'comp_size_bytes': comp_size_bytes,
+                          'algorithm': algorithm,
+                      })
+        else:
+            LOG.debug(_('not compressing data'))
+            obj[object_name]['compression'] = 'none'
+
+        reader = StringIO.StringIO(data)
+        LOG.debug(_('About to put_object'))
         try:
-            self._write_metadata(backup, volume_id, container, object_list)
+            etag = self.conn.put_object(container, object_name, reader)
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=str(err))
-        self.db.backup_update(self.context, backup_id, {'object_count':
-                                                        object_id})
-        LOG.debug(_('backup %s finished.') % backup_id)
+        LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') %
+                  {'object_name': object_name, 'etag': etag, })
+        md5 = hashlib.md5(data).hexdigest()
+        obj[object_name]['md5'] = md5
+        LOG.debug(_('backup MD5 for %(object_name)s: %(md5)s') %
+                  {'object_name': object_name, 'md5': md5})
+        if etag != md5:
+            err = _('error writing object to swift, MD5 of object in '
+                    'swift %(etag)s is not the same as MD5 of object sent '
+                    'to swift %(md5)s') % {'etag': etag, 'md5': md5}
+            raise exception.InvalidBackup(reason=err)
+        object_list.append(obj)
+        object_id += 1
+        object_meta['list'] = object_list
+        object_meta['id'] = object_id
+        LOG.debug(_('Calling eventlet.sleep(0)'))
+        eventlet.sleep(0)
+
+    def finalize_backup(self, backup, container, object_meta):
+        """Finalize the backup by updating its metadata on Swift"""
+        object_list = object_meta['list']
+        object_id = object_meta['id']
+        try:
+            self._write_metadata(backup,
+                                 backup['volume_id'],
+                                 container,
+                                 object_list)
+        except socket.error as err:
+            raise exception.SwiftConnectionFailed(reason=str(err))
+        self.db.backup_update(self.context, backup['id'],
+                              {'object_count': object_id})
+        LOG.debug(_('backup %s finished.') % backup['id'])
+
+    def backup(self, backup, volume_file):
+        """Backup the given volume to swift using the given backup metadata."""
+        object_meta, container = self.prepare_backup(backup)
+        while True:
+            data = volume_file.read(self.data_block_size_bytes)
+            data_offset = volume_file.tell()
+            if data == '':
+                break
+            self.backup_chunk(backup, container, data,
+                              data_offset, object_meta)
+        self.finalize_backup(backup, container, object_meta)
 
     def _restore_v1(self, backup, volume_id, metadata, volume_file):
         """Restore a v1 swift volume backup from swift."""
