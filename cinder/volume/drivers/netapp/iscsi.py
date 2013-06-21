@@ -841,7 +841,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
 
         data['total_capacity_gb'] = 'infinite'
         data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
+        data['reserved_percentage'] = 0
         data['QoS_support'] = False
         provide_ems(self, self.client, data, netapp_backend)
         self._stats = data
@@ -1124,7 +1124,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
 
         data['total_capacity_gb'] = 'infinite'
         data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
+        data['reserved_percentage'] = 0
         data['QoS_support'] = False
         provide_ems(self, self.client, data, netapp_backend,
                     server_type="7mode")
