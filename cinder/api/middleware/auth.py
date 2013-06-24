@@ -91,6 +91,7 @@ class CinderKeystoneContext(base_wsgi.Middleware):
             # This is for legacy compatibility
             project_id = req.headers['X_TENANT']
 
+        project_name = req.headers.get('X_TENANT_NAME')
         # Get the auth token
         auth_token = req.headers.get('X_AUTH_TOKEN',
                                      req.headers.get('X_STORAGE_TOKEN'))
@@ -101,6 +102,7 @@ class CinderKeystoneContext(base_wsgi.Middleware):
             remote_address = req.headers.get('X-Forwarded-For', remote_address)
         ctx = context.RequestContext(user_id,
                                      project_id,
+                                     project_name=project_name,
                                      roles=roles,
                                      auth_token=auth_token,
                                      remote_address=remote_address)
