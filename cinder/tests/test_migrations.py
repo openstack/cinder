@@ -54,8 +54,9 @@ def _get_connect_string(backend,
     if backend == "postgres":
         backend = "postgresql+psycopg2"
 
-    return ("%(backend)s://%(user)s:%(passwd)s@localhost/%(database)s"
-            % locals())
+    return ("%(backend)s://%(user)s:%(passwd)s@localhost/%(database)s",
+            {'backend': backend, 'user': user, 'passwd': passwd,
+             'database': database})
 
 
 def _is_mysql_avail(**kwargs):
@@ -186,10 +187,11 @@ class TestMigrations(test.TestCase):
                 if len(auth_pieces) > 1:
                     if auth_pieces[1].strip():
                         password = "-p\"%s\"" % auth_pieces[1]
-                sql = ("drop database if exists %(database)s; "
-                       "create database %(database)s;") % locals()
+                sql = ("drop database if exists %(database)s; create database "
+                       "%(database)s;") % {'database': database}
                 cmd = ("mysql -u \"%(user)s\" %(password)s -h %(host)s "
-                       "-e \"%(sql)s\"") % locals()
+                       "-e \"%(sql)s\"") % {'user': user, 'password': password,
+                                            'host': host, 'sql': sql}
                 execute_cmd(cmd)
             elif conn_string.startswith('postgresql'):
                 database = conn_pieces.path.strip('/')
@@ -212,11 +214,13 @@ class TestMigrations(test.TestCase):
                 # operations there is a special database template1.
                 sqlcmd = ("psql -w -U %(user)s -h %(host)s -c"
                           " '%(sql)s' -d template1")
-                sql = ("drop database if exists %(database)s;") % locals()
-                droptable = sqlcmd % locals()
+                sql = ("drop database if exists %(database)s;") % {'database':
+                                                                   database}
+                droptable = sqlcmd % {'user': user, 'host': host, 'sql': sql}
                 execute_cmd(droptable)
-                sql = ("create database %(database)s;") % locals()
-                createtable = sqlcmd % locals()
+                sql = ("create database %(database)s;") % {'database':
+                                                           database}
+                createtable = sqlcmd % {'user': user, 'host': host, 'sql': sql}
                 execute_cmd(createtable)
                 os.unsetenv('PGPASSWORD')
                 os.unsetenv('PGUSER')
