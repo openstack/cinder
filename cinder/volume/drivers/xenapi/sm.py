@@ -155,7 +155,7 @@ class XenAPINFSDriver(driver.VolumeDriver):
         pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        if is_xenserver_image(context, image_service, image_id):
+        if image_utils.is_xenserver_image(context, image_service, image_id):
             return self._use_glance_plugin_to_copy_image_to_volume(
                 context, volume, image_service, image_id)
 
@@ -204,7 +204,7 @@ class XenAPINFSDriver(driver.VolumeDriver):
             volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        if is_xenserver_format(image_meta):
+        if image_utils.is_xenserver_format(image_meta):
             return self._use_glance_plugin_to_upload_volume(
                 context, volume, image_service, image_meta)
 
@@ -258,15 +258,3 @@ class XenAPINFSDriver(driver.VolumeDriver):
             self._stats = data
 
         return self._stats
-
-
-def is_xenserver_image(context, image_service, image_id):
-    image_meta = image_service.show(context, image_id)
-    return is_xenserver_format(image_meta)
-
-
-def is_xenserver_format(image_meta):
-    return (
-        image_meta['disk_format'] == 'vhd'
-        and image_meta['container_format'] == 'ovf'
-    )

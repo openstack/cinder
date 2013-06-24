@@ -26,6 +26,7 @@ we should look at maybe pushign this up to OSLO
 """
 
 
+import contextlib
 import os
 import re
 import tempfile
@@ -221,10 +222,11 @@ def fetch_to_raw(context, image_service,
     # large and cause disk full errors which would confuse users.
     # Unfortunately it seems that you can't pipe to 'qemu-img convert' because
     # it seeks. Maybe we can think of something for a future version.
-    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
-    os.close(fd)
-    with fileutils.remove_path_on_error(tmp):
+    with temporary_file() as tmp:
         fetch(context, image_service, image_id, tmp, user_id, project_id)
+
+        if is_xenserver_image(context, image_service, image_id):
+            replace_xenserver_image_with_coalesced_vhd(tmp)
 
         data = qemu_img_info(tmp)
         fmt = data.file_format
@@ -259,7 +261,6 @@ def fetch_to_raw(context, image_service,
                 image_id=image_id,
                 reason=_("Converted to raw, but format is now %s") %
                 data.file_format)
-        os.unlink(tmp)
 
 
 def upload_volume(context, image_service, image_meta, volume_path):
@@ -293,3 +294,107 @@ def upload_volume(context, image_service, image_meta, volume_path):
         with fileutils.file_open(tmp) as image_file:
             image_service.update(context, image_id, {}, image_file)
         os.unlink(tmp)
+
+
+def is_xenserver_image(context, image_service, image_id):
+    image_meta = image_service.show(context, image_id)
+    return is_xenserver_format(image_meta)
+
+
+def is_xenserver_format(image_meta):
+    return (
+        image_meta['disk_format'] == 'vhd'
+        and image_meta['container_format'] == 'ovf'
+    )
+
+
+def file_exist(fpath):
+    return os.path.exists(fpath)
+
+
+def set_vhd_parent(vhd_path, parentpath):
+    utils.execute('vhd-util', 'modify', '-n', vhd_path, '-p', parentpath)
+
+
+def extract_targz(archive_name, target):
+    utils.execute('tar', '-xzf', archive_name, '-C', target)
+
+
+def fix_vhd_chain(vhd_chain):
+    for child, parent in zip(vhd_chain[:-1], vhd_chain[1:]):
+        set_vhd_parent(child, parent)
+
+
+def get_vhd_size(vhd_path):
+    out, err = utils.execute('vhd-util', 'query', '-n', vhd_path, '-v')
+    return int(out)
+
+
+def resize_vhd(vhd_path, size, journal):
+    utils.execute(
+        'vhd-util', 'resize', '-n', vhd_path, '-s', '%d' % size, '-j', journal)
+
+
+def coalesce_vhd(vhd_path):
+    utils.execute(
+        'vhd-util', 'coalesce', '-n', vhd_path)
+
+
+def create_temporary_file():
+    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
+    os.close(fd)
+    return tmp
+
+
+def rename_file(src, dst):
+    os.rename(src, dst)
+
+
+@contextlib.contextmanager
+def temporary_file():
+    try:
+        tmp = create_temporary_file()
+        yield tmp
+    finally:
+        os.unlink(tmp)
+
+
+def temporary_dir():
+    return utils.tempdir(dir=CONF.image_conversion_dir)
+
+
+def coalesce_chain(vhd_chain):
+    for child, parent in zip(vhd_chain[:-1], vhd_chain[1:]):
+        with temporary_dir() as directory_for_journal:
+            size = get_vhd_size(child)
+            journal_file = os.path.join(
+                directory_for_journal, 'vhd-util-resize-journal')
+            resize_vhd(parent, size, journal_file)
+            coalesce_vhd(child)
+
+    return vhd_chain[-1]
+
+
+def discover_vhd_chain(directory):
+    counter = 0
+    chain = []
+
+    while True:
+        fpath = os.path.join(directory, '%d.vhd' % counter)
+        if file_exist(fpath):
+            chain.append(fpath)
+        else:
+            break
+        counter += 1
+
+    return chain
+
+
+def replace_xenserver_image_with_coalesced_vhd(image_file):
+    with temporary_dir() as tempdir:
+        extract_targz(image_file, tempdir)
+        chain = discover_vhd_chain(tempdir)
+        fix_vhd_chain(chain)
+        coalesced = coalesce_chain(chain)
+        os.unlink(image_file)
+        rename_file(coalesced, image_file)
