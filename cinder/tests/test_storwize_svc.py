@@ -24,6 +24,7 @@
 Tests for the IBM Storwize family and SVC volume driver.
 """
 
+
 import random
 import re
 import socket
@@ -1610,7 +1611,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                         self.assertEqual(attrs[k], v)
                 except exception.ProcessExecutionError as e:
                     if 'CMMVC7050E' not in e.stderr:
-                        raise e
+                        raise
 
     def test_storwize_svc_unicode_host_and_volume_names(self):
         # We'll check with iSCSI only - nothing protocol-dependednt here

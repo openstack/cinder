@@ -22,6 +22,7 @@ This driver requires NetApp Clustered Data ONTAP or 7-mode
 storage systems with installed iSCSI licenses.
 """
 
+import sys
 import time
 import uuid
 
@@ -402,12 +403,13 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             message = e.message
             msg = _('Error mapping lun. Code :%(code)s, Message:%(message)s')
             msg_fmt = {'code': code, 'message': message}
+            exc_info = sys.exc_info()
             LOG.warn(msg % msg_fmt)
             (igroup, lun_id) = self._find_mapped_lun_igroup(path, initiator)
             if lun_id is not None:
                 return lun_id
             else:
-                raise e
+                raise exc_info[0], exc_info[1], exc_info[2]
 
     def _unmap_lun(self, path, initiator):
         """Unmaps a lun from given initiator."""
@@ -422,12 +424,13 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             msg = _("Error unmapping lun. Code :%(code)s,"
                     " Message:%(message)s")
             msg_fmt = {'code': e.code, 'message': e.message}
+            exc_info = sys.exc_info()
             LOG.warn(msg % msg_fmt)
             # if the lun is already unmapped
             if e.code == '13115' or e.code == '9016':
                 pass
             else:
-                raise e
+                raise exc_info[0], exc_info[1], exc_info[2]
 
     def _find_mapped_lun_igroup(self, path, initiator, os=None):
         """Find the igroup for mapped lun with initiator."""

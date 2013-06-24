@@ -61,7 +61,7 @@ class ScalityDriverTestCase(test.TestCase):
             os.makedirs(path)
         except OSError as e:
             if e.errno != errno.EEXIST:
-                raise e
+                raise
 
     def _create_fake_config(self):
         open(self.TEST_CONFIG, "w+").close()
@@ -75,7 +75,7 @@ class ScalityDriverTestCase(test.TestCase):
             os.unlink(self.TEST_CONFIG)
         except OSError as e:
             if e.errno != errno.ENOENT:
-                raise e
+                raise
 
     def _configure_driver(self):
         scality.CONF.scality_sofs_config = self.TEST_CONFIG

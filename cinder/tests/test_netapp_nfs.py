@@ -386,6 +386,6 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
             if isinstance(e, api.NaApiError):
                 pass
             else:
-                raise e
+                raise
 
         mox.VerifyAll()

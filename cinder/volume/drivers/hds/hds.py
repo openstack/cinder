@@ -24,6 +24,7 @@ from oslo.config import cfg
 from xml.etree import ElementTree as ETree
 
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
@@ -86,8 +87,8 @@ def _xml_read(root, element, check=None):
         return None
     except ETree.ParseError as e:
         if check:
-            LOG.error(_("XML exception reading parameter: %s") % element)
-            raise e
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("XML exception reading parameter: %s") % element)
         else:
             LOG.info(_("XML exception reading parameter: %s") % element)
             return None

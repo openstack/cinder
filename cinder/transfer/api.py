@@ -27,6 +27,7 @@ from oslo.config import cfg
 
 from cinder.db import base
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder.volume import api as volume_api
@@ -192,12 +193,12 @@ class API(base.Base):
             if donor_reservations:
                 QUOTAS.commit(context, donor_reservations, project_id=donor_id)
             LOG.info(_("Volume %s has been transferred.") % volume_id)
-        except Exception as exc:
-            QUOTAS.rollback(context, reservations)
-            if donor_reservations:
-                QUOTAS.rollback(context, donor_reservations,
-                                project_id=donor_id)
-            raise exc
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                QUOTAS.rollback(context, reservations)
+                if donor_reservations:
+                    QUOTAS.rollback(context, donor_reservations,
+                                    project_id=donor_id)
 
         vol_ref = self.db.volume_get(context, volume_id)
         return {'id': transfer_id,

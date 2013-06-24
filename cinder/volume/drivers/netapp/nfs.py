@@ -397,7 +397,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             except NaApiError as e:
                 if e.code != 'UnknownCloneId':
                     self._clear_clone(clone_id)
-                raise e
+                raise
 
     def _get_actual_path_for_export(self, export_path):
         """Gets the actual path on the filer for export path."""
