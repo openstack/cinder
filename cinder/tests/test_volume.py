@@ -1304,7 +1304,7 @@ class DriverTestCase(test.TestCase):
         return 1
 
     def _attach_volume(self):
-        """Attach volumes to an instance. """
+        """Attach volumes to an instance."""
         return []
 
     def _detach_volume(self, volume_id_list):
@@ -1341,7 +1341,7 @@ class ISCSITestCase(DriverTestCase):
     driver_name = "cinder.volume.drivers.lvm.LVMISCSIDriver"
 
     def _attach_volume(self):
-        """Attach volumes to an instance. """
+        """Attach volumes to an instance."""
         volume_id_list = []
         for index in xrange(3):
             vol = {}

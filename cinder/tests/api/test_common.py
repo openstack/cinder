@@ -38,7 +38,7 @@ class LimiterTest(test.TestCase):
     """
 
     def setUp(self):
-        """ Run before each test. """
+        """Run before each test."""
         super(LimiterTest, self).setUp()
         self.tiny = range(1)
         self.small = range(10)
@@ -46,7 +46,7 @@ class LimiterTest(test.TestCase):
         self.large = range(10000)
 
     def test_limiter_offset_zero(self):
-        """ Test offset key works with 0. """
+        """Test offset key works with 0."""
         req = webob.Request.blank('/?offset=0')
         self.assertEqual(common.limited(self.tiny, req), self.tiny)
         self.assertEqual(common.limited(self.small, req), self.small)
@@ -54,7 +54,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.large, req), self.large[:1000])
 
     def test_limiter_offset_medium(self):
-        """ Test offset key works with a medium sized number. """
+        """Test offset key works with a medium sized number."""
         req = webob.Request.blank('/?offset=10')
         self.assertEqual(common.limited(self.tiny, req), [])
         self.assertEqual(common.limited(self.small, req), self.small[10:])
@@ -62,7 +62,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.large, req), self.large[10:1010])
 
     def test_limiter_offset_over_max(self):
-        """ Test offset key works with a number over 1000 (max_limit). """
+        """Test offset key works with a number over 1000 (max_limit)."""
         req = webob.Request.blank('/?offset=1001')
         self.assertEqual(common.limited(self.tiny, req), [])
         self.assertEqual(common.limited(self.small, req), [])
@@ -71,19 +71,19 @@ class LimiterTest(test.TestCase):
             common.limited(self.large, req), self.large[1001:2001])
 
     def test_limiter_offset_blank(self):
-        """ Test offset key works with a blank offset. """
+        """Test offset key works with a blank offset."""
         req = webob.Request.blank('/?offset=')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
 
     def test_limiter_offset_bad(self):
-        """ Test offset key works with a BAD offset. """
+        """Test offset key works with a BAD offset."""
         req = webob.Request.blank(u'/?offset=\u0020aa')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
 
     def test_limiter_nothing(self):
-        """ Test request with no offset or limit """
+        """Test request with no offset or limit."""
         req = webob.Request.blank('/')
         self.assertEqual(common.limited(self.tiny, req), self.tiny)
         self.assertEqual(common.limited(self.small, req), self.small)
@@ -91,7 +91,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.large, req), self.large[:1000])
 
     def test_limiter_limit_zero(self):
-        """ Test limit of zero. """
+        """Test limit of zero."""
         req = webob.Request.blank('/?limit=0')
         self.assertEqual(common.limited(self.tiny, req), self.tiny)
         self.assertEqual(common.limited(self.small, req), self.small)
@@ -99,13 +99,13 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.large, req), self.large[:1000])
 
     def test_limiter_limit_bad(self):
-        """ Test with a bad limit. """
+        """Test with a bad limit."""
         req = webob.Request.blank(u'/?limit=hello')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
 
     def test_limiter_limit_medium(self):
-        """ Test limit of 10. """
+        """Test limit of 10."""
         req = webob.Request.blank('/?limit=10')
         self.assertEqual(common.limited(self.tiny, req), self.tiny)
         self.assertEqual(common.limited(self.small, req), self.small)
@@ -113,7 +113,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.large, req), self.large[:10])
 
     def test_limiter_limit_over_max(self):
-        """ Test limit of 3000. """
+        """Test limit of 3000."""
         req = webob.Request.blank('/?limit=3000')
         self.assertEqual(common.limited(self.tiny, req), self.tiny)
         self.assertEqual(common.limited(self.small, req), self.small)
@@ -121,7 +121,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(self.large, req), self.large[:1000])
 
     def test_limiter_limit_and_offset(self):
-        """ Test request with both limit and offset. """
+        """Test request with both limit and offset."""
         items = range(2000)
         req = webob.Request.blank('/?offset=1&limit=3')
         self.assertEqual(common.limited(items, req), items[1:4])
@@ -133,7 +133,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(items, req), [])
 
     def test_limiter_custom_max_limit(self):
-        """ Test a max_limit other than 1000. """
+        """Test a max_limit other than 1000."""
         items = range(2000)
         req = webob.Request.blank('/?offset=1&limit=3')
         self.assertEqual(
@@ -148,13 +148,13 @@ class LimiterTest(test.TestCase):
         self.assertEqual(common.limited(items, req, max_limit=2000), [])
 
     def test_limiter_negative_limit(self):
-        """ Test a negative limit. """
+        """Test a negative limit."""
         req = webob.Request.blank('/?limit=-3000')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
 
     def test_limiter_negative_offset(self):
-        """ Test a negative offset. """
+        """Test a negative offset."""
         req = webob.Request.blank('/?offset=-30')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
@@ -168,36 +168,36 @@ class PaginationParamsTest(test.TestCase):
     """
 
     def test_nonnumerical_limit(self):
-        """ Test nonnumerical limit param. """
+        """Test nonnumerical limit param."""
         req = webob.Request.blank('/?limit=hello')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.get_pagination_params, req)
 
     def test_no_params(self):
-        """ Test no params. """
+        """Test no params."""
         req = webob.Request.blank('/')
         self.assertEqual(common.get_pagination_params(req), {})
 
     def test_valid_marker(self):
-        """ Test valid marker param. """
+        """Test valid marker param."""
         req = webob.Request.blank(
             '/?marker=263abb28-1de6-412f-b00b-f0ee0c4333c2')
         self.assertEqual(common.get_pagination_params(req),
                          {'marker': '263abb28-1de6-412f-b00b-f0ee0c4333c2'})
 
     def test_valid_limit(self):
-        """ Test valid limit param. """
+        """Test valid limit param."""
         req = webob.Request.blank('/?limit=10')
         self.assertEqual(common.get_pagination_params(req), {'limit': 10})
 
     def test_invalid_limit(self):
-        """ Test invalid limit param. """
+        """Test invalid limit param."""
         req = webob.Request.blank('/?limit=-2')
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.get_pagination_params, req)
 
     def test_valid_limit_and_marker(self):
-        """ Test valid limit and marker parameters. """
+        """Test valid limit and marker parameters."""
         marker = '263abb28-1de6-412f-b00b-f0ee0c4333c2'
         req = webob.Request.blank('/?limit=20&marker=%s' % marker)
         self.assertEqual(common.get_pagination_params(req),

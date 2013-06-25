@@ -39,11 +39,11 @@ def get_host_from_queue(queuename):
 
 
 def notify_usage_exists(context, volume_ref, current_period=False):
-    """ Generates 'exists' notification for a volume for usage auditing
-        purposes.
+    """Generates 'exists' notification for a volume for usage auditing
+       purposes.
 
-        Generates usage for last completed period, unless 'current_period'
-        is True.
+       Generates usage for last completed period, unless 'current_period'
+       is True.
     """
     begin, end = utils.last_completed_audit_period()
     if current_period:

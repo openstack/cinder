@@ -609,7 +609,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.driver.ensure_export(context, volume_ref)
 
     def _copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Downloads Glance image to the specified volume. """
+        """Downloads Glance image to the specified volume."""
         volume_id = volume['id']
         try:
             self.driver.copy_image_to_volume(context, volume,
@@ -721,7 +721,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.update_service_capabilities(volume_stats)
 
     def publish_service_capabilities(self, context):
-        """ Collect driver status and then publish """
+        """Collect driver status and then publish."""
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
 

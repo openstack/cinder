@@ -699,7 +699,7 @@ def check_isinstance(obj, cls):
 
 
 def is_valid_boolstr(val):
-    """Check if the provided string is a valid bool string or not. """
+    """Check if the provided string is a valid bool string or not."""
     val = str(val).lower()
     return (val == 'true' or val == 'false' or
             val == 'yes' or val == 'no' or
@@ -724,9 +724,10 @@ def is_valid_ipv4(address):
 
 
 def monkey_patch():
-    """  If the CONF.monkey_patch set as True,
+    """If the CONF.monkey_patch set as True,
     this function patches a decorator
     for all functions in specified modules.
+
     You can set decorators for each modules
     using CONF.monkey_patch_modules.
     The format is "Module path:Decorator function".

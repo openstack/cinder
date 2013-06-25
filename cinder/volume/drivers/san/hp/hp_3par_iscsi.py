@@ -102,7 +102,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     @utils.synchronized('3par', external=True)
     def create_cloned_volume(self, volume, src_vref):
-        """ Clone an existing volume. """
+        """Clone an existing volume."""
         self.common.client_login()
         new_vol = self.common.create_cloned_volume(volume, src_vref)
         self.common.client_logout()

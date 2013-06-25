@@ -221,7 +221,7 @@ class HP3PARCommon(object):
         return capacity
 
     def _cli_run(self, verb, cli_args):
-        """ Runs a CLI command over SSH, without doing any result parsing. """
+        """Runs a CLI command over SSH, without doing any result parsing."""
         cli_arg_strings = []
         if cli_args:
             for k, v in cli_args.items():
@@ -827,7 +827,7 @@ exit
                     return showhost.split(',')[1]
 
     def terminate_connection(self, volume, hostname, wwn_iqn):
-        """ Driver entry point to unattach a volume from an instance."""
+        """Driver entry point to unattach a volume from an instance."""
         try:
             # does 3par know this host by a different name?
             if hostname in self.hosts_naming_dict:

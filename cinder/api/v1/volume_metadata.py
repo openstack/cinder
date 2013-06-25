@@ -25,7 +25,7 @@ from webob import exc
 
 
 class Controller(object):
-    """ The volume metadata API controller for the OpenStack API """
+    """The volume metadata API controller for the OpenStack API."""
 
     def __init__(self):
         self.volume_api = volume.API()
@@ -42,7 +42,7 @@ class Controller(object):
 
     @wsgi.serializers(xml=common.MetadataTemplate)
     def index(self, req, volume_id):
-        """ Returns the list of metadata for a given volume"""
+        """Returns the list of metadata for a given volume."""
         context = req.environ['cinder.context']
         return {'metadata': self._get_metadata(context, volume_id)}
 
@@ -131,7 +131,7 @@ class Controller(object):
 
     @wsgi.serializers(xml=common.MetaItemTemplate)
     def show(self, req, volume_id, id):
-        """ Return a single metadata item """
+        """Return a single metadata item."""
         context = req.environ['cinder.context']
         data = self._get_metadata(context, volume_id)
 
@@ -142,7 +142,7 @@ class Controller(object):
             raise exc.HTTPNotFound(explanation=msg)
 
     def delete(self, req, volume_id, id):
-        """ Deletes an existing metadata """
+        """Deletes an existing metadata."""
         context = req.environ['cinder.context']
 
         metadata = self._get_metadata(context, volume_id)

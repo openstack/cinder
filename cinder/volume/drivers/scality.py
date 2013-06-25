@@ -209,11 +209,11 @@ class ScalityDriver(driver.VolumeDriver):
         pass
 
     def attach_volume(self, context, volume_id, instance_uuid, mountpoint):
-        """ Callback for volume attached to instance."""
+        """Callback for volume attached to instance."""
         pass
 
     def detach_volume(self, context, volume_id):
-        """ Callback for volume detached."""
+        """Callback for volume detached."""
         pass
 
     def get_volume_stats(self, refresh=False):

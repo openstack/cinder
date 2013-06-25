@@ -97,7 +97,7 @@ class AcceptDeserializer(wsgi.MetadataXMLDeserializer):
 
 
 class VolumeTransferController(wsgi.Controller):
-    """ The Volume Transfer API controller for the Openstack API."""
+    """The Volume Transfer API controller for the Openstack API."""
 
     _view_builder_class = transfer_view.ViewBuilder
 
