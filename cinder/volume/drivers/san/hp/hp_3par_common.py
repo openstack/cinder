@@ -117,6 +117,7 @@ class HP3PARCommon(object):
                             '9 - EGENERA',
                             '10 - ONTAP-legacy',
                             '11 - VMware']
+    hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona']
 
     def __init__(self, config):
         self.sshpool = None
@@ -529,24 +530,33 @@ exit
         ctxt = context.get_admin_context()
         return volume_types.get_volume_type(ctxt, type_id)
 
-    def _get_volume_type_value(self, volume_type, key, default=None):
-        if volume_type is not None:
-            specs = volume_type.get('extra_specs')
-            if key in specs:
-                return specs[key]
-            else:
-                return default
+    def _get_key_value(self, hp3par_keys, key, default=None):
+        if hp3par_keys is not None and key in hp3par_keys:
+            return hp3par_keys[key]
         else:
             return default
 
-    def get_persona_type(self, volume):
+    def _get_keys_by_volume_type(self, volume_type):
+        hp3par_keys = {}
+        specs = volume_type.get('extra_specs')
+        for key, value in specs.iteritems():
+            if ':' in key:
+                fields = key.split(':')
+                key = fields[1]
+            if key in self.hp3par_valid_keys:
+                hp3par_keys[key] = value
+        return hp3par_keys
+
+    def get_persona_type(self, volume, hp3par_keys=None):
         default_persona = self.valid_persona_values[0]
         type_id = volume.get('volume_type_id', None)
         volume_type = None
         if type_id is not None:
             volume_type = self._get_volume_type(type_id)
-        persona_value = self._get_volume_type_value(volume_type, 'persona',
-                                                    default_persona)
+            if hp3par_keys is None:
+                hp3par_keys = self._get_keys_by_volume_type(volume_type)
+        persona_value = self._get_key_value(hp3par_keys, 'persona',
+                                            default_persona)
         if persona_value not in self.valid_persona_values:
             err = _("Must specify a valid persona %(valid)s, "
                     "value '%(persona)s' is invalid.") % \
@@ -573,12 +583,14 @@ exit
 
             # get the options supported by volume types
             volume_type = None
+            hp3par_keys = {}
             type_id = volume.get('volume_type_id', None)
             if type_id is not None:
                 volume_type = self._get_volume_type(type_id)
+                hp3par_keys = self._get_keys_by_volume_type(volume_type)
 
-            cpg = self._get_volume_type_value(volume_type, 'cpg',
-                                              self.config.hp3par_cpg)
+            cpg = self._get_key_value(hp3par_keys, 'cpg',
+                                      self.config.hp3par_cpg)
             if cpg is not self.config.hp3par_cpg:
                 # The cpg was specified in a volume type extra spec so it
                 # needs to be validiated that it's in the correct domain.
@@ -586,8 +598,7 @@ exit
                 # Also, look to see if the snap_cpg was specified in volume
                 # type extra spec, if not use the extra spec cpg as the
                 # default.
-                snap_cpg = self._get_volume_type_value(volume_type,
-                                                       'snap_cpg', cpg)
+                snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', cpg)
             else:
                 # default snap_cpg to hp3par_cpg_snap if it's not specified
                 # in the volume type extra specs.
@@ -599,9 +610,8 @@ exit
 
             # if provisioning is not set use thin
             default_prov = self.valid_prov_values[0]
-            prov_value = self._get_volume_type_value(volume_type,
-                                                     'provisioning',
-                                                     default_prov)
+            prov_value = self._get_key_value(hp3par_keys, 'provisioning',
+                                             default_prov)
             # check for valid provisioning type
             if prov_value not in self.valid_prov_values:
                 err = _("Must specify a valid provisioning type %(valid)s, "
@@ -615,9 +625,9 @@ exit
                 ttpv = False
 
             # check for valid persona even if we don't use it until
-            # attach time, this will given end user notice that the
+            # attach time, this will give the end user notice that the
             # persona type is invalid at volume creation time
-            self.get_persona_type(volume)
+            self.get_persona_type(volume, hp3par_keys)
 
             if type_id is not None:
                 comments['volume_type_name'] = volume_type.get('name')
