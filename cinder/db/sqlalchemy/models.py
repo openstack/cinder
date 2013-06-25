@@ -113,6 +113,8 @@ class Volume(BASE, CinderBase):
 
     volume_type_id = Column(String(36))
     source_volid = Column(String(36))
+    deleted = Column(Boolean, default=False)
+    bootable = Column(Boolean, default=False)
 
 
 class VolumeMetadata(BASE, CinderBase):

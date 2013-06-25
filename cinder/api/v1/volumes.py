@@ -78,6 +78,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     d['size'] = vol['size']
     d['availability_zone'] = vol['availability_zone']
     d['created_at'] = vol['created_at']
+    d['bootable'] = vol['bootable']
 
     d['attachments'] = []
     if vol['attach_status'] == 'attached':
@@ -109,11 +110,6 @@ def _translate_volume_summary_view(context, vol, image_id=None):
         d['metadata'] = vol['metadata']
     else:
         d['metadata'] = {}
-
-    if vol.get('volume_glance_metadata'):
-        d['bootable'] = 'true'
-    else:
-        d['bootable'] = 'false'
 
     return d
 
@@ -339,6 +335,7 @@ class VolumeController(wsgi.Controller):
         image_href = None
         image_uuid = None
         if self.ext_mgr.is_loaded('os-image-create'):
+            # NOTE(jdg): misleading name "imageRef" as it's an image-id
             image_href = volume.get('imageRef')
             if image_href:
                 image_uuid = self._image_uuid_from_href(image_href)

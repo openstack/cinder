@@ -169,9 +169,20 @@ class VolumeManager(manager.SchedulerDependentManager):
             model_update = self.driver.create_volume_from_snapshot(
                 volume_ref,
                 snapshot_ref)
+
+            originating_vref = self.db.volume_get(context,
+                                                  snapshot_ref['volume_id'])
+            if originating_vref.bootable:
+                self.db.volume_update(context,
+                                      volume_ref['id'],
+                                      {'bootable': True})
         elif srcvol_ref is not None:
             model_update = self.driver.create_cloned_volume(volume_ref,
                                                             srcvol_ref)
+            if srcvol_ref.bootable:
+                self.db.volume_update(context,
+                                      volume_ref['id'],
+                                      {'bootable': True})
         else:
             # create the volume from an image
             cloned = self.driver.clone_image(volume_ref, image_location)
@@ -182,11 +193,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume_ref = self.db.volume_update(context,
                                                    volume_ref['id'],
                                                    updates)
+
+                # TODO(jdg): Wrap this in a try block and update status
+                # appropriately if the download image fails
                 self._copy_image_to_volume(context,
                                            volume_ref,
                                            image_service,
                                            image_id)
-
+                self.db.volume_update(context,
+                                      volume_ref['id'],
+                                      {'bootable': True})
         return model_update, cloned
 
     def create_volume(self, context, volume_id, request_spec=None,

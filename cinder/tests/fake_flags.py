@@ -25,7 +25,6 @@ flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
 flags.DECLARE('xiv_proxy', 'cinder.volume.drivers.xiv')
 flags.DECLARE('backup_service', 'cinder.backup.manager')
-
 def_vol_type = 'fake_vol_type'
 
 

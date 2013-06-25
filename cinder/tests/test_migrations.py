@@ -677,3 +677,47 @@ class TestMigrations(test.TestCase):
 
             self.assertFalse(engine.dialect.has_table(engine.connect(),
                                                       "transfers"))
+
+    def test_migration_011(self):
+        """Test adding transfers table works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 10)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            volumes_v10 = sqlalchemy.Table('volumes',
+                                           metadata,
+                                           autoload=True)
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 11)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                     "volumes"))
+            volumes = sqlalchemy.Table('volumes',
+                                       metadata,
+                                       autoload=True)
+
+            # Make sure we didn't miss any columns in the upgrade
+            for column in volumes_v10.c:
+                self.assertTrue(volumes.c.__contains__(column.name))
+
+            self.assertTrue(isinstance(volumes.c.bootable.type,
+                                       sqlalchemy.types.BOOLEAN))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 10)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            volumes = sqlalchemy.Table('volumes',
+                                       metadata,
+                                       autoload=True)
+            self.assertTrue('bootable' not in volumes.c)
+
+            # Make sure we put all the columns back
+            for column in volumes_v10.c:
+                self.assertTrue(volumes.c.__contains__(column.name))
