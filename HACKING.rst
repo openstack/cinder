@@ -55,6 +55,15 @@ General
               {'vol_name': vol_name,
                'vol_size': vol_size}) # OKAY
 
+- Use 'raise' instead of 'raise e' to preserve original traceback or exception being reraised::
+
+    except Exception as e:
+        ...
+        raise e  # BAD
+
+    except Exception:
+        ...
+        raise  # OKAY
 
 Imports
 -------

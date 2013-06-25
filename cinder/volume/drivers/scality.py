@@ -16,6 +16,7 @@
 Scality SOFS Volume Driver.
 """
 
+
 import errno
 import os
 import urllib2
@@ -27,6 +28,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
+
 
 LOG = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ class ScalityDriver(driver.VolumeDriver):
             os.makedirs(path)
         except OSError as e:
             if e.errno != errno.EEXIST:
-                raise e
+                raise
 
     def _mount_sofs(self):
         config = CONF.scality_sofs_config

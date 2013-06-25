@@ -27,6 +27,7 @@ from eventlet import greenthread
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.driver import ISCSIDriver
@@ -143,9 +144,9 @@ class SanISCSIDriver(ISCSIDriver):
                         stderr="Error running SSH command",
                         cmd=command)
 
-        except Exception as e:
-            LOG.error(_("Error running SSH command: %s") % command)
-            raise e
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Error running SSH command: %s") % command)
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""

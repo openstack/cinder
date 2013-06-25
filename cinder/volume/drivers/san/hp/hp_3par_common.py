@@ -36,6 +36,8 @@ hp3par_api_url, hp3par_username, hp3par_password
 for credentials to talk to the REST service on the 3PAR
 array.
 """
+
+
 import base64
 import json
 import paramiko
@@ -52,9 +54,11 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import volume_types
+
 
 LOG = logging.getLogger(__name__)
 
@@ -313,9 +317,9 @@ exit
                          "attempts : '%(command)s'") %
                        {'total_attempts': total_attempts, 'command': command})
                 raise paramiko.SSHException(msg)
-        except Exception as e:
-            LOG.error(_("Error running ssh command: %s") % command)
-            raise e
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Error running ssh command: %s") % command)
 
     def _delete_3par_host(self, hostname):
         self._cli_run('removehost %s' % hostname, None)

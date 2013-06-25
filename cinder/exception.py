@@ -24,6 +24,8 @@ SHOULD include dedicated exception logging.
 
 """
 
+import sys
+
 from oslo.config import cfg
 import webob.exc
 
@@ -105,17 +107,17 @@ class CinderException(Exception):
             try:
                 message = self.message % kwargs
 
-            except Exception as e:
+            except Exception:
+                exc_info = sys.exc_info()
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
                     LOG.error("%s: %s" % (name, value))
                 if CONF.fatal_exception_format_errors:
-                    raise e
-                else:
-                    # at least get the core message out if something happened
-                    message = self.message
+                    raise exc_info[0], exc_info[1], exc_info[2]
+                # at least get the core message out if something happened
+                message = self.message
 
         super(CinderException, self).__init__(message)
 
