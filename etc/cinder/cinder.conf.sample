@@ -363,6 +363,29 @@
 
 
 #
+# Options defined in cinder.backup.services.ceph
+#
+
+# The configration file to use for the backup cluster (string value)
+#backup_ceph_conf=/etc/ceph/ceph.conf
+
+# The Ceph user with permissions to access the backup pool (string value)
+#backup_ceph_user=cinder
+
+# The RADOS pool in which volume backups are stored (string value)
+#backup_ceph_pool=backups
+
+# The RBD stripe unit to use when creating a backup image (integer value)
+#backup_ceph_stripe_unit=0
+
+# The RBD stripe count to use when creating a backup image (integer value)
+#backup_ceph_stripe_count=0
+
+# The chunk size used to break up the data when transferring to Ceph object
+# store.
+#backup_ceph_chunk_size=134217728
+
+#
 # Options defined in cinder.db.api
 #
 

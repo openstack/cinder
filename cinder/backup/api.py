@@ -133,7 +133,7 @@ class API(base.Base):
         # it is large enough for the backup
         if volume_id is None:
             name = 'restore_backup_%s' % backup_id
-            description = 'auto-created_from_restore_from_swift'
+            description = 'auto-created_from_restore_from_backup'
 
             LOG.audit(_("Creating volume of %(size)s GB for restore of "
                         "backup %(backup_id)s"),
