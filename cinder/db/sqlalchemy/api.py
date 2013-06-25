@@ -811,7 +811,7 @@ def quota_reserve(context, resources, quotas, deltas, expire,
 
     if unders:
         LOG.warning(_("Change will make usage less than 0 for the following "
-                      "resources: %(unders)s") % locals())
+                      "resources: %s") % unders)
     if overs:
         usages = dict((k, dict(in_use=v['in_use'], reserved=v['reserved']))
                       for k, v in usages.items())
@@ -1829,7 +1829,7 @@ def sm_backend_conf_update(context, sm_backend_id, values):
 
         if not backend_conf:
             raise exception.NotFound(
-                _("No backend config with id %(sm_backend_id)s") % locals())
+                _("No backend config with id %s") % sm_backend_id)
 
         backend_conf.update(values)
         backend_conf.save(session=session)
@@ -1856,7 +1856,7 @@ def sm_backend_conf_get(context, sm_backend_id):
 
     if not result:
         raise exception.NotFound(_("No backend config with id "
-                                   "%(sm_backend_id)s") % locals())
+                                   "%s") % sm_backend_id)
 
     return result
 
@@ -1912,7 +1912,7 @@ def sm_flavor_get(context, sm_flavor_label):
 
     if not result:
         raise exception.NotFound(
-            _("No sm_flavor called %(sm_flavor)s") % locals())
+            _("No sm_flavor called %s") % sm_flavor_label)
 
     return result
 
@@ -1956,7 +1956,7 @@ def sm_volume_get(context, volume_id):
 
     if not result:
         raise exception.NotFound(
-            _("No sm_volume with id %(volume_id)s") % locals())
+            _("No sm_volume with id %s") % volume_id)
 
     return result
 
@@ -2019,7 +2019,7 @@ def backup_update(context, backup_id, values):
 
         if not backup:
             raise exception.BackupNotFound(
-                _("No backup with id %(backup_id)s") % locals())
+                _("No backup with id %s") % backup_id)
 
         backup.update(values)
         backup.save(session=session)

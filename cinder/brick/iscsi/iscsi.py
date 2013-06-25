@@ -184,7 +184,10 @@ class TgtAdm(TargetAdmin):
         if tid is None:
             LOG.error(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s. Please ensure your tgtd config file "
-                        "contains 'include %(volumes_dir)s/*'") % locals())
+                        "contains 'include %(volumes_dir)s/*'") % {
+                            'vol_id': vol_id,
+                            'volumes_dir': volumes_dir,
+                        })
             raise exception.NotFound()
 
         if old_persist_file is not None and os.path.exists(old_persist_file):
@@ -404,7 +407,7 @@ class LioAdm(TargetAdmin):
             self._execute(*command_args, run_as_root=True)
         except exception.ProcessExecutionError as e:
                 LOG.error(_("Failed to create iscsi target for volume "
-                            "id:%(vol_id)s.") % locals())
+                            "id:%s.") % vol_id)
                 LOG.error("%s" % str(e))
 
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
@@ -413,7 +416,7 @@ class LioAdm(TargetAdmin):
         tid = self._get_target(iqn)
         if tid is None:
             LOG.error(_("Failed to create iscsi target for volume "
-                        "id:%(vol_id)s.") % locals())
+                        "id:%s.") % vol_id)
             raise exception.NotFound()
 
         return tid
@@ -430,7 +433,7 @@ class LioAdm(TargetAdmin):
                           run_as_root=True)
         except exception.ProcessExecutionError as e:
             LOG.error(_("Failed to remove iscsi target for volume "
-                        "id:%(vol_id)s.") % locals())
+                        "id:%s.") % vol_id)
             LOG.error("%s" % str(e))
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 

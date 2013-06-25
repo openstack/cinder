@@ -152,13 +152,24 @@ class GlanceClientWrapper(object):
                 extra = "retrying"
                 error_msg = _("Error contacting glance server "
                               "'%(netloc)s' for '%(method)s', "
-                              "%(extra)s.")
+                              "%(extra)s.") % {
+                                  'netloc': netloc,
+                                  'method': method,
+                                  'extra': extra,
+                              }
                 if attempt == num_attempts:
                     extra = 'done trying'
-                    LOG.exception(error_msg, locals())
+                    error_msg = _("Error contacting glance server "
+                                  "'%(netloc)s' for '%(method)s', "
+                                  "%(extra)s.") % {
+                                      'netloc': netloc,
+                                      'method': method,
+                                      'extra': extra,
+                                  }
+                    LOG.exception(error_msg)
                     raise exception.GlanceConnectionFailed(netloc=netloc,
                                                            reason=str(e))
-                LOG.exception(error_msg, locals())
+                LOG.exception(error_msg)
                 time.sleep(1)
 
 

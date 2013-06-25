@@ -238,7 +238,10 @@ def fetch_to_raw(context, image_service,
             raise exception.ImageUnacceptable(
                 image_id=image_id,
                 reason=_("fmt=%(fmt)s backed by:"
-                         "%(backing_file)s") % locals())
+                         "%(backing_file)s") % {
+                             'fmt': fmt,
+                             'backing_file': backing_file,
+                         })
 
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
