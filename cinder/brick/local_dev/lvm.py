@@ -20,6 +20,7 @@ LVM class for performing LVM operations.
 """
 
 import math
+import re
 
 from itertools import izip
 
@@ -66,10 +67,11 @@ class LVM(object):
         self.pv_list = []
         self.lv_list = []
         self.vg_size = 0
-        self.vg_available_space = 0
+        self.vg_free_space = 0
         self.vg_lv_count = 0
         self.vg_uuid = None
         self._execute = executor
+        self.vg_thin_pool = None
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
@@ -87,14 +89,21 @@ class LVM(object):
             LOG.error(_('Unable to locate Volume Group %s') % vg_name)
             raise VolumeGroupNotFound(vg_name=vg_name)
 
+        if lvm_type == 'thin':
+            pool_name = "%s-pool" % self.vg_name
+            if self.get_volume(pool_name) is None:
+                self.create_thin_pool(pool_name)
+            else:
+                self.vg_thin_pool = pool_name
+
     def _size_str(self, size_in_g):
         if '.00' in size_in_g:
             size_in_g = size_in_g.replace('.00', '')
 
         if int(size_in_g) == 0:
-            return '100M'
+            return '100m'
 
-        return '%sG' % size_in_g
+        return '%sg' % size_in_g
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
@@ -155,7 +164,7 @@ class LVM(object):
         :returns: List of Dictionaries with LV info
 
         """
-        cmd = ['lvs', '--noheadings', '-o', 'vg_name,name,size']
+        cmd = ['lvs', '--noheadings', '--unit=g', '-o', 'vg_name,name,size']
         if vg_name is not None:
             cmd += [vg_name]
 
@@ -198,6 +207,7 @@ class LVM(object):
 
         """
         cmd = ['pvs', '--noheadings',
+               '--unit=g',
                '-o', 'vg_name,name,size,free',
                '--separator', ':']
         if vg_name is not None:
@@ -235,7 +245,8 @@ class LVM(object):
 
         """
         cmd = ['vgs', '--noheadings',
-               '-o', 'name,size,free,lv_count,uuid',
+               '--unit=g', '-o',
+               'name,size,free,lv_count,uuid',
                '--separator', ':']
         if vg_name is not None:
             cmd += [vg_name]
@@ -271,14 +282,20 @@ class LVM(object):
             raise VolumeGroupNotFound(vg_name=self.vg_name)
 
         self.vg_size = vg_list[0]['size']
-        self.vg_available_space = vg_list[0]['available']
+        self.vg_free_space = vg_list[0]['available']
         self.vg_lv_count = vg_list[0]['lv_count']
         self.vg_uuid = vg_list[0]['uuid']
+        if self.vg_thin_pool is not None:
+            self.vg_size = self.vg_size
 
         return vg_list[0]
 
     def create_thin_pool(self, name=None, size_str=0):
         """Creates a thin provisioning pool for this VG.
+
+        The syntax here is slightly different than the default
+        lvcreate -T, so we'll just write a custom cmd here
+        and do it.
 
         :param name: Name to use for pool, default is "<vg-name>-pool"
         :param size_str: Size to allocate for pool, default is entire VG
@@ -298,7 +315,16 @@ class LVM(object):
             self.update_volume_group_info()
             size_str = self.vg_size
 
-        self.create_volume(name, size_str, 'thin')
+        # NOTE(jdg): lvcreate will round up extents
+        # to avoid issues, let's chop the size off to an int
+        size_str = re.sub(r'\.\d*', '', size_str)
+        pool_path = '%s/%s' % (self.vg_name, name)
+        cmd = ['lvcreate', '-T', '-L', size_str, pool_path]
+
+        putils.execute(*cmd,
+                       root_helper='sudo',
+                       run_as_root=True)
+        self.vg_thin_pool = pool_path
 
     def create_volume(self, name, size_str, lv_type='default', mirror_count=0):
         """Creates a logical volume on the object's VG.
@@ -310,12 +336,13 @@ class LVM(object):
 
         """
 
-        size = self._size_str(size_str)
+        size_str = self._size_str(size_str)
         cmd = ['lvcreate', '-n', name, self.vg_name]
         if lv_type == 'thin':
-            cmd += ['-T', '-V', size]
+            pool_path = '%s/%s' % (self.vg_name, self.vg_thin_pool)
+            cmd = ['lvcreate', '-T', '-V', size_str, '-n', name, pool_path]
         else:
-            cmd += ['-L', size]
+            cmd = ['lvcreate', '-n', name, self.vg_name, '-L', size_str]
 
         if mirror_count > 0:
             cmd += ['-m', mirror_count, '--nosync']

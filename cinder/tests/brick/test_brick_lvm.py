@@ -62,8 +62,8 @@ class BrickLvmTestCase(test.TestCase):
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
         elif 'vgs, --noheadings, -o uuid, fake-volumes' in cmd_string:
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
-        elif 'vgs, --noheadings, -o, name,size,free,lv_count,uuid' in\
-                cmd_string:
+        elif 'vgs, --noheadings, --unit=g, -o, name,size,free,lv_count,uuid'\
+                in cmd_string:
             data = "  fake-volumes:10.00g:10.00g:0:"\
                    "kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
             if 'fake-volumes' in cmd_string:
@@ -72,10 +72,8 @@ class BrickLvmTestCase(test.TestCase):
                     "lWyauW-dKpG-Rz7E-xtKY-jeju-QsYU-SLG7Z2\n"
             data += "  fake-volumes-3:10.00g:10.00g:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
-        elif 'lvs, --noheadings, -o, vg_name,name,size' in cmd_string:
-            data = "  fake-volumes fake-1 1.00g\n"
-            data += "  fake-volumes fake-2 1.00g\n"
-        elif 'lvs, --noheadings, -o, vg_name,name,size' in cmd_string:
+        elif 'lvs, --noheadings, --unit=g, -o, vg_name,name,size'\
+                in cmd_string:
             data = "  fake-volumes fake-1 1.00g\n"
             data += "  fake-volumes fake-2 1.00g\n"
         elif 'pvs, --noheadings' and 'fake-volumes' in cmd_string:
