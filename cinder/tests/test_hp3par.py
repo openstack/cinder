@@ -336,6 +336,9 @@ class HP3PARBaseDriver():
     def fake_create_client(self):
         return FakeHP3ParClient(self.driver.configuration.hp3par_api_url)
 
+    def fake_get_domain(self, cpg):
+        return HP3PAR_DOMAIN
+
     def fake_get_3par_host(self, hostname):
         if hostname not in self._hosts:
             msg = {'code': 'NON_EXISTENT_HOST',
@@ -433,7 +436,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         configuration.hp3par_username = 'testUser'
         configuration.hp3par_password = 'testPassword'
         configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
-        configuration.hp3par_domain = HP3PAR_DOMAIN
         configuration.hp3par_cpg = HP3PAR_CPG
         configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
         configuration.iscsi_ip_address = '1.1.1.2'
@@ -457,6 +459,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                        self.fake_create_3par_vlun)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
                        self.fake_get_ports)
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
 
         self.configuration = configuration
 
@@ -491,7 +495,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 'id': 11,
                 'name': hostname}
         self._hosts[hostname] = host
-
         self.properties = {'data':
                           {'target_discovered': True,
                            'target_lun': 186,
@@ -575,6 +578,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.stubs.UnsetAll()
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -596,6 +601,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.stubs.UnsetAll()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -621,6 +628,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.stubs.UnsetAll()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -654,7 +663,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         configuration.hp3par_username = 'testUser'
         configuration.hp3par_password = 'testPassword'
         configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
-        configuration.hp3par_domain = HP3PAR_DOMAIN
         configuration.hp3par_cpg = HP3PAR_CPG
         configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
         configuration.iscsi_ip_address = '1.1.1.2'
@@ -682,6 +690,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                        self.fake_delete_3par_host)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_3par_vlun",
                        self.fake_create_3par_vlun)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
 
         self.driver = hpdriver.HP3PARISCSIDriver(configuration=configuration)
         self.driver.do_setup(None)
@@ -803,6 +813,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.stubs.UnsetAll()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -825,6 +837,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.stubs.UnsetAll()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -850,6 +864,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.stubs.UnsetAll()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 

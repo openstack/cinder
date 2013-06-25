@@ -238,6 +238,8 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         # make sure we don't have the host already
         host = None
         hostname = self.common._safe_hostname(connector['host'])
+        cpg = self.common.get_volume_metadata_value(volume, 'CPG')
+        domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)
             if not host['iSCSIPaths']:
@@ -249,8 +251,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             # host doesn't exist, we have to create it
             hostname = self._create_3par_iscsi_host(hostname,
                                                     connector['initiator'],
-                                                    self.configuration.
-                                                    hp3par_domain,
+                                                    domain,
                                                     persona_id)
             host = self.common._get_3par_host(hostname)
 

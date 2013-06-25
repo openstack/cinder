@@ -74,9 +74,11 @@ hp3par_opts = [
                default='',
                help="3PAR Super user password",
                secret=True),
+    #TODO(kmartin): Remove hp3par_domain during I release.
     cfg.StrOpt('hp3par_domain',
-               default="OpenStack",
-               help="The 3par domain name to use"),
+               default=None,
+               help="This option is DEPRECATED and no longer used. "
+                    "The 3par domain name to use."),
     cfg.StrOpt('hp3par_cpg',
                default="OpenStack",
                help="The CPG to use for volume creation"),
@@ -124,6 +126,10 @@ class HP3PARCommon(object):
         self.config = config
         self.hosts_naming_dict = dict()
         self.client = None
+        if CONF.hp3par_domain is not None:
+            LOG.deprecated(_("hp3par_domain has been deprecated and "
+                             "is no longer used. The domain is automatically "
+                             "looked up based on the CPG."))
 
     def check_flags(self, options, required_flags):
         for flag in required_flags:
@@ -169,13 +175,20 @@ class HP3PARCommon(object):
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
-        if ('domain' not in cpg
-                or cpg['domain'] != self.config.hp3par_domain):
-            err = ("CPG's domain '%s' and config option hp3par_domain '%s'"
-                   " must be the same" %
-                   (cpg['domain'], self.config.hp3par_domain))
+    def get_domain(self, cpg_name):
+        try:
+            cpg = self.client.getCPG(cpg_name)
+        except hpexceptions.HTTPNotFound:
+            err = (_("CPG (%s) doesn't exist on array.") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
+
+        domain = cpg['domain']
+        if not domain:
+            err = (_("CPG (%s) must be in a domain") % cpg_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        return domain
 
     def _get_3par_vol_name(self, volume_id):
         """
@@ -680,6 +693,14 @@ exit
         """
         word = re.search(search_string.strip(' ') + ' ([^ ]*)', s)
         return word.groups()[0].strip(' ')
+
+    def get_volume_metadata_value(self, volume, key):
+        metadata = volume.get('volume_metadata')
+        if metadata:
+            for i in volume['volume_metadata']:
+                if i['key'] == key:
+                    return i['value']
+        return None
 
     def create_cloned_volume(self, volume, src_vref):
 
