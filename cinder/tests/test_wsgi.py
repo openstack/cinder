@@ -91,13 +91,10 @@ class TestWSGIServer(test.TestCase):
     """WSGI server tests."""
     def _ipv6_configured():
         try:
-            out, err = utils.execute('cat', '/proc/net/if_inet6')
-        except exception.ProcessExecutionError:
+            with file('/proc/net/if_inet6') as f:
+                return len(f.read()) > 0
+        except IOError:
             return False
-
-        if not out:
-            return False
-        return True
 
     def test_no_app(self):
         server = cinder.wsgi.Server("test_app", None)
