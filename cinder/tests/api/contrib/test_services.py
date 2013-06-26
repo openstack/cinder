@@ -143,11 +143,11 @@ class ServicesTest(test.TestCase):
                      'updated_at': datetime(2012, 10, 29, 13, 42, 5)},
                     {'binary': 'cinder-scheduler', 'host': 'host2',
                      'zone': 'cinder',
-                     'status': 'enabled', 'state': 'up',
+                     'status': 'enabled', 'state': 'down',
                      'updated_at': datetime(2012, 9, 19, 6, 55, 34)},
                     {'binary': 'cinder-volume', 'host': 'host2',
                      'zone': 'cinder',
-                     'status': 'disabled', 'state': 'up',
+                     'status': 'disabled', 'state': 'down',
                      'updated_at': datetime(2012, 9, 18, 8, 3, 38)}]}
         self.assertEqual(res_dict, response)
 
@@ -183,7 +183,7 @@ class ServicesTest(test.TestCase):
                                   'host': 'host2',
                                   'zone': 'cinder',
                                   'status': 'disabled',
-                                  'state': 'up',
+                                  'state': 'down',
                                   'updated_at': datetime(2012, 9, 18,
                                                          8, 3, 38)}]}
         self.assertEqual(res_dict, response)
