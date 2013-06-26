@@ -381,7 +381,16 @@ class SwiftBackupService(base.Base):
 
             # force flush every write to avoid long blocking write on close
             volume_file.flush()
-            os.fsync(volume_file.fileno())
+
+            # Be tolerant to IO implementations that do not support fileno()
+            try:
+                fileno = volume_file.fileno()
+            except IOError:
+                LOG.info("volume_file does not support fileno() so skipping "
+                         "fsync()")
+            else:
+                os.fsync(fileno)
+
             # Restoring a backup to a volume can take some time. Yield so other
             # threads can run, allowing for among other things the service
             # status to be updated

@@ -18,6 +18,7 @@ RADOS Block Device Driver
 
 from __future__ import absolute_import
 
+import io
 import json
 import os
 import tempfile
@@ -27,9 +28,12 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder import utils
+
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
+
 
 try:
     import rados
@@ -78,6 +82,82 @@ def ascii_str(string):
     if string is None:
         return string
     return str(string)
+
+
+class RBDImageIOWrapper(io.RawIOBase):
+    """
+    Wrapper to provide standard Python IO interface to RBD images so that they
+    can be treated as files.
+    """
+
+    def __init__(self, rbd_image):
+        super(RBDImageIOWrapper, self).__init__()
+        self.rbd_image = rbd_image
+        self._offset = 0
+
+    def _inc_offset(self, length):
+        self._offset += length
+
+    def read(self, length=None):
+        offset = self._offset
+        total = self.rbd_image.size()
+
+        # (dosaboy): posix files do not barf if you read beyond their length
+        # (they just return nothing) but rbd images do so we need to return
+        # empty string if we are at the end of the image
+        if (offset == total):
+            return ''
+
+        if length is None:
+            length = total
+
+        if (offset + length) > total:
+            length = total - offset
+
+        self._inc_offset(length)
+        return self.rbd_image.read(int(offset), int(length))
+
+    def write(self, data):
+        self.rbd_image.write(data, self._offset)
+        self._inc_offset(len(data))
+
+    def seekable(self):
+        return True
+
+    def seek(self, offset, whence=0):
+        if whence == 0:
+            new_offset = offset
+        elif whence == 1:
+            new_offset = self._offset + offset
+        elif whence == 2:
+            new_offset = self.volume.size() - 1
+            new_offset += offset
+        else:
+            raise IOError("Invalid argument - whence=%s not supported" %
+                          (whence))
+
+        if (new_offset < 0):
+            raise IOError("Invalid argument")
+
+        self._offset = new_offset
+
+    def tell(self):
+        return self._offset
+
+    def flush(self):
+        try:
+            self.rbd_image.flush()
+        except AttributeError as exc:
+            LOG.warning("flush() not supported in this version of librbd - "
+                        "%s" % (str(rbd.RBD().version())))
+
+    def fileno(self):
+        """
+        Since rbd image does not have a fileno we raise an IOError (recommended
+        for IOBase class implementations - see
+        http://docs.python.org/2/library/io.html#io.IOBase)
+        """
+        raise IOError("fileno() not supported by RBD()")
 
 
 class RBDVolumeProxy(object):
@@ -442,3 +522,26 @@ class RBDDriver(driver.VolumeDriver):
             image_utils.upload_volume(context, image_service,
                                       image_meta, tmp_file)
         os.unlink(tmp_file)
+
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        volume = self.db.volume_get(context, backup['volume_id'])
+        pool = self.configuration.rbd_pool
+        volname = volume['name']
+
+        with RBDVolumeProxy(self, volname, pool, read_only=True) as rbd_image:
+            rbd_fd = RBDImageIOWrapper(rbd_image)
+            backup_service.backup(backup, rbd_fd)
+
+        LOG.debug("volume backup complete.")
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume."""
+        volume = self.db.volume_get(context, backup['volume_id'])
+        pool = self.configuration.rbd_pool
+
+        with RBDVolumeProxy(self, volume['name'], pool) as rbd_image:
+            rbd_fd = RBDImageIOWrapper(rbd_image)
+            backup_service.restore(backup, volume['id'], rbd_fd)
+
+        LOG.debug("volume restore complete.")
