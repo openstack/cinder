@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
+# Copyright (C) 2013 Deutsche Telekom AG
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,31 +12,22 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+#
+"""Base class for all backup drivers."""
 
-from cinder.backup.driver import BackupDriver
 from cinder.db import base
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
 
 
-class FakeBackupService(BackupDriver):
-    def __init__(self, context, db_driver=None):
-        super(FakeBackupService, self).__init__(db_driver)
+class BackupDriver(base.Base):
 
     def backup(self, backup, volume_file):
-        pass
+        """Starts a backup of a specified volume"""
+        raise NotImplementedError()
 
     def restore(self, backup, volume_id, volume_file):
-        pass
+        """Restores a saved backup"""
+        raise NotImplementedError()
 
     def delete(self, backup):
-        # if backup has magic name of 'fail_on_delete'
-        # we raise an error - useful for some tests -
-        # otherwise we return without error
-        if backup['display_name'] == 'fail_on_delete':
-            raise IOError('fake')
-
-
-def get_backup_driver(context):
-    return FakeBackupService(context)
+        """Deletes a saved backup"""
+        raise NotImplementedError()

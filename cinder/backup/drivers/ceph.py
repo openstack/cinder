@@ -15,15 +15,17 @@
 
 """Ceph Backup Service Implementation"""
 
-from cinder.db import base
+import os
+import time
+
+import eventlet
+from oslo.config import cfg
+
+from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import units
 import cinder.volume.drivers.rbd as rbddriver
-import eventlet
-import os
-from oslo.config import cfg
-import time
 
 try:
     import rados
@@ -54,11 +56,11 @@ CONF = cfg.CONF
 CONF.register_opts(service_opts)
 
 
-class CephBackupService(base.Base):
+class CephBackupDriver(BackupDriver):
     """Backup up Cinder volumes to Ceph Object Store"""
 
     def __init__(self, context, db_driver=None):
-        super(CephBackupService, self).__init__(db_driver)
+        super(CephBackupDriver, self).__init__(db_driver)
         self.rbd = rbd
         self.rados = rados
         self.context = context
@@ -271,5 +273,5 @@ class CephBackupService(base.Base):
         LOG.debug(_("delete '%s' finished") % (backup_id))
 
 
-def get_backup_service(context):
-    return CephBackupService(context)
+def get_backup_driver(context):
+    return CephBackupDriver(context)

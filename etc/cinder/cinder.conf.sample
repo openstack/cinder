@@ -323,11 +323,11 @@
 #
 
 # Service to use for backups. (string value)
-#backup_service=cinder.backup.services.swift
+#backup_driver=cinder.backup.drivers.swift
 
 
 #
-# Options defined in cinder.backup.services.swift
+# Options defined in cinder.backup.drivers.swift
 #
 
 # The URL of the Swift endpoint (string value)

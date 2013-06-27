@@ -24,7 +24,7 @@ flags.DECLARE('iscsi_num_targets', 'cinder.volume.drivers.lvm')
 flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
 flags.DECLARE('xiv_proxy', 'cinder.volume.drivers.xiv')
-flags.DECLARE('backup_service', 'cinder.backup.manager')
+flags.DECLARE('backup_driver', 'cinder.backup.manager')
 def_vol_type = 'fake_vol_type'
 
 
@@ -42,4 +42,4 @@ def set_defaults(conf):
     conf.set_default('sqlite_synchronous', False)
     conf.set_default('policy_file', 'cinder/tests/policy.json')
     conf.set_default('xiv_proxy', 'cinder.tests.test_xiv.XIVFakeProxyDriver')
-    conf.set_default('backup_service', 'cinder.tests.backup.fake_service')
+    conf.set_default('backup_driver', 'cinder.tests.backup.fake_service')
