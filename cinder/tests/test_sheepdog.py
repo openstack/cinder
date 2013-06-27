@@ -24,6 +24,24 @@ COLLIE_NODE_INFO = """
 Total 107287605248 3623897354 3% 54760833024
 """
 
+COLLIE_CLUSTER_INFO_0_5 = """
+Cluster status: running
+
+Cluster created at Tue Jun 25 19:51:41 2013
+
+Epoch Time           Version
+2013-06-25 19:51:41      1 [127.0.0.1:7000, 127.0.0.1:7001, 127.0.0.1:7002]
+"""
+
+COLLIE_CLUSTER_INFO_0_6 = """
+Cluster status: running, auto-recovery enabled
+
+Cluster created at Tue Jun 25 19:51:41 2013
+
+Epoch Time           Version
+2013-06-25 19:51:41      1 [127.0.0.1:7000, 127.0.0.1:7001, 127.0.0.1:7002]
+"""
+
 
 class SheepdogTestCase(test.TestCase):
 
@@ -62,3 +80,15 @@ class SheepdogTestCase(test.TestCase):
             QoS_support=False)
         actual = self.driver.get_volume_stats(True)
         self.assertDictMatch(expected, actual)
+
+    def test_check_for_setup_error_0_5(self):
+        def fake_stats(*args):
+            return COLLIE_CLUSTER_INFO_0_5, ''
+        self.stubs.Set(self.driver, '_execute', fake_stats)
+        self.driver.check_for_setup_error()
+
+    def test_check_for_setup_error_0_6(self):
+        def fake_stats(*args):
+            return COLLIE_CLUSTER_INFO_0_6, ''
+        self.stubs.Set(self.driver, '_execute', fake_stats)
+        self.driver.check_for_setup_error()
