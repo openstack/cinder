@@ -323,6 +323,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.db.volume_glance_metadata_create(context,
                                                       volume_ref['id'],
                                                       'image_name', name)
+            # Save some more attributes into the volume metadata
+            IMAGE_ATTRIBUTES = ['size', 'disk_format',
+                                'container_format', 'checksum',
+                                'min_disk', 'min_ram']
+            for key in IMAGE_ATTRIBUTES:
+                value = image_meta.get(key, None)
+                if value is not None:
+                    self.db.volume_glance_metadata_create(context,
+                                                          volume_ref['id'],
+                                                          key, value)
             image_properties = image_meta.get('properties', {})
             for key, value in image_properties.items():
                 self.db.volume_glance_metadata_create(context,
