@@ -26,6 +26,7 @@ import time
 
 from oslo.config import cfg
 
+from cinder.brick.initiator import connector as initiator
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
@@ -429,6 +430,7 @@ class ISCSIDriver(VolumeDriver):
                                      image_id,
                                      volume_path)
         finally:
+            self._detach_volume(iscsi_properties)
             self.terminate_connection(volume, connector)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -446,6 +448,7 @@ class ISCSIDriver(VolumeDriver):
                                       image_meta,
                                       volume_path)
         finally:
+            self._detach_volume(iscsi_properties)
             self.terminate_connection(volume, connector)
 
     def _attach_volume(self, context, volume, connector):
@@ -455,84 +458,11 @@ class ISCSIDriver(VolumeDriver):
         init_conn = self.initialize_connection(volume, connector)
         iscsi_properties = init_conn['data']
 
-        # code "inspired by" nova/virt/libvirt/volume.py
-        try:
-            self._run_iscsiadm(iscsi_properties, ())
-        except exception.ProcessExecutionError as exc:
-            # iscsiadm returns 21 for "No records found" after version 2.0-871
-            if exc.exit_code in [21, 255]:
-                self._run_iscsiadm(iscsi_properties, ('--op', 'new'))
-            else:
-                raise
+        # Use Brick's code to do attach/detach
+        iscsi = initiator.ISCSIConnector()
+        conf = iscsi.connect_volume(iscsi_properties)
 
-        if iscsi_properties.get('auth_method'):
-            self._iscsiadm_update(iscsi_properties,
-                                  "node.session.auth.authmethod",
-                                  iscsi_properties['auth_method'])
-            self._iscsiadm_update(iscsi_properties,
-                                  "node.session.auth.username",
-                                  iscsi_properties['auth_username'])
-            self._iscsiadm_update(iscsi_properties,
-                                  "node.session.auth.password",
-                                  iscsi_properties['auth_password'])
-
-        host_device = ("/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" %
-                       (iscsi_properties['target_portal'],
-                        iscsi_properties['target_iqn'],
-                        iscsi_properties.get('target_lun', 0)))
-
-        out = self._run_iscsiadm_bare(["-m", "session"],
-                                      run_as_root=True,
-                                      check_exit_code=[0, 1, 21])[0] or ""
-
-        portals = [{'portal': p.split(" ")[2], 'iqn': p.split(" ")[3]}
-                   for p in out.splitlines() if p.startswith("tcp:")]
-
-        stripped_portal = iscsi_properties['target_portal'].split(",")[0]
-        length_iqn = [s for s in portals
-                      if stripped_portal ==
-                      s['portal'].split(",")[0] and
-                      s['iqn'] == iscsi_properties['target_iqn']]
-        if len(portals) == 0 or len(length_iqn) == 0:
-            try:
-                self._run_iscsiadm(iscsi_properties, ("--login",),
-                                   check_exit_code=[0, 255])
-            except exception.ProcessExecutionError as err:
-                if err.exit_code in [15]:
-                    self._iscsiadm_update(iscsi_properties,
-                                          "node.startup",
-                                          "automatic")
-                    return iscsi_properties, host_device
-                else:
-                    raise
-
-            self._iscsiadm_update(iscsi_properties,
-                                  "node.startup", "automatic")
-
-            tries = 0
-            while not os.path.exists(host_device):
-                if tries >= self.configuration.num_iscsi_scan_tries:
-                    raise exception.CinderException(_("iSCSI device "
-                                                      "not found "
-                                                      "at %s") % (host_device))
-
-                LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
-                           "Will rescan & retry.  Try number: %(tries)s.") %
-                         {'host_device': host_device, 'tries': tries})
-
-                # The rescan isn't documented as being necessary(?),
-                # but it helps
-                self._run_iscsiadm(iscsi_properties, ("--rescan",))
-
-                tries = tries + 1
-                if not os.path.exists(host_device):
-                    time.sleep(tries ** 2)
-
-            if tries != 0:
-                LOG.debug(_("Found iSCSI node %(host_device)s "
-                            "(after %(tries)s rescans).") %
-                          {'host_device': host_device,
-                           'tries': tries})
+        host_device = conf['path']
 
         if not self._check_valid_device(host_device):
             raise exception.DeviceUnavailable(path=host_device,
@@ -541,7 +471,17 @@ class ISCSIDriver(VolumeDriver):
                                                         "via the path "
                                                         "%(path)s.") %
                                                       {'path': host_device}))
+        LOG.debug("Volume attached %s" % host_device)
         return iscsi_properties, host_device
+
+    def _detach_volume(self, iscsi_properties):
+        LOG.debug("Detach volume %s:%s:%s" %
+                  (iscsi_properties["target_portal"],
+                   iscsi_properties["target_iqn"],
+                   iscsi_properties["target_lun"]))
+        # Use Brick's code to do attach/detach
+        iscsi = initiator.ISCSIConnector()
+        conf = iscsi.disconnect_volume(iscsi_properties)
 
     def get_volume_stats(self, refresh=False):
         """Get volume status.
