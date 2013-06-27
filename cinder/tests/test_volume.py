@@ -1397,6 +1397,19 @@ class ISCSITestCase(DriverTestCase):
         self.assertEquals(stats['total_capacity_gb'], float('5.52'))
         self.assertEquals(stats['free_capacity_gb'], float('0.52'))
 
+    def test_validate_connector(self):
+        iscsi_driver = driver.ISCSIDriver()
+        # Validate a valid connector
+        connector = {'ip': '10.0.0.2',
+                     'host': 'fakehost',
+                     'initiator': 'iqn.2012-07.org.fake:01'}
+        iscsi_driver.validate_connector(connector)
+
+        # Validate a connector without the initiator
+        connector = {'ip': '10.0.0.2', 'host': 'fakehost'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          iscsi_driver.validate_connector, connector)
+
 
 class FibreChannelTestCase(DriverTestCase):
     """Test Case for FibreChannelDriver"""

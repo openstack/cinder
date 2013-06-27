@@ -270,10 +270,11 @@ class AdminActionsTest(test.TestCase):
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': ''})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
-        self.volume_api.initialize_connection(ctx, volume, {})
+        self.volume_api.initialize_connection(ctx, volume, connector)
         mountpoint = '/dev/vbd'
         self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, mountpoint)
         # volume is attached
@@ -310,10 +311,11 @@ class AdminActionsTest(test.TestCase):
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': ''})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
-        self.volume_api.initialize_connection(ctx, volume, {})
+        self.volume_api.initialize_connection(ctx, volume, connector)
         mountpoint = '/dev/vbd'
         self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, mountpoint)
         self.assertRaises(exception.InvalidVolume,
@@ -325,6 +327,22 @@ class AdminActionsTest(test.TestCase):
         # cleanup
         svc.stop()
 
+    def test_invalid_iscsi_connector(self):
+        """Test connector without the initiator (required by iscsi driver)."""
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': ''})
+        connector = {}
+        # start service to handle rpc messages for attach requests
+        svc = self.start_service('volume', host='test')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume_api.initialize_connection,
+                          ctx, volume, connector)
+        # cleanup
+        svc.stop()
+
     def test_attach_attaching_volume_with_different_instance(self):
         """Test that attaching volume reserved for another instance fails."""
         # admin context
@@ -332,9 +350,10 @@ class AdminActionsTest(test.TestCase):
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': ''})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
-        self.volume_api.initialize_connection(ctx, volume, {})
+        self.volume_api.initialize_connection(ctx, volume, connector)
         values = {'status': 'attaching',
                   'instance_uuid': fakes.get_fake_uuid()}
         db.volume_update(ctx, volume['id'], values)
