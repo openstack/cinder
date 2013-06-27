@@ -43,7 +43,7 @@ class SheepdogDriver(driver.VolumeDriver):
             #  gives short output, but for compatibility reason we won't
             #  use it and just check if 'running' is in the output.
             (out, err) = self._execute('collie', 'cluster', 'info')
-            if 'running' not in out.split():
+            if 'status: running' not in out:
                 exception_message = (_("Sheepdog is not working: %s") % out)
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
