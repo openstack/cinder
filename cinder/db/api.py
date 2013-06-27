@@ -210,11 +210,10 @@ def volume_create(context, values):
     return IMPL.volume_create(context, values)
 
 
-def volume_data_get_for_host(context, host, session=None):
+def volume_data_get_for_host(context, host):
     """Get (volume_count, gigabytes) for project."""
     return IMPL.volume_data_get_for_host(context,
-                                         host,
-                                         session)
+                                         host)
 
 
 def volume_data_get_for_project(context, project_id, volume_type_id=None,
