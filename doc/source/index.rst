@@ -16,7 +16,7 @@
       under the License.
 
 Welcome to Cinder's developer documentation!
-==========================================
+============================================
 
 Cinder is an OpenStack project to provide "block storage as a service".
 

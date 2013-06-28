@@ -26,7 +26,7 @@ Currently, Managers and Drivers are specified by flags and loaded using utils.lo
 
 
 The :mod:`cinder.service` Module
-------------------------------
+--------------------------------
 
 .. automodule:: cinder.service
     :noindex:
@@ -36,7 +36,7 @@ The :mod:`cinder.service` Module
 
 
 The :mod:`cinder.manager` Module
-------------------------------
+--------------------------------
 
 .. automodule:: cinder.manager
     :noindex:
