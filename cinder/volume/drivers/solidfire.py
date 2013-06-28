@@ -85,7 +85,12 @@ class SolidFire(SanISCSIDriver):
     def __init__(self, *args, **kwargs):
             super(SolidFire, self).__init__(*args, **kwargs)
             self.configuration.append_config_values(sf_opts)
-            self._update_cluster_status()
+            try:
+                self._update_cluster_status()
+            except Exception as ex:
+                LOG.error(_("Update SolidFire Cluster stats failed: %s"),
+                          ex.strerror)
+                pass
 
     def _issue_api_request(self, method_name, params):
         """All API requests to SolidFire device go through this method.
@@ -566,7 +571,12 @@ class SolidFire(SanISCSIDriver):
         data
         """
         if refresh:
-            self._update_cluster_status()
+            try:
+                self._update_cluster_status()
+            except Exception as ex:
+                LOG.error(_("Update SolidFire Cluster stats failed: %s"),
+                          ex.strerror)
+                pass
 
         return self.cluster_stats
 
