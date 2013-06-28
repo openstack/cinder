@@ -16,6 +16,7 @@
 #    under the License.
 
 
+from oslo.config import cfg
 import webob.exc
 
 from cinder.api import extensions
@@ -27,6 +28,8 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import utils
 
+
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('volume', 'services')
@@ -81,7 +84,7 @@ class ServiceController(object):
         svcs = []
         for svc in services:
             delta = now - (svc['updated_at'] or svc['created_at'])
-            alive = abs(utils.total_seconds(delta))
+            alive = abs(utils.total_seconds(delta)) <= CONF.service_down_time
             art = (alive and "up") or "down"
             active = 'enabled'
             if svc['disabled']:
