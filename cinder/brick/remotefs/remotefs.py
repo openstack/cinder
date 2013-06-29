@@ -61,7 +61,8 @@ class RemoteFsClient(object):
         return hashlib.md5(base_str).hexdigest()
 
     def get_mount_point(self, device_name):
-        """
+        """Get Mount Point.
+
         :param device_name: example 172.18.194.100:/var/nfs
         """
         return os.path.join(self._mount_base,

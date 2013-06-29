@@ -126,10 +126,7 @@ class VolumeAdminController(AdminController):
 
     @wsgi.action('os-force_detach')
     def _force_detach(self, req, id, body):
-        """
-        Roll back a bad detach after the volume been disconnected from
-        the hypervisor.
-        """
+        """Roll back a bad detach after the volume been disconnected."""
         context = req.environ['cinder.context']
         self.authorize(context, 'force_detach')
         try:

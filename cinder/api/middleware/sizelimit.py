@@ -41,7 +41,8 @@ LOG = logging.getLogger(__name__)
 class LimitingReader(object):
     """Reader to limit the size of an incoming request."""
     def __init__(self, data, limit):
-        """
+        """Initialize LimitingReader.
+
         :param data: Underlying data object
         :param limit: maximum number of bytes the reader should allow
         """

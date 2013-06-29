@@ -154,7 +154,8 @@ class JSONDeserializer(TextDeserializer):
 class XMLDeserializer(TextDeserializer):
 
     def __init__(self, metadata=None):
-        """
+        """Initialize XMLDeserializer.
+
         :param metadata: information needed to deserialize xml into
                          a dictionary.
         """
@@ -269,7 +270,8 @@ class JSONDictSerializer(DictSerializer):
 class XMLDictSerializer(DictSerializer):
 
     def __init__(self, metadata=None, xmlns=None):
-        """
+        """Initialize XMLDictSerializer.
+
         :param metadata: information needed to deserialize xml into
                          a dictionary.
         :param xmlns: XML namespace to include with serialized xml
@@ -631,7 +633,8 @@ class Resource(wsgi.Application):
     """
 
     def __init__(self, controller, action_peek=None, **deserializers):
-        """
+        """Initialize Resource.
+
         :param controller: object that implement methods created by routes lib
         :param action_peek: dictionary of routines for peeking into an action
                             request body to determine the desired action
@@ -1122,14 +1125,10 @@ def _set_request_id_header(req, headers):
 
 
 class OverLimitFault(webob.exc.HTTPException):
-    """
-    Rate-limited request response.
-    """
+    """Rate-limited request response."""
 
     def __init__(self, message, details, retry_time):
-        """
-        Initialize new `OverLimitFault` with relevant information.
-        """
+        """Initialize new `OverLimitFault` with relevant information."""
         hdrs = OverLimitFault._retry_after(retry_time)
         self.wrapped_exc = webob.exc.HTTPRequestEntityTooLarge(headers=hdrs)
         self.content = {

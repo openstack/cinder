@@ -65,10 +65,11 @@ CONF.register_opts(quota_opts)
 
 
 class DbQuotaDriver(object):
-    """
-    Driver to perform necessary checks to enforce quotas and obtain
-    quota information.  The default driver utilizes the local
-    database.
+
+    """Driver to perform check to enforcement of quotas.
+
+    Also allows to obtain quota information.
+    The default driver utilizes the local database.
     """
 
     def get_by_project(self, context, project_id, resource_name):
@@ -115,9 +116,7 @@ class DbQuotaDriver(object):
 
     def get_class_quotas(self, context, resources, quota_class,
                          defaults=True):
-        """
-        Given a list of resources, retrieve the quotas for the given
-        quota class.
+        """Given list of resources, retrieve the quotas for given quota class.
 
         :param context: The request context, for access checks.
         :param resources: A dictionary of the registered resources.
@@ -147,8 +146,7 @@ class DbQuotaDriver(object):
     def get_project_quotas(self, context, resources, project_id,
                            quota_class=None, defaults=True,
                            usages=True):
-        """
-        Given a list of resources, retrieve the quotas for the given
+        """Given a list of resources, retrieve the quotas for the given
         project.
 
         :param context: The request context, for access checks.
@@ -210,10 +208,10 @@ class DbQuotaDriver(object):
         return quotas
 
     def _get_quotas(self, context, resources, keys, has_sync, project_id=None):
-        """
-        A helper method which retrieves the quotas for the specific
-        resources identified by keys, and which apply to the current
-        context.
+        """A helper method which retrieves the quotas for specific resources.
+
+        This specific resource is identified by keys, and which apply to the
+        current context.
 
         :param context: The request context, for access checks.
         :param resources: A dictionary of the registered resources.
@@ -392,9 +390,9 @@ class DbQuotaDriver(object):
         db.reservation_rollback(context, reservations, project_id=project_id)
 
     def destroy_all_by_project(self, context, project_id):
-        """
-        Destroy all quotas, usages, and reservations associated with a
-        project.
+        """Destroy all that is associated with a project.
+
+        This includes quotas, usages and reservations.
 
         :param context: The request context, for access checks.
         :param project_id: The ID of the project being deleted.
@@ -418,8 +416,7 @@ class BaseResource(object):
     """Describe a single resource for quota checking."""
 
     def __init__(self, name, flag=None):
-        """
-        Initializes a Resource.
+        """Initializes a Resource.
 
         :param name: The name of the resource, i.e., "volumes".
         :param flag: The name of the flag or configuration option
@@ -431,9 +428,7 @@ class BaseResource(object):
         self.flag = flag
 
     def quota(self, driver, context, **kwargs):
-        """
-        Given a driver and context, obtain the quota for this
-        resource.
+        """Given a driver and context, obtain the quota for this resource.
 
         :param driver: A quota driver.
         :param context: The request context.
@@ -526,10 +521,7 @@ class AbsoluteResource(BaseResource):
 
 
 class CountableResource(AbsoluteResource):
-    """
-    Describe a resource where the counts aren't based solely on the
-    project ID.
-    """
+    """Describe a resource where counts aren't based only on the project ID."""
 
     def __init__(self, name, count, flag=None):
         """Initializes a CountableResource.
@@ -568,8 +560,7 @@ class VolumeTypeResource(ReservableResource):
     """ReservableResource for a specific volume type."""
 
     def __init__(self, part_name, volume_type):
-        """
-        Initializes a VolumeTypeResource.
+        """Initializes a VolumeTypeResource.
 
         :param part_name: The kind of resource, i.e., "volumes".
         :param volume_type: The volume type for this resource.
@@ -802,8 +793,7 @@ class QuotaEngine(object):
                             "%s") % reservations)
 
     def destroy_all_by_project(self, context, project_id):
-        """
-        Destroy all quotas, usages, and reservations associated with a
+        """Destroy all quotas, usages, and reservations associated with a
         project.
 
         :param context: The request context, for access checks.

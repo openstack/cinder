@@ -44,9 +44,7 @@ class XIVDS8KFakeProxyDriver(object):
     """Fake IBM XIV and DS8K Proxy Driver."""
 
     def __init__(self, xiv_ds8k_info, logger, expt, driver=None):
-        """
-        Initialize Proxy
-        """
+        """Initialize Proxy."""
 
         self.xiv_ds8k_info = xiv_ds8k_info
         self.logger = logger

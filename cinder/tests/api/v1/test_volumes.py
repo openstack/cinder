@@ -1131,9 +1131,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
 
 class VolumesUnprocessableEntityTestCase(test.TestCase):
 
-    """
-    Tests of places we throw 422 Unprocessable Entity from
-    """
+    """Tests of places we throw 422 Unprocessable Entity from."""
 
     def setUp(self):
         super(VolumesUnprocessableEntityTestCase, self).setUp()

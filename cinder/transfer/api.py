@@ -59,9 +59,7 @@ class API(base.Base):
         return dict(rv.iteritems())
 
     def delete(self, context, transfer_id):
-        """
-        Make the RPC call to delete a volume transfer.
-        """
+        """Make the RPC call to delete a volume transfer."""
         volume_api.check_policy(context, 'delete_transfer')
         transfer = self.db.transfer_get(context, transfer_id)
 

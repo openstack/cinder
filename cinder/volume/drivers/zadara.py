@@ -279,8 +279,8 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(zadara_opts)
 
     def do_setup(self, context):
-        """
-        Any initialization the volume driver does while starting.
+        """Any initialization the volume driver does while starting.
+
         Establishes initial connection with VPSA and retrieves access_key.
         """
         self.vpsa = ZadaraVPSAConnection(self.configuration)
@@ -295,8 +295,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     def _xml_parse_helper(self, xml_tree, first_level, search_tuple,
                           first=True):
-        """
-        Helper for parsing VPSA's XML output.
+        """Helper for parsing VPSA's XML output.
 
         Returns single item if first==True or list for multiple selection.
         If second argument in search_tuple is None - returns all items with
@@ -406,8 +405,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             size=volume['size'])
 
     def delete_volume(self, volume):
-        """
-        Delete volume.
+        """Delete volume.
 
         Return ok if doesn't exist. Auto detach from all servers.
         """
@@ -565,8 +563,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         pass
 
     def initialize_connection(self, volume, connector):
-        """
-        Attach volume to initiator/host.
+        """Attach volume to initiator/host.
 
         During this call VPSA exposes volume to particular Initiator. It also
         creates a 'server' entity for Initiator (if it was not created before)
@@ -628,9 +625,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                 'data': properties}
 
     def terminate_connection(self, volume, connector, **kwargs):
-        """
-        Detach volume from the initiator.
-        """
+        """Detach volume from the initiator."""
         # Get server name for IQN
         initiator_name = connector['initiator']
         vpsa_srv = self._get_server_name(initiator_name)

@@ -198,8 +198,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     @utils.synchronized('3par', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
-        """
-        Creates a volume from a snapshot.
+        """Creates a volume from a snapshot.
 
         TODO: support using the size from the user.
         """

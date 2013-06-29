@@ -37,10 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 class APIRouter(cinder.api.openstack.APIRouter):
-    """
-    Routes requests on the OpenStack API to the appropriate controller
-    and method.
-    """
+    """Routes requests on the API to the appropriate controller and method."""
     ExtensionManager = extensions.ExtensionManager
 
     def _setup_routes(self, mapper, ext_mgr):

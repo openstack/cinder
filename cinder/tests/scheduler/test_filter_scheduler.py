@@ -36,9 +36,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
     driver_cls = filter_scheduler.FilterScheduler
 
     def test_create_volume_no_hosts(self):
-        """
-        Ensure empty hosts & child_zones result in NoValidHosts exception.
-        """
+        """Ensure empty hosts/child_zones result in NoValidHosts exception."""
         def _fake_empty_call_zone_method(*args, **kwargs):
             return []
 

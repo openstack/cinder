@@ -1681,9 +1681,7 @@ def volume_type_create(context, values):
 
 @require_context
 def volume_type_get_all(context, inactive=False, filters=None):
-    """
-    Returns a dict describing all volume_types with name as key.
-    """
+    """Returns a dict describing all volume_types with name as key."""
     filters = filters or {}
 
     read_deleted = "yes" if inactive else "no"
@@ -2338,8 +2336,8 @@ def volume_snapshot_glance_metadata_get(context, snapshot_id):
 @require_context
 @require_volume_exists
 def volume_glance_metadata_create(context, volume_id, key, value):
-    """
-    Update the Glance metadata for a volume by adding a new key:value pair.
+    """Update the Glance metadata for a volume by adding a new key:value pair.
+
     This API does not support changing the value of a key once it has been
     created.
     """
@@ -2368,10 +2366,11 @@ def volume_glance_metadata_create(context, volume_id, key, value):
 @require_context
 @require_snapshot_exists
 def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
-    """
-    Update the Glance metadata for a snapshot by copying all of the key:value
-    pairs from the originating volume. This is so that a volume created from
-    the snapshot will retain the original metadata.
+    """Update the Glance metadata for a snapshot.
+
+    This copies all of the key:value pairs from the originating volume, to
+    ensure that a volume created from the snapshot will retain the
+    original metadata.
     """
 
     session = get_session()
@@ -2392,10 +2391,11 @@ def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
 def volume_glance_metadata_copy_from_volume_to_volume(context,
                                                       src_volume_id,
                                                       volume_id):
-    """
-    Update the Glance metadata for a volume by copying all of the key:value
-    pairs from the originating volume. This is so that a volume created from
-    the volume (clone) will retain the original metadata.
+    """Update the Glance metadata for a volume.
+
+    This copies all all of the key:value pairs from the originating volume,
+    to ensure that a volume created from the volume (clone) will
+    retain the original metadata.
     """
 
     session = get_session()
@@ -2415,10 +2415,10 @@ def volume_glance_metadata_copy_from_volume_to_volume(context,
 @require_context
 @require_volume_exists
 def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
-    """
-    Update the Glance metadata from a volume (created from a snapshot) by
-    copying all of the key:value pairs from the originating snapshot. This is
-    so that the Glance metadata from the original volume is retained.
+    """Update the Glance metadata from a volume (created from a snapshot) by
+    copying all of the key:value pairs from the originating snapshot.
+
+    This is so that the Glance metadata from the original volume is retained.
     """
 
     session = get_session()

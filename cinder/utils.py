@@ -226,11 +226,12 @@ class SSHPool(pools.Pool):
             raise paramiko.SSHException(msg)
 
     def get(self):
-        """
-        Return an item from the pool, when one is available.  This may
-        cause the calling greenthread to block. Check if a connection is active
-        before returning it. For dead connections create and return a new
-        connection.
+        """Return an item from the pool, when one is available.
+
+        This may cause the calling greenthread to block. Check if a
+        connection is active before returning it.
+
+        For dead connections create and return a new connection.
         """
         conn = super(SSHPool, self).get()
         if conn:

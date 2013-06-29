@@ -85,7 +85,7 @@ class API(base.Base):
         return backups
 
     def _is_backup_service_enabled(self, volume, volume_host):
-        """Check if there is an backup service available"""
+        """Check if there is a backup service available."""
         topic = CONF.backup_topic
         ctxt = context.get_admin_context()
         services = self.db.service_get_all_by_topic(ctxt, topic)

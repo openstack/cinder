@@ -37,7 +37,9 @@ from cinder import utils
 
 
 class MockKeyManager(key_mgr.KeyManager):
-    """
+
+    """Mocking manager for integration tests.
+
     This mock key manager implementation supports all the methods specified
     by the key manager interface. This implementation stores keys within a
     dictionary, and as a result, it is not acceptable for use across different

@@ -68,8 +68,9 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
 class ServiceController(object):
     @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
-        """
-        Return a list of all running services. Filter by host & service name.
+        """Return a list of all running services.
+
+        Filter by host & service name.
         """
         context = req.environ['cinder.context']
         authorize(context)

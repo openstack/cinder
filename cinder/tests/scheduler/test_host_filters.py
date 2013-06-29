@@ -34,9 +34,9 @@ DATA = ''
 
 
 def stub_out_https_backend(stubs):
-    """
-    Stubs out the httplib.HTTPRequest.getresponse to return
-    faked-out data instead of grabbing actual contents of a resource
+    """Stub out the httplib.HTTPRequest.getresponse.
+
+    return faked-out data instead of grabbing actual contents of a resource.
 
     The stubbed getresponse() returns an iterator over
     the data "I am a teapot, short and stout\n"

@@ -281,7 +281,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             volume['name'], 'volume')
 
     def _get_mount_point_for_share(self, nfs_share):
-        """
+        """Get Mount point for a share.
+
         :param nfs_share: example 172.18.194.100:/var/nfs
         """
         return os.path.join(self.configuration.nexenta_mount_point_base,

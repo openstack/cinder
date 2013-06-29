@@ -45,11 +45,11 @@ LOG = logging.getLogger(__name__)
 
 
 class SchedulerOptions(object):
-    """
-    SchedulerOptions monitors a local .json file for changes and loads it
-    if needed. This file is converted to a data structure and passed into
-    the filtering and weighing functions which can use it for dynamic
-    configuration.
+    """SchedulerOptions monitors a local .json file for changes.
+
+    The file is reloaded if needed and converted to a data structure and
+    passed into the filtering and weighing functions which can use it
+    for dynamic configuration.
     """
 
     def __init__(self):

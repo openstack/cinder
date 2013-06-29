@@ -412,9 +412,7 @@ class SnapshotSerializerTest(test.TestCase):
 
 class SnapshotsUnprocessableEntityTestCase(test.TestCase):
 
-    """
-    Tests of places we throw 422 Unprocessable Entity from
-    """
+    """Tests of places we throw 422 Unprocessable Entity."""
 
     def setUp(self):
         super(SnapshotsUnprocessableEntityTestCase, self).setUp()

@@ -47,9 +47,10 @@ def _get_connect_string(backend,
                         user="openstack_citest",
                         passwd="openstack_citest",
                         database="openstack_citest"):
-    """
+    """Return connect string.
+
     Try to get a connection with a very specific set of values, if we get
-    these then we'll run the tests, otherwise they are skipped
+    these then we'll run the tests, otherwise they are skipped.
     """
     if backend == "postgres":
         backend = "postgresql+psycopg2"
@@ -227,7 +228,8 @@ class TestMigrations(test.TestCase):
                 os.unsetenv('PGUSER')
 
     def test_walk_versions(self):
-        """
+        """Test walk versions.
+
         Walks all version scripts for each tested database, ensuring
         that there are no errors in the version scripts for each engine
         """
@@ -235,7 +237,8 @@ class TestMigrations(test.TestCase):
             self._walk_versions(engine, self.snake_walk)
 
     def test_mysql_connect_fail(self):
-        """
+        """Test for mysql connection failure.
+
         Test that we can trigger a mysql connection failure and we fail
         gracefully to ensure we don't break people without mysql
         """
@@ -244,9 +247,7 @@ class TestMigrations(test.TestCase):
 
     @testtools.skipUnless(_have_mysql(), "mysql not available")
     def test_mysql_innodb(self):
-        """
-        Test that table creation on mysql only builds InnoDB tables
-        """
+        """Test that table creation on mysql only builds InnoDB tables."""
         # add this to the global lists to make reset work with it, it's removed
         # automaticaly in tearDown so no need to clean it up here.
         connect_string = _get_connect_string('mysql')
@@ -277,9 +278,10 @@ class TestMigrations(test.TestCase):
         self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
 
     def test_postgresql_connect_fail(self):
-        """
+        """Test connection failure on PostgrSQL.
+
         Test that we can trigger a postgres connection failure and we fail
-        gracefully to ensure we don't break people without postgres
+        gracefully to ensure we don't break people without postgres.
         """
         if _is_backend_avail('postgres', user="openstack_cifail"):
             self.fail("Shouldn't have connected")
@@ -346,7 +348,7 @@ class TestMigrations(test.TestCase):
                                                   TestMigrations.REPOSITORY))
 
     def _migrate_up(self, engine, version, with_data=False):
-        """migrate up to a new version of the db.
+        """Migrate up to a new version of the db.
 
         We allow for data insertion and post checks at every
         migration version with special _prerun_### and

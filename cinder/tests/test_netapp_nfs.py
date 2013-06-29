@@ -75,7 +75,8 @@ class FakeSnapshot(object):
 
 class FakeResponce(object):
     def __init__(self, status):
-        """
+        """Initialize FakeResponce.
+
         :param status: Either 'failed' or 'passed'
         """
         self.Status = status
