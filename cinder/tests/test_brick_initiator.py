@@ -248,6 +248,8 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
             }
         }
 
+    @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
+                               'Test requires /dev/disk/by-path')
     def test_connect_volume(self):
         self.stubs.Set(os.path, 'exists', lambda x: True)
         location = '10.0.2.15:3260'
