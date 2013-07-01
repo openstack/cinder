@@ -22,6 +22,7 @@ Tests for Volume Code.
 
 import datetime
 import os
+import re
 import shutil
 import tempfile
 
@@ -44,11 +45,16 @@ from cinder.tests import fake_flags
 from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
+from cinder.volume.drivers import lvm
 
 
 QUOTAS = quota.QUOTAS
 
 CONF = cfg.CONF
+
+fake_opt = [
+    cfg.StrOpt('fake_opt', default='fake', help='fake opts')
+]
 
 
 class VolumeTestCase(test.TestCase):
@@ -1359,6 +1365,45 @@ class VolumeDriverTestCase(DriverTestCase):
         # 'o' volume.driver.delete_volume() does not raise an exception.
         self.output = 'x'
         self.volume.driver.delete_volume({'name': 'test1', 'size': 1024})
+
+
+class LVMVolumeDriverTestCase(DriverTestCase):
+    """Test case for VolumeDriver"""
+    driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
+
+    def test_convert_blocksize_option(self):
+        # Test invalid volume_dd_blocksize
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
+
+        # Test valid volume_dd_blocksize
+        bs, count = lvm_driver._calculate_count('10M', 1)
+        self.assertEquals(bs, '10M')
+        self.assertEquals(count, 103)
+
+        bs, count = lvm_driver._calculate_count('1xBBB', 1)
+        self.assertEquals(bs, '1M')
+        self.assertEquals(count, 1024)
+
+        # Test volume_dd_blocksize with fraction
+        bs, count = lvm_driver._calculate_count('1.3M', 1)
+        self.assertEquals(bs, '1M')
+        self.assertEquals(count, 1024)
+
+        # Test zero-size volume_dd_blocksize
+        bs, count = lvm_driver._calculate_count('0M', 1)
+        self.assertEquals(bs, '1M')
+        self.assertEquals(count, 1024)
+
+        # Test negative volume_dd_blocksize
+        bs, count = lvm_driver._calculate_count('-1M', 1)
+        self.assertEquals(bs, '1M')
+        self.assertEquals(count, 1024)
+
+        # Test non-digital volume_dd_blocksize
+        bs, count = lvm_driver._calculate_count('ABM', 1)
+        self.assertEquals(bs, '1M')
+        self.assertEquals(count, 1024)
 
 
 class ISCSITestCase(DriverTestCase):

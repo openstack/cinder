@@ -31,6 +31,8 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import strutils
+from cinder import units
 from cinder import utils
 from cinder.volume import driver
 
@@ -101,6 +103,30 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         self._try_execute(*cmd, run_as_root=True, no_retry_list=no_retry_list)
 
+    def _calculate_count(self, blocksize, size_in_g):
+        # Check if volume_dd_blocksize is valid
+        try:
+            # Rule out zero-sized/negative dd blocksize which
+            # cannot be caught by strutils
+            if blocksize.startswith(('-', '0')):
+                raise ValueError
+            bs = strutils.to_bytes(blocksize)
+        except (ValueError, TypeError):
+            msg = (_("Incorrect value error: %(blocksize)s, "
+                     "it may indicate that \'volume_dd_blocksize\' "
+                     "was configured incorrectly. Fall back to default.")
+                   % {'blocksize': blocksize})
+            LOG.warn(msg)
+            # Fall back to default blocksize
+            CONF.clear_override('volume_dd_blocksize',
+                                self.configuration.config_group)
+            blocksize = self.configuration.volume_dd_blocksize
+            bs = strutils.to_bytes(blocksize)
+
+        count = math.ceil(size_in_g * units.GiB / float(bs))
+
+        return blocksize, int(count)
+
     def _copy_volume(self, srcstr, deststr, size_in_g, clearing=False):
         # Use O_DIRECT to avoid thrashing the system buffer cache
         extra_flags = ['iflag=direct', 'oflag=direct']
@@ -118,10 +144,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if clearing and not extra_flags:
             extra_flags.append('conv=fdatasync')
 
+        blocksize = self.configuration.volume_dd_blocksize
+        blocksize, count = self._calculate_count(blocksize, size_in_g)
+
         # Perform the copy
         self._execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-                      'count=%d' % (size_in_g * 1024),
-                      'bs=%s' % self.configuration.volume_dd_blocksize,
+                      'count=%d' % count,
+                      'bs=%s' % blocksize,
                       *extra_flags, run_as_root=True)
 
     def _volume_not_present(self, volume_name):
