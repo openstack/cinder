@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-06-27 18:10+0000\n"
+"POT-Creation-Date: 2013-07-01 18:10+0000\n"
 "PO-Revision-Date: 2013-05-08 11:44+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Finnish (Finland) "
@@ -832,11 +832,11 @@ msgid ""
 "cinder.api.middleware.auth:pipeline_factory instead."
 msgstr ""
 
-#: cinder/api/common.py:78 cinder/api/common.py:112 cinder/volume/api.py:384
+#: cinder/api/common.py:78 cinder/api/common.py:112 cinder/volume/api.py:399
 msgid "limit param must be an integer"
 msgstr ""
 
-#: cinder/api/common.py:81 cinder/api/common.py:116 cinder/volume/api.py:381
+#: cinder/api/common.py:81 cinder/api/common.py:116 cinder/volume/api.py:396
 msgid "limit param must be positive"
 msgstr ""
 
@@ -1109,7 +1109,7 @@ msgstr ""
 msgid "Caught error: %s"
 msgstr ""
 
-#: cinder/api/middleware/fault.py:54 cinder/api/openstack/wsgi.py:896
+#: cinder/api/middleware/fault.py:54 cinder/api/openstack/wsgi.py:895
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
@@ -1152,47 +1152,47 @@ msgid ""
 "cinder.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:134 cinder/api/openstack/wsgi.py:547
+#: cinder/api/openstack/wsgi.py:134 cinder/api/openstack/wsgi.py:546
 msgid "cannot understand JSON"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:552
+#: cinder/api/openstack/wsgi.py:551
 msgid "too many body keys"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:591
+#: cinder/api/openstack/wsgi.py:590
 #, python-format
 msgid "Exception handling resource: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:596
+#: cinder/api/openstack/wsgi.py:595
 #, python-format
 msgid "Fault thrown: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:599
+#: cinder/api/openstack/wsgi.py:598
 #, python-format
 msgid "HTTP exception thrown: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:707
+#: cinder/api/openstack/wsgi.py:706
 msgid "Unrecognized Content-Type provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:711
+#: cinder/api/openstack/wsgi.py:710
 msgid "No Content-Type provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:715
+#: cinder/api/openstack/wsgi.py:714
 msgid "Empty body provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:826
+#: cinder/api/openstack/wsgi.py:825
 #, python-format
 msgid "There is no such action: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:829 cinder/api/openstack/wsgi.py:842
+#: cinder/api/openstack/wsgi.py:828 cinder/api/openstack/wsgi.py:841
 #: cinder/api/v1/snapshot_metadata.py:55 cinder/api/v1/snapshot_metadata.py:73
 #: cinder/api/v1/snapshot_metadata.py:98 cinder/api/v1/snapshot_metadata.py:123
 #: cinder/api/v1/volume_metadata.py:55 cinder/api/v1/volume_metadata.py:73
@@ -1202,15 +1202,15 @@ msgstr ""
 msgid "Malformed request body"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:839
+#: cinder/api/openstack/wsgi.py:838
 msgid "Unsupported Content-Type"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:851
+#: cinder/api/openstack/wsgi.py:850
 msgid "Malformed request url"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:899
+#: cinder/api/openstack/wsgi.py:898
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
 msgstr ""
@@ -1658,6 +1658,40 @@ msgstr ""
 #: cinder/backup/services/swift.py:467
 #, python-format
 msgid "delete %s finished"
+msgstr ""
+
+#: cinder/brick/initiator/connector.py:111
+#, python-format
+msgid "iSCSI device not found at %s"
+msgstr ""
+
+#: cinder/brick/initiator/connector.py:113
+#, python-format
+msgid ""
+"ISCSI volume not yet found at: %(host_device)s. Will rescan & retry.  Try"
+" number: %(tries)s"
+msgstr ""
+
+#: cinder/brick/initiator/connector.py:126
+#, python-format
+msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
+msgstr ""
+
+#: cinder/brick/initiator/linuxscsi.py:83
+#: cinder/brick/initiator/linuxscsi.py:91
+#: cinder/brick/initiator/linuxscsi.py:109
+#, python-format
+msgid "multipath call failed exit (%(code)s)"
+msgstr ""
+
+#: cinder/brick/initiator/linuxscsi.py:130
+#, python-format
+msgid "Couldn't find multipath device %(line)s"
+msgstr ""
+
+#: cinder/brick/initiator/linuxscsi.py:134
+#, python-format
+msgid "Found multipath device = %(mdev)s"
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:155
@@ -2640,7 +2674,7 @@ msgstr ""
 msgid "Host %(host)s %(pass_msg)s.  Previously tried hosts: %(hosts)s"
 msgstr ""
 
-#: cinder/tests/fake_driver.py:45 cinder/volume/driver.py:602
+#: cinder/tests/fake_driver.py:45 cinder/volume/driver.py:542
 #, python-format
 msgid "FAKE ISCSI: %s"
 msgstr ""
@@ -2775,7 +2809,7 @@ msgstr ""
 msgid "Volume in unexpected state"
 msgstr ""
 
-#: cinder/transfer/api.py:104 cinder/volume/api.py:108 cinder/volume/api.py:474
+#: cinder/transfer/api.py:104 cinder/volume/api.py:108 cinder/volume/api.py:489
 #: cinder/volume/manager.py:588
 msgid "status must be available"
 msgstr ""
@@ -2843,167 +2877,150 @@ msgstr ""
 msgid "Image minDisk size is larger than the volume size."
 msgstr ""
 
-#: cinder/volume/api.py:315
+#: cinder/volume/api.py:310
 msgid "Availability zone is invalid"
 msgstr ""
 
-#: cinder/volume/api.py:337
+#: cinder/volume/api.py:352
 msgid "Failed to update quota for deleting volume"
 msgstr ""
 
-#: cinder/volume/api.py:345
+#: cinder/volume/api.py:360
 msgid "Volume status must be available or error"
 msgstr ""
 
-#: cinder/volume/api.py:354
+#: cinder/volume/api.py:369
 #, python-format
 msgid "Volume still has %d dependent snapshots"
 msgstr ""
 
-#: cinder/volume/api.py:399 cinder/volume/api.py:457
+#: cinder/volume/api.py:414 cinder/volume/api.py:472
 #: cinder/volume/volume_types.py:69
 #, python-format
 msgid "Searching by: %s"
 msgstr ""
 
-#: cinder/volume/api.py:477
+#: cinder/volume/api.py:492
 msgid "already attached"
 msgstr ""
 
-#: cinder/volume/api.py:484
+#: cinder/volume/api.py:499
 msgid "already detached"
 msgstr ""
 
-#: cinder/volume/api.py:495
+#: cinder/volume/api.py:510
 msgid "Volume status must be available to reserve"
 msgstr ""
 
-#: cinder/volume/api.py:549
+#: cinder/volume/api.py:564
 msgid "must be available"
 msgstr ""
 
-#: cinder/volume/api.py:567
+#: cinder/volume/api.py:582
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/volume/api.py:576
+#: cinder/volume/api.py:591
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr ""
 
-#: cinder/volume/api.py:625
+#: cinder/volume/api.py:640
 msgid "Volume Snapshot status must be available or error"
 msgstr ""
 
-#: cinder/volume/api.py:653
+#: cinder/volume/api.py:668
 msgid "Metadata property key blank"
 msgstr ""
 
-#: cinder/volume/api.py:657
+#: cinder/volume/api.py:672
 msgid "Metadata property key greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:661
+#: cinder/volume/api.py:676
 msgid "Metadata property value greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:746
+#: cinder/volume/api.py:761
 msgid "Volume status must be available/in-use."
 msgstr ""
 
-#: cinder/volume/api.py:749
+#: cinder/volume/api.py:764
 msgid "Volume status is in-use."
 msgstr ""
 
-#: cinder/volume/api.py:778
+#: cinder/volume/api.py:793
 msgid "Volume status must be available to extend."
 msgstr ""
 
-#: cinder/volume/api.py:783
+#: cinder/volume/api.py:798
 #, python-format
 msgid ""
 "New size for extend must be greater than current size. (current: "
 "%(size)s, extended: %(new_size)s)"
 msgstr ""
 
-#: cinder/volume/api.py:799
+#: cinder/volume/api.py:814
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to extend volume by %(s_size)sG, "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/volume/driver.py:107 cinder/volume/drivers/netapp/nfs.py:154
+#: cinder/volume/driver.py:108 cinder/volume/drivers/netapp/nfs.py:154
 #, python-format
 msgid "Recovering from a failed execute.  Try number %s"
 msgstr ""
 
-#: cinder/volume/driver.py:219
+#: cinder/volume/driver.py:220
 msgid "Extend volume not implemented"
 msgstr ""
 
-#: cinder/volume/driver.py:245 cinder/volume/drivers/emc/emc_smis_iscsi.py:113
+#: cinder/volume/driver.py:246 cinder/volume/drivers/emc/emc_smis_iscsi.py:113
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr ""
 
-#: cinder/volume/driver.py:293
+#: cinder/volume/driver.py:294
 #, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr ""
 
-#: cinder/volume/driver.py:297 cinder/volume/drivers/emc/emc_smis_iscsi.py:156
+#: cinder/volume/driver.py:298 cinder/volume/drivers/emc/emc_smis_iscsi.py:156
 #, python-format
 msgid "ISCSI Discovery: Found %s"
 msgstr ""
 
-#: cinder/volume/driver.py:384
+#: cinder/volume/driver.py:385
 msgid "The volume driver requires the iSCSI initiator name in the connector."
 msgstr ""
 
-#: cinder/volume/driver.py:399
+#: cinder/volume/driver.py:400
 #, python-format
 msgid "Failed to access the device on the path %(path)s: %(error)s."
 msgstr ""
 
-#: cinder/volume/driver.py:419
+#: cinder/volume/driver.py:420
 #, python-format
 msgid "copy_image_to_volume %s."
 msgstr ""
 
-#: cinder/volume/driver.py:436
+#: cinder/volume/driver.py:438
 #, python-format
 msgid "copy_volume_to_image %s."
 msgstr ""
 
-#: cinder/volume/driver.py:515
-#, python-format
-msgid "iSCSI device not found at %s"
-msgstr ""
-
-#: cinder/volume/driver.py:519
-#, python-format
-msgid ""
-"ISCSI volume not yet found at: %(host_device)s. Will rescan & retry.  Try"
-" number: %(tries)s."
-msgstr ""
-
-#: cinder/volume/driver.py:532
-#, python-format
-msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)."
-msgstr ""
-
-#: cinder/volume/driver.py:539
+#: cinder/volume/driver.py:469
 #, python-format
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr ""
 
-#: cinder/volume/driver.py:559 cinder/volume/manager.py:743
-#: cinder/volume/drivers/lvm.py:568 cinder/volume/drivers/lvm.py:695
+#: cinder/volume/driver.py:499 cinder/volume/manager.py:743
+#: cinder/volume/drivers/lvm.py:597 cinder/volume/drivers/lvm.py:724
 #: cinder/volume/drivers/storwize_svc.py:1346
 #: cinder/volume/drivers/emc/emc_smis_common.py:857
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:235
@@ -3014,7 +3031,7 @@ msgstr ""
 msgid "Updating volume status"
 msgstr ""
 
-#: cinder/volume/driver.py:640
+#: cinder/volume/driver.py:580
 msgid "Driver must implement initialize_connection"
 msgstr ""
 
@@ -3346,68 +3363,75 @@ msgstr ""
 msgid "%s is already mounted"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:82
+#: cinder/volume/drivers/lvm.py:84
 #, python-format
 msgid "volume group %s doesn't exist"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:202
+#: cinder/volume/drivers/lvm.py:115
+#, python-format
+msgid ""
+"Incorrect value error: %(blocksize)s, it may indicate that "
+"'volume_dd_blocksize' was configured incorrectly. Fall back to default."
+msgstr ""
+
+#: cinder/volume/drivers/lvm.py:231
 #, python-format
 msgid "Size for volume: %s not found, skipping secure delete."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:209
+#: cinder/volume/drivers/lvm.py:238
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:223
+#: cinder/volume/drivers/lvm.py:252
 #, python-format
 msgid "Error unrecognized volume_clear option: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:243
+#: cinder/volume/drivers/lvm.py:272
 #, python-format
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:273 cinder/volume/drivers/lvm.py:672
+#: cinder/volume/drivers/lvm.py:302 cinder/volume/drivers/lvm.py:701
 #, python-format
 msgid "Creating clone of volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:350
+#: cinder/volume/drivers/lvm.py:379
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:371
+#: cinder/volume/drivers/lvm.py:400
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:385
+#: cinder/volume/drivers/lvm.py:414
 msgid "Detected inconsistency in provider_location id"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:437
+#: cinder/volume/drivers/lvm.py:466
 #, python-format
 msgid "Symbolic link %s not found"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:517 cinder/volume/drivers/lvm.py:531
+#: cinder/volume/drivers/lvm.py:546 cinder/volume/drivers/lvm.py:560
 #, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:549
+#: cinder/volume/drivers/lvm.py:578
 #, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume:"
 " %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:591
+#: cinder/volume/drivers/lvm.py:620
 #, python-format
 msgid "Error retrieving volume status: %s"
 msgstr ""
@@ -5772,4 +5796,13 @@ msgstr ""
 #, python-format
 msgid "Unexpected state while cloning %s"
 msgstr ""
+
+#~ msgid ""
+#~ "ISCSI volume not yet found at: "
+#~ "%(host_device)s. Will rescan & retry.  "
+#~ "Try number: %(tries)s."
+#~ msgstr ""
+
+#~ msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)."
+#~ msgstr ""
 
