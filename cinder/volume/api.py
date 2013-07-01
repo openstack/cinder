@@ -86,7 +86,7 @@ class API(base.Base):
                               glance.get_default_image_service())
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
-        self.availability_zones = set()
+        self.availability_zone_names = ()
         super(API, self).__init__(db_driver)
 
     def create(self, context, size, name, description, snapshot=None,
@@ -298,23 +298,38 @@ class API(base.Base):
                 filter_properties=filter_properties)
 
     def _check_availabilty_zone(self, availability_zone):
-        if availability_zone in self.availability_zones:
+        #NOTE(bcwaldon): This approach to caching fails to handle the case
+        # that an availability zone is disabled/removed.
+        if availability_zone in self.availability_zone_names:
             return
 
-        ctxt = context.get_admin_context()
-        topic = CONF.volume_topic
-        volume_services = self.db.service_get_all_by_topic(ctxt, topic)
+        azs = self.list_availability_zones()
+        self.availability_zone_names = [az['name'] for az in azs]
 
-        # NOTE(haomai): In case of volume services isn't init or
-        # availability_zones is updated in the backend
-        self.availability_zones = set()
-        for service in volume_services:
-            self.availability_zones.add(service['availability_zone'])
-
-        if availability_zone not in self.availability_zones:
+        if availability_zone not in self.availability_zone_names:
             msg = _("Availability zone is invalid")
             LOG.warn(msg)
             raise exception.InvalidInput(reason=msg)
+
+    def list_availability_zones(self):
+        """Describe the known availability zones
+
+        :retval list of dicts, each with a 'name' and 'available' key
+        """
+        topic = CONF.volume_topic
+        ctxt = context.get_admin_context()
+        services = self.db.service_get_all_by_topic(ctxt, topic)
+        az_data = [(s['availability_zone'], s['disabled']) for s in services]
+
+        disabled_map = {}
+        for (az_name, disabled) in az_data:
+            tracked_disabled = disabled_map.get(az_name, True)
+            disabled_map[az_name] = tracked_disabled and disabled
+
+        azs = [{'name': name, 'available': not disabled}
+               for (name, disabled) in disabled_map.items()]
+
+        return tuple(azs)
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):

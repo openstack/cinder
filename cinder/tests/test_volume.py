@@ -1273,6 +1273,31 @@ class VolumeTestCase(test.TestCase):
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_volume(self.context, volume_src['id'])
 
+    def test_list_availability_zones_enabled_service(self):
+        services = [
+            {'availability_zone': 'ping', 'disabled': 0},
+            {'availability_zone': 'ping', 'disabled': 1},
+            {'availability_zone': 'pong', 'disabled': 0},
+            {'availability_zone': 'pung', 'disabled': 1},
+        ]
+
+        def stub_service_get_all_by_topic(*args, **kwargs):
+            return services
+
+        self.stubs.Set(db, 'service_get_all_by_topic',
+                       stub_service_get_all_by_topic)
+
+        volume_api = cinder.volume.api.API()
+        azs = volume_api.list_availability_zones()
+
+        expected = (
+            {'name': 'pung', 'available': False},
+            {'name': 'pong', 'available': True},
+            {'name': 'ping', 'available': True},
+        )
+
+        self.assertEqual(expected, azs)
+
 
 class DriverTestCase(test.TestCase):
     """Base Test class for Drivers."""
