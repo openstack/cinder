@@ -526,10 +526,11 @@ class API(base.Base):
             self.update(context, volume, {"status": "in-use"})
 
     @wrap_check_policy
-    def attach(self, context, volume, instance_uuid, mountpoint):
+    def attach(self, context, volume, instance_uuid, host_name, mountpoint):
         return self.volume_rpcapi.attach_volume(context,
                                                 volume,
                                                 instance_uuid,
+                                                host_name,
                                                 mountpoint)
 
     @wrap_check_policy

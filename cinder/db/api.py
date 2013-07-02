@@ -199,9 +199,10 @@ def volume_allocate_iscsi_target(context, volume_id, host):
     return IMPL.volume_allocate_iscsi_target(context, volume_id, host)
 
 
-def volume_attached(context, volume_id, instance_id, mountpoint):
+def volume_attached(context, volume_id, instance_id, host_name, mountpoint):
     """Ensure that a volume is set as attached."""
-    return IMPL.volume_attached(context, volume_id, instance_id, mountpoint)
+    return IMPL.volume_attached(context, volume_id, instance_id, host_name,
+                                mountpoint)
 
 
 def volume_create(context, values):

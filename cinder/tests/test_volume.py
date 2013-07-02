@@ -376,18 +376,48 @@ class VolumeTestCase(test.TestCase):
 
     def test_run_attach_detach_volume(self):
         """Make sure volume can be attached and detached from instance."""
-        instance_uuid = '12345678-1234-5678-1234-567812345678'
         mountpoint = "/dev/sdf"
+        # attach volume to the instance then to detach
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
         volume = self._create_volume()
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
         self.volume.attach_volume(self.context, volume_id, instance_uuid,
-                                  mountpoint)
+                                  None, mountpoint)
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(vol['status'], "in-use")
         self.assertEqual(vol['attach_status'], "attached")
         self.assertEqual(vol['mountpoint'], mountpoint)
         self.assertEqual(vol['instance_uuid'], instance_uuid)
+        self.assertEqual(vol['attached_host'], None)
+
+        self.assertRaises(exception.VolumeAttached,
+                          self.volume.delete_volume,
+                          self.context,
+                          volume_id)
+        self.volume.detach_volume(self.context, volume_id)
+        vol = db.volume_get(self.context, volume_id)
+        self.assertEqual(vol['status'], "available")
+
+        self.volume.delete_volume(self.context, volume_id)
+        self.assertRaises(exception.VolumeNotFound,
+                          db.volume_get,
+                          self.context,
+                          volume_id)
+
+        # attach volume to the host then to detach
+        volume = self._create_volume()
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        self.volume.attach_volume(self.context, volume_id, None,
+                                  'fake_host', mountpoint)
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['status'], "in-use")
+        self.assertEqual(vol['attach_status'], "attached")
+        self.assertEqual(vol['mountpoint'], mountpoint)
+        self.assertEqual(vol['instance_uuid'], None)
+        # sanitized, conforms to RFC-952 and RFC-1123 specs.
+        self.assertEqual(vol['attached_host'], 'fake-host')
 
         self.assertRaises(exception.VolumeAttached,
                           self.volume.delete_volume,
@@ -638,11 +668,30 @@ class VolumeTestCase(test.TestCase):
             pass
         self.stubs.Set(rpc, 'cast', fake_cast)
         instance_uuid = '12345678-1234-5678-1234-567812345678'
-
+        # create volume and attach to the instance
         volume = self._create_volume()
         self.volume.create_volume(self.context, volume['id'])
         db.volume_attached(self.context, volume['id'], instance_uuid,
-                           '/dev/sda1')
+                           None, '/dev/sda1')
+
+        volume_api = cinder.volume.api.API()
+        volume = volume_api.get(self.context, volume['id'])
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.create_snapshot,
+                          self.context, volume,
+                          'fake_name', 'fake_description')
+        snapshot_ref = volume_api.create_snapshot_force(self.context,
+                                                        volume,
+                                                        'fake_name',
+                                                        'fake_description')
+        db.snapshot_destroy(self.context, snapshot_ref['id'])
+        db.volume_destroy(self.context, volume['id'])
+
+        # create volume and attach to the host
+        volume = self._create_volume()
+        self.volume.create_volume(self.context, volume['id'])
+        db.volume_attached(self.context, volume['id'], None,
+                           'fake_host', '/dev/sda1')
 
         volume_api = cinder.volume.api.API()
         volume = volume_api.get(self.context, volume['id'])

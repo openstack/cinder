@@ -264,7 +264,7 @@ class AdminActionsTest(test.TestCase):
         # cleanup
         svc.stop()
 
-    def test_force_detach_volume(self):
+    def test_force_detach_instance_attached_volume(self):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
@@ -276,11 +276,12 @@ class AdminActionsTest(test.TestCase):
         self.volume_api.reserve_volume(ctx, volume)
         self.volume_api.initialize_connection(ctx, volume, connector)
         mountpoint = '/dev/vbd'
-        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, mountpoint)
+        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, None, mountpoint)
         # volume is attached
         volume = db.volume_get(ctx, volume['id'])
         self.assertEquals(volume['status'], 'in-use')
         self.assertEquals(volume['instance_uuid'], stubs.FAKE_UUID)
+        self.assertEquals(volume['attached_host'], None)
         self.assertEquals(volume['mountpoint'], mountpoint)
         self.assertEquals(volume['attach_status'], 'attached')
         # build request to force detach
@@ -304,7 +305,50 @@ class AdminActionsTest(test.TestCase):
         # cleanup
         svc.stop()
 
-    def test_attach_in_use_volume(self):
+    def test_force_detach_host_attached_volume(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': ''})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        # start service to handle rpc messages for attach requests
+        svc = self.start_service('volume', host='test')
+        self.volume_api.reserve_volume(ctx, volume)
+        self.volume_api.initialize_connection(ctx, volume, connector)
+        mountpoint = '/dev/vbd'
+        host_name = 'fake-host'
+        self.volume_api.attach(ctx, volume, None, host_name, mountpoint)
+        # volume is attached
+        volume = db.volume_get(ctx, volume['id'])
+        self.assertEquals(volume['status'], 'in-use')
+        self.assertEquals(volume['instance_uuid'], None)
+        self.assertEquals(volume['attached_host'], host_name)
+        self.assertEquals(volume['mountpoint'], mountpoint)
+        self.assertEquals(volume['attach_status'], 'attached')
+        # build request to force detach
+        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        # request status of 'error'
+        req.body = jsonutils.dumps({'os-force_detach': None})
+        # attach admin context to request
+        req.environ['cinder.context'] = ctx
+        # make request
+        resp = req.get_response(app())
+        # request is accepted
+        self.assertEquals(resp.status_int, 202)
+        volume = db.volume_get(ctx, volume['id'])
+        # status changed to 'available'
+        self.assertEquals(volume['status'], 'available')
+        self.assertEquals(volume['instance_uuid'], None)
+        self.assertEquals(volume['attached_host'], None)
+        self.assertEquals(volume['mountpoint'], None)
+        self.assertEquals(volume['attach_status'], 'detached')
+        # cleanup
+        svc.stop()
+
+    def test_attach_in_used_volume_by_instance(self):
         """Test that attaching to an in-use volume fails."""
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
@@ -317,12 +361,38 @@ class AdminActionsTest(test.TestCase):
         self.volume_api.reserve_volume(ctx, volume)
         self.volume_api.initialize_connection(ctx, volume, connector)
         mountpoint = '/dev/vbd'
-        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, mountpoint)
+        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, None, mountpoint)
         self.assertRaises(exception.InvalidVolume,
                           self.volume_api.attach,
                           ctx,
                           volume,
                           fakes.get_fake_uuid(),
+                          None,
+                          mountpoint)
+        # cleanup
+        svc.stop()
+
+    def test_attach_in_used_volume_by_host(self):
+        """Test that attaching to an in-use volume fails."""
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': ''})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        # start service to handle rpc messages for attach requests
+        svc = self.start_service('volume', host='test')
+        self.volume_api.reserve_volume(ctx, volume)
+        self.volume_api.initialize_connection(ctx, volume, connector)
+        mountpoint = '/dev/vbd'
+        host_name = 'fake_host'
+        self.volume_api.attach(ctx, volume, None, host_name, mountpoint)
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.attach,
+                          ctx,
+                          volume,
+                          None,
+                          host_name,
                           mountpoint)
         # cleanup
         svc.stop()
@@ -363,6 +433,7 @@ class AdminActionsTest(test.TestCase):
                           ctx,
                           volume,
                           stubs.FAKE_UUID,
+                          None,
                           mountpoint)
         # cleanup
         svc.stop()

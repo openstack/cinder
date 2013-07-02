@@ -76,12 +76,27 @@ class VolumeActionsController(wsgi.Controller):
         """Add attachment metadata."""
         context = req.environ['cinder.context']
         volume = self.volume_api.get(context, id)
-
-        instance_uuid = body['os-attach']['instance_uuid']
+        # instance uuid is an option now
+        instance_uuid = None
+        if 'instance_uuid' in body['os-attach']:
+            instance_uuid = body['os-attach']['instance_uuid']
+        host_name = None
+        # Keep API backward compatibility
+        if 'host_name' in body['os-attach']:
+            host_name = body['os-attach']['host_name']
         mountpoint = body['os-attach']['mountpoint']
 
+        if instance_uuid and host_name:
+            msg = _("Invalid request to attach volume to an "
+                    "instance %(instance_uuid)s and a "
+                    "host %(host_name)s simultaneously") % (locals())
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        elif instance_uuid is None and host_name is None:
+            msg = _("Invalid request to attach volume to an invalid target")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         self.volume_api.attach(context, volume,
-                               instance_uuid, mountpoint)
+                               instance_uuid, host_name, mountpoint)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-detach')

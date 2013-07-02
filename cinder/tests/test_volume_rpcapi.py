@@ -138,12 +138,23 @@ class VolumeRpcAPITestCase(test.TestCase):
                               snapshot=self.fake_snapshot,
                               host='fake_host')
 
-    def test_attach_volume(self):
+    def test_attach_volume_to_instance(self):
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume,
                               instance_uuid='fake_uuid',
-                              mountpoint='fake_mountpoint')
+                              host_name=None,
+                              mountpoint='fake_mountpoint',
+                              version='1.7')
+
+    def test_attach_volume_to_host(self):
+        self._test_volume_api('attach_volume',
+                              rpc_method='call',
+                              volume=self.fake_volume,
+                              instance_uuid=None,
+                              host_name='fake_host',
+                              mountpoint='fake_mountpoint',
+                              version='1.7')
 
     def test_detach_volume(self):
         self._test_volume_api('detach_volume',

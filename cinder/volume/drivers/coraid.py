@@ -440,8 +440,5 @@ class CoraidDriver(driver.VolumeDriver):
     def ensure_export(self, context, volume):
         pass
 
-    def attach_volume(self, context, volume, instance_uuid, mountpoint):
-        pass
-
     def detach_volume(self, context, volume):
         pass

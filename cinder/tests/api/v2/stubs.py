@@ -32,6 +32,7 @@ def stub_volume(id, **kwargs):
         'size': 1,
         'availability_zone': 'fakeaz',
         'instance_uuid': 'fakeuuid',
+        'attached_host': None,
         'mountpoint': '/',
         'status': 'fakestatus',
         'attach_status': 'attached',

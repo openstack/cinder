@@ -235,6 +235,7 @@ class VolumeApiTest(test.TestCase):
                         'id': '1',
                         'volume_id': '1',
                         'server_id': 'fakeuuid',
+                        'host_name': None,
                         'device': '/',
                     }
                 ],
@@ -276,6 +277,7 @@ class VolumeApiTest(test.TestCase):
                 'id': '1',
                 'volume_id': '1',
                 'server_id': 'fakeuuid',
+                'host_name': None,
                 'device': '/',
             }],
             'volume_type': 'vol_type_name',
@@ -366,6 +368,7 @@ class VolumeApiTest(test.TestCase):
                         {
                             'device': '/',
                             'server_id': 'fakeuuid',
+                            'host_name': None,
                             'id': '1',
                             'volume_id': '1'
                         }
@@ -600,6 +603,7 @@ class VolumeApiTest(test.TestCase):
                     {
                         'device': '/',
                         'server_id': 'fakeuuid',
+                        'host_name': None,
                         'id': '1',
                         'volume_id': '1'
                     }
