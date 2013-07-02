@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-07-01 18:10+0000\n"
+"POT-Creation-Date: 2013-07-02 18:10+0000\n"
 "PO-Revision-Date: 2013-05-08 11:44+0000\n"
 "Last-Translator: markmc <markmc@redhat.com>\n"
 "Language-Team: en_US <LL@li.org>\n"
@@ -546,19 +546,24 @@ msgstr "Failed to copy image to volume"
 
 #: cinder/exception.py:568
 #, python-format
+msgid "Backup volume %(volume_id)s type not recognised."
+msgstr ""
+
+#: cinder/exception.py:572
+#, python-format
 msgid "Backup %(backup_id)s could not be found."
 msgstr "Backup %(backup_id)s could not be found."
 
-#: cinder/exception.py:572
+#: cinder/exception.py:576
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "Invalid backup: %(reason)s"
 
-#: cinder/exception.py:576
+#: cinder/exception.py:580
 msgid "Connection to swift failed"
 msgstr "Connection to swift failed"
 
-#: cinder/exception.py:580
+#: cinder/exception.py:584
 #, fuzzy, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "Image %(image_id)s could not be found."
@@ -715,7 +720,7 @@ msgid "Fetching %s"
 msgstr "Fetching %s"
 
 #: cinder/utils.py:134 cinder/openstack/common/processutils.py:218
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:257
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:270
 #, python-format
 msgid "Running cmd (SSH): %s"
 msgstr "Running cmd (SSH): %s"
@@ -730,7 +735,7 @@ msgstr "process_input not supported over SSH"
 
 #: cinder/utils.py:160 cinder/openstack/common/processutils.py:167
 #: cinder/openstack/common/processutils.py:239
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:284
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:297
 #, python-format
 msgid "Result was %s"
 msgstr "Result was %s"
@@ -1365,41 +1370,41 @@ msgstr "Volume to be restored to is smaller than the backup to be restored"
 msgid "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
 msgstr "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
 
-#: cinder/backup/manager.py:81
+#: cinder/backup/manager.py:82
 msgid "Cleaning up incomplete backup operations"
 msgstr "Cleaning up incomplete backup operations"
 
-#: cinder/backup/manager.py:85
+#: cinder/backup/manager.py:86
 #, python-format
 msgid "Resetting volume %s to available (was backing-up)"
 msgstr "Resetting volume %s to available (was backing-up)"
 
-#: cinder/backup/manager.py:89
+#: cinder/backup/manager.py:90
 #, python-format
 msgid "Resetting volume %s to error_restoring (was restoring-backup)"
 msgstr "Resetting volume %s to error_restoring (was restoring-backup)"
 
-#: cinder/backup/manager.py:100
+#: cinder/backup/manager.py:101
 #, python-format
 msgid "Resetting backup %s to error (was creating)"
 msgstr "Resetting backup %s to error (was creating)"
 
-#: cinder/backup/manager.py:106
+#: cinder/backup/manager.py:107
 #, python-format
 msgid "Resetting backup %s to available (was restoring)"
 msgstr "Resetting backup %s to available (was restoring)"
 
-#: cinder/backup/manager.py:111
+#: cinder/backup/manager.py:112
 #, python-format
 msgid "Resuming delete on backup: %s"
 msgstr "Resuming delete on backup: %s"
 
-#: cinder/backup/manager.py:121
+#: cinder/backup/manager.py:122
 #, python-format
 msgid "create_backup started, backup: %(backup_id)s for volume: %(volume_id)s"
 msgstr "create_backup started, backup: %(backup_id)s for volume: %(volume_id)s"
 
-#: cinder/backup/manager.py:131
+#: cinder/backup/manager.py:132
 #, python-format
 msgid ""
 "create_backup aborted, expected volume status %(expected_status)s but got"
@@ -1408,7 +1413,7 @@ msgstr ""
 "create_backup aborted, expected volume status %(expected_status)s but got"
 " %(actual_status)s"
 
-#: cinder/backup/manager.py:143
+#: cinder/backup/manager.py:144
 #, python-format
 msgid ""
 "create_backup aborted, expected backup status %(expected_status)s but got"
@@ -1417,12 +1422,12 @@ msgstr ""
 "create_backup aborted, expected backup status %(expected_status)s but got"
 " %(actual_status)s"
 
-#: cinder/backup/manager.py:169
+#: cinder/backup/manager.py:170
 #, python-format
 msgid "create_backup finished. backup: %s"
 msgstr "create_backup finished. backup: %s"
 
-#: cinder/backup/manager.py:175
+#: cinder/backup/manager.py:176
 #, python-format
 msgid ""
 "restore_backup started, restoring backup: %(backup_id)s to volume: "
@@ -1431,7 +1436,7 @@ msgstr ""
 "restore_backup started, restoring backup: %(backup_id)s to volume: "
 "%(volume_id)s"
 
-#: cinder/backup/manager.py:185
+#: cinder/backup/manager.py:186
 #, python-format
 msgid ""
 "restore_backup aborted, expected volume status %(expected_status)s but "
@@ -1440,7 +1445,7 @@ msgstr ""
 "restore_backup aborted, expected volume status %(expected_status)s but "
 "got %(actual_status)s"
 
-#: cinder/backup/manager.py:196
+#: cinder/backup/manager.py:197
 #, python-format
 msgid ""
 "restore_backup aborted, expected backup status %(expected_status)s but "
@@ -1449,7 +1454,7 @@ msgstr ""
 "restore_backup aborted, expected backup status %(expected_status)s but "
 "got %(actual_status)s"
 
-#: cinder/backup/manager.py:215
+#: cinder/backup/manager.py:216
 #, python-format
 msgid ""
 "restore_backup aborted, the backup service currently configured "
@@ -1460,7 +1465,7 @@ msgstr ""
 "[%(configured_service)s] is not the backup service that was used to "
 "create this backup [%(backup_service)s]"
 
-#: cinder/backup/manager.py:239
+#: cinder/backup/manager.py:240
 #, python-format
 msgid ""
 "restore_backup finished, backup: %(backup_id)s restored to volume: "
@@ -1469,12 +1474,12 @@ msgstr ""
 "restore_backup finished, backup: %(backup_id)s restored to volume: "
 "%(volume_id)s"
 
-#: cinder/backup/manager.py:248
+#: cinder/backup/manager.py:249
 #, python-format
 msgid "delete_backup started, backup: %s"
 msgstr "delete_backup started, backup: %s"
 
-#: cinder/backup/manager.py:254
+#: cinder/backup/manager.py:255
 #, python-format
 msgid ""
 "delete_backup aborted, expected backup status %(expected_status)s but got"
@@ -1483,7 +1488,7 @@ msgstr ""
 "delete_backup aborted, expected backup status %(expected_status)s but got"
 " %(actual_status)s"
 
-#: cinder/backup/manager.py:267
+#: cinder/backup/manager.py:268
 #, python-format
 msgid ""
 "delete_backup aborted, the backup service currently configured "
@@ -1494,10 +1499,20 @@ msgstr ""
 "[%(configured_service)s] is not the backup service that was used to "
 "create this backup [%(backup_service)s]"
 
-#: cinder/backup/manager.py:290
+#: cinder/backup/manager.py:291
 #, python-format
 msgid "delete_backup finished, backup %s deleted"
 msgstr "delete_backup finished, backup %s deleted"
+
+#: cinder/backup/services/ceph.py:220
+#, python-format
+msgid "backup '%s' finished."
+msgstr ""
+
+#: cinder/backup/services/ceph.py:271
+#, python-format
+msgid "delete '%s' finished"
+msgstr ""
 
 #: cinder/backup/services/swift.py:105
 #, python-format
@@ -3408,36 +3423,41 @@ msgstr "Configure response : %s"
 msgid "Unable to retrive volume infos for volume %(volname)s"
 msgstr "Unable to retrive volume infos for volume %(volname)s"
 
-#: cinder/volume/drivers/coraid.py:286
+#: cinder/volume/drivers/coraid.py:299
 msgid "Cannot login on Coraid ESM"
 msgstr "Cannot login on Coraid ESM"
 
-#: cinder/volume/drivers/coraid.py:305
+#: cinder/volume/drivers/coraid.py:318
 #, python-format
 msgid "Fail to create volume %(volname)s"
 msgstr "Fail to create volume %(volname)s"
 
-#: cinder/volume/drivers/coraid.py:318
+#: cinder/volume/drivers/coraid.py:331
 #, python-format
 msgid "Failed to delete volume %(volname)s"
 msgstr "Failed to delete volume %(volname)s"
 
-#: cinder/volume/drivers/coraid.py:332
+#: cinder/volume/drivers/coraid.py:345
 #, python-format
 msgid "Failed to Create Snapshot %(snapname)s"
 msgstr "Failed to Create Snapshot %(snapname)s"
 
-#: cinder/volume/drivers/coraid.py:344
+#: cinder/volume/drivers/coraid.py:357
 #, python-format
 msgid "Failed to Delete Snapshot %(snapname)s"
 msgstr "Failed to Delete Snapshot %(snapname)s"
 
-#: cinder/volume/drivers/coraid.py:359
+#: cinder/volume/drivers/coraid.py:375
 #, python-format
 msgid "Failed to Create Volume from Snapshot %(snapname)s"
 msgstr "Failed to Create Volume from Snapshot %(snapname)s"
 
-#: cinder/volume/drivers/coraid.py:380
+#: cinder/volume/drivers/coraid.py:385
+#, python-format
+msgid "Failed to Extend Volume %(volname)s"
+msgstr ""
+
+#: cinder/volume/drivers/coraid.py:406
 #, python-format
 msgid ""
 "Failed to Initialize Connection. Volume Name: %(volname)s Shelf: "
@@ -3696,115 +3716,120 @@ msgstr "Sheepdog is not working: %s"
 msgid "Sheepdog is not working"
 msgstr "Sheepdog is not working"
 
-#: cinder/volume/drivers/solidfire.py:133
+#: cinder/volume/drivers/solidfire.py:91 cinder/volume/drivers/solidfire.py:577
+#, python-format
+msgid "Update SolidFire Cluster stats failed: %s"
+msgstr ""
+
+#: cinder/volume/drivers/solidfire.py:138
 #, python-format
 msgid "Payload for SolidFire API call: %s"
 msgstr "Payload for SolidFire API call: %s"
 
-#: cinder/volume/drivers/solidfire.py:150
+#: cinder/volume/drivers/solidfire.py:155
 #, python-format
 msgid "Call to json.loads() raised an exception: %s"
 msgstr "Call to json.loads() raised an exception: %s"
 
-#: cinder/volume/drivers/solidfire.py:156
+#: cinder/volume/drivers/solidfire.py:161
 #, python-format
 msgid "Results of SolidFire API call: %s"
 msgstr "Results of SolidFire API call: %s"
 
-#: cinder/volume/drivers/solidfire.py:160
+#: cinder/volume/drivers/solidfire.py:165
 #, python-format
 msgid "Clone operation encountered: %s"
 msgstr "Clone operation encountered: %s"
 
-#: cinder/volume/drivers/solidfire.py:162
+#: cinder/volume/drivers/solidfire.py:167
 #, python-format
 msgid "Waiting for outstanding operation before retrying snapshot: %s"
 msgstr "Waiting for outstanding operation before retrying snapshot: %s"
 
-#: cinder/volume/drivers/solidfire.py:168
+#: cinder/volume/drivers/solidfire.py:173
 #, python-format
 msgid "Detected xDBVersionMismatch, retry %s of 5"
 msgstr "Detected xDBVersionMismatch, retry %s of 5"
 
-#: cinder/volume/drivers/solidfire.py:175
+#: cinder/volume/drivers/solidfire.py:180
 #, python-format
 msgid "API response: %s"
 msgstr "API response: %s"
 
-#: cinder/volume/drivers/solidfire.py:195
+#: cinder/volume/drivers/solidfire.py:200
 #, python-format
 msgid "Found solidfire account: %s"
 msgstr "Found solidfire account: %s"
 
-#: cinder/volume/drivers/solidfire.py:224
+#: cinder/volume/drivers/solidfire.py:229
 #, python-format
 msgid "solidfire account: %s does not exist, create it..."
 msgstr "solidfire account: %s does not exist, create it..."
 
-#: cinder/volume/drivers/solidfire.py:285
+#: cinder/volume/drivers/solidfire.py:290
 #, python-format
 msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 
-#: cinder/volume/drivers/solidfire.py:356
+#: cinder/volume/drivers/solidfire.py:361
 msgid "Failed to get model update from clone"
 msgstr "Failed to get model update from clone"
 
-#: cinder/volume/drivers/solidfire.py:382
+#: cinder/volume/drivers/solidfire.py:387
 #, python-format
 msgid "More than one valid preset was detected, using %s"
 msgstr "More than one valid preset was detected, using %s"
 
-#: cinder/volume/drivers/solidfire.py:415
+#: cinder/volume/drivers/solidfire.py:420
 #, python-format
 msgid "Mapped SolidFire volumeID %(sfid)s to cinder ID %(uuid)s."
 msgstr "Mapped SolidFire volumeID %(sfid)s to cinder ID %(uuid)s."
 
-#: cinder/volume/drivers/solidfire.py:424
+#: cinder/volume/drivers/solidfire.py:429
 #, python-format
 msgid "Volume %s, not found on SF Cluster."
 msgstr "Volume %s, not found on SF Cluster."
 
-#: cinder/volume/drivers/solidfire.py:427
+#: cinder/volume/drivers/solidfire.py:432
 #, python-format
 msgid "Found %(count)s volumes mapped to id: %(uuid)s."
 msgstr "Found %(count)s volumes mapped to id: %(uuid)s."
 
-#: cinder/volume/drivers/solidfire.py:494
+#: cinder/volume/drivers/solidfire.py:499
 msgid "Enter SolidFire delete_volume..."
 msgstr "Enter SolidFire delete_volume..."
 
-#: cinder/volume/drivers/solidfire.py:498
+#: cinder/volume/drivers/solidfire.py:503
 #, python-format
 msgid "Account for Volume ID %s was not found on the SolidFire Cluster!"
 msgstr "Account for Volume ID %s was not found on the SolidFire Cluster!"
 
-#: cinder/volume/drivers/solidfire.py:500
+#: cinder/volume/drivers/solidfire.py:505
 msgid "This usually means the volume was never succesfully created."
 msgstr "This usually means the volume was never succesfully created."
 
-#: cinder/volume/drivers/solidfire.py:515
+#: cinder/volume/drivers/solidfire.py:520
 #, python-format
 msgid "Volume ID %s was not found on the SolidFire Cluster!"
 msgstr "Volume ID %s was not found on the SolidFire Cluster!"
 
-#: cinder/volume/drivers/solidfire.py:518
+#: cinder/volume/drivers/solidfire.py:523
 msgid "Leaving SolidFire delete_volume"
 msgstr "Leaving SolidFire delete_volume"
 
-#: cinder/volume/drivers/solidfire.py:522
+#: cinder/volume/drivers/solidfire.py:527
 msgid "Executing SolidFire ensure_export..."
 msgstr "Executing SolidFire ensure_export..."
 
-#: cinder/volume/drivers/solidfire.py:527
+#: cinder/volume/drivers/solidfire.py:532
 msgid "Executing SolidFire create_export..."
 msgstr "Executing SolidFire create_export..."
 
-#: cinder/volume/drivers/solidfire.py:576
+#: cinder/volume/drivers/solidfire.py:586
 msgid "Updating cluster status info"
 msgstr "Updating cluster status info"
 
-#: cinder/volume/drivers/solidfire.py:584
+#: cinder/volume/drivers/solidfire.py:594
 msgid "Failed to get updated stats"
 msgstr "Failed to get updated stats"
 
@@ -3841,7 +3866,7 @@ msgstr "enter: check_for_setup_error"
 #: cinder/volume/drivers/storwize_svc.py:299
 #: cinder/volume/drivers/netapp/iscsi.py:123
 #: cinder/volume/drivers/netapp/nfs.py:221
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:131
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:137
 #, python-format
 msgid "%s is not set"
 msgstr "%s is not set"
@@ -6139,32 +6164,48 @@ msgstr "Cannot parse list-view output: %s"
 msgid "LUID not found for %(zfs_poolname)s. Output=%(out)s"
 msgstr "LUID not found for %(zfs_poolname)s. Output=%(out)s"
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:144
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:130
+msgid ""
+"hp3par_domain has been deprecated and is no longer used. The domain is "
+"automatically looked up based on the CPG."
+msgstr ""
+
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:150
 msgid "Login to 3PAR array invalid"
 msgstr "Login to 3PAR array invalid"
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:168
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:507
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:174
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:520
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) doesn't exist on array"
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:317
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:182
+#, python-format
+msgid "CPG (%s) doesn't exist on array."
+msgstr ""
+
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:188
+#, python-format
+msgid "CPG (%s) must be in a domain"
+msgstr ""
+
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:330
 #, python-format
 msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:323
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:336
 #, python-format
 msgid "Error running ssh command: %s"
 msgstr "Error running ssh command: %s"
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:561
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:574
 #, python-format
 msgid "Must specify a valid persona %(valid)s, value '%(persona)s' is invalid."
 msgstr "Must specify a valid persona %(valid)s, value '%(persona)s' is invalid."
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:617
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:630
 #, python-format
 msgid ""
 "Must specify a valid provisioning type %(valid)s, value '%(prov)s' is "
@@ -6173,22 +6214,13 @@ msgstr ""
 "Must specify a valid provisioning type %(valid)s, value '%(prov)s' is "
 "invalid."
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:645
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:658
 #, python-format
 msgid "Volume (%s) already exists on array"
 msgstr "Volume (%s) already exists on array"
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:707
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:728
 #, python-format
 msgid "Unexpected state while cloning %s"
 msgstr "Unexpected state while cloning %s"
-
-#~ msgid ""
-#~ "ISCSI volume not yet found at: "
-#~ "%(host_device)s. Will rescan & retry.  "
-#~ "Try number: %(tries)s."
-#~ msgstr ""
-
-#~ msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)."
-#~ msgstr ""
 
