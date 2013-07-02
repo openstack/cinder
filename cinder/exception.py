@@ -564,6 +564,10 @@ class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume: %(reason)s")
 
 
+class BackupVolumeInvalidType(Invalid):
+    message = _("Backup volume %(volume_id)s type not recognised.")
+
+
 class BackupNotFound(NotFound):
     message = _("Backup %(backup_id)s could not be found.")
 

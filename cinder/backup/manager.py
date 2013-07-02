@@ -16,8 +16,9 @@
 """
 Backup manager manages volume backups.
 
-Volume Backups are full copies of persistent volumes stored in Swift object
-storage. They are usable without the original object being available. A
+Volume Backups are full copies of persistent volumes stored in a backup
+store e.g. an object store or any other backup store if and when support is
+added. They are usable without the original object being available. A
 volume backup can be restored to the original volume it was created from or
 any other available volume with a minimum size of the original volume.
 Volume backups can be created, restored, deleted and listed.
