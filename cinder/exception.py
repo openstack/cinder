@@ -564,6 +564,18 @@ class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume: %(reason)s")
 
 
+class BackupInvalidCephArgs(Invalid):
+    message = _("Invalid Ceph args provided for backup rbd operation")
+
+
+class BackupOperationError(Invalid):
+    message = _("An error has occurred during backup operation")
+
+
+class BackupRBDOperationFailed(Invalid):
+    message = _("Backup RBD operation failed")
+
+
 class BackupVolumeInvalidType(Invalid):
     message = _("Backup volume %(volume_id)s type not recognised.")
 

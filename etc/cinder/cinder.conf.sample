@@ -1127,6 +1127,9 @@
 # Options defined in cinder.volume.drivers.rbd
 #
 
+# path to the ceph configuration file to use (string)
+#rbd_ceph_conf=/etc/ceph/ceph.conf
+
 # the RADOS pool in which rbd volumes are stored (string
 # value)
 #rbd_pool=rbd
