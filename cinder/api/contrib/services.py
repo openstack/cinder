@@ -51,10 +51,16 @@ class ServicesIndexTemplate(xmlutil.TemplateBuilder):
 
 class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
     def construct(self):
+        # TODO(uni): template elements of 'host', 'service' and 'disabled'
+        # should be deprecated to make ServicesUpdateTemplate consistent
+        # with ServicesIndexTemplate. Still keeping it here for API
+        # compability sake.
         root = xmlutil.TemplateElement('host')
         root.set('host')
         root.set('service')
         root.set('disabled')
+        root.set('binary')
+        root.set('status')
 
         return xmlutil.MasterTemplate(root, 1)
 
@@ -76,10 +82,18 @@ class ServiceController(object):
         service = ''
         if 'service' in req.GET:
             service = req.GET['service']
+            LOG.deprecated(_("Query by service parameter is deprecated. "
+                             "Please use binary parameter instead."))
+        binary = ''
+        if 'binary' in req.GET:
+            binary = req.GET['binary']
+
         if host:
             services = [s for s in services if s['host'] == host]
-        if service:
-            services = [s for s in services if s['binary'] == service]
+        # NOTE(uni): deprecating service request key, binary takes precedence
+        binary_key = binary or service
+        if binary_key:
+            services = [s for s in services if s['binary'] == binary_key]
 
         svcs = []
         for svc in services:
@@ -110,12 +124,19 @@ class ServiceController(object):
 
         try:
             host = body['host']
-            service = body['service']
         except (TypeError, KeyError):
             raise webob.exc.HTTPBadRequest()
 
+        # NOTE(uni): deprecating service request key, binary takes precedence
+        # Still keeping service key here for API compability sake.
+        service = body.get('service', '')
+        binary = body.get('binary', '')
+        binary_key = binary or service
+        if not binary_key:
+            raise webob.exc.HTTPBadRequest()
+
         try:
-            svc = db.service_get_by_args(context, host, service)
+            svc = db.service_get_by_args(context, host, binary_key)
             if not svc:
                 raise webob.exc.HTTPNotFound('Unknown service')
 
@@ -123,7 +144,12 @@ class ServiceController(object):
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound("service not found")
 
-        return {'host': host, 'service': service, 'disabled': disabled}
+        status = id + 'd'
+        return {'host': host,
+                'service': service,
+                'disabled': disabled,
+                'binary': binary,
+                'status': status}
 
 
 class Services(extensions.ExtensionDescriptor):
