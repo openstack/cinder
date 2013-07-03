@@ -135,6 +135,9 @@ class RequestContext(object):
 
         return context
 
+    def deepcopy(self):
+        return copy.deepcopy(self)
+
     # NOTE(sirp): the openstack/common version of RequestContext uses
     # tenant/user whereas the Cinder version uses project_id/user_id. We need
     # this shim in order to use context-aware code from openstack/common, like

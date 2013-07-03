@@ -209,6 +209,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None):
         """Creates and exports the volume."""
+        context_before_elevated = context.deepcopy()
         context = context.elevated()
         if filter_properties is None:
             filter_properties = {}
@@ -277,7 +278,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                           {'status': sourcevol_ref['status']})
                 exc_info = sys.exc_info()
                 # try to re-schedule volume:
-                self._reschedule_or_reraise(context, volume_id, exc_info,
+                self._reschedule_or_reraise(context_before_elevated,
+                                            volume_id, exc_info,
                                             snapshot_id, image_id,
                                             request_spec, filter_properties,
                                             allow_reschedule)
