@@ -19,11 +19,15 @@
 
 """Starter script for Cinder Scheduler."""
 
+
 import eventlet
+
 eventlet.monkey_patch()
 
 import os
 import sys
+
+from oslo.config import cfg
 
 # If ../cinder/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
@@ -36,13 +40,19 @@ if os.path.exists(os.path.join(possible_topdir, 'cinder', '__init__.py')):
 from cinder.openstack.common import gettextutils
 gettextutils.install('cinder')
 
-from cinder import flags
+from cinder.common import config  # Need to register global_opts
 from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import utils
+from cinder import version
+
+
+CONF = cfg.CONF
+
 
 if __name__ == '__main__':
-    flags.parse_args(sys.argv)
+    CONF(sys.argv[1:], project='cinder',
+         version=version.version_string())
     logging.setup("cinder")
     utils.monkey_patch()
     server = service.Service.create(binary='cinder-scheduler')

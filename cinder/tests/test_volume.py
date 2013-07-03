@@ -41,7 +41,7 @@ from cinder.openstack.common import rpc
 import cinder.policy
 from cinder import quota
 from cinder import test
-from cinder.tests import fake_flags
+from cinder.tests import conf_fixture
 from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
@@ -266,7 +266,7 @@ class VolumeTestCase(test.TestCase):
         self.assertEquals(volume['volume_type_id'], None)
 
         # Create default volume type
-        vol_type = fake_flags.def_vol_type
+        vol_type = conf_fixture.def_vol_type
         db.volume_type_create(context.get_admin_context(),
                               dict(name=vol_type, extra_specs={}))
 

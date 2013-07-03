@@ -54,10 +54,12 @@
   CLI interface for cinder management.
 """
 
+
 import os
 import sys
 import uuid
 
+from oslo.config import cfg
 from sqlalchemy import create_engine, MetaData, Table
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -74,20 +76,19 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
 from cinder.openstack.common import gettextutils
 gettextutils.install('cinder')
 
-from oslo.config import cfg
-
+from cinder.common import config  # Need to register global_opts
 from cinder import context
 from cinder import db
 from cinder.db import migration
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 from cinder.openstack.common import uuidutils
 from cinder import utils
 from cinder import version
 
-FLAGS = flags.FLAGS
+
+CONF = cfg.CONF
 
 
 # Decorators for actions
@@ -269,7 +270,7 @@ class VolumeCommands(object):
             return
 
         rpc.cast(ctxt,
-                 rpc.queue_get_for(ctxt, FLAGS.volume_topic, host),
+                 rpc.queue_get_for(ctxt, CONF.volume_topic, host),
                  {"method": "delete_volume",
                   "args": {"volume_id": volume['id']}})
 
@@ -288,7 +289,7 @@ class VolumeCommands(object):
         instance = db.instance_get(ctxt, volume['instance_id'])
         host = instance['host']
         rpc.cast(ctxt,
-                 rpc.queue_get_for(ctxt, FLAGS.compute_topic, host),
+                 rpc.queue_get_for(ctxt, CONF.compute_topic, host),
                  {"method": "attach_volume",
                   "args": {"instance_id": instance['id'],
                            "volume_id": volume['id'],
@@ -450,7 +451,7 @@ class ConfigCommands(object):
         pass
 
     def list(self):
-        for key, value in FLAGS.iteritems():
+        for key, value in CONF.iteritems():
             if value is not None:
                 print '%s = %s' % (key, value)
 
@@ -461,10 +462,10 @@ class GetLogCommands(object):
     def errors(self):
         """Get all of the errors from the log files."""
         error_found = 0
-        if FLAGS.log_dir:
-            logs = [x for x in os.listdir(FLAGS.log_dir) if x.endswith('.log')]
+        if CONF.log_dir:
+            logs = [x for x in os.listdir(CONF.log_dir) if x.endswith('.log')]
             for file in logs:
-                log_file = os.path.join(FLAGS.log_dir, file)
+                log_file = os.path.join(CONF.log_dir, file)
                 lines = [line.strip() for line in open(log_file, "r")]
                 lines.reverse()
                 print_name = 0
@@ -638,14 +639,14 @@ def fetch_func_args(func):
     fn_args = []
     for args, kwargs in getattr(func, 'args', []):
         arg = get_arg_string(args[0])
-        fn_args.append(getattr(FLAGS.category, arg))
+        fn_args.append(getattr(CONF.category, arg))
 
     return fn_args
 
 
 def main():
     """Parse options and call the appropriate class/method."""
-    FLAGS.register_cli_opt(category_opt)
+    CONF.register_cli_opt(category_opt)
     script_name = sys.argv[0]
     if len(sys.argv) < 2:
         print(_("\nOpenStack Cinder version: %(version)s\n") %
@@ -657,10 +658,11 @@ def main():
         sys.exit(2)
 
     try:
-        flags.parse_args(sys.argv)
+        CONF(sys.argv[1:], project='cinder',
+             version=version.version_string())
         logging.setup("cinder")
     except cfg.ConfigFilesNotFoundError:
-        cfgfile = FLAGS.config_file[-1] if FLAGS.config_file else None
+        cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):
             st = os.stat(cfgfile)
             print _("Could not read %s. Re-running with sudo") % cfgfile
@@ -672,7 +674,7 @@ def main():
         print _('Please re-run cinder-manage as root.')
         sys.exit(2)
 
-    fn = FLAGS.category.action_fn
+    fn = CONF.category.action_fn
 
     fn_args = fetch_func_args(fn)
     fn(*fn_args)

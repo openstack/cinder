@@ -52,10 +52,10 @@ The :mod:`cinder.exception` Module
     :show-inheritance:
 
 
-The :mod:`cinder.flags` Module
+The :mod:`cinder.common.config` Module
 ------------------------------
 
-.. automodule:: cinder.flags
+.. automodule:: cinder.common.config
     :noindex:
     :members:
     :undoc-members:
@@ -135,30 +135,20 @@ The :mod:`cinder.wsgi` Module
 Tests
 -----
 
-The :mod:`declare_flags` Module
+The :mod:`declare_conf` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.declare_flags
+.. automodule:: cinder.tests.declare_conf
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`fake_flags` Module
+The :mod:`conf_fixture` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.fake_flags
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`flags_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.flags_unittest
+.. automodule:: cinder.tests.conf_fixture
     :noindex:
     :members:
     :undoc-members:
@@ -175,16 +165,6 @@ The :mod:`process_unittest` Module
     :show-inheritance:
 
 
-The :mod:`real_flags` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.real_flags
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`rpc_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -195,10 +175,10 @@ The :mod:`rpc_unittest` Module
     :show-inheritance:
 
 
-The :mod:`runtime_flags` Module
+The :mod:`runtime_conf` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.runtime_flags
+.. automodule:: cinder.tests.runtime_conf
     :noindex:
     :members:
     :undoc-members:
