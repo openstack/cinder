@@ -2375,7 +2375,7 @@ def volume_glance_metadata_create(context, volume_id, key, value):
         vol_glance_metadata = models.VolumeGlanceMetadata()
         vol_glance_metadata.volume_id = volume_id
         vol_glance_metadata.key = key
-        vol_glance_metadata.value = value
+        vol_glance_metadata.value = str(value)
 
         vol_glance_metadata.save(session=session)
 
