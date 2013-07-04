@@ -3856,7 +3856,7 @@ msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:611
 msgid ""
-"storwize_svc_multihostmap_enabled is set to Flase, Not allow multi host "
+"storwize_svc_multihostmap_enabled is set to False, Not allow multi host "
 "mapping"
 msgstr ""
 
