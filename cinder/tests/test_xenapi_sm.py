@@ -275,10 +275,10 @@ class DriverTestCase(test.TestCase):
             'server', 'serverpath', '/var/run/sr-mount')
 
         mock.StubOutWithMock(drv, '_use_glance_plugin_to_upload_volume')
-        mock.StubOutWithMock(driver, 'is_xenserver_format')
+        mock.StubOutWithMock(driver.image_utils, 'is_xenserver_format')
         context = MockContext('token')
 
-        driver.is_xenserver_format('image_meta').AndReturn(True)
+        driver.image_utils.is_xenserver_format('image_meta').AndReturn(True)
 
         drv._use_glance_plugin_to_upload_volume(
             context, 'volume', 'image_service', 'image_meta').AndReturn(
@@ -296,10 +296,10 @@ class DriverTestCase(test.TestCase):
             'server', 'serverpath', '/var/run/sr-mount')
 
         mock.StubOutWithMock(drv, '_use_image_utils_to_upload_volume')
-        mock.StubOutWithMock(driver, 'is_xenserver_format')
+        mock.StubOutWithMock(driver.image_utils, 'is_xenserver_format')
         context = MockContext('token')
 
-        driver.is_xenserver_format('image_meta').AndReturn(False)
+        driver.image_utils.is_xenserver_format('image_meta').AndReturn(False)
 
         drv._use_image_utils_to_upload_volume(
             context, 'volume', 'image_service', 'image_meta').AndReturn(
@@ -358,10 +358,10 @@ class DriverTestCase(test.TestCase):
             'server', 'serverpath', '/var/run/sr-mount')
 
         mock.StubOutWithMock(drv, '_use_glance_plugin_to_copy_image_to_volume')
-        mock.StubOutWithMock(driver, 'is_xenserver_image')
+        mock.StubOutWithMock(driver.image_utils, 'is_xenserver_image')
         context = MockContext('token')
 
-        driver.is_xenserver_image(
+        driver.image_utils.is_xenserver_image(
             context, 'image_service', 'image_id').AndReturn(True)
         drv._use_glance_plugin_to_copy_image_to_volume(
             context, 'volume', 'image_service', 'image_id').AndReturn('result')
@@ -376,10 +376,10 @@ class DriverTestCase(test.TestCase):
             'server', 'serverpath', '/var/run/sr-mount')
 
         mock.StubOutWithMock(drv, '_use_image_utils_to_pipe_bytes_to_volume')
-        mock.StubOutWithMock(driver, 'is_xenserver_image')
+        mock.StubOutWithMock(driver.image_utils, 'is_xenserver_image')
         context = MockContext('token')
 
-        driver.is_xenserver_image(
+        driver.image_utils.is_xenserver_image(
             context, 'image_service', 'image_id').AndReturn(False)
         drv._use_image_utils_to_pipe_bytes_to_volume(
             context, 'volume', 'image_service', 'image_id').AndReturn(True)
