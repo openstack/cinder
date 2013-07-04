@@ -23,6 +23,7 @@ import datetime
 
 from oslo.config import cfg
 
+from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import importutils
@@ -70,15 +71,21 @@ class DbQuotaDriver(object):
     database.
     """
 
-    def get_by_project(self, context, project_id, resource):
+    def get_by_project(self, context, project_id, resource_name):
         """Get a specific quota by project."""
 
-        return db.quota_get(context, project_id, resource)
+        return db.quota_get(context, project_id, resource_name)
 
-    def get_by_class(self, context, quota_class, resource):
+    def get_by_class(self, context, quota_class, resource_name):
         """Get a specific quota by quota class."""
 
-        return db.quota_class_get(context, quota_class, resource)
+        return db.quota_class_get(context, quota_class, resource_name)
+
+    def get_default(self, context, resource):
+        """Get a specific default quota for a resource."""
+
+        default_quotas = db.quota_class_get_default(context)
+        return default_quotas.get(resource.name, resource.default)
 
     def get_defaults(self, context, resources):
         """Given a list of resources, retrieve the default quotas.
@@ -121,11 +128,18 @@ class DbQuotaDriver(object):
         """
 
         quotas = {}
+        default_quotas = {}
         class_quotas = db.quota_class_get_all_by_name(context, quota_class)
+        if defaults:
+            default_quotas = db.quota_class_get_default(context)
         for resource in resources.values():
-            if defaults or resource.name in class_quotas:
-                quotas[resource.name] = class_quotas.get(resource.name,
-                                                         resource.default)
+            if resource.name in class_quotas:
+                quotas[resource.name] = class_quotas[resource.name]
+                continue
+
+            if defaults:
+                quotas[resource.name] = default_quotas.get(resource.name,
+                                                           resource.default)
 
         return quotas
 
@@ -460,7 +474,7 @@ class BaseResource(object):
                 pass
 
         # OK, return the default
-        return self.default
+        return driver.get_default(context, self)
 
     @property
     def default(self):
@@ -551,6 +565,64 @@ class CountableResource(AbsoluteResource):
         self.count = count
 
 
+class VolumeTypeResource(ReservableResource):
+    """ReservableResource for a specific volume type."""
+
+    def __init__(self, part_name, volume_type):
+        """
+        Initializes a VolumeTypeResource.
+
+        :param part_name: The kind of resource, i.e., "volumes".
+        :param volume_type: The volume type for this resource.
+        """
+
+        try:
+            method = getattr(self, '_sync_%s' % part_name)
+        except AttributeError:
+            raise ValueError('Invalid resource: %s' % part_name)
+
+        self.volume_type_name = volume_type['name']
+        self.volume_type_id = volume_type['id']
+        name = "%s_%s" % (part_name, self.volume_type_name)
+        super(VolumeTypeResource, self).__init__(name, method)
+
+    def _sync_snapshots(self, context, project_id, session):
+        """Sync snapshots for this specific volume type."""
+        (snapshots, gigs) = db.snapshot_data_get_for_project(
+            context,
+            project_id,
+            volume_type_id=self.volume_type_id,
+            session=session)
+        return {'snapshots_%s' % self.volume_type_name: snapshots}
+
+    def _sync_volumes(self, context, project_id, session):
+        """Sync volumes for this specific volume type."""
+        (volumes, gigs) = db.volume_data_get_for_project(
+            context,
+            project_id,
+            volume_type_id=self.volume_type_id,
+            session=session)
+        return {'volumes_%s' % self.volume_type_name: volumes}
+
+    def _sync_gigabytes(self, context, project_id, session):
+        """Sync gigabytes for this specific volume type."""
+        key = 'gigabytes_%s' % self.volume_type_name
+        (_junk, vol_gigs) = db.volume_data_get_for_project(
+            context,
+            project_id,
+            volume_type_id=self.volume_type_id,
+            session=session)
+        if CONF.no_snapshot_gb_quota:
+            return {key: vol_gigs}
+
+        (_junk, snap_gigs) = db.snapshot_data_get_for_project(
+            context,
+            project_id,
+            volume_type_id=self.volume_type_id,
+            session=session)
+        return {key: vol_gigs + snap_gigs}
+
+
 class QuotaEngine(object):
     """Represent the set of recognized quotas."""
 
@@ -567,7 +639,7 @@ class QuotaEngine(object):
         self._driver = quota_driver_class
 
     def __contains__(self, resource):
-        return resource in self._resources
+        return resource in self.resources
 
     def register_resource(self, resource):
         """Register a resource."""
@@ -580,15 +652,20 @@ class QuotaEngine(object):
         for resource in resources:
             self.register_resource(resource)
 
-    def get_by_project(self, context, project_id, resource):
+    def get_by_project(self, context, project_id, resource_name):
         """Get a specific quota by project."""
 
-        return self._driver.get_by_project(context, project_id, resource)
+        return self._driver.get_by_project(context, project_id, resource_name)
 
-    def get_by_class(self, context, quota_class, resource):
+    def get_by_class(self, context, quota_class, resource_name):
         """Get a specific quota by quota class."""
 
-        return self._driver.get_by_class(context, quota_class, resource)
+        return self._driver.get_by_class(context, quota_class, resource_name)
+
+    def get_default(self, context, resource):
+        """Get a specific default quota for a resource."""
+
+        return self._driver.get_default(context, resource)
 
     def get_defaults(self, context):
         """Retrieve the default quotas.
@@ -596,7 +673,7 @@ class QuotaEngine(object):
         :param context: The request context, for access checks.
         """
 
-        return self._driver.get_defaults(context, self._resources)
+        return self._driver.get_defaults(context, self.resources)
 
     def get_class_quotas(self, context, quota_class, defaults=True):
         """Retrieve the quotas for the given quota class.
@@ -609,7 +686,7 @@ class QuotaEngine(object):
                          resource.
         """
 
-        return self._driver.get_class_quotas(context, self._resources,
+        return self._driver.get_class_quotas(context, self.resources,
                                              quota_class, defaults=defaults)
 
     def get_project_quotas(self, context, project_id, quota_class=None,
@@ -629,7 +706,7 @@ class QuotaEngine(object):
                        will also be returned.
         """
 
-        return self._driver.get_project_quotas(context, self._resources,
+        return self._driver.get_project_quotas(context, self.resources,
                                                project_id,
                                                quota_class=quota_class,
                                                defaults=defaults,
@@ -648,7 +725,7 @@ class QuotaEngine(object):
         """
 
         # Get the resource
-        res = self._resources.get(resource)
+        res = self.resources.get(resource)
         if not res or not hasattr(res, 'count'):
             raise exception.QuotaResourceUnknown(unknown=[resource])
 
@@ -679,7 +756,7 @@ class QuotaEngine(object):
                            common user's tenant.
         """
 
-        return self._driver.limit_check(context, self._resources, values,
+        return self._driver.limit_check(context, self.resources, values,
                                         project_id=project_id)
 
     def reserve(self, context, expire=None, project_id=None, **deltas):
@@ -717,7 +794,7 @@ class QuotaEngine(object):
                            common user's tenant.
         """
 
-        reservations = self._driver.reserve(context, self._resources, deltas,
+        reservations = self._driver.reserve(context, self.resources, deltas,
                                             expire=expire,
                                             project_id=project_id)
 
@@ -788,9 +865,64 @@ class QuotaEngine(object):
 
         self._driver.expire(context)
 
+    def add_volume_type_opts(self, context, opts, volume_type_id):
+        """Add volume type resource options.
+
+        Adds elements to the opts hash for volume type quotas.
+        If a resource is being reserved ('gigabytes', etc) and the volume
+        type is set up for its own quotas, these reservations are copied
+        into keys for 'gigabytes_<volume type name>', etc.
+
+        :param context: The request context, for access checks.
+        :param opts: The reservations options hash.
+        :param volume_type_id: The volume type id for this reservation.
+        """
+        if not volume_type_id:
+            return
+        volume_type = db.volume_type_get(context, volume_type_id)
+        for quota in ('volumes', 'gigabytes', 'snapshots'):
+            if quota in opts:
+                vtype_quota = "%s_%s" % (quota, volume_type['name'])
+                opts[vtype_quota] = opts[quota]
+
+    @property
+    def resource_names(self):
+        return sorted(self.resources.keys())
+
     @property
     def resources(self):
-        return sorted(self._resources.keys())
+        return self._resources
+
+
+class VolumeTypeQuotaEngine(QuotaEngine):
+    """Represent the set of all quotas."""
+
+    @property
+    def resources(self):
+        """Fetches all possible quota resources."""
+
+        result = {}
+        # Global quotas.
+        argses = [('volumes', _sync_volumes, 'quota_volumes'),
+                  ('snapshots', _sync_snapshots, 'quota_snapshots'),
+                  ('gigabytes', _sync_gigabytes, 'quota_gigabytes'), ]
+        for args in argses:
+            resource = ReservableResource(*args)
+            result[resource.name] = resource
+
+        # Volume type quotas.
+        volume_types = db.volume_type_get_all(context.get_admin_context())
+        for volume_type in volume_types.values():
+            for part_name in ('volumes', 'gigabytes', 'snapshots'):
+                resource = VolumeTypeResource(part_name, volume_type)
+                result[resource.name] = resource
+        return result
+
+    def register_resource(self, resource):
+        raise NotImplementedError(_("Cannot register resource"))
+
+    def register_resources(self, resources):
+        raise NotImplementedError(_("Cannot register resources"))
 
 
 def _sync_volumes(context, project_id, session):
@@ -820,13 +952,4 @@ def _sync_gigabytes(context, project_id, session):
     return {'gigabytes': vol_gigs + snap_gigs}
 
 
-QUOTAS = QuotaEngine()
-
-
-resources = [
-    ReservableResource('volumes', _sync_volumes, 'quota_volumes'),
-    ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
-    ReservableResource('gigabytes', _sync_gigabytes, 'quota_gigabytes'), ]
-
-
-QUOTAS.register_resources(resources)
+QUOTAS = VolumeTypeQuotaEngine()
