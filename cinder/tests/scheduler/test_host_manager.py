@@ -141,9 +141,28 @@ class HostManagerTestCase(test.TestCase):
 
         self.mox.StubOutWithMock(db, 'service_get_all_by_topic')
         self.mox.StubOutWithMock(host_manager.LOG, 'warn')
+        self.mox.StubOutWithMock(host_manager.utils, 'service_is_up')
 
         ret_services = fakes.VOLUME_SERVICES
         db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
+        host_manager.utils.service_is_up(ret_services[0]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[1]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[2]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[3]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[4]).AndReturn(True)
+        # Disabled service
+        host_manager.LOG.warn("volume service is down or disabled. "
+                              "(host: host5)")
+
+        db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
+        host_manager.utils.service_is_up(ret_services[0]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[1]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[2]).AndReturn(True)
+        host_manager.utils.service_is_up(ret_services[3]).AndReturn(False)
+        # Stopped service
+        host_manager.LOG.warn("volume service is down or disabled. "
+                              "(host: host4)")
+        host_manager.utils.service_is_up(ret_services[4]).AndReturn(True)
         # Disabled service
         host_manager.LOG.warn("volume service is down or disabled. "
                               "(host: host5)")
@@ -155,6 +174,16 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(len(host_state_map), 4)
         # Check that service is up
         for i in xrange(4):
+            volume_node = fakes.VOLUME_SERVICES[i]
+            host = volume_node['host']
+            self.assertEqual(host_state_map[host].service,
+                             volume_node)
+
+        self.host_manager.get_all_host_states(context)
+        host_state_map = self.host_manager.host_state_map
+
+        self.assertEqual(len(host_state_map), 3)
+        for i in xrange(3):
             volume_node = fakes.VOLUME_SERVICES[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service,
