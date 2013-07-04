@@ -609,7 +609,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
             if err and err.startswith('CMMVC6071E'):
                 if not self.configuration.storwize_svc_multihostmap_enabled:
                     LOG.error(_('storwize_svc_multihostmap_enabled is set '
-                                'to Flase, Not allow multi host mapping'))
+                                'to False, Not allow multi host mapping'))
                     exception_msg = 'CMMVC6071E The VDisk-to-host mapping '\
                                     'was not created because the VDisk is '\
                                     'already mapped to a host.\n"'
