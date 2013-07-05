@@ -45,8 +45,12 @@ class VolumeGroupCreationFailed(Exception):
 class LVM(object):
     """LVM object to enable various LVM related operations."""
 
-    def __init__(self, vg_name, create_vg=False,
-                 physical_volumes=None):
+    def __init__(self,
+                 vg_name,
+                 create_vg=False,
+                 physical_volumes=None,
+                 lvm_type='default',
+                 executor=putils.execute):
         """Initialize the LVM object.
 
         The LVM object is based on an LVM VolumeGroup, one instantiation
@@ -65,6 +69,7 @@ class LVM(object):
         self.vg_available_space = 0
         self.vg_lv_count = 0
         self.vg_uuid = None
+        self._execute = executor
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
@@ -99,7 +104,7 @@ class LVM(object):
         """
         exists = False
         cmd = ['vgs', '--noheadings', '-o', 'name']
-        (out, err) = putils.execute(*cmd, root_helper='sudo', run_as_root=True)
+        (out, err) = self._execute(*cmd, root_helper='sudo', run_as_root=True)
 
         if out is not None:
             volume_groups = out.split()
@@ -110,11 +115,11 @@ class LVM(object):
 
     def _create_vg(self, pv_list):
         cmd = ['vgcreate', self.vg_name, ','.join(pv_list)]
-        putils.execute(*cmd, root_helper='sudo', run_as_root=True)
+        self._execute(*cmd, root_helper='sudo', run_as_root=True)
 
     def _get_vg_uuid(self):
-        (out, err) = putils.execute('vgs', '--noheadings',
-                                    '-o uuid', self.vg_name)
+        (out, err) = self._execute('vgs', '--noheadings',
+                                   '-o uuid', self.vg_name)
         if out is not None:
             return out.split()
         else:
@@ -304,6 +309,7 @@ class LVM(object):
         :param mirror_count: Use LVM mirroring with specified count
 
         """
+
         size = self._size_str(size_str)
         cmd = ['lvcreate', '-n', name, self.vg_name]
         if lv_type == 'thin':
@@ -313,16 +319,16 @@ class LVM(object):
 
         if mirror_count > 0:
             cmd += ['-m', mirror_count, '--nosync']
-            terras = int(size[:-1]) / 1024.0
+            terras = int(size_str[:-1]) / 1024.0
             if terras >= 1.5:
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
                 # NOTE(vish): Next power of two for region size. See:
                 #             http://red.ht/U2BPOD
                 cmd += ['-R', str(rsize)]
 
-        putils.execute(*cmd,
-                       root_helper='sudo',
-                       run_as_root=True)
+        self._execute(*cmd,
+                      root_helper='sudo',
+                      run_as_root=True)
 
     def create_lv_snapshot(self, name, source_lv_name, lv_type='default'):
         """Creates a snapshot of a logical volume.
@@ -342,9 +348,9 @@ class LVM(object):
             size = source_lvref['size']
             cmd += ['-L', size]
 
-        putils.execute(*cmd,
-                       root_helper='sudo',
-                       run_as_root=True)
+        self._execute(*cmd,
+                      root_helper='sudo',
+                      run_as_root=True)
 
     def delete(self, name):
         """Delete logical volume or snapshot.
@@ -352,10 +358,10 @@ class LVM(object):
         :param name: Name of LV to delete
 
         """
-        putils.execute('lvremove',
-                       '-f',
-                       '%s/%s' % (self.vg_name, name),
-                       root_helper='sudo', run_as_root=True)
+        self._execute('lvremove',
+                      '-f',
+                      '%s/%s' % (self.vg_name, name),
+                      root_helper='sudo', run_as_root=True)
 
     def revert(self, snapshot_name):
         """Revert an LV from snapshot.
@@ -363,6 +369,6 @@ class LVM(object):
         :param snapshot_name: Name of snapshot to revert
 
         """
-        putils.execute('lvconvert', '--merge',
-                       snapshot_name, root_helper='sudo',
-                       run_as_root=True)
+        self._execute('lvconvert', '--merge',
+                      snapshot_name, root_helper='sudo',
+                      run_as_root=True)

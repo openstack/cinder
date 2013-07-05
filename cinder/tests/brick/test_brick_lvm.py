@@ -41,7 +41,8 @@ class BrickLvmTestCase(test.TestCase):
         super(BrickLvmTestCase, self).setUp()
         self.stubs.Set(processutils, 'execute',
                        self.fake_execute)
-        self.vg = brick.LVM(self.configuration.volume_group_name)
+        self.vg = brick.LVM(self.configuration.volume_group_name,
+                            False, None, 'default', self.fake_execute)
 
     def failed_fake_execute(obj, *cmd, **kwargs):
         return ("\n", "fake-error")
@@ -55,7 +56,6 @@ class BrickLvmTestCase(test.TestCase):
     def fake_execute(obj, *cmd, **kwargs):
         cmd_string = ', '.join(cmd)
         data = "\n"
-
         if 'vgs, --noheadings, -o, name' == cmd_string:
             data = "  fake-volumes\n"
         if 'vgs, --version' in cmd_string:
@@ -90,19 +90,13 @@ class BrickLvmTestCase(test.TestCase):
         return (data, "")
 
     def test_vg_exists(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertEqual(self.vg._vg_exists(), True)
 
-        self.stubs.Set(processutils, 'execute', self.failed_fake_execute)
-        self.assertEqual(self.vg._vg_exists(), False)
-
     def test_get_vg_uuid(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertEqual(self.vg._get_vg_uuid()[0],
                          'kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1')
 
     def test_get_all_volumes(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         out = self.vg.get_volumes()
 
         self.assertEqual(out[0]['name'], 'fake-1')
@@ -110,34 +104,26 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(out[0]['vg'], 'fake-volumes')
 
     def test_get_volume(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertEqual(self.vg.get_volume('fake-1')['name'], 'fake-1')
 
     def test_get_all_physical_volumes(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         pvs = self.vg.get_all_physical_volumes()
         self.assertEqual(len(pvs), 3)
 
     def test_get_physical_volumes(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         pvs = self.vg.get_physical_volumes()
         self.assertEqual(len(pvs), 1)
 
     def test_get_volume_groups(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertEqual(len(self.vg.get_all_volume_groups()), 3)
         self.assertEqual(len(self.vg.get_all_volume_groups('fake-volumes')), 1)
 
     def test_update_vg_info(self):
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertEqual(self.vg.update_volume_group_info()['name'],
                          'fake-volumes')
 
     def test_thin_support(self):
         self.stubs.Set(processutils, 'execute', self.fake_execute)
-        self.assertTrue(self.vg.supports_thin_provisioning())
-
-        self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
         self.assertTrue(self.vg.supports_thin_provisioning())
 
         self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
