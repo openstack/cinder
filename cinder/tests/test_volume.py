@@ -1267,9 +1267,9 @@ class VolumeTestCase(test.TestCase):
                                image_location):
             raise exception.CinderException('fake exception')
 
-        def fake_reschedule_or_reraise(context, volume_id, exc_info,
-                                       snapshot_id, image_id, request_spec,
-                                       filter_properties, allow_reschedule):
+        def fake_reschedule_or_error(context, volume_id, exc_info,
+                                     snapshot_id, image_id, request_spec,
+                                     filter_properties):
             self.assertFalse(context.is_admin)
             self.assertFalse('admin' in context.roles)
             #compare context passed in with the context we saved
@@ -1284,13 +1284,14 @@ class VolumeTestCase(test.TestCase):
         #create one copy of context for future comparison
         self.saved_ctxt = ctxt.deepcopy()
 
-        self.stubs.Set(self.volume, '_reschedule_or_reraise',
-                       fake_reschedule_or_reraise)
+        self.stubs.Set(self.volume, '_reschedule_or_error',
+                       fake_reschedule_or_error)
         self.stubs.Set(self.volume, '_create_volume',
                        fake_create_volume)
 
         volume_src = self._create_volume()
-        self.volume.create_volume(ctxt, volume_src['id'])
+        self.assertRaises(exception.CinderException,
+                          self.volume.create_volume, ctxt, volume_src['id'])
 
     def test_create_volume_from_sourcevol(self):
         """Test volume can be created from a source volume."""
@@ -1339,23 +1340,26 @@ class VolumeTestCase(test.TestCase):
     def test_create_volume_from_sourcevol_failed_clone(self):
         """Test src vol status will be restore by error handling code."""
         def fake_error_create_cloned_volume(volume, src_vref):
-            db.volume_update(context, src_vref['id'], {'status': 'error'})
+            db.volume_update(self.context, src_vref['id'], {'status': 'error'})
             raise exception.CinderException('fake exception')
 
-        def fake_reschedule_or_reraise(context, volume_id, exc_info,
-                                       snapshot_id, image_id, request_spec,
-                                       filter_properties, allow_reschedule):
+        def fake_reschedule_or_error(context, volume_id, exc_info,
+                                     snapshot_id, image_id, request_spec,
+                                     filter_properties):
             pass
 
-        self.stubs.Set(self.volume, '_reschedule_or_reraise',
-                       fake_reschedule_or_reraise)
+        self.stubs.Set(self.volume, '_reschedule_or_error',
+                       fake_reschedule_or_error)
         self.stubs.Set(self.volume.driver, 'create_cloned_volume',
                        fake_error_create_cloned_volume)
         volume_src = self._create_volume()
         self.volume.create_volume(self.context, volume_src['id'])
         volume_dst = self._create_volume(0, source_volid=volume_src['id'])
-        self.volume.create_volume(self.context, volume_dst['id'],
-                                  source_volid=volume_src['id'])
+        self.assertRaises(exception.CinderException,
+                          self.volume.create_volume,
+                          self.context,
+                          volume_dst['id'], None, None, None, None, None,
+                          volume_src['id'])
         self.assertEqual(volume_src['status'], 'creating')
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_volume(self.context, volume_src['id'])
