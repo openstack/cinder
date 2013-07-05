@@ -1826,6 +1826,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             # Make sure that the volumes have been created
             self._assert_vol_exists(volume['name'], True)
 
+            self._set_flag('storwize_svc_multihostmap_enabled', True)
             self.driver.initialize_connection(volume, conn)
             self.driver.terminate_connection(volume, conn)
 
