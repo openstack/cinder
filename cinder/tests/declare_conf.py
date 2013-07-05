@@ -21,4 +21,4 @@ from oslo.config import cfg
 
 
 CONF = cfg.CONF
-CONF.register_opt(cfg.IntOpt('runtime_answer', default=54, help='test flag'))
+CONF.register_opt(cfg.IntOpt('answer', default=42, help='test conf'))

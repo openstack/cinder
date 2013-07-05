@@ -28,6 +28,8 @@ import os
 import sys
 import time
 
+from oslo.config import cfg
+
 # If ../cinder/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
 POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
@@ -39,21 +41,21 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
 from cinder.openstack.common import gettextutils
 gettextutils.install('cinder')
 
-from oslo.config import cfg
-
+from cinder.common import config  # Need to register global_opts
 from cinder import context
 from cinder import exception
-from cinder import flags
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
+from cinder import version
+
 
 delete_exchange_opt = \
     cfg.BoolOpt('delete_exchange',
                 default=False,
                 help='delete cinder exchange too.')
 
-FLAGS = flags.FLAGS
-FLAGS.register_cli_opt(delete_exchange_opt)
+CONF = cfg.CONF
+CONF.register_cli_opt(delete_exchange_opt)
 
 
 def delete_exchange(exch):
@@ -69,8 +71,9 @@ def delete_queues(queues):
         x.queue_delete(q)
 
 if __name__ == '__main__':
-    args = flags.parse_args(sys.argv)
+    args = CONF(sys.argv[1:], project='cinder',
+                version=version.version_string())
     logging.setup("cinder")
     delete_queues(args[1:])
-    if FLAGS.delete_exchange:
-        delete_exchange(FLAGS.control_exchange)
+    if CONF.delete_exchange:
+        delete_exchange(CONF.control_exchange)

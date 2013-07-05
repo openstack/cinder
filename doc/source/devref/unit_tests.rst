@@ -139,9 +139,9 @@ Gotchas
 If you are running the unit tests from a shared folder, you may see tests start
 to fail or stop completely as a result of Python lockfile issues [#f4]_. You
 can get around this by manually setting or updating the following line in
-``cinder/tests/fake_flags.py``::
+``cinder/tests/conf_fixture.py``::
 
-    FLAGS['lock_path'].SetDefault('/tmp')
+    CONF['lock_path'].SetDefault('/tmp')
 
 Note that you may use any location (not just ``/tmp``!) as long as it is not
 a shared folder.

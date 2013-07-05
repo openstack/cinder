@@ -26,7 +26,7 @@ from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.tests import fake_flags
+from cinder.tests import conf_fixture
 from cinder.volume import volume_types
 
 
@@ -84,11 +84,11 @@ class VolumeTypeTestCase(test.TestCase):
     def test_get_default_volume_type(self):
         """Ensures default volume type can be retrieved."""
         type_ref = volume_types.create(self.ctxt,
-                                       fake_flags.def_vol_type,
+                                       conf_fixture.def_vol_type,
                                        {})
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type.get('name'),
-                         fake_flags.def_vol_type)
+                         conf_fixture.def_vol_type)
 
     def test_default_volume_type_missing_in_db(self):
         """Ensures proper exception raised if default volume type

@@ -16,8 +16,12 @@
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from cinder.transfer import <foo>' elsewhere.
 
-import cinder.flags
+
+from oslo.config import cfg
+
 import cinder.openstack.common.importutils
 
-API = cinder.openstack.common.importutils.import_class(
-    cinder.flags.FLAGS.transfer_api_class)
+
+CONF = cfg.CONF
+
+API = cinder.openstack.common.importutils.import_class(CONF.transfer_api_class)
