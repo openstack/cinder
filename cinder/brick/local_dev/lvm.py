@@ -372,3 +372,13 @@ class LVM(object):
         self._execute('lvconvert', '--merge',
                       snapshot_name, root_helper='sudo',
                       run_as_root=True)
+
+    def lv_has_snapshot(self, name):
+        out, err = self._execute('lvdisplay', '--noheading',
+                                 '-C', '-o', 'Attr',
+                                 '%s/%s' % (self.vg_name, name))
+        if out:
+            out = out.strip()
+            if (out[0] == 'o') or (out[0] == 'O'):
+                return True
+        return False
