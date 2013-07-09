@@ -97,6 +97,10 @@ class SolidFireVolumeTestCase(test.TestCase):
             LOG.info('Called Fake DeleteVolume...')
             return {'result': {}, 'id': 1}
 
+        elif method is 'ModifyVolume' and version == '5.0':
+            LOG.info('Called Fake ModifyVolume...')
+            return {'result': {}, 'id': 1}
+
         elif method is 'ListVolumesForAccount' and version == '1.0':
             test_name = 'OS-VOLID-a720b3c0-d1f0-11e1-9b23-0800200c9a66'
             LOG.info('Called Fake ListVolumesForAccount...')
@@ -280,3 +284,41 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv = SolidFire(configuration=self.configuration)
         self.assertRaises(exception.SolidFireAPIException,
                           sfv._get_cluster_info)
+
+    def test_extend_volume(self):
+        self.stubs.Set(SolidFire, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+        sfv = SolidFire(configuration=self.configuration)
+        sfv.extend_volume(testvol, 2)
+
+    def test_extend_volume_fails_no_volume(self):
+        self.stubs.Set(SolidFire, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'no-name',
+                   'size': 1,
+                   'id': 'not-found'}
+        sfv = SolidFire(configuration=self.configuration)
+        self.assertRaises(exception.VolumeNotFound,
+                          sfv.extend_volume,
+                          testvol, 2)
+
+    def test_extend_volume_fails_account_lookup(self):
+        # NOTE(JDG) This test just fakes update_cluster_status
+        # this is intentional for this test
+        self.stubs.Set(SolidFire, '_update_cluster_status',
+                       self.fake_update_cluster_status)
+        self.stubs.Set(SolidFire, '_issue_api_request',
+                       self.fake_issue_api_request_fails)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'no-name',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+        sfv = SolidFire(configuration=self.configuration)
+        self.assertRaises(exception.SfAccountNotFound,
+                          sfv.extend_volume,
+                          testvol, 2)

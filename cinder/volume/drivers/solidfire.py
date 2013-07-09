@@ -581,6 +581,32 @@ class SolidFire(SanISCSIDriver):
 
         return self.cluster_stats
 
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        LOG.debug(_("Entering SolidFire extend_volume..."))
+
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        params = {'accountID': sfaccount['accountID']}
+
+        sf_vol = self._get_sf_volume(volume['id'], params)
+
+        if sf_vol is None:
+            LOG.error(_("Volume ID %s was not found on "
+                        "the SolidFire Cluster!"), volume['id'])
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        params = {
+            'volumeID': sf_vol['volumeID'],
+            'totalSize': int(new_size * self.GB)
+        }
+        data = self._issue_api_request('ModifyVolume',
+                                       params, version='5.0')
+
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+
+        LOG.debug(_("Leaving SolidFire extend_volume"))
+
     def _update_cluster_status(self):
         """Retrieve status info for the Cluster."""
 
