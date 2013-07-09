@@ -159,7 +159,7 @@ class VolumeDriver(object):
         """Allow connection to connector and return connection info."""
         raise NotImplementedError()
 
-    def terminate_connection(self, volume, connector, force=False, **kwargs):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
         raise NotImplementedError()
 

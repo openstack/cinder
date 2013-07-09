@@ -206,7 +206,7 @@ class ScalityDriver(driver.VolumeDriver):
             }
         }
 
-    def terminate_connection(self, volume, connector, force=False, **kwargs):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         pass
 
