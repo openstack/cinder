@@ -117,7 +117,7 @@ class SolidFire(SanISCSIDriver):
         # can't be re-used
         retry_count = 5
         while retry_count > 0:
-            request_id = int(uuid.uuid4())  # just generate a random number
+            request_id = hash(uuid.uuid4())  # just generate a random number
             command = {'method': method_name,
                        'id': request_id}
 
