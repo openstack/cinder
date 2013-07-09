@@ -92,7 +92,7 @@ class SolidFire(SanISCSIDriver):
                           ex.strerror)
                 pass
 
-    def _issue_api_request(self, method_name, params):
+    def _issue_api_request(self, method_name, params, version='1.0'):
         """All API requests to SolidFire device go through this method.
 
         Simple json-rpc web based API calls.
@@ -137,8 +137,9 @@ class SolidFire(SanISCSIDriver):
 
             LOG.debug(_("Payload for SolidFire API call: %s"), payload)
 
+            api_endpoint = '/json-rpc/%s' % version
             connection = httplib.HTTPSConnection(host, port)
-            connection.request('POST', '/json-rpc/1.0', payload, header)
+            connection.request('POST', api_endpoint, payload, header)
             response = connection.getresponse()
 
             data = {}

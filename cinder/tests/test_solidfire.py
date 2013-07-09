@@ -50,10 +50,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.stubs.Set(SolidFire, '_issue_api_request',
                        self.fake_issue_api_request)
 
-    def fake_issue_api_request(obj, method, params):
-        if method is 'GetClusterCapacity':
+    def fake_issue_api_request(obj, method, params, version='1.0'):
+        if method is 'GetClusterCapacity' and version == '1.0':
             LOG.info('Called Fake GetClusterCapacity...')
-            data = {}
             data = {'result':
                     {'clusterCapacity': {'maxProvisionedSpace': 99999999,
                      'usedSpace': 999,
@@ -62,7 +61,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                      'thinProvisioningPercent': 100}}}
             return data
 
-        if method is 'GetClusterInfo':
+        elif method is 'GetClusterInfo' and version == '1.0':
             LOG.info('Called Fake GetClusterInfo...')
             results = {'result': {'clusterInfo':
                                   {'name': 'fake-cluster',
@@ -73,11 +72,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                                    'attributes': {}}}}
             return results
 
-        elif method is 'AddAccount':
+        elif method is 'AddAccount' and version == '1.0':
             LOG.info('Called Fake AddAccount...')
             return {'result': {'accountID': 25}, 'id': 1}
 
-        elif method is 'GetAccountByName':
+        elif method is 'GetAccountByName' and version == '1.0':
             LOG.info('Called Fake GetAccountByName...')
             results = {'result': {'account':
                                   {'accountID': 25,
@@ -90,15 +89,15 @@ class SolidFireVolumeTestCase(test.TestCase):
                        "id": 1}
             return results
 
-        elif method is 'CreateVolume':
+        elif method is 'CreateVolume' and version == '1.0':
             LOG.info('Called Fake CreateVolume...')
             return {'result': {'volumeID': 5}, 'id': 1}
 
-        elif method is 'DeleteVolume':
+        elif method is 'DeleteVolume' and version == '1.0':
             LOG.info('Called Fake DeleteVolume...')
             return {'result': {}, 'id': 1}
 
-        elif method is 'ListVolumesForAccount':
+        elif method is 'ListVolumesForAccount' and version == '1.0':
             test_name = 'OS-VOLID-a720b3c0-d1f0-11e1-9b23-0800200c9a66'
             LOG.info('Called Fake ListVolumesForAccount...')
             result = {'result': {
@@ -118,7 +117,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         else:
             LOG.error('Crap, unimplemented API call in Fake:%s' % method)
 
-    def fake_issue_api_request_fails(obj, method, params):
+    def fake_issue_api_request_fails(obj, method, params, version='1.0'):
         return {'error': {'code': 000,
                           'name': 'DummyError',
                           'message': 'This is a fake error response'},
