@@ -209,7 +209,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None):
         """Creates and exports the volume."""
-        context_before_elevated = context.deepcopy()
+        context_saved = context.deepcopy()
         context = context.elevated()
         if filter_properties is None:
             filter_properties = {}
@@ -272,18 +272,37 @@ class VolumeManager(manager.SchedulerDependentManager):
                                       {'status': 'error'})
                 return
             except Exception:
+                exc_info = sys.exc_info()
                 # restore source volume status before reschedule
+                # FIXME(zhiteng) do all the clean-up before reschedule
                 if sourcevol_ref is not None:
                     self.db.volume_update(context, sourcevol_ref['id'],
                                           {'status': sourcevol_ref['status']})
-                exc_info = sys.exc_info()
+                rescheduled = False
                 # try to re-schedule volume:
-                self._reschedule_or_reraise(context_before_elevated,
-                                            volume_id, exc_info,
-                                            snapshot_id, image_id,
-                                            request_spec, filter_properties,
-                                            allow_reschedule)
-                return
+                if allow_reschedule:
+                    rescheduled = self._reschedule_or_error(context_saved,
+                                                            volume_id,
+                                                            exc_info,
+                                                            snapshot_id,
+                                                            image_id,
+                                                            request_spec,
+                                                            filter_properties)
+
+                if rescheduled:
+                    # log the original build error
+                    self._log_original_error(exc_info)
+                    msg = (_('Creating %(volume_id)s %(snapshot_id)s '
+                             '%(image_id)s was rescheduled due to '
+                             '%(reason)s')
+                           % {'volume_id': volume_id,
+                              'snapshot_id': snapshot_id,
+                              'image_id': image_id,
+                              'reason': unicode(exc_info[1])})
+                    raise exception.CinderException(msg)
+                else:
+                    # not re-scheduling
+                    raise exc_info[0], exc_info[1], exc_info[2]
 
             if model_update:
                 volume_ref = self.db.volume_update(
@@ -358,17 +377,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.error(_('Error: %s') %
                   traceback.format_exception(type_, value, tb))
 
-    def _reschedule_or_reraise(self, context, volume_id, exc_info,
-                               snapshot_id, image_id, request_spec,
-                               filter_properties, allow_reschedule):
-        """Try to re-schedule the create or re-raise the original error to
-        error out the volume.
-        """
-        if not allow_reschedule:
-            raise exc_info[0], exc_info[1], exc_info[2]
-
+    def _reschedule_or_error(self, context, volume_id, exc_info,
+                             snapshot_id, image_id, request_spec,
+                             filter_properties):
+        """Try to re-schedule the request."""
         rescheduled = False
-
         try:
             method_args = (CONF.volume_topic, volume_id, snapshot_id,
                            image_id, request_spec, filter_properties)
@@ -378,18 +391,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                                            self.scheduler_rpcapi.create_volume,
                                            method_args,
                                            exc_info)
-
         except Exception:
             rescheduled = False
             LOG.exception(_("volume %s: Error trying to reschedule create"),
                           volume_id)
 
-        if rescheduled:
-            # log the original build error
-            self._log_original_error(exc_info)
-        else:
-            # not re-scheduling
-            raise exc_info[0], exc_info[1], exc_info[2]
+        return rescheduled
 
     def _reschedule(self, context, request_spec, filter_properties,
                     volume_id, scheduler_method, method_args,
