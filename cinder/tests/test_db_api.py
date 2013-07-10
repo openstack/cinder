@@ -44,13 +44,12 @@ def _quota_reserve(context, project_id):
     quotas = {}
     resources = {}
     deltas = {}
-    for i in range(3):
-        resource = 'res%d' % i
-        quotas[resource] = db.quota_create(context, project_id, resource, i)
-        resources[resource] = ReservableResource(
-            resource,
-            get_sync(resource, i), 'quota_res_%d' % i)
-        deltas[resource] = i
+    for i, resource in enumerate(('volumes', 'gigabytes')):
+        quotas[resource] = db.quota_create(context, project_id,
+                                           resource, i + 1)
+        resources[resource] = ReservableResource(resource,
+                                                 '_sync_%s' % resource)
+        deltas[resource] = i + 1
     return db.quota_reserve(
         context, resources, quotas, deltas,
         datetime.datetime.utcnow(), datetime.datetime.utcnow(),
@@ -534,9 +533,9 @@ class DBAPIReservationTestCase(BaseTest):
     def test_reservation_commit(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = {'project_id': 'project1',
-                    'res0': {'reserved': 0, 'in_use': 0},
-                    'res1': {'reserved': 1, 'in_use': 1},
-                    'res2': {'reserved': 2, 'in_use': 2}}
+                    'volumes': {'reserved': 1, 'in_use': 0},
+                    'gigabytes': {'reserved': 2, 'in_use': 0},
+                    }
         self.assertEqual(expected,
                          db.quota_usage_get_all_by_project(
                              self.ctxt, 'project1'))
@@ -547,9 +546,9 @@ class DBAPIReservationTestCase(BaseTest):
                           self.ctxt,
                           reservations[0])
         expected = {'project_id': 'project1',
-                    'res0': {'reserved': 0, 'in_use': 0},
-                    'res1': {'reserved': 0, 'in_use': 2},
-                    'res2': {'reserved': 0, 'in_use': 4}}
+                    'volumes': {'reserved': 0, 'in_use': 1},
+                    'gigabytes': {'reserved': 0, 'in_use': 2},
+                    }
         self.assertEqual(expected,
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
@@ -558,9 +557,9 @@ class DBAPIReservationTestCase(BaseTest):
     def test_reservation_rollback(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = {'project_id': 'project1',
-                    'res0': {'reserved': 0, 'in_use': 0},
-                    'res1': {'reserved': 1, 'in_use': 1},
-                    'res2': {'reserved': 2, 'in_use': 2}}
+                    'volumes': {'reserved': 1, 'in_use': 0},
+                    'gigabytes': {'reserved': 2, 'in_use': 0},
+                    }
         self.assertEqual(expected,
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
@@ -572,9 +571,9 @@ class DBAPIReservationTestCase(BaseTest):
                           self.ctxt,
                           reservations[0])
         expected = {'project_id': 'project1',
-                    'res0': {'reserved': 0, 'in_use': 0},
-                    'res1': {'reserved': 0, 'in_use': 1},
-                    'res2': {'reserved': 0, 'in_use': 2}}
+                    'volumes': {'reserved': 0, 'in_use': 0},
+                    'gigabytes': {'reserved': 0, 'in_use': 0},
+                    }
         self.assertEqual(expected,
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
@@ -587,9 +586,8 @@ class DBAPIReservationTestCase(BaseTest):
         db.reservation_expire(self.ctxt)
 
         expected = {'project_id': 'project1',
-                    'res0': {'reserved': 0, 'in_use': 0},
-                    'res1': {'reserved': 0, 'in_use': 1},
-                    'res2': {'reserved': 0, 'in_use': 2}}
+                    'gigabytes': {'reserved': 0, 'in_use': 0},
+                    'volumes': {'reserved': 0, 'in_use': 0}}
         self.assertEqual(expected,
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
@@ -647,8 +645,8 @@ class DBAPIQuotaTestCase(BaseTest):
 
     def test_quota_reserve(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
-        self.assertEqual(len(reservations), 3)
-        res_names = ['res0', 'res1', 'res2']
+        self.assertEqual(len(reservations), 2)
+        res_names = ['gigabytes', 'volumes']
         for uuid in reservations:
             reservation = db.reservation_get(self.ctxt, uuid)
             self.assertTrue(reservation.resource in res_names)
@@ -677,18 +675,17 @@ class DBAPIQuotaTestCase(BaseTest):
 
     def test_quota_usage_get(self):
         reservations = _quota_reserve(self.ctxt, 'p1')
-        quota_usage = db.quota_usage_get(self.ctxt, 'p1', 'res0')
-        expected = {'resource': 'res0', 'project_id': 'p1',
-                    'in_use': 0, 'reserved': 0, 'total': 0}
+        quota_usage = db.quota_usage_get(self.ctxt, 'p1', 'gigabytes')
+        expected = {'resource': 'gigabytes', 'project_id': 'p1',
+                    'in_use': 0, 'reserved': 2, 'total': 2}
         for key, value in expected.iteritems():
-            self.assertEqual(value, quota_usage[key])
+            self.assertEqual(value, quota_usage[key], key)
 
     def test_quota_usage_get_all_by_project(self):
         reservations = _quota_reserve(self.ctxt, 'p1')
         expected = {'project_id': 'p1',
-                    'res0': {'in_use': 0, 'reserved': 0},
-                    'res1': {'in_use': 1, 'reserved': 1},
-                    'res2': {'in_use': 2, 'reserved': 2}}
+                    'volumes': {'in_use': 0, 'reserved': 1},
+                    'gigabytes': {'in_use': 0, 'reserved': 2}}
         self.assertEqual(expected, db.quota_usage_get_all_by_project(
                          self.ctxt, 'p1'))
 
