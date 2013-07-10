@@ -35,6 +35,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import storwize_svc
@@ -579,6 +580,24 @@ port_speed!N/A
                     return self._errors['CMMVC5840E']
 
         del self._volumes_list[vol_name]
+        return ('', '')
+
+    def _cmd_expandvdisksize(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        vol_name = kwargs['obj'].strip('\'\'')
+
+        # Assume unit is gb
+        if 'size' not in kwargs:
+            return self._errors['CMMVC5707E']
+        size = int(kwargs['size'])
+
+        if vol_name not in self._volumes_list:
+            return self._errors['CMMVC5753E']
+
+        curr_size = int(self._volumes_list[vol_name]['capacity'])
+        addition = size * units.GiB
+        self._volumes_list[vol_name]['capacity'] = str(curr_size + addition)
         return ('', '')
 
     def _get_fcmap_info(self, vol_name):
@@ -1157,6 +1176,8 @@ port_speed!N/A
             out, err = self._cmd_mkvdisk(**kwargs)
         elif command == 'rmvdisk':
             out, err = self._cmd_rmvdisk(**kwargs)
+        elif command == 'expandvdisksize':
+            out, err = self._cmd_expandvdisksize(**kwargs)
         elif command == 'lsvdisk':
             out, err = self._cmd_lsvdisk(**kwargs)
         elif command == 'mkhost':
@@ -1936,6 +1957,24 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                              'storwize-svc-sim_volpool')
             self.assertAlmostEqual(stats['total_capacity_gb'], 3328.0)
             self.assertAlmostEqual(stats['free_capacity_gb'], 3287.5)
+
+    def test_storwize_svc_extend_volume(self):
+        volume = self._generate_vol_info(None, None)
+        self.driver.db.volume_set(volume)
+        self.driver.create_volume(volume)
+        stats = self.driver.extend_volume(volume, '13')
+        attrs = self.driver._get_vdisk_attributes(volume['name'])
+        vol_size = int(attrs['capacity']) / units.GiB
+        self.assertAlmostEqual(vol_size, 13)
+
+        snap = self._generate_vol_info(volume['name'], volume['id'])
+        self.driver.create_snapshot(snap)
+        self._assert_vol_exists(snap['name'], True)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume, volume, '16')
+
+        self.driver.delete_snapshot(snap)
+        self.driver.delete_volume(volume)
 
 
 class CLIResponseTestCase(test.TestCase):
