@@ -501,8 +501,8 @@ class API(base.Base):
     @wrap_check_policy
     def check_detach(self, context, volume):
         # TODO(vish): abstract status checking?
-        if volume['status'] == "available":
-            msg = _("already detached")
+        if volume['status'] != "in-use":
+            msg = _("status must be in-use to detach")
             raise exception.InvalidVolume(reason=msg)
 
     @wrap_check_policy
