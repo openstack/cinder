@@ -24,6 +24,7 @@ import os
 
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
@@ -60,6 +61,25 @@ class LinuxSCSI(executor.Executor):
         if os.path.exists(path):
             LOG.debug("Remove SCSI device(%s) with %s" % (device, path))
             self.echo_scsi_command(path, "1")
+
+    def get_device_info(self, device):
+        (out, err) = self._execute('sg_scan', device, run_as_root=True,
+                                   root_helper=self._root_helper)
+        dev_info = {'device': device, 'host': None,
+                    'channel': None, 'id': None, 'lun': None}
+        if out:
+            line = out.strip()
+            line = line.replace(device + ": ", "")
+            info = line.split(" ")
+
+            for item in info:
+                if '=' in item:
+                    pair = item.split('=')
+                    dev_info[pair[0]] = pair[1]
+                elif 'scsi' in item:
+                    dev_info['host'] = item.replace('scsi', '')
+
+        return dev_info
 
     def remove_multipath_device(self, multipath_name):
         """This removes LUNs associated with a multipath device
@@ -104,7 +124,6 @@ class LinuxSCSI(executor.Executor):
             (out, err) = self._execute('multipath', '-l', device,
                                        run_as_root=True,
                                        root_helper=self._root_helper)
-            LOG.error("PISS = %s" % out)
         except putils.ProcessExecutionError as exc:
             LOG.warn(_("multipath call failed exit (%(code)s)")
                      % {'code': exc.exit_code})

@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2011 Red Hat, Inc.
+# (c) Copyright 2013 Hewlett-Packard Development Company, L.P.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,52 +17,11 @@
 import os.path
 import string
 
-from cinder.brick.initiator import connector
-from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxscsi
 from cinder.openstack.common import log as logging
 from cinder import test
 
 LOG = logging.getLogger(__name__)
-
-
-class ConnectorTestCase(test.TestCase):
-
-    def setUp(self):
-        super(ConnectorTestCase, self).setUp()
-        self.cmds = []
-        self.stubs.Set(os.path, 'exists', lambda x: True)
-
-    def fake_init(obj):
-        return
-
-    def fake_execute(self, *cmd, **kwargs):
-        self.cmds.append(string.join(cmd))
-        return "", None
-
-    def test_connect_volume(self):
-        self.connector = connector.InitiatorConnector()
-        self.assertRaises(NotImplementedError,
-                          self.connector.connect_volume, None)
-
-    def test_disconnect_volume(self):
-        self.connector = connector.InitiatorConnector()
-        self.assertRaises(NotImplementedError,
-                          self.connector.connect_volume, None)
-
-
-class HostDriverTestCase(test.TestCase):
-
-    def setUp(self):
-        super(HostDriverTestCase, self).setUp()
-        self.devlist = ['device1', 'device2']
-        self.stubs.Set(os, 'listdir', lambda x: self.devlist)
-
-    def test_host_driver(self):
-        expected = ['/dev/disk/by-path/' + dev for dev in self.devlist]
-        driver = host_driver.HostDriver()
-        actual = driver.get_all_block_devices()
-        self.assertEquals(expected, actual)
 
 
 class LinuxSCSITestCase(test.TestCase):
@@ -75,6 +34,11 @@ class LinuxSCSITestCase(test.TestCase):
     def fake_execute(self, *cmd, **kwargs):
         self.cmds.append(string.join(cmd))
         return "", None
+
+    def test_echo_scsi_command(self):
+        self.linuxscsi.echo_scsi_command("/some/path", "1")
+        expected_commands = ['tee -a /some/path']
+        self.assertEquals(expected_commands, self.cmds)
 
     def test_get_name_from_path(self):
         device_name = "/dev/sdc"
@@ -223,62 +187,3 @@ class LinuxSCSITestCase(test.TestCase):
         self.assertEqual("1", info['devices'][1]['channel'])
         self.assertEqual("0", info['devices'][1]['id'])
         self.assertEqual("3", info['devices'][1]['lun'])
-
-
-class ISCSIConnectorTestCase(ConnectorTestCase):
-
-    def setUp(self):
-        super(ISCSIConnectorTestCase, self).setUp()
-        self.connector = connector.ISCSIConnector(execute=self.fake_execute)
-        self.stubs.Set(self.connector._linuxscsi,
-                       'get_name_from_path',
-                       lambda x: "/dev/sdb")
-
-    def tearDown(self):
-        super(ISCSIConnectorTestCase, self).tearDown()
-
-    def iscsi_connection(self, volume, location, iqn):
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': {
-                'volume_id': volume['id'],
-                'target_portal': location,
-                'target_iqn': iqn,
-                'target_lun': 1,
-            }
-        }
-
-    @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
-                               'Test requires /dev/disk/by-path')
-    def test_connect_volume(self):
-        self.stubs.Set(os.path, 'exists', lambda x: True)
-        location = '10.0.2.15:3260'
-        name = 'volume-00000001'
-        iqn = 'iqn.2010-10.org.openstack:%s' % name
-        vol = {'id': 1, 'name': name}
-        connection_info = self.iscsi_connection(vol, location, iqn)
-        conf = self.connector.connect_volume(connection_info['data'])
-        dev_str = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location, iqn)
-        self.assertEquals(conf['type'], 'block')
-        self.assertEquals(conf['path'], dev_str)
-
-        self.connector.disconnect_volume(connection_info['data'])
-        expected_commands = [('iscsiadm -m node -T %s -p %s' %
-                              (iqn, location)),
-                             ('iscsiadm -m session'),
-                             ('iscsiadm -m node -T %s -p %s --login' %
-                              (iqn, location)),
-                             ('iscsiadm -m node -T %s -p %s --op update'
-                              ' -n node.startup -v automatic' % (iqn,
-                              location)),
-                             ('tee -a /sys/block/sdb/device/delete'),
-                             ('iscsiadm -m node -T %s -p %s --op update'
-                              ' -n node.startup -v manual' % (iqn, location)),
-                             ('iscsiadm -m node -T %s -p %s --logout' %
-                              (iqn, location)),
-                             ('iscsiadm -m node -T %s -p %s --op delete' %
-                              (iqn, location)), ]
-        LOG.debug("self.cmds = %s" % self.cmds)
-        LOG.debug("expected = %s" % expected_commands)
-
-        self.assertEqual(expected_commands, self.cmds)

@@ -855,6 +855,11 @@
 # value)
 #volume_backend_name=<None>
 
+# Do we attach/detach volumes in cinder using multipath
+# for volume to image and image to volume transfers?
+# (boolean value)
+#use_multipath_for_image_xfer=False
+
 
 #
 # Options defined in cinder.volume.drivers.block_device
