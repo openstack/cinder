@@ -62,6 +62,109 @@ class VolumeRouterTestCase(test.TestCase):
         response = req.get_response(self.app)
         self.assertEqual(200, response.status_int)
 
+    def test_versions_action_args_index(self):
+        request_enviroment = {'PATH_INFO': '/'}
+        resource = versions.Versions()
+        result = resource.get_action_args(request_enviroment)
+        self.assertEqual(result['action'], 'index')
+
+    def test_versions_action_args_multi(self):
+        request_enviroment = {'PATH_INFO': '/fake/path'}
+        resource = versions.Versions()
+        result = resource.get_action_args(request_enviroment)
+        self.assertEqual(result['action'], 'multi')
+
+    def test_versions_get_most_recent_update(self):
+        res = versions.AtomSerializer()
+        fake_date_updated = [
+            {"updated": '2012-01-04T11:33:21Z'},
+            {"updated": '2012-11-21T11:33:21Z'}
+        ]
+        result = res._get_most_recent_update(fake_date_updated)
+        self.assertEqual('2012-11-21T11:33:21Z', result)
+
+    def test_versions_create_version_entry(self):
+        res = versions.AtomSerializer()
+        vers = {
+            "id": "v2.0",
+            "status": "CURRENT",
+            "updated": "2012-11-21T11:33:21Z",
+            "links": [
+                {
+                    "rel": "describedby",
+                    "type": "application/pdf",
+                    "href": "http://jorgew.github.com/block-storage-api/"
+                            "content/os-block-storage-1.0.pdf",
+                },
+            ],
+        }
+        fake_result = {
+            'id': 'http://jorgew.github.com/block-storage-api/'
+                  'content/os-block-storage-1.0.pdf',
+            'title': 'Version v2.0',
+            'updated': '2012-11-21T11:33:21Z',
+            'link': {
+                'href': 'http://jorgew.github.com/block-storage-api/'
+                        'content/os-block-storage-1.0.pdf',
+                'type': 'application/pdf',
+                'rel': 'describedby'
+            },
+            'content': 'Version v2.0 CURRENT (2012-11-21T11:33:21Z)'
+        }
+        result_function = res._create_version_entry(vers)
+        result = {}
+        for subElement in result_function:
+            if subElement.text:
+                result[subElement.tag] = subElement.text
+            else:
+                result[subElement.tag] = subElement.attrib
+        self.assertEqual(result, fake_result)
+
+    def test_versions_create_feed(self):
+        res = versions.AtomSerializer()
+        vers = [
+            {
+                "id": "v2.0",
+                "status": "CURRENT",
+                "updated": "2012-11-21T11:33:21Z",
+                "links": [
+                    {
+                        "rel": "describedby",
+                        "type": "application/pdf",
+                        "href": "http://jorgew.github.com/block-storage-api/"
+                                "content/os-block-storage-1.0.pdf",
+                    },
+                ],
+            },
+            {
+                "id": "v1.0",
+                "status": "CURRENT",
+                "updated": "2012-01-04T11:33:21Z",
+                "links": [
+                    {
+                        "rel": "describedby",
+                        "type": "application/vnd.sun.wadl+xml",
+                        "href": "http://docs.rackspacecloud.com/"
+                                "servers/api/v1.1/application.wadl",
+                    },
+                ],
+            }
+        ]
+        result = res._create_feed(vers, "fake_feed_title",
+                                  "http://jorgew.github.com/block-storage-api/"
+                                  "content/os-block-storage-1.0.pdf")
+        fake_data = {
+            'id': 'http://jorgew.github.com/block-storage-api/'
+                  'content/os-block-storage-1.0.pdf',
+            'title': 'fake_feed_title',
+            'updated': '2012-11-21T11:33:21Z',
+        }
+        data = {}
+        for subElement in result:
+            if subElement.text:
+                data[subElement.tag] = subElement.text
+        self.assertEqual(data, fake_data)
+
     def test_versions_multi(self):
         req = fakes.HTTPRequest.blank('/')
         req.method = 'GET'
