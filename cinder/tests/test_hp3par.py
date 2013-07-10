@@ -305,7 +305,10 @@ class HP3PARBaseDriver():
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
     FAKE_DESC = 'test description name'
     FAKE_FC_PORTS = ['0987654321234', '123456789000987']
-    FAKE_ISCSI_PORTS = ['10.10.10.10', '10.10.10.11']
+    FAKE_ISCSI_PORTS = {'1.1.1.2': {'nsp': '8:1:1',
+                                    'iqn': ('iqn.2000-05.com.3pardata:'
+                                            '21810002ac00383d'),
+                                    'ip_port': '3262'}}
 
     volume = {'name': VOLUME_NAME,
               'id': VOLUME_ID,
@@ -332,6 +335,43 @@ class HP3PARBaseDriver():
                  'wwpns': ["123456789012345", "123456789054321"],
                  'wwnns': ["223456789012345", "223456789054321"],
                  'host': 'fakehost'}
+
+    def setup_configuration(self):
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.hp3par_debug = False
+        configuration.hp3par_username = 'testUser'
+        configuration.hp3par_password = 'testPassword'
+        configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
+        configuration.hp3par_domain = HP3PAR_DOMAIN
+        configuration.hp3par_cpg = HP3PAR_CPG
+        configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
+        configuration.iscsi_ip_address = '1.1.1.2'
+        configuration.iscsi_port = '1234'
+        configuration.san_ip = '2.2.2.2'
+        configuration.san_login = 'test'
+        configuration.san_password = 'test'
+        configuration.hp3par_snapshot_expiration = ""
+        configuration.hp3par_snapshot_retention = ""
+        configuration.hp3par_iscsi_ips = []
+        return configuration
+
+    def setup_fakes(self):
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
+                       self.fake_create_client)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_3par_host",
+                       self.fake_get_3par_host)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_delete_3par_host",
+                       self.fake_delete_3par_host)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_3par_vlun",
+                       self.fake_create_3par_vlun)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
+                       self.fake_get_ports)
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
+                       self.fake_get_domain)
+
+    def clear_mox(self):
+        self.mox.ResetAll()
+        self.stubs.UnsetAll()
 
     def fake_create_client(self):
         return FakeHP3ParClient(self.driver.configuration.hp3par_api_url)
@@ -430,46 +470,25 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         super(TestHP3PARFCDriver, self).setUp()
+        self.setup_driver(self.setup_configuration())
+        self.setup_fakes()
 
-        configuration = mox.MockObject(conf.Configuration)
-        configuration.hp3par_debug = False
-        configuration.hp3par_username = 'testUser'
-        configuration.hp3par_password = 'testPassword'
-        configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
-        configuration.hp3par_cpg = HP3PAR_CPG
-        configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
-        configuration.iscsi_ip_address = '1.1.1.2'
-        configuration.iscsi_port = '1234'
-        configuration.san_ip = '2.2.2.2'
-        configuration.san_login = 'test'
-        configuration.san_password = 'test'
-        configuration.hp3par_snapshot_expiration = ""
-        configuration.hp3par_snapshot_retention = ""
-        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "_create_client",
-                       self.fake_create_client)
+    def setup_fakes(self):
+        super(TestHP3PARFCDriver, self).setup_fakes()
         self.stubs.Set(hpfcdriver.HP3PARFCDriver,
                        "_create_3par_fibrechan_host",
                        self.fake_create_3par_fibrechan_host)
 
-        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "_get_3par_host",
-                       self.fake_get_3par_host)
-        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "_delete_3par_host",
-                       self.fake_delete_3par_host)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_3par_vlun",
-                       self.fake_create_3par_vlun)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
-                       self.fake_get_ports)
-        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
-                       self.fake_get_domain)
-
-        self.configuration = configuration
-
-        self.driver = hpfcdriver.HP3PARFCDriver(configuration=configuration)
-        self.driver.do_setup(None)
-
     def tearDown(self):
         shutil.rmtree(self.tempdir)
         super(TestHP3PARFCDriver, self).tearDown()
+
+    def setup_driver(self, configuration):
+        self.driver = hpfcdriver.HP3PARFCDriver(configuration=configuration)
+
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
+                       self.fake_create_client)
+        self.driver.do_setup(None)
 
     def fake_create_3par_fibrechan_host(self, hostname, wwn,
                                         domain, persona_id):
@@ -577,7 +596,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -600,7 +619,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -627,7 +646,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -657,49 +676,19 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         super(TestHP3PARISCSIDriver, self).setUp()
+        self.setup_driver(self.setup_configuration())
+        self.setup_fakes()
 
-        configuration = mox.MockObject(conf.Configuration)
-        configuration.hp3par_debug = False
-        configuration.hp3par_username = 'testUser'
-        configuration.hp3par_password = 'testPassword'
-        configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
-        configuration.hp3par_cpg = HP3PAR_CPG
-        configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
-        configuration.iscsi_ip_address = '1.1.1.2'
-        configuration.iscsi_port = '1234'
-        configuration.san_ip = '2.2.2.2'
-        configuration.san_login = 'test'
-        configuration.san_password = 'test'
-        configuration.hp3par_snapshot_expiration = ""
-        configuration.hp3par_snapshot_retention = ""
+    def setup_fakes(self):
+        super(TestHP3PARISCSIDriver, self).setup_fakes()
 
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
-                       self.fake_create_client)
-        self.stubs.Set(hpdriver.HP3PARISCSIDriver,
-                       "_iscsi_discover_target_iqn",
-                       self.fake_iscsi_discover_target_iqn)
         self.stubs.Set(hpdriver.HP3PARISCSIDriver, "_create_3par_iscsi_host",
                        self.fake_create_3par_iscsi_host)
-        self.stubs.Set(hpdriver.HP3PARISCSIDriver,
-                       "_iscsi_discover_target_iqn",
-                       self.fake_iscsi_discover_target_iqn)
 
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_3par_host",
-                       self.fake_get_3par_host)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_delete_3par_host",
-                       self.fake_delete_3par_host)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_3par_vlun",
-                       self.fake_create_3par_vlun)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
-                       self.fake_get_domain)
-
-        self.driver = hpdriver.HP3PARISCSIDriver(configuration=configuration)
-        self.driver.do_setup(None)
-
-        target_iqn = 'iqn.2000-05.com.3pardata:21810002ac00383d'
+        #target_iqn = 'iqn.2000-05.com.3pardata:21810002ac00383d'
         self.properties = {'data':
                           {'target_discovered': True,
-                           'target_iqn': target_iqn,
+                           'target_iqn': self.TARGET_IQN,
                            'target_lun': 186,
                            'target_portal': '1.1.1.2:1234'},
                            'driver_volume_type': 'iscsi'}
@@ -709,8 +698,17 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self._hosts = {}
         super(TestHP3PARISCSIDriver, self).tearDown()
 
-    def fake_iscsi_discover_target_iqn(self, ip_address):
-        return self.TARGET_IQN
+    def setup_driver(self, configuration, set_up_fakes=True):
+        self.driver = hpdriver.HP3PARISCSIDriver(configuration=configuration)
+
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
+                       self.fake_create_client)
+
+        if set_up_fakes:
+            self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
+                           self.fake_get_ports)
+
+        self.driver.do_setup(None)
 
     def fake_create_3par_iscsi_host(self, hostname, iscsi_iqn,
                                     domain, persona_id):
@@ -812,7 +810,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -836,7 +834,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -863,7 +861,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -881,27 +879,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         host = self.driver._create_host(self.volume, self.connector)
         self.assertEqual(host['name'], self.FAKE_HOST)
 
-    def test_iscsi_discover_target_iqn(self):
-        self.flags(lock_path=self.tempdir)
-
-        #record
-        self.stubs.UnsetAll()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
-
-        show_port_cmd = 'showport -ids'
-        _run_ssh(show_port_cmd, False).AndReturn([pack(ISCSI_PORT_IDS_RET),
-                                                 ''])
-        self.mox.ReplayAll()
-
-        iqn = self.driver._iscsi_discover_target_iqn('10.10.120.253')
-        self.assertEqual(iqn, self.TARGET_IQN)
-
     def test_get_volume_state(self):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -917,7 +899,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.flags(lock_path=self.tempdir)
 
         #record
-        self.stubs.UnsetAll()
+        self.clear_mox()
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
@@ -925,11 +907,144 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
 
         show_port_i_cmd = 'showport -iscsi'
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(ISCSI_PORT_RET), ''])
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
+                                                    ''])
+
+        show_port_i_cmd = 'showport -iscsiname'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI),
+                                                    ''])
         self.mox.ReplayAll()
 
         ports = self.driver.common.get_ports()
         self.assertEqual(ports['FC'][0], '20210002AC00383D')
+        self.assertEqual(ports['iSCSI']['10.10.120.252']['nsp'], '0:8:2')
+
+    def test_get_iscsi_ip_active(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record set up
+        self.clear_mox()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_port_cmd = 'showport'
+        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
+
+        show_port_i_cmd = 'showport -iscsi'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
+                                                    ''])
+
+        show_port_i_cmd = 'showport -iscsiname'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
+
+        self.mox.ReplayAll()
+
+        config = self.setup_configuration()
+        config.hp3par_iscsi_ips = ['10.10.220.253', '10.10.220.252']
+        self.setup_driver(config, set_up_fakes=False)
+
+        #record
+        self.clear_mox()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_vlun_cmd = 'showvlun -a -host fakehost'
+        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN), ''])
+
+        self.mox.ReplayAll()
+
+        ip = self.driver._get_iscsi_ip('fakehost')
+        self.assertEqual(ip, '10.10.220.253')
+
+    def test_get_iscsi_ip(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record driver set up
+        self.clear_mox()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_port_cmd = 'showport'
+        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
+
+        show_port_i_cmd = 'showport -iscsi'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
+                                                    ''])
+
+        show_port_i_cmd = 'showport -iscsiname'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
+
+        #record
+        show_vlun_cmd = 'showvlun -a -host fakehost'
+        show_vlun_ret = 'no vluns listed\r\n'
+        _run_ssh(show_vlun_cmd, False).AndReturn([pack(show_vlun_ret), ''])
+        show_vlun_cmd = 'showvlun -a -showcols Port'
+        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
+
+        self.mox.ReplayAll()
+
+        config = self.setup_configuration()
+        config.iscsi_ip_address = '10.10.10.10'
+        config.hp3par_iscsi_ips = ['10.10.220.253', '10.10.220.252']
+        self.setup_driver(config, set_up_fakes=False)
+
+        ip = self.driver._get_iscsi_ip('fakehost')
+        self.assertEqual(ip, '10.10.220.252')
+
+    def test_invalid_iscsi_ip(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record driver set up
+        self.clear_mox()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_port_cmd = 'showport'
+        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
+
+        show_port_i_cmd = 'showport -iscsi'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
+                                                    ''])
+
+        show_port_i_cmd = 'showport -iscsiname'
+        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
+
+        config = self.setup_configuration()
+        config.hp3par_iscsi_ips = ['10.10.220.250', '10.10.220.251']
+        config.iscsi_ip_address = '10.10.10.10'
+        self.mox.ReplayAll()
+
+        # no valid ip addr should be configured.
+        self.assertRaises(exception.InvalidInput,
+                          self.setup_driver,
+                          config,
+                          set_up_fakes=False)
+
+    def test_get_least_used_nsp(self):
+        self.flags(lock_path=self.tempdir)
+
+        #record
+        self.clear_mox()
+        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+
+        show_vlun_cmd = 'showvlun -a -showcols Port'
+        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
+        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
+        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
+
+        self.mox.ReplayAll()
+        # in use count                           11       12
+        nsp = self.driver._get_least_used_nsp(['0:2:1', '1:8:1'])
+        self.assertEqual(nsp, '0:2:1')
+
+        # in use count                            11       10
+        nsp = self.driver._get_least_used_nsp(['0:2:1', '1:2:1'])
+        self.assertEqual(nsp, '1:2:1')
+
+        # in use count                            0       10
+        nsp = self.driver._get_least_used_nsp(['1:1:1', '1:2:1'])
+        self.assertEqual(nsp, '1:1:1')
 
 
 def pack(arg):
@@ -1106,3 +1221,40 @@ ISCSI_3PAR_RET = (
     'Model      : --\r\n'
     'Contact    : --\r\n'
     'Comment    : --  \r\n\r\n\r\n')
+
+SHOW_PORT_ISCSI = (
+    'N:S:P,IPAddr,---------------iSCSI_Name----------------\r\n'
+    '0:8:1,1.1.1.2,iqn.2000-05.com.3pardata:21810002ac00383d\r\n'
+    '0:8:2,10.10.120.252,iqn.2000-05.com.3pardata:20820002ac00383d\r\n'
+    '1:8:1,10.10.220.253,iqn.2000-05.com.3pardata:21810002ac00383d\r\n'
+    '1:8:2,10.10.220.252,iqn.2000-05.com.3pardata:21820002ac00383d\r\n'
+    '-------------------------------------------------------------\r\n')
+
+SHOW_VLUN = (
+    'Lun,VVName,HostName,---------Host_WWN/iSCSI_Name----------,Port,Type,'
+    'Status,ID\r\n'
+    '0,a,fakehost,iqn.1993-08.org.debian:01:3a779e4abc22,1:8:1,matched set,'
+    'active,0\r\n'
+    '------------------------------------------------------------------------'
+    '--------------\r\n')
+
+SHOW_VLUN_NONE = (
+    'Port\r\n0:2:1\r\n0:2:1\r\n1:8:1\r\n1:8:1\r\n1:8:1\r\n1:2:1\r\n'
+    '1:2:1\r\n1:2:1\r\n1:2:1\r\n1:2:1\r\n1:2:1\r\n1:8:1\r\n1:8:1\r\n1:8:1\r\n'
+    '1:8:1\r\n1:8:1\r\n1:8:1\r\n0:2:1\r\n0:2:1\r\n0:2:1\r\n0:2:1\r\n0:2:1\r\n'
+    '0:2:1\r\n0:2:1\r\n1:8:1\r\n1:8:1\r\n0:2:1\r\n0:2:1\r\n1:2:1\r\n1:2:1\r\n'
+    '1:2:1\r\n1:2:1\r\n1:8:1\r\n-----')
+
+READY_ISCSI_PORT_RET = (
+    'N:S:P,State,IPAddr,Netmask,Gateway,TPGT,MTU,Rate,DHCP,iSNS_Addr,'
+    'iSNS_Port\r\n'
+    '0:8:1,ready,10.10.120.253,255.255.224.0,0.0.0.0,81,1500,10Gbps,'
+    '0,0.0.0.0,3205\r\n'
+    '0:8:2,ready,10.10.120.252,255.255.224.0,0.0.0.0,82,1500,10Gbps,0,'
+    '0.0.0.0,3205\r\n'
+    '1:8:1,ready,10.10.220.253,255.255.224.0,0.0.0.0,181,1500,10Gbps,'
+    '0,0.0.0.0,3205\r\n'
+    '1:8:2,ready,10.10.220.252,255.255.224.0,0.0.0.0,182,1500,10Gbps,0,'
+    '0.0.0.0,3205\r\n'
+    '-------------------------------------------------------------------'
+    '----------------------\r\n')

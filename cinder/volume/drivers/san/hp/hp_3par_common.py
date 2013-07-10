@@ -96,7 +96,10 @@ hp3par_opts = [
                     " and is deleted.  This must be larger than expiration"),
     cfg.BoolOpt('hp3par_debug',
                 default=False,
-                help="Enable HTTP debugging to 3PAR")
+                help="Enable HTTP debugging to 3PAR"),
+    cfg.ListOpt('hp3par_iscsi_ips',
+                default=[],
+                help="List of target iSCSI addresses to use.")
 ]
 
 
@@ -458,7 +461,7 @@ exit
         # Protocol,Label,Partner,FailoverState
         out = out[1:len(out) - 2]
 
-        ports = {'FC': [], 'iSCSI': []}
+        ports = {'FC': [], 'iSCSI': {}}
         for line in out:
             tmp = line.split(',')
 
@@ -477,9 +480,26 @@ exit
         for line in out:
             tmp = line.split(',')
 
-            if tmp:
+            if tmp and len(tmp) > 2:
                 if tmp[1] == 'ready':
-                    ports['iSCSI'].append(tmp[2])
+                    ports['iSCSI'][tmp[2]] = {}
+
+        # now get the nsp and iqn
+        result = self._cli_run('showport -iscsiname', None)
+        if result:
+            # first line is header
+            # nsp, ip,iqn
+            result = result[1:]
+            for line in result:
+                info = line.split(",")
+                if info and len(info) > 2:
+                    if info[1] in ports['iSCSI']:
+                        nsp = info[0]
+                        ip_addr = info[1]
+                        iqn = info[2]
+                        ports['iSCSI'][ip_addr] = {'nsp': nsp,
+                                                   'iqn': iqn
+                                                   }
 
         LOG.debug("PORTS = %s" % pprint.pformat(ports))
         return ports
