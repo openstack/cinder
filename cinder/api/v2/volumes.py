@@ -165,7 +165,8 @@ class VolumeController(wsgi.Controller):
         try:
             vol = self.volume_api.get(context, id)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Volume could not be found")
+            raise exc.HTTPNotFound(explanation=msg)
 
         return self._view_builder.detail(req, vol)
 
@@ -179,10 +180,11 @@ class VolumeController(wsgi.Controller):
             volume = self.volume_api.get(context, id)
             self.volume_api.delete(context, volume)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Volume could not be found")
+            raise exc.HTTPNotFound(explanation=msg)
         except exception.VolumeAttached:
-            explanation = 'Volume cannot be deleted while in attached state'
-            raise exc.HTTPBadRequest(explanation=explanation)
+            msg = _("Volume cannot be deleted while in attached state")
+            raise exc.HTTPBadRequest(explanation=msg)
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=VolumesTemplate)
@@ -250,7 +252,8 @@ class VolumeController(wsgi.Controller):
     def create(self, req, body):
         """Creates a new volume."""
         if not self.is_valid_body(body, 'volume'):
-            raise exc.HTTPBadRequest()
+            msg = _("Missing required element '%s' in request body") % 'volume'
+            raise exc.HTTPBadRequest(explanation=msg)
 
         LOG.debug('Create volume request body: %s', body)
         context = req.environ['cinder.context']
@@ -274,8 +277,8 @@ class VolumeController(wsgi.Controller):
                 kwargs['volume_type'] = volume_types.get_volume_type(
                     context, req_volume_type)
             except exception.VolumeTypeNotFound:
-                explanation = 'Volume type not found.'
-                raise exc.HTTPNotFound(explanation=explanation)
+                msg = _("Volume type not found")
+                raise exc.HTTPNotFound(explanation=msg)
 
         kwargs['metadata'] = volume.get('metadata', None)
 
@@ -335,10 +338,12 @@ class VolumeController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         if not body:
-            raise exc.HTTPBadRequest()
+            msg = _("Missing request body")
+            raise exc.HTTPBadRequest(explanation=msg)
 
         if 'volume' not in body:
-            raise exc.HTTPBadRequest()
+            msg = _("Missing required element '%s' in request body") % 'volume'
+            raise exc.HTTPBadRequest(explanation=msg)
 
         volume = body['volume']
         update_dict = {}
@@ -367,7 +372,8 @@ class VolumeController(wsgi.Controller):
             volume = self.volume_api.get(context, id)
             self.volume_api.update(context, volume, update_dict)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Volume could not be found")
+            raise exc.HTTPNotFound(explanation=msg)
 
         volume.update(update_dict)
 

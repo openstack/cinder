@@ -69,7 +69,8 @@ class VolumeTypesController(wsgi.Controller):
         try:
             vol_type = volume_types.get_volume_type(context, id)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Volume type not found")
+            raise exc.HTTPNotFound(explanation=msg)
 
         # TODO(bcwaldon): remove str cast once we use uuids
         vol_type['id'] = str(vol_type['id'])
