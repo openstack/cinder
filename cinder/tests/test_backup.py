@@ -77,7 +77,7 @@ class BackupTestCase(test.TestCase):
         backup['container'] = container
         backup['status'] = status
         backup['fail_reason'] = ''
-        backup['service'] = CONF.backup_service
+        backup['service'] = CONF.backup_driver
         backup['size'] = size
         backup['object_count'] = object_count
         return db.backup_create(self.ctxt, backup)['id']
@@ -407,3 +407,14 @@ class BackupTestCase(test.TestCase):
         ctxt_read_deleted = context.get_admin_context('yes')
         backups = db.backup_get_all_by_host(ctxt_read_deleted, 'testhost')
         self.assertEqual(len(backups), 2)
+
+    def test_backup_manager_driver_name(self):
+        """"Test mapping between backup services and backup drivers."""
+
+        old_setting = CONF.backup_driver
+        setattr(cfg.CONF, 'backup_driver', "cinder.backup.services.swift")
+        backup_mgr = \
+            importutils.import_object(CONF.backup_manager)
+        self.assertEqual('cinder.backup.drivers.swift',
+                         backup_mgr.driver_name)
+        setattr(cfg.CONF, 'backup_driver', old_setting)

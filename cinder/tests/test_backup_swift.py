@@ -25,7 +25,7 @@ import zlib
 
 from swiftclient import client as swift
 
-from cinder.backup.services.swift import SwiftBackupService
+from cinder.backup.drivers.swift import SwiftBackupDriver
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -81,7 +81,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_backup_uncompressed(self):
         self._create_backup_db_entry()
         self.flags(backup_compression_algorithm='none')
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
@@ -89,7 +89,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_backup_bz2(self):
         self._create_backup_db_entry()
         self.flags(backup_compression_algorithm='bz2')
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
@@ -97,14 +97,14 @@ class BackupSwiftTestCase(test.TestCase):
     def test_backup_zlib(self):
         self._create_backup_db_entry()
         self.flags(backup_compression_algorithm='zlib')
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
 
     def test_backup_default_container(self):
         self._create_backup_db_entry(container=None)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
@@ -114,7 +114,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_backup_custom_container(self):
         container_name = 'fake99'
         self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
@@ -124,7 +124,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_create_backup_container_check_wraps_socket_error(self):
         container_name = 'socket_error_on_head'
         self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         self.assertRaises(exception.SwiftConnectionFailed,
@@ -134,7 +134,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_create_backup_put_object_wraps_socket_error(self):
         container_name = 'socket_error_on_put'
         self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
         backup = db.backup_get(self.ctxt, 123)
         self.assertRaises(exception.SwiftConnectionFailed,
@@ -143,7 +143,7 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_restore(self):
         self._create_backup_db_entry()
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
             backup = db.backup_get(self.ctxt, 123)
@@ -152,7 +152,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_restore_wraps_socket_error(self):
         container_name = 'socket_error_on_get'
         self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
             backup = db.backup_get(self.ctxt, 123)
@@ -163,7 +163,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_restore_unsupported_version(self):
         container_name = 'unsupported_version'
         self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
             backup = db.backup_get(self.ctxt, 123)
@@ -173,21 +173,21 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_delete(self):
         self._create_backup_db_entry()
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         backup = db.backup_get(self.ctxt, 123)
         service.delete(backup)
 
     def test_delete_wraps_socket_error(self):
         container_name = 'socket_error_on_delete'
         self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         backup = db.backup_get(self.ctxt, 123)
         self.assertRaises(exception.SwiftConnectionFailed,
                           service.delete,
                           backup)
 
     def test_get_compressor(self):
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         compressor = service._get_compressor('None')
         self.assertEquals(compressor, None)
         compressor = service._get_compressor('zlib')
@@ -197,7 +197,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
     def test_check_container_exists(self):
-        service = SwiftBackupService(self.ctxt)
+        service = SwiftBackupDriver(self.ctxt)
         exists = service._check_container_exists('fake_container')
         self.assertEquals(exists, True)
         exists = service._check_container_exists('missing_container')

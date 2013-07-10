@@ -40,7 +40,7 @@ import StringIO
 import eventlet
 from oslo.config import cfg
 
-from cinder.db import base
+from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -83,11 +83,11 @@ CONF = cfg.CONF
 CONF.register_opts(swiftbackup_service_opts)
 
 
-class SwiftBackupService(base.Base):
+class SwiftBackupDriver(BackupDriver):
     """Provides backup, restore and delete of backup objects within Swift."""
 
-    SERVICE_VERSION = '1.0.0'
-    SERVICE_VERSION_MAPPING = {'1.0.0': '_restore_v1'}
+    DRIVER_VERSION = '1.0.0'
+    DRIVER_VERSION_MAPPING = {'1.0.0': '_restore_v1'}
 
     def _get_compressor(self, algorithm):
         try:
@@ -134,7 +134,7 @@ class SwiftBackupService(base.Base):
                                          preauthtoken=self.context.auth_token,
                                          starting_backoff=self.swift_backoff)
 
-        super(SwiftBackupService, self).__init__(db_driver)
+        super(SwiftBackupDriver, self).__init__(db_driver)
 
     def _check_container_exists(self, container):
         LOG.debug(_('_check_container_exists: container: %s') % container)
@@ -192,7 +192,7 @@ class SwiftBackupService(base.Base):
                     ' metadata filename: %(filename)s') %
                   {'container': container, 'filename': filename})
         metadata = {}
-        metadata['version'] = self.SERVICE_VERSION
+        metadata['version'] = self.DRIVER_VERSION
         metadata['backup_id'] = backup['id']
         metadata['volume_id'] = volume_id
         metadata['backup_name'] = backup['display_name']
@@ -421,7 +421,7 @@ class SwiftBackupService(base.Base):
         metadata_version = metadata['version']
         LOG.debug(_('Restoring swift backup version %s'), metadata_version)
         try:
-            restore_func = getattr(self, self.SERVICE_VERSION_MAPPING.get(
+            restore_func = getattr(self, self.DRIVER_VERSION_MAPPING.get(
                 metadata_version))
         except TypeError:
             err = (_('No support to restore swift backup version %s')
@@ -467,5 +467,5 @@ class SwiftBackupService(base.Base):
         LOG.debug(_('delete %s finished') % backup['id'])
 
 
-def get_backup_service(context):
-    return SwiftBackupService(context)
+def get_backup_driver(context):
+    return SwiftBackupDriver(context)

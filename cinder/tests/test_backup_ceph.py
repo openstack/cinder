@@ -19,11 +19,11 @@ import os
 import tempfile
 import uuid
 
-from cinder.backup.services.ceph import CephBackupService
+from cinder.backup.drivers.ceph import CephBackupDriver
 from cinder.tests.backup.fake_rados import mock_rados
 from cinder.tests.backup.fake_rados import mock_rbd
 
-from cinder.backup.services import ceph
+from cinder.backup.drivers import ceph
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -73,7 +73,7 @@ class BackupCephTestCase(test.TestCase):
         self.volume_file.seek(0)
 
     def test_get_rbd_support(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
 
         self.assertFalse(hasattr(service.rbd, 'RBD_FEATURE_LAYERING'))
         self.assertFalse(hasattr(service.rbd, 'RBD_FEATURE_STRIPINGV2'))
@@ -95,7 +95,7 @@ class BackupCephTestCase(test.TestCase):
         self.assertEquals(features, 1 | 2)
 
     def test_tranfer_data_from_rbd(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as test_file:
             self.volume_file.seek(0)
@@ -117,7 +117,7 @@ class BackupCephTestCase(test.TestCase):
             self.assertEquals(checksum.digest(), self.checksum.digest())
 
     def test_tranfer_data_to_rbd(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as test_file:
             checksum = hashlib.sha256()
@@ -135,7 +135,7 @@ class BackupCephTestCase(test.TestCase):
             self.assertEquals(checksum.digest(), self.checksum.digest())
 
     def test_backup_volume_from_file(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as test_file:
             checksum = hashlib.sha256()
@@ -157,21 +157,21 @@ class BackupCephTestCase(test.TestCase):
         super(BackupCephTestCase, self).tearDown()
 
     def test_backup_error1(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
         backup = db.backup_get(self.ctxt, self.backup_id)
         self._create_volume_db_entry(self.vol_id, 0)
         self.assertRaises(exception.InvalidParameterValue, service.backup,
                           backup, self.volume_file)
 
     def test_backup_error2(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
         backup = db.backup_get(self.ctxt, self.backup_id)
         self._create_volume_db_entry(self.vol_id, 1)
         self.assertRaises(exception.BackupVolumeInvalidType, service.backup,
                           backup, None)
 
     def test_backup_good(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
         backup = db.backup_get(self.ctxt, self.backup_id)
         self._create_volume_db_entry(self.vol_id, 1)
 
@@ -190,7 +190,7 @@ class BackupCephTestCase(test.TestCase):
             self.assertEquals(checksum.digest(), self.checksum.digest())
 
     def test_restore(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
         self._create_volume_db_entry(self.vol_id, 1)
         backup = db.backup_get(self.ctxt, self.backup_id)
 
@@ -213,7 +213,7 @@ class BackupCephTestCase(test.TestCase):
             self.assertEquals(checksum.digest(), self.checksum.digest())
 
     def test_delete(self):
-        service = CephBackupService(self.ctxt)
+        service = CephBackupDriver(self.ctxt)
         self._create_volume_db_entry(self.vol_id, 1)
         backup = db.backup_get(self.ctxt, self.backup_id)
 

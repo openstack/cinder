@@ -46,10 +46,16 @@ from cinder.openstack.common import log as logging
 LOG = logging.getLogger(__name__)
 
 backup_manager_opts = [
-    cfg.StrOpt('backup_service',
-               default='cinder.backup.services.swift',
-               help='Service to use for backups.'),
+    cfg.StrOpt('backup_driver',
+               default='cinder.backup.drivers.swift',
+               help='Driver to use for backups.',
+               deprecated_name='backup_service'),
 ]
+
+# This map doesn't need to be extended in the future since it's only
+# for old backup services
+mapper = {'cinder.backup.services.swift': 'cinder.backup.drivers.swift',
+          'cinder.backup.services.ceph': 'cinder.backup.drivers.ceph'}
 
 CONF = cfg.CONF
 CONF.register_opts(backup_manager_opts)
@@ -61,7 +67,7 @@ class BackupManager(manager.SchedulerDependentManager):
     RPC_API_VERSION = '1.0'
 
     def __init__(self, service_name=None, *args, **kwargs):
-        self.service = importutils.import_module(CONF.backup_service)
+        self.service = importutils.import_module(self.driver_name)
         self.az = CONF.storage_availability_zone
         self.volume_manager = importutils.import_object(
             CONF.volume_manager)
@@ -69,6 +75,19 @@ class BackupManager(manager.SchedulerDependentManager):
         super(BackupManager, self).__init__(service_name='backup',
                                             *args, **kwargs)
         self.driver.db = self.db
+
+    @property
+    def driver_name(self):
+        """This function maps old backup services to backup drivers."""
+
+        return self._map_service_to_driver(CONF.backup_driver)
+
+    def _map_service_to_driver(self, service):
+        """Maps services to drivers."""
+
+        if service in mapper:
+            return mapper[service]
+        return service
 
     def init_host(self):
         """Do any initialization that needs to be run if this is a
@@ -124,7 +143,7 @@ class BackupManager(manager.SchedulerDependentManager):
                  {'backup_id': backup_id, 'volume_id': volume_id})
         self.db.backup_update(context, backup_id, {'host': self.host,
                                                    'service':
-                                                   CONF.backup_service})
+                                                   self.driver_name})
 
         expected_status = 'backing-up'
         actual_status = volume['status']
@@ -152,7 +171,7 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         try:
-            backup_service = self.service.get_backup_service(context)
+            backup_service = self.service.get_backup_driver(context)
             self.driver.backup_volume(context, backup, backup_service)
         except Exception as err:
             with excutils.save_and_reraise_exception():
@@ -210,8 +229,8 @@ class BackupManager(manager.SchedulerDependentManager):
                      volume['id'], volume['size'],
                      backup['id'], backup['size'])
 
-        backup_service = backup['service']
-        configured_service = CONF.backup_service
+        backup_service = self._map_service_to_driver(backup['service'])
+        configured_service = self.driver_name
         if backup_service != configured_service:
             err = _('restore_backup aborted, the backup service currently'
                     ' configured [%(configured_service)s] is not the'
@@ -225,7 +244,7 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         try:
-            backup_service = self.service.get_backup_service(context)
+            backup_service = self.service.get_backup_driver(context)
             self.driver.restore_backup(context, backup, volume,
                                        backup_service)
         except Exception as err:
@@ -261,9 +280,9 @@ class BackupManager(manager.SchedulerDependentManager):
                                                        'fail_reason': err})
             raise exception.InvalidBackup(reason=err)
 
-        backup_service = backup['service']
+        backup_service = self._map_service_to_driver(backup['service'])
         if backup_service is not None:
-            configured_service = CONF.backup_service
+            configured_service = self.driver_name
             if backup_service != configured_service:
                 err = _('delete_backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'
@@ -277,7 +296,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 raise exception.InvalidBackup(reason=err)
 
             try:
-                backup_service = self.service.get_backup_service(context)
+                backup_service = self.service.get_backup_driver(context)
                 backup_service.delete(backup)
             except Exception as err:
                 with excutils.save_and_reraise_exception():
