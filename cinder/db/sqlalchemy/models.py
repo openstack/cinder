@@ -111,6 +111,7 @@ class Volume(BASE, CinderBase):
 
     provider_location = Column(String(255))
     provider_auth = Column(String(255))
+    provider_geometry = Column(String(255))
 
     volume_type_id = Column(String(36))
     source_volid = Column(String(36))

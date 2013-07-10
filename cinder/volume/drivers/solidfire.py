@@ -299,6 +299,9 @@ class SolidFire(SanISCSIDriver):
         model_update['provider_auth'] = ('CHAP %s %s'
                                          % (sfaccount['username'],
                                          chap_secret))
+        if not self.configuration.sf_emulate_512:
+            model_update['provider_geometry'] = ('%s %s' % (4096, 4096))
+
         return model_update
 
     def _do_clone_volume(self, src_uuid, src_project_id, v_ref):

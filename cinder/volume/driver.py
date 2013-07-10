@@ -323,6 +323,12 @@ class ISCSIDriver(VolumeDriver):
             properties['auth_username'] = auth_username
             properties['auth_password'] = auth_secret
 
+        geometry = volume.get('provider_geometry', None)
+        if geometry:
+            (physical_block_size, logical_block_size) = geometry.split()
+            properties['physical_block_size'] = physical_block_size
+            properties['logical_block_size'] = logical_block_size
+
         return properties
 
     def _run_iscsiadm(self, iscsi_properties, iscsi_command, **kwargs):

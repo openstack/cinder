@@ -16,10 +16,6 @@
 #    under the License.
 
 import mox
-from mox import IgnoreArg
-from mox import IsA
-from mox import stubout
-
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -160,6 +156,42 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv = SolidFire(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
         self.assertNotEqual(model_update, None)
+        self.assertEqual(model_update.get('provider_geometry', None), None)
+
+    def test_create_volume_non_512(self):
+        self.stubs.Set(SolidFire, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': None}
+        self.configuration.sf_emulate_512 = False
+        sfv = SolidFire(configuration=self.configuration)
+        model_update = sfv.create_volume(testvol)
+        self.assertEqual(model_update.get('provider_geometry', None),
+                         '4096 4096')
+        self.configuration.sf_emulate_512 = True
+
+    def test_initialize_connector_with_blocksizes(self):
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': None,
+                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
+                                        'solidfire:87hg.uuid-2cc06226-cc'
+                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
+                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
+                                    'c76370d66b 2FE0CQ8J196R',
+                   'provider_geometry': '4096 4096'
+                   }
+
+        sfv = SolidFire(configuration=self.configuration)
+        properties = sfv.initialize_connection(testvol, connector)
+        self.assertEqual(properties['data']['physical_block_size'], '4096')
+        self.assertEqual(properties['data']['logical_block_size'], '4096')
 
     def test_create_volume_with_qos(self):
         preset_qos = {}
