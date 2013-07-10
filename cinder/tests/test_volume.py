@@ -24,6 +24,7 @@ import datetime
 import os
 
 import mox
+from oslo.config import cfg
 import shutil
 import tempfile
 
@@ -43,10 +44,15 @@ from cinder.tests import fake_flags
 from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
+from cinder.volume.drivers import lvm
 from cinder.volume import iscsi
 
 QUOTAS = quota.QUOTAS
 FLAGS = flags.FLAGS
+
+fake_opt = [
+    cfg.StrOpt('fake_opt', default='fake', help='fake opts')
+]
 
 
 class VolumeTestCase(test.TestCase):
@@ -907,7 +913,7 @@ class VolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, '_volume_not_present',
                        lambda x: False)
         self.stubs.Set(self.volume.driver, '_delete_volume',
-                       lambda x, y: False)
+                       lambda x: False)
         # Want DriverTestCase._fake_execute to return 'o' so that
         # volume.driver.delete_volume() raises the VolumeIsBusy exception.
         self.output = 'o'
@@ -918,6 +924,34 @@ class VolumeDriverTestCase(DriverTestCase):
         # 'o' volume.driver.delete_volume() does not raise an exception.
         self.output = 'x'
         self.volume.driver.delete_volume({'name': 'test1', 'size': 1024})
+
+
+class LVMVolumeDriverTestCase(DriverTestCase):
+    """Test case for VolumeDriver"""
+    driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
+
+    def test_clear_volume(self):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.volume_clear = 'zero'
+        configuration.volume_clear_size = 0
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
+        self.stubs.Set(lvm_driver, '_copy_volume', lambda *a, **kw: True)
+
+        fake_volume = {'name': 'test1',
+                       'volume_name': 'test1',
+                       'id': 'test1'}
+
+        # Test volume has 'size' field
+        volume = dict(fake_volume, size='123')
+        self.assertEquals(True, lvm_driver.clear_volume(volume))
+
+        # Test volume has 'volume_size' field
+        volume = dict(fake_volume, volume_size='123')
+        self.assertEquals(True, lvm_driver.clear_volume(volume))
+
+        # Test volume without 'size' field and 'volume_size' field
+        volume = dict(fake_volume)
+        self.assertEquals(None, lvm_driver.clear_volume(volume))
 
 
 class ISCSITestCase(DriverTestCase):
