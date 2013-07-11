@@ -15,7 +15,7 @@ paramiko>=1.8.0
 paste
 pastedeploy>=1.5.0
 python-glanceclient>=0.5.0,<2
-python-keystoneclient>=0.2,<0.3
+python-keystoneclient>=0.2.1,<0.4
 python-swiftclient>=1.2,<2
 routes>=1.12.3
 six
