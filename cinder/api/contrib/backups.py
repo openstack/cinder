@@ -210,6 +210,8 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=unicode(error))
         except exception.VolumeNotFound as error:
             raise exc.HTTPNotFound(explanation=unicode(error))
+        except exception.ServiceNotFound as error:
+            raise exc.HTTPInternalServerError(explanation=unicode(error))
 
         retval = self._view_builder.summary(req, dict(new_backup.iteritems()))
         return retval

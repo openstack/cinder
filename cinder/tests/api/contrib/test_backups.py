@@ -28,6 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 # needed for stubs to work
@@ -42,6 +43,8 @@ class BackupsAPITestCase(test.TestCase):
 
     def setUp(self):
         super(BackupsAPITestCase, self).setUp()
+        self.volume_api = cinder.volume.API()
+        self.backup_api = cinder.backup.API()
 
     def tearDown(self):
         super(BackupsAPITestCase, self).tearDown()
@@ -78,6 +81,8 @@ class BackupsAPITestCase(test.TestCase):
     def _create_volume(display_name='test_volume',
                        display_description='this is a test volume',
                        status='creating',
+                       availability_zone='fake_az',
+                       host='fake_host',
                        size=1):
         """Create a volume object."""
         vol = {}
@@ -88,7 +93,14 @@ class BackupsAPITestCase(test.TestCase):
         vol['display_name'] = display_name
         vol['display_description'] = display_description
         vol['attach_status'] = 'detached'
+        vol['availability_zone'] = availability_zone
+        vol['host'] = host
         return db.volume_create(context.get_admin_context(), vol)['id']
+
+    @staticmethod
+    def _stub_service_get_all_by_topic(context, topic):
+        return [{'availability_zone': "fake_az", 'host': 'fake_host',
+                 'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
     def test_show_backup(self):
         volume_id = self._create_volume(size=5)
@@ -343,6 +355,8 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), backup_id1)
 
     def test_create_backup_json(self):
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic',
+                       self._stub_service_get_all_by_topic)
         volume_id = self._create_volume(status='available', size=5)
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -366,6 +380,8 @@ class BackupsAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_create_backup_xml(self):
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic',
+                       self._stub_service_get_all_by_topic)
         volume_size = 2
         volume_id = self._create_volume(status='available', size=volume_size)
 
@@ -465,6 +481,96 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['badRequest']['message'],
                          'Invalid volume: Volume to be backed up must'
                          ' be available')
+
+    def test_create_backup_WithOUT_enabled_backup_service(self):
+        # need an enabled backup service available
+        def stub_empty_service_get_all_by_topic(ctxt, topic):
+            return []
+
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic',
+                       stub_empty_service_get_all_by_topic)
+        volume_size = 2
+        volume_id = self._create_volume(status='available', size=volume_size)
+
+        req = webob.Request.blank('/v2/fake/backups')
+        body = {"backup": {"display_name": "nightly001",
+                           "display_description":
+                           "Nightly Backup 03-Sep-2012",
+                           "volume_id": volume_id,
+                           "container": "nightlybackups",
+                           }
+                }
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['Accept'] = 'application/json'
+        req.body = json.dumps(body)
+
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+        self.assertEqual(res.status_int, 500)
+        self.assertEqual(res_dict['computeFault']['code'], 500)
+        self.assertEqual(res_dict['computeFault']['message'],
+                         'Service cinder-backup could not be found.')
+
+    def test_check_backup_service(self):
+        def empty_service(ctxt, topic):
+            return []
+
+        #service host not match with volume's host
+        def host_not_match(context, topic):
+            return [{'availability_zone': "fake_az", 'host': 'strange_host',
+                     'disabled': 0, 'updated_at': timeutils.utcnow()}]
+
+        #service az not match with volume's az
+        def az_not_match(context, topic):
+            return [{'availability_zone': "strange_az", 'host': 'fake_host',
+                     'disabled': 0, 'updated_at': timeutils.utcnow()}]
+
+        #service disabled
+        def disabled_service(context, topic):
+            return [{'availability_zone': "fake_az", 'host': 'fake_host',
+                     'disabled': 1, 'updated_at': timeutils.utcnow()}]
+
+        #dead service that last reported at 20th centry
+        def dead_service(context, topic):
+            return [{'availability_zone': "fake_az", 'host': 'strange_host',
+                     'disabled': 0, 'updated_at': '1989-04-16 02:55:44'}]
+
+        #first service's host not match but second one works.
+        def multi_services(context, topic):
+            return [{'availability_zone': "fake_az", 'host': 'strange_host',
+                     'disabled': 0, 'updated_at': timeutils.utcnow()},
+                    {'availability_zone': "fake_az", 'host': 'fake_host',
+                     'disabled': 0, 'updated_at': timeutils.utcnow()}]
+
+        volume_id = self._create_volume(status='available', size=2,
+                                        availability_zone='fake_az',
+                                        host='fake_host')
+        volume = self.volume_api.get(context.get_admin_context(), volume_id)
+
+        #test empty service
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic', empty_service)
+        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+
+        #test host not match service
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic', host_not_match)
+        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+
+        #test az not match service
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic', az_not_match)
+        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+
+        #test disabled service
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic', disabled_service)
+        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+
+        #test dead service
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic', dead_service)
+        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+
+        #test multi services and the last service matches
+        self.stubs.Set(cinder.db, 'service_get_all_by_topic', multi_services)
+        self.assertEqual(self.backup_api._check_backup_service(volume), True)
 
     def test_delete_backup_available(self):
         backup_id = self._create_backup(status='available')
