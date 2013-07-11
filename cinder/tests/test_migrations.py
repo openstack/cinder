@@ -800,3 +800,19 @@ class TestMigrations(test.TestCase):
                                        metadata,
                                        autoload=True)
             self.assertTrue('_name_id' not in volumes.c)
+
+    def test_migration_015(self):
+        """Test removing migrations table works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 15)
+
+            self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                      "migrations"))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 14)
+
+            self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                     "migrations"))

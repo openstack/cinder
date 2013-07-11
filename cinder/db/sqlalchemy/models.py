@@ -332,24 +332,6 @@ class IscsiTarget(BASE, CinderBase):
                           'IscsiTarget.deleted==False)')
 
 
-class Migration(BASE, CinderBase):
-    """Represents a running host-to-host migration."""
-    __tablename__ = 'migrations'
-    id = Column(Integer, primary_key=True, nullable=False)
-    # NOTE(tr3buchet): the ____compute variables are instance['host']
-    source_compute = Column(String(255))
-    dest_compute = Column(String(255))
-    # NOTE(tr3buchet): dest_host, btw, is an ip address
-    dest_host = Column(String(255))
-    old_instance_type_id = Column(Integer())
-    new_instance_type_id = Column(Integer())
-    instance_uuid = Column(String(255),
-                           ForeignKey('instances.uuid'),
-                           nullable=True)
-    #TODO(_cerberus_): enum
-    status = Column(String(255))
-
-
 class SMFlavors(BASE, CinderBase):
     """Represents a flavor for SM volumes."""
     __tablename__ = 'sm_flavors'
@@ -427,7 +409,6 @@ def register_models():
     """
     from sqlalchemy import create_engine
     models = (Backup,
-              Migration,
               Service,
               SMBackendConf,
               SMFlavors,

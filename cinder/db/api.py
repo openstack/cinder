@@ -146,34 +146,6 @@ def service_update(context, service_id, values):
 
 
 ###################
-def migration_update(context, id, values):
-    """Update a migration instance."""
-    return IMPL.migration_update(context, id, values)
-
-
-def migration_create(context, values):
-    """Create a migration record."""
-    return IMPL.migration_create(context, values)
-
-
-def migration_get(context, migration_id):
-    """Finds a migration by the id."""
-    return IMPL.migration_get(context, migration_id)
-
-
-def migration_get_by_instance_and_status(context, instance_uuid, status):
-    """Finds a migration by the instance uuid its migrating."""
-    return IMPL.migration_get_by_instance_and_status(context,
-                                                     instance_uuid,
-                                                     status)
-
-
-def migration_get_all_unconfirmed(context, confirm_window):
-    """Finds all unconfirmed migrations within the confirmation window."""
-    return IMPL.migration_get_all_unconfirmed(context, confirm_window)
-
-
-###################
 
 
 def iscsi_target_count_by_host(context, host):
