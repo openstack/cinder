@@ -590,21 +590,20 @@ def xhtml_escape(value):
 def utf8(value):
     """Try to turn a string into utf-8 if possible.
 
-    Code is directly from the utf8 function in
-    http://github.com/facebook/tornado/blob/master/tornado/escape.py
-
     """
     if isinstance(value, unicode):
         return value.encode('utf-8')
-    assert isinstance(value, str)
-    return value
+    elif isinstance(value, str):
+        return value
+    else:
+        raise ValueError("%s is not a string" % value)
 
 
 def get_from_path(items, path):
     """Returns a list of items matching the specified path.
 
     Takes an XPath-like expression e.g. prop1/prop2/prop3, and for each item
-    in items, looks up items[prop1][prop2][prop3].  Like XPath, if any of the
+    in items, looks up items[prop1][prop2][prop3]. Like XPath, if any of the
     intermediate results are lists it will treat each list item individually.
     A 'None' in items or any child expressions will be ignored, this function
     will not throw because of None (anywhere) in items.  The returned list
