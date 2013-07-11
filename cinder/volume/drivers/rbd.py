@@ -159,6 +159,13 @@ class RBDImageIOWrapper(io.RawIOBase):
         """
         raise IOError("fileno() not supported by RBD()")
 
+    # NOTE(dosaboy): if IO object is not closed explicitly, Python auto closes
+    # it which, if this is not overridden, calls flush() prior to close which
+    # in this case is unwanted since the rbd image may have been closed prior
+    # to the autoclean - currently triggering a segfault in librbd.
+    def close(self):
+        pass
+
 
 class RBDVolumeProxy(object):
     """
