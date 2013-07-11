@@ -747,3 +747,29 @@ class TestMigrations(test.TestCase):
                                        metadata,
                                        autoload=True)
             self.assertTrue('attached_host' not in volumes.c)
+
+    def test_migration_013(self):
+        """Test that adding provider_geometry column works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 12)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 13)
+            volumes = sqlalchemy.Table('volumes',
+                                       metadata,
+                                       autoload=True)
+            self.assertTrue(isinstance(volumes.c.provider_geometry.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 12)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            volumes = sqlalchemy.Table('volumes',
+                                       metadata,
+                                       autoload=True)
+            self.assertTrue('provider_geometry' not in volumes.c)
