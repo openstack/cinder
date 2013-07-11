@@ -61,3 +61,10 @@ hus_cmd: CommandFilter, hus_cmd, root
 ls: CommandFilter, ls, root
 tee: CommandFilter, tee, root
 multipath: CommandFilter, multipath, root
+
+# cinder/volume/drivers/gpfs.py
+mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
+mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
+mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
+find: CommandFilter, find, root
+mkfs: CommandFilter, mkfs, root

@@ -1401,4 +1401,36 @@
 # Driver to use for volume creation (string value)
 #volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
 
-# Total option count: 300
+#
+# Options defined in cinder.volume.drivers.gpfs
+#
+
+# Path to the directory on GPFS mount point where
+# volumes are stored (string value)
+# gpfs_mount_point_base=$state_path/mnt
+
+# Path to GPFS Glance repository as mounted on
+# Nova nodes (string value)
+# gpfs_images_dir=None
+
+# Set this if Glance image repo is on GPFS as well
+# so that the image bits can be transferred efficiently
+# between Glance and Cinder.  Valid values are copy or
+# copy_on_write. copy performs a full copy of the image,
+# copy_on_write efficiently shares unmodified blocks of
+# the image. (string value)
+# gpfs_images_share_mode=None
+
+# A lengthy chain of copy-on-write snapshots or clones
+# could have impact on performance.  This option limits
+# the number of indirections required to reach a specific
+# block. 0 indicates unlimited. (integer value)
+# gpfs_max_clone_depth=0
+
+# Create volumes as sparse files which take no space.
+# If set to False volume is created as regular file.
+# In this case volume creation may take a significantly
+# longer time. (boolean value)
+# gpfs_sparse_volumes=True
+
+# Total option count: 305
