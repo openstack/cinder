@@ -544,7 +544,6 @@ class RBDDriver(driver.VolumeDriver):
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        volume = self.db.volume_get(context, backup['volume_id'])
         pool = self.configuration.rbd_pool
 
         with RBDVolumeProxy(self, volume['name'], pool) as rbd_image:
