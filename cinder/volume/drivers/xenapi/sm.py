@@ -118,7 +118,7 @@ class XenAPINFSDriver(driver.VolumeDriver):
             )
         )
 
-    def terminate_connection(self, volume, connector, force=False, **kwargs):
+    def terminate_connection(self, volume, connector, **kwargs):
         pass
 
     def check_for_setup_error(self):
