@@ -326,7 +326,7 @@ class SolidFire(SanISCSIDriver):
             qos = self._set_qos_presets(v_ref)
 
         ctxt = context.get_admin_context()
-        type_id = v_ref['volume_type_id']
+        type_id = v_ref.get('volume_type_id', None)
         if type_id is not None:
             qos = self._set_qos_by_volume_type(ctxt, type_id)
 
