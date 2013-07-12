@@ -1439,7 +1439,7 @@ class VolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, '_volume_not_present',
                        lambda x: False)
         self.stubs.Set(self.volume.driver, '_delete_volume',
-                       lambda x, y: False)
+                       lambda x: False)
         # Want DriverTestCase._fake_execute to return 'o' so that
         # volume.driver.delete_volume() raises the VolumeIsBusy exception.
         self.output = 'o'
@@ -1489,6 +1489,29 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         bs, count = lvm_driver._calculate_count('ABM', 1)
         self.assertEquals(bs, '1M')
         self.assertEquals(count, 1024)
+
+    def test_clear_volume(self):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.volume_clear = 'zero'
+        configuration.volume_clear_size = 0
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
+        self.stubs.Set(lvm_driver, '_copy_volume', lambda *a, **kw: True)
+
+        fake_volume = {'name': 'test1',
+                       'volume_name': 'test1',
+                       'id': 'test1'}
+
+        # Test volume has 'size' field
+        volume = dict(fake_volume, size='123')
+        self.assertEquals(True, lvm_driver.clear_volume(volume))
+
+        # Test volume has 'volume_size' field
+        volume = dict(fake_volume, volume_size='123')
+        self.assertEquals(True, lvm_driver.clear_volume(volume))
+
+        # Test volume without 'size' field and 'volume_size' field
+        volume = dict(fake_volume)
+        self.assertEquals(None, lvm_driver.clear_volume(volume))
 
 
 class ISCSITestCase(DriverTestCase):
