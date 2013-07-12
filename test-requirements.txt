@@ -2,8 +2,7 @@
 pep8==1.4.5
 pyflakes==0.7.2
 flake8==2.0
-hacking>=0.5.3,<0.6
-
+hacking>=0.5.6,<0.6
 coverage>=3.6
 discover
 fixtures>=0.3.12
@@ -14,6 +13,6 @@ mysql-python
 psycopg2
 sphinx>=1.1.2
 python-subunit
-testtools>=0.9.29
-testrepository>=0.0.13
+testtools>=0.9.32
+testrepository>=0.0.15
 oslo.sphinx
