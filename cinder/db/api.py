@@ -384,9 +384,9 @@ def volume_type_get_all(context, inactive=False):
     return IMPL.volume_type_get_all(context, inactive)
 
 
-def volume_type_get(context, id):
+def volume_type_get(context, id, inactive=False):
     """Get volume type by id."""
-    return IMPL.volume_type_get(context, id)
+    return IMPL.volume_type_get(context, id, inactive)
 
 
 def volume_type_get_by_name(context, name):
