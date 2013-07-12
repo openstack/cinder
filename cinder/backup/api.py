@@ -17,16 +17,22 @@
 Handles all requests relating to the volume backups service.
 """
 
+
 from eventlet import greenthread
 
+from oslo.config import cfg
+
 from cinder.backup import rpcapi as backup_rpcapi
+from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder import utils
+
 import cinder.policy
 import cinder.volume
 
-
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -78,6 +84,20 @@ class API(base.Base):
 
         return backups
 
+    def _check_backup_service(self, volume):
+        """
+        Check if there is an backup service available
+        """
+        topic = CONF.backup_topic
+        ctxt = context.get_admin_context()
+        services = self.db.service_get_all_by_topic(ctxt, topic)
+        for srv in services:
+            if (srv['availability_zone'] == volume['availability_zone'] and
+                    srv['host'] == volume['host'] and not srv['disabled'] and
+                    utils.service_is_up(srv)):
+                return True
+        return False
+
     def create(self, context, name, description, volume_id,
                container, availability_zone=None):
         """
@@ -103,6 +123,8 @@ class API(base.Base):
                    'host': volume['host'], }
 
         backup = self.db.backup_create(context, options)
+        if not self._check_backup_service(volume):
+            raise exception.ServiceNotFound(service_id='cinder-backup')
 
         #TODO(DuncanT): In future, when we have a generic local attach,
         #               this can go via the scheduler, which enables
