@@ -249,15 +249,41 @@ class TestCoraidRESTClient(test.TestCase):
         self.drv.create_lun(fake_volume_name, '10',
                             fake_repository_name)
 
-    def test_delete_lun(self):
+    def test_delete_lun_ok(self):
+        """Test Delete Volume classic case."""
         setattr(self.rest_mock, 'delete_lun',
-                lambda *_: True)
+                lambda *_: self.mox.CreateMockAnything())
         self.stubs.Set(CoraidRESTClient, '_get_volume_info',
                        lambda *_: fake_volume_info)
         self.stubs.Set(CoraidRESTClient, '_configure',
                        lambda *_: fake_esm_success)
         self.rest_mock.delete_lun(fake_volume_name)
-        self.drv.delete_lun(fake_volume_name)
+        result = self.drv.delete_lun(fake_volume_name)
+        self.assertTrue(result)
+
+    def test_delete_lun_in_error(self):
+        """Test Delete Volume in Error State."""
+        setattr(self.rest_mock, 'delete_lun',
+                lambda *_: self.mox.CreateMockAnything())
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: Exception)
+        self.stubs.Set(CoraidRESTClient, '_check_esm_alive',
+                       lambda *_: True)
+        self.rest_mock.delete_lun(fake_volume_name)
+        result = self.drv.delete_lun(fake_volume_name)
+        self.assertTrue(result)
+
+    def test_delete_lun_esm_unavailable(self):
+        """Test Delete Volume with ESM Unavailable."""
+        setattr(self.rest_mock, 'delete_lun',
+                lambda *_: self.mox.CreateMockAnything())
+        self.stubs.Set(CoraidRESTClient, '_get_volume_info',
+                       lambda *_: Exception)
+        self.stubs.Set(CoraidRESTClient, '_check_esm_alive',
+                       lambda *_: False)
+        self.rest_mock.delete_lun(fake_volume_name)
+        result = self.drv.delete_lun(fake_volume_name)
+        self.assertRaises(Exception, result)
 
     def test_create_snapshot(self):
         setattr(self.rest_mock, 'create_snapshot',
