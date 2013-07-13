@@ -15,7 +15,7 @@
       under the License.
 
 AMQP and Cinder
-=============
+===============
 
 AMQP is the messaging technology chosen by the OpenStack cloud.  The AMQP broker, either RabbitMQ or Qpid, sits between any two Cinder components and allows them to communicate in a loosely coupled fashion. More precisely, Cinder components (the compute fabric of OpenStack) use Remote Procedure Calls (RPC hereinafter) to communicate to one another; however such a paradigm is built atop the publish/subscribe paradigm so that the following benefits can be achieved:
 
@@ -33,7 +33,7 @@ Cinder uses direct, fanout, and topic-based exchanges. The architecture looks li
 Cinder implements RPC (both request+response, and one-way, respectively nicknamed 'rpc.call' and 'rpc.cast') over AMQP by providing an adapter class which take cares of marshaling and unmarshaling of messages into function calls. Each Cinder service (for example Compute, Volume, etc.) create two queues at the initialization time, one which accepts messages with routing keys 'NODE-TYPE.NODE-ID' (for example compute.hostname) and another, which accepts messages with routing keys as generic 'NODE-TYPE' (for example compute). The former is used specifically when Cinder-API needs to redirect commands to a specific node like 'euca-terminate instance'. In this case, only the  compute node whose host's hypervisor is running the virtual machine can kill the instance. The API acts as a consumer when RPC calls are request/response, otherwise is acts as publisher only.
 
 Cinder RPC Mappings
------------------
+-------------------
 
 The figure below shows the internals of a message broker node (referred to as a RabbitMQ node in the diagrams) when a single instance is deployed and shared in an OpenStack cloud. Every Cinder component connects to the message broker and, depending on its personality (for example a compute node or a network node), may use the queue either as an Invoker (such as API or Scheduler) or a Worker (such as Compute, Volume or Network). Invokers and Workers do not actually exist in the Cinder object model, but we are going to use them as an abstraction for sake of clarity. An Invoker is a component that sends messages in the queuing system via two operations: 1) rpc.call and ii) rpc.cast; a Worker is a component that receives messages from the queuing system and reply accordingly to rcp.call operations.
 

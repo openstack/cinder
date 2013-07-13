@@ -16,7 +16,7 @@
       under the License.
 
 Cinder System Architecture
-========================
+==========================
 
 The Cinder Block Storage Service is intended to be ran on one or more nodes.
 

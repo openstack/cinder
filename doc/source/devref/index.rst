@@ -32,7 +32,7 @@ Programming HowTos and Tutorials
 
 
 Background Concepts for Cinder
-----------------------------
+------------------------------
 .. toctree::
    :maxdepth: 3
 
