@@ -185,7 +185,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                                       {'bootable': True})
         else:
             # create the volume from an image
-            cloned = self.driver.clone_image(volume_ref, image_location)
+            # NOTE (singn): two params need to be returned
+            # dict containing provider_location for cloned volume
+            # and clone status
+            model_update, cloned = self.driver.clone_image(
+                volume_ref, image_location)
             if not cloned:
                 model_update = self.driver.create_volume(volume_ref)
 

@@ -454,7 +454,7 @@ class ManagedRBDTestCase(DriverTestCase):
         afterwards.
         """
         def fake_clone_image(volume, image_location):
-            return True
+            return {'provider_location': None}, True
 
         def fake_clone_error(volume, image_location):
             raise exception.CinderException()

@@ -486,7 +486,7 @@ class RBDDriver(driver.VolumeDriver):
         _, pool, image, snapshot = self._parse_location(image_location)
         self._clone(volume, pool, image, snapshot)
         self._resize(volume)
-        return True
+        return {'provider_location': None}, True
 
     def _ensure_tmp_exists(self):
         tmp_dir = self.configuration.volume_tmp_dir

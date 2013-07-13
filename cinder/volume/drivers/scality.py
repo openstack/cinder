@@ -253,6 +253,7 @@ class ScalityDriver(driver.VolumeDriver):
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
 
-        Returns a boolean indicating whether cloning occurred
+        Returns a dict of volume properties eg. provider_location,
+        boolean indicating whether cloning occurred
         """
-        return False
+        return None, False
