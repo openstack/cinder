@@ -803,4 +803,13 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def extend_volume(self, context, volume_id, new_size):
         volume_ref = self.db.volume_get(context, volume_id)
-        self.driver.extend_volume(volume_ref, new_size)
+
+        try:
+            LOG.info(_("volume %s: extending"), volume_ref['name'])
+            self.driver.extend_volume(volume_ref, new_size)
+            LOG.info(_("volume %s: extended successfully"), volume_ref['name'])
+        except Exception:
+            LOG.exception(_("volume %s: Error trying to extend volume"),
+                          volume_id)
+            self.db.volume_update(context, volume_ref['id'],
+                                  {'status': 'error_extending'})
