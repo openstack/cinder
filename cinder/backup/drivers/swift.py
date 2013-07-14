@@ -223,7 +223,7 @@ class SwiftBackupDriver(BackupDriver):
         LOG.debug(_('_read_metadata finished (%s)') % metadata)
         return metadata
 
-    def prepare_backup(self, backup):
+    def _prepare_backup(self, backup):
         """Prepare the backup process and return the backup metadata"""
         backup_id = backup['id']
         volume_id = backup['volume_id']
@@ -257,7 +257,7 @@ class SwiftBackupDriver(BackupDriver):
         object_meta = {'id': 1, 'list': [], 'prefix': object_prefix}
         return object_meta, container
 
-    def backup_chunk(self, backup, container, data, data_offset, object_meta):
+    def _backup_chunk(self, backup, container, data, data_offset, object_meta):
         """Backup data chunk based on the object metadata and offset"""
         object_prefix = object_meta['prefix']
         object_list = object_meta['list']
@@ -311,7 +311,7 @@ class SwiftBackupDriver(BackupDriver):
         LOG.debug(_('Calling eventlet.sleep(0)'))
         eventlet.sleep(0)
 
-    def finalize_backup(self, backup, container, object_meta):
+    def _finalize_backup(self, backup, container, object_meta):
         """Finalize the backup by updating its metadata on Swift"""
         object_list = object_meta['list']
         object_id = object_meta['id']
@@ -328,15 +328,15 @@ class SwiftBackupDriver(BackupDriver):
 
     def backup(self, backup, volume_file):
         """Backup the given volume to swift using the given backup metadata."""
-        object_meta, container = self.prepare_backup(backup)
+        object_meta, container = self._prepare_backup(backup)
         while True:
             data = volume_file.read(self.data_block_size_bytes)
             data_offset = volume_file.tell()
             if data == '':
                 break
-            self.backup_chunk(backup, container, data,
-                              data_offset, object_meta)
-        self.finalize_backup(backup, container, object_meta)
+            self._backup_chunk(backup, container, data,
+                               data_offset, object_meta)
+        self._finalize_backup(backup, container, object_meta)
 
     def _restore_v1(self, backup, volume_id, metadata, volume_file):
         """Restore a v1 swift volume backup from swift."""
