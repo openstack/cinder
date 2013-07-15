@@ -474,10 +474,10 @@ class ManagedRBDTestCase(DriverTestCase):
         """Try to clone a volume from an image, and check the status
         afterwards.
         """
-        def fake_clone_image(volume, image_location):
+        def fake_clone_image(volume, image_location, image_id):
             return {'provider_location': None}, True
 
-        def fake_clone_error(volume, image_location):
+        def fake_clone_error(volume, image_location, image_id):
             raise exception.CinderException()
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
@@ -528,12 +528,12 @@ class ManagedRBDTestCase(DriverTestCase):
         expected = ({}, False)
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: False)
-        self.assertEquals(expected,
-                          self.volume.driver.clone_image(object(), object()))
+        actual = self.volume.driver.clone_image(object(), object(), object())
+        self.assertEquals(expected, actual)
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
         self.assertEquals(expected,
-                          self.volume.driver.clone_image(object(), None))
+                          self.volume.driver.clone_image(object(), None, None))
 
         # Test Success Case(s)
         expected = ({'provider_location': None}, True)
@@ -543,12 +543,11 @@ class ManagedRBDTestCase(DriverTestCase):
 
         self.stubs.Set(self.volume.driver, '_clone', lambda *args: None)
         self.stubs.Set(self.volume.driver, '_resize', lambda *args: None)
-
-        self.assertEquals(expected,
-                          self.volume.driver.clone_image(object(), object()))
+        actual = self.volume.driver.clone_image(object(), object(), object())
+        self.assertEquals(expected, actual)
 
     def test_clone_success(self):
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
-        self.stubs.Set(self.volume.driver, 'clone_image', lambda a, b: True)
+        self.stubs.Set(self.volume.driver, 'clone_image', lambda a, b, c: True)
         image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
-        self.assertTrue(self.volume.driver.clone_image({}, image_id))
+        self.assertTrue(self.volume.driver.clone_image({}, image_id, image_id))

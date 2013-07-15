@@ -263,7 +263,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         finally:
             self.delete_snapshot(temp_snapshot)
 
-    def clone_image(self, volume, image_location):
+    def clone_image(self, volume, image_location, image_id):
         return None, False
 
     def backup_volume(self, context, backup, backup_service):
