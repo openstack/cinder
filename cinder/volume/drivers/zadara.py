@@ -469,24 +469,3 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         self.vpsa.send_cmd('detach_volume',
                            vpsa_srv=vpsa_srv,
                            vpsa_vol=vpsa_vol)
-
-    def create_volume_from_snapshot(self, volume, snapshot):
-        raise NotImplementedError()
-
-    def create_snapshot(self, snapshot):
-        raise NotImplementedError()
-
-    def delete_snapshot(self, snapshot):
-        raise NotImplementedError()
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        raise NotImplementedError()
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        raise NotImplementedError()
-
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        raise NotImplementedError()
