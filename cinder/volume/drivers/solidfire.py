@@ -79,9 +79,7 @@ class SolidFire(SanISCSIDriver):
             self.configuration.append_config_values(sf_opts)
             try:
                 self._update_cluster_status()
-            except Exception as ex:
-                LOG.error(_("Update SolidFire Cluster stats failed: %s"),
-                          ex.strerror)
+            except exception.SolidFireAPIException:
                 pass
 
     def _issue_api_request(self, method_name, params):
@@ -130,13 +128,28 @@ class SolidFire(SanISCSIDriver):
             LOG.debug(_("Payload for SolidFire API call: %s"), payload)
 
             connection = httplib.HTTPSConnection(host, port)
-            connection.request('POST', '/json-rpc/1.0', payload, header)
+            try:
+                connection.request('POST', '/json-rpc/1.0', payload, header)
+            except Exception as ex:
+                LOG.error(_('Failed to make httplib connection '
+                            'SolidFire Cluster: %s (verify san_ip '
+                            'settings)') % ex.message)
+                msg = _("Failed to make httplib connection: %s") % ex.message
+                raise exception.SolidFireAPIException(msg)
             response = connection.getresponse()
 
             data = {}
             if response.status != 200:
                 connection.close()
-                raise exception.SolidFireAPIException(status=response.status)
+                LOG.error(_('Request to SolidFire cluster returned '
+                            'bad status: %(status)s / %(reason)s (check '
+                            'san_login/san_password settings)') %
+                          {'status': response.status,
+                           'reason': response.reason})
+                msg = (_("HTTP request failed, with status: %(status)s "
+                         "and reason: %(reason)s") %
+                       {'status': response.status, 'reason': response.reason})
+                raise exception.SolidFireAPIException(msg)
 
             else:
                 data = response.read()
@@ -234,7 +247,8 @@ class SolidFire(SanISCSIDriver):
         params = {}
         data = self._issue_api_request('GetClusterInfo', params)
         if 'result' not in data:
-            raise exception.SolidFireAPIDataException(data=data)
+            msg = _("API response: %s") % data
+            raise exception.SolidFireAPIException(msg)
 
         return data['result']
 
@@ -318,7 +332,8 @@ class SolidFire(SanISCSIDriver):
         data = self._issue_api_request('CloneVolume', params)
 
         if (('result' not in data) or ('volumeID' not in data['result'])):
-            raise exception.SolidFireAPIDataException(data=data)
+            msg = _("API response: %s") % data
+            raise exception.SolidFireAPIException(msg)
         sf_volume_id = data['result']['volumeID']
 
         if (self.configuration.sf_allow_tenant_qos and
@@ -348,7 +363,7 @@ class SolidFire(SanISCSIDriver):
         model_update = self._get_model_info(sfaccount, sf_volume_id)
         if model_update is None:
             mesg = _('Failed to get model update from clone')
-            raise exception.SolidFireAPIDataException(mesg)
+            raise exception.SolidFireAPIException(mesg)
 
         return (data, sfaccount, model_update)
 
@@ -359,7 +374,8 @@ class SolidFire(SanISCSIDriver):
         data = self._issue_api_request('CreateVolume', params)
 
         if (('result' not in data) or ('volumeID' not in data['result'])):
-            raise exception.SolidFireAPIDataException(data=data)
+            msg = _("Failed volume create: %s") % data
+            raise exception.SolidFireAPIException(msg)
 
         sf_volume_id = data['result']['volumeID']
         return self._get_model_info(sfaccount, sf_volume_id)
@@ -398,7 +414,8 @@ class SolidFire(SanISCSIDriver):
     def _get_sf_volume(self, uuid, params):
         data = self._issue_api_request('ListVolumesForAccount', params)
         if 'result' not in data:
-            raise exception.SolidFireAPIDataException(data=data)
+            msg = _("Failed to get SolidFire Volume: %s") % data
+            raise exception.SolidFireAPIException(msg)
 
         found_count = 0
         sf_volref = None
@@ -504,7 +521,8 @@ class SolidFire(SanISCSIDriver):
             data = self._issue_api_request('DeleteVolume', params)
 
             if 'result' not in data:
-                raise exception.SolidFireAPIDataException(data=data)
+                msg = _("Failed to delete SolidFire Volume: %s") % data
+                raise exception.SolidFireAPIException(msg)
         else:
             LOG.error(_("Volume ID %s was not found on "
                         "the SolidFire Cluster!"), volume['id'])
@@ -562,9 +580,7 @@ class SolidFire(SanISCSIDriver):
         if refresh:
             try:
                 self._update_cluster_status()
-            except Exception as ex:
-                LOG.error(_("Update SolidFire Cluster stats failed: %s"),
-                          ex.strerror)
+            except exception.SolidFireAPIException:
                 pass
 
         return self.cluster_stats
