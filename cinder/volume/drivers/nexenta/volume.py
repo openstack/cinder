@@ -283,18 +283,6 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                        ' assuming it is already gone: %(exc)s'),
                      {'target': target_name, 'exc': exc})
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        raise NotImplementedError()
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        raise NotImplementedError()
-
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        raise NotImplementedError()
-
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
