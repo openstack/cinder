@@ -157,9 +157,9 @@ Cinder Storage Management
 Cinder Config
 ~~~~~~~~~~~~~
 
-``cinder-manage config list``
+``cinder-manage config list [<param>]``
 
-    Displays the current configuration parameters (options) for Cinder.
+    Displays the current configuration parameters (options) for Cinder. The optional flag parameter may be used to display the configuration of one parameter.
 
 FILES
 =====
