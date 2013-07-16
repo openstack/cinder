@@ -29,6 +29,7 @@ from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.image import fake as fake_image
 from cinder.tests.test_volume import DriverTestCase
+from cinder import units
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
 
@@ -384,6 +385,22 @@ class RBDTestCase(test.TestCase):
         self.mox.ReplayAll()
 
         self.driver._clone(volume, src_pool, src_image, src_snap)
+
+    def test_extend_volume(self):
+        fake_name = u'volume-00000001'
+        fake_size = '20'
+        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
+                    'size': fake_size,
+                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+
+        self.mox.StubOutWithMock(self.driver, '_resize')
+        size = int(fake_size) * units.GiB
+        self.driver._resize(fake_vol, size=size)
+
+        self.mox.ReplayAll()
+        self.driver.extend_volume(fake_vol, fake_size)
+
+        self.mox.VerifyAll()
 
     def test_rbd_volume_proxy_init(self):
         name = u'volume-00000001'
