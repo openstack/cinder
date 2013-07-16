@@ -167,6 +167,8 @@ class HuaweiVolumeTestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
         super(HuaweiVolumeTestCase, self).__init__(*args, **kwargs)
 
+    def setUp(self):
+        super(HuaweiVolumeTestCase, self).setUp()
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
         self._create_fake_conf_file()
@@ -176,11 +178,12 @@ class HuaweiVolumeTestCase(test.TestCase):
         self.driver = FakeHuaweiStorage(configuration=configuration)
 
         self.driver.do_setup({})
-
-    def setUp(self):
-        super(HuaweiVolumeTestCase, self).setUp()
         self.driver._test_flg = 'check_for_fail'
         self._test_check_for_setup_errors()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir)
+        super(HuaweiVolumeTestCase, self).tearDown()
 
     def test_create_export_failed(self):
         self.assertRaises(exception.VolumeBackendAPIException,
