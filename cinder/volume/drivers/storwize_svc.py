@@ -660,6 +660,19 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
 
         return wwpns
 
+    def validate_connector(self, connector):
+        """Check connector for at least one enabled protocol (iSCSI/FC)."""
+        valid = False
+        if 'iSCSI' in self._enabled_protocols and 'initiator' in connector:
+            valid = True
+        if 'FC' in self._enabled_protocols and 'wwpns' in connector:
+            valid = True
+        if not valid:
+            err_msg = (_('The connector does not contain the required '
+                         'information.'))
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
     def initialize_connection(self, volume, connector):
         """Perform the necessary work so that an iSCSI/FC connection can
         be made.
