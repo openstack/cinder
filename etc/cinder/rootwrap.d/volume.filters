@@ -56,6 +56,7 @@ truncate: CommandFilter, truncate, root
 chmod: CommandFilter, chmod, root
 rm: CommandFilter, rm, root
 lvs: CommandFilter, lvs, root
+find: CommandFilter, find, root
 
 # cinder/volume/drivers/glusterfs.py
 mv: CommandFilter, mv, root
