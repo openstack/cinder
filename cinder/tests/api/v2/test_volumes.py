@@ -239,6 +239,7 @@ class VolumeApiTest(test.TestCase):
                         'device': '/',
                     }
                 ],
+                'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
                 'source_volid': None,
@@ -280,6 +281,7 @@ class VolumeApiTest(test.TestCase):
                 'host_name': None,
                 'device': '/',
             }],
+            'user_id': 'fakeuser',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
             'source_volid': None,
@@ -373,6 +375,7 @@ class VolumeApiTest(test.TestCase):
                             'volume_id': '1'
                         }
                     ],
+                    'user_id': 'fakeuser',
                     'volume_type': 'vol_type_name',
                     'snapshot_id': None,
                     'source_volid': None,
@@ -608,6 +611,7 @@ class VolumeApiTest(test.TestCase):
                         'volume_id': '1'
                     }
                 ],
+                'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
                 'source_volid': None,
@@ -644,6 +648,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'name': 'displayname',
                 'attachments': [],
+                'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
                 'source_volid': None,

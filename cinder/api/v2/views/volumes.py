@@ -66,7 +66,8 @@ class ViewBuilder(common.ViewBuilder):
                 'snapshot_id': volume.get('snapshot_id'),
                 'source_volid': volume.get('source_volid'),
                 'metadata': self._get_volume_metadata(volume),
-                'links': self._get_links(request, volume['id'])
+                'links': self._get_links(request, volume['id']),
+                'user_id': volume.get('user_id')
             }
         }
 
