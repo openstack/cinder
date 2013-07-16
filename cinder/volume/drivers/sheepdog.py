@@ -27,6 +27,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
+from cinder import units
 from cinder.volume import driver
 
 
@@ -84,8 +85,10 @@ class SheepdogDriver(driver.VolumeDriver):
         if tmp_dir and not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
 
-    def _resize(self, volume):
-        size = int(volume['size']) * (1024 ** 3)
+    def _resize(self, volume, size=None):
+        if not size:
+            size = int(volume['size']) * units.GiB
+
         self._try_execute('collie', 'vdi', 'resize',
                           volume['name'], size)
 
@@ -177,3 +180,19 @@ class SheepdogDriver(driver.VolumeDriver):
         if refresh:
             self._update_volume_stats()
         return self._stats
+
+    def extend_volume(self, volume, new_size):
+        """Extend an Existing Volume."""
+        old_size = volume['size']
+
+        try:
+            size = int(new_size) * units.GiB
+            self._resize(volume, size=size)
+        except Exception:
+            msg = _('Failed to Extend Volume '
+                    '%(volname)s') % {'volname': volume['name']}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug(_("Extend volume from %(old_size) to %(new_size)"),
+                  {'old_size': old_size, 'new_size': new_size})

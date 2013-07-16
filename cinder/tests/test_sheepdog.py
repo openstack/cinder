@@ -23,6 +23,7 @@ import tempfile
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder import units
 from cinder.volume.drivers.sheepdog import SheepdogDriver
 
 
@@ -125,3 +126,19 @@ class SheepdogTestCase(test.TestCase):
         self.driver.copy_image_to_volume(None, {'name': 'test',
                                                 'size': 1},
                                          FakeImageService(), None)
+
+    def test_extend_volume(self):
+        fake_name = u'volume-00000001'
+        fake_size = '20'
+        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
+                    'size': fake_size,
+                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+
+        self.mox.StubOutWithMock(self.driver, '_resize')
+        size = int(fake_size) * units.GiB
+        self.driver._resize(fake_vol, size=size)
+
+        self.mox.ReplayAll()
+        self.driver.extend_volume(fake_vol, fake_size)
+
+        self.mox.VerifyAll()
