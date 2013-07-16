@@ -1242,7 +1242,7 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                         self._driver_assert(target == name, msg)
                         if status in ['copying', 'prepared']:
                             self._run_ssh('svctask stopfcmap %s' % map_id)
-                        elif status == 'stopping':
+                        elif status in ['stopping', 'preparing']:
                             wait_for_copy = True
                         else:
                             self._run_ssh('svctask rmfcmap -force %s' % map_id)
