@@ -1607,8 +1607,12 @@ def volume_type_get_all(context, inactive=False, filters=None):
 
 
 @require_context
-def _volume_type_get(context, id, session=None):
-    result = model_query(context, models.VolumeTypes, session=session).\
+def _volume_type_get(context, id, session=None, inactive=False):
+    read_deleted = "yes" if inactive else "no"
+    result = model_query(context,
+                         models.VolumeTypes,
+                         session=session,
+                         read_deleted=read_deleted).\
         options(joinedload('extra_specs')).\
         filter_by(id=id).\
         first()
@@ -1620,10 +1624,10 @@ def _volume_type_get(context, id, session=None):
 
 
 @require_context
-def volume_type_get(context, id):
+def volume_type_get(context, id, inactive=False):
     """Returns a dict describing specific volume_type"""
 
-    return _volume_type_get(context, id)
+    return _volume_type_get(context, id, None, inactive)
 
 
 @require_context

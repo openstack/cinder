@@ -879,7 +879,12 @@ class QuotaEngine(object):
         """
         if not volume_type_id:
             return
-        volume_type = db.volume_type_get(context, volume_type_id)
+
+        # NOTE(jdg): set inactive to True in volume_type_get, as we
+        # may be operating on a volume that was created with a type
+        # that has since been deleted.
+        volume_type = db.volume_type_get(context, volume_type_id, True)
+
         for quota in ('volumes', 'gigabytes', 'snapshots'):
             if quota in opts:
                 vtype_quota = "%s_%s" % (quota, volume_type['name'])
@@ -911,7 +916,10 @@ class VolumeTypeQuotaEngine(QuotaEngine):
             result[resource.name] = resource
 
         # Volume type quotas.
-        volume_types = db.volume_type_get_all(context.get_admin_context())
+        # NOTE(jdg): We also want to check deleted types here as well
+        # if we don't the _get_quotas resource len check on will fail
+        volume_types = db.volume_type_get_all(context.get_admin_context(),
+                                              True)
         for volume_type in volume_types.values():
             for part_name in ('volumes', 'gigabytes', 'snapshots'):
                 resource = VolumeTypeResource(part_name, volume_type)
