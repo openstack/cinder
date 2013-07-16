@@ -166,6 +166,17 @@ class CoraidRESTClient(object):
         else:
             raise CoraidRESTException(_('Request without URL'))
 
+    def _check_esm_alive(self):
+        try:
+            url = self.url + 'fetch'
+            req = urllib2.Request(url)
+            code = self.urlOpener.open(req).getcode()
+            if code == '200':
+                return True
+            return False
+        except Exception:
+            return False
+
     def _configure(self, data):
         """In charge of all commands into 'configure'."""
         url = 'configure'
@@ -217,14 +228,21 @@ class CoraidRESTClient(object):
 
     def delete_lun(self, volume_name):
         """Delete LUN."""
-        volume_info = self._get_volume_info(volume_name)
-        repository = volume_info['repo']
-        data = '[{"addr":"cms","data":"{' \
-               '\\"repoName\\":\\"%s\\",' \
-               '\\"lvName\\":\\"%s\\"}",' \
-               '"op":"orchStrLun/verified",' \
-               '"args":"delete"}]' % (repository, volume_name)
-        return self._configure(data)
+        try:
+            volume_info = self._get_volume_info(volume_name)
+            repository = volume_info['repo']
+            data = '[{"addr":"cms","data":"{' \
+                   '\\"repoName\\":\\"%(repo)s\\",' \
+                   '\\"lvName\\":\\"%(volname)s\\"}",' \
+                   '"op":"orchStrLun/verified",' \
+                   '"args":"delete"}]' % dict(repo=repository,
+                                              volname=volume_name)
+            return self._configure(data)
+        except Exception:
+            if self._check_esm_alive():
+                return True
+            else:
+                return False
 
     def create_snapshot(self, volume_name, snapshot_name):
         """Create Snapshot."""
