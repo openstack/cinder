@@ -223,6 +223,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def clear_volume(self, volume):
         """unprovision old volumes to prevent data leaking between users."""
 
+        if self.configuration.volume_clear == 'none':
+            return
+
         vol_path = self.local_path(volume)
         size_in_g = volume.get('size', volume.get('volume_size', None))
         if size_in_g is None:
@@ -230,9 +233,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
                           "skipping secure delete.") % volume['id'])
             return
         size_in_m = self.configuration.volume_clear_size
-
-        if self.configuration.volume_clear == 'none':
-            return
 
         LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
 
