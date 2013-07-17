@@ -41,14 +41,14 @@ service_opts = [
                help='Ceph config file to use.'),
     cfg.StrOpt('backup_ceph_user', default='cinder',
                help='the Ceph user to connect with'),
-    cfg.StrOpt('backup_ceph_chunk_size', default=(units.MiB * 128),
+    cfg.IntOpt('backup_ceph_chunk_size', default=(units.MiB * 128),
                help='the chunk size in bytes that a backup will be broken '
                     'into before transfer to backup store'),
     cfg.StrOpt('backup_ceph_pool', default='backups',
                help='the Ceph pool to backup to'),
-    cfg.StrOpt('backup_ceph_stripe_unit', default=0,
+    cfg.IntOpt('backup_ceph_stripe_unit', default=0,
                help='RBD stripe unit to use when creating a backup image'),
-    cfg.StrOpt('backup_ceph_stripe_count', default=0,
+    cfg.IntOpt('backup_ceph_stripe_count', default=0,
                help='RBD stripe count to use when creating a backup image')
 ]
 
@@ -66,8 +66,8 @@ class CephBackupDriver(BackupDriver):
         self.context = context
         self.chunk_size = CONF.backup_ceph_chunk_size
         if self._supports_stripingv2():
-            self.rbd_stripe_unit = int(CONF.backup_ceph_stripe_unit)
-            self.rbd_stripe_count = int(CONF.backup_ceph_stripe_count)
+            self.rbd_stripe_unit = CONF.backup_ceph_stripe_unit
+            self.rbd_stripe_count = CONF.backup_ceph_stripe_count
         else:
             LOG.info("rbd striping not supported - ignoring conf settings "
                      "for rbd striping")
