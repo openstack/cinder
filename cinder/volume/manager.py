@@ -86,7 +86,9 @@ MAPPING = {
     'cinder.volume.nfs.NfsDriver':
     'cinder.volume.drivers.nfs.NfsDriver',
     'cinder.volume.solidfire.SolidFire':
-    'cinder.volume.drivers.solidfire.SolidFire',
+    'cinder.volume.drivers.solidfire.SolidFireDriver',
+    'cinder.volume.drivers.solidfire.SolidFire':
+    'cinder.volume.drivers.solidfire.SolidFireDriver',
     'cinder.volume.storwize_svc.StorwizeSVCDriver':
     'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver',
     'cinder.volume.windows.WindowsDriver':
