@@ -68,8 +68,7 @@ class Configuration(object):
             self.local_conf = CONF
 
     def _ensure_config_values(self, volume_opts):
-            CONF.register_opts(volume_opts,
-                               group=self.config_group)
+        CONF.register_opts(volume_opts, group=self.config_group)
 
     def append_config_values(self, volume_opts):
         self._ensure_config_values(volume_opts)
