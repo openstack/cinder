@@ -69,28 +69,32 @@ class SimulatedHusBackend:
 
     alloc_lun = []              # allocated LUs
     connections = []            # iSCSI connections
+    init_index = 0              # initiator index
+    target_index = 0            # target index
+    hlun = 0                    # hlun index
 
     def __init__(self):
         self.start_lun = 0
 
-    def get_version(self, cmd, ip0, ip1, user, pw):
+    def get_version(self, cmd, ver, ip0, ip1, user, pw):
         out = ("Array_ID: 92210013 (HUS130) version: 0920/B-S  LU: 4096"
                "  RG: 75  RG_LU: 1024  Utility_version: 1.0.0")
         return out
 
-    def get_iscsi_info(self, cmd, ip0, ip1, user, pw):
+    def get_iscsi_info(self, cmd, ver, ip0, ip1, user, pw):
         out = """CTL: 0 Port: 4 IP: 172.17.39.132 Port: 3260 Link: Up
                  CTL: 0 Port: 5 IP: 172.17.39.133 Port: 3260 Link: Up
                  CTL: 1 Port: 4 IP: 172.17.39.134 Port: 3260 Link: Up
                  CTL: 1 Port: 5 IP: 172.17.39.135 Port: 3260 Link: Up"""
         return out
 
-    def get_hdp_info(self, cmd, ip0, ip1, user, pw):
+    def get_hdp_info(self, cmd, ver, ip0, ip1, user, pw):
         out = """HDP: 2  272384 MB    33792 MB  12 %  LUs:   70  Normal  Normal
               HDP: 9  546816 MB    73728 MB  13 %  LUs:  194  Normal  Normal"""
         return out
 
-    def create_lu(self, cmd, ip0, ip1, user, pw, id, hdp, start, end, size):
+    def create_lu(self, cmd, ver, ip0, ip1, user, pw, id, hdp, start,
+                  end, size):
         if self.start_lun < int(start):  # initialize first time
             self.start_lun = int(start)
         out = ("LUN: %d HDP: 9 size: %s MB, is successfully created" %
@@ -99,14 +103,14 @@ class SimulatedHusBackend:
         self.start_lun += 1
         return out
 
-    def delete_lu(self, cmd, ip0, ip1, user, pw, id, lun):
+    def delete_lu(self, cmd, ver, ip0, ip1, user, pw, id, lun):
         out = ""
         if lun in self.alloc_lun:
             out = "LUN: %s is successfully deleted" % (lun)
             self.alloc_lun.remove(lun)
         return out
 
-    def create_dup(self, cmd, ip0, ip1, user, pw, id, src_lun,
+    def create_dup(self, cmd, ver, ip0, ip1, user, pw, id, src_lun,
                    hdp, start, end, size):
         out = ("LUN: %s HDP: 9 size: %s MB, is successfully created" %
                (self.start_lun, size))
@@ -114,21 +118,31 @@ class SimulatedHusBackend:
         self.start_lun += 1
         return out
 
-    def add_iscsi_conn(self, cmd, ip0, ip1, user, pw, id, lun, ctl, port, iqn,
-                       tgt_alias, initiator, init_alias):
-        conn = (initiator, iqn, ctl, port)
-        out = ("iSCSI Initiator: %s, index: 26, and Target: %s, index 8 is \
-               successfully paired @ CTL: %s, Port: %s" % conn)
+    def add_iscsi_conn(self, cmd, ver, ip0, ip1, user, pw, id, lun, ctl, port,
+                       iqn, initiator):
+        conn = (self.hlun, lun, initiator, self.init_index, iqn,
+                self.target_index, ctl, port)
+        out = ("H-LUN: %d mapped. LUN: %s, iSCSI Initiator: %s @ index: %d, \
+                and Target: %s @ index %d is successfully paired  @ CTL: %s, \
+                Port: %s" % conn)
+        self.init_index += 1
+        self.target_index += 1
+        self.hlun += 1
         SimulatedHusBackend.connections.append(conn)
         return out
 
-    def del_iscsi_conn(self, cmd, ip0, ip1, user, pw, id, lun, ctl, port, iqn,
-                       initiator, force):
-        conn = (initiator, iqn, ctl, port)
-        out = ("iSCSI Initiator: %s, index: 26, and Target: %s, index 8 is \
-               successfully un-paired  @ CTL: %s, Port: %s" % conn)
-        if conn in SimulatedHusBackend.connections:
-            SimulatedHusBackend.connections.remove(conn)
+    def del_iscsi_conn(self, cmd, ver, ip0, ip1, user, pw, id, lun, ctl, port,
+                       iqn, initiator, force):
+        conn = ()
+        for connection in SimulatedHusBackend.connections:
+            if (connection[1] == lun):
+                conn = connection
+                SimulatedHusBackend.connections.remove(connection)
+        if conn is None:
+            return
+        (hlun, lun, initiator, init_index, iqn, target_index, ctl, port) = conn
+        detail = (hlun, iqn)
+        out = ("H-LUN: %d successfully deleted from target %s" % detail)
         return out
 
 
@@ -234,9 +248,11 @@ class HUSiSCSIDriverTest(test.TestCase):
         connector['initiator'] = 'iqn.1993-08.org.debian:01:11f90746eb2'
         connector['host'] = 'dut_1.lab.hds.com'
         vol = self.test_create_volume()
+        self.mox.StubOutWithMock(self.driver, '_update_vol_location')
         conn = self.driver.initialize_connection(vol, connector)
         self.assertTrue('hitachi' in conn['data']['target_iqn'])
         self.assertTrue('3260' in conn['data']['target_portal'])
+        vol['provider_location'] = conn['data']['provider_location']
         return (vol, connector)
 
     def test_terminate_connection(self):

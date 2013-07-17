@@ -19,7 +19,6 @@
 iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS) platform.
 """
 
-
 from oslo.config import cfg
 from xml.etree import ElementTree as ETree
 
@@ -30,6 +29,7 @@ from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hds.hus_backend import HusBackend
 
+HDS_VERSION = '1.0.1'
 
 LOG = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ CONF.register_opts(HUS_OPTS)
 
 HI_IQN = 'iqn.1994-04.jp.co.hitachi:'  # fixed string, for now.
 
-HUS_DEFAULT_CONFIG = {'hus_cmd': 'hus_cmd',
+HUS_DEFAULT_CONFIG = {'hus_cmd': 'hus-cmd',
                       'lun_start': '0',
                       'lun_end': '8192'}
 
@@ -135,6 +135,7 @@ class HUSDriver(driver.ISCSIDriver):
     def _array_info_get(self):
         """Get array parameters."""
         out = self.bend.get_version(self.config['hus_cmd'],
+                                    HDS_VERSION,
                                     self.config['mgmt_ip0'],
                                     self.config['mgmt_ip1'],
                                     self.config['username'],
@@ -145,6 +146,7 @@ class HUSDriver(driver.ISCSIDriver):
     def _get_iscsi_info(self):
         """Validate array iscsi parameters."""
         out = self.bend.get_iscsi_info(self.config['hus_cmd'],
+                                       HDS_VERSION,
                                        self.config['mgmt_ip0'],
                                        self.config['mgmt_ip1'],
                                        self.config['username'],
@@ -187,6 +189,7 @@ class HUSDriver(driver.ISCSIDriver):
         total_cap = 0
         total_used = 0
         out = self.bend.get_hdp_info(self.config['hus_cmd'],
+                                     HDS_VERSION,
                                      self.config['mgmt_ip0'],
                                      self.config['mgmt_ip1'],
                                      self.config['username'],
@@ -203,7 +206,7 @@ class HUSDriver(driver.ISCSIDriver):
         be_name = self.configuration.safe_get('volume_backend_name')
         hus_stat["volume_backend_name"] = be_name or 'HUSDriver'
         hus_stat["vendor_name"] = 'HDS'
-        hus_stat["driver_version"] = '1.0'
+        hus_stat["driver_version"] = HDS_VERSION
         hus_stat["storage_protocol"] = 'iSCSI'
         hus_stat['QoS_support'] = False
         hus_stat['reserved_percentage'] = 0
@@ -212,6 +215,7 @@ class HUSDriver(driver.ISCSIDriver):
     def _get_hdp_list(self):
         """Get HDPs from HUS."""
         out = self.bend.get_hdp_info(self.config['hus_cmd'],
+                                     HDS_VERSION,
                                      self.config['mgmt_ip0'],
                                      self.config['mgmt_ip1'],
                                      self.config['username'],
@@ -237,6 +241,12 @@ class HUSDriver(driver.ISCSIDriver):
         """Given the volume id, retrieve the volume object from database."""
         vol = self.db.volume_get(self.context, idd)
         return vol
+
+    def _update_vol_location(self, id, loc):
+        """Update the provider location."""
+        update = {}
+        update['provider_location'] = loc
+        self.db.volume_update(self.context, id, update)
 
     def __init__(self, *args, **kwargs):
         """Initialize, read different config parameters."""
@@ -291,6 +301,7 @@ class HUSDriver(driver.ISCSIDriver):
         service = self._get_service(volume)
         (_ip, _ipp, _ctl, _port, hdp) = service
         out = self.bend.create_lu(self.config['hus_cmd'],
+                                  HDS_VERSION,
                                   self.config['mgmt_ip0'],
                                   self.config['mgmt_ip1'],
                                   self.config['username'],
@@ -323,6 +334,7 @@ class HUSDriver(driver.ISCSIDriver):
                   % {'lun': lun,
                      'name': name})
         _out = self.bend.delete_lu(self.config['hus_cmd'],
+                                   HDS_VERSION,
                                    self.config['mgmt_ip0'],
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
@@ -340,43 +352,45 @@ class HUSDriver(driver.ISCSIDriver):
         (ip, ipp, ctl, port, _hdp) = service
         loc = volume['provider_location']
         (_array_id, lun) = loc.split('.')
-        iqn = HI_IQN + loc
-        tgt_alias = 'cinder.' + loc
-        init_alias = connector['host'][:(31 - len(loc))] + '.' + loc
-        _out = self.bend.add_iscsi_conn(self.config['hus_cmd'],
-                                        self.config['mgmt_ip0'],
-                                        self.config['mgmt_ip1'],
-                                        self.config['username'],
-                                        self.config['password'],
-                                        self.arid, lun, ctl, port, iqn,
-                                        tgt_alias, connector['initiator'],
-                                        init_alias)
+        iqn = HI_IQN + connector['host']
+        out = self.bend.add_iscsi_conn(self.config['hus_cmd'],
+                                       HDS_VERSION,
+                                       self.config['mgmt_ip0'],
+                                       self.config['mgmt_ip1'],
+                                       self.config['username'],
+                                       self.config['password'],
+                                       self.arid, lun, ctl, port, iqn,
+                                       connector['initiator'])
         hus_portal = ip + ':' + ipp
         tgt = hus_portal + ',' + iqn + ',' + loc + ',' + ctl + ',' + port
         properties = {}
+        hlun = out.split()[1]
         properties['provider_location'] = tgt
+        self._update_vol_location(volume['id'], tgt)
         properties['target_discovered'] = False
         properties['target_portal'] = hus_portal
         properties['target_iqn'] = iqn
-        properties['target_lun'] = 0  # for now !
+        properties['target_lun'] = hlun
         properties['volume_id'] = volume['id']
         return {'driver_volume_type': 'iscsi', 'data': properties}
 
     @utils.synchronized('hds_hus', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume."""
-        loc = volume['provider_location']
+        info = volume['provider_location'].split(',')
+        if len(info) < 5:      # connection not setup properly. bail out
+            return
+        (_portal, iqn, loc, ctl, port) = info
         (_array_id, lun) = loc.split('.')
-        iqn = HI_IQN + loc
-        service = self._get_service(volume)
-        (_ip, _ipp, ctl, port, _hdp) = service
         _out = self.bend.del_iscsi_conn(self.config['hus_cmd'],
+                                        HDS_VERSION,
                                         self.config['mgmt_ip0'],
                                         self.config['mgmt_ip1'],
                                         self.config['username'],
                                         self.config['password'],
                                         self.arid, lun, ctl, port, iqn,
                                         connector['initiator'], 1)
+        self._update_vol_location(volume['id'], loc)
         return {'provider_location': loc}
 
     @utils.synchronized('hds_hus', external=True)
@@ -387,6 +401,7 @@ class HUSDriver(driver.ISCSIDriver):
         service = self._get_service(volume)
         (_ip, _ipp, _ctl, _port, hdp) = service
         out = self.bend.create_dup(self.config['hus_cmd'],
+                                   HDS_VERSION,
                                    self.config['mgmt_ip0'],
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
@@ -408,6 +423,7 @@ class HUSDriver(driver.ISCSIDriver):
         size = int(snapshot['volume_size']) * 1024
         (_arid, slun) = source_vol['provider_location'].split('.')
         out = self.bend.create_dup(self.config['hus_cmd'],
+                                   HDS_VERSION,
                                    self.config['mgmt_ip0'],
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
@@ -438,6 +454,7 @@ class HUSDriver(driver.ISCSIDriver):
             msg = 'Array id mismatch in delete snapshot'
             raise exception.VolumeBackendAPIException(data=msg)
         _out = self.bend.delete_lu(self.config['hus_cmd'],
+                                   HDS_VERSION,
                                    self.config['mgmt_ip0'],
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
