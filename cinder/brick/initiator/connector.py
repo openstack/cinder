@@ -17,8 +17,10 @@
 
 import executor
 import host_driver
+import linuxfc
 import linuxscsi
 import os
+import socket
 import time
 
 from oslo.config import cfg
@@ -27,11 +29,27 @@ from cinder import exception
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 synchronized = lockutils.synchronized_with_prefix('brick-')
+
+
+def get_connector_properties():
+    """Get the connection properties for all protocols."""
+
+    iscsi = ISCSIConnector()
+    fc = linuxfc.LinuxFibreChannel()
+
+    props = {}
+    props['ip'] = CONF.my_ip
+    props['host'] = socket.gethostname()
+    props['initiator'] = iscsi.get_initiator()
+    props['wwpns'] = fc.get_fc_wwpns()
+
+    return props
 
 
 class InitiatorConnector(executor.Executor):
@@ -43,17 +61,61 @@ class InitiatorConnector(executor.Executor):
             driver = host_driver.HostDriver()
         self.set_driver(driver)
 
-        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
-
     def set_driver(self, driver):
-        """The driver used to find used LUNs."""
+        """The driver is used to find used LUNs."""
 
         self.driver = driver
 
+    @staticmethod
+    def factory(protocol, execute=putils.execute,
+                root_helper="sudo", use_multipath=False):
+        """Build a Connector object based upon protocol."""
+        LOG.debug("Factory for %s" % protocol)
+        protocol = protocol.upper()
+        if protocol == "ISCSI":
+            return ISCSIConnector(execute=execute,
+                                  root_helper=root_helper,
+                                  use_multipath=use_multipath)
+        elif protocol == "FIBRE_CHANNEL":
+            return FibreChannelConnector(execute=execute,
+                                         root_helper=root_helper,
+                                         use_multipath=use_multipath)
+        else:
+            msg = (_("Invalid InitiatorConnector protocol "
+                     "specified %(protocol)s") %
+                   dict(protocol=protocol))
+            raise ValueError(msg)
+
+    def check_valid_device(self, path):
+        cmd = ('dd', 'if=%(path)s' % {"path": path},
+               'of=/dev/null', 'count=1')
+        out, info = None, None
+        try:
+            out, info = self._execute(*cmd, run_as_root=True,
+                                      root_helper=self._root_helper)
+        except exception.ProcessExecutionError as e:
+            LOG.error(_("Failed to access the device on the path "
+                        "%(path)s: %(error)s %(info)s.") %
+                      {"path": path, "error": e.stderr,
+                       "info": info})
+            return False
+        # If the info is none, the path does not exist.
+        if info is None:
+            return False
+        return True
+
     def connect_volume(self, connection_properties):
+        """Connect to a volume. The connection_properties
+        describes the information needed by the specific
+        protocol to use to make the connection.
+        """
         raise NotImplementedError()
 
-    def disconnect_volume(self, connection_properties):
+    def disconnect_volume(self, connection_properties, device_info):
+        """Disconnect a volume from the local host.
+        The connection_properties are the same as from connect_volume.
+        The device_info is returned from connect_volume.
+        """
         raise NotImplementedError()
 
 
@@ -66,6 +128,7 @@ class ISCSIConnector(InitiatorConnector):
         super(ISCSIConnector, self).__init__(driver, execute, root_helper,
                                              *args, **kwargs)
         self.use_multipath = use_multipath
+        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
 
     @synchronized('connect_volume')
     def connect_volume(self, connection_properties):
@@ -138,7 +201,7 @@ class ISCSIConnector(InitiatorConnector):
         return device_info
 
     @synchronized('connect_volume')
-    def disconnect_volume(self, connection_properties):
+    def disconnect_volume(self, connection_properties, device_info):
         """Detach the volume from instance_name.
 
         connection_properties for iSCSI must include:
@@ -178,6 +241,19 @@ class ISCSIConnector(InitiatorConnector):
                  'iqn': connection_properties['target_iqn'],
                  'lun': connection_properties.get('target_lun', 0)})
         return path
+
+    def get_initiator(self):
+        """Secure helper to read file as root."""
+        try:
+            file_path = '/etc/iscsi/initiatorname.iscsi'
+            lines, _err = self._execute('cat', file_path, run_as_root=True,
+                                        root_helper=self._root_helper)
+
+            for l in lines.split('\n'):
+                if l.startswith('InitiatorName='):
+                    return l[l.index('=') + 1:].strip()
+        except exception.ProcessExecutionError:
+            raise exception.FileNotFound(file_path=file_path)
 
     def _run_iscsiadm(self, connection_properties, iscsi_command, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', 0)
@@ -373,3 +449,169 @@ class ISCSIConnector(InitiatorConnector):
 
     def _rescan_multipath(self):
         self._run_multipath('-r', check_exit_code=[0, 1, 21])
+
+
+class FibreChannelConnector(InitiatorConnector):
+    """"Connector class to attach/detach Fibre Channel volumes."""
+
+    def __init__(self, driver=None, execute=putils.execute,
+                 root_helper="sudo", use_multipath=False,
+                 *args, **kwargs):
+        super(FibreChannelConnector, self).__init__(driver, execute,
+                                                    root_helper,
+                                                    *args, **kwargs)
+        self.use_multipath = use_multipath
+        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
+        self._linuxfc = linuxfc.LinuxFibreChannel(execute, root_helper)
+
+    @synchronized('connect_volume')
+    def connect_volume(self, connection_properties):
+        """Attach the volume to instance_name.
+
+        connection_properties for Fibre Channel must include:
+        target_portal - ip and optional port
+        target_iqn - iSCSI Qualified Name
+        target_lun - LUN id of the volume
+        """
+        LOG.debug("execute = %s" % self._execute)
+        device_info = {'type': 'block'}
+
+        ports = connection_properties['target_wwn']
+        wwns = []
+        # we support a list of wwns or a single wwn
+        if isinstance(ports, list):
+            for wwn in ports:
+                wwns.append(wwn)
+        elif isinstance(ports, str):
+            wwns.append(ports)
+
+        # We need to look for wwns on every hba
+        # because we don't know ahead of time
+        # where they will show up.
+        hbas = self._linuxfc.get_fc_hbas_info()
+        host_devices = []
+        for hba in hbas:
+            pci_num = self._get_pci_num(hba)
+            if pci_num is not None:
+                for wwn in wwns:
+                    target_wwn = "0x%s" % wwn.lower()
+                    host_device = ("/dev/disk/by-path/pci-%s-fc-%s-lun-%s" %
+                                  (pci_num,
+                                   target_wwn,
+                                   connection_properties.get('target_lun', 0)))
+                    host_devices.append(host_device)
+
+        if len(host_devices) == 0:
+            # this is empty because we don't have any FC HBAs
+            msg = _("We are unable to locate any Fibre Channel devices")
+            raise exception.CinderException(msg)
+
+        # The /dev/disk/by-path/... node is not always present immediately
+        # We only need to find the first device.  Once we see the first device
+        # multipath will have any others.
+        def _wait_for_device_discovery(host_devices):
+            tries = self.tries
+            for device in host_devices:
+                LOG.debug(_("Looking for Fibre Channel dev %(device)s"),
+                          {'device': device})
+                if os.path.exists(device):
+                    self.host_device = device
+                    # get the /dev/sdX device.  This is used
+                    # to find the multipath device.
+                    self.device_name = os.path.realpath(device)
+                    raise loopingcall.LoopingCallDone()
+
+            if self.tries >= CONF.num_iscsi_scan_tries:
+                msg = _("Fibre Channel device not found.")
+                raise exception.CinderException(msg)
+
+            LOG.warn(_("Fibre volume not yet found. "
+                       "Will rescan & retry.  Try number: %(tries)s"),
+                     {'tries': tries})
+
+            self._linuxfc.rescan_hosts(hbas)
+            self.tries = self.tries + 1
+
+        self.host_device = None
+        self.device_name = None
+        self.tries = 0
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _wait_for_device_discovery, host_devices)
+        timer.start(interval=2).wait()
+
+        tries = self.tries
+        if self.host_device is not None and self.device_name is not None:
+            LOG.debug(_("Found Fibre Channel volume %(name)s "
+                        "(after %(tries)s rescans)"),
+                      {'name': self.device_name, 'tries': tries})
+
+        # see if the new drive is part of a multipath
+        # device.  If so, we'll use the multipath device.
+        if self.use_multipath:
+            mdev_info = self._linuxscsi.find_multipath_device(self.device_name)
+            if mdev_info is not None:
+                LOG.debug(_("Multipath device discovered %(device)s")
+                          % {'device': mdev_info['device']})
+                device_path = mdev_info['device']
+                devices = mdev_info['devices']
+                device_info['multipath_id'] = mdev_info['id']
+            else:
+                # we didn't find a multipath device.
+                # so we assume the kernel only sees 1 device
+                device_path = self.host_device
+                dev_info = self._linuxscsi.get_device_info(self.device_name)
+                devices = [dev_info]
+        else:
+            device_path = self.host_device
+            dev_info = self._linuxscsi.get_device_info(self.device_name)
+            devices = [dev_info]
+
+        device_info['path'] = device_path
+        device_info['devices'] = devices
+        return device_info
+
+    @synchronized('connect_volume')
+    def disconnect_volume(self, connection_properties, device_info):
+        """Detach the volume from instance_name.
+
+        connection_properties for Fibre Channel must include:
+        target_wwn - iSCSI Qualified Name
+        target_lun - LUN id of the volume
+        """
+        devices = device_info['devices']
+
+        # If this is a multipath device, we need to search again
+        # and make sure we remove all the devices. Some of them
+        # might not have shown up at attach time.
+        if self.use_multipath and 'multipath_id' in device_info:
+            multipath_id = device_info['multipath_id']
+            mdev_info = self._linuxscsi.find_multipath_device(multipath_id)
+            devices = mdev_info['devices']
+            LOG.debug("devices to remove = %s" % devices)
+
+        # There may have been more than 1 device mounted
+        # by the kernel for this volume.  We have to remove
+        # all of them
+        for device in devices:
+            self._linuxscsi.remove_scsi_device(device["device"])
+
+    def _get_pci_num(self, hba):
+        # NOTE(walter-boring)
+        # device path is in format of
+        # /sys/devices/pci0000:00/0000:00:03.0/0000:05:00.3/host2/fc_host/host2
+        # sometimes an extra entry exists before the host2 value
+        # we always want the value prior to the host2 value
+        pci_num = None
+        if hba is not None:
+            if "device_path" in hba:
+                index = 0
+                device_path = hba['device_path'].split('/')
+                for value in device_path:
+                    if value.startswith('host'):
+                        break
+                    index = index + 1
+
+                if index > 0:
+                    pci_num = device_path[index - 1]
+
+        return pci_num

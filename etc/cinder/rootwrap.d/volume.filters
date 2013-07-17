@@ -61,6 +61,7 @@ hus_cmd: CommandFilter, hus_cmd, root
 ls: CommandFilter, ls, root
 tee: CommandFilter, tee, root
 multipath: CommandFilter, multipath, root
+systool: CommandFilter, systool, root
 
 # cinder/volume/drivers/block_device.py
 blockdev: CommandFilter, blockdev, root

@@ -58,7 +58,11 @@ volume_opts = [
                help='The port that the iSCSI daemon is listening on'),
     cfg.StrOpt('volume_backend_name',
                default=None,
-               help='The backend name for a given driver implementation'), ]
+               help='The backend name for a given driver implementation'),
+    cfg.StrOpt('use_multipath_for_image_xfer',
+               default=False,
+               help='Do we attach/detach volumes in cinder using multipath '
+                    'for volume to image and image to volume transfers?'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
@@ -188,11 +192,66 @@ class VolumeDriver(object):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        raise NotImplementedError()
+        LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
+
+        properties = initiator.get_connector_properties()
+        connection, device, connector = self._attach_volume(context, volume,
+                                                            properties)
+
+        try:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     device['path'])
+        finally:
+            self._detach_volume(connection, device, connector)
+            self.terminate_connection(volume, properties)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        raise NotImplementedError()
+        LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
+
+        properties = initiator.get_connector_properties()
+        connection, device, connector = self._attach_volume(context, volume,
+                                                            properties)
+
+        try:
+            image_utils.upload_volume(context,
+                                      image_service,
+                                      image_meta,
+                                      device['path'])
+        finally:
+            self._detach_volume(connection, device, connector)
+            self.terminate_connection(volume, properties)
+
+    def _attach_volume(self, context, volume, properties):
+        """Attach the volume."""
+        host_device = None
+        conn = self.initialize_connection(volume, properties)
+
+        # Use Brick's code to do attach/detach
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        protocol = conn['driver_volume_type']
+        connector = initiator.InitiatorConnector.factory(protocol,
+                                                         use_multipath=
+                                                         use_multipath)
+        device = connector.connect_volume(conn['data'])
+        host_device = device['path']
+
+        if not connector.check_valid_device(host_device):
+            raise exception.DeviceUnavailable(path=host_device,
+                                              reason=(_("Unable to access "
+                                                        "the backend storage "
+                                                        "via the path "
+                                                        "%(path)s.") %
+                                                      {'path': host_device}))
+        return conn, device, connector
+
+    def _detach_volume(self, connection, device, connector):
+        """Disconnect the volume from the host."""
+        protocol = connection['driver_volume_type']
+        # Use Brick's code to do attach/detach
+        connector.disconnect_volume(connection['data'], device)
 
     def clone_image(self, volume, image_location):
         """Create a volume efficiently from an existing image.
@@ -397,22 +456,6 @@ class ISCSIDriver(VolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
-    def _check_valid_device(self, path):
-        cmd = ('dd', 'if=%(path)s' % {"path": path},
-               'of=/dev/null', 'count=1')
-        out, info = None, None
-        try:
-            out, info = self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as e:
-            LOG.error(_("Failed to access the device on the path "
-                        "%(path)s: %(error)s.") %
-                      {"path": path, "error": e.stderr})
-            return False
-        # If the info is none, the path does not exist.
-        if info is None:
-            return False
-        return True
-
     def _get_iscsi_initiator(self):
         """Get iscsi initiator name for this machine"""
         # NOTE openiscsi stores initiator name in a file that
@@ -421,74 +464,6 @@ class ISCSIDriver(VolumeDriver):
         for l in contents.split('\n'):
             if l.startswith('InitiatorName='):
                 return l[l.index('=') + 1:].strip()
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
-        connector = {'initiator': self._get_iscsi_initiator(),
-                     'host': socket.gethostname()}
-
-        iscsi_properties, volume_path = self._attach_volume(
-            context, volume, connector)
-
-        try:
-            image_utils.fetch_to_raw(context,
-                                     image_service,
-                                     image_id,
-                                     volume_path)
-        finally:
-            self._detach_volume(iscsi_properties)
-            self.terminate_connection(volume, connector)
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
-        connector = {'initiator': self._get_iscsi_initiator(),
-                     'host': socket.gethostname()}
-
-        iscsi_properties, volume_path = self._attach_volume(
-            context, volume, connector)
-
-        try:
-            image_utils.upload_volume(context,
-                                      image_service,
-                                      image_meta,
-                                      volume_path)
-        finally:
-            self._detach_volume(iscsi_properties)
-            self.terminate_connection(volume, connector)
-
-    def _attach_volume(self, context, volume, connector):
-        """Attach the volume."""
-        iscsi_properties = None
-        host_device = None
-        init_conn = self.initialize_connection(volume, connector)
-        iscsi_properties = init_conn['data']
-
-        # Use Brick's code to do attach/detach
-        iscsi = initiator.ISCSIConnector()
-        conf = iscsi.connect_volume(iscsi_properties)
-
-        host_device = conf['path']
-
-        if not self._check_valid_device(host_device):
-            raise exception.DeviceUnavailable(path=host_device,
-                                              reason=(_("Unable to access "
-                                                        "the backend storage "
-                                                        "via the path "
-                                                        "%(path)s.") %
-                                                      {'path': host_device}))
-        LOG.debug("Volume attached %s" % host_device)
-        return iscsi_properties, host_device
-
-    def _detach_volume(self, iscsi_properties):
-        LOG.debug("Detach volume %s:%s:%s" %
-                  (iscsi_properties["target_portal"],
-                   iscsi_properties["target_iqn"],
-                   iscsi_properties["target_lun"]))
-        # Use Brick's code to do attach/detach
-        iscsi = initiator.ISCSIConnector()
-        conf = iscsi.disconnect_volume(iscsi_properties)
 
     def get_volume_stats(self, refresh=False):
         """Get volume status.
@@ -586,9 +561,3 @@ class FibreChannelDriver(VolumeDriver):
         """
         msg = _("Driver must implement initialize_connection")
         raise NotImplementedError(msg)
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        raise NotImplementedError()
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        raise NotImplementedError()
