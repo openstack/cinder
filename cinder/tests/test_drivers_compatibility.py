@@ -18,7 +18,7 @@ from oslo.config import cfg
 from cinder import context
 from cinder.openstack.common import importutils
 from cinder import test
-from cinder.volume.drivers.solidfire import SolidFire
+from cinder.volume.drivers.solidfire import SolidFireDriver
 
 
 CONF = cfg.CONF
@@ -30,7 +30,7 @@ SAN_MODULE = "cinder.volume.drivers.san.san.SanISCSIDriver"
 SOLARIS_MODULE = "cinder.volume.drivers.san.solaris.SolarisISCSIDriver"
 LEFTHAND_MODULE = "cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver"
 NFS_MODULE = "cinder.volume.drivers.nfs.NfsDriver"
-SOLIDFIRE_MODULE = "cinder.volume.drivers.solidfire.SolidFire"
+SOLIDFIRE_MODULE = "cinder.volume.drivers.solidfire.SolidFireDriver"
 STORWIZE_SVC_MODULE = "cinder.volume.drivers.storwize_svc.StorwizeSVCDriver"
 WINDOWS_MODULE = "cinder.volume.drivers.windows.WindowsDriver"
 XIV_MODULE = "cinder.volume.drivers.xiv.XIVDriver"
@@ -54,7 +54,7 @@ class VolumeDriverCompatibility(test.TestCase):
     def _load_driver(self, driver):
         if 'SolidFire' in driver:
             # SolidFire driver does update_cluster stat on init
-            self.stubs.Set(SolidFire, '_update_cluster_status',
+            self.stubs.Set(SolidFireDriver, '_update_cluster_status',
                            self.fake_update_cluster_status)
         self.manager.__init__(volume_driver=driver)
 
@@ -120,6 +120,10 @@ class VolumeDriverCompatibility(test.TestCase):
 
     def test_solidfire_old(self):
         self._load_driver('cinder.volume.solidfire.SolidFire')
+        self.assertEquals(self._driver_module_name(), SOLIDFIRE_MODULE)
+
+    def test_solidfire_old2(self):
+        self._load_driver('cinder.volume.drivers.solidfire.SolidFire')
         self.assertEquals(self._driver_module_name(), SOLIDFIRE_MODULE)
 
     def test_solidfire_new(self):

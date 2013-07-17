@@ -54,7 +54,7 @@ CONF = cfg.CONF
 CONF.register_opts(sf_opts)
 
 
-class SolidFire(SanISCSIDriver):
+class SolidFireDriver(SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 
     Version history:
@@ -83,7 +83,7 @@ class SolidFire(SanISCSIDriver):
     GB = math.pow(2, 30)
 
     def __init__(self, *args, **kwargs):
-            super(SolidFire, self).__init__(*args, **kwargs)
+            super(SolidFireDriver, self).__init__(*args, **kwargs)
             self.configuration.append_config_values(sf_opts)
             try:
                 self._update_cluster_status()
