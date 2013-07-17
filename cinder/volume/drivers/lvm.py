@@ -300,11 +300,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Creates a clone of the specified volume."""
         LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
         volume_name = CONF.volume_name_template % src_vref['id']
-        temp_id = 'tmp-snap-%s' % src_vref['id']
+        temp_id = 'tmp-snap-%s' % volume['id']
         temp_snapshot = {'volume_name': volume_name,
                          'size': src_vref['size'],
                          'volume_size': src_vref['size'],
-                         'name': 'clone-snap-%s' % src_vref['id'],
+                         'name': 'clone-snap-%s' % volume['id'],
                          'id': temp_id}
         self.create_snapshot(temp_snapshot)
         self._create_volume(volume['name'], self._sizestr(volume['size']))
