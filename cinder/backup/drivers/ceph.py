@@ -122,10 +122,10 @@ class CephBackupDriver(BackupDriver):
         ioctx.close()
         client.shutdown()
 
-    def _get_backup_rbd_name(self, vol_name, backup_id):
-        """Make sure we use a consistent format for backup names"""
-        # ensure no unicode
-        return str("%s.backup.%s" % (vol_name, backup_id))
+    def _get_backup_base_name(self, volume_id, backup_id):
+        """Return name of base image used for backup."""
+        # Ensure no unicode
+        return str("volume-%s.backup.%s" % (volume_id, backup_id))
 
     def _transfer_data(self, src, dest, dest_name, length, dest_is_rbd=False):
         """
@@ -198,7 +198,7 @@ class CephBackupDriver(BackupDriver):
         """Backup the given volume to Ceph object store"""
         backup_id = backup['id']
         volume = self.db.volume_get(self.context, backup['volume_id'])
-        backup_name = self._get_backup_rbd_name(volume['name'], backup_id)
+        backup_name = self._get_backup_base_name(volume['id'], backup_id)
 
         LOG.debug("Starting backup of volume='%s' to rbd='%s'" %
                   (volume['name'], backup_name))
@@ -223,9 +223,9 @@ class CephBackupDriver(BackupDriver):
 
     def restore(self, backup, volume_id, volume_file):
         """Restore the given volume backup from Ceph object store"""
-        volume_id = backup['volume_id']
         volume = self.db.volume_get(self.context, volume_id)
-        backup_name = self._get_backup_rbd_name(volume['name'], backup['id'])
+        backup_name = self._get_backup_base_name(backup['volume_id'],
+                                                 backup['id'])
 
         LOG.debug('starting backup restore from Ceph backup=%s '
                   'to volume=%s' % (backup['id'], volume['name']))
@@ -257,9 +257,8 @@ class CephBackupDriver(BackupDriver):
     def delete(self, backup):
         """Delete the given backup from Ceph object store"""
         backup_id = backup['id']
-        volume_id = backup['volume_id']
-        volume = self.db.volume_get(self.context, volume_id)
-        backup_name = self._get_backup_rbd_name(volume['name'], backup_id)
+        backup_name = self._get_backup_base_name(backup['volume_id'],
+                                                 backup_id)
 
         LOG.debug('delete started for backup=%s', backup['id'])
 
