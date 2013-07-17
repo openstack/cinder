@@ -288,7 +288,7 @@ class SolidFire(SanISCSIDriver):
 
         found_volume = False
         iteration_count = 0
-        while not found_volume and iteration_count < 10:
+        while not found_volume and iteration_count < 600:
             volume_list = self._get_volumes_by_sfaccount(
                 sfaccount['accountID'])
             iqn = None
