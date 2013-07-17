@@ -1300,6 +1300,11 @@ def snapshot_destroy(context, snapshot_id):
                     'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})
+        session.query(models.SnapshotMetadata).\
+            filter_by(snapshot_id=snapshot_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
 
 
 @require_context
