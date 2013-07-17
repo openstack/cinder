@@ -129,6 +129,30 @@ def trycmd(*args, **kwargs):
     return (stdout, stderr)
 
 
+def check_ssh_injection(cmd_list):
+    ssh_injection_pattern = ['`', '$', '|', '||', ';', '&', '&&', '>', '>>',
+                             '<']
+
+    # Check whether injection attacks exist
+    for arg in cmd_list:
+        arg = arg.strip()
+        # First, check no space in the middle of arg
+        arg_len = len(arg.split())
+        if arg_len > 1:
+            raise exception.SSHInjectionThreat(command=str(cmd_list))
+
+        # Second, check whether danger character in command. So the shell
+        # special operator must be a single argument.
+        for c in ssh_injection_pattern:
+            if arg == c:
+                continue
+
+            result = arg.find(c)
+            if not result == -1:
+                if result == 0 or not arg[result - 1] == '\\':
+                    raise exception.SSHInjectionThreat(command=cmd_list)
+
+
 def ssh_execute(ssh, cmd, process_input=None,
                 addl_env=None, check_exit_code=True):
     LOG.debug(_('Running cmd (SSH): %s'), cmd)

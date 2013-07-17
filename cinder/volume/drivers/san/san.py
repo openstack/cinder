@@ -100,7 +100,10 @@ class SanDriver(driver.VolumeDriver):
             command = ' '.join(cmd)
             return self._run_ssh(command, check_exit_code)
 
-    def _run_ssh(self, command, check_exit_code=True, attempts=1):
+    def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
+        utils.check_ssh_injection(cmd_list)
+        command = ' '. join(cmd_list)
+
         if not self.sshpool:
             password = self.configuration.san_password
             privatekey = self.configuration.san_private_key
