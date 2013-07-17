@@ -1228,7 +1228,7 @@ class VolumeTestCase(test.TestCase):
         self.assertEqual(snapshots[2].id, u'4')
 
     def test_extend_volume(self):
-        """Test volume can be extended."""
+        """Test volume can be extended at API level."""
         # create a volume and assign to host
         volume = self._create_volume(2)
         self.volume.create_volume(self.context, volume['id'])
@@ -1255,7 +1255,55 @@ class VolumeTestCase(test.TestCase):
         volume_api.extend(self.context, volume, 3)
 
         volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEquals(volume['size'], 3)
+        self.assertEquals(volume['status'], 'extending')
+
+        # clean up
+        self.volume.delete_volume(self.context, volume['id'])
+
+    def test_extend_volume_manager(self):
+        """Test volume can be extended at the manager level."""
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
+            return ['RESERVATION']
+
+        def fake_reserve_exc(context, expire=None, project_id=None, **deltas):
+            raise exception.OverQuota(overs=['gigabytes'],
+                                      quotas={'gigabytes': 20},
+                                      usages={'gigabytes': {'reserved': 5,
+                                                            'in_use': 15}})
+
+        def fake_extend_exc(volume, new_size):
+            raise exception.CinderException('fake exception')
+
+        volume = self._create_volume(2)
+        self.volume.create_volume(self.context, volume['id'])
+
+        # Test quota exceeded
+        self.stubs.Set(QUOTAS, 'reserve', fake_reserve_exc)
+        self.stubs.Set(QUOTAS, 'commit', lambda x, y, project_id=None: True)
+        self.stubs.Set(QUOTAS, 'rollback', lambda x, y: True)
+        volume['status'] = 'extending'
+        self.volume.extend_volume(self.context, volume['id'], '4')
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEquals(volume['size'], 2)
+        self.assertEquals(volume['status'], 'error_extending')
+
+        # Test driver exception
+        self.stubs.Set(QUOTAS, 'reserve', fake_reserve)
+        self.stubs.Set(self.volume.driver, 'extend_volume', fake_extend_exc)
+        volume['status'] = 'extending'
+        self.volume.extend_volume(self.context, volume['id'], '4')
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEquals(volume['size'], 2)
+        self.assertEquals(volume['status'], 'error_extending')
+
+        # Test driver success
+        self.stubs.Set(self.volume.driver, 'extend_volume',
+                       lambda x, y: True)
+        volume['status'] = 'extending'
+        self.volume.extend_volume(self.context, volume['id'], '4')
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEquals(volume['size'], 4)
+        self.assertEquals(volume['status'], 'available')
 
         # clean up
         self.volume.delete_volume(self.context, volume['id'])

@@ -802,14 +802,46 @@ class VolumeManager(manager.SchedulerDependentManager):
             extra_usage_info=extra_usage_info, host=self.host)
 
     def extend_volume(self, context, volume_id, new_size):
-        volume_ref = self.db.volume_get(context, volume_id)
+        volume = self.db.volume_get(context, volume_id)
+        size_increase = (int(new_size)) - volume['size']
 
         try:
-            LOG.info(_("volume %s: extending"), volume_ref['name'])
-            self.driver.extend_volume(volume_ref, new_size)
-            LOG.info(_("volume %s: extended successfully"), volume_ref['name'])
+            reservations = QUOTAS.reserve(context, gigabytes=+size_increase)
+        except exception.OverQuota as exc:
+            self.db.volume_update(context, volume['id'],
+                                  {'status': 'error_extending'})
+            overs = exc.kwargs['overs']
+            usages = exc.kwargs['usages']
+            quotas = exc.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'gigabytes' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, "
+                        "tried to extend volume by "
+                        "%(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
+                        "already consumed)")
+                LOG.error(msg % {'s_pid': context.project_id,
+                                 's_size': size_increase,
+                                 'd_consumed': _consumed('gigabytes'),
+                                 'd_quota': quotas['gigabytes']})
+            return
+
+        try:
+            LOG.info(_("volume %s: extending"), volume['name'])
+            self.driver.extend_volume(volume, new_size)
+            LOG.info(_("volume %s: extended successfully"), volume['name'])
         except Exception:
             LOG.exception(_("volume %s: Error trying to extend volume"),
                           volume_id)
-            self.db.volume_update(context, volume_ref['id'],
-                                  {'status': 'error_extending'})
+            try:
+                self.db.volume_update(context, volume['id'],
+                                      {'status': 'error_extending'})
+            finally:
+                QUOTAS.rollback(context, reservations)
+                return
+
+        QUOTAS.commit(context, reservations)
+        self.db.volume_update(context, volume['id'], {'size': int(new_size),
+                                                      'status': 'available'})
