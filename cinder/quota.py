@@ -57,7 +57,7 @@ quota_opts = [
                default='cinder.quota.DbQuotaDriver',
                help='default driver to use for quota checks'),
     cfg.BoolOpt('use_default_quota_class',
-                default='True',
+                default=True,
                 help='whether to use default quota class for default quota'), ]
 
 CONF = cfg.CONF
