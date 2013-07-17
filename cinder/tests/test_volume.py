@@ -46,6 +46,7 @@ from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
+from cinder.volume import utils as volutils
 
 
 QUOTAS = quota.QUOTAS
@@ -1504,46 +1505,13 @@ class LVMVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
 
-    def test_convert_blocksize_option(self):
-        # Test invalid volume_dd_blocksize
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-
-        # Test valid volume_dd_blocksize
-        bs, count = lvm_driver._calculate_count('10M', 1)
-        self.assertEquals(bs, '10M')
-        self.assertEquals(count, 103)
-
-        bs, count = lvm_driver._calculate_count('1xBBB', 1)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
-
-        # Test volume_dd_blocksize with fraction
-        bs, count = lvm_driver._calculate_count('1.3M', 1)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
-
-        # Test zero-size volume_dd_blocksize
-        bs, count = lvm_driver._calculate_count('0M', 1)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
-
-        # Test negative volume_dd_blocksize
-        bs, count = lvm_driver._calculate_count('-1M', 1)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
-
-        # Test non-digital volume_dd_blocksize
-        bs, count = lvm_driver._calculate_count('ABM', 1)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
-
     def test_clear_volume(self):
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-        self.stubs.Set(lvm_driver, '_copy_volume', lambda *a, **kw: True)
+        self.stubs.Set(volutils, 'copy_volume',
+                       lambda x, y, z, sync=False, execute='foo': True)
 
         fake_volume = {'name': 'test1',
                        'volume_name': 'test1',

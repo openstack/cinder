@@ -25,6 +25,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume import utils as volutils
 
 
 LOG = logging.getLogger(__name__)
@@ -274,8 +275,8 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
         if self.configuration.volume_clear == 'zero':
             if clear_size == 0:
-                return self._copy_volume('/dev/zero', vol_path, size_in_m,
-                                         clearing=True)
+                return volutils.copy_volume('/dev/zero', vol_path, size_in_m,
+                                            sync=True, execute=self._execute)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % clear_size]
         elif self.configuration.volume_clear == 'shred':
@@ -289,27 +290,6 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
         clear_cmd.append(vol_path)
         self._execute(*clear_cmd, run_as_root=True)
-
-    def _copy_volume(self, srcstr, deststr, size_in_m=None, clearing=False):
-        # Use O_DIRECT to avoid thrashing the system buffer cache
-        extra_flags = ['iflag=direct', 'oflag=direct']
-
-        # Check whether O_DIRECT is supported
-        try:
-            self._execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
-                          *extra_flags, run_as_root=True)
-        except exception.ProcessExecutionError:
-            extra_flags = []
-
-        # If the volume is being unprovisioned then
-        # request the data is persisted before returning,
-        # so that it's not discarded from the cache.
-        if clearing and not extra_flags:
-            extra_flags.append('conv=fdatasync')
-            # Perform the copy
-        self._execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-                      'count=%d' % size_in_m, 'bs=1M',
-                      *extra_flags, run_as_root=True)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
@@ -328,8 +308,9 @@ class BlockDeviceDriver(driver.ISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
         device = self.find_appropriate_size_device(src_vref['size'])
-        self._copy_volume(self.local_path(src_vref), device,
-                          self._get_device_size(device) * 2048)
+        volutils.copy_volume(self.local_path(src_vref), device,
+                             self._get_device_size(device) * 2048,
+                             execute=self._execute)
         return {
             'provider_location': self._iscsi_location(None, None, None, None,
                                                       device),

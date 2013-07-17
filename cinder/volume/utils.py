@@ -17,18 +17,31 @@
 """Volume-related Utilities and helpers."""
 
 
+import math
 import os
 import stat
 
 from oslo.config import cfg
 
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
+from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
+from cinder import units
 from cinder import utils
 
 
+volume_opts = [
+    cfg.StrOpt('volume_dd_blocksize',
+               default='1M',
+               help='The default block size used when copying/clearing '
+                    'volumes'),
+]
+
 CONF = cfg.CONF
+CONF.register_opts(volume_opts)
+
 LOG = logging.getLogger(__name__)
 
 
@@ -132,3 +145,55 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
 def is_block(path):
     mode = os.stat(path).st_mode
     return stat.S_ISBLK(mode)
+
+
+def _calculate_count(size_in_m):
+    blocksize = CONF.volume_dd_blocksize
+    # Check if volume_dd_blocksize is valid
+    try:
+        # Rule out zero-sized/negative dd blocksize which
+        # cannot be caught by strutils
+        if blocksize.startswith(('-', '0')):
+            raise ValueError
+        bs = strutils.to_bytes(blocksize)
+    except (ValueError, TypeError):
+        msg = (_("Incorrect value error: %(blocksize)s, "
+                 "it may indicate that \'volume_dd_blocksize\' "
+                 "was configured incorrectly. Fall back to default.")
+               % {'blocksize': blocksize})
+        LOG.warn(msg)
+        # Fall back to default blocksize
+        CONF.clear_override('volume_dd_blocksize')
+        blocksize = CONF.volume_dd_blocksize
+        bs = strutils.to_bytes(blocksize)
+
+    count = math.ceil(size_in_m * units.MiB / float(bs))
+
+    return blocksize, int(count)
+
+
+def copy_volume(srcstr, deststr, size_in_m, sync=False,
+                execute=utils.execute):
+    # Use O_DIRECT to avoid thrashing the system buffer cache
+    extra_flags = ['iflag=direct', 'oflag=direct']
+
+    # Check whether O_DIRECT is supported
+    try:
+        execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
+                *extra_flags, run_as_root=True)
+    except exception.ProcessExecutionError:
+        extra_flags = []
+
+    # If the volume is being unprovisioned then
+    # request the data is persisted before returning,
+    # so that it's not discarded from the cache.
+    if sync and not extra_flags:
+        extra_flags.append('conv=fdatasync')
+
+    blocksize, count = _calculate_count(size_in_m)
+
+    # Perform the copy
+    execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
+            'count=%d' % count,
+            'bs=%s' % blocksize,
+            *extra_flags, run_as_root=True)
