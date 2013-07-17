@@ -755,8 +755,9 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                 usages[resource].until_refresh -= 1
                 if usages[resource].until_refresh <= 0:
                     refresh = True
-            elif max_age and (usages[resource].updated_at -
-                              timeutils.utcnow()).seconds >= max_age:
+            elif max_age and usages[resource].updated_at is not None and (
+                (usages[resource].updated_at -
+                    timeutils.utcnow()).seconds >= max_age):
                 refresh = True
 
             # OK, refresh the usage
