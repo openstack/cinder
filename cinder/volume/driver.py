@@ -59,10 +59,10 @@ volume_opts = [
     cfg.StrOpt('volume_backend_name',
                default=None,
                help='The backend name for a given driver implementation'),
-    cfg.StrOpt('use_multipath_for_image_xfer',
-               default=False,
-               help='Do we attach/detach volumes in cinder using multipath '
-                    'for volume to image and image to volume transfers?'), ]
+    cfg.BoolOpt('use_multipath_for_image_xfer',
+                default=False,
+                help='Do we attach/detach volumes in cinder using multipath '
+                     'for volume to image and image to volume transfers?'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
