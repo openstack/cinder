@@ -1176,6 +1176,9 @@
 # Enable HTTP debugging to 3PAR (boolean value)
 #hp3par_debug=false
 
+#List of target iSCSI addresses to use (list value)
+#hp3par_iscsi_ips=
+
 
 #
 # Options defined in cinder.volume.drivers.san.san
