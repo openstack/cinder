@@ -24,6 +24,7 @@ from cinder.image import image_utils
 import cinder.test
 from cinder.volume.driver import ISCSIDriver
 from cinder.volume.drivers.block_device import BlockDeviceDriver
+from cinder.volume import utils as volutils
 
 
 class TestBlockDeviceDriver(cinder.test.TestCase):
@@ -131,12 +132,13 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.mox.StubOutWithMock(self.drv, 'find_appropriate_size_device')
         dev = self.drv.find_appropriate_size_device(TEST_SRC['size']).\
             AndReturn('/dev/loop2')
-        self.mox.StubOutWithMock(self.drv, '_copy_volume')
+        self.mox.StubOutWithMock(volutils, 'copy_volume')
         self.mox.StubOutWithMock(self.drv, 'local_path')
         self.mox.StubOutWithMock(self.drv, '_get_device_size')
         self.drv.local_path(TEST_SRC).AndReturn('/dev/loop1')
         self.drv._get_device_size('/dev/loop2').AndReturn(1)
-        self.drv._copy_volume('/dev/loop1', dev, 2048)
+        volutils.copy_volume('/dev/loop1', dev, 2048,
+                             execute=self.drv._execute)
         self.mox.ReplayAll()
         self.assertEquals(self.drv.create_cloned_volume(TEST_VOLUME, TEST_SRC),
                           {'provider_location': 'None:3260,'

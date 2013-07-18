@@ -31,10 +31,9 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
-from cinder import units
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume import utils as volutils
 
 LOG = logging.getLogger(__name__)
 
@@ -49,9 +48,6 @@ volume_opts = [
     cfg.IntOpt('volume_clear_size',
                default=0,
                help='Size in MiB to wipe at start of old volumes. 0 => all'),
-    cfg.StrOpt('volume_dd_blocksize',
-               default='1M',
-               help='The default block size used when clearing volumes'),
     cfg.StrOpt('pool_size',
                default=None,
                help='Size of thin provisioning pool '
@@ -103,56 +99,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         self._try_execute(*cmd, run_as_root=True, no_retry_list=no_retry_list)
 
-    def _calculate_count(self, blocksize, size_in_g):
-        # Check if volume_dd_blocksize is valid
-        try:
-            # Rule out zero-sized/negative dd blocksize which
-            # cannot be caught by strutils
-            if blocksize.startswith(('-', '0')):
-                raise ValueError
-            bs = strutils.to_bytes(blocksize)
-        except (ValueError, TypeError):
-            msg = (_("Incorrect value error: %(blocksize)s, "
-                     "it may indicate that \'volume_dd_blocksize\' "
-                     "was configured incorrectly. Fall back to default.")
-                   % {'blocksize': blocksize})
-            LOG.warn(msg)
-            # Fall back to default blocksize
-            CONF.clear_override('volume_dd_blocksize',
-                                self.configuration.config_group)
-            blocksize = self.configuration.volume_dd_blocksize
-            bs = strutils.to_bytes(blocksize)
-
-        count = math.ceil(size_in_g * units.GiB / float(bs))
-
-        return blocksize, int(count)
-
-    def _copy_volume(self, srcstr, deststr, size_in_g, clearing=False):
-        # Use O_DIRECT to avoid thrashing the system buffer cache
-        extra_flags = ['iflag=direct', 'oflag=direct']
-
-        # Check whether O_DIRECT is supported
-        try:
-            self._execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
-                          *extra_flags, run_as_root=True)
-        except exception.ProcessExecutionError:
-            extra_flags = []
-
-        # If the volume is being unprovisioned then
-        # request the data is persisted before returning,
-        # so that it's not discarded from the cache.
-        if clearing and not extra_flags:
-            extra_flags.append('conv=fdatasync')
-
-        blocksize = self.configuration.volume_dd_blocksize
-        blocksize, count = self._calculate_count(blocksize, size_in_g)
-
-        # Perform the copy
-        self._execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-                      'count=%d' % count,
-                      'bs=%s' % blocksize,
-                      *extra_flags, run_as_root=True)
-
     def _volume_not_present(self, volume_name):
         path_name = '%s/%s' % (self.configuration.volume_group, volume_name)
         try:
@@ -196,8 +142,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         self._create_volume(volume['name'], self._sizestr(volume['size']))
-        self._copy_volume(self.local_path(snapshot), self.local_path(volume),
-                          snapshot['volume_size'])
+        volutils.copy_volume(self.local_path(snapshot),
+                             self.local_path(volume),
+                             snapshot['volume_size'] * 1024,
+                             execute=self._execute)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
@@ -238,9 +186,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         if self.configuration.volume_clear == 'zero':
             if size_in_m == 0:
-                return self._copy_volume('/dev/zero',
-                                         vol_path, size_in_g,
-                                         clearing=True)
+                return volutils.copy_volume('/dev/zero',
+                                            vol_path, size_in_g * 1024,
+                                            sync=True,
+                                            execute=self._execute)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
         elif self.configuration.volume_clear == 'shred':
@@ -309,9 +258,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self.create_snapshot(temp_snapshot)
         self._create_volume(volume['name'], self._sizestr(volume['size']))
         try:
-            self._copy_volume(self.local_path(temp_snapshot),
-                              self.local_path(volume),
-                              src_vref['size'])
+            volutils.copy_volume(self.local_path(temp_snapshot),
+                                 self.local_path(volume),
+                                 src_vref['size'] * 1024,
+                                 execute=self._execute)
         finally:
             self.delete_snapshot(temp_snapshot)
 
