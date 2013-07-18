@@ -138,15 +138,6 @@ global_opts = [
     cfg.MultiStrOpt('osapi_volume_extension',
                     default=['cinder.api.contrib.standard_extensions'],
                     help='osapi volume extension to load'),
-    cfg.StrOpt('osapi_volume_base_URL',
-               default=None,
-               help='Base URL that will be presented to users in links '
-                    'to the OpenStack Volume API',
-               deprecated_name='osapi_compute_link_prefix'),
-    cfg.IntOpt('osapi_max_limit',
-               default=1000,
-               help='the maximum number of items returned in a single '
-                    'response from a collection resource'),
     cfg.StrOpt('volume_manager',
                default='cinder.volume.manager.VolumeManager',
                help='full class name for the Manager for volume'),
