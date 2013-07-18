@@ -1218,7 +1218,7 @@
 #netapp_password=<None>
 
 # Cluster vserver to use for provisioning (string value)
-#netapp_vserver=openstack
+#netapp_vserver=<None>
 
 # Host name for the storage controller (string value)
 #netapp_server_hostname=<None>

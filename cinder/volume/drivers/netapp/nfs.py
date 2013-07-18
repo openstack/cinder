@@ -27,12 +27,17 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder import units
+from cinder import utils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
+from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp import ssc_utils
+from cinder.volume.drivers.netapp.utils import get_volume_extra_specs
 from cinder.volume.drivers.netapp.utils import provide_ems
 from cinder.volume.drivers.netapp.utils import validate_instantiation
 from cinder.volume.drivers import nfs
@@ -168,6 +173,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         @param volume_name string,
             example volume-91ee65ec-c473-4391-8c09-162b00c68a8c
         """
+
         return os.path.join(self._get_mount_point_for_share(nfs_share),
                             volume_name)
 
@@ -259,6 +265,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetAppDirectCmodeNfsDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(netapp_cluster_opts)
 
     def _do_custom_setup(self, client):
         """Do the customized set up on client for cluster mode."""
@@ -266,6 +273,17 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         client.set_api_version(1, 15)
         (major, minor) = self._get_ontapi_version()
         client.set_api_version(major, minor)
+        self.vserver = self.configuration.netapp_vserver
+        self.ssc_vols = None
+        self.stale_vols = set()
+        if self.vserver:
+            self.ssc_enabled = True
+            LOG.warn(_("Shares on vserver %s will only"
+                       " be used for provisioning.") % (self.vserver))
+            ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver)
+        else:
+            self.ssc_enabled = False
+            LOG.warn(_("No vserver set in config. SSC will be disabled."))
 
     def _invoke_successfully(self, na_element, vserver=None):
         """Invoke the api for successful result.
@@ -274,6 +292,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         else Cluster api.
         :param vserver: vserver name.
         """
+
         self._is_naelement(na_element)
         server = copy.copy(self._client)
         if vserver:
@@ -282,6 +301,59 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             server.set_vserver(None)
         result = server.invoke_successfully(na_element, True)
         return result
+
+    def create_volume(self, volume):
+        """Creates a volume.
+
+        :param volume: volume reference
+        """
+
+        self._ensure_shares_mounted()
+        extra_specs = get_volume_extra_specs(volume)
+        eligible = self._find_containers(volume['size'], extra_specs)
+        if not eligible:
+            raise exception.NfsNoSuitableShareFound(
+                volume_size=volume['size'])
+        for sh in eligible:
+            try:
+                if self.ssc_enabled:
+                    volume['provider_location'] = sh.export['path']
+                else:
+                    volume['provider_location'] = sh
+                LOG.info(_('casted to %s') % volume['provider_location'])
+                self._do_create_volume(volume)
+                return {'provider_location': volume['provider_location']}
+            except Exception:
+                LOG.warn(_("Exception creating vol %(name)s"
+                           " on share %(share)s")
+                         % {'name': volume['name'],
+                             'share': volume['provider_location']})
+                volume['provider_location'] = None
+            finally:
+                if self.ssc_enabled:
+                    self._update_stale_vols(volume=sh)
+        msg = _("Volume %s could not be created on shares.")
+        raise exception.VolumeBackendAPIException(data=msg % (volume['name']))
+
+    def _find_containers(self, size, extra_specs):
+        """Finds suitable containers for given params."""
+        containers = []
+        if self.ssc_enabled:
+            vols =\
+                ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
+            sort_vols = sorted(vols, reverse=True)
+            for vol in sort_vols:
+                if self._is_share_eligible(vol.export['path'], size):
+                    containers.append(vol)
+        else:
+            for sh in self._mounted_shares:
+                if self._is_share_eligible(sh, size):
+                    total_size, total_available, total_allocated = \
+                        self._get_capacity_info(sh)
+                    containers.append((sh, total_available))
+            containers = [a for a, b in
+                          sorted(containers, key=lambda x: x[1], reverse=True)]
+        return containers
 
     def _clone_volume(self, volume_name, clone_name, volume_id):
         """Clones mounted volume on NetApp Cluster."""
@@ -319,7 +391,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         vol_attrs.add_node_with_children(
             'volume-id-attributes',
             **{'junction-path': junction,
-            'owning-vserver-name': vserver})
+                'owning-vserver-name': vserver})
         des_attrs = NaElement('desired-attributes')
         des_attrs.add_node_with_children('volume-attributes',
                                          **{'volume-id-attributes': None})
@@ -346,7 +418,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         clone_create = NaElement.create_node_with_children(
             'clone-create',
             **{'volume': volume, 'source-path': src_path,
-            'destination-path': dest_path})
+                'destination-path': dest_path})
         self._invoke_successfully(clone_create, vserver)
 
     def _update_volume_stats(self):
@@ -358,7 +430,72 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                                               netapp_backend)
         self._stats["vendor_name"] = 'NetApp'
         self._stats["driver_version"] = '1.0'
+        self._update_cluster_vol_stats(self._stats)
         provide_ems(self, self._client, self._stats, netapp_backend)
+
+    def _update_cluster_vol_stats(self, data):
+        """Updates vol stats with cluster config."""
+        if self.ssc_vols:
+            data['netapp_mirrored'] = 'true'\
+                if self.ssc_vols['mirrored'] else 'false'
+            data['netapp_unmirrored'] = 'true'\
+                if len(self.ssc_vols['all']) >\
+                len(self.ssc_vols['mirrored']) else 'false'
+            data['netapp_dedup'] = 'true'\
+                if self.ssc_vols['dedup'] else 'false'
+            data['netapp_nodedupe'] = 'true'\
+                if len(self.ssc_vols['all']) >\
+                len(self.ssc_vols['dedup']) else 'false'
+            data['netapp_compression'] = 'true'\
+                if self.ssc_vols['compression'] else False
+            data['netapp_nocompression'] = 'true'\
+                if len(self.ssc_vols['all']) >\
+                len(self.ssc_vols['compression']) else 'false'
+            data['netapp_thin_provisioned'] = 'true'\
+                if self.ssc_vols['thin'] else 'false'
+            data['netapp_thick_provisioned'] = 'true'\
+                if len(self.ssc_vols['all']) >\
+                len(self.ssc_vols['thin']) else 'false'
+            vol_max = max(self.ssc_vols['all'])
+            data['total_capacity_gb'] =\
+                int(vol_max.space['size_total_bytes']) / units.GiB
+            data['free_capacity_gb'] =\
+                int(vol_max.space['size_avl_bytes']) / units.GiB
+        elif self.ssc_enabled:
+            LOG.warn(_("No cluster ssc stats found."
+                       " Wait for next volume stats update."))
+        if self.ssc_enabled:
+            ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver)
+        else:
+            LOG.warn(_("No vserver set in config. SSC will be disabled."))
+
+    @utils.synchronized('update_stale')
+    def _update_stale_vols(self, volume=None, reset=False):
+        """Populates stale vols with vol and returns set copy."""
+        if volume:
+            self.stale_vols.add(volume)
+        set_copy = self.stale_vols.copy()
+        if reset:
+            self.stale_vols.clear()
+        return set_copy
+
+    @utils.synchronized("refresh_ssc_vols")
+    def refresh_ssc_vols(self, vols):
+        """Refreshes ssc_vols with latest entries."""
+        if not self._mounted_shares:
+            LOG.warn(_("No shares found hence skipping ssc refresh."))
+            return
+        mnt_share_vols = set()
+        for vol in vols['all']:
+            for sh in self._mounted_shares:
+                junction = sh.split(':')[1]
+                if junction == vol.id['junction_path']:
+                    mnt_share_vols.add(vol)
+                    vol.export['path'] = sh
+                    break
+        for key in vols.keys():
+            vols[key] = vols[key] & mnt_share_vols
+        self.ssc_vols = vols
 
 
 class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
@@ -379,6 +516,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         else filer api.
         :param vfiler: vfiler name.
         """
+
         self._is_naelement(na_element)
         server = copy.copy(self._client)
         if vfiler:
@@ -419,14 +557,15 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
         :returns: clone-id
         """
+
         msg_fmt = {'src_path': src_path, 'dest_path': dest_path}
         LOG.debug(_("""Cloning with src %(src_path)s, dest %(dest_path)s""")
                   % msg_fmt)
         clone_start = NaElement.create_node_with_children(
             'clone-start',
             **{'source-path': src_path,
-            'destination-path': dest_path,
-            'no-snap': 'true'})
+                'destination-path': dest_path,
+                'no-snap': 'true'})
         result = self._invoke_successfully(clone_start, None)
         clone_id_el = result.get_child_by_name('clone-id')
         cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
@@ -441,7 +580,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         clone_ls_st.add_child_elem(clone_id)
         clone_id.add_node_with_children('clone-id-info',
                                         **{'clone-op-id': clone_op_id,
-                                        'volume-uuid': vol_uuid})
+                                            'volume-uuid': vol_uuid})
         task_running = True
         while task_running:
             result = self._invoke_successfully(clone_ls_st, None)
@@ -468,6 +607,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
         Invoke this in case of failed clone.
         """
+
         clone_clear = NaElement.create_node_with_children(
             'clone-clear',
             **{'clone-id': clone_id})

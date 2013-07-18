@@ -22,12 +22,15 @@ This driver requires NetApp Clustered Data ONTAP or 7-mode
 storage systems with installed iSCSI licenses.
 """
 
+import copy
 import sys
 import time
 import uuid
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder import units
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
@@ -38,6 +41,8 @@ from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp import ssc_utils
+from cinder.volume.drivers.netapp.utils import get_volume_extra_specs
 from cinder.volume.drivers.netapp.utils import provide_ems
 from cinder.volume.drivers.netapp.utils import validate_instantiation
 from cinder.volume import volume_types
@@ -104,6 +109,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         This method creates NetApp server client for api communication.
         """
+
         host_filer = kwargs['hostname']
         LOG.debug(_('Using NetApp filer: %s') % host_filer)
         self.client = NaServer(host=host_filer,
@@ -132,6 +138,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         Validate the flags we care about and setup NetApp
         client.
         """
+
         self._check_flags()
         self._create_client(
             transport_type=self.configuration.netapp_transport_type,
@@ -146,6 +153,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         Discovers the LUNs on the NetApp server.
         """
+
         self.lun_table = {}
         self._get_lun_list()
         LOG.debug(_("Success getting LUN list from server"))
@@ -162,7 +170,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         metadata = {}
         metadata['OsType'] = 'linux'
         metadata['SpaceReserved'] = 'true'
-        self._create_lun_on_eligible_vol(name, size, metadata)
+        extra_specs = get_volume_extra_specs(volume)
+        self._create_lun_on_eligible_vol(name, size, metadata, extra_specs)
         LOG.debug(_("Created LUN with name %s") % name)
         handle = self._create_lun_handle(metadata)
         self._add_lun_to_table(NetAppLun(handle, name, size, metadata))
@@ -178,8 +187,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             return
         lun_destroy = NaElement.create_node_with_children(
             'lun-destroy',
-            **{'path': metadata['Path'],
-            'force': 'true'})
+            **{'path': metadata['Path'], 'force': 'true'})
         self.client.invoke_successfully(lun_destroy, True)
         LOG.debug(_("Destroyed LUN %s") % name)
         self.lun_table.pop(name)
@@ -200,6 +208,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         Since exporting is idempotent in this driver, we have nothing
         to do for unexporting.
         """
+
         pass
 
     def initialize_connection(self, volume, connector):
@@ -213,6 +222,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         be during this method call so we construct the properties dictionary
         ourselves.
         """
+
         initiator_name = connector['initiator']
         name = volume['name']
         lun_id = self._map_lun(name, initiator_name, 'iscsi', None)
@@ -270,6 +280,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         This driver implements snapshots by using efficient single-file
         (LUN) cloning.
         """
+
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
         lun = self.lun_table[vol_name]
@@ -286,6 +297,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         Many would call this "cloning" and in fact we use cloning to implement
         this feature.
         """
+
         vol_size = volume['size']
         snap_size = snapshot['volume_size']
         if vol_size != snap_size:
@@ -303,6 +315,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         Unmask the LUN on the storage system so the given intiator can no
         longer access it.
         """
+
         initiator_name = connector['initiator']
         name = volume['name']
         metadata = self._get_lun_attr(name, 'metadata')
@@ -321,28 +334,9 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         minor = res.get_child_content('minor-version')
         return (major, minor)
 
-    def _create_lun_on_eligible_vol(self, name, size, metadata):
+    def _create_lun_on_eligible_vol(self, name, size, metadata,
+                                    extra_specs=None):
         """Creates an actual lun on filer."""
-        req_size = float(size) *\
-            float(self.configuration.netapp_size_multiplier)
-        volume = self._get_avl_volume_by_size(req_size)
-        if not volume:
-            msg = _('Failed to get vol with required size for volume: %s')
-            raise exception.VolumeBackendAPIException(data=msg % name)
-        path = '/vol/%s/%s' % (volume['name'], name)
-        lun_create = NaElement.create_node_with_children(
-            'lun-create-by-size',
-            **{'path': path, 'size': size,
-            'ostype': metadata['OsType'],
-            'space-reservation-enabled':
-            metadata['SpaceReserved']})
-        self.client.invoke_successfully(lun_create, True)
-        metadata['Path'] = '/vol/%s/%s' % (volume['name'], name)
-        metadata['Volume'] = volume['name']
-        metadata['Qtree'] = None
-
-    def _get_avl_volume_by_size(self, size):
-        """Get the available volume by size."""
         raise NotImplementedError()
 
     def _get_iscsi_service_details(self):
@@ -366,6 +360,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         Populates in the lun table.
         """
+
         for lun in api_luns:
             meta_dict = self._create_lun_meta(lun)
             path = lun.get_child_content('path')
@@ -394,7 +389,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                                                  initiator_type, os)
         lun_map = NaElement.create_node_with_children(
             'lun-map', **{'path': path,
-            'initiator-group': igroup_name})
+                          'initiator-group': igroup_name})
         if lun_id:
             lun_map.add_new_child('lun-id', lun_id)
         try:
@@ -418,8 +413,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         (igroup_name, lun_id) = self._find_mapped_lun_igroup(path, initiator)
         lun_unmap = NaElement.create_node_with_children(
             'lun-unmap',
-            **{'path': path,
-            'initiator-group': igroup_name})
+            **{'path': path, 'initiator-group': igroup_name})
         try:
             self.client.invoke_successfully(lun_unmap, True)
         except NaApiError as e:
@@ -444,6 +438,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         Creates igroup if not found.
         """
+
         igroups = self._get_igroup_by_initiator(initiator=initiator)
         igroup_name = None
         for igroup in igroups:
@@ -477,8 +472,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         igroup_create = NaElement.create_node_with_children(
             'igroup-create',
             **{'initiator-group-name': igroup,
-            'initiator-group-type': igroup_type,
-            'os-type': os_type})
+               'initiator-group-type': igroup_type,
+               'os-type': os_type})
         self.client.invoke_successfully(igroup_create, True)
 
     def _add_igroup_initiator(self, igroup, initiator):
@@ -486,7 +481,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         igroup_add = NaElement.create_node_with_children(
             'igroup-add',
             **{'initiator-group-name': igroup,
-            'initiator': initiator})
+               'initiator': initiator})
         self.client.invoke_successfully(igroup_add, True)
 
     def _get_qos_type(self, volume):
@@ -543,6 +538,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         If 'refresh' is True, run update the stats first.
         """
+
         if refresh:
             self._update_volume_stats()
 
@@ -556,6 +552,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
     """NetApp C-mode iSCSI volume driver."""
 
+    DEFAULT_VS = 'openstack'
+
     def __init__(self, *args, **kwargs):
         super(NetAppDirectCmodeISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(netapp_cluster_opts)
@@ -563,6 +561,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
     def _do_custom_setup(self):
         """Does custom setup for ontap cluster."""
         self.vserver = self.configuration.netapp_vserver
+        self.vserver = self.vserver if self.vserver else self.DEFAULT_VS
         # We set vserver in client permanently.
         # To use tunneling enable_tunneling while invoking api
         self.client.set_vserver(self.vserver)
@@ -570,62 +569,49 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         self.client.set_api_version(1, 15)
         (major, minor) = self._get_ontapi_version()
         self.client.set_api_version(major, minor)
+        self.ssc_vols = None
+        self.stale_vols = set()
+        ssc_utils.refresh_cluster_ssc(self, self.client, self.vserver)
 
-    def _get_avl_volume_by_size(self, size):
-        """Get the available volume by size."""
-        tag = None
-        while True:
-            vol_request = self._create_avl_vol_request(self.vserver, tag)
-            res = self.client.invoke_successfully(vol_request)
-            tag = res.get_child_content('next-tag')
-            attr_list = res.get_child_by_name('attributes-list')
-            vols = attr_list.get_children()
-            for vol in vols:
-                vol_space = vol.get_child_by_name('volume-space-attributes')
-                avl_size = vol_space.get_child_content('size-available')
-                if float(avl_size) >= float(size):
-                    avl_vol = dict()
-                    vol_id = vol.get_child_by_name('volume-id-attributes')
-                    avl_vol['name'] = vol_id.get_child_content('name')
-                    avl_vol['vserver'] = vol_id.get_child_content(
-                        'owning-vserver-name')
-                    avl_vol['size-available'] = avl_size
-                    return avl_vol
-            if tag is None:
-                break
-        return None
+    def _create_lun_on_eligible_vol(self, name, size, metadata,
+                                    extra_specs=None):
+        """Creates an actual lun on filer."""
+        req_size = float(size) *\
+            float(self.configuration.netapp_size_multiplier)
+        volumes = self._get_avl_volumes(req_size, extra_specs)
+        if not volumes:
+            msg = _('Failed to get vol with required'
+                    ' size and extra specs for volume: %s')
+            raise exception.VolumeBackendAPIException(data=msg % name)
+        for volume in volumes:
+            try:
+                path = '/vol/%s/%s' % (volume.id['name'], name)
+                lun_create = NaElement.create_node_with_children(
+                    'lun-create-by-size',
+                    **{'path': path, 'size': size,
+                        'ostype': metadata['OsType']})
+                self.client.invoke_successfully(lun_create, True)
+                metadata['Path'] = '/vol/%s/%s' % (volume.id['name'], name)
+                metadata['Volume'] = volume.id['name']
+                metadata['Qtree'] = None
+                return
+            except NaApiError:
+                LOG.warn(_("Error provisioning vol %(name)s on %(volume)s")
+                         % {'name': name, 'volume': volume.id['name']})
+            finally:
+                self._update_stale_vols(volume=volume)
 
-    def _create_avl_vol_request(self, vserver, tag=None):
-        vol_get_iter = NaElement('volume-get-iter')
-        vol_get_iter.add_new_child('max-records', '100')
-        if tag:
-            vol_get_iter.add_new_child('tag', tag, True)
-        query = NaElement('query')
-        vol_get_iter.add_child_elem(query)
-        vol_attrs = NaElement('volume-attributes')
-        query.add_child_elem(vol_attrs)
-        if vserver:
-            vol_attrs.add_node_with_children(
-                'volume-id-attributes',
-                **{"owning-vserver-name": vserver})
-        vol_attrs.add_node_with_children(
-            'volume-state-attributes',
-            **{"is-vserver-root": "false", "state": "online"})
-        desired_attrs = NaElement('desired-attributes')
-        vol_get_iter.add_child_elem(desired_attrs)
-        des_vol_attrs = NaElement('volume-attributes')
-        desired_attrs.add_child_elem(des_vol_attrs)
-        des_vol_attrs.add_node_with_children(
-            'volume-id-attributes',
-            **{"name": None, "owning-vserver-name": None})
-        des_vol_attrs.add_node_with_children(
-            'volume-space-attributes',
-            **{"size-available": None})
-        des_vol_attrs.add_node_with_children('volume-state-attributes',
-                                             **{"is-cluster-volume": None,
-                                             "is-vserver-root": None,
-                                             "state": None})
-        return vol_get_iter
+    def _get_avl_volumes(self, size, extra_specs=None):
+        """Get the available volume by size, extra_specs."""
+        result = []
+        volumes = ssc_utils.get_volumes_for_specs(
+            self.ssc_vols, extra_specs)
+        if volumes:
+            sorted_vols = sorted(volumes, reverse=True)
+            for vol in sorted_vols:
+                if int(vol.space['size_avl_bytes']) >= int(size):
+                    result.append(vol)
+        return result
 
     def _get_target_details(self):
         """Gets the target portal details."""
@@ -667,6 +653,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
 
         Gets the luns from cluster with vserver.
         """
+
         tag = None
         while True:
             api = NaElement('lun-get-iter')
@@ -783,8 +770,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         clone_create = NaElement.create_node_with_children(
             'clone-create',
             **{'volume': volume, 'source-path': name,
-            'destination-path': new_name,
-            'space-reserve': space_reserved})
+                'destination-path': new_name, 'space-reserve': space_reserved})
         self.client.invoke_successfully(clone_create, True)
         LOG.debug(_("Cloned LUN with new name %s") % new_name)
         lun = self._get_lun_by_args(vserver=self.vserver, path='/vol/%s/%s'
@@ -798,6 +784,8 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
                                          new_name,
                                          lun[0].get_child_content('size'),
                                          clone_meta))
+        self._update_stale_vols(
+            volume=ssc_utils.NetAppVolume(volume, self.vserver))
 
     def _get_lun_by_args(self, **args):
         """Retrives lun with specified args."""
@@ -844,12 +832,61 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
+        data['total_capacity_gb'] = 0
+        data['free_capacity_gb'] = 0
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
+        self._update_cluster_vol_stats(data)
         provide_ems(self, self.client, data, netapp_backend)
         self._stats = data
+
+    def _update_cluster_vol_stats(self, data):
+        """Updates vol stats with cluster config."""
+        if self.ssc_vols:
+            data['netapp_mirrored'] = 'true'\
+                if self.ssc_vols['mirrored'] else 'false'
+            data['netapp_unmirrored'] = 'true'\
+                if len(self.ssc_vols['all']) > len(self.ssc_vols['mirrored'])\
+                else 'false'
+            data['netapp_dedup'] = 'true'\
+                if self.ssc_vols['dedup'] else 'false'
+            data['netapp_nodedupe'] = 'true'\
+                if len(self.ssc_vols['all']) > len(self.ssc_vols['dedup'])\
+                else 'false'
+            data['netapp_compression'] = 'true'\
+                if self.ssc_vols['compression'] else False
+            data['netapp_nocompression'] = 'true'\
+                if len(self.ssc_vols['all']) >\
+                len(self.ssc_vols['compression'])\
+                else 'false'
+            data['netapp_thin_provisioned'] = 'true'\
+                if self.ssc_vols['thin'] else 'false'
+            data['netapp_thick_provisioned'] = 'true'\
+                if len(self.ssc_vols['all']) >\
+                len(self.ssc_vols['thin']) else 'false'
+            vol_max = max(self.ssc_vols['all'])
+            data['total_capacity_gb'] =\
+                int(vol_max.space['size_total_bytes']) / units.GiB
+            data['free_capacity_gb'] =\
+                int(vol_max.space['size_avl_bytes']) / units.GiB
+        else:
+            LOG.warn(_("Cluster ssc is not updated. No volume stats found."))
+        ssc_utils.refresh_cluster_ssc(self, self.client, self.vserver)
+
+    @utils.synchronized('update_stale')
+    def _update_stale_vols(self, volume=None, reset=False):
+        """Populates stale vols with vol and returns set copy if reset."""
+        if volume:
+            self.stale_vols.add(volume)
+        if reset:
+            set_copy = copy.deepcopy(self.stale_vols)
+            self.stale_vols.clear()
+            return set_copy
+
+    @utils.synchronized("refresh_ssc_vols")
+    def refresh_ssc_vols(self, vols):
+        """Refreshes ssc_vols with latest entries."""
+        self.ssc_vols = vols
 
 
 class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
@@ -870,6 +907,25 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
             (major, minor) = self._get_ontapi_version()
             self.client.set_api_version(major, minor)
             self.client.set_vfiler(self.vfiler)
+
+    def _create_lun_on_eligible_vol(self, name, size, metadata,
+                                    extra_specs=None):
+        """Creates an actual lun on filer."""
+        req_size = float(size) *\
+            float(self.configuration.netapp_size_multiplier)
+        volume = self._get_avl_volume_by_size(req_size)
+        if not volume:
+            msg = _('Failed to get vol with required size for volume: %s')
+            raise exception.VolumeBackendAPIException(data=msg % name)
+        path = '/vol/%s/%s' % (volume['name'], name)
+        lun_create = NaElement.create_node_with_children(
+            'lun-create-by-size',
+            **{'path': path, 'size': size, 'ostype': metadata['OsType'],
+                'space-reservation-enabled': metadata['SpaceReserved']})
+        self.client.invoke_successfully(lun_create, True)
+        metadata['Path'] = '/vol/%s/%s' % (volume['name'], name)
+        metadata['Volume'] = volume['name']
+        metadata['Qtree'] = None
 
     def _get_avl_volume_by_size(self, size):
         """Get the available volume by size."""
@@ -1028,7 +1084,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         clone_start = NaElement.create_node_with_children(
             'clone-start',
             **{'source-path': path, 'destination-path': clone_path,
-            'no-snap': 'true'})
+                'no-snap': 'true'})
         result = self.client.invoke_successfully(clone_start, True)
         clone_id_el = result.get_child_by_name('clone-id')
         cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
@@ -1116,7 +1172,6 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
 
     def _update_volume_stats(self):
         """Retrieve status info from volume group."""
-
         LOG.debug(_("Updating volume stats"))
         data = {}
         netapp_backend = 'NetApp_iSCSI_7mode_direct'

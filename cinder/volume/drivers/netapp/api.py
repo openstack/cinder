@@ -291,6 +291,9 @@ class NaServer(object):
     def _create_certificate_auth_handler(self):
         raise NotImplementedError()
 
+    def __str__(self):
+        return "server: %s" % (self._host)
+
 
 class NaElement(object):
     """Class wraps basic building block for NetApp api request."""
@@ -307,7 +310,7 @@ class NaElement(object):
         return self._element.tag
 
     def set_content(self, text):
-        """Set the text for the element."""
+        """Set the text string for the element."""
         self._element.text = text
 
     def get_content(self):
@@ -398,6 +401,73 @@ class NaElement(object):
         """Prints the element to string."""
         return etree.tostring(self._element, method=method, encoding=encoding,
                               pretty_print=pretty)
+
+    def __getitem__(self, key):
+        """Dict getter method for NaElement.
+
+            Returns NaElement list if present,
+            text value in case no NaElement node
+            children or attribute value if present.
+        """
+
+        child = self.get_child_by_name(key)
+        if child:
+            if child.get_children():
+                return child
+            else:
+                return child.get_content()
+        elif self.has_attr(key):
+            return self.get_attr(key)
+        raise KeyError(_('No element by given name %s.') % (key))
+
+    def __setitem__(self, key, value):
+        """Dict setter method for NaElement."""
+        if key:
+            if value:
+                if isinstance(value, NaElement):
+                    child = NaElement(key)
+                    child.add_child_elem(value)
+                    self.add_child_elem(child)
+                elif isinstance(value, str):
+                    child = self.get_child_by_name(key)
+                    if child:
+                        child.set_content(value)
+                    else:
+                        self.add_new_child(key, value)
+                elif isinstance(value, dict):
+                    child = NaElement(key)
+                    child.translate_struct(value)
+                    self.add_child_elem(child)
+                else:
+                    raise TypeError(_('Not a valid value for NaElement.'))
+            else:
+                self.add_child_elem(NaElement(key))
+        else:
+            raise KeyError(_('NaElement name cannot be null.'))
+
+    def translate_struct(self, data_struct):
+        """Convert list, tuple, dict to NaElement and appends.
+
+            Useful for NaElement queries which have unique
+            query parameters.
+        """
+
+        if isinstance(data_struct, list) or isinstance(data_struct, tuple):
+            for el in data_struct:
+                self.add_child_elem(NaElement(el))
+        elif isinstance(data_struct, dict):
+            for k in data_struct.keys():
+                child = NaElement(k)
+                if (isinstance(data_struct[k], dict) or
+                        isinstance(data_struct[k], list) or
+                        isinstance(data_struct[k], tuple)):
+                    child.translate_struct(data_struct[k])
+                else:
+                    if data_struct[k]:
+                        child.set_content(str(data_struct[k]))
+                self.add_child_elem(child)
+        else:
+            raise ValueError(_('Type cannot be converted into NaElement.'))
 
 
 class NaApiError(Exception):

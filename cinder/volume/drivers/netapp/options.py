@@ -68,7 +68,7 @@ netapp_provisioning_opts = [
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
-               default='openstack',
+               default=None,
                help='Cluster vserver to use for provisioning'), ]
 
 netapp_7mode_opts = [

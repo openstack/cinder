@@ -412,6 +412,12 @@ class NfsDriverTestCase(test.TestCase):
         drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
             AndReturn((5 * units.GiB, 2 * units.GiB,
                        2 * units.GiB))
+        drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
+            AndReturn((5 * units.GiB, 2 * units.GiB,
+                       2 * units.GiB))
+        drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
+            AndReturn((10 * units.GiB, 3 * units.GiB,
+                       1 * units.GiB))
         drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
             AndReturn((10 * units.GiB, 3 * units.GiB,
                        1 * units.GiB))

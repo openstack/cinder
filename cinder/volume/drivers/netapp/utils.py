@@ -25,10 +25,16 @@ NetApp drivers to achieve the desired functionality.
 import copy
 import socket
 
+from cinder import context
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+from cinder import utils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
+from cinder.volume.drivers.netapp.api import NaServer
+from cinder.volume import volume_types
+
 
 LOG = logging.getLogger(__name__)
 
@@ -118,3 +124,128 @@ def validate_instantiation(**kwargs):
         return
     LOG.warn(_("It is not the recommended way to use drivers by NetApp. "
                "Please use NetAppDriver to achieve the functionality."))
+
+
+def invoke_api(na_server, api_name, api_family='cm', query=None,
+               des_result=None, additional_elems=None,
+               is_iter=False, records=0, tag=None,
+               timeout=0, tunnel=None):
+    """Invokes any given api call to a NetApp server.
+
+        :param na_server: na_server instance
+        :param api_name: api name string
+        :param api_family: cm or 7m
+        :param query: api query as dict
+        :param des_result: desired result as dict
+        :param additional_elems: dict other than query and des_result
+        :param is_iter: is iterator api
+        :param records: limit for records, 0 for infinite
+        :param timeout: timeout seconds
+        :param tunnel: tunnel entity, vserver or vfiler name
+    """
+    record_step = 50
+    if not (na_server or isinstance(na_server, NaServer)):
+        msg = _("Requires an NaServer instance.")
+        raise exception.InvalidInput(data=msg)
+    server = copy.copy(na_server)
+    if api_family == 'cm':
+        server.set_vserver(tunnel)
+    else:
+        server.set_vfiler(tunnel)
+    if timeout > 0:
+        server.set_timeout(timeout)
+    iter_records = 0
+    cond = True
+    while cond:
+        na_element = create_api_request(
+            api_name, query, des_result, additional_elems,
+            is_iter, record_step, tag)
+        result = server.invoke_successfully(na_element, True)
+        if is_iter:
+            if records > 0:
+                iter_records = iter_records + record_step
+                if iter_records >= records:
+                    cond = False
+            tag_el = result.get_child_by_name('next-tag')
+            tag = tag_el.get_content() if tag_el else None
+            if not tag:
+                cond = False
+        else:
+            cond = False
+        yield result
+
+
+def create_api_request(api_name, query=None, des_result=None,
+                       additional_elems=None, is_iter=False,
+                       record_step=50, tag=None):
+        """Creates a NetApp api request.
+
+            :param api_name: api name string
+            :param query: api query as dict
+            :param des_result: desired result as dict
+            :param additional_elems: dict other than query and des_result
+            :param is_iter: is iterator api
+            :param record_step: records at a time for iter api
+            :param tag: next tag for iter api
+        """
+        api_el = NaElement(api_name)
+        if query:
+            query_el = NaElement('query')
+            query_el.translate_struct(query)
+            api_el.add_child_elem(query_el)
+        if des_result:
+            res_el = NaElement('desired-attributes')
+            res_el.translate_struct(des_result)
+            api_el.add_child_elem(res_el)
+        if additional_elems:
+            api_el.translate_struct(additional_elems)
+        if is_iter:
+            api_el.add_new_child('max-records', str(record_step))
+        if tag:
+            api_el.add_new_child('tag', tag, True)
+        return api_el
+
+
+def to_bool(val):
+    """Converts true, yes, y, 1 to True, False otherwise."""
+    if val:
+        strg = str(val).lower()
+        if (strg == 'true' or strg == 'y'
+            or strg == 'yes' or strg == 'enabled'
+                or strg == '1'):
+                    return True
+        else:
+            return False
+    else:
+        return False
+
+
+@utils.synchronized("safe_set_attr")
+def set_safe_attr(instance, attr, val):
+    """Sets the attribute in a thread safe manner.
+
+    Returns if new val was set on attribute.
+    If attr already had the value then False.
+    """
+
+    if not instance or not attr:
+        return False
+    old_val = getattr(instance, attr, None)
+    if val is None and old_val is None:
+        return False
+    elif val == old_val:
+        return False
+    else:
+        setattr(instance, attr, val)
+        return True
+
+
+def get_volume_extra_specs(volume):
+    """Provides extra specs associated with volume."""
+    ctxt = context.get_admin_context()
+    type_id = volume.get('volume_type_id')
+    specs = None
+    if type_id is not None:
+        volume_type = volume_types.get_volume_type(ctxt, type_id)
+        specs = volume_type.get('extra_specs')
+    return specs

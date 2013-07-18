@@ -21,12 +21,10 @@ Tests for NetApp volume driver
 
 import BaseHTTPServer
 import httplib
+from lxml import etree
 import StringIO
 
-from lxml import etree
-
-from cinder.exception import InvalidInput
-from cinder.exception import VolumeBackendAPIException
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
@@ -37,6 +35,8 @@ from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp import ssc_utils
+from cinder.volume.drivers.netapp import utils
 
 
 LOG = logging.getLogger("cinder.volume.driver")
@@ -489,12 +489,35 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                 'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
                 'display_name': None, 'display_description': 'lun1',
                 'volume_type_id': None}
+    vol1 = ssc_utils.NetAppVolume('lun1', 'openstack')
+    vol1.state['vserver_root'] = False
+    vol1.state['status'] = 'online'
+    vol1.state['junction_active'] = True
+    vol1.space['size_avl_bytes'] = '4000000000'
+    vol1.space['size_total_bytes'] = '5000000000'
+    vol1.space['space-guarantee-enabled'] = False
+    vol1.space['space-guarantee'] = 'file'
+    vol1.space['thin_provisioned'] = True
+    vol1.mirror['mirrored'] = True
+    vol1.qos['qos_policy_group'] = None
+    vol1.aggr['name'] = 'aggr1'
+    vol1.aggr['junction'] = '/vola'
+    vol1.sis['dedup'] = True
+    vol1.sis['compression'] = True
+    vol1.aggr['raid_type'] = 'raiddp'
+    vol1.aggr['ha_policy'] = 'cfo'
+    vol1.aggr['disk_type'] = 'SSD'
+    ssc_map = {'mirrored': set([vol1]), 'dedup': set([vol1]),
+               'compression': set([vol1]),
+               'thin': set([vol1]), 'all': set([vol1])}
 
     def setUp(self):
         super(NetAppDirectCmodeISCSIDriverTestCase, self).setUp()
         self._custom_setup()
 
     def _custom_setup(self):
+        self.stubs.Set(
+            ssc_utils, 'refresh_cluster_ssc', lambda a, b, c: None)
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(httplib, 'HTTPConnection',
@@ -503,6 +526,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         client = driver.client
         client.set_api_version(1, 15)
         self.driver = driver
+        self.driver.ssc_vols = self.ssc_map
 
     def _set_config(self, configuration):
         configuration.netapp_storage_protocol = 'iscsi'
@@ -549,7 +573,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             self.driver.create_volume_from_snapshot(self.volume,
                                                     self.snapshot_fail)
             raise AssertionError()
-        except VolumeBackendAPIException:
+        except exception.VolumeBackendAPIException:
             pass
         finally:
             self.driver.delete_volume(self.volume)
@@ -566,7 +590,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             self.driver.create_cloned_volume(self.volume_clone_fail,
                                              self.volume)
             raise AssertionError()
-        except VolumeBackendAPIException:
+        except exception.VolumeBackendAPIException:
             pass
         finally:
             self.driver.delete_volume(self.volume)
@@ -585,7 +609,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             raise AssertionError('Target portal is none')
 
     def test_fail_create_vol(self):
-        self.assertRaises(VolumeBackendAPIException,
+        self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, self.vol_fail)
 
     def test_vol_stats(self):
@@ -604,7 +628,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         try:
             driver = common.NetAppDriver(configuration=configuration)
             raise AssertionError('Wrong storage family is getting accepted.')
-        except InvalidInput:
+        except exception.InvalidInput:
             pass
 
     def test_incorrect_protocol(self):
@@ -614,7 +638,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         try:
             driver = common.NetAppDriver(configuration=configuration)
             raise AssertionError('Wrong storage protocol is getting accepted.')
-        except InvalidInput:
+        except exception.InvalidInput:
             pass
 
     def test_non_netapp_driver(self):
@@ -626,7 +650,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         try:
             driver = common.NetAppDriver(configuration=configuration)
             raise AssertionError('Non NetApp driver is getting instantiated.')
-        except InvalidInput:
+        except exception.InvalidInput:
             pass
         finally:
             common.netapp_unified_plugin_registry.pop('test_family')
@@ -1066,7 +1090,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         success = False
         try:
             self.driver.create_volume(self.volume)
-        except VolumeBackendAPIException:
+        except exception.VolumeBackendAPIException:
             success = True
             pass
         finally:
