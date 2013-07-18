@@ -261,17 +261,17 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         the same iqn but with a different hostname, return the hostname
         used by 3PAR.
         """
-        cmd = 'createhost -iscsi -persona %s -domain %s %s %s' % \
-              (persona_id, domain, hostname, iscsi_iqn)
-        out = self.common._cli_run(cmd, None)
+        cmd = ['createhost', '-iscsi', '-persona', persona_id, '-domain',
+               domain, hostname, iscsi_iqn]
+        out = self.common._cli_run(cmd)
         if out and len(out) > 1:
             return self.common.parse_create_host_error(hostname, out)
         return hostname
 
     def _modify_3par_iscsi_host(self, hostname, iscsi_iqn):
         # when using -add, you can not send the persona or domain options
-        self.common._cli_run('createhost -iscsi -add %s %s'
-                             % (hostname, iscsi_iqn), None)
+        command = ['createhost', '-iscsi', '-add', hostname, iscsi_iqn]
+        self.common._cli_run(command)
 
     def _create_host(self, volume, connector):
         """Creates or modifies existing 3PAR host."""
@@ -349,7 +349,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     def _get_active_nsp(self, hostname):
         """Return the active nsp, if one exists, for the given host."""
-        result = self.common._cli_run('showvlun -a -host %s' % hostname, None)
+        result = self.common._cli_run(['showvlun', '-a', '-host', hostname])
         if result:
             # first line is header
             result = result[1:]
@@ -361,7 +361,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def _get_least_used_nsp(self, nspss):
         """"Return the nsp that has the fewest active vluns."""
         # return only the nsp (node:server:port)
-        result = self.common._cli_run('showvlun -a -showcols Port', None)
+        result = self.common._cli_run(['showvlun', '-a', '-showcols', 'Port'])
 
         # count the number of nsps (there is 1 for each active vlun)
         nsp_counts = {}

@@ -725,11 +725,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
 
-        create_host_cmd = ('createhost -persona 1 -domain (\'OpenStack\',) '
-                           'fakehost 123456789012345 123456789054321')
+        create_host_cmd = (['createhost', '-persona', '1', '-domain',
+                            ('OpenStack',), 'fakehost', '123456789012345',
+                            '123456789054321'])
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
 
         _run_ssh(show_host_cmd, False).AndReturn([pack(FC_HOST_RET), ''])
@@ -750,16 +751,17 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
 
-        create_host_cmd = ('createhost -persona 1 -domain (\'OpenStack\',) '
-                           'fakehost 123456789012345 123456789054321')
+        create_host_cmd = (['createhost', '-persona', '1', '-domain',
+                            ('OpenStack',), 'fakehost', '123456789012345',
+                            '123456789054321'])
         create_host_ret = pack(CLI_CR +
                                'already used by host fakehost.foo (19)')
         _run_ssh(create_host_cmd, False).AndReturn([create_host_ret, ''])
 
-        show_3par_cmd = 'showhost -verbose fakehost.foo'
+        show_3par_cmd = ['showhost', '-verbose', 'fakehost.foo']
         _run_ssh(show_3par_cmd, False).AndReturn([pack(FC_SHOWHOST_RET), ''])
         self.mox.ReplayAll()
 
@@ -779,14 +781,14 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack(NO_FC_HOST_RET), ''])
 
-        create_host_cmd = ('createhost -add fakehost '
-                           '123456789012345 123456789054321')
+        create_host_cmd = ['createhost', '-add', 'fakehost', '123456789012345',
+                           '123456789054321']
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack(FC_HOST_RET), ''])
         self.mox.ReplayAll()
 
@@ -918,12 +920,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
 
-        create_host_cmd = ('createhost -iscsi -persona 1 -domain '
-                           '(\'OpenStack\',) '
-                           'fakehost iqn.1993-08.org.debian:01:222')
+        create_host_cmd = (['createhost', '-iscsi', '-persona', '1', '-domain',
+                            ('OpenStack',), 'fakehost',
+                            'iqn.1993-08.org.debian:01:222'])
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
 
         _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_HOST_RET), ''])
@@ -944,16 +946,16 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
 
-        create_host_cmd = ('createhost -iscsi -persona 1 -domain '
-                           '(\'OpenStack\',) '
-                           'fakehost iqn.1993-08.org.debian:01:222')
+        create_host_cmd = (['createhost', '-iscsi', '-persona', '1', '-domain',
+                           ('OpenStack',), 'fakehost',
+                            'iqn.1993-08.org.debian:01:222'])
         in_use_ret = pack('\r\nalready used by host fakehost.foo ')
         _run_ssh(create_host_cmd, False).AndReturn([in_use_ret, ''])
 
-        show_3par_cmd = 'showhost -verbose fakehost.foo'
+        show_3par_cmd = ['showhost', '-verbose', 'fakehost.foo']
         _run_ssh(show_3par_cmd, False).AndReturn([pack(ISCSI_3PAR_RET), ''])
         self.mox.ReplayAll()
 
@@ -973,11 +975,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = 'showhost -verbose fakehost'
+        show_host_cmd = ['showhost', '-verbose', 'fakehost']
         _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_NO_HOST_RET), ''])
 
-        create_host_cmd = ('createhost -iscsi -add fakehost '
-                           'iqn.1993-08.org.debian:01:222')
+        create_host_cmd = ['createhost', '-iscsi', '-add', 'fakehost',
+                           'iqn.1993-08.org.debian:01:222']
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
         _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_HOST_RET), ''])
         self.mox.ReplayAll()
@@ -993,14 +995,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_port_cmd = 'showport'
+        show_port_cmd = ['showport']
         _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
 
-        show_port_i_cmd = 'showport -iscsi'
+        show_port_i_cmd = ['showport', '-iscsi']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
                                                     ''])
 
-        show_port_i_cmd = 'showport -iscsiname'
+        show_port_i_cmd = ['showport', '-iscsiname']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI),
                                                     ''])
         self.mox.ReplayAll()
@@ -1017,14 +1019,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_port_cmd = 'showport'
+        show_port_cmd = ['showport']
         _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
 
-        show_port_i_cmd = 'showport -iscsi'
+        show_port_i_cmd = ['showport', '-iscsi']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
                                                     ''])
 
-        show_port_i_cmd = 'showport -iscsiname'
+        show_port_i_cmd = ['showport', '-iscsiname']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
 
         self.mox.ReplayAll()
@@ -1038,7 +1040,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_vlun_cmd = 'showvlun -a -host fakehost'
+        show_vlun_cmd = ['showvlun', '-a', '-host', 'fakehost']
         _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN), ''])
 
         self.mox.ReplayAll()
@@ -1054,21 +1056,21 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_port_cmd = 'showport'
+        show_port_cmd = ['showport']
         _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
 
-        show_port_i_cmd = 'showport -iscsi'
+        show_port_i_cmd = ['showport', '-iscsi']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
                                                     ''])
 
-        show_port_i_cmd = 'showport -iscsiname'
+        show_port_i_cmd = ['showport', '-iscsiname']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
 
         #record
-        show_vlun_cmd = 'showvlun -a -host fakehost'
+        show_vlun_cmd = ['showvlun', '-a', '-host', 'fakehost']
         show_vlun_ret = 'no vluns listed\r\n'
         _run_ssh(show_vlun_cmd, False).AndReturn([pack(show_vlun_ret), ''])
-        show_vlun_cmd = 'showvlun -a -showcols Port'
+        show_vlun_cmd = ['showvlun', '-a', '-showcols', 'Port']
         _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
 
         self.mox.ReplayAll()
@@ -1089,14 +1091,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_port_cmd = 'showport'
+        show_port_cmd = ['showport']
         _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
 
-        show_port_i_cmd = 'showport -iscsi'
+        show_port_i_cmd = ['showport', '-iscsi']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
                                                     ''])
 
-        show_port_i_cmd = 'showport -iscsiname'
+        show_port_i_cmd = ['showport', '-iscsiname']
         _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
 
         config = self.setup_configuration()
@@ -1118,7 +1120,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_vlun_cmd = 'showvlun -a -showcols Port'
+        show_vlun_cmd = ['showvlun', '-a', '-showcols', 'Port']
         _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
         _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
         _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])

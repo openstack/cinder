@@ -188,7 +188,7 @@ class HP3PARCommon(object):
         The 3PAR WS API server has a limit of concurrent connections.
         This is setting the number to the highest allowed, 15 connections.
         """
-        self._cli_run("setwsapi -sru high", None)
+        self._cli_run(['setwsapi', '-sru', 'high'])
 
     def get_domain(self, cpg_name):
         try:
@@ -213,8 +213,7 @@ class HP3PARCommon(object):
         LOG.debug("Extending Volume %s from %s to %s, by %s GB." %
                   (volume_name, old_size, new_size, growth_size))
         try:
-            self._cli_run("growvv -f %s %sg" % (volume_name, growth_size),
-                          None)
+            self._cli_run(['growvv', '-f', volume_name, '%dg' % growth_size])
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error extending volume %s") % volume)
@@ -272,17 +271,8 @@ class HP3PARCommon(object):
         capacity = int(round(capacity / MiB))
         return capacity
 
-    def _cli_run(self, verb, cli_args):
+    def _cli_run(self, cmd):
         """Runs a CLI command over SSH, without doing any result parsing."""
-        cli_arg_strings = []
-        if cli_args:
-            for k, v in cli_args.items():
-                if k == '':
-                    cli_arg_strings.append(" %s" % k)
-                else:
-                    cli_arg_strings.append(" %s=%s" % (k, v))
-
-        cmd = verb + ''.join(cli_arg_strings)
         LOG.debug("SSH CMD = %s " % cmd)
 
         (stdout, stderr) = self._run_ssh(cmd, False)
@@ -334,7 +324,10 @@ exit
         channel.close()
         return (stdout, stderr)
 
-    def _run_ssh(self, command, check_exit=True, attempts=1):
+    def _run_ssh(self, cmd_list, check_exit=True, attempts=1):
+        utils.check_ssh_injection(cmd_list)
+        command = ' '. join(cmd_list)
+
         if not self.sshpool:
             self.sshpool = utils.SSHPool(self.config.san_ip,
                                          self.config.san_ssh_port,
@@ -367,10 +360,10 @@ exit
                 LOG.error(_("Error running ssh command: %s") % command)
 
     def _delete_3par_host(self, hostname):
-        self._cli_run('removehost %s' % hostname, None)
+        self._cli_run(['removehost', hostname])
 
     def _create_3par_vlun(self, volume, hostname):
-        out = self._cli_run('createvlun %s auto %s' % (volume, hostname), None)
+        out = self._cli_run(['createvlun', volume, 'auto', hostname])
         if out and len(out) > 1:
             if "must be in the same domain" in out[0]:
                 err = out[0].strip()
@@ -392,7 +385,7 @@ exit
         return hostname[:index]
 
     def _get_3par_host(self, hostname):
-        out = self._cli_run('showhost -verbose %s' % (hostname), None)
+        out = self._cli_run(['showhost', '-verbose', hostname])
         LOG.debug("OUTPUT = \n%s" % (pprint.pformat(out)))
         host = {'id': None, 'name': None,
                 'domain': None,
@@ -479,7 +472,7 @@ exit
 
     def get_ports(self):
         # First get the active FC ports
-        out = self._cli_run('showport', None)
+        out = self._cli_run(['showport'])
 
         # strip out header
         # N:S:P,Mode,State,----Node_WWN----,-Port_WWN/HW_Addr-,Type,
@@ -496,7 +489,7 @@ exit
                         ports['FC'].append(tmp[4])
 
         # now get the active iSCSI ports
-        out = self._cli_run('showport -iscsi', None)
+        out = self._cli_run(['showport', '-iscsi'])
 
         # strip out header
         # N:S:P,State,IPAddr,Netmask,Gateway,
@@ -510,7 +503,7 @@ exit
                     ports['iSCSI'][tmp[2]] = {}
 
         # now get the nsp and iqn
-        result = self._cli_run('showport -iscsiname', None)
+        result = self._cli_run(['showport', '-iscsiname'])
         if result:
             # first line is header
             # nsp, ip,iqn
@@ -631,31 +624,27 @@ exit
             cli_qos_string += ('-io %s ' % max_io)
         if max_bw is not None:
             cli_qos_string += ('-bw %sM ' % max_bw)
-        self._cli_run('setqos %svvset:%s' %
-                      (cli_qos_string, vvs_name), None)
+        self._cli_run(['setqos', '%svvset:%s' % (cli_qos_string, vvs_name)])
 
     def _add_volume_to_volume_set(self, volume, volume_name,
                                   cpg, vvs_name, qos):
         if vvs_name is not None:
             # Admin has set a volume set name to add the volume to
-            self._cli_run('createvvset -add %s %s' % (vvs_name,
-                                                      volume_name), None)
+            self._cli_run(['createvvset', '-add', vvs_name, volume_name])
         else:
             vvs_name = self._get_3par_vvs_name(volume['id'])
             domain = self.get_domain(cpg)
-            self._cli_run('createvvset -domain %s %s' % (domain,
-                                                         vvs_name), None)
+            self._cli_run(['createvvset', '-domain', domain, vvs_name])
             self._set_qos_rule(qos, vvs_name)
-            self._cli_run('createvvset -add %s %s' % (vvs_name,
-                                                      volume_name), None)
+            self._cli_run(['createvvset', '-add', vvs_name, volume_name])
 
     def _remove_volume_set(self, vvs_name):
         # Must first clear the QoS rules before removing the volume set
-        self._cli_run('setqos -clear vvset:%s' % (vvs_name), None)
-        self._cli_run('removevvset -f %s' % (vvs_name), None)
+        self._cli_run(['setqos', '-clear', 'vvset:%s' % (vvs_name)])
+        self._cli_run(['removevvset', '-f', vvs_name])
 
     def _remove_volume_from_volume_set(self, volume_name, vvs_name):
-        self._cli_run('removevvset -f %s %s' % (vvs_name, volume_name), None)
+        self._cli_run(['removevvset', '-f', vvs_name, volume_name])
 
     def get_cpg(self, volume, allowSnap=False):
         volume_name = self._get_3par_vol_name(volume['id'])
@@ -815,16 +804,16 @@ exit
     def _copy_volume(self, src_name, dest_name, cpg=None, snap_cpg=None,
                      tpvv=True):
         # Virtual volume sets are not supported with the -online option
-        cmd = 'createvvcopy -p %s -online ' % src_name
+        cmd = ['createvvcopy', '-p', src_name, '-online']
         if snap_cpg:
-            cmd += '-snp_cpg %s ' % snap_cpg
+            cmd.extend(['-snp_cpg', snap_cpg])
         if tpvv:
-            cmd += '-tpvv '
+            cmd.append('-tpvv')
         if cpg:
-            cmd += cpg + ' '
-        cmd += dest_name
+            cmd.append(cpg)
+        cmd.append(dest_name)
         LOG.debug('Creating clone of a volume with %s' % cmd)
-        self._cli_run(cmd, None)
+        self._cli_run(cmd)
 
     def get_next_word(self, s, search_string):
         """Return the next word.
@@ -871,9 +860,9 @@ exit
         NOTE(walter-boring): don't call this unless you know the volume is
         already in a vvset!
         """
-        cmd = "removevv -f %s" % volume_name
+        cmd = ['removevv', '-f', volume_name]
         LOG.debug("Issuing remove command to find vvset name %s" % cmd)
-        out = self._cli_run(cmd, None)
+        out = self._cli_run(cmd)
         vvset_name = None
         if out and len(out) > 1:
             if out[1].startswith("Attempt to delete "):
@@ -1037,7 +1026,7 @@ exit
             LOG.error(str(ex))
 
     def _get_3par_hostname_from_wwn_iqn(self, wwns_iqn):
-        out = self._cli_run('showhost -d', None)
+        out = self._cli_run(['showhost', '-d'])
         # wwns_iqn may be a list of strings or a single
         # string. So, if necessary, create a list to loop.
         if not isinstance(wwns_iqn, list):

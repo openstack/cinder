@@ -59,12 +59,11 @@ class HpSanISCSIDriver(SanISCSIDriver):
 
     def _cliq_run(self, verb, cliq_args, check_exit_code=True):
         """Runs a CLIQ command over SSH, without doing any result parsing"""
-        cliq_arg_strings = []
+        cmd_list = [verb]
         for k, v in cliq_args.items():
-            cliq_arg_strings.append(" %s=%s" % (k, v))
-        cmd = verb + ''.join(cliq_arg_strings)
+            cmd_list.append("%s=%s" % (k, v))
 
-        return self._run_ssh(cmd, check_exit_code)
+        return self._run_ssh(cmd_list, check_exit_code)
 
     def _cliq_run_xml(self, verb, cliq_args, check_cliq_result=True):
         """Runs a CLIQ command over SSH, parsing and checking the output"""
