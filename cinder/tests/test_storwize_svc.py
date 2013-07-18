@@ -1661,6 +1661,35 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertNotEqual(host_name, None)
             self.driver._delete_host(host_name)
 
+    def test_storwize_svc_validate_connector(self):
+        conn_neither = {'host': 'host'}
+        conn_iscsi = {'host': 'host', 'initiator': 'foo'}
+        conn_fc = {'host': 'host', 'wwpns': 'bar'}
+        conn_both = {'host': 'host', 'initiator': 'foo', 'wwpns': 'bar'}
+
+        self.driver._enabled_protocols = set(['iSCSI'])
+        self.driver.validate_connector(conn_iscsi)
+        self.driver.validate_connector(conn_both)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.validate_connector, conn_fc)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.validate_connector, conn_neither)
+
+        self.driver._enabled_protocols = set(['FC'])
+        self.driver.validate_connector(conn_fc)
+        self.driver.validate_connector(conn_both)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.validate_connector, conn_iscsi)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.validate_connector, conn_neither)
+
+        self.driver._enabled_protocols = set(['iSCSI', 'FC'])
+        self.driver.validate_connector(conn_iscsi)
+        self.driver.validate_connector(conn_fc)
+        self.driver.validate_connector(conn_both)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.validate_connector, conn_neither)
+
     def test_storwize_svc_host_maps(self):
         # Create two volumes to be used in mappings
 
