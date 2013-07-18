@@ -305,6 +305,7 @@ class HP3PARBaseDriver():
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
     FAKE_DESC = 'test description name'
     FAKE_FC_PORTS = ['0987654321234', '123456789000987']
+    QOS = "{'qos:maxIOPS': 1000, 'qos:maxBWS': 50}"
     FAKE_ISCSI_PORTS = {'1.1.1.2': {'nsp': '8:1:1',
                                     'iqn': ('iqn.2000-05.com.3pardata:'
                                             '21810002ac00383d'),
@@ -317,6 +318,14 @@ class HP3PARBaseDriver():
               'host': FAKE_HOST,
               'volume_type': None,
               'volume_type_id': None}
+
+    volume_qos = {'name': VOLUME_NAME,
+                  'id': VOLUME_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'host': FAKE_HOST,
+                  'volume_type': None,
+                  'volume_type_id': 'gold'}
 
     snapshot = {'name': SNAPSHOT_NAME,
                 'id': SNAPSHOT_ID,
@@ -335,6 +344,14 @@ class HP3PARBaseDriver():
                  'wwpns': ["123456789012345", "123456789054321"],
                  'wwnns': ["223456789012345", "223456789054321"],
                  'host': 'fakehost'}
+
+    volume_type = {'name': 'gold',
+                   'deleted': False,
+                   'updated_at': None,
+                   'extra_specs': {'qos:maxBWS': '50',
+                                   'qos:maxIOPS': '1000'},
+                   'deleted_at': None,
+                   'id': 'gold'}
 
     def setup_configuration(self):
         configuration = mox.MockObject(conf.Configuration)
@@ -401,11 +418,46 @@ class HP3PARBaseDriver():
     def fake_get_ports(self):
         return {'FC': self.FAKE_FC_PORTS, 'iSCSI': self.FAKE_ISCSI_PORTS}
 
+    def fake_get_volume_type(self, type_id):
+        return self.volume_type
+
+    def fake_get_qos_by_volume_type(self, volume_type):
+        return self.QOS
+
+    def fake_add_volume_to_volume_set(self, volume, volume_name,
+                                      cpg, vvs_name, qos):
+        return volume
+
     def fake_copy_volume(self, src_name, dest_name):
         pass
 
     def fake_get_volume_state(self, vol_name):
         return "normal"
+
+    def test_create_volume(self):
+        self.flags(lock_path=self.tempdir)
+        model_update = self.driver.create_volume(self.volume)
+        metadata = model_update['metadata']
+        self.assertFalse(metadata['3ParName'] is None)
+        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
+        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
+
+    def test_create_volume_qos(self):
+        self.flags(lock_path=self.tempdir)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_type",
+                       self.fake_get_volume_type)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "_get_qos_by_volume_type",
+                       self.fake_get_qos_by_volume_type)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "_add_volume_to_volume_set",
+                       self.fake_add_volume_to_volume_set)
+        model_update = self.driver.create_volume(self.volume_qos)
+        metadata = model_update['metadata']
+        self.assertFalse(metadata['3ParName'] is None)
+        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
+        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
+        self.assertEqual(metadata['qos'], True)
 
     def test_delete_volume(self):
         self.flags(lock_path=self.tempdir)
@@ -440,6 +492,29 @@ class HP3PARBaseDriver():
         self.flags(lock_path=self.tempdir)
         self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
 
+        snap_vol = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
+        self.assertEqual(snap_vol['name'], self.VOLUME_3PAR_NAME)
+
+        volume = self.volume.copy()
+        volume['size'] = 1
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_volume_from_snapshot,
+                          volume, self.snapshot)
+
+    def test_create_volume_from_snapshot_qos(self):
+        self.flags(lock_path=self.tempdir)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_type",
+                       self.fake_get_volume_type)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "_get_qos_by_volume_type",
+                       self.fake_get_qos_by_volume_type)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "_add_volume_to_volume_set",
+                       self.fake_add_volume_to_volume_set)
+        model_update = self.driver.create_volume_from_snapshot(self.volume_qos,
+                                                               self.snapshot)
+        metadata = model_update['metadata']
+        self.assertEqual(metadata['qos'], True)
         snap_vol = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
         self.assertEqual(snap_vol['name'], self.VOLUME_3PAR_NAME)
 
@@ -520,14 +595,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                            'target_portal': '1.1.1.2:1234'},
                            'driver_volume_type': 'fibre_channel'}
         return hostname
-
-    def test_create_volume(self):
-        self.flags(lock_path=self.tempdir)
-        model_update = self.driver.create_volume(self.volume)
-        metadata = model_update['metadata']
-        self.assertFalse(metadata['3ParName'] is None)
-        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
-        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
 
     def test_initialize_connection(self):
         self.flags(lock_path=self.tempdir)
@@ -728,14 +795,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 'name': hostname}
         self._hosts[hostname] = host
         return hostname
-
-    def test_create_volume(self):
-        self.flags(lock_path=self.tempdir)
-        model_update = self.driver.create_volume(self.volume)
-        metadata = model_update['metadata']
-        self.assertFalse(metadata['3ParName'] is None)
-        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
-        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
 
     def test_initialize_connection(self):
         self.flags(lock_path=self.tempdir)

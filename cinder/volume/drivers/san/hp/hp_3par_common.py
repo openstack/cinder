@@ -122,7 +122,8 @@ class HP3PARCommon(object):
                             '9 - EGENERA',
                             '10 - ONTAP-legacy',
                             '11 - VMware']
-    hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona']
+    hp_qos_keys = ['maxIOPS', 'maxBWS']
+    hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs']
 
     def __init__(self, config):
         self.sshpool = None
@@ -182,7 +183,8 @@ class HP3PARCommon(object):
         try:
             cpg = self.client.getCPG(cpg_name)
         except hpexceptions.HTTPNotFound:
-            err = (_("CPG (%s) doesn't exist on array.") % cpg_name)
+            err = (_("Failed to get domain because CPG (%s) doesn't "
+                     "exist on array.") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
@@ -213,6 +215,10 @@ class HP3PARCommon(object):
     def _get_3par_snap_name(self, snapshot_id):
         snapshot_name = self._encode_name(snapshot_id)
         return "oss-%s" % snapshot_name
+
+    def _get_3par_vvs_name(self, volume_id):
+        vvs_name = self._encode_name(volume_id)
+        return "vvs-%s" % vvs_name
 
     def _encode_name(self, name):
         uuid_str = name.replace("-", "")
@@ -521,6 +527,7 @@ exit
                  'reserved_percentage': 0,
                  'storage_protocol': None,
                  'total_capacity_gb': 'unknown',
+                 'QoS_support': True,
                  'vendor_name': 'Hewlett-Packard',
                  'volume_backend_name': None}
 
@@ -569,6 +576,23 @@ exit
         else:
             return default
 
+    def _get_qos_value(self, qos, key, default=None):
+        if key in qos:
+            return qos[key]
+        else:
+            return default
+
+    def _get_qos_by_volume_type(self, volume_type):
+        qos = {}
+        specs = volume_type.get('extra_specs')
+        for key, value in specs.iteritems():
+            if 'qos:' in key:
+                fields = key.split(':')
+                key = fields[1]
+            if key in self.hp_qos_keys:
+                qos[key] = int(value)
+        return qos
+
     def _get_keys_by_volume_type(self, volume_type):
         hp3par_keys = {}
         specs = volume_type.get('extra_specs')
@@ -579,6 +603,40 @@ exit
             if key in self.hp3par_valid_keys:
                 hp3par_keys[key] = value
         return hp3par_keys
+
+    def _set_qos_rule(self, qos, vvs_name):
+        max_io = self._get_qos_value(qos, 'maxIOPS')
+        max_bw = self._get_qos_value(qos, 'maxBWS')
+        cli_qos_string = ""
+        if max_io is not None:
+            cli_qos_string += ('-io %s ' % max_io)
+        if max_bw is not None:
+            cli_qos_string += ('-bw %sM ' % max_bw)
+        self._cli_run('setqos %svvset:%s' %
+                      (cli_qos_string, vvs_name), None)
+
+    def _add_volume_to_volume_set(self, volume, volume_name,
+                                  cpg, vvs_name, qos):
+        if vvs_name is not None:
+            # Admin has set a volume set name to add the volume to
+            self._cli_run('createvvset -add %s %s' % (vvs_name,
+                                                      volume_name), None)
+        else:
+            vvs_name = self._get_3par_vvs_name(volume['id'])
+            domain = self.get_domain(cpg)
+            self._cli_run('createvvset -domain %s %s' % (domain,
+                                                         vvs_name), None)
+            self._set_qos_rule(qos, vvs_name)
+            self._cli_run('createvvset -add %s %s' % (vvs_name,
+                                                      volume_name), None)
+
+    def _remove_volume_set(self, vvs_name):
+        # Must first clear the QoS rules before removing the volume set
+        self._cli_run('setqos -clear vvset:%s' % (vvs_name), None)
+        self._cli_run('removevvset -f %s' % (vvs_name), None)
+
+    def _remove_volume_from_volume_set(self, volume_name, vvs_name):
+        self._cli_run('removevvset -f %s %s' % (vvs_name, volume_name), None)
 
     def get_persona_type(self, volume, hp3par_keys=None):
         default_persona = self.valid_persona_values[0]
@@ -616,11 +674,19 @@ exit
 
             # get the options supported by volume types
             volume_type = None
+            vvs_name = None
             hp3par_keys = {}
+            qos = {}
+            qos_on_volume = False
             type_id = volume.get('volume_type_id', None)
             if type_id is not None:
                 volume_type = self._get_volume_type(type_id)
                 hp3par_keys = self._get_keys_by_volume_type(volume_type)
+                vvs_name = self._get_key_value(hp3par_keys, 'vvs')
+                if vvs_name is None:
+                    qos = self._get_qos_by_volume_type(volume_type)
+                    if qos:
+                        qos_on_volume = True
 
             cpg = self._get_key_value(hp3par_keys, 'cpg',
                                       self.config.hp3par_cpg)
@@ -665,6 +731,10 @@ exit
             if type_id is not None:
                 comments['volume_type_name'] = volume_type.get('name')
                 comments['volume_type_id'] = type_id
+                if vvs_name is not None:
+                    comments['vvs'] = vvs_name
+                else:
+                    comments['qos'] = qos
 
             extras = {'comment': json.dumps(comments),
                       'snapCPG': snap_cpg,
@@ -673,7 +743,15 @@ exit
             capacity = self._capacity_from_size(volume['size'])
             volume_name = self._get_3par_vol_name(volume['id'])
             self.client.createVolume(volume_name, cpg, capacity, extras)
-
+            if qos or vvs_name is not None:
+                try:
+                    self._add_volume_to_volume_set(volume, volume_name,
+                                                   cpg, vvs_name, qos)
+                except Exception as ex:
+                    # Delete the volume if unable to add it to the volume set
+                    self.client.deleteVolume(volume_name)
+                    LOG.error(str(ex))
+                    raise exception.CinderException(ex.get_description())
         except hpexceptions.HTTPConflict:
             raise exception.Duplicate(_("Volume (%s) already exists on array")
                                       % volume_name)
@@ -688,7 +766,8 @@ exit
             raise exception.CinderException(ex.get_description())
 
         metadata = {'3ParName': volume_name, 'CPG': cpg,
-                    'snapCPG': extras['snapCPG']}
+                    'snapCPG': extras['snapCPG'], 'qos': qos_on_volume,
+                    'vvs': vvs_name}
         return metadata
 
     def _copy_volume(self, src_name, dest_name):
@@ -767,6 +846,12 @@ exit
     def delete_volume(self, volume):
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
+            qos = self.get_volume_metadata_value(volume, 'qos')
+            vvs_name = self.get_volume_metadata_value(volume, 'vvs')
+            if vvs_name is not None:
+                self._remove_volume_from_volume_set(volume_name, vvs_name)
+            elif qos:
+                self._remove_volume_set(self._get_3par_vvs_name(volume['id']))
             self.client.deleteVolume(volume_name)
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
@@ -797,10 +882,26 @@ exit
 
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
-            vol_name = self._get_3par_vol_name(volume['id'])
+            volume_name = self._get_3par_vol_name(volume['id'])
 
             extra = {'volume_id': volume['id'],
                      'snapshot_id': snapshot['id']}
+
+            volume_type = None
+            type_id = volume.get('volume_type_id', None)
+            vvs_name = None
+            qos = {}
+            qos_on_volume = False
+            hp3par_keys = {}
+            if type_id is not None:
+                volume_type = self._get_volume_type(type_id)
+                hp3par_keys = self._get_keys_by_volume_type(volume_type)
+                vvs_name = self._get_key_value(hp3par_keys, 'vvs')
+                if vvs_name is None:
+                    qos = self._get_qos_by_volume_type(volume_type)
+                    if qos:
+                        qos_on_volume = True
+
             name = snapshot.get('display_name', None)
             if name:
                 extra['name'] = name
@@ -812,11 +913,29 @@ exit
             optional = {'comment': json.dumps(extra),
                         'readOnly': False}
 
-            self.client.createSnapshot(vol_name, snap_name, optional)
+            self.client.createSnapshot(volume_name, snap_name, optional)
+            if qos or vvs_name is not None:
+                cpg = self._get_key_value(hp3par_keys, 'cpg',
+                                          self.config.hp3par_cpg)
+                try:
+                    self._add_volume_to_volume_set(volume, volume_name,
+                                                   cpg, vvs_name, qos)
+                except Exception as ex:
+                    # Delete the volume if unable to add it to the volume set
+                    self.client.deleteVolume(volume_name)
+                    LOG.error(str(ex))
+                    raise exception.CinderException(ex.get_description())
         except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
+        except Exception as ex:
+            LOG.error(str(ex))
+            raise exception.CinderException(ex.get_description())
+
+        metadata = {'3ParName': volume_name, 'qos': qos_on_volume,
+                    'vvs': vvs_name}
+        return metadata
 
     def create_snapshot(self, snapshot):
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
