@@ -1078,6 +1078,7 @@ def volume_detached(context, volume_id):
         volume_ref['attach_status'] = 'detached'
         volume_ref['instance_uuid'] = None
         volume_ref['attached_host'] = None
+        volume_ref['attach_time'] = None
         volume_ref.save(session=session)
 
 

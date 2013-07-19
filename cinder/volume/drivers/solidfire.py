@@ -30,6 +30,7 @@ from oslo.config import cfg
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import timeutils
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import volume_types
 
@@ -364,9 +365,11 @@ class SolidFireDriver(SanISCSIDriver):
         # to set any that were provided
         params = {'volumeID': sf_volume_id}
 
+        create_time = timeutils.strtime(v_ref['created_at'])
         attributes = {'uuid': v_ref['id'],
                       'is_clone': 'True',
-                      'src_uuid': src_uuid}
+                      'src_uuid': src_uuid,
+                      'created_at': create_time}
         if qos:
             params['qos'] = qos
             for k, v in qos.items():
@@ -484,8 +487,10 @@ class SolidFireDriver(SanISCSIDriver):
         if type_id is not None:
             qos = self._set_qos_by_volume_type(ctxt, type_id)
 
+        create_time = timeutils.strtime(volume['created_at'])
         attributes = {'uuid': volume['id'],
-                      'is_clone': 'False'}
+                      'is_clone': 'False',
+                      'created_at': create_time}
         if qos:
             for k, v in qos.items():
                 attributes[k] = str(v)
@@ -662,3 +667,55 @@ class SolidFireDriver(SanISCSIDriver):
         data['thin_provision_percent'] =\
             results['thinProvisioningPercent']
         self.cluster_stats = data
+
+    def attach_volume(self, context, volume,
+                      instance_uuid, host_name,
+                      mountpoint):
+
+        LOG.debug(_("Entering SolidFire attach_volume..."))
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        params = {'accountID': sfaccount['accountID']}
+
+        sf_vol = self._get_sf_volume(volume['id'], params)
+        if sf_vol is None:
+            LOG.error(_("Volume ID %s was not found on "
+                        "the SolidFire Cluster!"), volume['id'])
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        attributes = sf_vol['attributes']
+        attributes['attach_time'] = volume.get('attach_time', None)
+        attributes['attached_to'] = instance_uuid
+        params = {
+            'volumeID': sf_vol['volumeID'],
+            'attributes': attributes
+        }
+
+        data = self._issue_api_request('ModifyVolume', params)
+
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+
+    def detach_volume(self, context, volume):
+
+        LOG.debug(_("Entering SolidFire attach_volume..."))
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        params = {'accountID': sfaccount['accountID']}
+
+        sf_vol = self._get_sf_volume(volume['id'], params)
+        if sf_vol is None:
+            LOG.error(_("Volume ID %s was not found on "
+                        "the SolidFire Cluster!"), volume['id'])
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        attributes = sf_vol['attributes']
+        attributes['attach_time'] = None
+        attributes['attached_to'] = None
+        params = {
+            'volumeID': sf_vol['volumeID'],
+            'attributes': attributes
+        }
+
+        data = self._issue_api_request('ModifyVolume', params)
+
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
