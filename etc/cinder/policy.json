@@ -50,5 +50,7 @@
     "backup:delete": [],
     "backup:get": [],
     "backup:get_all": [],
-    "backup:restore": []
+    "backup:restore": [],
+
+    "snapshot_extension:snapshot_actions:update_snapshot_status": []
 }
