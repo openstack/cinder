@@ -39,10 +39,14 @@ class BrickLvmTestCase(test.TestCase):
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.volume_group_name = 'fake-volumes'
         super(BrickLvmTestCase, self).setUp()
+
+        #Stub processutils.execute for static methods
         self.stubs.Set(processutils, 'execute',
                        self.fake_execute)
         self.vg = brick.LVM(self.configuration.volume_group_name,
-                            False, None, 'default', self.fake_execute)
+                            False, None,
+                            'default',
+                            self.fake_execute)
 
     def failed_fake_execute(obj, *cmd, **kwargs):
         return ("\n", "fake-error")
@@ -56,7 +60,10 @@ class BrickLvmTestCase(test.TestCase):
     def fake_execute(obj, *cmd, **kwargs):
         cmd_string = ', '.join(cmd)
         data = "\n"
-        if 'vgs, --noheadings, -o, name' == cmd_string:
+
+        if 'vgs, --noheadings, --unit=g, -o, name' == cmd_string:
+            data = "  fake-volumes\n"
+        elif 'vgs, --noheadings, -o, name' == cmd_string:
             data = "  fake-volumes\n"
         if 'vgs, --version' in cmd_string:
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
@@ -116,12 +123,15 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(len(self.vg.get_all_volume_groups()), 3)
         self.assertEqual(len(self.vg.get_all_volume_groups('fake-volumes')), 1)
 
-    def test_update_vg_info(self):
-        self.assertEqual(self.vg.update_volume_group_info()['name'],
-                         'fake-volumes')
-
     def test_thin_support(self):
+        # lvm.supports_thin() is a static method and doesn't
+        # use the self._executor fake we pass in on init
+        # so we need to stub proessutils.execute appropriately
+
         self.stubs.Set(processutils, 'execute', self.fake_execute)
+        self.assertTrue(self.vg.supports_thin_provisioning())
+
+        self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
         self.assertTrue(self.vg.supports_thin_provisioning())
 
         self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)

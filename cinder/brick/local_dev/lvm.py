@@ -70,8 +70,9 @@ class LVM(object):
         self.vg_free_space = 0
         self.vg_lv_count = 0
         self.vg_uuid = None
-        self._execute = executor
         self.vg_thin_pool = None
+        self.vg_thin_pool_size = 0
+        self._execute = executor
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
@@ -157,14 +158,19 @@ class LVM(object):
         return False
 
     @staticmethod
-    def get_all_volumes(vg_name=None):
+    def get_all_volumes(vg_name=None, no_suffix=True):
         """Static method to get all LV's on a system.
 
         :param vg_name: optional, gathers info for only the specified VG
+        :param no_suffix: optional, reports sizes in g with no suffix
         :returns: List of Dictionaries with LV info
 
         """
         cmd = ['lvs', '--noheadings', '--unit=g', '-o', 'vg_name,name,size']
+
+        if no_suffix:
+            cmd += ['--nosuffix']
+
         if vg_name is not None:
             cmd += [vg_name]
 
@@ -199,10 +205,11 @@ class LVM(object):
                 return r
 
     @staticmethod
-    def get_all_physical_volumes(vg_name=None):
+    def get_all_physical_volumes(vg_name=None, no_suffix=True):
         """Static method to get all PVs on a system.
 
         :param vg_name: optional, gathers info for only the specified VG
+        :param no_suffix: optional, reports sizes in g with no suffix
         :returns: List of Dictionaries with PV info
 
         """
@@ -210,6 +217,9 @@ class LVM(object):
                '--unit=g',
                '-o', 'vg_name,name,size,free',
                '--separator', ':']
+        if no_suffix:
+            cmd += ['--nosuffix']
+
         if vg_name is not None:
             cmd += [vg_name]
 
@@ -237,10 +247,11 @@ class LVM(object):
         return self.pv_list
 
     @staticmethod
-    def get_all_volume_groups(vg_name=None):
+    def get_all_volume_groups(vg_name=None, no_suffix=True):
         """Static method to get all VGs on a system.
 
         :param vg_name: optional, gathers info for only the specified VG
+        :param no_suffix: optional, reports sizes in g with no suffix
         :returns: List of Dictionaries with VG info
 
         """
@@ -248,6 +259,10 @@ class LVM(object):
                '--unit=g', '-o',
                'name,size,free,lv_count,uuid',
                '--separator', ':']
+
+        if no_suffix:
+            cmd += ['--nosuffix']
+
         if vg_name is not None:
             cmd += [vg_name]
 
@@ -285,10 +300,11 @@ class LVM(object):
         self.vg_free_space = vg_list[0]['available']
         self.vg_lv_count = vg_list[0]['lv_count']
         self.vg_uuid = vg_list[0]['uuid']
-        if self.vg_thin_pool is not None:
-            self.vg_size = self.vg_size
 
-        return vg_list[0]
+        if self.vg_thin_pool is not None:
+            for lv in self.get_all_volumes(self.vg_name):
+                if lv[1] == self.vg_thin_pool:
+                    self.vg_thin_pool_size = lv[2]
 
     def create_thin_pool(self, name=None, size_str=0):
         """Creates a thin provisioning pool for this VG.
@@ -321,9 +337,9 @@ class LVM(object):
         pool_path = '%s/%s' % (self.vg_name, name)
         cmd = ['lvcreate', '-T', '-L', size_str, pool_path]
 
-        putils.execute(*cmd,
-                       root_helper='sudo',
-                       run_as_root=True)
+        self._execute(*cmd,
+                      root_helper='sudo',
+                      run_as_root=True)
         self.vg_thin_pool = pool_path
 
     def create_volume(self, name, size_str, lv_type='default', mirror_count=0):
@@ -336,8 +352,6 @@ class LVM(object):
 
         """
 
-        size_str = self._size_str(size_str)
-        cmd = ['lvcreate', '-n', name, self.vg_name]
         if lv_type == 'thin':
             pool_path = '%s/%s' % (self.vg_name, self.vg_thin_pool)
             cmd = ['lvcreate', '-T', '-V', size_str, '-n', name, pool_path]
@@ -353,9 +367,16 @@ class LVM(object):
                 #             http://red.ht/U2BPOD
                 cmd += ['-R', str(rsize)]
 
-        self._execute(*cmd,
-                      root_helper='sudo',
-                      run_as_root=True)
+        try:
+            self._execute(*cmd,
+                          root_helper='sudo',
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_('Error creating Volume'))
+            LOG.error(_('Cmd     :%s') % err.cmd)
+            LOG.error(_('StdOut  :%s') % err.stdout)
+            LOG.error(_('StdErr  :%s') % err.stderr)
+            raise
 
     def create_lv_snapshot(self, name, source_lv_name, lv_type='default'):
         """Creates a snapshot of a logical volume.
@@ -373,11 +394,18 @@ class LVM(object):
                '--snapshot', '%s/%s' % (self.vg_name, source_lv_name)]
         if lv_type != 'thin':
             size = source_lvref['size']
-            cmd += ['-L', size]
+            cmd += ['-L', '%sg' % (size)]
 
-        self._execute(*cmd,
-                      root_helper='sudo',
-                      run_as_root=True)
+        try:
+            self._execute(*cmd,
+                          root_helper='sudo',
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_('Error creating snapshot'))
+            LOG.error(_('Cmd     :%s') % err.cmd)
+            LOG.error(_('StdOut  :%s') % err.stdout)
+            LOG.error(_('StdErr  :%s') % err.stderr)
+            raise
 
     def delete(self, name):
         """Delete logical volume or snapshot.
