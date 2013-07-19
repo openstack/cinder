@@ -260,9 +260,10 @@ class VolumeDriver(object):
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
 
-        Returns a boolean indicating whether cloning occurred
+        Returns a dict of volume properties eg. provider_location,
+        boolean indicating whether cloning occurred
         """
-        return False
+        return None, False
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
