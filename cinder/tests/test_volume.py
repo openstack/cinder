@@ -1254,11 +1254,19 @@ class VolumeTestCase(test.TestCase):
         # create a volume and assign to host
         volume = self._create_volume(2)
         self.volume.create_volume(self.context, volume['id'])
-        volume['status'] = 'available'
+        volume['status'] = 'in-use'
         volume['host'] = 'fakehost'
 
         volume_api = cinder.volume.api.API()
 
+        # Extend fails when status != available
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.extend,
+                          self.context,
+                          volume,
+                          3)
+
+        volume['status'] = 'available'
         # Extend fails when new_size < orig_size
         self.assertRaises(exception.InvalidInput,
                           volume_api.extend,
