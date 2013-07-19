@@ -24,6 +24,7 @@ import webob
 from cinder.api import common
 from cinder.api.openstack.wsgi import MetadataXMLDeserializer
 from cinder.api.openstack.wsgi import XMLDeserializer
+from cinder import db
 from cinder import test
 from cinder.tests.api import fakes
 from cinder import volume
@@ -71,6 +72,7 @@ class VolumeImageMetadataTest(test.TestCase):
         self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
         self.stubs.Set(volume.API, 'get_volume_image_metadata',
                        fake_get_volume_image_metadata)
+        self.stubs.Set(db, 'volume_get', fake_volume_get)
         self.UUID = uuid.uuid4()
 
     def _make_request(self, url):

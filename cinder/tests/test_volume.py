@@ -119,8 +119,9 @@ class BaseVolumeTestCase(test.TestCase):
 
     @staticmethod
     def _create_volume(size=0, snapshot_id=None, image_id=None,
-                       source_volid=None, metadata=None, status="creating",
-                       migration_status=None, availability_zone=None):
+                       source_volid=None, metadata=None, admin_metadata=None,
+                       status="creating", migration_status=None,
+                       availability_zone=None):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -136,6 +137,8 @@ class BaseVolumeTestCase(test.TestCase):
         vol['host'] = CONF.host
         if metadata is not None:
             vol['metadata'] = metadata
+        if admin_metadata is not None:
+            vol['admin_metadata'] = admin_metadata
         return db.volume_create(context.get_admin_context(), vol)
 
 
@@ -551,22 +554,32 @@ class VolumeTestCase(BaseVolumeTestCase):
         except TypeError:
             pass
 
-    def test_run_attach_detach_volume(self):
+    def test_run_attach_detach_volume_for_instance(self):
         """Make sure volume can be attached and detached from instance."""
         mountpoint = "/dev/sdf"
         # attach volume to the instance then to detach
         instance_uuid = '12345678-1234-5678-1234-567812345678'
-        volume = self._create_volume()
+        volume = self._create_volume(admin_metadata={'readonly': 'True'})
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
         self.volume.attach_volume(self.context, volume_id, instance_uuid,
-                                  None, mountpoint)
+                                  None, mountpoint, 'ro')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(vol['status'], "in-use")
         self.assertEqual(vol['attach_status'], "attached")
         self.assertEqual(vol['mountpoint'], mountpoint)
         self.assertEqual(vol['instance_uuid'], instance_uuid)
         self.assertEqual(vol['attached_host'], None)
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 2)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+        self.assertEquals(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEquals(admin_metadata[1]['value'], 'ro')
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        conn_info = self.volume.initialize_connection(self.context,
+                                                      volume_id, connector)
+        self.assertEquals(conn_info['data']['access_mode'], 'ro')
 
         self.assertRaises(exception.VolumeAttached,
                           self.volume.delete_volume,
@@ -582,12 +595,14 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
-        # attach volume to the host then to detach
-        volume = self._create_volume()
+    def test_run_attach_detach_volume_for_host(self):
+        """Make sure volume can be attached and detached from host."""
+        mountpoint = "/dev/sdf"
+        volume = self._create_volume(admin_metadata={'readonly': 'False'})
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
         self.volume.attach_volume(self.context, volume_id, None,
-                                  'fake_host', mountpoint)
+                                  'fake_host', mountpoint, 'rw')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(vol['status'], "in-use")
         self.assertEqual(vol['attach_status'], "attached")
@@ -595,6 +610,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(vol['instance_uuid'], None)
         # sanitized, conforms to RFC-952 and RFC-1123 specs.
         self.assertEqual(vol['attached_host'], 'fake-host')
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 2)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'False')
+        self.assertEquals(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEquals(admin_metadata[1]['value'], 'rw')
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        conn_info = self.volume.initialize_connection(self.context,
+                                                      volume_id, connector)
+        self.assertEquals(conn_info['data']['access_mode'], 'rw')
 
         self.assertRaises(exception.VolumeAttached,
                           self.volume.delete_volume,
@@ -609,6 +634,167 @@ class VolumeTestCase(BaseVolumeTestCase):
                           db.volume_get,
                           self.context,
                           volume_id)
+
+    def test_run_attach_detach_volume_with_attach_mode(self):
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        mountpoint = "/dev/sdf"
+        volume = self._create_volume(admin_metadata={'readonly': 'True'})
+        volume_id = volume['id']
+        db.volume_update(self.context, volume_id, {'status': 'available',
+                                                   'mountpoint': None,
+                                                   'instance_uuid': None,
+                                                   'attached_host': None,
+                                                   'attached_mode': None})
+        self.volume.attach_volume(self.context, volume_id, instance_uuid,
+                                  None, mountpoint, 'ro')
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['status'], "in-use")
+        self.assertEqual(vol['attach_status'], "attached")
+        self.assertEqual(vol['mountpoint'], mountpoint)
+        self.assertEqual(vol['instance_uuid'], instance_uuid)
+        self.assertEqual(vol['attached_host'], None)
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 2)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+        self.assertEquals(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEquals(admin_metadata[1]['value'], 'ro')
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        conn_info = self.volume.initialize_connection(self.context,
+                                                      volume_id, connector)
+        self.assertEquals(conn_info['data']['access_mode'], 'ro')
+
+        self.volume.detach_volume(self.context, volume_id)
+        vol = db.volume_get(self.context, volume_id)
+        self.assertEqual(vol['status'], "available")
+        self.assertEqual(vol['attach_status'], "detached")
+        self.assertEqual(vol['mountpoint'], None)
+        self.assertEqual(vol['instance_uuid'], None)
+        self.assertEqual(vol['attached_host'], None)
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 1)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+
+        self.volume.attach_volume(self.context, volume_id, None,
+                                  'fake_host', mountpoint, 'ro')
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['status'], "in-use")
+        self.assertEqual(vol['attach_status'], "attached")
+        self.assertEqual(vol['mountpoint'], mountpoint)
+        self.assertEqual(vol['instance_uuid'], None)
+        self.assertEqual(vol['attached_host'], 'fake-host')
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 2)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+        self.assertEquals(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEquals(admin_metadata[1]['value'], 'ro')
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        conn_info = self.volume.initialize_connection(self.context,
+                                                      volume_id, connector)
+        self.assertEquals(conn_info['data']['access_mode'], 'ro')
+
+        self.volume.detach_volume(self.context, volume_id)
+        vol = db.volume_get(self.context, volume_id)
+        self.assertEqual(vol['status'], "available")
+        self.assertEqual(vol['attach_status'], "detached")
+        self.assertEqual(vol['mountpoint'], None)
+        self.assertEqual(vol['instance_uuid'], None)
+        self.assertEqual(vol['attached_host'], None)
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 1)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+
+        self.volume.delete_volume(self.context, volume_id)
+        self.assertRaises(exception.VolumeNotFound,
+                          db.volume_get,
+                          self.context,
+                          volume_id)
+
+    def test_run_manager_attach_detach_volume_with_wrong_attach_mode(self):
+        # Not allow using 'read-write' mode attach readonly volume
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        mountpoint = "/dev/sdf"
+        volume = self._create_volume(admin_metadata={'readonly': 'True'})
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        self.assertRaises(exception.InvalidVolumeAttachMode,
+                          self.volume.attach_volume,
+                          self.context,
+                          volume_id,
+                          instance_uuid,
+                          None,
+                          mountpoint,
+                          'rw')
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['status'], "error_attaching")
+        self.assertEqual(vol['attach_status'], "detached")
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 2)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+        self.assertEquals(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEquals(admin_metadata[1]['value'], 'rw')
+
+        db.volume_update(self.context, volume_id, {'status': 'available'})
+        self.assertRaises(exception.InvalidVolumeAttachMode,
+                          self.volume.attach_volume,
+                          self.context,
+                          volume_id,
+                          None,
+                          'fake_host',
+                          mountpoint,
+                          'rw')
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['status'], "error_attaching")
+        self.assertEqual(vol['attach_status'], "detached")
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 2)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+        self.assertEquals(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEquals(admin_metadata[1]['value'], 'rw')
+
+    def test_run_api_attach_detach_volume_with_wrong_attach_mode(self):
+        # Not allow using 'read-write' mode attach readonly volume
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        mountpoint = "/dev/sdf"
+        volume = self._create_volume(admin_metadata={'readonly': 'True'})
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidVolumeAttachMode,
+                          volume_api.attach,
+                          self.context,
+                          volume,
+                          instance_uuid,
+                          None,
+                          mountpoint,
+                          'rw')
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['attach_status'], "detached")
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 1)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
+
+        db.volume_update(self.context, volume_id, {'status': 'available'})
+        self.assertRaises(exception.InvalidVolumeAttachMode,
+                          volume_api.attach,
+                          self.context,
+                          volume,
+                          None,
+                          'fake_host',
+                          mountpoint,
+                          'rw')
+        vol = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(vol['attach_status'], "detached")
+        admin_metadata = vol['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 1)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'True')
 
     def test_concurrent_volumes_get_different_targets(self):
         """Ensure multiple concurrent volumes get different targets."""
@@ -1419,6 +1605,37 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEquals(volume['host'], 'newhost')
         self.assertEquals(volume['migration_status'], None)
 
+    def test_update_volume_readonly_flag(self):
+        """Test volume readonly flag can be updated at API level."""
+        # create a volume and assign to host
+        volume = self._create_volume(admin_metadata={'readonly': 'True'})
+        self.volume.create_volume(self.context, volume['id'])
+        volume['status'] = 'in-use'
+
+        volume_api = cinder.volume.api.API()
+
+        # Update fails when status != available
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.update_readonly_flag,
+                          self.context,
+                          volume,
+                          False)
+
+        volume['status'] = 'available'
+
+        # works when volume in 'available' status
+        volume_api.update_readonly_flag(self.context, volume, False)
+
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEquals(volume['status'], 'available')
+        admin_metadata = volume['volume_admin_metadata']
+        self.assertEquals(len(admin_metadata), 1)
+        self.assertEquals(admin_metadata[0]['key'], 'readonly')
+        self.assertEquals(admin_metadata[0]['value'], 'False')
+
+        # clean up
+        self.volume.delete_volume(self.context, volume['id'])
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):
@@ -1869,7 +2086,8 @@ class ISCSITestCase(DriverTestCase):
     def test_get_iscsi_properties(self):
         volume = {"provider_location": '',
                   "id": "0",
-                  "provider_auth": "a b c"}
+                  "provider_auth": "a b c",
+                  "attached_mode": "rw"}
         iscsi_driver = driver.ISCSIDriver()
         iscsi_driver._do_iscsi_discovery = lambda v: "0.0.0.0:0000,0 iqn:iqn 0"
         result = iscsi_driver._get_iscsi_properties(volume)

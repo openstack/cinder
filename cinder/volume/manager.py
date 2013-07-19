@@ -130,7 +130,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.10'
+    RPC_API_VERSION = '1.11'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -392,12 +392,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         return True
 
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
-                      mountpoint):
+                      mountpoint, mode):
         """Updates db to show volume is attached"""
         @utils.synchronized(volume_id, external=True)
         def do_attach():
             # check the volume status before attaching
             volume = self.db.volume_get(context, volume_id)
+            volume_metadata = self.db.volume_admin_metadata_get(
+                context.elevated(), volume_id)
             if volume['status'] == 'attaching':
                 if (volume['instance_uuid'] and volume['instance_uuid'] !=
                         instance_uuid):
@@ -407,6 +409,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                         host_name):
                     msg = _("being attached by another host")
                     raise exception.InvalidVolume(reason=msg)
+                if (volume_metadata.get('attached_mode') and
+                        volume_metadata.get('attached_mode') != mode):
+                    msg = _("being attached by different mode")
+                    raise exception.InvalidVolume(reason=msg)
             elif volume['status'] != "available":
                 msg = _("status must be available")
                 raise exception.InvalidVolume(reason=msg)
@@ -414,17 +420,18 @@ class VolumeManager(manager.SchedulerDependentManager):
             # TODO(jdg): attach_time column is currently varchar
             # we should update this to a date-time object
             # also consider adding detach_time?
-            now = timeutils.strtime()
-            new_status = 'attaching'
             self.db.volume_update(context, volume_id,
                                   {"instance_uuid": instance_uuid,
                                    "attached_host": host_name,
-                                   "status": new_status,
-                                   "attach_time": now})
+                                   "status": "attaching",
+                                   "attach_time": timeutils.strtime()})
+            self.db.volume_admin_metadata_update(context.elevated(),
+                                                 volume_id,
+                                                 {"attached_mode": mode},
+                                                 False)
 
             if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
-                self.db.volume_update(context,
-                                      volume_id,
+                self.db.volume_update(context, volume_id,
                                       {'status': 'error_attaching'})
                 raise exception.InvalidUUID(uuid=instance_uuid)
 
@@ -432,6 +439,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                 host_name) if host_name else None
 
             volume = self.db.volume_get(context, volume_id)
+
+            if volume_metadata.get('readonly') == 'True' and mode != 'ro':
+                self.db.volume_update(context, volume_id,
+                                      {'status': 'error_attaching'})
+                raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                        volume_id=volume_id)
             try:
                 self.driver.attach_volume(context,
                                           volume,
@@ -440,8 +453,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                           mountpoint)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    self.db.volume_update(context,
-                                          volume_id,
+                    self.db.volume_update(context, volume_id,
                                           {'status': 'error_attaching'})
 
             self.db.volume_attached(context.elevated(),
@@ -466,6 +478,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                       {'status': 'error_detaching'})
 
         self.db.volume_detached(context.elevated(), volume_id)
+        self.db.volume_admin_metadata_delete(context.elevated(), volume_id,
+                                             'attached_mode')
 
         # Check for https://bugs.launchpad.net/cinder/+bug/1065702
         volume = self.db.volume_get(context, volume_id)
@@ -540,12 +554,12 @@ class VolumeManager(manager.SchedulerDependentManager):
               json in various places, so it should not contain any non-json
               data types.
         """
-        volume_ref = self.db.volume_get(context, volume_id)
+        volume = self.db.volume_get(context, volume_id)
         self.driver.validate_connector(connector)
-        conn_info = self.driver.initialize_connection(volume_ref, connector)
+        conn_info = self.driver.initialize_connection(volume, connector)
 
         # Add qos_specs to connection info
-        typeid = volume_ref['volume_type_id']
+        typeid = volume['volume_type_id']
         specs = {}
         if typeid:
             res = volume_types.get_volume_type_qos_specs(typeid)
@@ -556,6 +570,17 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         conn_info['data'].update(qos_spec)
 
+        # Add access_mode to connection info
+        volume_metadata = self.db.volume_admin_metadata_get(context.elevated(),
+                                                            volume_id)
+        if conn_info['data'].get('access_mode') is None:
+            access_mode = volume_metadata.get('attached_mode')
+            if access_mode is None:
+                # NOTE(zhiyan): client didn't call 'os-attach' before
+                access_mode = ('ro'
+                               if volume_metadata.get('readonly') == 'True'
+                               else 'rw')
+            conn_info['data']['access_mode'] = access_mode
         return conn_info
 
     def terminate_connection(self, context, volume_id, connector, force=False):

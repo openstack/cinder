@@ -209,10 +209,51 @@ class CreateDeserializer(CommonDeserializer):
 class VolumeController(wsgi.Controller):
     """The Volumes API controller for the OpenStack API."""
 
+    _visible_admin_metadata_keys = ['readonly', 'attached_mode']
+
     def __init__(self, ext_mgr):
         self.volume_api = volume.API()
         self.ext_mgr = ext_mgr
         super(VolumeController, self).__init__()
+
+    def _add_visible_admin_metadata(self, context, volume):
+        if context is None:
+            return
+
+        visible_admin_meta = {}
+
+        volume_tmp = (volume if context.is_admin else
+                      self.volume_api.get(context.elevated(), volume['id']))
+
+        if volume_tmp.get('volume_admin_metadata'):
+            for item in volume_tmp['volume_admin_metadata']:
+                if item['key'] in self._visible_admin_metadata_keys:
+                    visible_admin_meta[item['key']] = item['value']
+        # avoid circular ref when volume is a Volume instance
+        elif (volume_tmp.get('admin_metadata') and
+                isinstance(volume_tmp.get('admin_metadata'), dict)):
+            for key in self._visible_admin_metadata_keys:
+                if key in volume_tmp['admin_metadata'].keys():
+                    visible_admin_meta[key] = volume_tmp['admin_metadata'][key]
+
+        if not visible_admin_meta:
+            return
+
+        # NOTE(zhiyan): update visible administration metadata to
+        # volume metadata, administration metadata will rewrite existing key.
+        if volume.get('volume_metadata'):
+            orig_meta = volume.get('volume_metadata')
+            for item in orig_meta:
+                if item['key'] in visible_admin_meta.keys():
+                    item['value'] = visible_admin_meta.pop(item['key'])
+            for key, value in visible_admin_meta.iteritems():
+                orig_meta.append({'key': key, 'value': value})
+        # avoid circular ref when vol is a Volume instance
+        elif (volume.get('metadata') and
+                isinstance(volume.get('metadata'), dict)):
+            volume['metadata'].update(visible_admin_meta)
+        else:
+            volume['metadata'] = visible_admin_meta
 
     @wsgi.serializers(xml=VolumeTemplate)
     def show(self, req, id):
@@ -223,6 +264,8 @@ class VolumeController(wsgi.Controller):
             vol = self.volume_api.get(context, id)
         except exception.NotFound:
             raise exc.HTTPNotFound()
+
+        self._add_visible_admin_metadata(context, vol)
 
         return {'volume': _translate_volume_detail_view(context, vol)}
 
@@ -267,6 +310,10 @@ class VolumeController(wsgi.Controller):
         volumes = self.volume_api.get_all(context, marker=None, limit=None,
                                           sort_key='created_at',
                                           sort_dir='desc', filters=search_opts)
+
+        for volume in volumes:
+            self._add_visible_admin_metadata(context, volume)
+
         limited_list = common.limited(volumes, req)
         res = [entity_maker(context, vol) for vol in limited_list]
         return {'volumes': res}
@@ -361,9 +408,11 @@ class VolumeController(wsgi.Controller):
         # TODO(vish): Instance should be None at db layer instead of
         #             trying to lazy load, but for now we turn it into
         #             a dict to avoid an error.
-        retval = _translate_volume_detail_view(context,
-                                               dict(new_volume.iteritems()),
-                                               image_uuid)
+        new_volume = dict(new_volume.iteritems())
+
+        self._add_visible_admin_metadata(context, new_volume)
+
+        retval = _translate_volume_detail_view(context, new_volume, image_uuid)
 
         return {'volume': retval}
 
@@ -402,6 +451,8 @@ class VolumeController(wsgi.Controller):
             raise exc.HTTPNotFound()
 
         volume.update(update_dict)
+
+        self._add_visible_admin_metadata(context, volume)
 
         return {'volume': _translate_volume_detail_view(context, volume)}
 
