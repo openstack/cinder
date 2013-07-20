@@ -436,17 +436,17 @@ class NfsDriver(RemoteFsDriver):
                 raise
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
         if refresh or not self._stats:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')

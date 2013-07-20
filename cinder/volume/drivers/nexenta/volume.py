@@ -284,17 +284,17 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                      {'target': target_name, 'exc': exc})
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info for Nexenta device."""
+    def _update_volume_stats(self):
+        """Retrieve stats info for Nexenta device."""
 
         # NOTE(jdg): Aimon Bustardo was kind enough to point out the
         # info he had regarding Nexenta Capabilities, ideally it would
@@ -303,7 +303,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         KB = 1024
         MB = KB ** 2
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
         backend_name = self.__class__.__name__
         if self.configuration:

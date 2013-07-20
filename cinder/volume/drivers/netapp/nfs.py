@@ -182,9 +182,9 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
         return {'provider_location': share}
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
-        super(NetAppNFSDriver, self)._update_volume_status()
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+        super(NetAppNFSDriver, self)._update_volume_stats()
 
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
@@ -344,9 +344,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             'destination-path': dest_path})
         self._invoke_successfully(clone_create, vserver)
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
-        super(NetAppDirectCmodeNfsDriver, self)._update_volume_status()
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+        super(NetAppDirectCmodeNfsDriver, self)._update_volume_stats()
         netapp_backend = 'NetApp_NFS_cluster_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._stats["volume_backend_name"] = (backend_name or
@@ -476,9 +476,9 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
                 time.sleep(5)
             retry = retry - 1
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
-        super(NetAppDirect7modeNfsDriver, self)._update_volume_status()
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+        super(NetAppDirect7modeNfsDriver, self)._update_volume_stats()
         netapp_backend = 'NetApp_NFS_7mode_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._stats["volume_backend_name"] = (backend_name or

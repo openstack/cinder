@@ -1613,7 +1613,7 @@ class ISCSITestCase(DriverTestCase):
 
         self.volume.driver.set_execute(_emulate_vgs_execute)
 
-        self.volume.driver._update_volume_status()
+        self.volume.driver._update_volume_stats()
 
         stats = self.volume.driver._stats
 

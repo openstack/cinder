@@ -537,17 +537,17 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         self._clone_lun(src_vol.name, new_name, 'true')
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
         raise NotImplementedError()
 
 
@@ -829,10 +829,10 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         else:
             self.client.set_vserver(None)
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
         netapp_backend = 'NetApp_iSCSI_Cluster_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
@@ -1112,10 +1112,10 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
             'is-space-reservation-enabled')
         return meta_dict
 
-    def _update_volume_status(self):
+    def _update_volume_stats(self):
         """Retrieve status info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
         netapp_backend = 'NetApp_iSCSI_7mode_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
