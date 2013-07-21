@@ -100,6 +100,30 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
             }
         }
 
+    def test_get_initiator(self):
+        def initiator_no_file(*args, **kwargs):
+            raise exception.ProcessExecutionError('No file')
+
+        def initiator_get_text(*arg, **kwargs):
+            text = ('## DO NOT EDIT OR REMOVE THIS FILE!\n'
+                    '## If you remove this file, the iSCSI daemon '
+                    'will not start.\n'
+                    '## If you change the InitiatorName, existing '
+                    'access control lists\n'
+                    '## may reject this initiator.  The InitiatorName must '
+                    'be unique\n'
+                    '## for each iSCSI initiator.  Do NOT duplicate iSCSI '
+                    'InitiatorNames.\n'
+                    'InitiatorName=iqn.1234-56.foo.bar:01:23456789abc')
+            return text, None
+
+        self.stubs.Set(self.connector, '_execute', initiator_no_file)
+        initiator = self.connector.get_initiator()
+        self.assertEquals(initiator, None)
+        self.stubs.Set(self.connector, '_execute', initiator_get_text)
+        initiator = self.connector.get_initiator()
+        self.assertEquals(initiator, 'iqn.1234-56.foo.bar:01:23456789abc')
+
     @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
                                'Test requires /dev/disk/by-path')
     def test_connect_volume(self):

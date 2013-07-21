@@ -59,8 +59,9 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
                 LOG.warn(_("systool is not installed"))
             return []
 
+        # No FC HBAs were found
         if out is None:
-            raise RuntimeError(_("Cannot find any Fibre Channel HBAs"))
+            return []
 
         lines = out.split('\n')
         # ignore the first 2 lines
@@ -91,6 +92,9 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
         # Note(walter-boring) modern linux kernels contain the FC HBA's in /sys
         # and are obtainable via the systool app
         hbas = self.get_fc_hbas()
+        if not hbas:
+            return []
+
         hbas_info = []
         for hba in hbas:
             wwpn = hba['port_name'].replace('0x', '')
@@ -125,6 +129,8 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
         # Note(walter-boring) modern linux kernels contain the FC HBA's in /sys
         # and are obtainable via the systool app
         hbas = self.get_fc_hbas()
+        if not hbas:
+            return []
 
         wwnns = []
         if hbas:

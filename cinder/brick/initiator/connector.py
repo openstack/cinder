@@ -46,8 +46,12 @@ def get_connector_properties():
     props = {}
     props['ip'] = CONF.my_ip
     props['host'] = socket.gethostname()
-    props['initiator'] = iscsi.get_initiator()
-    props['wwpns'] = fc.get_fc_wwpns()
+    initiator = iscsi.get_initiator()
+    if initiator:
+        props['initiator'] = initiator
+    wwpns = fc.get_fc_wwpns()
+    if wwpns:
+        props['wwpns'] = wwpns
 
     return props
 
@@ -253,7 +257,7 @@ class ISCSIConnector(InitiatorConnector):
                 if l.startswith('InitiatorName='):
                     return l[l.index('=') + 1:].strip()
         except exception.ProcessExecutionError:
-            raise exception.FileNotFound(file_path=file_path)
+            return None
 
     def _run_iscsiadm(self, connection_properties, iscsi_command, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', 0)
