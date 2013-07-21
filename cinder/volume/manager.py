@@ -296,8 +296,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                             filter_properties)
 
                 if rescheduled:
-                    # log the original build error
-                    self._log_original_error(exc_info)
+                    LOG.error(_('Unexpected Error: '), exc_info=exc_info)
                     msg = (_('Creating %(volume_id)s %(snapshot_id)s '
                              '%(image_id)s was rescheduled due to '
                              '%(reason)s')
@@ -377,11 +376,6 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self._notify_about_volume_usage(context, volume_ref, "create.end")
         return volume_ref['id']
-
-    def _log_original_error(self, exc_info):
-        type_, value, tb = exc_info
-        LOG.error(_('Error: %s') %
-                  traceback.format_exception(type_, value, tb))
 
     def _reschedule_or_error(self, context, volume_id, exc_info,
                              snapshot_id, image_id, request_spec,
