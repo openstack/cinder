@@ -384,3 +384,6 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                     current_smallest_count = count
 
         return current_least_used_nsp
+
+    def extend_volume(self, volume, new_size):
+        self.common.extend_volume(volume, new_size)
