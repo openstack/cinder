@@ -17,11 +17,10 @@
 # collisions with use of 'from cinder.backup import <foo>' elsewhere.
 
 
-from oslo.config import cfg
-
+from cinder.common import config
 import cinder.openstack.common.importutils
 
 
-CONF = cfg.CONF
+CONF = config.CONF
 
 API = cinder.openstack.common.importutils.import_class(CONF.backup_api_class)

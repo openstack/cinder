@@ -20,11 +20,10 @@
 # collisions with use of 'from cinder.volume import <foo>' elsewhere.
 
 
-from oslo.config import cfg
-
+from cinder.common import config
 import cinder.openstack.common.importutils as import_utils
 
 
-CONF = cfg.CONF
+CONF = config.CONF
 
 API = import_utils.import_class(CONF.volume_api_class)
