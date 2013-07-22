@@ -16,7 +16,7 @@
 
 class mock_rados(object):
 
-    class mock_ioctx(object):
+    class ioctx(object):
         def __init__(self, *args, **kwargs):
             pass
 
@@ -32,7 +32,7 @@ class mock_rados(object):
             pass
 
         def open_ioctx(self, *args, **kwargs):
-            return mock_rados.mock_ioctx()
+            return mock_rados.ioctx()
 
         def shutdown(self, *args, **kwargs):
             pass
@@ -44,22 +44,42 @@ class mock_rados(object):
 
 class mock_rbd(object):
 
+    class ImageBusy(Exception):
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class ImageNotFound(Exception):
+        def __init__(self, *args, **kwargs):
+            pass
+
     class Image(object):
 
         def __init__(self, *args, **kwargs):
             pass
 
-        def read(self, *args, **kwargs):
+        def create_snap(self, *args, **kwargs):
             pass
+
+        def remove_snap(self, *args, **kwargs):
+            pass
+
+        def read(self, *args, **kwargs):
+            raise NotImplementedError()
 
         def write(self, *args, **kwargs):
-            pass
+            raise NotImplementedError()
 
         def resize(self, *args, **kwargs):
+            raise NotImplementedError()
+
+        def close(self):
             pass
 
-        def close(self, *args, **kwargs):
-            pass
+        def list_snaps(self):
+            raise NotImplementedError()
+
+        def size(self):
+            raise NotImplementedError()
 
     class RBD(object):
 
@@ -72,6 +92,5 @@ class mock_rbd(object):
         def remove(self, *args, **kwargs):
             pass
 
-    class ImageNotFound(Exception):
-        def __init__(self, *args, **kwargs):
-            pass
+        def list(self, *args, **kwargs):
+            raise NotImplementedError()

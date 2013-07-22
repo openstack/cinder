@@ -24,17 +24,15 @@ import os
 import tempfile
 import urllib
 
-from oslo.config import cfg
-
+import cinder.backup.drivers.ceph as ceph_backup
 from cinder import exception
 from cinder.image import image_utils
-from cinder import units
-from cinder import utils
-
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder import units
+from cinder import utils
 from cinder.volume import driver
-
+from oslo.config import cfg
 
 try:
     import rados
@@ -85,28 +83,53 @@ def ascii_str(string):
     return str(string)
 
 
+class RBDImageMetadata(object):
+    """RBD image metadata to be used with RBDImageIOWrapper"""
+    def __init__(self, image, pool, user, conf):
+        self.image = image
+        self.pool = str(pool)
+        self.user = str(user)
+        self.conf = str(conf)
+
+
 class RBDImageIOWrapper(io.RawIOBase):
     """
     Wrapper to provide standard Python IO interface to RBD images so that they
     can be treated as files.
     """
 
-    def __init__(self, rbd_image):
+    def __init__(self, rbd_meta):
         super(RBDImageIOWrapper, self).__init__()
-        self.rbd_image = rbd_image
+        self._rbd_meta = rbd_meta
         self._offset = 0
 
     def _inc_offset(self, length):
         self._offset += length
 
+    @property
+    def rbd_image(self):
+        return self._rbd_meta.image
+
+    @property
+    def rbd_user(self):
+        return self._rbd_meta.user
+
+    @property
+    def rbd_pool(self):
+        return self._rbd_meta.pool
+
+    @property
+    def rbd_conf(self):
+        return self._rbd_meta.conf
+
     def read(self, length=None):
         offset = self._offset
-        total = self.rbd_image.size()
+        total = self._rbd_meta.image.size()
 
         # (dosaboy): posix files do not barf if you read beyond their length
         # (they just return nothing) but rbd images do so we need to return
         # empty string if we are at the end of the image
-        if (offset == total):
+        if (offset >= total):
             return ''
 
         if length is None:
@@ -116,10 +139,10 @@ class RBDImageIOWrapper(io.RawIOBase):
             length = total - offset
 
         self._inc_offset(length)
-        return self.rbd_image.read(int(offset), int(length))
+        return self._rbd_meta.image.read(int(offset), int(length))
 
     def write(self, data):
-        self.rbd_image.write(data, self._offset)
+        self._rbd_meta.image.write(data, self._offset)
         self._inc_offset(len(data))
 
     def seekable(self):
@@ -147,10 +170,9 @@ class RBDImageIOWrapper(io.RawIOBase):
 
     def flush(self):
         try:
-            self.rbd_image.flush()
-        except AttributeError as exc:
-            LOG.warning("flush() not supported in this version of librbd - "
-                        "%s" % (str(rbd.RBD().version())))
+            self._rbd_meta.image.flush()
+        except AttributeError:
+            LOG.warning(_("flush() not supported in this version of librbd"))
 
     def fileno(self):
         """
@@ -274,6 +296,14 @@ class RBDDriver(driver.VolumeDriver):
         ioctx.close()
         client.shutdown()
 
+    def _get_backup_snaps(self, rbd_image):
+        """Get list of any backup snapshots that exist on this volume.
+
+        There should only ever be one but accept all since they need to be
+        deleted before the volume can be.
+        """
+        return ceph_backup.CephBackupDriver.get_backup_snaps(rbd_image)
+
     def _get_mon_addrs(self):
         args = ['ceph', 'mon', 'dump', '--format=json'] + self._ceph_args()
         out, _ = self._execute(*args)
@@ -386,6 +416,16 @@ class RBDDriver(driver.VolumeDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         with RADOSClient(self) as client:
+            # Ensure any backup snapshots are deleted
+            rbd_image = self.rbd.Image(client.ioctx, str(volume['name']))
+            try:
+                backup_snaps = self._get_backup_snaps(rbd_image)
+                if backup_snaps:
+                    for snap in backup_snaps:
+                        rbd_image.remove_snap(snap['name'])
+            finally:
+                rbd_image.close()
+
             try:
                 self.rbd.RBD().remove(client.ioctx, str(volume['name']))
             except self.rbd.ImageHasSnapshots:
@@ -540,8 +580,11 @@ class RBDDriver(driver.VolumeDriver):
         pool = self.configuration.rbd_pool
         volname = volume['name']
 
-        with RBDVolumeProxy(self, volname, pool, read_only=True) as rbd_image:
-            rbd_fd = RBDImageIOWrapper(rbd_image)
+        with RBDVolumeProxy(self, volname, pool) as rbd_image:
+            rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
+                                        self.configuration.rbd_user,
+                                        self.configuration.rbd_ceph_conf)
+            rbd_fd = RBDImageIOWrapper(rbd_meta)
             backup_service.backup(backup, rbd_fd)
 
         LOG.debug("volume backup complete.")
@@ -551,7 +594,10 @@ class RBDDriver(driver.VolumeDriver):
         pool = self.configuration.rbd_pool
 
         with RBDVolumeProxy(self, volume['name'], pool) as rbd_image:
-            rbd_fd = RBDImageIOWrapper(rbd_image)
+            rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
+                                        self.configuration.rbd_user,
+                                        self.configuration.rbd_ceph_conf)
+            rbd_fd = RBDImageIOWrapper(rbd_meta)
             backup_service.restore(backup, volume['id'], rbd_fd)
 
         LOG.debug("volume restore complete.")

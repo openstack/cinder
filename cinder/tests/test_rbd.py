@@ -127,9 +127,13 @@ class RBDTestCase(test.TestCase):
         volume = dict(name=name)
         mock_client = self.mox.CreateMockAnything()
         self.mox.StubOutWithMock(driver, 'RADOSClient')
+        self.stubs.Set(self.driver, '_get_backup_snaps', lambda *args: None)
 
         driver.RADOSClient(self.driver).AndReturn(mock_client)
         mock_client.__enter__().AndReturn(mock_client)
+        mock_image = self.mox.CreateMockAnything()
+        self.rbd.Image(mox.IgnoreArg(), str(name)).AndReturn(mock_image)
+        mock_image.close()
         mock_rbd = self.mox.CreateMockAnything()
         self.rbd.RBD().AndReturn(mock_rbd)
         mock_rbd.remove(mox.IgnoreArg(), str(name))
