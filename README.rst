@@ -16,6 +16,4 @@ To taunt it with its weaknesses: use http://bugs.launchpad.net/cinder
 
 To watch it: http://jenkins.openstack.org
 
-To hack at it: read HACKING
-
-To cry over its pylint problems: http://jenkins.openstack.org/job/cinder-pylint/violations
+To hack at it: read HACKING.rst
