@@ -448,14 +448,8 @@ class GPFSDriver(driver.VolumeDriver):
 
             data = image_utils.qemu_img_info(tmp)
             fmt = data.file_format
-            if fmt is None:
-                msg = _("'qemu-img info' parsing failed.")
-                LOG.error(msg)
-                raise exception.ImageUnacceptable(
-                    reason=msg,
-                    image_id=image_id)
-
             backing_file = data.backing_file
+
             if backing_file is not None:
                 msg = (_("fmt = %(fmt)s backed by: %(backing_file)s") %
                        {'fmt': fmt, 'backing_file': backing_file})
@@ -464,16 +458,25 @@ class GPFSDriver(driver.VolumeDriver):
                     image_id=image_id,
                     reason=msg)
 
-            LOG.debug("%s was %s, converting to raw" % (image_id, fmt))
-            image_utils.convert_image(tmp, dest, 'raw')
+            if fmt is None:
+                msg = _("'qemu-img info' parsing failed.")
+                LOG.error(msg)
+                raise exception.ImageUnacceptable(
+                    reason=msg,
+                    image_id=image_id)
+            elif fmt == 'raw':  # already in raw format - just rename to dest
+                self._execute('mv', tmp, dest, run_as_root=True)
+            else:  # conversion to raw format required
+                LOG.debug("%s was %s, converting to raw" % (image_id, fmt))
+                image_utils.convert_image(tmp, dest, 'raw')
+                os.unlink(tmp)
 
             data = image_utils.qemu_img_info(dest)
             if data.file_format != "raw":
-                msg = (_("Converted to raw, but format is now %s") %
+                msg = (_("Expected image to be in raw format, but is %s") %
                        data.file_format)
                 LOG.error(msg)
                 raise exception.ImageUnacceptable(
                     image_id=image_id,
                     reason=msg)
-            os.unlink(tmp)
             return {'size': math.ceil(data.virtual_size / 1024.0 ** 3)}
