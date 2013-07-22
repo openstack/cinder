@@ -30,7 +30,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
-from cinder.volume.driver import ISCSIDriver
+from cinder.volume import driver
 
 LOG = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ CONF = cfg.CONF
 CONF.register_opts(san_opts)
 
 
-class SanISCSIDriver(ISCSIDriver):
+class SanDriver(driver.VolumeDriver):
     """Base class for SAN-style storage volumes
 
     A SAN-style storage value is 'different' because the volume controller
@@ -85,16 +85,14 @@ class SanISCSIDriver(ISCSIDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        super(SanISCSIDriver, self).__init__(*args, **kwargs)
+        execute = kwargs.pop('execute', self.san_execute)
+        super(SanDriver, self).__init__(execute=execute,
+                                        *args, **kwargs)
         self.configuration.append_config_values(san_opts)
         self.run_local = self.configuration.san_is_local
         self.sshpool = None
 
-    def _build_iscsi_target_name(self, volume):
-        return "%s%s" % (self.configuration.iscsi_target_prefix,
-                         volume['name'])
-
-    def _execute(self, *cmd, **kwargs):
+    def san_execute(self, *cmd, **kwargs):
         if self.run_local:
             return utils.execute(*cmd, **kwargs)
         else:
@@ -172,6 +170,11 @@ class SanISCSIDriver(ISCSIDriver):
         if not self.configuration.san_ip:
             raise exception.InvalidInput(reason=_("san_ip must be set"))
 
-    def create_cloned_volume(self, volume, src_vref):
-        """Create a cloen of the specified volume."""
-        raise NotImplementedError()
+
+class SanISCSIDriver(SanDriver, driver.ISCSIDriver):
+    def __init__(self, *args, **kwargs):
+        super(SanISCSIDriver, self).__init__(*args, **kwargs)
+
+    def _build_iscsi_target_name(self, volume):
+        return "%s%s" % (self.configuration.iscsi_target_prefix,
+                         volume['name'])

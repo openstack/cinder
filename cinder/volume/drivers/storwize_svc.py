@@ -105,7 +105,7 @@ CONF = cfg.CONF
 CONF.register_opts(storwize_svc_opts)
 
 
-class StorwizeSVCDriver(san.SanISCSIDriver):
+class StorwizeSVCDriver(san.SanDriver):
     """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
 
     Version history:
@@ -1325,24 +1325,6 @@ class StorwizeSVCDriver(san.SanISCSIDriver):
                           opts=opts,
                           src_id=src_volume['id'],
                           from_vol=True)
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        opts = self._get_vdisk_params(volume['volume_type_id'])
-        if opts['protocol'] == 'iSCSI':
-            # Implemented in base iSCSI class
-            return super(StorwizeSVCDriver, self).copy_image_to_volume(
-                context, volume, image_service, image_id)
-        else:
-            raise NotImplementedError()
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        opts = self._get_vdisk_params(volume['volume_type_id'])
-        if opts['protocol'] == 'iSCSI':
-            # Implemented in base iSCSI class
-            return super(StorwizeSVCDriver, self).copy_volume_to_image(
-                context, volume, image_service, image_meta)
-        else:
-            raise NotImplementedError()
 
     def extend_volume(self, volume, new_size):
         LOG.debug(_('enter: extend_volume: volume %s') % volume['id'])

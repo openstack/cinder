@@ -57,12 +57,11 @@ class SolarisISCSIDriver(SanISCSIDriver):
     Also make sure you can login using san_login & san_password/san_private_key
     """
     def __init__(self, *cmd, **kwargs):
-        super(SolarisISCSIDriver, self).__init__(*cmd,
-                                                 execute=self._execute,
-                                                 **kwargs)
+        super(SolarisISCSIDriver, self).__init__(execute=self.solaris_execute,
+                                                 *cmd, **kwargs)
         self.configuration.append_config_values(solaris_opts)
 
-    def _execute(self, *cmd, **kwargs):
+    def solaris_execute(self, *cmd, **kwargs):
         new_cmd = ['pfexec']
         new_cmd.extend(cmd)
         return super(SolarisISCSIDriver, self)._execute(*new_cmd,
