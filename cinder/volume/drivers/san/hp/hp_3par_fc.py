@@ -115,8 +115,9 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         TODO: support using the size from the user.
         """
         self.common.client_login()
-        self.common.create_volume_from_snapshot(volume, snapshot)
+        metadata = self.common.create_volume_from_snapshot(volume, snapshot)
         self.common.client_logout()
+        return {'metadata': metadata}
 
     @utils.synchronized('3par', external=True)
     def create_snapshot(self, snapshot):
