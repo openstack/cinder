@@ -72,8 +72,7 @@ VERSION = '1.1'
 
 
 def ascii_str(string):
-    """
-    Convert a string to ascii, or return None if the input is None.
+    """Convert a string to ascii, or return None if the input is None.
 
     This is useful where a parameter may be None by default, or a
     string. librbd only accepts ascii, hence the need for conversion.
@@ -84,7 +83,7 @@ def ascii_str(string):
 
 
 class RBDImageMetadata(object):
-    """RBD image metadata to be used with RBDImageIOWrapper"""
+    """RBD image metadata to be used with RBDImageIOWrapper."""
     def __init__(self, image, pool, user, conf):
         self.image = image
         self.pool = str(pool)
@@ -93,9 +92,12 @@ class RBDImageMetadata(object):
 
 
 class RBDImageIOWrapper(io.RawIOBase):
-    """
-    Wrapper to provide standard Python IO interface to RBD images so that they
-    can be treated as files.
+    """Wrapper to provide standard Python IO interface to RBD images.
+
+    This enables librbd.Image objects to be treated as standard Python IO
+    objects.
+
+    Calling unimplemented interfaces will raise IOError.
     """
 
     def __init__(self, rbd_meta):
@@ -126,9 +128,9 @@ class RBDImageIOWrapper(io.RawIOBase):
         offset = self._offset
         total = self._rbd_meta.image.size()
 
-        # (dosaboy): posix files do not barf if you read beyond their length
-        # (they just return nothing) but rbd images do so we need to return
-        # empty string if we are at the end of the image
+        # NOTE(dosaboy): posix files do not barf if you read beyond their
+        # length (they just return nothing) but rbd images do so we need to
+        # return empty string if we have reached the end of the image.
         if (offset >= total):
             return ''
 
@@ -175,10 +177,10 @@ class RBDImageIOWrapper(io.RawIOBase):
             LOG.warning(_("flush() not supported in this version of librbd"))
 
     def fileno(self):
-        """
-        Since rbd image does not have a fileno we raise an IOError (recommended
-        for IOBase class implementations - see
-        http://docs.python.org/2/library/io.html#io.IOBase)
+        """RBD does not have support for fileno() so we raise IOError.
+
+        Raising IOError is recommended way to notify caller that interface is
+        not supported - see http://docs.python.org/2/library/io.html#io.IOBase
         """
         raise IOError("fileno() not supported by RBD()")
 
@@ -191,8 +193,7 @@ class RBDImageIOWrapper(io.RawIOBase):
 
 
 class RBDVolumeProxy(object):
-    """
-    Context manager for dealing with an existing rbd volume.
+    """Context manager for dealing with an existing rbd volume.
 
     This handles connecting to rados and opening an ioctx automatically,
     and otherwise acts like a librbd Image object.
@@ -229,9 +230,7 @@ class RBDVolumeProxy(object):
 
 
 class RADOSClient(object):
-    """
-    Context manager to simplify error handling for connecting to ceph
-    """
+    """Context manager to simplify error handling for connecting to ceph."""
     def __init__(self, driver, pool=None):
         self.driver = driver
         self.cluster, self.ioctx = driver._connect_to_rados(pool)
@@ -247,7 +246,7 @@ CONF.register_opts(rbd_opts)
 
 
 class RBDDriver(driver.VolumeDriver):
-    """Implements RADOS block device (RBD) volume commands"""
+    """Implements RADOS block device (RBD) volume commands."""
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(rbd_opts)
@@ -257,7 +256,7 @@ class RBDDriver(driver.VolumeDriver):
         self.rbd = kwargs.get('rbd', rbd)
 
     def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met"""
+        """Returns an error if prerequisites aren't met."""
         if rados is None:
             msg = _('rados and rbd python libraries not found')
             raise exception.VolumeBackendAPIException(data=msg)
@@ -342,8 +341,9 @@ class RBDDriver(driver.VolumeDriver):
         self._stats = stats
 
     def get_volume_stats(self, refresh=False):
-        """Return the current state of the volume service. If 'refresh' is
-           True, run the update first.
+        """Return the current state of the volume service.
+
+        If 'refresh' is True, run the update first.
         """
         if refresh:
             self._update_volume_stats()
@@ -353,7 +353,7 @@ class RBDDriver(driver.VolumeDriver):
         return hasattr(self.rbd, 'RBD_FEATURE_LAYERING')
 
     def create_cloned_volume(self, volume, src_vref):
-        """Clone a logical volume"""
+        """Clone a logical volume."""
         with RBDVolumeProxy(self, src_vref['name'], read_only=True) as vol:
             vol.copy(vol.ioctx, str(volume['name']))
 
@@ -432,7 +432,7 @@ class RBDDriver(driver.VolumeDriver):
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
 
     def create_snapshot(self, snapshot):
-        """Creates an rbd snapshot"""
+        """Creates an rbd snapshot."""
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
             snap = str(snapshot['name'])
             volume.create_snap(snap)
@@ -440,7 +440,7 @@ class RBDDriver(driver.VolumeDriver):
                 volume.protect_snap(snap)
 
     def delete_snapshot(self, snapshot):
-        """Deletes an rbd snapshot"""
+        """Deletes an rbd snapshot."""
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
             snap = str(snapshot['name'])
             if self._supports_layering():
@@ -455,11 +455,11 @@ class RBDDriver(driver.VolumeDriver):
         pass
 
     def create_export(self, context, volume):
-        """Exports the volume"""
+        """Exports the volume."""
         pass
 
     def remove_export(self, context, volume):
-        """Removes an export for a logical volume"""
+        """Removes an export for a logical volume."""
         pass
 
     def initialize_connection(self, volume, connector):
