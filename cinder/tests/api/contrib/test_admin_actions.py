@@ -16,6 +16,7 @@ import webob
 
 from oslo.config import cfg
 
+from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -45,6 +46,7 @@ class AdminActionsTest(test.TestCase):
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
         self.flags(lock_path=self.tempdir)
         self.volume_api = volume_api.API()
+        self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
@@ -432,7 +434,6 @@ class AdminActionsTest(test.TestCase):
 
     def test_attach_attaching_volume_with_different_instance(self):
         """Test that attaching volume reserved for another instance fails."""
-        # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',

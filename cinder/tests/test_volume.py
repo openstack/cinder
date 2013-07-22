@@ -22,7 +22,6 @@ Tests for Volume Code.
 
 import datetime
 import os
-import re
 import shutil
 import socket
 import tempfile
@@ -30,9 +29,8 @@ import tempfile
 import mox
 from oslo.config import cfg
 
-from cinder.brick.initiator import connector as brick_conn
 from cinder.brick.iscsi import iscsi
-from cinder.brick.iser import iser
+from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -45,6 +43,7 @@ from cinder.openstack.common import rpc
 import cinder.policy
 from cinder import quota
 from cinder import test
+from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.tests import conf_fixture
 from cinder.tests.image import fake as fake_image
 from cinder.tests.keymgr import fake as fake_keymgr
@@ -78,8 +77,12 @@ class VolumeTestCase(test.TestCase):
         self.volume = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_all_volume_groups',
+                       self.fake_get_all_volume_groups)
         fake_image.stub_out_image_service(self.stubs)
         test_notifier.NOTIFICATIONS = []
+        self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
 
     def tearDown(self):
         try:
@@ -91,6 +94,13 @@ class VolumeTestCase(test.TestCase):
 
     def fake_get_target(obj, iqn):
         return 1
+
+    def fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
+        return [{'name': 'cinder-volumes',
+                 'size': '5.00',
+                 'available': '2.50',
+                 'lv_count': '2',
+                 'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
 
     @staticmethod
     def _create_volume(size=0, snapshot_id=None, image_id=None,
@@ -707,7 +717,6 @@ class VolumeTestCase(test.TestCase):
         """Test snapshot can be created with metadata and deleted."""
         test_meta = {'fake_key': 'fake_value'}
         volume = self._create_volume(0, None)
-        volume_id = volume['id']
         snapshot = self._create_snapshot(volume['id'], metadata=test_meta)
         snapshot_id = snapshot['id']
 
@@ -877,6 +886,12 @@ class VolumeTestCase(test.TestCase):
 
     def test_delete_busy_snapshot(self):
         """Test snapshot can be created and deleted."""
+
+        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                             False,
+                                             None,
+                                             'default')
+
         volume = self._create_volume()
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
@@ -884,6 +899,7 @@ class VolumeTestCase(test.TestCase):
         self.volume.create_snapshot(self.context, volume_id, snapshot_id)
 
         self.mox.StubOutWithMock(self.volume.driver, 'delete_snapshot')
+
         self.volume.driver.delete_snapshot(
             mox.IgnoreArg()).AndRaise(
                 exception.SnapshotIsBusy(snapshot_name='fake'))
@@ -1099,8 +1115,6 @@ class VolumeTestCase(test.TestCase):
                         'disk_format': 'raw',
                         'container_format': 'bare'}
 
-        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
-
         try:
             volume_id = None
             volume_api = cinder.volume.api.API(
@@ -1125,8 +1139,6 @@ class VolumeTestCase(test.TestCase):
                         'disk_format': 'raw',
                         'container_format': 'bare'}
 
-        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
-
         volume_api = cinder.volume.api.API(image_service=_FakeImageService())
 
         self.assertRaises(exception.InvalidInput,
@@ -1145,8 +1157,6 @@ class VolumeTestCase(test.TestCase):
                         'disk_format': 'raw',
                         'container_format': 'bare',
                         'min_disk': 5}
-
-        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
 
         volume_api = cinder.volume.api.API(image_service=_FakeImageService())
 
@@ -1317,8 +1327,6 @@ class VolumeTestCase(test.TestCase):
         ctx = context.get_admin_context(read_deleted="yes")
 
         # Find all all snapshots valid within a timeframe window.
-        vol = db.volume_create(self.context, {'id': 1})
-
         # Not in window
         db.snapshot_create(
             ctx,
@@ -1699,6 +1707,7 @@ class DriverTestCase(test.TestCase):
         self.context = context.get_admin_context()
         self.output = ""
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
+        self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
 
         def _fake_execute(_command, *_args, **_kwargs):
             """Fake _execute."""
@@ -1736,14 +1745,20 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                        lambda x: False)
         self.stubs.Set(self.volume.driver, '_delete_volume',
                        lambda x: False)
-        # Want DriverTestCase._fake_execute to return 'o' so that
-        # volume.driver.delete_volume() raises the VolumeIsBusy exception.
-        self.output = 'o'
+
+        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                             False,
+                                             None,
+                                             'default')
+
+        self.stubs.Set(self.volume.driver.vg, 'lv_has_snapshot',
+                       lambda x: True)
         self.assertRaises(exception.VolumeIsBusy,
                           self.volume.driver.delete_volume,
                           {'name': 'test1', 'size': 1024})
-        # when DriverTestCase._fake_execute returns something other than
-        # 'o' volume.driver.delete_volume() does not raise an exception.
+
+        self.stubs.Set(self.volume.driver.vg, 'lv_has_snapshot',
+                       lambda x: False)
         self.output = 'x'
         self.volume.driver.delete_volume({'name': 'test1', 'size': 1024})
 
@@ -1784,7 +1799,8 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
 
     def test_lvm_migrate_volume_proceed(self):
         hostname = socket.gethostname()
-        capabilities = {'location_info': 'LVMVolumeDriver:%s:bar' % hostname}
+        capabilities = {'location_info': 'LVMVolumeDriver:%s:'
+                        'cinder-volumes:default:0' % hostname}
         host = {'capabilities': capabilities}
         vol = {'name': 'test', 'id': 1, 'size': 1}
         self.stubs.Set(self.volume.driver, 'remove_export',
@@ -1797,6 +1813,11 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                        lambda x: None)
         self.stubs.Set(self.volume.driver, '_create_export',
                        lambda x, y, vg='vg': None)
+
+        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                             False,
+                                             None,
+                                             'default')
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
         self.assertEqual(moved, True)
@@ -1884,7 +1905,18 @@ class ISCSITestCase(DriverTestCase):
             out += " test2-volumes  5.52  0.52"
             return out, None
 
+        def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
+            return [{'name': 'cinder-volumes',
+                     'size': '5.52',
+                     'available': '0.52',
+                     'lv_count': '2',
+                     'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
+
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_all_volume_groups',
+                       _fake_get_all_volume_groups)
         self.volume.driver.set_execute(_emulate_vgs_execute)
+        self.volume.driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
 
         self.volume.driver._update_volume_stats()
 
@@ -1955,6 +1987,7 @@ class VolumePolicyTestCase(test.TestCase):
         cinder.policy.init()
 
         self.context = context.get_admin_context()
+        self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
 
     def tearDown(self):
         super(VolumePolicyTestCase, self).tearDown()

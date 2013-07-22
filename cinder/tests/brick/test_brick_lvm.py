@@ -44,6 +44,7 @@ class BrickLvmTestCase(test.TestCase):
         self.stubs.Set(processutils, 'execute',
                        self.fake_execute)
         self.vg = brick.LVM(self.configuration.volume_group_name,
+                            'sudo',
                             False, None,
                             'default',
                             self.fake_execute)
@@ -117,7 +118,7 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(self.vg.get_volume('fake-1')['name'], 'fake-1')
 
     def test_get_all_physical_volumes(self):
-        pvs = self.vg.get_all_physical_volumes()
+        pvs = self.vg.get_all_physical_volumes('sudo')
         self.assertEqual(len(pvs), 3)
 
     def test_get_physical_volumes(self):
@@ -125,8 +126,9 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(len(pvs), 1)
 
     def test_get_volume_groups(self):
-        self.assertEqual(len(self.vg.get_all_volume_groups()), 3)
-        self.assertEqual(len(self.vg.get_all_volume_groups('fake-volumes')), 1)
+        self.assertEqual(len(self.vg.get_all_volume_groups('sudo')), 3)
+        self.assertEqual(len(self.vg.get_all_volume_groups('sudo',
+                                                           'fake-volumes')), 1)
 
     def test_thin_support(self):
         # lvm.supports_thin() is a static method and doesn't
@@ -134,13 +136,13 @@ class BrickLvmTestCase(test.TestCase):
         # so we need to stub proessutils.execute appropriately
 
         self.stubs.Set(processutils, 'execute', self.fake_execute)
-        self.assertTrue(self.vg.supports_thin_provisioning())
+        self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
 
         self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
-        self.assertTrue(self.vg.supports_thin_provisioning())
+        self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
 
         self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
-        self.assertFalse(self.vg.supports_thin_provisioning())
+        self.assertFalse(self.vg.supports_thin_provisioning('sudo'))
 
     def test_lv_has_snapshot(self):
         self.assertTrue(self.vg.lv_has_snapshot('fake-volumes'))

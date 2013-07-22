@@ -23,6 +23,7 @@ import stat
 
 from oslo.config import cfg
 
+from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
@@ -192,3 +193,26 @@ def copy_volume(srcstr, deststr, size_in_m, sync=False,
             'count=%d' % count,
             'bs=%s' % blocksize,
             *extra_flags, run_as_root=True)
+
+
+def supports_thin_provisioning():
+    return brick_lvm.LVM.supports_thin_provisioning(
+        'sudo cinder-rootwrap %s' % CONF.rootwrap_config)
+
+
+def get_all_volumes(vg_name=None, no_suffix=True):
+    return brick_lvm.LVM.get_all_volumes(
+        'sudo cinder-rootwrap %s' % CONF.rootwrap_config,
+        vg_name, no_suffix)
+
+
+def get_all_physical_volumes(vg_name=None, no_suffix=True):
+    return brick_lvm.LVM.get_all_physical_volumes(
+        'sudo cinder-rootwrap %s' % CONF.rootwrap_config,
+        vg_name, no_suffix)
+
+
+def get_all_volume_groups(vg_name=None, no_suffix=True):
+    return brick_lvm.LVM.get_all_volume_groups(
+        'sudo cinder-rootwrap %s' % CONF.rootwrap_config,
+        vg_name, no_suffix)
