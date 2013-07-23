@@ -371,7 +371,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_update(context,
                               volume_ref['id'],
                               {'status': volume_ref['status'],
-                              'launched_at': now})
+                               'launched_at': now})
         LOG.info(_("volume %s: created successfully"), volume_ref['name'])
         self._reset_stats()
 
@@ -609,10 +609,16 @@ class VolumeManager(manager.SchedulerDependentManager):
             elif volume['status'] != "available":
                 msg = _("status must be available")
                 raise exception.InvalidVolume(reason=msg)
+
+            # TODO(jdg): attach_time column is currently varchar
+            # we should update this to a date-time object
+            # also consider adding detach_time?
+            now = timeutils.strtime()
             self.db.volume_update(context, volume_id,
                                   {"instance_uuid": instance_uuid,
                                    "attached_host": host_name,
-                                   "status": "attaching"})
+                                   "status": "attaching",
+                                   "attach_time": now})
 
             if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
                 self.db.volume_update(context,
@@ -623,9 +629,10 @@ class VolumeManager(manager.SchedulerDependentManager):
             host_name_sanitized = utils.sanitize_hostname(
                 host_name) if host_name else None
 
+            volume = self.db.volume_get(context, volume_id)
             try:
                 self.driver.attach_volume(context,
-                                          volume_id,
+                                          volume,
                                           instance_uuid,
                                           host_name_sanitized,
                                           mountpoint)
@@ -646,8 +653,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Updates db to show volume is detached"""
         # TODO(vish): refactor this into a more general "unreserve"
         # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
+
+        volume = self.db.volume_get(context, volume_id)
         try:
-            self.driver.detach_volume(context, volume_id)
+            self.driver.detach_volume(context, volume)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context,
@@ -657,10 +666,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_detached(context.elevated(), volume_id)
 
         # Check for https://bugs.launchpad.net/cinder/+bug/1065702
-        volume_ref = self.db.volume_get(context, volume_id)
-        if (volume_ref['provider_location'] and
-                volume_ref['name'] not in volume_ref['provider_location']):
-            self.driver.ensure_export(context, volume_ref)
+        volume = self.db.volume_get(context, volume_id)
+        if (volume['provider_location'] and
+                volume['name'] not in volume['provider_location']):
+            self.driver.ensure_export(context, volume)
 
     def _copy_image_to_volume(self, context, volume, image_service, image_id):
         """Downloads Glance image to the specified volume."""

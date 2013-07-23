@@ -167,12 +167,12 @@ class VolumeDriver(object):
         """Disallow connection from connector"""
         raise NotImplementedError()
 
-    def attach_volume(self, context, volume_id, instance_uuid, host_name,
+    def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
         """Callback for volume attached to instance or host."""
         pass
 
-    def detach_volume(self, context, volume_id):
+    def detach_volume(self, context, volume):
         """Callback for volume detached."""
         pass
 

@@ -19,6 +19,7 @@ import mox
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.solidfire import SolidFireDriver
@@ -143,7 +144,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': 'fast'}
+                   'volume_type_id': 'fast',
+                   'created_at': timeutils.utcnow()}
 
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
@@ -156,7 +158,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None}
+                   'volume_type_id': None,
+                   'created_at': timeutils.utcnow()}
+
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
         self.assertNotEqual(model_update, None)
@@ -169,7 +173,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None}
+                   'volume_type_id': None,
+                   'created_at': timeutils.utcnow()}
+
         self.configuration.sf_emulate_512 = False
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
@@ -189,7 +195,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                                         '74-4cb7-bd55-14aed659a0cc.4060 0',
                    'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
                                     'c76370d66b 2FE0CQ8J196R',
-                   'provider_geometry': '4096 4096'
+                   'provider_geometry': '4096 4096',
+                   'created_at': timeutils.utcnow(),
                    }
 
         sfv = SolidFireDriver(configuration=self.configuration)
@@ -208,7 +215,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'metadata': [preset_qos],
-                   'volume_type_id': None}
+                   'volume_type_id': None,
+                   'created_at': timeutils.utcnow()}
 
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
@@ -224,7 +232,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
         sfv = SolidFireDriver(configuration=self.configuration)
         try:
             sfv.create_volume(testvol)
@@ -266,7 +275,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
         sfv = SolidFireDriver(configuration=self.configuration)
         sfv.delete_volume(testvol)
 
@@ -276,7 +287,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
         sfv = SolidFireDriver(configuration=self.configuration)
         try:
             sfv.delete_volume(testvol)
@@ -294,7 +307,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
         sfv = SolidFireDriver(configuration=self.configuration)
         self.assertRaises(exception.SfAccountNotFound,
                           sfv.delete_volume,
@@ -323,7 +338,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
         sfv = SolidFireDriver(configuration=self.configuration)
         sfv.extend_volume(testvol, 2)
 
@@ -349,7 +366,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
         sfv = SolidFireDriver(configuration=self.configuration)
         self.assertRaises(exception.SfAccountNotFound,
                           sfv.extend_volume,
