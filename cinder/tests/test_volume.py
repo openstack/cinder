@@ -89,7 +89,8 @@ class VolumeTestCase(test.TestCase):
 
     @staticmethod
     def _create_volume(size=0, snapshot_id=None, image_id=None,
-                       source_volid=None, metadata=None, status="creating"):
+                       source_volid=None, metadata=None, status="creating",
+                       availability_zone=None):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -98,7 +99,8 @@ class VolumeTestCase(test.TestCase):
         vol['source_volid'] = source_volid
         vol['user_id'] = 'fake'
         vol['project_id'] = 'fake'
-        vol['availability_zone'] = CONF.storage_availability_zone
+        vol['availability_zone'] = \
+            availability_zone or CONF.storage_availability_zone
         vol['status'] = status
         vol['attach_status'] = "detached"
         vol['host'] = CONF.host
@@ -352,6 +354,41 @@ class VolumeTestCase(test.TestCase):
                           name='fake_name',
                           description='fake_desc',
                           snapshot=snapshot)
+
+    def test_create_volume_from_snapshot_fail_wrong_az(self):
+        """Test volume can't be created from snapshot in a different az."""
+        volume_api = cinder.volume.api.API()
+
+        def fake_list_availability_zones():
+            return ({'name': 'nova', 'available': True},
+                    {'name': 'az2', 'available': True})
+
+        self.stubs.Set(volume_api,
+                       'list_availability_zones',
+                       fake_list_availability_zones)
+
+        volume_src = self._create_volume(availability_zone='az2')
+        self.volume.create_volume(self.context, volume_src['id'])
+        snapshot = self._create_snapshot(volume_src['id'])
+        self.volume.create_snapshot(self.context, volume_src['id'],
+                                    snapshot['id'])
+        snapshot = db.snapshot_get(self.context, snapshot['id'])
+
+        volume_dst = volume_api.create(self.context,
+                                       size=1,
+                                       name='fake_name',
+                                       description='fake_desc',
+                                       snapshot=snapshot)
+        self.assertEqual(volume_dst['availability_zone'], 'az2')
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          size=1,
+                          name='fake_name',
+                          description='fake_desc',
+                          snapshot=snapshot,
+                          availability_zone='nova')
 
     def test_create_volume_with_invalid_exclusive_options(self):
         """Test volume create with multiple exclusive options fails."""
@@ -1393,6 +1430,39 @@ class VolumeTestCase(test.TestCase):
                                        volume_dst['id']).status)
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_volume(self.context, volume_src['id'])
+
+    def test_create_volume_from_sourcevol_fail_wrong_az(self):
+        """Test volume can't be cloned from an other volume in different az."""
+        volume_api = cinder.volume.api.API()
+
+        def fake_list_availability_zones():
+            return ({'name': 'nova', 'available': True},
+                    {'name': 'az2', 'available': True})
+
+        self.stubs.Set(volume_api,
+                       'list_availability_zones',
+                       fake_list_availability_zones)
+
+        volume_src = self._create_volume(availability_zone='az2')
+        self.volume.create_volume(self.context, volume_src['id'])
+
+        volume_src = db.volume_get(self.context, volume_src['id'])
+
+        volume_dst = volume_api.create(self.context,
+                                       size=1,
+                                       name='fake_name',
+                                       description='fake_desc',
+                                       source_volume=volume_src)
+        self.assertEqual(volume_dst['availability_zone'], 'az2')
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          size=1,
+                          name='fake_name',
+                          description='fake_desc',
+                          source_volume=volume_src,
+                          availability_zone='nova')
 
     def test_create_volume_from_sourcevol_with_glance_metadata(self):
         """Test glance metadata can be correctly copied to new volume."""

@@ -45,9 +45,14 @@ volume_host_opt = cfg.BoolOpt('snapshot_same_host',
                               default=True,
                               help='Create volume from snapshot at the host '
                                    'where snapshot resides')
+volume_same_az_opt = cfg.BoolOpt('cloned_volume_same_az',
+                                 default=True,
+                                 help='Ensure that the new volumes are the '
+                                      'same AZ as snapshot or source volume')
 
 CONF = cfg.CONF
 CONF.register_opt(volume_host_opt)
+CONF.register_opt(volume_same_az_opt)
 CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
@@ -160,6 +165,29 @@ class API(base.Base):
                 msg = _('Image minDisk size is larger than the volume size.')
                 raise exception.InvalidInput(reason=msg)
 
+        if availability_zone is None:
+            if snapshot is not None:
+                availability_zone = snapshot['volume']['availability_zone']
+            elif source_volume is not None:
+                availability_zone = source_volume['availability_zone']
+            else:
+                availability_zone = CONF.storage_availability_zone
+        else:
+            self._check_availabilty_zone(availability_zone)
+
+        if CONF.cloned_volume_same_az:
+            if (snapshot and
+                snapshot['volume']['availability_zone'] !=
+                    availability_zone):
+                msg = _("Volume must be in the same "
+                        "availability zone as the snapshot")
+                raise exception.InvalidInput(reason=msg)
+            elif source_volume and \
+                    source_volume['availability_zone'] != availability_zone:
+                msg = _("Volume must be in the same "
+                        "availability zone as the source volume")
+                raise exception.InvalidInput(reason=msg)
+
         if not volume_type and not source_volume:
             volume_type = volume_types.get_default_volume_type()
 
@@ -197,11 +225,6 @@ class API(base.Base):
                     LOG.warn(msg % {'s_pid': context.project_id,
                                     'd_consumed': _consumed(over)})
                     raise exception.VolumeLimitExceeded(allowed=quotas[over])
-
-        if availability_zone is None:
-            availability_zone = CONF.storage_availability_zone
-        else:
-            self._check_availabilty_zone(availability_zone)
 
         self._check_metadata_properties(context, metadata)
         options = {'size': size,
