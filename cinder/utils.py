@@ -233,19 +233,13 @@ class SSHPool(pools.Pool):
         before returning it. For dead connections create and return a new
         connection.
         """
-        if self.free_items:
-            conn = self.free_items.popleft()
-            if conn:
-                if conn.get_transport().is_active():
-                    return conn
-                else:
-                    conn.close()
-            return self.create()
-        if self.current_size < self.max_size:
-            created = self.create()
-            self.current_size += 1
-            return created
-        return self.channel.get()
+        conn = super(SSHPool, self).get()
+        if conn:
+            if conn.get_transport().is_active():
+                return conn
+            else:
+                conn.close()
+        return self.create()
 
     def remove(self, ssh):
         """Close an ssh client and remove it from free_items."""
