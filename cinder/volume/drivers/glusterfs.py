@@ -52,6 +52,11 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     as block device on hypervisor.
     """
 
+    driver_volume_type = 'glusterfs'
+    driver_prefix = 'glusterfs'
+    volume_backend_name = 'GlusterFS'
+    version = VERSION
+
     def __init__(self, *args, **kwargs):
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
@@ -86,96 +91,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     def check_for_setup_error(self):
         """Just to override parent behavior."""
         pass
-
-    def create_cloned_volume(self, volume, src_vref):
-        raise NotImplementedError()
-
-    def create_volume(self, volume):
-        """Creates a volume."""
-
-        self._ensure_shares_mounted()
-
-        volume['provider_location'] = self._find_share(volume['size'])
-
-        LOG.info(_('casted to %s') % volume['provider_location'])
-
-        self._do_create_volume(volume)
-
-        return {'provider_location': volume['provider_location']}
-
-    def delete_volume(self, volume):
-        """Deletes a logical volume."""
-
-        if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping'), volume['name'])
-            return
-
-        self._ensure_share_mounted(volume['provider_location'])
-
-        mounted_path = self.local_path(volume)
-
-        self._execute('rm', '-f', mounted_path, run_as_root=True)
-
-    def ensure_export(self, ctx, volume):
-        """Synchronously recreates an export for a logical volume."""
-        self._ensure_share_mounted(volume['provider_location'])
-
-    def create_export(self, ctx, volume):
-        """Exports the volume. Can optionally return a Dictionary of changes
-        to the volume object to be persisted.
-        """
-        pass
-
-    def remove_export(self, ctx, volume):
-        """Removes an export for a logical volume."""
-        pass
-
-    def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
-        data = {'export': volume['provider_location'],
-                'name': volume['name']}
-        if volume['provider_location'] in self.shares:
-            data['options'] = self.shares[volume['provider_location']]
-        return {
-            'driver_volume_type': 'glusterfs',
-            'data': data
-        }
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector."""
-        pass
-
-    def _do_create_volume(self, volume):
-        """Create a volume on given glusterfs_share.
-        :param volume: volume reference
-        """
-        volume_path = self.local_path(volume)
-        volume_size = volume['size']
-
-        if self.configuration.glusterfs_sparsed_volumes:
-            self._create_sparsed_file(volume_path, volume_size)
-        else:
-            self._create_regular_file(volume_path, volume_size)
-
-        self._set_rw_permissions_for_all(volume_path)
-
-    def _ensure_shares_mounted(self):
-        """Look for GlusterFS shares in the flags and try to mount them
-           locally.
-        """
-        self._mounted_shares = []
-
-        self._load_shares_config(self.configuration.glusterfs_shares_config)
-
-        for share in self.shares.keys():
-            try:
-                self._ensure_share_mounted(share)
-                self._mounted_shares.append(share)
-            except Exception as exc:
-                LOG.warning(_('Exception during mounting %s') % (exc,))
-
-        LOG.debug('Available shares %s' % str(self._mounted_shares))
 
     def _ensure_share_mounted(self, glusterfs_share):
         """Mount GlusterFS share.
@@ -238,6 +153,10 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         return available, size
 
+    def _get_capacity_info(self, glusterfs_share):
+        available, size = self._get_available_capacity(glusterfs_share)
+        return size, available, size - available
+
     def _mount_glusterfs(self, glusterfs_share, mount_path, ensure=False):
         """Mount GlusterFS share to mount path."""
         self._execute('mkdir', '-p', mount_path)
@@ -247,45 +166,4 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         if self.shares.get(glusterfs_share) is not None:
             command.extend(self.shares[glusterfs_share].split())
 
-        try:
-            self._execute(*command, run_as_root=True)
-        except exception.ProcessExecutionError as exc:
-            if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_("%s is already mounted"), glusterfs_share)
-            else:
-                raise
-
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, update the stats first.
-        """
-        if refresh or not self._stats:
-            self._update_volume_stats()
-
-        return self._stats
-
-    def _update_volume_stats(self):
-        """Retrieve stats info from volume group."""
-
-        data = {}
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or 'GlusterFS'
-        data['vendor_name'] = 'Open Source'
-        data['driver_version'] = VERSION
-        data['storage_protocol'] = 'glusterfs'
-
-        self._ensure_shares_mounted()
-
-        global_capacity = 0
-        global_free = 0
-        for nfs_share in self._mounted_shares:
-            free, capacity = self._get_available_capacity(nfs_share)
-            global_capacity += capacity
-            global_free += free
-
-        data['total_capacity_gb'] = global_capacity / 1024.0 ** 3
-        data['free_capacity_gb'] = global_free / 1024.0 ** 3
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
-        self._stats = data
+        self._do_mount(command, ensure, glusterfs_share)
