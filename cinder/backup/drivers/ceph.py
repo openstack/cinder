@@ -112,9 +112,11 @@ class CephBackupDriver(BackupDriver):
             self.rbd_stripe_count = 0
             self.rbd_stripe_unit = 0
 
-        self._ceph_backup_user = str(CONF.backup_ceph_user)
-        self._ceph_backup_pool = str(CONF.backup_ceph_pool)
-        self._ceph_backup_conf = str(CONF.backup_ceph_conf)
+        _utf8 = lambda s: s if isinstance(s, str) else s.encode('utf8')
+
+        self._ceph_backup_user = _utf8(CONF.backup_ceph_user)
+        self._ceph_backup_pool = _utf8(CONF.backup_ceph_pool)
+        self._ceph_backup_conf = _utf8(CONF.backup_ceph_conf)
 
     def _validate_string_args(self, *args):
         """Ensure all args are non-None and non-empty."""
