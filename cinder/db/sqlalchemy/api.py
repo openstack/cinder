@@ -1313,6 +1313,7 @@ def _snapshot_get(context, snapshot_id, session=None):
     result = model_query(context, models.Snapshot, session=session,
                          project_only=True).\
         options(joinedload('volume')).\
+        options(joinedload('snapshot_metadata')).\
         filter_by(id=snapshot_id).\
         first()
 

@@ -563,12 +563,14 @@ class VolumeTestCase(test.TestCase):
         test_meta = {'fake_key': 'fake_value'}
         volume = self._create_volume(0, None)
         volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
         snapshot = self._create_snapshot(volume['id'], metadata=test_meta)
         snapshot_id = snapshot['id']
+
+        snap = db.snapshot_get(context.get_admin_context(), snapshot_id)
+        result_dict = dict(snap.iteritems())
         result_meta = {
-            snapshot.snapshot_metadata[0].key:
-            snapshot.snapshot_metadata[0].value}
+            result_dict['snapshot_metadata'][0].key:
+            result_dict['snapshot_metadata'][0].value}
         self.assertEqual(result_meta, test_meta)
 
         self.volume.delete_snapshot(self.context, snapshot_id)
