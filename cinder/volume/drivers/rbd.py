@@ -1,4 +1,4 @@
-#    Copyright 2012 OpenStack LLC
+#    Copyright 2013 OpenStack LLC
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -11,28 +11,24 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-RADOS Block Device Driver
-"""
-
+"""RADOS Block Device Driver"""
 
 from __future__ import absolute_import
-
 import io
 import json
 import os
 import tempfile
 import urllib
 
-import cinder.backup.drivers.ceph as ceph_backup
+from oslo.config import cfg
+
+from cinder.backup.drivers import ceph as ceph_backup
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import units
-from cinder import utils
 from cinder.volume import driver
-from oslo.config import cfg
 
 try:
     import rados
@@ -74,8 +70,8 @@ VERSION = '1.1'
 def ascii_str(string):
     """Convert a string to ascii, or return None if the input is None.
 
-    This is useful where a parameter may be None by default, or a
-    string. librbd only accepts ascii, hence the need for conversion.
+    This is useful when a parameter is None by default, or a string. LibRBD
+    only accepts ascii, hence the need for conversion.
     """
     if string is None:
         return string
@@ -92,10 +88,7 @@ class RBDImageMetadata(object):
 
 
 class RBDImageIOWrapper(io.RawIOBase):
-    """Wrapper to provide standard Python IO interface to RBD images.
-
-    This enables librbd.Image objects to be treated as standard Python IO
-    objects.
+    """Enables LibRBD.Image objects to be treated as Python IO objects.
 
     Calling unimplemented interfaces will raise IOError.
     """
@@ -195,11 +188,11 @@ class RBDImageIOWrapper(io.RawIOBase):
 class RBDVolumeProxy(object):
     """Context manager for dealing with an existing rbd volume.
 
-    This handles connecting to rados and opening an ioctx automatically,
-    and otherwise acts like a librbd Image object.
+    This handles connecting to rados and opening an ioctx automatically, and
+    otherwise acts like a librbd Image object.
 
-    The underlying librados client and ioctx can be accessed as
-    the attributes 'client' and 'ioctx'.
+    The underlying librados client and ioctx can be accessed as the attributes
+    'client' and 'ioctx'.
     """
     def __init__(self, driver, name, pool=None, snapshot=None,
                  read_only=False):
@@ -321,12 +314,14 @@ class RBDDriver(driver.VolumeDriver):
         return hosts, ports
 
     def _update_volume_stats(self):
-        stats = {'vendor_name': 'Open Source',
-                 'driver_version': VERSION,
-                 'storage_protocol': 'ceph',
-                 'total_capacity_gb': 'unknown',
-                 'free_capacity_gb': 'unknown',
-                 'reserved_percentage': 0}
+        stats = {
+            'vendor_name': 'Open Source',
+            'driver_version': VERSION,
+            'storage_protocol': 'ceph',
+            'total_capacity_gb': 'unknown',
+            'free_capacity_gb': 'unknown',
+            'reserved_percentage': 0,
+        }
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or 'RBD'
 
@@ -603,7 +598,7 @@ class RBDDriver(driver.VolumeDriver):
         LOG.debug("volume restore complete.")
 
     def extend_volume(self, volume, new_size):
-        """Extend an Existing Volume."""
+        """Extend an existing volume."""
         old_size = volume['size']
 
         try:
