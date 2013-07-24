@@ -396,6 +396,15 @@ class HP3PARBaseDriver():
     def fake_get_domain(self, cpg):
         return HP3PAR_DOMAIN
 
+    def fake_extend_volume(self, volume, new_size):
+        vol = self.driver.common.client.getVolume(volume['name'])
+        old_size = vol['sizeMiB']
+        option = {'comment': vol['comment'], 'snapCPG': vol['snapCPG']}
+        self.driver.common.client.deleteVolume(volume['name'])
+        self.driver.common.client.createVolume(vol['name'],
+                                               vol['userCPG'],
+                                               new_size, option)
+
     def fake_get_3par_host(self, hostname):
         if hostname not in self._hosts:
             msg = {'code': 'NON_EXISTENT_HOST',
@@ -536,6 +545,22 @@ class HP3PARBaseDriver():
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.common.client.getVLUN,
                           self.VOLUME_3PAR_NAME)
+
+    def test_extend_volume(self):
+        self.flags(lock_path=self.tempdir)
+        self.stubs.UnsetAll()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "extend_volume",
+                       self.fake_extend_volume)
+        option = {'comment': '', 'snapCPG': HP3PAR_CPG_SNAP}
+        self.driver.common.client.createVolume(self.volume['name'],
+                                               HP3PAR_CPG,
+                                               self.volume['size'],
+                                               option)
+        old_size = self.volume['size']
+        volume = self.driver.common.client.getVolume(self.volume['name'])
+        self.driver.extend_volume(volume, str(old_size + 1))
+        vol = self.driver.common.client.getVolume(self.volume['name'])
+        self.assertEqual(vol['sizeMiB'], str(old_size + 1))
 
 
 class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):

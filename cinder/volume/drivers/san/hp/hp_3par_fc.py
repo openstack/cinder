@@ -248,3 +248,6 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     @utils.synchronized('3par', external=True)
     def remove_export(self, context, volume):
         pass
+
+    def extend_volume(self, volume, new_size):
+        self.common.extend_volume(volume, new_size)
