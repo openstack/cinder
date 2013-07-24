@@ -35,6 +35,7 @@ STORWIZE_SVC_MODULE = "cinder.volume.drivers.storwize_svc.StorwizeSVCDriver"
 WINDOWS_MODULE = "cinder.volume.drivers.windows.WindowsDriver"
 XIV_DS8K_MODULE = "cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver"
 ZADARA_MODULE = "cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver"
+NETAPP_MODULE = "cinder.volume.drivers.netapp.common.Deprecated"
 
 
 class VolumeDriverCompatibility(test.TestCase):
@@ -161,3 +162,34 @@ class VolumeDriverCompatibility(test.TestCase):
     def test_zadara_new(self):
         self._load_driver(ZADARA_MODULE)
         self.assertEquals(self._driver_module_name(), ZADARA_MODULE)
+
+    def test_netapp_7m_iscsi_old(self):
+        self._load_driver(
+            'cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_netapp_7m_iscsi_old_old(self):
+        self._load_driver('cinder.volume.netapp.NetAppISCSIDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_netapp_cm_iscsi_old_old(self):
+        self._load_driver('cinder.volume.netapp.NetAppCmodeISCSIDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_netapp_cm_iscsi_old(self):
+        self._load_driver(
+            'cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_netapp_7m_nfs_old_old(self):
+        self._load_driver('cinder.volume.netapp_nfs.NetAppNFSDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_netapp_7m_nfs_old(self):
+        self._load_driver('cinder.volume.drivers.netapp.nfs.NetAppNFSDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_netapp_cm_nfs_old(self):
+        self._load_driver(
+            'cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver')
+        self.assertEquals(self._driver_module_name(), NETAPP_MODULE)

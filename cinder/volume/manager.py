@@ -108,7 +108,21 @@ MAPPING = {
     'cinder.volume.zadara.ZadaraVPSAISCSIDriver':
     'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver',
     'cinder.volume.driver.ISCSIDriver':
-    'cinder.volume.drivers.lvm.LVMISCSIDriver'}
+    'cinder.volume.drivers.lvm.LVMISCSIDriver',
+    'cinder.volume.netapp.NetAppISCSIDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.netapp.NetAppCmodeISCSIDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.netapp_nfs.NetAppNFSDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.drivers.netapp.nfs.NetAppNFSDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver':
+    'cinder.volume.drivers.netapp.common.Deprecated'}
 
 
 class VolumeManager(manager.SchedulerDependentManager):
