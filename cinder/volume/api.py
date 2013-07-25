@@ -36,6 +36,7 @@ import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import units
+from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_types
 
@@ -370,6 +371,11 @@ class API(base.Base):
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
 
+        if volume['attach_status'] == "migrating":
+            # Volume is migrating, wait until done
+            msg = _("Volume cannot be deleted while migrating")
+            raise exception.InvalidVolume(reason=msg)
+
         snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
         if len(snapshots):
             msg = _("Volume still has %d dependent snapshots") % len(snapshots)
@@ -416,6 +422,10 @@ class API(base.Base):
                                                         marker, limit,
                                                         sort_key, sort_dir)
 
+        # Non-admin shouldn't see temporary target of a volume migration
+        if not context.is_admin:
+            filters['no_migration_targets'] = True
+
         if filters:
             LOG.debug(_("Searching by: %s") % str(filters))
 
@@ -430,8 +440,14 @@ class API(base.Base):
                         return False
                 return True
 
+            def _check_migration_target(volume, searchdict):
+                if not volume['status'].startswith('migration_target'):
+                    return True
+                return False
+
             # search_option to filter_name mapping.
-            filter_mapping = {'metadata': _check_metadata_match}
+            filter_mapping = {'metadata': _check_metadata_match,
+                              'no_migration_targets': _check_migration_target}
 
             result = []
             not_found = object()
@@ -814,6 +830,58 @@ class API(base.Base):
 
         self.update(context, volume, {'status': 'extending'})
         self.volume_rpcapi.extend_volume(context, volume, new_size)
+
+    def migrate_volume(self, context, volume, host, force_host_copy):
+        """Migrate the volume to the specified host."""
+
+        # We only handle "available" volumes for now
+        if volume['status'] != "available":
+            msg = _("status must be available")
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        # We only handle volumes without snapshots for now
+        snaps = self.db.snapshot_get_all_for_volume(context, volume['id'])
+        if snaps:
+            msg = _("volume must not have snapshots")
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        # Make sure the host is in the list of available hosts
+        elevated = context.elevated()
+        topic = CONF.volume_topic
+        services = self.db.service_get_all_by_topic(elevated, topic)
+        found = False
+        for service in services:
+            if utils.service_is_up(service) and service['host'] == host:
+                found = True
+        if not found:
+            msg = (_('No available service named %s') % host)
+            LOG.error(msg)
+            raise exception.InvalidHost(reason=msg)
+
+        # Make sure the destination host is different than the current one
+        if host == volume['host']:
+            msg = _('Destination host must be different than current host')
+            LOG.error(msg)
+            raise exception.InvalidHost(reason=msg)
+
+        self.update(context, volume, {'status': 'migrating'})
+
+        # Call the scheduler to ensure that the host exists and that it can
+        # accept the volume
+        volume_type = {}
+        if volume['volume_type_id']:
+            volume_types.get_volume_type(context, volume['volume_type_id'])
+        request_spec = {'volume_properties': volume,
+                        'volume_type': volume_type,
+                        'volume_id': volume['id']}
+        self.scheduler_rpcapi.migrate_volume_to_host(context,
+                                                     CONF.volume_topic,
+                                                     volume['id'],
+                                                     host,
+                                                     force_host_copy,
+                                                     request_spec)
 
 
 class HostAPI(base.Base):

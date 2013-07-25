@@ -18,11 +18,12 @@
 
 import os
 
-import cinder.context
+from cinder import context
+from cinder import db
 
 
 def get_test_admin_context():
-    return cinder.context.get_admin_context()
+    return context.get_admin_context()
 
 
 def is_cinder_installed():
@@ -30,3 +31,22 @@ def is_cinder_installed():
         return True
     else:
         return False
+
+
+def create_volume(ctxt,
+                  host='test_host',
+                  display_name='test_volume',
+                  display_description='this is a test volume',
+                  status='available',
+                  size=1):
+    """Create a volume object in the DB."""
+    vol = {}
+    vol['size'] = size
+    vol['host'] = host
+    vol['user_id'] = ctxt.user_id
+    vol['project_id'] = ctxt.project_id
+    vol['status'] = status
+    vol['display_name'] = display_name
+    vol['display_description'] = display_description
+    vol['attach_status'] = 'detached'
+    return db.volume_create(ctxt, vol)

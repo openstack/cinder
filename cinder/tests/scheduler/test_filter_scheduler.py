@@ -227,3 +227,50 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                          filter_properties['retry']['hosts'][0])
 
         self.assertEqual(1024, host_state.total_capacity_gb)
+
+    def _host_passes_filters_setup(self):
+        self.next_weight = 1.0
+
+        def _fake_weigh_objects(_self, functions, hosts, options):
+            self.next_weight += 2.0
+            host_state = hosts[0]
+            return [weights.WeighedHost(host_state, self.next_weight)]
+
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+
+        self.stubs.Set(sched.host_manager, 'get_filtered_hosts',
+                       fake_get_filtered_hosts)
+        self.stubs.Set(weights.HostWeightHandler,
+                       'get_weighed_objects', _fake_weigh_objects)
+        fakes.mox_host_manager_db_calls(self.mox, fake_context)
+
+        self.mox.ReplayAll()
+        return (sched, fake_context)
+
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
+    def test_host_passes_filters_happy_day(self):
+        """Do a successful pass through of with host_passes_filters()."""
+        sched, ctx = self._host_passes_filters_setup()
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 1}}
+        ret_host = sched.host_passes_filters(ctx, 'host1', request_spec, {})
+        self.assertEqual(ret_host.host, 'host1')
+
+    @testtools.skipIf(not test_utils.is_cinder_installed(),
+                      'Test requires Cinder installed (try setup.py develop')
+    def test_host_passes_filters_no_capacity(self):
+        """Fail the host due to insufficient capacity."""
+        sched, ctx = self._host_passes_filters_setup()
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 1024}}
+        self.assertRaises(exception.NoValidHost,
+                          sched.host_passes_filters,
+                          ctx, 'host1', request_spec, {})

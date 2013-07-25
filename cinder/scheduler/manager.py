@@ -48,7 +48,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.2'
+    RPC_API_VERSION = '1.3'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -139,3 +139,28 @@ class SchedulerManager(manager.Manager):
 
     def request_service_capabilities(self, context):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
+
+    def _migrate_volume_set_error(self, context, ex, request_spec):
+        volume_state = {'volume_state': {'status': 'error_migrating'}}
+        self._set_volume_state_and_notify('migrate_volume_to_host',
+                                          volume_state,
+                                          context, ex, request_spec)
+
+    def migrate_volume_to_host(self, context, topic, volume_id, host,
+                               force_host_copy, request_spec,
+                               filter_properties=None):
+        """Ensure that the host exists and can accept the volume."""
+        try:
+            tgt_host = self.driver.host_passes_filters(context, host,
+                                                       request_spec,
+                                                       filter_properties)
+        except exception.NoValidHost as ex:
+                self._migrate_volume_set_error(context, ex, request_spec)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception():
+                self._migrate_volume_set_error(context, ex, request_spec)
+        else:
+            volume_ref = db.volume_get(context, volume_id)
+            volume_rpcapi.VolumeAPI().migrate_volume(context, volume_ref,
+                                                     tgt_host,
+                                                     force_host_copy)

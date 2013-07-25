@@ -20,6 +20,7 @@ import string
 from cinder.brick.initiator import linuxscsi
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 

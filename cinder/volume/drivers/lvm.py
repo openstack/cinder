@@ -23,6 +23,7 @@ Driver for Linux servers running LVM.
 import math
 import os
 import re
+import socket
 
 from oslo.config import cfg
 
@@ -70,6 +71,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def __init__(self, *args, **kwargs):
         super(LVMVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
+        self.hostname = socket.gethostname()
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met"""
@@ -81,13 +83,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  % self.configuration.volume_group)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-    def _create_volume(self, volume_name, sizestr):
-
+    def _create_volume(self, volume_name, sizestr, vg=None):
+        if vg is None:
+            vg = self.configuration.volume_group
         no_retry_list = ['Insufficient free extents',
                          'One or more specified logical volume(s) not found']
 
-        cmd = ['lvcreate', '-L', sizestr, '-n', volume_name,
-               self.configuration.volume_group]
+        cmd = ['lvcreate', '-L', sizestr, '-n', volume_name, vg]
         if self.configuration.lvm_mirrors:
             cmd += ['-m', self.configuration.lvm_mirrors, '--nosync']
             terras = int(sizestr[:-1]) / 1024.0
@@ -225,9 +227,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # it's quite slow.
         self._delete_volume(snapshot)
 
-    def local_path(self, volume):
+    def local_path(self, volume, vg=None):
+        if vg is None:
+            vg = self.configuration.volume_group
         # NOTE(vish): stops deprecation warning
-        escaped_group = self.configuration.volume_group.replace('-', '--')
+        escaped_group = vg.replace('-', '--')
         escaped_name = self._escape_snapshot(volume['name']).replace('-', '--')
         return "/dev/mapper/%s-%s" % (escaped_group, escaped_name)
 
@@ -442,12 +446,16 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 self.db.iscsi_target_create_safe(context, target)
 
     def create_export(self, context, volume):
+        return self._create_export(context, volume)
+
+    def _create_export(self, context, volume, vg=None):
         """Creates an export for a logical volume."""
+        if vg is None:
+            vg = self.configuration.volume_group
 
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume['name'])
-        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                      volume['name'])
+        volume_path = "/dev/%s/%s" % (vg, volume['name'])
         model_update = {}
 
         # TODO(jdg): In the future move all of the dependent stuff into the
@@ -530,6 +538,42 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
         self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'])
 
+    def migrate_volume(self, ctxt, volume, host):
+        """Optimize the migration if the destination is on the same server.
+
+        If the specified host is another back-end on the same server, and
+        the volume is not attached, we can do the migration locally without
+        going through iSCSI.
+        """
+        false_ret = (False, None)
+        if 'location_info' not in host['capabilities']:
+            return false_ret
+        info = host['capabilities']['location_info']
+        try:
+            (dest_type, dest_hostname, dest_vg) = info.split(':')
+        except ValueError:
+            return false_ret
+        if (dest_type != 'LVMVolumeDriver' or dest_hostname != self.hostname):
+            return false_ret
+
+        self.remove_export(ctxt, volume)
+        self._create_volume(volume['name'],
+                            self._sizestr(volume['size']),
+                            dest_vg)
+        volutils.copy_volume(self.local_path(volume),
+                             self.local_path(volume, vg=dest_vg),
+                             volume['size'],
+                             execute=self._execute)
+        self._delete_volume(volume)
+        model_update = self._create_export(ctxt, volume, vg=dest_vg)
+
+        return (True, model_update)
+
+    def rename_volume(self, volume, orig_name):
+        self._execute('lvrename', self.configuration.volume_group,
+                      orig_name, volume['name'],
+                      run_as_root=True)
+
     def get_volume_stats(self, refresh=False):
         """Get volume status.
 
@@ -559,6 +603,9 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         data['free_capacity_gb'] = 0
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
+        data['location_info'] = ('LVMVolumeDriver:%(hostname)s:%(vg)s' %
+                                 {'hostname': self.hostname,
+                                 'vg': self.configuration.volume_group})
 
         try:
             out, err = self._execute('vgs', '--noheadings', '--nosuffix',
@@ -682,4 +729,7 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
         data['QoS_support'] = False
         data['total_capacity_gb'] = 'infinite'
         data['free_capacity_gb'] = 'infinite'
+        data['location_info'] = ('LVMVolumeDriver:%(hostname)s:%(vg)s' %
+                                 {'hostname': self.hostname,
+                                 'vg': self.configuration.volume_group})
         self._stats = data

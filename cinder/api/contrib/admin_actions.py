@@ -140,6 +140,21 @@ class VolumeAdminController(AdminController):
         self.volume_api.detach(context, volume)
         return webob.Response(status_int=202)
 
+    @wsgi.action('os-migrate_volume')
+    def _migrate_volume(self, req, id, body):
+        """Migrate a volume to the specified host."""
+        context = req.environ['cinder.context']
+        self.authorize(context, 'migrate_volume')
+        try:
+            volume = self._get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        params = body['os-migrate_volume']
+        host = params['host']
+        force_host_copy = params.get('force_host_copy', False)
+        self.volume_api.migrate_volume(context, volume, host, force_host_copy)
+        return webob.Response(status_int=202)
+
 
 class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""

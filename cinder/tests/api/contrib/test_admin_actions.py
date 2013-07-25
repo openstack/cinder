@@ -14,14 +14,19 @@ import shutil
 import tempfile
 import webob
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.volume import api as volume_api
+
+CONF = cfg.CONF
 
 
 def app():
@@ -449,3 +454,82 @@ class AdminActionsTest(test.TestCase):
                           mountpoint)
         # cleanup
         svc.stop()
+
+    def _migrate_volume_prep(self):
+        admin_ctx = context.get_admin_context()
+        # create volume's current host and the destination host
+        db.service_create(admin_ctx,
+                          {'host': 'test',
+                           'topic': CONF.volume_topic,
+                           'created_at': timeutils.utcnow()})
+        db.service_create(admin_ctx,
+                          {'host': 'test2',
+                           'topic': CONF.volume_topic,
+                           'created_at': timeutils.utcnow()})
+        # current status is available
+        volume = db.volume_create(admin_ctx,
+                                  {'status': 'available',
+                                   'host': 'test',
+                                   'provider_location': '',
+                                   'attach_status': ''})
+        return volume
+
+    def _migrate_volume_exec(self, ctx, volume, host, expected_status):
+        admin_ctx = context.get_admin_context()
+        # build request to migrate to host
+        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = jsonutils.dumps({'os-migrate_volume': {'host': host}})
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        # verify status
+        self.assertEquals(resp.status_int, expected_status)
+        volume = db.volume_get(admin_ctx, volume['id'])
+        return volume
+
+    def test_migrate_volume_success(self):
+        expected_status = 202
+        host = 'test2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        volume = self._migrate_volume_exec(ctx, volume, host, expected_status)
+        self.assertEquals(volume['status'], 'migrating')
+
+    def test_migrate_volume_as_non_admin(self):
+        expected_status = 403
+        host = 'test2'
+        ctx = context.RequestContext('fake', 'fake')
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(ctx, volume, host, expected_status)
+
+    def test_migrate_volume_host_no_exist(self):
+        expected_status = 400
+        host = 'test3'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(ctx, volume, host, expected_status)
+
+    def test_migrate_volume_same_host(self):
+        expected_status = 400
+        host = 'test'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(ctx, volume, host, expected_status)
+
+    def test_migrate_volume_in_use(self):
+        expected_status = 400
+        host = 'test2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        model_update = {'status': 'in-use'}
+        volume = db.volume_update(ctx, volume['id'], model_update)
+        self._migrate_volume_exec(ctx, volume, host, expected_status)
+
+    def test_migrate_volume_with_snap(self):
+        expected_status = 400
+        host = 'test2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        db.snapshot_create(ctx, {'volume_id': volume['id']})
+        self._migrate_volume_exec(ctx, volume, host, expected_status)

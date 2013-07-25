@@ -39,12 +39,14 @@ class ChanceScheduler(driver.Scheduler):
         """Filter a list of hosts based on request_spec."""
 
         filter_properties = kwargs.get('filter_properties', {})
+        if not filter_properties:
+            filter_properties = {}
         ignore_hosts = filter_properties.get('ignore_hosts', [])
         hosts = [host for host in hosts if host not in ignore_hosts]
         return hosts
 
-    def _schedule(self, context, topic, request_spec, **kwargs):
-        """Picks a host that is up at random."""
+    def _get_weighted_candidates(self, context, topic, request_spec, **kwargs):
+        """Returns a list of the available hosts."""
 
         elevated = context.elevated()
         hosts = self.hosts_up(elevated, topic)
@@ -52,11 +54,15 @@ class ChanceScheduler(driver.Scheduler):
             msg = _("Is the appropriate service running?")
             raise exception.NoValidHost(reason=msg)
 
-        hosts = self._filter_hosts(request_spec, hosts, **kwargs)
+        return self._filter_hosts(request_spec, hosts, **kwargs)
+
+    def _schedule(self, context, topic, request_spec, **kwargs):
+        """Picks a host that is up at random."""
+        hosts = self._get_weighted_candidates(context, topic,
+                                              request_spec, **kwargs)
         if not hosts:
             msg = _("Could not find another host")
             raise exception.NoValidHost(reason=msg)
-
         return hosts[int(random.random() * len(hosts))]
 
     def schedule_create_volume(self, context, request_spec, filter_properties):
@@ -71,3 +77,24 @@ class ChanceScheduler(driver.Scheduler):
         updated_volume = driver.volume_update_db(context, volume_id, host)
         self.volume_rpcapi.create_volume(context, updated_volume, host,
                                          snapshot_id, image_id)
+
+    def host_passes_filters(self, context, host, request_spec,
+                            filter_properties):
+        """Check if the specified host passes the filters."""
+        weighed_hosts = self._get_weighted_candidates(
+            context,
+            CONF.volume_topic,
+            request_spec,
+            filter_properties=filter_properties)
+
+        for weighed_host in weighed_hosts:
+            if weighed_host == host:
+                elevated = context.elevated()
+                host_states = self.host_manager.get_all_host_states(elevated)
+                for host_state in host_states:
+                    if host_state.host == host:
+                        return host_state
+
+        msg = (_('cannot place volume %(id)s on %(host)s')
+               % {'id': request_spec['volume_id'], 'host': host})
+        raise exception.NoValidHost(reason=msg)

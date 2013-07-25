@@ -1049,6 +1049,25 @@ def volume_data_get_for_project(context, project_id, volume_type_id=None,
 
 
 @require_admin_context
+def finish_volume_migration(context, src_vol_id, dest_vol_id):
+    """Copy almost all columns from dest to source, then delete dest."""
+    session = get_session()
+    with session.begin():
+        dest_volume_ref = _volume_get(context, dest_vol_id, session=session)
+        updates = {}
+        for key, value in dest_volume_ref.iteritems():
+            if key in ['id', 'status']:
+                continue
+            updates[key] = value
+        session.query(models.Volume).\
+            filter_by(id=src_vol_id).\
+            update(updates)
+        session.query(models.Volume).\
+            filter_by(id=dest_vol_id).\
+            delete()
+
+
+@require_admin_context
 def volume_destroy(context, volume_id):
     session = get_session()
     with session.begin():

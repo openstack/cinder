@@ -29,8 +29,11 @@ from oslo.config import cfg
 from cinder.brick.initiator import connector as initiator
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -190,21 +193,85 @@ class VolumeDriver(object):
         """Fail if connector doesn't contain all the data needed by driver"""
         pass
 
+    def _copy_volume_data_cleanup(self, context, volume, properties,
+                                  attach_info, remote, force=False):
+        self._detach_volume(attach_info)
+        if remote:
+            rpcapi = volume_rpcapi.VolumeAPI()
+            rpcapi.terminate_connection(context, volume, properties,
+                                        force=force)
+        else:
+            self.terminate_connection(volume, properties, force=False)
+
+    def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
+        """Copy data from src_vol to dest_vol."""
+        LOG.debug(_('copy_data_between_volumes %(src)s -> %(dest)s.')
+                  % {'src': src_vol['name'], 'dest': dest_vol['name']})
+
+        properties = initiator.get_connector_properties()
+        dest_remote = True if remote in ['dest', 'both'] else False
+        dest_orig_status = dest_vol['status']
+        try:
+            dest_attach_info = self._attach_volume(context,
+                                                   dest_vol,
+                                                   properties,
+                                                   remote=dest_remote)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = _("Failed to attach volume %(vol)s")
+                LOG.error(msg % {'vol': dest_vol['id']})
+                self.db.volume_update(context, dest_vol['id'],
+                                      {'status': dest_orig_status})
+
+        src_remote = True if remote in ['src', 'both'] else False
+        src_orig_status = src_vol['status']
+        try:
+            src_attach_info = self._attach_volume(context,
+                                                  src_vol,
+                                                  properties,
+                                                  remote=src_remote)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = _("Failed to attach volume %(vol)s")
+                LOG.error(msg % {'vol': src_vol['id']})
+                self.db.volume_update(context, src_vol['id'],
+                                      {'status': src_orig_status})
+                self._copy_volume_data_cleanup(context, dest_vol, properties,
+                                               dest_attach_info, dest_remote,
+                                               force=True)
+
+        try:
+            volume_utils.copy_volume(src_attach_info['device']['path'],
+                                     dest_attach_info['device']['path'],
+                                     src_vol['size'])
+            copy_error = False
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = _("Failed to copy volume %(src)s to %(dest)d")
+                LOG.error(msg % {'src': src_vol['id'], 'dest': dest_vol['id']})
+                copy_error = True
+        finally:
+            self._copy_volume_data_cleanup(context, dest_vol, properties,
+                                           dest_attach_info, dest_remote,
+                                           force=copy_error)
+            self._copy_volume_data_cleanup(context, src_vol, properties,
+                                           src_attach_info, src_remote,
+                                           force=copy_error)
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
 
         properties = initiator.get_connector_properties()
-        connection, device, connector = self._attach_volume(context, volume,
-                                                            properties)
+        attach_info = self._attach_volume(context, volume, properties)
 
         try:
             image_utils.fetch_to_raw(context,
                                      image_service,
                                      image_id,
-                                     device['path'])
+                                     attach_info['device']['path'])
         finally:
-            self._detach_volume(connection, device, connector)
+            self._detach_volume(attach_info)
             self.terminate_connection(volume, properties)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -212,22 +279,24 @@ class VolumeDriver(object):
         LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
 
         properties = initiator.get_connector_properties()
-        connection, device, connector = self._attach_volume(context, volume,
-                                                            properties)
+        attach_info = self._attach_volume(context, volume, properties)
 
         try:
             image_utils.upload_volume(context,
                                       image_service,
                                       image_meta,
-                                      device['path'])
+                                      attach_info['device']['path'])
         finally:
-            self._detach_volume(connection, device, connector)
+            self._detach_volume(attach_info)
             self.terminate_connection(volume, properties)
 
-    def _attach_volume(self, context, volume, properties):
+    def _attach_volume(self, context, volume, properties, remote=False):
         """Attach the volume."""
-        host_device = None
-        conn = self.initialize_connection(volume, properties)
+        if remote:
+            rpcapi = volume_rpcapi.VolumeAPI()
+            conn = rpcapi.initialize_connection(context, volume, properties)
+        else:
+            conn = self.initialize_connection(volume, properties)
 
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
@@ -245,13 +314,14 @@ class VolumeDriver(object):
                                                         "via the path "
                                                         "%(path)s.") %
                                                       {'path': host_device}))
-        return conn, device, connector
+        return {'conn': conn, 'device': device, 'connector': connector}
 
-    def _detach_volume(self, connection, device, connector):
+    def _detach_volume(self, attach_info):
         """Disconnect the volume from the host."""
-        protocol = connection['driver_volume_type']
         # Use Brick's code to do attach/detach
-        connector.disconnect_volume(connection['data'], device)
+        connector = attach_info['connector']
+        connector.disconnect_volume(attach_info['conn']['data'],
+                                    attach_info['device'])
 
     def clone_image(self, volume, image_location):
         """Create a volume efficiently from an existing image.
@@ -280,6 +350,22 @@ class VolumeDriver(object):
     def extend_volume(self, volume, new_size):
         msg = _("Extend volume not implemented")
         raise NotImplementedError(msg)
+
+    def migrate_volume(self, context, volume, host):
+        """Migrate the volume to the specified host.
+
+        Returns a boolean indicating whether the migration occurred, as well as
+        model_update.
+        """
+        return (False, None)
+
+    def rename_volume(self, volume, orig_name):
+        """Rename the volume according to the volume object.
+
+        The original name is passed for reference, and the function can return
+        model_update.
+        """
+        return None
 
 
 class ISCSIDriver(VolumeDriver):

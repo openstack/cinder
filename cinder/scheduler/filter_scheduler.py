@@ -85,6 +85,20 @@ class FilterScheduler(driver.Scheduler):
                                          snapshot_id=snapshot_id,
                                          image_id=image_id)
 
+    def host_passes_filters(self, context, host, request_spec,
+                            filter_properties):
+        """Check if the specified host passes the filters."""
+        weighed_hosts = self._get_weighted_candidates(context, request_spec,
+                                                      filter_properties)
+        for weighed_host in weighed_hosts:
+            host_state = weighed_host.obj
+            if host_state.host == host:
+                return host_state
+
+        msg = (_('cannot place volume %(id)s on %(host)s')
+               % {'id': request_spec['volume_id'], 'host': host})
+        raise exception.NoValidHost(reason=msg)
+
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
         """Add additional information to the filter properties after a host has
@@ -165,7 +179,8 @@ class FilterScheduler(driver.Scheduler):
                     }
             raise exception.NoValidHost(reason=msg)
 
-    def _schedule(self, context, request_spec, filter_properties=None):
+    def _get_weighted_candidates(self, context, request_spec,
+                                 filter_properties=None):
         """Returns a list of hosts that meet the required specs,
         ordered by their fitness.
         """
@@ -214,7 +229,15 @@ class FilterScheduler(driver.Scheduler):
         # host for the job.
         weighed_hosts = self.host_manager.get_weighed_hosts(hosts,
                                                             filter_properties)
+        return weighed_hosts
+
+    def _schedule(self, context, request_spec, filter_properties=None):
+        weighed_hosts = self._get_weighted_candidates(context, request_spec,
+                                                      filter_properties)
+        if not weighed_hosts:
+            return None
         best_host = weighed_hosts[0]
         LOG.debug(_("Choosing %s") % best_host)
+        volume_properties = request_spec['volume_properties']
         best_host.obj.consume_from_volume(volume_properties)
         return best_host
