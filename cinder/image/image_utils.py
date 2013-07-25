@@ -228,8 +228,8 @@ def fetch_verify_image(context, image_service, image_id, dest,
         if backing_file is not None:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
-                reason=_("fmt=%(fmt)s backed by:"
-                         "%(backing_file)s") % locals())
+                reason=(_("fmt=%(fmt)s backed by: %(backing_file)s") %
+                        {'fmt': fmt, 'backing_file': backing_file}))
 
 
 def fetch_to_raw(context, image_service,
