@@ -16,6 +16,7 @@
 """The volumes api."""
 
 
+import ast
 import webob
 from webob import exc
 
@@ -214,6 +215,9 @@ class VolumeController(wsgi.Controller):
             filters['display_name'] = filters['name']
             del filters['name']
 
+        if 'metadata' in filters:
+            filters['metadata'] = ast.literal_eval(filters['metadata'])
+
         volumes = self.volume_api.get_all(context, marker, limit, sort_key,
                                           sort_dir, filters)
         limited_list = common.limited(volumes, req)
@@ -322,7 +326,7 @@ class VolumeController(wsgi.Controller):
 
     def _get_volume_filter_options(self):
         """Return volume search options allowed by non-admin."""
-        return ('name', 'status')
+        return ('name', 'status', 'metadata')
 
     @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):

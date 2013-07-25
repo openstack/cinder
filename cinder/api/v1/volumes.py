@@ -15,6 +15,7 @@
 
 """The volumes api."""
 
+import ast
 import webob
 from webob import exc
 
@@ -253,6 +254,9 @@ class VolumeController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
 
+        if 'metadata' in search_opts:
+            search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
+
         context = req.environ['cinder.context']
         remove_invalid_options(context,
                                search_opts, self._get_volume_search_options())
@@ -362,7 +366,7 @@ class VolumeController(wsgi.Controller):
 
     def _get_volume_search_options(self):
         """Return volume search options allowed by non-admin."""
-        return ('display_name', 'status')
+        return ('display_name', 'status', 'metadata')
 
     @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):
