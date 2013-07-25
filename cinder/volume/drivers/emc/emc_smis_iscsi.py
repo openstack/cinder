@@ -221,19 +221,19 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         self.common.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self.update_volume_status()
+            self.update_volume_stats()
 
         return self._stats
 
-    def update_volume_status(self):
-        """Retrieve status info from volume group."""
-        LOG.debug(_("Updating volume status"))
-        data = self.common.update_volume_status()
+    def update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+        LOG.debug(_("Updating volume stats"))
+        data = self.common.update_volume_stats()
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or 'EMCSMISISCSIDriver'
         data['storage_protocol'] = 'iSCSI'

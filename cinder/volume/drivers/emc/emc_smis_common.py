@@ -852,9 +852,9 @@ class EMCSMISCommon():
         self.conn = self._get_ecom_connection()
         self._unmap_lun(volume, connector)
 
-    def update_volume_status(self):
-        """Retrieve status info."""
-        LOG.debug(_("Updating volume status"))
+    def update_volume_stats(self):
+        """Retrieve stats info."""
+        LOG.debug(_("Updating volume stats"))
         self.conn = self._get_ecom_connection()
         storage_type = self._get_storage_type()
 

@@ -318,11 +318,11 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
     def get_volume_stats(self, refresh=False):
         if refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
         dict_of_devices_sizes = self._devices_sizes()
         used_devices = self._get_used_devices()
         total_size = 0
@@ -332,7 +332,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
                 free_size += size
             total_size += size
 
-        LOG.debug("Updating volume status")
+        LOG.debug("Updating volume stats")
         backend_name = self.configuration.safe_get('volume_backend_name')
         data = {'total_capacity_gb': total_size / 1024,
                 'free_capacity_gb': free_size / 1024,

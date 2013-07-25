@@ -575,19 +575,19 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                       run_as_root=True)
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
 
         # Note(zhiteng): These information are driver/backend specific,
@@ -613,7 +613,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                                      self.configuration.volume_group,
                                      run_as_root=True)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error retrieving volume status: %s"), exc.stderr)
+            LOG.error(_("Error retrieving volume stats: %s"), exc.stderr)
             out = False
 
         if out:
@@ -706,18 +706,18 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
         self._do_lvm_snapshot(orig_lv_name, snapshot)
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
 
         backend_name = self.configuration.safe_get('volume_backend_name')

@@ -1349,20 +1349,20 @@ class StorwizeSVCDriver(san.SanDriver):
     """====================================================================="""
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If we haven't gotten stats yet or 'refresh' is True,
         run update the stats first.
         """
         if not self._stats or refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
 
         data['vendor_name'] = 'IBM'
@@ -1379,7 +1379,7 @@ class StorwizeSVCDriver(san.SanDriver):
         ssh_cmd = 'svcinfo lssystem -delim !'
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
         if not attributes or not attributes['name']:
-            exception_message = (_('_update_volume_status: '
+            exception_message = (_('_update_volume_stats: '
                                    'Could not get system name'))
             raise exception.VolumeBackendAPIException(data=exception_message)
 
@@ -1392,7 +1392,7 @@ class StorwizeSVCDriver(san.SanDriver):
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
         if not attributes:
             LOG.error(_('Could not get pool data from the storage'))
-            exception_message = (_('_update_volume_status: '
+            exception_message = (_('_update_volume_stats: '
                                    'Could not get storage pool data'))
             raise exception.VolumeBackendAPIException(data=exception_message)
 

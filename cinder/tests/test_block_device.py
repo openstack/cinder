@@ -101,7 +101,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
             'provider_location': 'None:3260,None None '
                                  'None dev_path'})
 
-    def test_update_volume_status(self):
+    def test_update_volume_stats(self):
         self.mox.StubOutWithMock(self.drv, '_devices_sizes')
         self.drv._devices_sizes().AndReturn({'/dev/loop1': 1024,
                                              '/dev/loop2': 1024})
@@ -111,7 +111,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.configuration.safe_get('volume_backend_name'). \
             AndReturn('BlockDeviceDriver')
         self.mox.ReplayAll()
-        self.drv._update_volume_status()
+        self.drv._update_volume_stats()
         self.assertEquals(self.drv._stats,
                           {'total_capacity_gb': 2,
                            'free_capacity_gb': 2,

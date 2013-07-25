@@ -546,12 +546,12 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         self._delete_luncopy(luncopy_id)
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
@@ -1501,10 +1501,10 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
                 return False
         return True
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'HuaweiISCSIDriver'
