@@ -20,7 +20,7 @@ Helper code for the iSCSI volume driver.
 
 """
 
-
+import contextlib
 import os
 import re
 
@@ -29,7 +29,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder import utils
+from cinder.openstack.common import processutils as putils
 from cinder.volume import utils as volume_utils
 
 
@@ -116,7 +116,7 @@ class TargetAdmin(object):
 class TgtAdm(TargetAdmin):
     """iSCSI target administration using tgtadm."""
 
-    def __init__(self, execute=utils.execute):
+    def __init__(self, execute=putils.execute):
         super(TgtAdm, self).__init__('tgtadm', execute)
 
     def _get_target(self, iqn):
@@ -233,7 +233,7 @@ class TgtAdm(TargetAdmin):
 class IetAdm(TargetAdmin):
     """iSCSI target administration using ietadm."""
 
-    def __init__(self, execute=utils.execute):
+    def __init__(self, execute=putils.execute):
         super(IetAdm, self).__init__('ietadm', execute)
 
     def _iotype(self, path):
@@ -241,6 +241,26 @@ class IetAdm(TargetAdmin):
             return 'blockio' if volume_utils.is_block(path) else 'fileio'
         else:
             return CONF.iscsi_iotype
+
+    @contextlib.contextmanager
+    def temporary_chown(self, path, owner_uid=None):
+        """Temporarily chown a path.
+
+        :params path: The path to chown
+        :params owner_uid: UID of temporary owner (defaults to current user)
+        """
+        if owner_uid is None:
+            owner_uid = os.getuid()
+
+        orig_uid = os.stat(path).st_uid
+
+        if orig_uid != owner_uid:
+            putils.execute('chown', owner_uid, path, run_as_root=True)
+        try:
+            yield
+        finally:
+            if orig_uid != owner_uid:
+                putils.execute('chown', orig_uid, path, run_as_root=True)
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
@@ -263,7 +283,7 @@ class IetAdm(TargetAdmin):
                             Lun 0 Path=%s,Type=%s
                 """ % (name, chap_auth, path, self._iotype(path))
 
-                with utils.temporary_chown(conf_file):
+                with self.temporary_chown(conf_file):
                     f = open(conf_file, 'a+')
                     f.write(volume_conf)
                     f.close()
@@ -282,7 +302,7 @@ class IetAdm(TargetAdmin):
         vol_uuid_file = CONF.volume_name_template % vol_id
         conf_file = CONF.iet_conf
         if os.path.exists(conf_file):
-            with utils.temporary_chown(conf_file):
+            with self.temporary_chown(conf_file):
                 try:
                     iet_conf_text = open(conf_file, 'r+')
                     full_txt = iet_conf_text.readlines()
@@ -356,7 +376,7 @@ class FakeIscsiHelper(object):
 
 class LioAdm(TargetAdmin):
     """iSCSI target administration for LIO using python-rtslib."""
-    def __init__(self, execute=utils.execute):
+    def __init__(self, execute=putils.execute):
         super(LioAdm, self).__init__('rtstool', execute)
 
         try:
