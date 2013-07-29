@@ -112,11 +112,17 @@ class CephBackupDriver(BackupDriver):
             self.rbd_stripe_count = 0
             self.rbd_stripe_unit = 0
 
-        _utf8 = lambda s: s if isinstance(s, str) else s.encode('utf8')
+        self._ceph_backup_user = self._utf8(CONF.backup_ceph_user)
+        self._ceph_backup_pool = self._utf8(CONF.backup_ceph_pool)
+        self._ceph_backup_conf = self._utf8(CONF.backup_ceph_conf)
 
-        self._ceph_backup_user = _utf8(CONF.backup_ceph_user)
-        self._ceph_backup_pool = _utf8(CONF.backup_ceph_pool)
-        self._ceph_backup_conf = _utf8(CONF.backup_ceph_conf)
+    @staticmethod
+    def _utf8(s):
+        """Ensure string s is utf8 (i.e. not unicode)."""
+        if isinstance(s, str):
+            return s
+
+        return s.encode('utf8')
 
     def _validate_string_args(self, *args):
         """Ensure all args are non-None and non-empty."""
@@ -172,7 +178,7 @@ class CephBackupDriver(BackupDriver):
                                   conffile=self._ceph_backup_conf)
         try:
             client.connect()
-            pool_to_open = str(pool or self._ceph_backup_pool)
+            pool_to_open = self._utf8(pool or self._ceph_backup_pool)
             ioctx = client.open_ioctx(pool_to_open)
             return client, ioctx
         except self.rados.Error:
@@ -195,12 +201,12 @@ class CephBackupDriver(BackupDriver):
         """
         # Ensure no unicode
         if diff_format:
-            return str("volume-%s.backup.base" % (volume_id))
+            return self._utf8("volume-%s.backup.base" % (volume_id))
         else:
             if backup_id is None:
                 msg = _("backup_id required")
                 raise exception.InvalidParameterValue(msg)
-            return str("volume-%s.backup.%s" % (volume_id, backup_id))
+            return self._utf8("volume-%s.backup.%s" % (volume_id, backup_id))
 
     def _transfer_data(self, src, src_name, dest, dest_name, length):
         """Transfer data between files (Python IO objects)."""
@@ -372,9 +378,9 @@ class CephBackupDriver(BackupDriver):
             if from_snap is not None:
                 cmd += ['--from-snap', from_snap]
             if src_snap:
-                path = str("%s/%s@%s" % (src_pool, src_name, src_snap))
+                path = self._utf8("%s/%s@%s" % (src_pool, src_name, src_snap))
             else:
-                path = str("%s/%s" % (src_pool, src_name))
+                path = self._utf8("%s/%s" % (src_pool, src_name))
             cmd += [path, '-']
             out, err = self._execute(*cmd)
         except (exception.ProcessExecutionError, exception.Error) as exc:
@@ -383,7 +389,7 @@ class CephBackupDriver(BackupDriver):
 
         try:
             cmd = ['rbd', 'import-diff'] + dest_ceph_args
-            cmd += ['-', str("%s/%s" % (dest_pool, dest_name))]
+            cmd += ['-', self._utf8("%s/%s" % (dest_pool, dest_name))]
             out, err = self._execute(*cmd, process_input=out)
         except (exception.ProcessExecutionError, exception.Error) as exc:
             LOG.info(_("rbd import-diff failed - %s") % (str(exc)))
@@ -586,7 +592,7 @@ class CephBackupDriver(BackupDriver):
         return backup_snaps
 
     def _get_new_snap_name(self, backup_id):
-        return str("backup.%s.snap.%s" % (backup_id, time.time()))
+        return self._utf8("backup.%s.snap.%s" % (backup_id, time.time()))
 
     def _get_backup_snap_name(self, rbd_image, name, backup_id):
         """Return the name of the snapshot associated with backup_id.
