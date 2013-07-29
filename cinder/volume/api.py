@@ -387,7 +387,8 @@ class API(base.Base):
             return
         if not force and volume['status'] not in ["available", "error",
                                                   "error_restoring"]:
-            msg = _("Volume status must be available or error")
+            msg = _("Volume status must be available or error, "
+                    "but current status is: %s") % volume['status']
             raise exception.InvalidVolume(reason=msg)
 
         if volume['attach_status'] == "attached":
