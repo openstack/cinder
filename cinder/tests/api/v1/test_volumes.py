@@ -483,6 +483,30 @@ class VolumeApiTest(test.TestCase):
                           req,
                           1)
 
+    def test_volume_detail_limit_offset(self):
+        def volume_detail_limit_offset(is_admin):
+            def stub_volume_get_all_by_project(context, project_id, marker,
+                                               limit, sort_key, sort_dir):
+                return [
+                    stubs.stub_volume(1, display_name='vol1'),
+                    stubs.stub_volume(2, display_name='vol2'),
+                ]
+
+            self.stubs.Set(db, 'volume_get_all_by_project',
+                           stub_volume_get_all_by_project)
+            req = fakes.HTTPRequest.blank('/v1/volumes/detail?limit=2\
+                                          &offset=1',
+                                          use_admin_context=is_admin)
+            res_dict = self.controller.index(req)
+            volumes = res_dict['volumes']
+            self.assertEquals(len(volumes), 1)
+            self.assertEquals(volumes[0]['id'], 2)
+
+        #admin case
+        volume_detail_limit_offset(is_admin=True)
+        #non_admin case
+        volume_detail_limit_offset(is_admin=False)
+
     def test_volume_delete(self):
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
         resp = self.controller.delete(req, 1)

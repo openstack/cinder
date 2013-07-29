@@ -517,6 +517,13 @@ class VolumeApiTest(test.TestCase):
         self.assertEquals(len(volumes), 1)
         self.assertEquals(volumes[0]['id'], 2)
 
+        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1',
+                                      use_admin_context=True)
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEquals(len(volumes), 1)
+        self.assertEquals(volumes[0]['id'], 2)
+
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1&offset=1')
         self.assertRaises(exception.InvalidInput,
                           self.controller.index,
