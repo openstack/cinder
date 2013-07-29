@@ -17,12 +17,13 @@
 import os.path
 import string
 
+from cinder.brick import exceptions
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
-from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils as putils
 from cinder import test
 
 LOG = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
 
     def test_get_initiator(self):
         def initiator_no_file(*args, **kwargs):
-            raise exception.ProcessExecutionError('No file')
+            raise putils.ProcessExecutionError('No file')
 
         def initiator_get_text(*arg, **kwargs):
             text = ('## DO NOT EDIT OR REMOVE THIS FILE!\n'
@@ -250,6 +251,6 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
                        lambda: [])
         self.stubs.Set(self.connector._linuxfc, 'get_fc_hbas_info',
                        lambda: [])
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exceptions.NoFibreChannelHostsFound,
                           self.connector.connect_volume,
                           connection_info['data'])
