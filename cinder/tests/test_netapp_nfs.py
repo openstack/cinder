@@ -51,6 +51,9 @@ class FakeVolume(object):
     def __getitem__(self, key):
         return self.__dict__[key]
 
+    def __setitem__(self, key, val):
+        self.__dict__[key] = val
+
 
 class FakeSnapshot(object):
     def __init__(self, volume_size=0):
@@ -100,21 +103,20 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv = self._driver
         mox = self.mox
         volume = FakeVolume(1)
-        snapshot = FakeSnapshot(2)
-
-        self.assertRaises(exception.CinderException,
-                          drv.create_volume_from_snapshot,
-                          volume,
-                          snapshot)
-
         snapshot = FakeSnapshot(1)
 
         location = '127.0.0.1:/nfs'
         expected_result = {'provider_location': location}
         mox.StubOutWithMock(drv, '_clone_volume')
         mox.StubOutWithMock(drv, '_get_volume_location')
+        mox.StubOutWithMock(drv, 'local_path')
+        mox.StubOutWithMock(drv, '_discover_file_till_timeout')
+        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
         drv._clone_volume(IgnoreArg(), IgnoreArg(), IgnoreArg())
         drv._get_volume_location(IgnoreArg()).AndReturn(location)
+        drv.local_path(IgnoreArg()).AndReturn('/mnt')
+        drv._discover_file_till_timeout(IgnoreArg()).AndReturn(True)
+        drv._set_rw_permissions_for_all(IgnoreArg())
 
         mox.ReplayAll()
 
@@ -162,16 +164,6 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv.delete_snapshot(FakeSnapshot())
 
         mox.VerifyAll()
-
-    def test_cloned_volume_size_fail(self):
-        volume_clone_fail = FakeVolume(1)
-        volume_src = FakeVolume(2)
-        try:
-            self._driver.create_cloned_volume(volume_clone_fail,
-                                              volume_src)
-            raise AssertionError()
-        except exception.CinderException:
-            pass
 
     def _custom_setup(self):
         kwargs = {}
