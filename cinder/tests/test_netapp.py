@@ -1066,7 +1066,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
                        FakeDirect7modeHTTPConnection)
         driver.do_setup(context='')
         client = driver.client
-        client.set_api_version(1, 7)
+        client.set_api_version(1, 9)
         self.driver = driver
 
     def _set_config(self, configuration):
@@ -1098,6 +1098,20 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         if not success:
             raise AssertionError('Failed creating on selected volumes')
 
+    def test_check_for_setup_error_version(self):
+        drv = self.driver
+        delattr(drv.client, '_api_version')
+
+        # check exception raises when version not found
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          drv.check_for_setup_error)
+
+        drv.client.set_api_version(1, 8)
+
+        # check exception raises when not supported version
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          drv.check_for_setup_error)
+
 
 class NetAppDirect7modeISCSIDriverTestCase_WV(
         NetAppDirect7modeISCSIDriverTestCase_NV):
@@ -1114,7 +1128,7 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
                        FakeDirect7modeHTTPConnection)
         driver.do_setup(context='')
         client = driver.client
-        client.set_api_version(1, 7)
+        client.set_api_version(1, 9)
         self.driver = driver
 
     def _set_config(self, configuration):

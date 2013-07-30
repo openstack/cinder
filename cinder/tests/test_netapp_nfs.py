@@ -216,12 +216,10 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv = self._driver
 
         mox.StubOutWithMock(netapp_nfs.NetAppNFSDriver, 'do_setup')
-        mox.StubOutWithMock(drv, 'check_for_setup_error')
         mox.StubOutWithMock(drv, '_get_client')
         mox.StubOutWithMock(drv, '_do_custom_setup')
 
         netapp_nfs.NetAppNFSDriver.do_setup(IgnoreArg())
-        drv.check_for_setup_error()
         drv._get_client()
         drv._do_custom_setup(IgnoreArg())
 
@@ -797,9 +795,25 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
         self._driver = netapp_nfs.NetAppDirect7modeNfsDriver(
             configuration=create_configuration())
 
+    def test_check_for_setup_error_version(self):
+        drv = self._driver
+        drv._client = api.NaServer("127.0.0.1")
+
+        # check exception raises when version not found
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          drv.check_for_setup_error)
+
+        drv._client.set_api_version(1, 8)
+
+        # check exception raises when not supported version
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          drv.check_for_setup_error)
+
     def test_check_for_setup_error(self):
         mox = self.mox
         drv = self._driver
+        drv._client = api.NaServer("127.0.0.1")
+        drv._client.set_api_version(1, 9)
         required_flags = [
             'netapp_transport_type',
             'netapp_login',
@@ -832,11 +846,9 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
         mox = self.mox
         drv = self._driver
         mox.StubOutWithMock(netapp_nfs.NetAppNFSDriver, 'do_setup')
-        mox.StubOutWithMock(drv, 'check_for_setup_error')
         mox.StubOutWithMock(drv, '_get_client')
         mox.StubOutWithMock(drv, '_do_custom_setup')
         netapp_nfs.NetAppNFSDriver.do_setup(IgnoreArg())
-        drv.check_for_setup_error()
         drv._get_client()
         drv._do_custom_setup(IgnoreArg())
 
