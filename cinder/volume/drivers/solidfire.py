@@ -43,7 +43,11 @@ sf_opts = [
 
     cfg.BoolOpt('sf_allow_tenant_qos',
                 default=False,
-                help='Allow tenants to specify QOS on create'), ]
+                help='Allow tenants to specify QOS on create'),
+
+    cfg.StrOpt('sf_account_prefix',
+               default=socket.gethostname(),
+               help='Create SolidFire accounts with this prefix'), ]
 
 
 class SolidFire(SanISCSIDriver):
@@ -208,7 +212,9 @@ class SolidFire(SanISCSIDriver):
 
     def _get_sf_account_name(self, project_id):
         """Build the SolidFire account name to use."""
-        return ('%s-%s' % (socket.gethostname(), project_id))
+        return '%s%s%s' % (self.configuration.sf_account_prefix,
+                           '-' if self.configuration.sf_account_prefix else '',
+                           project_id)
 
     def _get_sfaccount(self, project_id):
         sf_account_name = self._get_sf_account_name(project_id)
