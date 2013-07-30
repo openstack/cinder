@@ -354,7 +354,6 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
 
     def do_setup(self, context):
         self._context = context
-        self.check_for_setup_error()
         self._client = self._get_client()
         self._do_custom_setup(self._client)
 
@@ -520,6 +519,20 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         """Do the customized set up on client if any for 7 mode."""
         (major, minor) = self._get_ontapi_version()
         client.set_api_version(major, minor)
+
+    def check_for_setup_error(self):
+        """Checks if setup occured properly."""
+        api_version = self._client.get_api_version()
+        if api_version:
+            major, minor = api_version
+            if major == 1 and minor < 9:
+                msg = _("Unsupported ONTAP version."
+                        " ONTAP version 7.3.1 and above is supported.")
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            msg = _("Api version could not be determined.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        super(NetAppDirect7modeNfsDriver, self).check_for_setup_error()
 
     def _clone_volume(self, volume_name, clone_name, volume_id):
         """Clones mounted volume with NetApp filer."""

@@ -2262,10 +2262,24 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         if self.volume_list:
             self.volume_list = self.volume_list.split(',')
             self.volume_list = [el.strip() for el in self.volume_list]
+        (major, minor) = self._get_ontapi_version()
+        self.client.set_api_version(major, minor)
         if self.vfiler:
-            (major, minor) = self._get_ontapi_version()
-            self.client.set_api_version(major, minor)
             self.client.set_vfiler(self.vfiler)
+
+    def check_for_setup_error(self):
+        """Check that the driver is working and can communicate."""
+        api_version = self.client.get_api_version()
+        if api_version:
+            major, minor = api_version
+            if major == 1 and minor < 9:
+                msg = _("Unsupported ONTAP version."
+                        " ONTAP version 7.3.1 and above is supported.")
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            msg = _("Api version could not be determined.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        super(NetAppDirect7modeISCSIDriver, self).check_for_setup_error()
 
     def _get_avl_volume_by_size(self, size):
         """Get the available volume by size."""

@@ -125,10 +125,10 @@ class NaServer(object):
         self._refresh_conn = True
 
     def get_api_version(self):
-        """Gets the api version."""
+        """Gets the api version tuple."""
         if hasattr(self, '_api_version'):
-            return self._api_version
-        return self._api_version
+            return (self._api_major_version, self._api_minor_version)
+        return None
 
     def set_port(self, port):
         """Set the server communication port."""
