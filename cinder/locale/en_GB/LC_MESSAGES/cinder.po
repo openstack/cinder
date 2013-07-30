@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-07-29 18:09+0000\n"
+"POT-Creation-Date: 2013-07-30 18:09+0000\n"
 "PO-Revision-Date: 2012-03-30 11:10+0000\n"
 "Last-Translator: Anthony Harrington <untaintableangel@hotmail.co.uk>\n"
 "Language-Team: English (United Kingdom) <en_GB@li.org>\n"
@@ -1526,238 +1526,238 @@ msgid ""
 "striping"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:135
+#: cinder/backup/drivers/ceph.py:141
 #, python-format
 msgid "invalid user '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:201
+#: cinder/backup/drivers/ceph.py:207
 msgid "backup_id required"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:207
+#: cinder/backup/drivers/ceph.py:213
 #, python-format
 msgid "transferring data between '%(src)s' and '%(dest)s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:211
+#: cinder/backup/drivers/ceph.py:217
 #, python-format
 msgid "%(chunks)s chunks of %(bytes)s bytes to be transferred"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:221
+#: cinder/backup/drivers/ceph.py:227
 #, python-format
 msgid "transferred chunk %(chunk)s of %(chunks)s (%(rate)dK/s)"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:231
+#: cinder/backup/drivers/ceph.py:237
 #, python-format
 msgid "transferring remaining %s bytes"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:243
+#: cinder/backup/drivers/ceph.py:249
 #, python-format
 msgid "creating base image '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:268 cinder/backup/drivers/ceph.py:511
+#: cinder/backup/drivers/ceph.py:274 cinder/backup/drivers/ceph.py:517
 #, python-format
 msgid "deleting backup snapshot='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:271
+#: cinder/backup/drivers/ceph.py:277
 msgid "no backup snapshot to delete"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:308
+#: cinder/backup/drivers/ceph.py:314
 #, python-format
 msgid "trying diff format name format basename='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:316
+#: cinder/backup/drivers/ceph.py:322
 #, python-format
 msgid "image %s not found"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:324
+#: cinder/backup/drivers/ceph.py:330
 #, python-format
 msgid "base image still has %s snapshots so not deleting base image"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:329
+#: cinder/backup/drivers/ceph.py:335
 #, python-format
 msgid "deleting base image='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:336
+#: cinder/backup/drivers/ceph.py:342
 #, python-format
 msgid "image busy, retrying %(retries)s more time(s) in %(delay)ss"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:341
+#: cinder/backup/drivers/ceph.py:347
 msgid "max retries reached - raising error"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:344
+#: cinder/backup/drivers/ceph.py:350
 #, python-format
 msgid "base backup image='%s' deleted)"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:359
+#: cinder/backup/drivers/ceph.py:365
 #, python-format
 msgid "performing differential transfer from '%(src)s' to '%(dest)s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:381
+#: cinder/backup/drivers/ceph.py:387
 #, python-format
 msgid "rbd export-diff failed - %s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:389
+#: cinder/backup/drivers/ceph.py:395
 #, python-format
 msgid "rbd import-diff failed - %s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:397
+#: cinder/backup/drivers/ceph.py:403
 #, python-format
 msgid "image '%s' not found - trying diff format name"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:402
+#: cinder/backup/drivers/ceph.py:408
 #, python-format
 msgid "diff format image '%s' not found"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:437
+#: cinder/backup/drivers/ceph.py:443
 #, python-format
 msgid "using --from-snap '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:464
+#: cinder/backup/drivers/ceph.py:470
 #, python-format
 msgid ""
 "snap='%(snap)s' does not exist in base image='%(base)s' - aborting "
 "incremental backup"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:474
+#: cinder/backup/drivers/ceph.py:480
 #, python-format
 msgid "creating backup snapshot='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:494
+#: cinder/backup/drivers/ceph.py:500
 #, python-format
 msgid "differential backup transfer completed in %.4fs"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:503
+#: cinder/backup/drivers/ceph.py:509
 msgid "differential backup transfer failed"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:533
+#: cinder/backup/drivers/ceph.py:539
 #, python-format
 msgid "creating base image='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:542
+#: cinder/backup/drivers/ceph.py:548
 msgid "copying data"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:602
+#: cinder/backup/drivers/ceph.py:608
 #, python-format
 msgid "looking for snapshot of backup base '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:605
+#: cinder/backup/drivers/ceph.py:611
 #, python-format
 msgid "backup base '%s' has no snapshots"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:612
+#: cinder/backup/drivers/ceph.py:618
 #, python-format
 msgid "backup '%s' has no snapshot"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:616
+#: cinder/backup/drivers/ceph.py:622
 #, python-format
 msgid "backup should only have one snapshot but instead has %s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:621
+#: cinder/backup/drivers/ceph.py:627
 #, python-format
 msgid "found snapshot '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:658
+#: cinder/backup/drivers/ceph.py:664
 #, python-format
 msgid "Starting backup of volume='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:671
+#: cinder/backup/drivers/ceph.py:677
 msgid "forcing full backup"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:683
+#: cinder/backup/drivers/ceph.py:689
 #, python-format
 msgid "backup '%s' finished."
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:721
+#: cinder/backup/drivers/ceph.py:727
 #, python-format
 msgid "trying incremental restore from base='%(base)s' snap='%(snap)s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:733
+#: cinder/backup/drivers/ceph.py:739
 msgid "differential restore failed, trying full restore"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:737
+#: cinder/backup/drivers/ceph.py:743
 #, python-format
 msgid "restore transfer completed in %.4fs"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:831
+#: cinder/backup/drivers/ceph.py:837
 #, python-format
 msgid "no restore point found for backup='%s', forcing full copy"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:857
+#: cinder/backup/drivers/ceph.py:863
 msgid "forcing full restore"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:870
+#: cinder/backup/drivers/ceph.py:876
 #, python-format
 msgid "starting restore from Ceph backup=%(src)s to volume=%(dest)s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:884
+#: cinder/backup/drivers/ceph.py:890
 msgid "volume_file does not support fileno() so skipping fsync()"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:889
+#: cinder/backup/drivers/ceph.py:895
 msgid "restore finished."
-msgstr ""
-
-#: cinder/backup/drivers/ceph.py:891
-#, python-format
-msgid "restore finished with error - %s"
 msgstr ""
 
 #: cinder/backup/drivers/ceph.py:897
 #, python-format
+msgid "restore finished with error - %s"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:903
+#, python-format
 msgid "delete started for backup=%s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:902
+#: cinder/backup/drivers/ceph.py:908
 msgid "rbd image not found but continuing anyway so that db entry can be removed"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:905
+#: cinder/backup/drivers/ceph.py:911
 #, python-format
 msgid "delete '%s' finished with warning"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:907
+#: cinder/backup/drivers/ceph.py:913
 #, python-format
 msgid "delete '%s' finished"
 msgstr ""
@@ -1965,67 +1965,63 @@ msgstr ""
 msgid "delete %s finished"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:84
+#: cinder/brick/initiator/connector.py:88
 #, python-format
 msgid "Invalid InitiatorConnector protocol specified %(protocol)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:97
+#: cinder/brick/initiator/connector.py:101
 #, python-format
 msgid "Failed to access the device on the path %(path)s: %(error)s %(info)s."
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:174
+#: cinder/brick/initiator/connector.py:178
 #, python-format
 msgid "iSCSI device not found at %s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:176
+#: cinder/brick/initiator/connector.py:180
 #, python-format
 msgid ""
 "ISCSI volume not yet found at: %(host_device)s. Will rescan & retry.  Try"
 " number: %(tries)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:189
+#: cinder/brick/initiator/connector.py:193
 #, python-format
 msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:506
+#: cinder/brick/initiator/connector.py:510
 msgid "We are unable to locate any Fibre Channel devices"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:515
+#: cinder/brick/initiator/connector.py:519
 #, python-format
 msgid "Looking for Fibre Channel dev %(device)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:525
+#: cinder/brick/initiator/connector.py:529
 msgid "Fibre Channel device not found."
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:528
+#: cinder/brick/initiator/connector.py:532
 #, python-format
 msgid "Fibre volume not yet found. Will rescan & retry.  Try number: %(tries)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:544
+#: cinder/brick/initiator/connector.py:548
 #, python-format
 msgid "Found Fibre Channel volume %(name)s (after %(tries)s rescans)"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:553
+#: cinder/brick/initiator/connector.py:557
 #, python-format
 msgid "Multipath device discovered %(device)s"
 msgstr ""
 
 #: cinder/brick/initiator/linuxfc.py:53 cinder/brick/initiator/linuxfc.py:59
 msgid "systool is not installed"
-msgstr ""
-
-#: cinder/brick/initiator/linuxfc.py:63
-msgid "Cannot find any Fibre Channel HBAs"
 msgstr ""
 
 #: cinder/brick/initiator/linuxscsi.py:103
@@ -6505,5 +6501,8 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "_update_volume_status: Could not get storage pool data"
+#~ msgstr ""
+
+#~ msgid "Cannot find any Fibre Channel HBAs"
 #~ msgstr ""
 
