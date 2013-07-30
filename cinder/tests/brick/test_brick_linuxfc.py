@@ -44,6 +44,20 @@ class LinuxFCTestCase(test.TestCase):
                              'tee -a /sys/class/scsi_host/bar/scan']
         self.assertEquals(expected_commands, self.cmds)
 
+    def test_get_fc_hbas_fail(self):
+        def fake_exec1(a, b, c, d, run_as_root=True, root_helper='sudo'):
+            raise OSError
+
+        def fake_exec2(a, b, c, d, run_as_root=True, root_helper='sudo'):
+            return None, 'None found'
+
+        self.stubs.Set(self.lfc, "_execute", fake_exec1)
+        hbas = self.lfc.get_fc_hbas()
+        self.assertEquals(0, len(hbas))
+        self.stubs.Set(self.lfc, "_execute", fake_exec2)
+        hbas = self.lfc.get_fc_hbas()
+        self.assertEquals(0, len(hbas))
+
     def test_get_fc_hbas(self):
         def fake_exec(a, b, c, d, run_as_root=True, root_helper='sudo'):
             return SYSTOOL_FC, None
