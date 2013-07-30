@@ -54,7 +54,7 @@ def _get_connect_string(backend,
     if backend == "postgres":
         backend = "postgresql+psycopg2"
 
-    return ("%(backend)s://%(user)s:%(passwd)s@localhost/%(database)s",
+    return ("%(backend)s://%(user)s:%(passwd)s@localhost/%(database)s" %
             {'backend': backend, 'user': user, 'passwd': passwd,
              'database': database})
 
@@ -79,6 +79,7 @@ def _is_backend_avail(backend,
     except Exception:
         # intentionally catch all to handle exceptions even if we don't
         # have any backend code loaded.
+        LOG.exception("Backend %s is not available", backend)
         return False
     else:
         connection.close()
