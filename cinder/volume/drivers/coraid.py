@@ -47,8 +47,9 @@ coraid_opts = [
                default='admin',
                help='User name to connect to Coraid ESM'),
     cfg.StrOpt('coraid_group',
-               default=False,
-               help='Group name of coraid_user (must have admin privilege)'),
+               default='admin',
+               help='Name of group on Coraid ESM to which coraid_user belongs'
+               ' (must have admin privilege)'),
     cfg.StrOpt('coraid_password',
                default='password',
                help='Password to connect to Coraid ESM'),
