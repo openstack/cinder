@@ -1371,7 +1371,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         data['total_capacity_gb'] = 0  # To be overwritten
         data['free_capacity_gb'] = 0   # To be overwritten
-        data['reserved_percentage'] = 0
+        data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
 
         pool = self.configuration.storwize_svc_volpool_name
