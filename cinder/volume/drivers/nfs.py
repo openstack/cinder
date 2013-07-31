@@ -141,13 +141,14 @@ class NfsDriver(RemoteFsDriver):
             LOG.warn(msg)
             raise exception.NfsException(msg)
 
+        # Check if mount.nfs is installed
         try:
-            self._execute('mount.nfs', check_exit_code=False)
+            self._execute('mount.nfs', check_exit_code=False, run_as_root=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 raise exception.NfsException('mount.nfs is not installed')
             else:
-                raise
+                raise exc
 
     def create_cloned_volume(self, volume, src_vref):
         raise NotImplementedError()

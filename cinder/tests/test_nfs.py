@@ -492,7 +492,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(os.path, 'exists')
         os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
         mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mount.nfs', check_exit_code=False).\
+        drv._execute('mount.nfs', check_exit_code=False, run_as_root=True).\
             AndRaise(OSError(errno.ENOENT, 'No such file or directory'))
 
         mox.ReplayAll()
