@@ -38,7 +38,7 @@ for credentials to talk to the REST service on the 3PAR
 array.
 """
 
-
+import ast
 import base64
 import json
 import paramiko
@@ -653,6 +653,15 @@ exit
     def _remove_volume_from_volume_set(self, volume_name, vvs_name):
         self._cli_run('removevvset -f %s %s' % (vvs_name, volume_name), None)
 
+    def get_cpg(self, volume):
+        volume_name = self._get_3par_vol_name(volume['id'])
+        vol = self.client.getVolume(volume_name)
+        return vol['userCPG']
+
+    def _get_3par_vol_comment(self, volume_name):
+        vol = self.client.getVolume(volume_name)
+        return vol['comment']
+
     def get_persona_type(self, volume, hp3par_keys=None):
         default_persona = self.valid_persona_values[0]
         type_id = volume.get('volume_type_id', None)
@@ -692,7 +701,6 @@ exit
             vvs_name = None
             hp3par_keys = {}
             qos = {}
-            qos_on_volume = False
             type_id = volume.get('volume_type_id', None)
             if type_id is not None:
                 volume_type = self._get_volume_type(type_id)
@@ -700,8 +708,6 @@ exit
                 vvs_name = self._get_key_value(hp3par_keys, 'vvs')
                 if vvs_name is None:
                     qos = self._get_qos_by_volume_type(volume_type)
-                    if qos:
-                        qos_on_volume = True
 
             cpg = self._get_key_value(hp3par_keys, 'cpg',
                                       self.config.hp3par_cpg)
@@ -780,11 +786,6 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
-        metadata = {'3ParName': volume_name, 'CPG': cpg,
-                    'snapCPG': extras['snapCPG'], 'qos': qos_on_volume,
-                    'vvs': vvs_name}
-        return metadata
-
     def _copy_volume(self, src_name, dest_name):
         self._cli_run('createvvcopy -p %s %s' % (src_name, dest_name), None)
 
@@ -798,12 +799,10 @@ exit
         word = re.search(search_string.strip(' ') + ' ([^ ]*)', s)
         return word.groups()[0].strip(' ')
 
-    def get_volume_metadata_value(self, volume, key):
-        metadata = volume.get('volume_metadata')
-        if metadata:
-            for i in volume['volume_metadata']:
-                if i['key'] == key:
-                    return i['value']
+    def _get_3par_vol_comment_value(self, vol_comment, key):
+        comment_dict = dict(ast.literal_eval(vol_comment))
+        if key in comment_dict:
+            return comment_dict[key]
         return None
 
     def create_cloned_volume(self, volume, src_vref):
@@ -833,11 +832,12 @@ exit
     def delete_volume(self, volume):
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
-            qos = self.get_volume_metadata_value(volume, 'qos')
-            vvs_name = self.get_volume_metadata_value(volume, 'vvs')
+            vol_comment = self._get_3par_vol_comment(volume_name)
+            qos = self._get_3par_vol_comment_value(vol_comment, 'qos')
+            vvs_name = self._get_3par_vol_comment_value(vol_comment, 'vvs')
             if vvs_name is not None:
                 self._remove_volume_from_volume_set(volume_name, vvs_name)
-            elif qos:
+            elif qos is not None:
                 self._remove_volume_set(self._get_3par_vvs_name(volume['id']))
             self.client.deleteVolume(volume_name)
         except hpexceptions.HTTPNotFound as ex:
@@ -878,7 +878,6 @@ exit
             type_id = volume.get('volume_type_id', None)
             vvs_name = None
             qos = {}
-            qos_on_volume = False
             hp3par_keys = {}
             if type_id is not None:
                 volume_type = self._get_volume_type(type_id)
@@ -886,8 +885,6 @@ exit
                 vvs_name = self._get_key_value(hp3par_keys, 'vvs')
                 if vvs_name is None:
                     qos = self._get_qos_by_volume_type(volume_type)
-                    if qos:
-                        qos_on_volume = True
 
             name = snapshot.get('display_name', None)
             if name:
@@ -919,10 +916,6 @@ exit
         except Exception as ex:
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
-
-        metadata = {'3ParName': volume_name, 'qos': qos_on_volume,
-                    'vvs': vvs_name}
-        return metadata
 
     def create_snapshot(self, snapshot):
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))

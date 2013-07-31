@@ -220,7 +220,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         """Creates or modifies existing 3PAR host."""
         host = None
         hostname = self.common._safe_hostname(connector['host'])
-        cpg = self.common.get_volume_metadata_value(volume, 'CPG')
+        cpg = self.common.get_cpg(volume)
         domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)

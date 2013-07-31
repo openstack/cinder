@@ -18,6 +18,7 @@
 """
 Unit tests for OpenStack Cinder volume drivers
 """
+import ast
 import mox
 import shutil
 import tempfile
@@ -305,7 +306,7 @@ class HP3PARBaseDriver():
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
     FAKE_DESC = 'test description name'
     FAKE_FC_PORTS = ['0987654321234', '123456789000987']
-    QOS = "{'qos:maxIOPS': 1000, 'qos:maxBWS': 50}"
+    QOS = {'qos:maxIOPS': '1000', 'qos:maxBWS': '50'}
     FAKE_ISCSI_PORTS = {'1.1.1.2': {'nsp': '8:1:1',
                                     'iqn': ('iqn.2000-05.com.3pardata:'
                                             '21810002ac00383d'),
@@ -383,6 +384,8 @@ class HP3PARBaseDriver():
                        self.fake_create_3par_vlun)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
                        self.fake_get_ports)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
 
@@ -392,6 +395,9 @@ class HP3PARBaseDriver():
 
     def fake_create_client(self):
         return FakeHP3ParClient(self.driver.configuration.hp3par_api_url)
+
+    def fake_get_cpg(self, volume):
+        return HP3PAR_CPG
 
     def fake_get_domain(self, cpg):
         return HP3PAR_DOMAIN
@@ -440,16 +446,14 @@ class HP3PARBaseDriver():
     def fake_copy_volume(self, src_name, dest_name):
         pass
 
-    def fake_get_volume_state(self, vol_name):
+    def fake_get_volume_stats(self, vol_name):
         return "normal"
 
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
-        model_update = self.driver.create_volume(self.volume)
-        metadata = model_update['metadata']
-        self.assertFalse(metadata['3ParName'] is None)
-        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
-        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
+        self.driver.create_volume(self.volume)
+        volume = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
+        self.assertEqual(volume['name'], self.VOLUME_3PAR_NAME)
 
     def test_create_volume_qos(self):
         self.flags(lock_path=self.tempdir)
@@ -461,12 +465,11 @@ class HP3PARBaseDriver():
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
                        "_add_volume_to_volume_set",
                        self.fake_add_volume_to_volume_set)
-        model_update = self.driver.create_volume(self.volume_qos)
-        metadata = model_update['metadata']
-        self.assertFalse(metadata['3ParName'] is None)
-        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
-        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
-        self.assertEqual(metadata['qos'], True)
+        self.driver.create_volume(self.volume_qos)
+        volume = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
+
+        self.assertEqual(volume['name'], self.VOLUME_3PAR_NAME)
+        self.assertNotIn(self.QOS, dict(ast.literal_eval(volume['comment'])))
 
     def test_delete_volume(self):
         self.flags(lock_path=self.tempdir)
@@ -474,6 +477,23 @@ class HP3PARBaseDriver():
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.common.client.getVolume,
                           self.VOLUME_ID)
+
+    def test_create_cloned_volume(self):
+        self.flags(lock_path=self.tempdir)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_volume_stats",
+                       self.fake_get_volume_stats)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
+                       self.fake_copy_volume)
+        self.state_tries = 0
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+        src_vref = {}
+        model_update = self.driver.create_cloned_volume(volume, src_vref)
+        self.assertTrue(model_update is not None)
 
     def test_create_snapshot(self):
         self.flags(lock_path=self.tempdir)
@@ -520,12 +540,10 @@ class HP3PARBaseDriver():
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
                        "_add_volume_to_volume_set",
                        self.fake_add_volume_to_volume_set)
-        model_update = self.driver.create_volume_from_snapshot(self.volume_qos,
-                                                               self.snapshot)
-        metadata = model_update['metadata']
-        self.assertEqual(metadata['qos'], True)
+        self.driver.create_volume_from_snapshot(self.volume_qos, self.snapshot)
         snap_vol = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
         self.assertEqual(snap_vol['name'], self.VOLUME_3PAR_NAME)
+        self.assertNotIn(self.QOS, dict(ast.literal_eval(snap_vol['comment'])))
 
         volume = self.volume.copy()
         volume['size'] = 1
@@ -635,25 +653,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
         self.assertEquals(self.FAKE_HOST, vlun['hostname'])
 
-    def test_create_cloned_volume(self):
-        self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
-                       self.fake_copy_volume)
-        self.state_tries = 0
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                  'id': HP3PARBaseDriver.CLONE_ID,
-                  'display_name': 'Foo Volume',
-                  'size': 2,
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
-        src_vref = {}
-        model_update = self.driver.create_cloned_volume(volume, src_vref)
-        self.assertTrue(model_update is not None)
-        metadata = model_update['metadata']
-        self.assertFalse(metadata['3ParName'] is None)
-        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
-        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
-
     def test_get_volume_stats(self):
         self.flags(lock_path=self.tempdir)
 
@@ -687,6 +686,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
+        self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -710,6 +711,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -737,6 +740,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -839,25 +844,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
         self.assertEquals(self.FAKE_HOST, vlun['hostname'])
 
-    def test_create_cloned_volume(self):
-        self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
-                       self.fake_copy_volume)
-        self.state_tries = 0
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                  'id': HP3PARBaseDriver.CLONE_ID,
-                  'display_name': 'Foo Volume',
-                  'size': 2,
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
-        src_vref = {}
-        model_update = self.driver.create_cloned_volume(volume, src_vref)
-        self.assertTrue(model_update is not None)
-        metadata = model_update['metadata']
-        self.assertFalse(metadata['3ParName'] is None)
-        self.assertEqual(metadata['CPG'], HP3PAR_CPG)
-        self.assertEqual(metadata['snapCPG'], HP3PAR_CPG_SNAP)
-
     def test_get_volume_stats(self):
         self.flags(lock_path=self.tempdir)
 
@@ -891,6 +877,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -915,6 +903,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
@@ -942,6 +932,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
+                       self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
