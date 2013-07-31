@@ -1949,9 +1949,11 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.fail('%s not less than or equal to %s' % (repr(a), repr(b)))
 
     def test_storwize_svc_get_volume_stats(self):
+        self._set_flag('reserved_percentage', 25)
         stats = self.driver.get_volume_stats()
         self.assertLessEqual(stats['free_capacity_gb'],
                              stats['total_capacity_gb'])
+        self.assertEquals(stats['reserved_percentage'], 25)
         if self.USESIM:
             self.assertEqual(stats['volume_backend_name'],
                              'storwize-svc-sim_volpool')
