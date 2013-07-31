@@ -1,6 +1,7 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 # Copyright 2010 OpenStack LLC.
+# Copyright 2013 NTT corp.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -72,6 +73,8 @@ def _create_glance_client(context, netloc, use_ssl,
         scheme = 'http'
     if CONF.auth_strategy == 'keystone':
         params['token'] = context.auth_token
+    if CONF.glance_request_timeout is not None:
+        params['timeout'] = CONF.glance_request_timeout
     endpoint = '%s://%s' % (scheme, netloc)
     return glanceclient.Client(str(version), endpoint, **params)
 
