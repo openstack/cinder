@@ -139,8 +139,12 @@ class SnapshotsController(wsgi.Controller):
         """Returns a list of snapshots, transformed through entity_maker."""
         context = req.environ['cinder.context']
 
-        search_opts = {}
-        search_opts.update(req.GET)
+        #pop out limit and offset , they are not search_opts
+        search_opts = req.GET.copy()
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
+
+        #filter out invalid option
         allowed_search_options = ('status', 'volume_id', 'display_name')
         volumes.remove_invalid_options(context, search_opts,
                                        allowed_search_options)

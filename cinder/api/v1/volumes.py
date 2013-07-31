@@ -251,8 +251,10 @@ class VolumeController(wsgi.Controller):
     def _items(self, req, entity_maker):
         """Returns a list of volumes, transformed through entity_maker."""
 
-        search_opts = {}
-        search_opts.update(req.GET)
+        #pop out limit and offset , they are not search_opts
+        search_opts = req.GET.copy()
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
 
         if 'metadata' in search_opts:
             search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
