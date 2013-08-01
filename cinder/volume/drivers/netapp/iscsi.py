@@ -522,6 +522,19 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(data=msg)
         self.lun_table[lun.name] = lun
 
+    def _get_lun_from_table(self, name):
+        """Gets LUN from cache table.
+
+        Refreshes cache if lun not found in cache.
+        """
+        lun = self.lun_table.get(name)
+        if lun is None:
+            self._get_lun_list()
+            lun = self.lun_table.get(name)
+            if lun is None:
+                raise exception.VolumeNotFound(volume_id=name)
+        return lun
+
     def _clone_lun(self, name, new_name, space_reserved='true',
                    start_block=0, end_block=0, block_count=0):
         """Clone LUN with the given name to the new name."""
@@ -532,12 +545,16 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         raise NotImplementedError()
 
     def _get_lun_attr(self, name, attr):
-        """Get the attributes for a LUN from our cache table."""
-        if not name in self.lun_table or not hasattr(
-                self.lun_table[name], attr):
-            LOG.warn(_("Could not find attribute for LUN named %s") % name)
-            return None
-        return getattr(self.lun_table[name], attr)
+        """Get the lun attribute if found else None."""
+        try:
+            attr = getattr(self._get_lun_from_table(name), attr)
+            return attr
+        except exception.VolumeNotFound as e:
+            LOG.error(_("Message: %s"), e.msg)
+        except Exception as e:
+            LOG.error(_("Error getting lun attribute. Exception: %s"),
+                      e.__str__())
+        return None
 
     def _create_lun_meta(self, lun):
         raise NotImplementedError()
