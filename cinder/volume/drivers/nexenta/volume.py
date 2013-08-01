@@ -201,39 +201,41 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         target_name = self._get_target_name(volume['name'])
         target_group_name = self._get_target_group_name(volume['name'])
 
+        target_already_configured = False
         try:
             self.nms.iscsitarget.create_target({'target_name': target_name})
         except nexenta.NexentaException as exc:
-            if not ensure or 'already configured' not in exc.args[1]:
-                raise
+            if ensure and 'already configured' in exc.args[1]:
+                target_already_configured = True
+                LOG.info(_('Ignored target creation error "%s" while ensuring '
+                           'export'), exc)
             else:
-                LOG.info(_('Ignored target creation error "%s"'
-                           ' while ensuring export'), exc)
+                raise
         try:
             self.nms.stmf.create_targetgroup(target_group_name)
         except nexenta.NexentaException as exc:
-            if not ensure or 'already exists' not in exc.args[1]:
-                raise
-            else:
+            if ((ensure and 'already exists' in exc.args[1]) or
+                    (target_already_configured and
+                     'target must be offline' in exc.args[1])):
                 LOG.info(_('Ignored target group creation error "%s"'
                            ' while ensuring export'), exc)
+            else:
+                raise
         try:
             self.nms.stmf.add_targetgroup_member(target_group_name,
                                                  target_name)
         except nexenta.NexentaException as exc:
             if not ensure or 'already exists' not in exc.args[1]:
                 raise
-            else:
-                LOG.info(_('Ignored target group member addition error "%s"'
-                           ' while ensuring export'), exc)
+            LOG.info(_('Ignored target group member addition error "%s" while '
+                       'ensuring export'), exc)
         try:
             self.nms.scsidisk.create_lu(zvol_name, {})
         except nexenta.NexentaException as exc:
             if not ensure or 'in use' not in exc.args[1]:
                 raise
-            else:
-                LOG.info(_('Ignored LU creation error "%s"'
-                           ' while ensuring export'), exc)
+            LOG.info(_('Ignored LU creation error "%s"'
+                       ' while ensuring export'), exc)
         try:
             self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
                 'target_group': target_group_name,
@@ -241,9 +243,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if not ensure or 'view entry exists' not in exc.args[1]:
                 raise
-            else:
-                LOG.info(_('Ignored LUN mapping entry addition error "%s"'
-                           ' while ensuring export'), exc)
+            LOG.info(_('Ignored LUN mapping entry addition error "%s"'
+                       ' while ensuring export'), exc)
         return '%s:%s,1 %s 0' % (CONF.nexenta_host,
                                  CONF.nexenta_iscsi_target_portal_port,
                                  target_name)
