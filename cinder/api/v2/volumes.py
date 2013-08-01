@@ -52,6 +52,7 @@ def make_volume(elem):
     elem.set('availability_zone')
     elem.set('created_at')
     elem.set('name')
+    elem.set('bootable')
     elem.set('description')
     elem.set('volume_type')
     elem.set('snapshot_id')
