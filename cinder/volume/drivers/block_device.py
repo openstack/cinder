@@ -43,6 +43,9 @@ volume_opts = [
                     'none, zero, shred)'),
 ]
 
+CONF = cfg.CONF
+CONF.register_opts(volume_opts)
+
 
 class BlockDeviceDriver(driver.ISCSIDriver):
     VERSION = '1.0'

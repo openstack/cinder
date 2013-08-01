@@ -42,13 +42,6 @@ volume_opts = [
     cfg.StrOpt('volume_group',
                default='cinder-volumes',
                help='Name for the VG that will contain exported volumes'),
-    cfg.StrOpt('volume_clear',
-               default='zero',
-               help='Method used to wipe old volumes (valid options are: '
-                    'none, zero, shred)'),
-    cfg.IntOpt('volume_clear_size',
-               default=0,
-               help='Size in MiB to wipe at start of old volumes. 0 => all'),
     cfg.StrOpt('pool_size',
                default=None,
                help='Size of thin provisioning pool '
@@ -61,6 +54,8 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
+CONF.import_opt('volume_clear', 'cinder.volume.drivers.block_device')
+CONF.import_opt('volume_clear_size', 'cinder.volume.drivers.block_device')
 
 
 class LVMVolumeDriver(driver.VolumeDriver):
