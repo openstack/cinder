@@ -100,6 +100,10 @@ class InitiatorConnector(executor.Executor):
                                          driver=driver,
                                          root_helper=root_helper,
                                          use_multipath=use_multipath)
+        elif protocol == "AOE":
+            return AoEConnector(execute=execute,
+                                driver=driver,
+                                root_helper=root_helper)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -650,3 +654,111 @@ class FibreChannelConnector(InitiatorConnector):
                     pci_num = device_path[index - 1]
 
         return pci_num
+
+
+class AoEConnector(InitiatorConnector):
+    """Connector class to attach/detach AoE volumes."""
+    def __init__(self, driver=None, execute=putils.execute,
+                 root_helper="sudo", *args, **kwargs):
+        super(AoEConnector, self).__init__(driver, execute, root_helper,
+                                           *args, **kwargs)
+
+    def _get_aoe_info(self, connection_properties):
+        shelf = connection_properties['target_shelf']
+        lun = connection_properties['target_lun']
+        aoe_device = 'e%(shelf)s.%(lun)s' % {'shelf': shelf,
+                                             'lun': lun}
+        aoe_path = '/dev/etherd/%s' % (aoe_device)
+        return aoe_device, aoe_path
+
+    @lockutils.synchronized('aoe_control', 'aoe-')
+    def connect_volume(self, connection_properties):
+        """Discover and attach the volume.
+
+        connection_properties for AoE must include:
+        target_shelf - shelf id of volume
+        target_lun - lun id of volume
+        """
+        aoe_device, aoe_path = self._get_aoe_info(connection_properties)
+
+        device_info = {
+            'type': 'block',
+            'device': aoe_device,
+            'path': aoe_path,
+        }
+
+        if os.path.exists(aoe_path):
+            self._aoe_revalidate(aoe_device)
+        else:
+            self._aoe_discover()
+
+        waiting_status = {'tries': 0}
+
+        #NOTE(jbr_): Device path is not always present immediately
+        def _wait_for_discovery(aoe_path):
+            if os.path.exists(aoe_path):
+                raise loopingcall.LoopingCallDone
+
+            if waiting_status['tries'] >= CONF.num_volume_device_scan_tries:
+                raise exception.VolumeDeviceNotFound(device=aoe_path)
+
+            LOG.warn(_("AoE volume not yet found at: %(path)s. "
+                       "Try number: %(tries)s"),
+                     {'path': aoe_device,
+                      'tries': waiting_status['tries']})
+
+            self._aoe_discover()
+            waiting_status['tries'] += 1
+
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_discovery,
+                                                     aoe_path)
+        timer.start(interval=2).wait()
+
+        if waiting_status['tries']:
+            LOG.debug(_("Found AoE device %(path)s "
+                        "(after %(tries)s rediscover)"),
+                      {'path': aoe_path,
+                       'tries': waiting_status['tries']})
+
+        return device_info
+
+    @lockutils.synchronized('aoe_control', 'aoe-')
+    def disconnect_volume(self, connection_properties, device_info):
+        """Detach and flush the volume.
+
+        connection_properties for AoE must include:
+        target_shelf - shelf id of volume
+        target_lun - lun id of volume
+        """
+        aoe_device, aoe_path = self._get_aoe_info(connection_properties)
+
+        if os.path.exists(aoe_path):
+            self._aoe_flush(aoe_device)
+
+    def _aoe_discover(self):
+        (out, err) = self._execute('aoe-discover',
+                                   run_as_root=True,
+                                   root_helper=self._root_helper,
+                                   check_exit_code=0)
+
+        LOG.debug(_('aoe-discover: stdout=%(out)s stderr%(err)s') %
+                  {'out': out, 'err': err})
+
+    def _aoe_revalidate(self, aoe_device):
+        (out, err) = self._execute('aoe-revalidate',
+                                   aoe_device,
+                                   run_as_root=True,
+                                   root_helper=self._root_helper,
+                                   check_exit_code=0)
+
+        LOG.debug(_('aoe-revalidate %(dev)s: stdout=%(out)s stderr%(err)s') %
+                  {'dev': aoe_device, 'out': out, 'err': err})
+
+    def _aoe_flush(self, aoe_device):
+        (out, err) = self._execute('aoe-flush',
+                                   aoe_device,
+                                   run_as_root=True,
+                                   root_helper=self._root_helper,
+                                   check_exit_code=0)
+        LOG.debug(_('aoe-flush %(dev)s: stdout=%(out)s stderr%(err)s') %
+                  {'dev': aoe_device, 'out': out, 'err': err})

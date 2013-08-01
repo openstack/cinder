@@ -77,3 +77,8 @@ mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
 mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
 find: CommandFilter, find, root
 mkfs: CommandFilter, mkfs, root
+
+# cinder/brick/initiator/connector.py:
+aoe-revalidate: CommandFilter, aoe-revalidate, root
+aoe-discover: CommandFilter, aoe-discover, root
+aoe-flush: CommandFilter, aoe-flush, root
