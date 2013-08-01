@@ -9,6 +9,7 @@
 .testrepository
 .tox
 .venv
+.idea
 AUTHORS
 Authors
 build/*
