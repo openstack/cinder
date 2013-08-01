@@ -580,6 +580,22 @@ class GlanceMetadataExists(Invalid):
                 " exists for volume id %(volume_id)s")
 
 
+class ExportFailure(Invalid):
+    message = _("Failed to export for volume: %(reason)s")
+
+
+class MetadataCreateFailure(Invalid):
+    message = _("Failed to create metadata for volume: %(reason)s")
+
+
+class MetadataUpdateFailure(Invalid):
+    message = _("Failed to update metadata for volume: %(reason)s")
+
+
+class MetadataCopyFailure(Invalid):
+    message = _("Failed to copy metadata to volume: %(reason)s")
+
+
 class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume: %(reason)s")
 

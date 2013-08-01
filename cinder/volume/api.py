@@ -37,8 +37,11 @@ from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import units
 from cinder import utils
+from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_types
+
+from cinder.taskflow import states
 
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
@@ -56,7 +59,6 @@ CONF.register_opt(volume_same_az_opt)
 CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
-GB = units.GiB
 QUOTAS = quota.QUOTAS
 
 
@@ -95,248 +97,17 @@ class API(base.Base):
         self.availability_zone_names = ()
         super(API, self).__init__(db_driver)
 
-    def create(self, context, size, name, description, snapshot=None,
-               image_id=None, volume_type=None, metadata=None,
-               availability_zone=None, source_volume=None,
-               scheduler_hints=None):
-
-        exclusive_options = (snapshot, image_id, source_volume)
-        exclusive_options_set = sum(1 for option in
-                                    exclusive_options if option is not None)
-        if exclusive_options_set > 1:
-            msg = (_("May specify only one of snapshot, imageRef "
-                     "or source volume"))
-            raise exception.InvalidInput(reason=msg)
-
-        check_policy(context, 'create')
-        if snapshot is not None:
-            if snapshot['status'] != "available":
-                msg = _("status must be available")
-                raise exception.InvalidSnapshot(reason=msg)
-            if not size:
-                size = snapshot['volume_size']
-            elif size < snapshot['volume_size']:
-                msg = _("Volume size cannot be lesser than"
-                        " the Snapshot size")
-                raise exception.InvalidInput(reason=msg)
-            snapshot_id = snapshot['id']
-        else:
-            snapshot_id = None
-
-        if source_volume is not None:
-            if source_volume['status'] == "error":
-                msg = _("Unable to clone volumes that are in an error state")
-                raise exception.InvalidSourceVolume(reason=msg)
-            if not size:
-                size = source_volume['size']
-            else:
-                if size < source_volume['size']:
-                    msg = _("Clones currently must be "
-                            ">= original volume size.")
-                    raise exception.InvalidInput(reason=msg)
-            source_volid = source_volume['id']
-        else:
-            source_volid = None
-
-        def as_int(s):
-            try:
-                return int(s)
-            except (ValueError, TypeError):
-                return s
-
-        # tolerate size as stringified int
-        size = as_int(size)
-
-        if not isinstance(size, int) or size <= 0:
-            msg = (_("Volume size '%s' must be an integer and greater than 0")
-                   % size)
-            raise exception.InvalidInput(reason=msg)
-
-        if (image_id and not (source_volume or snapshot)):
-            # check image existence
-            image_meta = self.image_service.show(context, image_id)
-            image_size_in_gb = (int(image_meta['size']) + GB - 1) / GB
-            #check image size is not larger than volume size.
-            if image_size_in_gb > size:
-                msg = _('Size of specified image is larger than volume size.')
-                raise exception.InvalidInput(reason=msg)
-            # Check image minDisk requirement is met for the particular volume
-            if size < image_meta.get('min_disk', 0):
-                msg = _('Image minDisk size is larger than the volume size.')
-                raise exception.InvalidInput(reason=msg)
-
-        if availability_zone is None:
-            if snapshot is not None:
-                availability_zone = snapshot['volume']['availability_zone']
-            elif source_volume is not None:
-                availability_zone = source_volume['availability_zone']
-            else:
-                availability_zone = CONF.storage_availability_zone
-        else:
-            self._check_availabilty_zone(availability_zone)
-
-        if CONF.cloned_volume_same_az:
-            if (snapshot and
-                snapshot['volume']['availability_zone'] !=
-                    availability_zone):
-                msg = _("Volume must be in the same "
-                        "availability zone as the snapshot")
-                raise exception.InvalidInput(reason=msg)
-            elif source_volume and \
-                    source_volume['availability_zone'] != availability_zone:
-                msg = _("Volume must be in the same "
-                        "availability zone as the source volume")
-                raise exception.InvalidInput(reason=msg)
-
-        if not volume_type and not source_volume:
-            volume_type = volume_types.get_default_volume_type()
-
-        if not volume_type and source_volume:
-            volume_type_id = source_volume['volume_type_id']
-        else:
-            volume_type_id = volume_type.get('id')
-
-        try:
-            reserve_opts = {'volumes': 1, 'gigabytes': size}
-            QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
-            reservations = QUOTAS.reserve(context, **reserve_opts)
-        except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
-
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
-            for over in overs:
-                if 'gigabytes' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "%(s_size)sG volume (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed)")
-                    LOG.warn(msg % {'s_pid': context.project_id,
-                                    's_size': size,
-                                    'd_consumed': _consumed(over),
-                                    'd_quota': quotas[over]})
-                    raise exception.VolumeSizeExceedsAvailableQuota()
-                elif 'volumes' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "volume (%(d_consumed)d volumes"
-                            "already consumed)")
-                    LOG.warn(msg % {'s_pid': context.project_id,
-                                    'd_consumed': _consumed(over)})
-                    raise exception.VolumeLimitExceeded(allowed=quotas[over])
-
-        self._check_metadata_properties(context, metadata)
-        options = {'size': size,
-                   'user_id': context.user_id,
-                   'project_id': context.project_id,
-                   'snapshot_id': snapshot_id,
-                   'availability_zone': availability_zone,
-                   'status': "creating",
-                   'attach_status': "detached",
-                   'display_name': name,
-                   'display_description': description,
-                   'volume_type_id': volume_type_id,
-                   'metadata': metadata,
-                   'source_volid': source_volid}
-
-        try:
-            volume = self.db.volume_create(context, options)
-            QUOTAS.commit(context, reservations)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                try:
-                    self.db.volume_destroy(context, volume['id'])
-                finally:
-                    QUOTAS.rollback(context, reservations)
-
-        request_spec = {'volume_properties': options,
-                        'volume_type': volume_type,
-                        'volume_id': volume['id'],
-                        'snapshot_id': volume['snapshot_id'],
-                        'image_id': image_id,
-                        'source_volid': volume['source_volid']}
-
-        if scheduler_hints:
-            filter_properties = {'scheduler_hints': scheduler_hints}
-        else:
-            filter_properties = {}
-
-        self._cast_create_volume(context, request_spec, filter_properties)
-
-        return volume
-
-    def _cast_create_volume(self, context, request_spec, filter_properties):
-
-        # NOTE(Rongze Zhu): It is a simple solution for bug 1008866
-        # If snapshot_id is set, make the call create volume directly to
-        # the volume host where the snapshot resides instead of passing it
-        # through the scheduler. So snapshot can be copy to new volume.
-
-        source_volid = request_spec['source_volid']
-        volume_id = request_spec['volume_id']
-        snapshot_id = request_spec['snapshot_id']
-        image_id = request_spec['image_id']
-
-        if snapshot_id and CONF.snapshot_same_host:
-            snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-            source_volume_ref = self.db.volume_get(context,
-                                                   snapshot_ref['volume_id'])
-            now = timeutils.utcnow()
-            values = {'host': source_volume_ref['host'], 'scheduled_at': now}
-            volume_ref = self.db.volume_update(context, volume_id, values)
-
-            # bypass scheduler and send request directly to volume
-            self.volume_rpcapi.create_volume(
-                context,
-                volume_ref,
-                volume_ref['host'],
-                request_spec=request_spec,
-                filter_properties=filter_properties,
-                allow_reschedule=False,
-                snapshot_id=snapshot_id,
-                image_id=image_id)
-        elif source_volid:
-            source_volume_ref = self.db.volume_get(context,
-                                                   source_volid)
-            now = timeutils.utcnow()
-            values = {'host': source_volume_ref['host'], 'scheduled_at': now}
-            volume_ref = self.db.volume_update(context, volume_id, values)
-
-            # bypass scheduler and send request directly to volume
-            self.volume_rpcapi.create_volume(
-                context,
-                volume_ref,
-                volume_ref['host'],
-                request_spec=request_spec,
-                filter_properties=filter_properties,
-                allow_reschedule=False,
-                snapshot_id=snapshot_id,
-                image_id=image_id,
-                source_volid=source_volid)
-        else:
-            self.scheduler_rpcapi.create_volume(
-                context,
-                CONF.volume_topic,
-                volume_id,
-                snapshot_id,
-                image_id,
-                request_spec=request_spec,
-                filter_properties=filter_properties)
-
-    def _check_availabilty_zone(self, availability_zone):
+    def _valid_availabilty_zone(self, availability_zone):
         #NOTE(bcwaldon): This approach to caching fails to handle the case
         # that an availability zone is disabled/removed.
         if availability_zone in self.availability_zone_names:
-            return
+            return True
+        if CONF.storage_availability_zone == availability_zone:
+            return True
 
         azs = self.list_availability_zones()
         self.availability_zone_names = [az['name'] for az in azs]
-
-        if availability_zone not in self.availability_zone_names:
-            msg = _("Availability zone is invalid")
-            LOG.warn(msg)
-            raise exception.InvalidInput(reason=msg)
+        return availability_zone in self.availability_zone_names
 
     def list_availability_zones(self):
         """Describe the known availability zones
@@ -357,6 +128,56 @@ class API(base.Base):
                for (name, disabled) in disabled_map.items()]
 
         return tuple(azs)
+
+    def create(self, context, size, name, description, snapshot=None,
+               image_id=None, volume_type=None, metadata=None,
+               availability_zone=None, source_volume=None,
+               scheduler_hints=None):
+
+        def check_volume_az_zone(availability_zone):
+            try:
+                return self._valid_availabilty_zone(availability_zone)
+            except exception.CinderException:
+                LOG.exception(_("Unable to query if %s is in the "
+                                "availability zone set"), availability_zone)
+                return False
+
+        create_what = {
+            'size': size,
+            'name': name,
+            'description': description,
+            'snapshot': snapshot,
+            'image_id': image_id,
+            'volume_type': volume_type,
+            'metadata': metadata,
+            'availability_zone': availability_zone,
+            'source_volume': source_volume,
+            'scheduler_hints': scheduler_hints,
+        }
+        (flow, uuid) = create_volume.get_api_flow(self.scheduler_rpcapi,
+                                                  self.volume_rpcapi,
+                                                  self.db,
+                                                  self.image_service,
+                                                  check_volume_az_zone,
+                                                  create_what)
+
+        assert flow, _('Create volume flow not retrieved')
+        flow.run(context)
+        if flow.state != states.SUCCESS:
+            raise exception.CinderException(_("Failed to successfully complete"
+                                              " create volume workflow"))
+
+        # Extract the volume information from the task uuid that was specified
+        # to produce said information.
+        volume = None
+        try:
+            volume = flow.results[uuid]['volume']
+        except KeyError:
+            pass
+
+        # Raise an error, nobody provided it??
+        assert volume, _('Expected volume result not found')
+        return volume
 
     @wrap_check_policy
     def delete(self, context, volume, force=False):

@@ -86,6 +86,54 @@ def find_config(config_path):
     raise exception.ConfigNotFound(path=os.path.abspath(config_path))
 
 
+def as_int(obj, quiet=True):
+    # Try "2" -> 2
+    try:
+        return int(obj)
+    except (ValueError, TypeError):
+        pass
+    # Try "2.5" -> 2
+    try:
+        return int(float(obj))
+    except (ValueError, TypeError):
+        pass
+    # Eck, not sure what this is then.
+    if not quiet:
+        raise TypeError(_("Can not translate %s to integer.") % (obj))
+    return obj
+
+
+def check_exclusive_options(**kwargs):
+    """Checks that only one of the provided options is actually not-none.
+
+    Iterates over all the kwargs passed in and checks that only one of said
+    arguments is not-none, if more than one is not-none then an exception will
+    be raised with the names of those arguments who were not-none.
+    """
+
+    if not kwargs:
+        return
+
+    pretty_keys = kwargs.pop("pretty_keys", True)
+    exclusive_options = {}
+    for (k, v) in kwargs.iteritems():
+        if v is not None:
+            exclusive_options[k] = True
+
+    if len(exclusive_options) > 1:
+        # Change the format of the names from pythonic to
+        # something that is more readable.
+        #
+        # Ex: 'the_key' -> 'the key'
+        if pretty_keys:
+            names = [k.replace('_', ' ') for k in kwargs.keys()]
+        else:
+            names = kwargs.keys()
+        names = ", ".join(sorted(names))
+        msg = (_("May specify only one of %s") % (names))
+        raise exception.InvalidInput(reason=msg)
+
+
 def fetchfile(url, target):
     LOG.debug(_('Fetching %s') % url)
     execute('curl', '--fail', url, '-o', target)

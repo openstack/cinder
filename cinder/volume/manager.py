@@ -58,8 +58,11 @@ from cinder.openstack.common import uuidutils
 from cinder import quota
 from cinder import utils
 from cinder.volume.configuration import Configuration
+from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
+
+from cinder.taskflow import states
 
 LOG = logging.getLogger(__name__)
 
@@ -167,282 +170,34 @@ class VolumeManager(manager.SchedulerDependentManager):
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
 
-    def _create_volume(self, context, volume_ref, snapshot_ref,
-                       srcvol_ref, image_service, image_id, image_location):
-        cloned = None
-        model_update = False
-
-        if all(x is None for x in(snapshot_ref, image_id, srcvol_ref)):
-            model_update = self.driver.create_volume(volume_ref)
-        elif snapshot_ref is not None:
-            model_update = self.driver.create_volume_from_snapshot(
-                volume_ref,
-                snapshot_ref)
-
-            originating_vref = self.db.volume_get(context,
-                                                  snapshot_ref['volume_id'])
-            if originating_vref.bootable:
-                self.db.volume_update(context,
-                                      volume_ref['id'],
-                                      {'bootable': True})
-        elif srcvol_ref is not None:
-            model_update = self.driver.create_cloned_volume(volume_ref,
-                                                            srcvol_ref)
-            if srcvol_ref.bootable:
-                self.db.volume_update(context,
-                                      volume_ref['id'],
-                                      {'bootable': True})
-        else:
-            # create the volume from an image
-            # NOTE (singn): two params need to be returned
-            # dict containing provider_location for cloned volume
-            # and clone status
-            model_update, cloned = self.driver.clone_image(
-                volume_ref, image_location)
-            if not cloned:
-                model_update = self.driver.create_volume(volume_ref)
-
-                updates = dict(model_update or dict(), status='downloading')
-                volume_ref = self.db.volume_update(context,
-                                                   volume_ref['id'],
-                                                   updates)
-
-                # TODO(jdg): Wrap this in a try block and update status
-                # appropriately if the download image fails
-                self._copy_image_to_volume(context,
-                                           volume_ref,
-                                           image_service,
-                                           image_id)
-                self.db.volume_update(context,
-                                      volume_ref['id'],
-                                      {'bootable': True})
-        return model_update, cloned
-
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None):
         """Creates and exports the volume."""
-        context_saved = context.deepcopy()
-        context = context.elevated()
-        if filter_properties is None:
-            filter_properties = {}
-        volume_ref = self.db.volume_get(context, volume_id)
-        self._notify_about_volume_usage(context, volume_ref, "create.start")
 
-        # NOTE(vish): so we don't have to get volume from db again
-        #             before passing it to the driver.
-        volume_ref['host'] = self.host
+        flow = create_volume.get_manager_flow(
+            self.db,
+            self.driver,
+            self.scheduler_rpcapi,
+            self.host,
+            volume_id,
+            request_spec=request_spec,
+            filter_properties=filter_properties,
+            allow_reschedule=allow_reschedule,
+            snapshot_id=snapshot_id,
+            image_id=image_id,
+            source_volid=source_volid,
+            reschedule_context=context.deepcopy())
 
-        if volume_ref['status'] == 'migration_target_creating':
-            status = 'migration_target'
-        else:
-            status = 'available'
-        model_update = False
-        image_meta = None
-        cloned = False
+        assert flow, _('Manager volume flow not retrieved')
 
-        try:
-            LOG.debug(_("volume %(vol_name)s: creating lv of"
-                        " size %(vol_size)sG"),
-                      {'vol_name': volume_ref['name'],
-                       'vol_size': volume_ref['size']})
-            snapshot_ref = None
-            sourcevol_ref = None
-            image_service = None
-            image_location = None
-            image_meta = None
+        flow.run(context.elevated())
+        if flow.state != states.SUCCESS:
+            raise exception.CinderException(_("Failed to successfully complete"
+                                              " manager volume workflow"))
 
-            if snapshot_id is not None:
-                LOG.info(_("volume %s: creating from snapshot"),
-                         volume_ref['name'])
-                snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-            elif source_volid is not None:
-                LOG.info(_("volume %s: creating from existing volume"),
-                         volume_ref['name'])
-                sourcevol_ref = self.db.volume_get(context, source_volid)
-            elif image_id is not None:
-                LOG.info(_("volume %s: creating from image"),
-                         volume_ref['name'])
-                # create the volume from an image
-                image_service, image_id = \
-                    glance.get_remote_image_service(context,
-                                                    image_id)
-                image_location = image_service.get_location(context, image_id)
-                image_meta = image_service.show(context, image_id)
-            else:
-                LOG.info(_("volume %s: creating"), volume_ref['name'])
-
-            try:
-                model_update, cloned = self._create_volume(context,
-                                                           volume_ref,
-                                                           snapshot_ref,
-                                                           sourcevol_ref,
-                                                           image_service,
-                                                           image_id,
-                                                           image_location)
-            except exception.ImageCopyFailure as ex:
-                LOG.error(_('Setting volume: %s status to error '
-                            'after failed image copy.'), volume_ref['id'])
-                self.db.volume_update(context,
-                                      volume_ref['id'],
-                                      {'status': 'error'})
-                return
-            except Exception:
-                exc_info = sys.exc_info()
-                # restore source volume status before reschedule
-                # FIXME(zhiteng) do all the clean-up before reschedule
-                if sourcevol_ref is not None:
-                    self.db.volume_update(context, sourcevol_ref['id'],
-                                          {'status': sourcevol_ref['status']})
-                rescheduled = False
-                # try to re-schedule volume:
-                if allow_reschedule:
-                    rescheduled = self._reschedule_or_error(context_saved,
-                                                            volume_id,
-                                                            exc_info,
-                                                            snapshot_id,
-                                                            image_id,
-                                                            request_spec,
-                                                            filter_properties)
-
-                if rescheduled:
-                    LOG.error(_('Unexpected Error: '), exc_info=exc_info)
-                    msg = (_('Creating %(volume_id)s %(snapshot_id)s '
-                             '%(image_id)s was rescheduled due to '
-                             '%(reason)s')
-                           % {'volume_id': volume_id,
-                              'snapshot_id': snapshot_id,
-                              'image_id': image_id,
-                              'reason': unicode(exc_info[1])})
-                    raise exception.CinderException(msg)
-                else:
-                    # not re-scheduling
-                    raise exc_info[0], exc_info[1], exc_info[2]
-
-            if model_update:
-                volume_ref = self.db.volume_update(
-                    context, volume_ref['id'], model_update)
-            if sourcevol_ref is not None:
-                self.db.volume_glance_metadata_copy_from_volume_to_volume(
-                    context,
-                    source_volid,
-                    volume_id)
-
-            LOG.debug(_("volume %s: creating export"), volume_ref['name'])
-            model_update = self.driver.create_export(context, volume_ref)
-            if model_update:
-                self.db.volume_update(context, volume_ref['id'], model_update)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                volume_ref['status'] = 'error'
-                self.db.volume_update(context,
-                                      volume_ref['id'],
-                                      {'status': volume_ref['status']})
-                LOG.error(_("volume %s: create failed"), volume_ref['name'])
-                self._notify_about_volume_usage(context, volume_ref,
-                                                "create.end")
-
-        if snapshot_id:
-            # Copy any Glance metadata from the original volume
-            self.db.volume_glance_metadata_copy_to_volume(context,
-                                                          volume_ref['id'],
-                                                          snapshot_id)
-
-        if image_id and image_meta:
-            # Copy all of the Glance image properties to the
-            # volume_glance_metadata table for future reference.
-            self.db.volume_glance_metadata_create(context,
-                                                  volume_ref['id'],
-                                                  'image_id', image_id)
-            name = image_meta.get('name', None)
-            if name:
-                self.db.volume_glance_metadata_create(context,
-                                                      volume_ref['id'],
-                                                      'image_name', name)
-            # Save some more attributes into the volume metadata
-            IMAGE_ATTRIBUTES = ['size', 'disk_format',
-                                'container_format', 'checksum',
-                                'min_disk', 'min_ram']
-            for key in IMAGE_ATTRIBUTES:
-                value = image_meta.get(key, None)
-                if value is not None:
-                    self.db.volume_glance_metadata_create(context,
-                                                          volume_ref['id'],
-                                                          key, value)
-            image_properties = image_meta.get('properties', {})
-            for key, value in image_properties.items():
-                self.db.volume_glance_metadata_create(context,
-                                                      volume_ref['id'],
-                                                      key, value)
-
-        now = timeutils.utcnow()
-        volume_ref['status'] = status
-        self.db.volume_update(context,
-                              volume_ref['id'],
-                              {'status': volume_ref['status'],
-                               'launched_at': now})
-        LOG.info(_("volume %s: created successfully"), volume_ref['name'])
         self._reset_stats()
-
-        self._notify_about_volume_usage(context, volume_ref, "create.end")
-        return volume_ref['id']
-
-    def _reschedule_or_error(self, context, volume_id, exc_info,
-                             snapshot_id, image_id, request_spec,
-                             filter_properties):
-        """Try to re-schedule the request."""
-        rescheduled = False
-        try:
-            method_args = (CONF.volume_topic, volume_id, snapshot_id,
-                           image_id, request_spec, filter_properties)
-
-            rescheduled = self._reschedule(context, request_spec,
-                                           filter_properties, volume_id,
-                                           self.scheduler_rpcapi.create_volume,
-                                           method_args,
-                                           exc_info)
-        except Exception:
-            rescheduled = False
-            LOG.exception(_("volume %s: Error trying to reschedule create"),
-                          volume_id)
-
-        return rescheduled
-
-    def _reschedule(self, context, request_spec, filter_properties,
-                    volume_id, scheduler_method, method_args,
-                    exc_info=None):
-        """Attempt to re-schedule a volume operation."""
-
-        retry = filter_properties.get('retry', None)
-        if not retry:
-            # no retry information, do not reschedule.
-            LOG.debug(_("Retry info not present, will not reschedule"))
-            return
-
-        if not request_spec:
-            LOG.debug(_("No request spec, will not reschedule"))
-            return
-
-        request_spec['volume_id'] = volume_id
-
-        LOG.debug(_("volume %(volume_id)s: re-scheduling %(method)s "
-                    "attempt %(num)d") %
-                  {'volume_id': volume_id,
-                   'method': scheduler_method.func_name,
-                   'num': retry['num_attempts']})
-
-        # reset the volume state:
-        now = timeutils.utcnow()
-        self.db.volume_update(context, volume_id,
-                              {'status': 'creating',
-                               'scheduled_at': now})
-
-        if exc_info:
-            # stringify to avoid circular ref problem in json serialization:
-            retry['exc'] = traceback.format_exception(*exc_info)
-
-        scheduler_method(context, *method_args)
-        return True
+        return volume_id
 
     def delete_volume(self, context, volume_id):
         """Deletes and unexports volume."""
@@ -679,28 +434,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         if (volume['provider_location'] and
                 volume['name'] not in volume['provider_location']):
             self.driver.ensure_export(context, volume)
-
-    def _copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Downloads Glance image to the specified volume."""
-        volume_id = volume['id']
-        try:
-            self.driver.copy_image_to_volume(context, volume,
-                                             image_service,
-                                             image_id)
-        except exception.ProcessExecutionError as ex:
-            LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
-                        "error: %(error)s") % {'volume_id': volume_id,
-                                               'error': ex.stderr})
-            raise exception.ImageCopyFailure(reason=ex.stderr)
-        except Exception as ex:
-            LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
-                        "error: %(error)s") % {'volume_id': volume_id,
-                                               'error': ex})
-            raise exception.ImageCopyFailure(reason=ex)
-
-        LOG.info(_("Downloaded image %(image_id)s to %(volume_id)s "
-                   "successfully.") % {'image_id': image_id,
-                                       'volume_id': volume_id})
 
     def copy_volume_to_image(self, context, volume_id, image_meta):
         """Uploads the specified volume to Glance.
