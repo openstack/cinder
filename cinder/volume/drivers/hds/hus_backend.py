@@ -92,6 +92,7 @@ class HusBackend:
                                  '--delete-lun', '1',
                                  '--array-id', id,
                                  '--lun', lun,
+                                 '--force', 1,
                                  check_exit_code=True)
         LOG.debug('delete_lu: ' + out + ' -- ' + err)
         return out
@@ -115,6 +116,21 @@ class HusBackend:
         LOG.debug('create_dup: ' + out + ' -- ' + err)
         return out
 
+    def extend_vol(self, cmd, ver, ip0, ip1, user, pw, id, lun, new_size):
+        out, err = utils.execute(cmd,
+                                 '--driver-version', ver,
+                                 '--ip0', ip0,
+                                 '--ip1', ip1,
+                                 '--user', user,
+                                 '--password', pw,
+                                 '--extend-lun', '1',
+                                 '--array-id', id,
+                                 '--lun', lun,
+                                 '--size', new_size,
+                                 check_exit_code=True)
+        LOG.debug('extend_vol: ' + out + ' -- ' + err)
+        return out
+
     def add_iscsi_conn(self, cmd, ver, ip0, ip1, user, pw, id, lun, ctl, port,
                        iqn, initiator):
         out, err = utils.execute(cmd,
@@ -135,7 +151,7 @@ class HusBackend:
         return out
 
     def del_iscsi_conn(self, cmd, ver, ip0, ip1, user, pw, id, lun, ctl, port,
-                       iqn, initiator, force):
+                       iqn, initiator):
         out, err = utils.execute(cmd,
                                  '--driver-version', ver,
                                  '--ip0', ip0,
@@ -149,7 +165,7 @@ class HusBackend:
                                  '--port', port,
                                  '--target', iqn,
                                  '--initiator', initiator,
-                                 '--force', force,
+                                 '--force', 1,
                                  check_exit_code=True)
         LOG.debug('del_iscsi_conn: ' + out + ' -- ' + err)
         return out
