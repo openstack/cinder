@@ -40,10 +40,12 @@ class TestNexentaDriver(test.TestCase):
     TEST_VOLUME_REF = {
         'name': TEST_VOLUME_NAME,
         'size': 1,
+        'id': '1'
     }
     TEST_VOLUME_REF2 = {
         'name': TEST_VOLUME_NAME2,
         'size': 1,
+        'id': '2'
     }
     TEST_SNAPSHOT_REF = {
         'name': TEST_SNAPSHOT_NAME,
@@ -64,7 +66,7 @@ class TestNexentaDriver(test.TestCase):
             nexenta_sparse=True,
         )
         self.nms_mock = self.mox.CreateMockAnything()
-        for mod in ['volume', 'zvol', 'iscsitarget',
+        for mod in ['volume', 'zvol', 'iscsitarget', 'appliance',
                     'stmf', 'scsidisk', 'snapshot']:
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
@@ -94,6 +96,28 @@ class TestNexentaDriver(test.TestCase):
         self.nms_mock.zvol.destroy('cinder/volume1', '')
         self.mox.ReplayAll()
         self.drv.delete_volume(self.TEST_VOLUME_REF)
+
+    def test_create_cloned_volume(self):
+        vol = self.TEST_VOLUME_REF2
+        src_vref = self.TEST_VOLUME_REF
+        snapshot = {
+            'volume_name': src_vref['name'],
+            'name': 'cinder-clone-snap-%s' % vol['id'],
+        }
+        self.nms_mock.zvol.create_snapshot('cinder/%s' % src_vref['name'],
+                                           snapshot['name'], '')
+        cmd = 'zfs send %(src_vol)s@%(src_snap)s | zfs recv %(volume)s' % {
+            'src_vol': 'cinder/%s' % src_vref['name'],
+            'src_snap': snapshot['name'],
+            'volume': 'cinder/%s' % vol['name']
+        }
+        self.nms_mock.appliance.execute(cmd)
+        self.nms_mock.snapshot.destroy('cinder/%s@%s' % (src_vref['name'],
+                                                         snapshot['name']), '')
+        self.nms_mock.snapshot.destroy('cinder/%s@%s' % (vol['name'],
+                                                         snapshot['name']), '')
+        self.mox.ReplayAll()
+        self.drv.create_cloned_volume(vol, src_vref)
 
     def test_create_snapshot(self):
         self.nms_mock.zvol.create_snapshot('cinder/volume1', 'snapshot1', '')
