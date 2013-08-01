@@ -460,11 +460,11 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_find_image_in_cache')
         mox.StubOutWithMock(drv, '_do_clone_rel_img_cache')
         mox.StubOutWithMock(drv, '_post_clone_image')
-        mox.StubOutWithMock(drv, '_is_share_eligible')
+        mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
         drv._find_image_in_cache(IgnoreArg()).AndReturn(
             [('share', 'file_name')])
-        drv._is_share_eligible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
         drv._do_clone_rel_img_cache('file_name', 'vol', 'share', 'file_name')
         drv._post_clone_image(volume)
 
@@ -485,11 +485,11 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         volume = {'name': 'vol', 'size': '20'}
         mox.StubOutWithMock(drv, '_find_image_in_cache')
         mox.StubOutWithMock(drv, '_is_cloneable_share')
-        mox.StubOutWithMock(drv, '_is_share_eligible')
+        mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
         drv._find_image_in_cache(IgnoreArg()).AndReturn([])
         drv._is_cloneable_share(IgnoreArg()).AndReturn('127.0.0.1:/share')
-        drv._is_share_eligible(IgnoreArg(), IgnoreArg()).AndReturn(False)
+        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(False)
 
         mox.ReplayAll()
         (prop, cloned) = drv. clone_image(
@@ -512,11 +512,11 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_discover_file_till_timeout')
         mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
         mox.StubOutWithMock(drv, '_resize_image_file')
-        mox.StubOutWithMock(drv, '_is_share_eligible')
+        mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
         drv._find_image_in_cache(IgnoreArg()).AndReturn([])
         drv._is_cloneable_share(IgnoreArg()).AndReturn('127.0.0.1:/share')
-        drv._is_share_eligible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share(IgnoreArg()).AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id').AndReturn(
             self.get_img_info('raw'))
@@ -546,12 +546,12 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_resize_image_file')
         mox.StubOutWithMock(image_utils, 'convert_image')
         mox.StubOutWithMock(drv, '_register_image_in_cache')
-        mox.StubOutWithMock(drv, '_is_share_eligible')
+        mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
         drv._find_image_in_cache(IgnoreArg()).AndReturn([])
         drv._is_cloneable_share('nfs://127.0.0.1/share/img-id').AndReturn(
             '127.0.0.1:/share')
-        drv._is_share_eligible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id').AndReturn(
             self.get_img_info('notraw'))
@@ -581,7 +581,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_discover_file_till_timeout')
         mox.StubOutWithMock(image_utils, 'convert_image')
         mox.StubOutWithMock(drv, '_register_image_in_cache')
-        mox.StubOutWithMock(drv, '_is_share_eligible')
+        mox.StubOutWithMock(drv, '_is_share_vol_compatible')
         mox.StubOutWithMock(drv, 'local_path')
         mox.StubOutWithMock(os.path, 'exists')
         mox.StubOutWithMock(drv, '_delete_file')
@@ -589,7 +589,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv._find_image_in_cache(IgnoreArg()).AndReturn([])
         drv._is_cloneable_share('nfs://127.0.0.1/share/img-id').AndReturn(
             '127.0.0.1:/share')
-        drv._is_share_eligible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id').AndReturn(
             self.get_img_info('notraw'))
@@ -625,7 +625,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_resize_image_file')
         mox.StubOutWithMock(image_utils, 'convert_image')
         mox.StubOutWithMock(drv, '_register_image_in_cache')
-        mox.StubOutWithMock(drv, '_is_share_eligible')
+        mox.StubOutWithMock(drv, '_is_share_vol_compatible')
         mox.StubOutWithMock(drv, 'local_path')
         mox.StubOutWithMock(os.path, 'exists')
         mox.StubOutWithMock(drv, '_delete_file')
@@ -633,7 +633,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv._find_image_in_cache(IgnoreArg()).AndReturn([])
         drv._is_cloneable_share('nfs://127.0.0.1/share/img-id').AndReturn(
             '127.0.0.1:/share')
-        drv._is_share_eligible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id').AndReturn(
             self.get_img_info('notraw'))
