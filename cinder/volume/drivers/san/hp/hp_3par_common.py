@@ -19,7 +19,8 @@
 #
 """
 Volume driver common utilities for HP 3PAR Storage array
-The 3PAR drivers requires 3.1.2 firmware on the 3PAR array.
+
+The 3PAR drivers requires 3.1.2 MU2 firmware on the 3PAR array.
 
 You will need to install the python hp3parclient.
 sudo pip install hp3parclient
@@ -786,16 +787,6 @@ exit
     def _copy_volume(self, src_name, dest_name):
         self._cli_run('createvvcopy -p %s %s' % (src_name, dest_name), None)
 
-    def _get_volume_state(self, vol_name):
-        out = self._cli_run('showvv -state %s' % vol_name, None)
-        status = None
-        if out:
-            # out[0] is the header
-            info = out[1].split(',')
-            status = info[5]
-
-        return status
-
     def get_next_word(self, s, search_string):
         """Return the next word.
 
@@ -826,24 +817,6 @@ exit
             # make the 3PAR copy the contents.
             # can't delete the original until the copy is done.
             self._copy_volume(orig_name, vol_name)
-
-            # this can take a long time to complete
-            done = False
-            while not done:
-                status = self._get_volume_state(vol_name)
-                if status == 'normal':
-                    done = True
-                elif status == 'copy_target':
-                    LOG.debug("3Par still copying %s => %s"
-                              % (orig_name, vol_name))
-                else:
-                    msg = _("Unexpected state while cloning %s") % status
-                    LOG.warn(msg)
-                    raise exception.CinderException(msg)
-
-                if not done:
-                    # wait 5 seconds between tests
-                    time.sleep(5)
 
             return new_vol
         except hpexceptions.HTTPForbidden:

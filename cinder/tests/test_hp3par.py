@@ -637,8 +637,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_create_cloned_volume(self):
         self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_state",
-                       self.fake_get_volume_state)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
                        self.fake_copy_volume)
         self.state_tries = 0
@@ -843,8 +841,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_create_cloned_volume(self):
         self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_state",
-                       self.fake_get_volume_state)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
                        self.fake_copy_volume)
         self.state_tries = 0
@@ -962,22 +958,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         host = self.driver._create_host(self.volume, self.connector)
         self.assertEqual(host['name'], self.FAKE_HOST)
-
-    def test_get_volume_state(self):
-        self.flags(lock_path=self.tempdir)
-
-        #record
-        self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
-
-        show_vv_cmd = ('showvv -state '
-                       'volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7')
-        _run_ssh(show_vv_cmd, False).AndReturn([pack(VOLUME_STATE_RET), ''])
-        self.mox.ReplayAll()
-
-        status = self.driver.common._get_volume_state(self.VOLUME_NAME)
-        self.assertEqual(status, 'normal')
 
     def test_get_ports(self):
         self.flags(lock_path=self.tempdir)
