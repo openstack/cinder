@@ -26,6 +26,7 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder import units
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
@@ -33,7 +34,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 VERSION = '1.0'
 LOG = logging.getLogger(__name__)
 
-nexenta_opts = [
+NEXENTA_OPTS = [
     cfg.StrOpt('nexenta_host',
                default='',
                help='IP address of Nexenta SA'),
@@ -71,7 +72,7 @@ nexenta_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(nexenta_opts)
+CONF.register_opts(NEXENTA_OPTS)
 
 
 class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
@@ -79,6 +80,9 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def __init__(self, *args, **kwargs):
         super(NexentaDriver, self).__init__(*args, **kwargs)
+        self.nms = None
+        if self.configuration:
+            self.configuration.append_config_values(NEXENTA_OPTS)
 
     def do_setup(self, context):
         protocol = CONF.nexenta_rest_protocol
@@ -300,9 +304,6 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         # info he had regarding Nexenta Capabilities, ideally it would
         # be great if somebody from Nexenta looked this over at some point
 
-        KB = 1024
-        MB = KB ** 2
-
         LOG.debug(_("Updating volume stats"))
         data = {}
         backend_name = self.__class__.__name__
@@ -321,18 +322,18 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         free_amount = float(stats['available'][:-1])
 
         if total_unit == "T":
-                total_amount = total_amount * KB
+            total_amount *= units.KiB
         elif total_unit == "M":
-                total_amount = total_amount / KB
+            total_amount /= units.KiB
         elif total_unit == "B":
-                total_amount = total_amount / MB
+            total_amount /= units.MiB
 
         if free_unit == "T":
-                free_amount = free_amount * KB
+            free_amount *= units.KiB
         elif free_unit == "M":
-                free_amount = free_amount / KB
+            free_amount /= units.KiB
         elif free_unit == "B":
-                free_amount = free_amount / MB
+            free_amount /= units.MiB
 
         data['total_capacity_gb'] = total_amount
         data['free_capacity_gb'] = free_amount
