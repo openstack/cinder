@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-07-30 18:09+0000\n"
+"POT-Creation-Date: 2013-08-01 18:10+0000\n"
 "PO-Revision-Date: 2013-05-29 08:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey) "
@@ -862,11 +862,11 @@ msgid ""
 "cinder.api.middleware.auth:pipeline_factory instead."
 msgstr ""
 
-#: cinder/api/common.py:78 cinder/api/common.py:112 cinder/volume/api.py:434
+#: cinder/api/common.py:78 cinder/api/common.py:112 cinder/volume/api.py:435
 msgid "limit param must be an integer"
 msgstr ""
 
-#: cinder/api/common.py:81 cinder/api/common.py:116 cinder/volume/api.py:431
+#: cinder/api/common.py:81 cinder/api/common.py:116 cinder/volume/api.py:432
 msgid "limit param must be positive"
 msgstr ""
 
@@ -1304,12 +1304,12 @@ msgstr ""
 msgid "Delete snapshot with id: %s"
 msgstr ""
 
-#: cinder/api/v1/snapshots.py:169 cinder/api/v2/snapshots.py:175
+#: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:179
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr ""
 
-#: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:184
+#: cinder/api/v1/snapshots.py:177 cinder/api/v2/snapshots.py:188
 #, python-format
 msgid "Invalid value '%s' for force. "
 msgstr ""
@@ -1329,17 +1329,17 @@ msgstr ""
 msgid "Delete volume with id: %s"
 msgstr ""
 
-#: cinder/api/v1/volumes.py:277 cinder/api/v1/volumes.py:281
+#: cinder/api/v1/volumes.py:279 cinder/api/v1/volumes.py:283
 #: cinder/api/v2/volumes.py:237 cinder/api/v2/volumes.py:241
 msgid "Invalid imageRef provided."
 msgstr ""
 
-#: cinder/api/v1/volumes.py:339 cinder/api/v2/volumes.py:301
+#: cinder/api/v1/volumes.py:341 cinder/api/v2/volumes.py:301
 #, python-format
 msgid "Create volume of %s GB"
 msgstr ""
 
-#: cinder/api/v1/volumes.py:419
+#: cinder/api/v1/volumes.py:421
 #, python-format
 msgid "Removing options '%(bad_options)s' from query"
 msgstr ""
@@ -3174,8 +3174,8 @@ msgstr ""
 msgid "Volume in unexpected state"
 msgstr ""
 
-#: cinder/transfer/api.py:104 cinder/volume/api.py:114 cinder/volume/api.py:534
-#: cinder/volume/api.py:862 cinder/volume/manager.py:625
+#: cinder/transfer/api.py:104 cinder/volume/api.py:114 cinder/volume/api.py:535
+#: cinder/volume/api.py:863 cinder/volume/manager.py:625
 msgid "status must be available"
 msgstr ""
 
@@ -3266,99 +3266,100 @@ msgid "Failed to update quota for deleting volume"
 msgstr ""
 
 #: cinder/volume/api.py:390
-msgid "Volume status must be available or error"
+#, python-format
+msgid "Volume status must be available or error, but current status is: %s"
 msgstr ""
 
-#: cinder/volume/api.py:399
+#: cinder/volume/api.py:400
 msgid "Volume cannot be deleted while migrating"
 msgstr ""
 
-#: cinder/volume/api.py:404
+#: cinder/volume/api.py:405
 #, python-format
 msgid "Volume still has %d dependent snapshots"
 msgstr ""
 
-#: cinder/volume/api.py:453 cinder/volume/api.py:517
+#: cinder/volume/api.py:454 cinder/volume/api.py:518
 #: cinder/volume/volume_types.py:69
 #, python-format
 msgid "Searching by: %s"
 msgstr ""
 
-#: cinder/volume/api.py:537
+#: cinder/volume/api.py:538
 msgid "already attached"
 msgstr ""
 
-#: cinder/volume/api.py:544
+#: cinder/volume/api.py:545
 msgid "status must be in-use to detach"
 msgstr ""
 
-#: cinder/volume/api.py:555
+#: cinder/volume/api.py:556
 msgid "Volume status must be available to reserve"
 msgstr ""
 
-#: cinder/volume/api.py:610
+#: cinder/volume/api.py:611
 msgid "must be available"
 msgstr ""
 
-#: cinder/volume/api.py:632
+#: cinder/volume/api.py:633
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/volume/api.py:641
+#: cinder/volume/api.py:642
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr ""
 
-#: cinder/volume/api.py:690
+#: cinder/volume/api.py:691
 msgid "Volume Snapshot status must be available or error"
 msgstr ""
 
-#: cinder/volume/api.py:718
+#: cinder/volume/api.py:719
 msgid "Metadata property key blank"
 msgstr ""
 
-#: cinder/volume/api.py:722
+#: cinder/volume/api.py:723
 msgid "Metadata property key greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:726
+#: cinder/volume/api.py:727
 msgid "Metadata property value greater than 255 characters"
 msgstr ""
 
-#: cinder/volume/api.py:811
+#: cinder/volume/api.py:812
 msgid "Volume status must be available/in-use."
 msgstr ""
 
-#: cinder/volume/api.py:814
+#: cinder/volume/api.py:815
 msgid "Volume status is in-use."
 msgstr ""
 
-#: cinder/volume/api.py:843
+#: cinder/volume/api.py:844
 msgid "Volume status must be available to extend."
 msgstr ""
 
-#: cinder/volume/api.py:848
+#: cinder/volume/api.py:849
 #, python-format
 msgid ""
 "New size for extend must be greater than current size. (current: "
 "%(size)s, extended: %(new_size)s)"
 msgstr ""
 
-#: cinder/volume/api.py:869
+#: cinder/volume/api.py:870
 msgid "volume must not have snapshots"
 msgstr ""
 
-#: cinder/volume/api.py:882
+#: cinder/volume/api.py:883
 #, python-format
 msgid "No available service named %s"
 msgstr ""
 
-#: cinder/volume/api.py:888
+#: cinder/volume/api.py:889
 msgid "Destination host must be different than current host"
 msgstr ""
 
@@ -6471,5 +6472,8 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Cannot find any Fibre Channel HBAs"
+#~ msgstr ""
+
+#~ msgid "Volume status must be available or error"
 #~ msgstr ""
 
