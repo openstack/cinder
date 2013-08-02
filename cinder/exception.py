@@ -606,3 +606,7 @@ class VolumeMigrationFailed(CinderException):
 
 class ProtocolNotSupported(CinderException):
     message = _("Connect to volume via protocol %(protocol)s not supported.")
+
+
+class SSHInjectionThreat(CinderException):
+    message = _("SSH command injection detected") + ": %(command)s"

@@ -181,8 +181,7 @@ class StorwizeSVCManagementSimulator:
         return True
 
     # Convert argument string to dictionary
-    def _cmd_to_dict(self, cmd):
-        arg_list = cmd.split()
+    def _cmd_to_dict(self, arg_list):
         no_param_args = [
             'autodelete',
             'autoexpand',
@@ -1156,7 +1155,6 @@ port_speed!N/A
 
         command = kwargs['cmd']
         del kwargs['cmd']
-        arg_list = cmd.split()
 
         if command == 'lsmdiskgrp':
             out, err = self._cmd_lsmdiskgrp(**kwargs)
