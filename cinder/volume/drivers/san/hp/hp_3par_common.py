@@ -121,7 +121,8 @@ class HP3PARCommon(object):
                             '8 - AIX-legacy',
                             '9 - EGENERA',
                             '10 - ONTAP-legacy',
-                            '11 - VMware']
+                            '11 - VMware',
+                            '12 - OpenVMS']
     hp_qos_keys = ['maxIOPS', 'maxBWS']
     hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs']
 
