@@ -117,8 +117,8 @@ class SnapshotMetaDataTest(test.TestCase):
         self.ext_mgr.extensions = {}
         self.snapshot_controller = snapshots.SnapshotsController(self.ext_mgr)
         self.controller = snapshot_metadata.Controller()
-        self.id = str(uuid.uuid4())
-        self.url = '/v2/fake/snapshots/%s/metadata' % self.id
+        self.req_id = str(uuid.uuid4())
+        self.url = '/v2/fake/snapshots/%s/metadata' % self.req_id
 
         snap = {"volume_size": 100,
                 "volume_id": "fake-vol-id",
@@ -133,7 +133,7 @@ class SnapshotMetaDataTest(test.TestCase):
 
     def test_index(self):
         req = fakes.HTTPRequest.blank(self.url)
-        res_dict = self.controller.index(req, self.id)
+        res_dict = self.controller.index(req, self.req_id)
 
         expected = {
             'metadata': {
@@ -155,13 +155,13 @@ class SnapshotMetaDataTest(test.TestCase):
         self.stubs.Set(cinder.db, 'snapshot_metadata_get',
                        return_empty_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
-        res_dict = self.controller.index(req, self.id)
+        res_dict = self.controller.index(req, self.req_id)
         expected = {'metadata': {}}
         self.assertEqual(expected, res_dict)
 
     def test_show(self):
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        res_dict = self.controller.show(req, self.id, 'key2')
+        res_dict = self.controller.show(req, self.req_id, 'key2')
         expected = {'meta': {'key2': 'value2'}}
         self.assertEqual(expected, res_dict)
 
@@ -170,14 +170,14 @@ class SnapshotMetaDataTest(test.TestCase):
                        return_snapshot_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key2')
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.show, req, self.id, 'key2')
+                          self.controller.show, req, self.req_id, 'key2')
 
     def test_show_meta_not_found(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_get',
                        return_empty_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.show, req, self.id, 'key6')
+                          self.controller.show, req, self.req_id, 'key6')
 
     def test_delete(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_get',
@@ -186,7 +186,7 @@ class SnapshotMetaDataTest(test.TestCase):
                        delete_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key2')
         req.method = 'DELETE'
-        res = self.controller.delete(req, self.id, 'key2')
+        res = self.controller.delete(req, self.req_id, 'key2')
 
         self.assertEqual(200, res.status_int)
 
@@ -196,7 +196,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'DELETE'
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.delete, req, self.id, 'key1')
+                          self.controller.delete, req, self.req_id, 'key1')
 
     def test_delete_meta_not_found(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_get',
@@ -204,7 +204,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.delete, req, self.id, 'key6')
+                          self.controller.delete, req, self.req_id, 'key6')
 
     def test_create(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_get',
@@ -217,7 +217,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dumps(body)
-        res_dict = self.controller.create(req, self.id, body)
+        res_dict = self.controller.create(req, self.req_id, body)
         self.assertEqual(body, res_dict)
 
     def test_create_empty_body(self):
@@ -228,7 +228,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.id, None)
+                          self.controller.create, req, self.req_id, None)
 
     def test_create_item_empty_key(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -240,7 +240,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.id, body)
+                          self.controller.create, req, self.req_id, body)
 
     def test_create_item_key_too_long(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -253,7 +253,7 @@ class SnapshotMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
-                          req, self.id, body)
+                          req, self.req_id, body)
 
     def test_create_nonexistent_snapshot(self):
         self.stubs.Set(cinder.db, 'snapshot_get',
@@ -269,7 +269,7 @@ class SnapshotMetaDataTest(test.TestCase):
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dumps(body)
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.create, req, self.id, body)
+                          self.controller.create, req, self.req_id, body)
 
     def test_update_all(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -284,7 +284,7 @@ class SnapshotMetaDataTest(test.TestCase):
             },
         }
         req.body = jsonutils.dumps(expected)
-        res_dict = self.controller.update_all(req, self.id, expected)
+        res_dict = self.controller.update_all(req, self.req_id, expected)
 
         self.assertEqual(expected, res_dict)
 
@@ -296,7 +296,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.content_type = "application/json"
         expected = {'metadata': {}}
         req.body = jsonutils.dumps(expected)
-        res_dict = self.controller.update_all(req, self.id, expected)
+        res_dict = self.controller.update_all(req, self.req_id, expected)
 
         self.assertEqual(expected, res_dict)
 
@@ -310,7 +310,8 @@ class SnapshotMetaDataTest(test.TestCase):
         req.body = jsonutils.dumps(expected)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update_all, req, self.id, expected)
+                          self.controller.update_all, req, self.req_id,
+                          expected)
 
     def test_update_all_malformed_data(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -322,7 +323,8 @@ class SnapshotMetaDataTest(test.TestCase):
         req.body = jsonutils.dumps(expected)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update_all, req, self.id, expected)
+                          self.controller.update_all, req, self.req_id,
+                          expected)
 
     def test_update_all_nonexistent_snapshot(self):
         self.stubs.Set(cinder.db, 'snapshot_get', return_snapshot_nonexistent)
@@ -343,7 +345,7 @@ class SnapshotMetaDataTest(test.TestCase):
         body = {"meta": {"key1": "value1"}}
         req.body = jsonutils.dumps(body)
         req.headers["content-type"] = "application/json"
-        res_dict = self.controller.update(req, self.id, 'key1', body)
+        res_dict = self.controller.update(req, self.req_id, 'key1', body)
         expected = {'meta': {'key1': 'value1'}}
         self.assertEqual(expected, res_dict)
 
@@ -358,7 +360,8 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.update, req, self.id, 'key1', body)
+                          self.controller.update, req, self.req_id, 'key1',
+                          body)
 
     def test_update_item_empty_body(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -368,7 +371,8 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.id, 'key1', None)
+                          self.controller.update, req, self.req_id, 'key1',
+                          None)
 
     def test_update_item_empty_key(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -380,7 +384,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.id, '', body)
+                          self.controller.update, req, self.req_id, '', body)
 
     def test_update_item_key_too_long(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -393,7 +397,7 @@ class SnapshotMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.update,
-                          req, self.id, ("a" * 260), body)
+                          req, self.req_id, ("a" * 260), body)
 
     def test_update_item_value_too_long(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -406,7 +410,7 @@ class SnapshotMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.update,
-                          req, self.id, "key1", body)
+                          req, self.req_id, "key1", body)
 
     def test_update_item_too_many_keys(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -418,7 +422,8 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.id, 'key1', body)
+                          self.controller.update, req, self.req_id, 'key1',
+                          body)
 
     def test_update_item_body_uri_mismatch(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -430,7 +435,8 @@ class SnapshotMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.id, 'bad', body)
+                          self.controller.update, req, self.req_id, 'bad',
+                          body)
 
     def test_invalid_metadata_items_on_create(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -443,16 +449,16 @@ class SnapshotMetaDataTest(test.TestCase):
         data = {"metadata": {"a" * 260: "value1"}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                          self.controller.create, req, self.id, data)
+                          self.controller.create, req, self.req_id, data)
 
         #test for long value
         data = {"metadata": {"key": "v" * 260}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
-                          self.controller.create, req, self.id, data)
+                          self.controller.create, req, self.req_id, data)
 
         #test for empty key.
         data = {"metadata": {"": "value1"}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.id, data)
+                          self.controller.create, req, self.req_id, data)
