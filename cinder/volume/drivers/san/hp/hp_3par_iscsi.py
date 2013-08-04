@@ -18,8 +18,8 @@
 #    under the License.
 #
 """
-Volume driver for HP 3PAR Storage array. This driver requires 3.1.2 firmware
-on the 3PAR array.
+Volume driver for HP 3PAR Storage array.
+This driver requires 3.1.2 MU2 firmware on the 3PAR array.
 
 You will need to install the python hp3parclient.
 sudo pip install hp3parclient
@@ -41,7 +41,7 @@ import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
 
-VERSION = 1.0
+VERSION = 1.1
 LOG = logging.getLogger(__name__)
 DEFAULT_ISCSI_PORT = 3260
 
@@ -51,6 +51,8 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     Version history:
         1.0 - Initial driver
+        1.1 - QoS, extend volume, multiple iscsi ports, remove domain,
+              session changes, faster clone, requires 3.1.2 MU2 firmware.
 
     """
     def __init__(self, *args, **kwargs):
