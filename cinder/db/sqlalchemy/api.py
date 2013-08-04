@@ -1006,7 +1006,7 @@ def volume_create(context, values):
     with session.begin():
         volume_ref.save(session=session)
 
-    return _volume_get(context, values['id'], session=session)
+        return _volume_get(context, values['id'], session=session)
 
 
 @require_admin_context
@@ -1330,7 +1330,7 @@ def snapshot_create(context, values):
     with session.begin():
         snapshot_ref.save(session=session)
 
-    return _snapshot_get(context, values['id'], session=session)
+        return _snapshot_get(context, values['id'], session=session)
 
 
 @require_admin_context
