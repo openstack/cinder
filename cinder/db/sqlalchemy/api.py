@@ -1425,9 +1425,8 @@ def snapshot_data_get_for_project(context, project_id, volume_type_id=None,
 @require_context
 def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
     """Return snapshots that were active during window."""
-    session = get_session()
-    query = session.query(models.Snapshot)
 
+    query = model_query(context, models.Snapshot, read_deleted="yes")
     query = query.filter(or_(models.Snapshot.deleted_at == None,
                              models.Snapshot.deleted_at > begin))
     if end:
@@ -1668,9 +1667,7 @@ def volume_get_active_by_window(context,
                                 end=None,
                                 project_id=None):
     """Return volumes that were active during window."""
-    session = get_session()
-    query = session.query(models.Volume)
-
+    query = model_query(context, models.Volume, read_deleted="yes")
     query = query.filter(or_(models.Volume.deleted_at == None,
                              models.Volume.deleted_at > begin))
     if end:
@@ -1894,10 +1891,8 @@ def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
 
 @require_context
 def volume_glance_metadata_delete_by_volume(context, volume_id):
-    session = get_session()
-    session.query(models.VolumeGlanceMetadata).\
+    model_query(context, models.VolumeGlanceMetadata, read_deleted='no').\
         filter_by(volume_id=volume_id).\
-        filter_by(deleted=False).\
         update({'deleted': True,
                 'deleted_at': timeutils.utcnow(),
                 'updated_at': literal_column('updated_at')})
@@ -1905,10 +1900,8 @@ def volume_glance_metadata_delete_by_volume(context, volume_id):
 
 @require_context
 def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
-    session = get_session()
-    session.query(models.VolumeGlanceMetadata).\
+    model_query(context, models.VolumeGlanceMetadata, read_deleted='no').\
         filter_by(snapshot_id=snapshot_id).\
-        filter_by(deleted=False).\
         update({'deleted': True,
                 'deleted_at': timeutils.utcnow(),
                 'updated_at': literal_column('updated_at')})
@@ -1976,14 +1969,12 @@ def backup_update(context, backup_id, values):
 
 @require_admin_context
 def backup_destroy(context, backup_id):
-    session = get_session()
-    with session.begin():
-        session.query(models.Backup).\
-            filter_by(id=backup_id).\
-            update({'status': 'deleted',
-                    'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+    model_query(context, models.Backup).\
+        filter_by(id=backup_id).\
+        update({'status': 'deleted',
+                'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
 
 
 ###############################
