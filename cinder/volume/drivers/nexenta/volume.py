@@ -136,10 +136,13 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nms.zvol.destroy(self._get_zvol_name(volume['name']), '')
         except nexenta.NexentaException as exc:
+            if "does not exist" in exc.args[1]:
+                LOG.info(_('Volume %s does not exist, it seems it was already '
+                           'deleted'), volume['name'])
+                return
             if "zvol has children" in exc.args[1]:
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
-            else:
-                raise
+            raise
 
     def create_snapshot(self, snapshot):
         """Create snapshot of existing zvol on appliance.
