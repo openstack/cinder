@@ -358,6 +358,17 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualListsOfObjects(volumes, db.volume_get_all(
                                         self.ctxt, None, None, 'host', None))
 
+    def test_volume_get_all_marker_passed(self):
+        volumes = [
+            db.volume_create(self.ctxt, {'id': 1}),
+            db.volume_create(self.ctxt, {'id': 2}),
+            db.volume_create(self.ctxt, {'id': 3}),
+            db.volume_create(self.ctxt, {'id': 4}),
+        ]
+
+        self._assertEqualListsOfObjects(volumes[2:], db.volume_get_all(
+                                        self.ctxt, 2, 2, 'id', None))
+
     def test_volume_get_all_by_host(self):
         volumes = []
         for i in xrange(3):
@@ -411,6 +422,77 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_update_nonexistent(self):
         self.assertRaises(exception.VolumeNotFound, db.volume_update,
                           self.ctxt, 42, {})
+
+    def test_volume_metadata_get(self):
+        metadata = {'a': 'b', 'c': 'd'}
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata})
+
+        self.assertEquals(metadata, db.volume_metadata_get(self.ctxt, 1))
+
+    def test_volume_metadata_update(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = {'a': '3', 'c': '2', 'd': '5'}
+
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata1})
+        db.volume_metadata_update(self.ctxt, 1, metadata2, False)
+
+        self.assertEquals(should_be, db.volume_metadata_get(self.ctxt, 1))
+
+    def test_volume_metadata_update_delete(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '4'}
+        should_be = metadata2
+
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata1})
+        db.volume_metadata_update(self.ctxt, 1, metadata2, True)
+
+        self.assertEquals(should_be, db.volume_metadata_get(self.ctxt, 1))
+
+
+class DBAPISnapshotTestCase(BaseTest):
+    def test_snapshot_metadata_get(self):
+        metadata = {'a': 'b', 'c': 'd'}
+        db.volume_create(self.ctxt, {'id': 1})
+        db.snapshot_create(self.ctxt,
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata})
+
+        self.assertEquals(metadata, db.snapshot_metadata_get(self.ctxt, 1))
+
+    def test_snapshot_metadata_update(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = {'a': '3', 'c': '2', 'd': '5'}
+
+        db.volume_create(self.ctxt, {'id': 1})
+        db.snapshot_create(self.ctxt,
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata1})
+        db.snapshot_metadata_update(self.ctxt, 1, metadata2, False)
+
+        self.assertEquals(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+
+    def test_snapshot_metadata_update_delete(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = metadata2
+
+        db.volume_create(self.ctxt, {'id': 1})
+        db.snapshot_create(self.ctxt,
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata1})
+        db.snapshot_metadata_update(self.ctxt, 1, metadata2, True)
+
+        self.assertEquals(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+
+    def test_snapshot_metadata_delete(self):
+        metadata = {'a': '1', 'c': '2'}
+        should_be = {'a': '1'}
+
+        db.volume_create(self.ctxt, {'id': 1})
+        db.snapshot_create(self.ctxt,
+                           {'id': 1, 'volume_id': 1, 'metadata': metadata})
+        db.snapshot_metadata_delete(self.ctxt, 1, 'c')
+
+        self.assertEquals(should_be, db.snapshot_metadata_get(self.ctxt, 1))
 
 
 class DBAPIReservationTestCase(BaseTest):
