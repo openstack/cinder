@@ -46,6 +46,25 @@ class FakeISCSIDriver(lvm.LVMISCSIDriver):
         return (None, None)
 
 
+class FakeISERDriver(FakeISCSIDriver):
+    """Logs calls instead of executing."""
+    def __init__(self, *args, **kwargs):
+        super(FakeISERDriver, self).__init__(execute=self.fake_execute,
+                                             *args, **kwargs)
+
+    def initialize_connection(self, volume, connector):
+        return {
+            'driver_volume_type': 'iser',
+            'data': {}
+        }
+
+    @staticmethod
+    def fake_execute(cmd, *_args, **_kwargs):
+        """Execute that simply logs the command."""
+        LOG.debug(_("FAKE ISER: %s"), cmd)
+        return (None, None)
+
+
 class LoggingVolumeDriver(driver.VolumeDriver):
     """Logs and records calls, for unit tests."""
 

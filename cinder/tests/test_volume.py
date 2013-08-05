@@ -32,6 +32,7 @@ from oslo.config import cfg
 
 from cinder.brick.initiator import connector as brick_conn
 from cinder.brick.iscsi import iscsi
+from cinder.brick.iser import iser
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -1814,8 +1815,36 @@ class ISCSITestCase(DriverTestCase):
                           iscsi_driver.validate_connector, connector)
 
 
+class ISERTestCase(ISCSITestCase):
+    """Test Case for ISERDriver."""
+    driver_name = "cinder.volume.drivers.lvm.LVMISERDriver"
+
+    def test_do_iscsi_discovery(self):
+        configuration = mox.MockObject(conf.Configuration)
+        configuration.iser_ip_address = '0.0.0.0'
+        configuration.append_config_values(mox.IgnoreArg())
+
+        iser_driver = driver.ISERDriver(configuration=configuration)
+        iser_driver._execute = lambda *a, **kw: \
+            ("%s dummy" % CONF.iser_ip_address, '')
+        volume = {"name": "dummy",
+                  "host": "0.0.0.0"}
+        iser_driver._do_iser_discovery(volume)
+
+    def test_get_iscsi_properties(self):
+        volume = {"provider_location": '',
+                  "id": "0",
+                  "provider_auth": "a b c"}
+        iser_driver = driver.ISERDriver()
+        iser_driver._do_iser_discovery = lambda v: "0.0.0.0:0000,0 iqn:iqn 0"
+        result = iser_driver._get_iser_properties(volume)
+        self.assertEquals(result["target_portal"], "0.0.0.0:0000")
+        self.assertEquals(result["target_iqn"], "iqn:iqn")
+        self.assertEquals(result["target_lun"], 0)
+
+
 class FibreChannelTestCase(DriverTestCase):
-    """Test Case for FibreChannelDriver"""
+    """Test Case for FibreChannelDriver."""
     driver_name = "cinder.volume.driver.FibreChannelDriver"
 
     def test_initialize_connection(self):

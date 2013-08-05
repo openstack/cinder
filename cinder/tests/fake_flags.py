@@ -21,6 +21,7 @@ from cinder import flags
 FLAGS = flags.FLAGS
 
 flags.DECLARE('iscsi_num_targets', 'cinder.volume.drivers.lvm')
+flags.DECLARE('iser_num_targets', 'cinder.volume.drivers.lvm')
 flags.DECLARE('policy_file', 'cinder.policy')
 flags.DECLARE('volume_driver', 'cinder.volume.manager')
 flags.DECLARE('xiv_proxy', 'cinder.volume.drivers.xiv')
@@ -33,10 +34,12 @@ def set_defaults(conf):
     conf.set_default('volume_driver',
                      'cinder.tests.fake_driver.FakeISCSIDriver')
     conf.set_default('iscsi_helper', 'fake')
+    conf.set_default('iser_helper', 'fake')
     conf.set_default('connection_type', 'fake')
     conf.set_default('fake_rabbit', True)
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('iscsi_num_targets', 8)
+    conf.set_default('iser_num_targets', 8)
     conf.set_default('verbose', True)
     conf.set_default('connection', 'sqlite://', group='database')
     conf.set_default('sqlite_synchronous', False)
