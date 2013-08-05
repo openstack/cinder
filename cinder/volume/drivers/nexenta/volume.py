@@ -128,6 +128,17 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             '%sG' % (volume['size'],),
             CONF.nexenta_blocksize, CONF.nexenta_sparse)
 
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume.
+
+        :param volume: volume reference
+        :param new_size: volume new size in GB
+        """
+        LOG.info(_('Extending volume: %(id)s New size: %(size)s GB'),
+                 {'id': volume['id'], 'size': new_size})
+        self.nms.zvol.set_child_prop(self._get_zvol_name(volume['name']),
+                                     'volsize', '%sG' % new_size)
+
     def delete_volume(self, volume):
         """Destroy a zvol on appliance.
 
