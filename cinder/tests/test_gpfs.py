@@ -342,6 +342,10 @@ class GPFSDriverTestCase(test.TestCase):
                        self._fake_gpfs_get_state_active)
         self.stubs.Set(GPFSDriver, '_is_gpfs_path',
                        self._fake_is_gpfs_path)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+                       self._fake_gpfs_compatible_cluster_release_level)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_filesystem_release_level',
+                       self._fake_gpfs_compatible_filesystem_release_level)
         self.driver.check_for_setup_error()
 
     def test_check_for_setup_error_gpfs_not_active(self):
@@ -357,6 +361,32 @@ class GPFSDriverTestCase(test.TestCase):
                        self._fake_gpfs_get_state_active)
         self.stubs.Set(GPFSDriver, '_is_gpfs_path',
                        self._fake_is_not_gpfs_path)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+                       self._fake_gpfs_compatible_cluster_release_level)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_filesystem_release_level',
+                       self._fake_gpfs_compatible_filesystem_release_level)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.check_for_setup_error)
+
+    def test_check_for_setup_error_incompatible_cluster_version(self):
+        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+                       self._fake_gpfs_get_state_active)
+        self.stubs.Set(GPFSDriver, '_is_gpfs_path',
+                       self._fake_is_gpfs_path)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+                       self._fake_gpfs_incompatible_cluster_release_level)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.check_for_setup_error)
+
+    def test_check_for_setup_error_incompatible_filesystem_version(self):
+        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+                       self._fake_gpfs_get_state_active)
+        self.stubs.Set(GPFSDriver, '_is_gpfs_path',
+                       self._fake_is_gpfs_path)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+                       self._fake_gpfs_compatible_cluster_release_level)
+        self.stubs.Set(GPFSDriver, '_get_gpfs_filesystem_release_level',
+                       self._fake_gpfs_incompatible_filesystem_release_level)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
 
@@ -404,6 +434,24 @@ class GPFSDriverTestCase(test.TestCase):
                         'mmgetstate::0:1:::hostname:1:down:1:1:'
                         '1:quorum node:(undefined):')
         return inactive_txt
+
+    def _fake_gpfs_compatible_cluster_release_level(self):
+        release = 1400
+        return release
+
+    def _fake_gpfs_incompatible_cluster_release_level(self):
+        release = 1105
+        return release
+
+    def _fake_gpfs_compatible_filesystem_release_level(self, path=None):
+        release = 1400
+        fs = '/dev/gpfs'
+        return fs, release
+
+    def _fake_gpfs_incompatible_filesystem_release_level(self, path=None):
+        release = 1105
+        fs = '/dev/gpfs'
+        return fs, release
 
     def _fake_is_gpfs_path(self, path):
         pass

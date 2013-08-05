@@ -32,6 +32,8 @@ from cinder import units
 from cinder.volume import driver
 
 VERSION = 1.0
+GPFS_CLONE_MIN_RELEASE = 1200
+
 LOG = logging.getLogger(__name__)
 
 gpfs_opts = [
@@ -91,6 +93,32 @@ class GPFSDriver(driver.VolumeDriver):
                                  gpfs_state)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
+    def _get_filesystem_from_path(self, path):
+        (out, _) = self._execute('df', path, run_as_root=True)
+        lines = out.splitlines()
+        fs = lines[1].split()[0]
+        return fs
+
+    def _get_gpfs_filesystem_release_level(self, path):
+        fs = self._get_filesystem_from_path(path)
+        (out, _) = self._execute('mmlsfs', fs, '-V', '-Y',
+                                 run_as_root=True)
+        lines = out.splitlines()
+        value_token = lines[0].split(':').index('data')
+        fs_release_level_str = lines[1].split(':')[value_token]
+        # at this point, release string looks like "13.23 (3.5.0.7)"
+        # extract first token and convert to whole number value
+        fs_release_level = int(float(fs_release_level_str.split()[0]) * 100)
+        return fs, fs_release_level
+
+    def _get_gpfs_cluster_release_level(self):
+        (out, _) = self._execute('mmlsconfig', 'minreleaseLeveldaemon', '-Y',
+                                 run_as_root=True)
+        lines = out.splitlines()
+        value_token = lines[0].split(':').index('value')
+        min_release_level = lines[1].split(':')[value_token]
+        return int(min_release_level)
+
     def _is_gpfs_path(self, directory):
         self._execute('mmlsattr', directory, run_as_root=True)
 
@@ -131,6 +159,16 @@ class GPFSDriver(driver.VolumeDriver):
             LOG.warn(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
+        _gpfs_cluster_release_level = self._get_gpfs_cluster_release_level()
+        if not _gpfs_cluster_release_level >= GPFS_CLONE_MIN_RELEASE:
+            msg = (_('Downlevel GPFS Cluster Detected.  GPFS Clone feature '
+                     'not enabled in cluster daemon level %(cur)s - must '
+                     'be at least at level %(min)s.') %
+                   {'cur': _gpfs_cluster_release_level,
+                    'min': GPFS_CLONE_MIN_RELEASE})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
         for directory in [self.configuration.gpfs_mount_point_base,
                           self.configuration.gpfs_images_dir]:
             if directory is None:
@@ -152,6 +190,17 @@ class GPFSDriver(driver.VolumeDriver):
             except exception.ProcessExecutionError:
                 msg = (_('%s is not on GPFS. Perhaps GPFS not mounted.') %
                        directory)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            fs, fslevel = self._get_gpfs_filesystem_release_level(directory)
+            if not fslevel >= GPFS_CLONE_MIN_RELEASE:
+                msg = (_('The GPFS filesystem %(fs)s is not at the required '
+                         'release level.  Current level is %(cur)s, must be '
+                         'at least %(min)s.') %
+                       {'fs': fs,
+                        'cur': fslevel,
+                        'min': GPFS_CLONE_MIN_RELEASE})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
