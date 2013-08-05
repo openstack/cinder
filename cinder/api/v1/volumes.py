@@ -131,6 +131,7 @@ def make_volume(elem):
     elem.set('availability_zone')
     elem.set('created_at')
     elem.set('display_name')
+    elem.set('bootable')
     elem.set('display_description')
     elem.set('volume_type')
     elem.set('snapshot_id')

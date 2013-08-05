@@ -622,7 +622,7 @@ class VolumeSerializerTest(test.TestCase):
 
         for attr in ('id', 'status', 'size', 'availability_zone', 'created_at',
                      'display_name', 'display_description', 'volume_type',
-                     'snapshot_id'):
+                     'bootable', 'snapshot_id'):
             self.assertEqual(str(vol[attr]), tree.get(attr))
 
         for child in tree:
@@ -648,6 +648,7 @@ class VolumeSerializerTest(test.TestCase):
             status='vol_status',
             size=1024,
             availability_zone='vol_availability',
+            bootable=False,
             created_at=datetime.datetime.now(),
             attachments=[dict(id='vol_id',
                               volume_id='vol_id',
@@ -673,6 +674,7 @@ class VolumeSerializerTest(test.TestCase):
                             status='vol1_status',
                             size=1024,
                             availability_zone='vol1_availability',
+                            bootable=True,
                             created_at=datetime.datetime.now(),
                             attachments=[dict(id='vol1_id',
                                               volume_id='vol1_id',
@@ -689,6 +691,7 @@ class VolumeSerializerTest(test.TestCase):
                             status='vol2_status',
                             size=1024,
                             availability_zone='vol2_availability',
+                            bootable=False,
                             created_at=datetime.datetime.now(),
                             attachments=[dict(id='vol2_id',
                                               volume_id='vol2_id',
