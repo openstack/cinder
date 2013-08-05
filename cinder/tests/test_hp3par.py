@@ -376,6 +376,8 @@ class HP3PARBaseDriver():
     def setup_fakes(self):
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
                        self.fake_create_client)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_set_connections",
+                       self.fake_set_connections)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_3par_host",
                        self.fake_get_3par_host)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_delete_3par_host",
@@ -395,6 +397,9 @@ class HP3PARBaseDriver():
 
     def fake_create_client(self):
         return FakeHP3ParClient(self.driver.configuration.hp3par_api_url)
+
+    def fake_set_connections(self):
+        return
 
     def fake_get_cpg(self, volume):
         return HP3PAR_CPG
@@ -606,6 +611,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_create_client",
                        self.fake_create_client)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_set_connections",
+                       self.fake_set_connections)
         self.driver.do_setup(None)
 
     def fake_create_3par_fibrechan_host(self, hostname, wwn,
@@ -803,6 +810,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_ports",
                            self.fake_get_ports)
 
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_set_connections",
+                       self.fake_set_connections)
         self.driver.do_setup(None)
 
     def fake_create_3par_iscsi_host(self, hostname, iscsi_iqn,

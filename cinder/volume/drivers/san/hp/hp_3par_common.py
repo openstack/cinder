@@ -170,6 +170,7 @@ class HP3PARCommon(object):
         try:
             # make sure the default CPG exists
             self.validate_cpg(self.config.hp3par_cpg)
+            self._set_connections()
         finally:
             self.client_logout()
 
@@ -180,6 +181,14 @@ class HP3PARCommon(object):
             err = (_("CPG (%s) doesn't exist on array") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
+
+    def _set_connections(self):
+        """Set the number of concurrent connections.
+
+        The 3PAR WS API server has a limit of concurrent connections.
+        This is setting the number to the highest allowed, 15 connections.
+        """
+        self._cli_run("setwsapi -sru high", None)
 
     def get_domain(self, cpg_name):
         try:
