@@ -662,10 +662,14 @@ exit
     def _remove_volume_from_volume_set(self, volume_name, vvs_name):
         self._cli_run('removevvset -f %s %s' % (vvs_name, volume_name), None)
 
-    def get_cpg(self, volume):
+    def get_cpg(self, volume, allowSnap=False):
         volume_name = self._get_3par_vol_name(volume['id'])
         vol = self.client.getVolume(volume_name)
-        return vol['userCPG']
+        if 'userCPG' in vol:
+            return vol['userCPG']
+        elif allowSnap:
+            return vol['snapCPG']
+        return None
 
     def _get_3par_vol_comment(self, volume_name):
         vol = self.client.getVolume(volume_name)

@@ -398,11 +398,11 @@ class HP3PARBaseDriver():
     def fake_create_client(self):
         return FakeHP3ParClient(self.driver.configuration.hp3par_api_url)
 
+    def fake_get_cpg(self, volume, allowSnap=False):
+        return HP3PAR_CPG
+
     def fake_set_connections(self):
         return
-
-    def fake_get_cpg(self, volume):
-        return HP3PAR_CPG
 
     def fake_get_domain(self, cpg):
         return HP3PAR_DOMAIN

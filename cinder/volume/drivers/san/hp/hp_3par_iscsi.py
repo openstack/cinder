@@ -278,7 +278,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         # make sure we don't have the host already
         host = None
         hostname = self.common._safe_hostname(connector['host'])
-        cpg = self.common.get_cpg(volume)
+        cpg = self.common.get_cpg(volume, allowSnap=True)
         domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)
