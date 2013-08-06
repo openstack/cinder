@@ -180,7 +180,7 @@ function copy_subunit_log {
 
 function run_pep8 {
   echo "Running flake8 ..."
-  bash -c "${wrapper} flake8"
+  bash -c "${wrapper} flake8 cinder* bin/*"
 }
 
 
