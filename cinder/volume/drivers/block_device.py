@@ -34,13 +34,6 @@ volume_opts = [
     cfg.ListOpt('available_devices',
                 default=[],
                 help='List of all available devices'),
-    cfg.IntOpt('volume_clear_size',
-               default=0,
-               help='Size in MiB to wipe at start of old volumes. 0 => all'),
-    cfg.StrOpt('volume_clear',
-               default='zero',
-               help='Method used to wipe old volumes (valid options are: '
-                    'none, zero, shred)'),
 ]
 
 CONF = cfg.CONF

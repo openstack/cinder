@@ -21,7 +21,6 @@ Drivers for volumes.
 """
 
 import os
-import socket
 import time
 
 from oslo.config import cfg
@@ -82,7 +81,15 @@ volume_opts = [
     cfg.BoolOpt('use_multipath_for_image_xfer',
                 default=False,
                 help='Do we attach/detach volumes in cinder using multipath '
-                     'for volume to image and image to volume transfers?'), ]
+                     'for volume to image and image to volume transfers?'),
+    cfg.StrOpt('volume_clear',
+               default='zero',
+               help='Method used to wipe old voumes (valid options are: '
+                    'none, zero, shred)'),
+    cfg.IntOpt('volume_clear_size',
+               default=0,
+               help='Size in MiB to wipe at start of old volumes. 0 => all'), ]
+
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
