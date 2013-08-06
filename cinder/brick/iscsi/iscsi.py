@@ -23,6 +23,7 @@ Helper code for the iSCSI volume driver.
 import contextlib
 import os
 import re
+import stat
 
 from oslo.config import cfg
 
@@ -30,7 +31,6 @@ from cinder import exception
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
-from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -236,9 +236,13 @@ class IetAdm(TargetAdmin):
     def __init__(self, execute=putils.execute):
         super(IetAdm, self).__init__('ietadm', execute)
 
+    def _is_block(self, path):
+        mode = os.stat(path).st_mode
+        return stat.S_ISBLK(mode)
+
     def _iotype(self, path):
         if CONF.iscsi_iotype == 'auto':
-            return 'blockio' if volume_utils.is_block(path) else 'fileio'
+            return 'blockio' if self._is_block(path) else 'fileio'
         else:
             return CONF.iscsi_iotype
 
