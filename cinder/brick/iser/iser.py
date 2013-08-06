@@ -168,7 +168,8 @@ class TgtAdm(TargetAdmin):
         if tid is None:
             LOG.error(_("Failed to create iser target for volume "
                         "id:%(vol_id)s. Please ensure your tgtd config file "
-                        "contains 'include %(volumes_dir)s/*'") % locals())
+                        "contains 'include %(volumes_dir)s/*'") %
+                      {'vol_id': vol_id, 'volumes_dir': volumes_dir})
             raise exception.NotFound()
 
         if old_persist_file is not None and os.path.exists(old_persist_file):
