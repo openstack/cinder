@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-08-06 06:10+0000\n"
+"POT-Creation-Date: 2013-08-06 18:10+0000\n"
 "PO-Revision-Date: 2013-05-29 08:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Croatian "
@@ -1969,57 +1969,66 @@ msgstr ""
 msgid "delete %s finished"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:88
+#: cinder/brick/exceptions.py:22 cinder/brick/initiator/connector.py:515
+msgid "We are unable to locate any Fibre Channel devices"
+msgstr ""
+
+#: cinder/brick/exceptions.py:28
+msgid "Unable to find a Fibre Channel volume device"
+msgstr ""
+
+#: cinder/brick/exceptions.py:34
+#, python-format
+msgid "Volume device not found at %s"
+msgstr ""
+
+#: cinder/brick/initiator/connector.py:91
 #, python-format
 msgid "Invalid InitiatorConnector protocol specified %(protocol)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:101
+#: cinder/brick/initiator/connector.py:104
 #, python-format
 msgid "Failed to access the device on the path %(path)s: %(error)s %(info)s."
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:178
-#, python-format
-msgid "iSCSI device not found at %s"
-msgstr ""
-
-#: cinder/brick/initiator/connector.py:180
+#: cinder/brick/initiator/connector.py:182
 #, python-format
 msgid ""
 "ISCSI volume not yet found at: %(host_device)s. Will rescan & retry.  Try"
 " number: %(tries)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:193
+#: cinder/brick/initiator/connector.py:195
 #, python-format
 msgid "Found iSCSI node %(host_device)s (after %(tries)s rescans)"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:510
-msgid "We are unable to locate any Fibre Channel devices"
+#: cinder/brick/initiator/connector.py:262
+#, python-format
+msgid "Could not find the iSCSI Initiator File %s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:519
+#: cinder/brick/initiator/connector.py:525
 #, python-format
 msgid "Looking for Fibre Channel dev %(device)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:529
-msgid "Fibre Channel device not found."
+#: cinder/brick/initiator/connector.py:535
+msgid "Fibre Channel volume device not found."
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:532
+#: cinder/brick/initiator/connector.py:539
 #, python-format
 msgid "Fibre volume not yet found. Will rescan & retry.  Try number: %(tries)s"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:548
+#: cinder/brick/initiator/connector.py:555
 #, python-format
 msgid "Found Fibre Channel volume %(name)s (after %(tries)s rescans)"
 msgstr ""
 
-#: cinder/brick/initiator/connector.py:557
+#: cinder/brick/initiator/connector.py:564
 #, python-format
 msgid "Multipath device discovered %(device)s"
 msgstr ""
@@ -6605,5 +6614,11 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Unexpected state while cloning %s"
+#~ msgstr ""
+
+#~ msgid "iSCSI device not found at %s"
+#~ msgstr ""
+
+#~ msgid "Fibre Channel device not found."
 #~ msgstr ""
 
