@@ -25,7 +25,7 @@ import time
 
 from oslo.config import cfg
 
-from cinder import exception
+from cinder.brick import exceptions
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
@@ -52,6 +52,9 @@ def get_connector_properties():
     wwpns = fc.get_fc_wwpns()
     if wwpns:
         props['wwpns'] = wwpns
+    wwnns = fc.get_fc_wwnns()
+    if wwnns:
+        props['wwnns'] = wwnns
 
     return props
 
@@ -97,7 +100,7 @@ class InitiatorConnector(executor.Executor):
         try:
             out, info = self._execute(*cmd, run_as_root=True,
                                       root_helper=self._root_helper)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to access the device on the path "
                         "%(path)s: %(error)s %(info)s.") %
                       {"path": path, "error": e.stderr,
@@ -174,8 +177,7 @@ class ISCSIConnector(InitiatorConnector):
         tries = 0
         while not os.path.exists(host_device):
             if tries >= CONF.num_iscsi_scan_tries:
-                raise exception.CinderException(
-                    _("iSCSI device not found at %s") % (host_device))
+                raise exceptions.VolumeDeviceNotFound(host_device)
 
             LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
                        "Will rescan & retry.  Try number: %(tries)s"),
@@ -248,15 +250,18 @@ class ISCSIConnector(InitiatorConnector):
 
     def get_initiator(self):
         """Secure helper to read file as root."""
+        file_path = '/etc/iscsi/initiatorname.iscsi'
         try:
-            file_path = '/etc/iscsi/initiatorname.iscsi'
             lines, _err = self._execute('cat', file_path, run_as_root=True,
                                         root_helper=self._root_helper)
 
             for l in lines.split('\n'):
                 if l.startswith('InitiatorName='):
                     return l[l.index('=') + 1:].strip()
-        except exception.ProcessExecutionError:
+        except putils.ProcessExecutionError:
+            msg = (_("Could not find the iSCSI Initiator File %s")
+                   % file_path)
+            LOG.warn(msg)
             return None
 
     def _run_iscsiadm(self, connection_properties, iscsi_command, **kwargs):
@@ -508,7 +513,8 @@ class FibreChannelConnector(InitiatorConnector):
         if len(host_devices) == 0:
             # this is empty because we don't have any FC HBAs
             msg = _("We are unable to locate any Fibre Channel devices")
-            raise exception.CinderException(msg)
+            LOG.warn(msg)
+            raise exceptions.NoFibreChannelHostsFound()
 
         # The /dev/disk/by-path/... node is not always present immediately
         # We only need to find the first device.  Once we see the first device
@@ -526,8 +532,9 @@ class FibreChannelConnector(InitiatorConnector):
                     raise loopingcall.LoopingCallDone()
 
             if self.tries >= CONF.num_iscsi_scan_tries:
-                msg = _("Fibre Channel device not found.")
-                raise exception.CinderException(msg)
+                msg = _("Fibre Channel volume device not found.")
+                LOG.error(msg)
+                raise exceptions.NoFibreChannelVolumeDeviceFound()
 
             LOG.warn(_("Fibre volume not yet found. "
                        "Will rescan & retry.  Try number: %(tries)s"),
