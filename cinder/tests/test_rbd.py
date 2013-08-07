@@ -515,24 +515,40 @@ class ManagedRBDTestCase(DriverTestCase):
             # cleanup
             db.volume_destroy(self.context, volume_id)
 
-    def test_clone_image_status_available(self):
+    def test_create_vol_from_image_status_available(self):
         """Verify that before cloning, an image is in the available state."""
         self._clone_volume_from_image('available', True)
 
-    def test_clone_image_status_error(self):
+    def test_create_vol_from_image_status_error(self):
         """Verify that before cloning, an image is in the available state."""
         self._clone_volume_from_image('error', False)
+
+    def test_clone_image(self):
+        # Test Failure Case(s)
+        expected = ({}, False)
+
+        self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: False)
+        self.assertEquals(expected,
+                          self.volume.driver.clone_image(object(), object()))
+
+        self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
+        self.assertEquals(expected,
+                          self.volume.driver.clone_image(object(), None))
+
+        # Test Success Case(s)
+        expected = ({'provider_location': None}, True)
+
+        self.stubs.Set(self.volume.driver, '_parse_location',
+                       lambda x: ('a', 'b', 'c', 'd'))
+
+        self.stubs.Set(self.volume.driver, '_clone', lambda *args: None)
+        self.stubs.Set(self.volume.driver, '_resize', lambda *args: None)
+
+        self.assertEquals(expected,
+                          self.volume.driver.clone_image(object(), object()))
 
     def test_clone_success(self):
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
         self.stubs.Set(self.volume.driver, 'clone_image', lambda a, b: True)
         image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
         self.assertTrue(self.volume.driver.clone_image({}, image_id))
-
-    def test_clone_bad_image_id(self):
-        self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
-        self.assertFalse(self.volume.driver.clone_image({}, None))
-
-    def test_clone_uncloneable(self):
-        self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: False)
-        self.assertFalse(self.volume.driver.clone_image({}, 'dne'))
