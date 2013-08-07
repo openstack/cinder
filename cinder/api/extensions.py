@@ -26,7 +26,6 @@ import cinder.api.openstack
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.openstack.common import exception as common_exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 import cinder.policy
@@ -373,7 +372,7 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                         (package, relpkg, dname))
             try:
                 ext = importutils.import_class(ext_name)
-            except common_exception.NotFound:
+            except ImportError:
                 # extension() doesn't exist on it, so we'll explore
                 # the directory for ourselves
                 subdirs.append(dname)

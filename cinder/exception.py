@@ -29,7 +29,6 @@ import sys
 from oslo.config import cfg
 import webob.exc
 
-from cinder.openstack.common import exception as com_exception
 from cinder.openstack.common import log as logging
 
 
@@ -78,7 +77,8 @@ class ProcessExecutionError(IOError):
         IOError.__init__(self, message)
 
 
-Error = com_exception.Error
+class Error(Exception):
+    pass
 
 
 class CinderException(Exception):
