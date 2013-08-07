@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-08-06 18:10+0000\n"
+"POT-Creation-Date: 2013-08-07 06:10+0000\n"
 "PO-Revision-Date: 2013-05-29 08:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Indonesian "
@@ -753,7 +753,7 @@ msgid "Fetching %s"
 msgstr ""
 
 #: cinder/utils.py:158 cinder/openstack/common/processutils.py:218
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:294
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:303
 #, python-format
 msgid "Running cmd (SSH): %s"
 msgstr ""
@@ -768,7 +768,7 @@ msgstr ""
 
 #: cinder/utils.py:184 cinder/openstack/common/processutils.py:167
 #: cinder/openstack/common/processutils.py:239
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:321
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:330
 #, python-format
 msgid "Result was %s"
 msgstr ""
@@ -3099,12 +3099,12 @@ msgstr ""
 msgid "Host %(host)s %(pass_msg)s.  Previously tried hosts: %(hosts)s"
 msgstr ""
 
-#: cinder/tests/fake_driver.py:45 cinder/volume/driver.py:629
+#: cinder/tests/fake_driver.py:45 cinder/volume/driver.py:636
 #, python-format
 msgid "FAKE ISCSI: %s"
 msgstr ""
 
-#: cinder/tests/fake_driver.py:64 cinder/volume/driver.py:904
+#: cinder/tests/fake_driver.py:64 cinder/volume/driver.py:911
 #, python-format
 msgid "FAKE ISER: %s"
 msgstr ""
@@ -3428,65 +3428,65 @@ msgstr ""
 msgid "Destination host must be different than current host"
 msgstr ""
 
-#: cinder/volume/driver.py:133 cinder/volume/drivers/netapp/nfs.py:154
+#: cinder/volume/driver.py:140 cinder/volume/drivers/netapp/nfs.py:154
 #, python-format
 msgid "Recovering from a failed execute.  Try number %s"
 msgstr ""
 
-#: cinder/volume/driver.py:226
+#: cinder/volume/driver.py:233
 #, python-format
 msgid "copy_data_between_volumes %(src)s -> %(dest)s."
 msgstr ""
 
-#: cinder/volume/driver.py:239 cinder/volume/driver.py:253
+#: cinder/volume/driver.py:246 cinder/volume/driver.py:260
 #, python-format
 msgid "Failed to attach volume %(vol)s"
 msgstr ""
 
-#: cinder/volume/driver.py:268
+#: cinder/volume/driver.py:275
 #, python-format
 msgid "Failed to copy volume %(src)s to %(dest)d"
 msgstr ""
 
-#: cinder/volume/driver.py:281
+#: cinder/volume/driver.py:288
 #, python-format
 msgid "copy_image_to_volume %s."
 msgstr ""
 
-#: cinder/volume/driver.py:297
+#: cinder/volume/driver.py:304
 #, python-format
 msgid "copy_volume_to_image %s."
 msgstr ""
 
-#: cinder/volume/driver.py:330 cinder/volume/driver.py:864
+#: cinder/volume/driver.py:337 cinder/volume/driver.py:871
 #, python-format
 msgid "Unable to access the backend storage via the path %(path)s."
 msgstr ""
 
-#: cinder/volume/driver.py:369
+#: cinder/volume/driver.py:376
 msgid "Extend volume not implemented"
 msgstr ""
 
-#: cinder/volume/driver.py:411 cinder/volume/drivers/emc/emc_smis_iscsi.py:113
+#: cinder/volume/driver.py:418 cinder/volume/drivers/emc/emc_smis_iscsi.py:113
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr ""
 
-#: cinder/volume/driver.py:459
+#: cinder/volume/driver.py:466
 #, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr ""
 
-#: cinder/volume/driver.py:463 cinder/volume/drivers/emc/emc_smis_iscsi.py:156
+#: cinder/volume/driver.py:470 cinder/volume/drivers/emc/emc_smis_iscsi.py:156
 #, python-format
 msgid "ISCSI Discovery: Found %s"
 msgstr ""
 
-#: cinder/volume/driver.py:556
+#: cinder/volume/driver.py:563
 msgid "The volume driver requires the iSCSI initiator name in the connector."
 msgstr ""
 
-#: cinder/volume/driver.py:586 cinder/volume/drivers/lvm.py:586
-#: cinder/volume/drivers/lvm.py:906 cinder/volume/drivers/storwize_svc.py:1362
+#: cinder/volume/driver.py:593 cinder/volume/drivers/lvm.py:584
+#: cinder/volume/drivers/lvm.py:904 cinder/volume/drivers/storwize_svc.py:1362
 #: cinder/volume/drivers/emc/emc_smis_common.py:857
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:235
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:1507
@@ -3496,48 +3496,48 @@ msgstr ""
 msgid "Updating volume stats"
 msgstr ""
 
-#: cinder/volume/driver.py:653
+#: cinder/volume/driver.py:660
 msgid "ISER provider_location not stored, using discovery"
 msgstr ""
 
-#: cinder/volume/driver.py:701
+#: cinder/volume/driver.py:708
 #, python-format
 msgid "Could not find iSER export for volume %s"
 msgstr ""
 
-#: cinder/volume/driver.py:705
+#: cinder/volume/driver.py:712
 #, python-format
 msgid "ISER Discovery: Found %s"
 msgstr ""
 
-#: cinder/volume/driver.py:767
+#: cinder/volume/driver.py:774
 #, python-format
 msgid "Failed to access the device on the path %(path)s: %(error)s."
 msgstr ""
 
-#: cinder/volume/driver.py:840
+#: cinder/volume/driver.py:847
 #, python-format
 msgid "iSER device not found at %s"
 msgstr ""
 
-#: cinder/volume/driver.py:844
+#: cinder/volume/driver.py:851
 #, python-format
 msgid ""
 "ISER volume not yet found at: %(host_device)s. Will rescan & retry.  Try "
 "number: %(tries)s."
 msgstr ""
 
-#: cinder/volume/driver.py:857
+#: cinder/volume/driver.py:864
 #, python-format
 msgid "Found iSER node %(host_device)s (after %(tries)s rescans)."
 msgstr ""
 
-#: cinder/volume/driver.py:874 cinder/volume/manager.py:907
-#: cinder/volume/drivers/lvm.py:779
+#: cinder/volume/driver.py:881 cinder/volume/manager.py:907
+#: cinder/volume/drivers/lvm.py:777
 msgid "Updating volume status"
 msgstr ""
 
-#: cinder/volume/driver.py:942
+#: cinder/volume/driver.py:949
 msgid "Driver must implement initialize_connection"
 msgstr ""
 
@@ -3815,51 +3815,51 @@ msgid ""
 "config: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:138
-#: cinder/volume/drivers/block_device.py:149 cinder/volume/drivers/lvm.py:499
-#: cinder/volume/drivers/lvm.py:513
+#: cinder/volume/drivers/block_device.py:131
+#: cinder/volume/drivers/block_device.py:142 cinder/volume/drivers/lvm.py:497
+#: cinder/volume/drivers/lvm.py:511
 #, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:163 cinder/volume/drivers/lvm.py:531
+#: cinder/volume/drivers/block_device.py:156 cinder/volume/drivers/lvm.py:529
 #, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume:"
 " %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:188 cinder/volume/drivers/lvm.py:328
+#: cinder/volume/drivers/block_device.py:181 cinder/volume/drivers/lvm.py:326
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:205 cinder/volume/drivers/lvm.py:349
+#: cinder/volume/drivers/block_device.py:198 cinder/volume/drivers/lvm.py:347
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:277 cinder/volume/drivers/lvm.py:183
+#: cinder/volume/drivers/block_device.py:270 cinder/volume/drivers/lvm.py:181
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:290 cinder/volume/drivers/lvm.py:198
+#: cinder/volume/drivers/block_device.py:283 cinder/volume/drivers/lvm.py:196
 #, python-format
 msgid "Error unrecognized volume_clear option: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:312 cinder/volume/drivers/lvm.py:250
-#: cinder/volume/drivers/lvm.py:883
+#: cinder/volume/drivers/block_device.py:305 cinder/volume/drivers/lvm.py:248
+#: cinder/volume/drivers/lvm.py:881
 #, python-format
 msgid "Creating clone of volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:379
+#: cinder/volume/drivers/block_device.py:372
 msgid "No free disk"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:392
+#: cinder/volume/drivers/block_device.py:385
 msgid "No big enough free disk"
 msgstr ""
 
@@ -4029,53 +4029,53 @@ msgstr ""
 msgid "Expected image to be in raw format, but is %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:78
+#: cinder/volume/drivers/lvm.py:76
 #, python-format
 msgid "volume group %s doesn't exist"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:178
+#: cinder/volume/drivers/lvm.py:176
 #, python-format
 msgid "Size for volume: %s not found, skipping secure delete."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:218
+#: cinder/volume/drivers/lvm.py:216
 #, python-format
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:363 cinder/volume/drivers/lvm.py:677
+#: cinder/volume/drivers/lvm.py:361 cinder/volume/drivers/lvm.py:675
 msgid "Detected inconsistency in provider_location id"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:415
+#: cinder/volume/drivers/lvm.py:413
 #, python-format
 msgid "Symbolic link %s not found"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:612
+#: cinder/volume/drivers/lvm.py:610
 #, python-format
 msgid "Error retrieving volume stats: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:663
+#: cinder/volume/drivers/lvm.py:661
 #, python-format
 msgid "Skipping ensure_export. No iser_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:754
+#: cinder/volume/drivers/lvm.py:752
 #, python-format
 msgid "Skipping remove_export. No iser_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:770
+#: cinder/volume/drivers/lvm.py:768
 #, python-format
 msgid ""
 "Skipping remove_export. No iser_target is presently exported for volume: "
 "%s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:802
+#: cinder/volume/drivers/lvm.py:800
 #, python-format
 msgid "Error retrieving volume status: %s"
 msgstr ""
@@ -6517,50 +6517,50 @@ msgstr ""
 msgid "Login to 3PAR array invalid"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:180
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:562
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:181
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:571
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:188
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:197
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:195
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:204
 #, python-format
 msgid "CPG (%s) must be in a domain"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:211
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:220
 #, python-format
 msgid "Error extending volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:354
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:363
 #, python-format
 msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:360
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:369
 #, python-format
 msgid "Error running ssh command: %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:676
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:685
 #, python-format
 msgid "Must specify a valid persona %(valid)s, value '%(persona)s' is invalid."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:737
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:746
 #, python-format
 msgid ""
 "Must specify a valid provisioning type %(valid)s, value '%(prov)s' is "
 "invalid."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:777
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:786
 #, python-format
 msgid "Volume (%s) already exists on array"
 msgstr ""
