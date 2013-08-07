@@ -83,6 +83,11 @@ class BrickLvmTestCase(test.TestCase):
                 in cmd_string:
             data = "  fake-volumes fake-1 1.00g\n"
             data += "  fake-volumes fake-2 1.00g\n"
+        elif 'lvdisplay, --noheading, -C, -o, Attr' in cmd_string:
+            if 'test-volumes' in cmd_string:
+                data = '  wi-a-'
+            else:
+                data = '  owi-a-'
         elif 'pvs, --noheadings' and 'fake-volumes' in cmd_string:
             data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
         elif 'pvs, --noheadings' in cmd_string:
@@ -136,3 +141,7 @@ class BrickLvmTestCase(test.TestCase):
 
         self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
         self.assertFalse(self.vg.supports_thin_provisioning())
+
+    def test_lv_has_snapshot(self):
+        self.assertTrue(self.vg.lv_has_snapshot('fake-volumes'))
+        self.assertFalse(self.vg.lv_has_snapshot('test-volumes'))
