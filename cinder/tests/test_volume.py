@@ -29,6 +29,8 @@ import tempfile
 import mox
 from oslo.config import cfg
 
+from cinder.backup import driver as backup_driver
+from cinder.brick.initiator import connector as brick_conn
 from cinder.brick.iscsi import iscsi
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
@@ -36,6 +38,7 @@ from cinder import db
 from cinder import exception
 from cinder.image import image_utils
 from cinder import keymgr
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
@@ -47,6 +50,8 @@ from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.tests import conf_fixture
 from cinder.tests.image import fake as fake_image
 from cinder.tests.keymgr import fake as fake_keymgr
+from cinder.tests import utils as tests_utils
+from cinder import utils
 import cinder.volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
@@ -54,7 +59,6 @@ from cinder.volume.drivers import lvm
 from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volutils
-
 
 QUOTAS = quota.QUOTAS
 
@@ -1733,6 +1737,78 @@ class DriverTestCase(test.TestCase):
         for volume_id in volume_id_list:
             db.volume_detached(self.context, volume_id)
             self.volume.delete_volume(self.context, volume_id)
+
+
+class GenericVolumeDriverTestCase(DriverTestCase):
+    """Test case for VolumeDriver."""
+    driver_name = "cinder.tests.fake_driver.LoggingVolumeDriver"
+
+    def test_backup_volume(self):
+        vol = tests_utils.create_volume(self.context)
+        backup = {'volume_id': vol['id']}
+        properties = {}
+        attach_info = {'device': {'path': '/dev/null'}}
+        backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
+        root_helper = 'sudo cinder-rootwrap None'
+        self.mox.StubOutWithMock(self.volume.driver.db, 'volume_get')
+        self.mox.StubOutWithMock(cinder.brick.initiator.connector,
+                                 'get_connector_properties')
+        self.mox.StubOutWithMock(self.volume.driver, '_attach_volume')
+        self.mox.StubOutWithMock(os, 'getuid')
+        self.mox.StubOutWithMock(utils, 'execute')
+        self.mox.StubOutWithMock(fileutils, 'file_open')
+        self.mox.StubOutWithMock(self.volume.driver, '_detach_volume')
+        self.mox.StubOutWithMock(self.volume.driver, 'terminate_connection')
+
+        self.volume.driver.db.volume_get(self.context, vol['id']).\
+            AndReturn(vol)
+        cinder.brick.initiator.connector.\
+            get_connector_properties(root_helper).AndReturn(properties)
+        self.volume.driver._attach_volume(self.context, vol, properties).\
+            AndReturn(attach_info)
+        os.getuid()
+        utils.execute('chown', None, '/dev/null', run_as_root=True)
+        f = fileutils.file_open('/dev/null').AndReturn(file('/dev/null'))
+        backup_service.backup(backup, f)
+        utils.execute('chown', 0, '/dev/null', run_as_root=True)
+        self.volume.driver._detach_volume(attach_info)
+        self.volume.driver.terminate_connection(vol, properties)
+        self.mox.ReplayAll()
+        self.volume.driver.backup_volume(self.context, backup, backup_service)
+        self.mox.UnsetStubs()
+
+    def test_restore_backup(self):
+        vol = tests_utils.create_volume(self.context)
+        backup = {'volume_id': vol['id'],
+                  'id': 'backup-for-%s' % vol['id']}
+        properties = {}
+        attach_info = {'device': {'path': '/dev/null'}}
+        root_helper = 'sudo cinder-rootwrap None'
+        backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
+        self.mox.StubOutWithMock(cinder.brick.initiator.connector,
+                                 'get_connector_properties')
+        self.mox.StubOutWithMock(self.volume.driver, '_attach_volume')
+        self.mox.StubOutWithMock(os, 'getuid')
+        self.mox.StubOutWithMock(utils, 'execute')
+        self.mox.StubOutWithMock(fileutils, 'file_open')
+        self.mox.StubOutWithMock(self.volume.driver, '_detach_volume')
+        self.mox.StubOutWithMock(self.volume.driver, 'terminate_connection')
+
+        cinder.brick.initiator.connector.\
+            get_connector_properties(root_helper).AndReturn(properties)
+        self.volume.driver._attach_volume(self.context, vol, properties).\
+            AndReturn(attach_info)
+        os.getuid()
+        utils.execute('chown', None, '/dev/null', run_as_root=True)
+        f = fileutils.file_open('/dev/null', 'wb').AndReturn(file('/dev/null'))
+        backup_service.restore(backup, vol['id'], f)
+        utils.execute('chown', 0, '/dev/null', run_as_root=True)
+        self.volume.driver._detach_volume(attach_info)
+        self.volume.driver.terminate_connection(vol, properties)
+        self.mox.ReplayAll()
+        self.volume.driver.restore_backup(self.context, backup, vol,
+                                          backup_service)
+        self.mox.UnsetStubs()
 
 
 class LVMISCSIVolumeDriverTestCase(DriverTestCase):

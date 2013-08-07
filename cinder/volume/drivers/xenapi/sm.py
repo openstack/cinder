@@ -261,3 +261,11 @@ class XenAPINFSDriver(driver.VolumeDriver):
             self._stats = data
 
         return self._stats
+
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        raise NotImplementedError()
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume."""
+        raise NotImplementedError()

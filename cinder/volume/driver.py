@@ -29,6 +29,7 @@ from cinder.brick.initiator import connector as initiator
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
@@ -372,11 +373,45 @@ class VolumeDriver(object):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        raise NotImplementedError()
+        volume = self.db.volume_get(context, backup['volume_id'])
+
+        LOG.debug(_('Creating a new backup for volume %s.') %
+                  volume['name'])
+
+        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        properties = initiator.get_connector_properties(root_helper)
+        attach_info = self._attach_volume(context, volume, properties)
+
+        try:
+            volume_path = attach_info['device']['path']
+            with utils.temporary_chown(volume_path):
+                with fileutils.file_open(volume_path) as volume_file:
+                    backup_service.backup(backup, volume_file)
+
+        finally:
+            self._detach_volume(attach_info)
+            self.terminate_connection(volume, properties)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        raise NotImplementedError()
+        LOG.debug(_('Restoring backup %(backup)s to '
+                    'volume %(volume)s.') %
+                  {'backup': backup['id'],
+                   'volume': volume['name']})
+
+        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        properties = initiator.get_connector_properties(root_helper)
+        attach_info = self._attach_volume(context, volume, properties)
+
+        try:
+            volume_path = attach_info['device']['path']
+            with utils.temporary_chown(volume_path):
+                with fileutils.file_open(volume_path, 'wb') as volume_file:
+                    backup_service.restore(backup, volume['id'], volume_file)
+
+        finally:
+            self._detach_volume(attach_info)
+            self.terminate_connection(volume, properties)
 
     def clear_download(self, context, volume):
         """Clean up after an interrupted image copy."""
