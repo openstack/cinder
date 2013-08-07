@@ -165,7 +165,7 @@ class IetAdmAutoIOTestCase(test.TestCase, TargetAdminTestCase):
     def setUp(self):
         super(IetAdmAutoIOTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
-        self.stubs.Set(volume_utils, 'is_block', lambda _: True)
+        self.stubs.Set(iscsi.IetAdm, '_is_block', lambda a, b: True)
         self.flags(iscsi_helper='ietadm')
         self.flags(iscsi_iotype='auto')
         self.script_template = "\n".join([

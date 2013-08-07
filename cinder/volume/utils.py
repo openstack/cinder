@@ -142,11 +142,6 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
                         notifier_api.INFO, usage_info)
 
 
-def is_block(path):
-    mode = os.stat(path).st_mode
-    return stat.S_ISBLK(mode)
-
-
 def _calculate_count(size_in_m):
     blocksize = CONF.volume_dd_blocksize
     # Check if volume_dd_blocksize is valid
