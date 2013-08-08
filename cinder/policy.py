@@ -62,6 +62,20 @@ def _set_brain(data):
     policy.set_brain(policy.Brain.load_json(data, default_rule))
 
 
+def enforce_action(context, action):
+    """Checks that the action can be done by the given context.
+
+    Applies a check to ensure the context's project_id and user_id can be
+    applied to the given action using the policy enforcement api.
+    """
+
+    target = {
+        'project_id': context.project_id,
+        'user_id': context.user_id,
+    }
+    enforce(context, action, target)
+
+
 def enforce(context, action, target):
     """Verifies that the action is valid on the target in this context.
 

@@ -49,6 +49,7 @@ from cinder.tests.image import fake as fake_image
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
+from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volutils
 
@@ -151,7 +152,7 @@ class VolumeTestCase(test.TestCase):
             'volume_type': None,
             'snapshot_id': None,
             'user_id': 'fake',
-            'launched_at': '',
+            'launched_at': 'DONTCARE',
             'size': 0,
         }
         self.assertDictMatch(msg['payload'], expected)
@@ -167,7 +168,7 @@ class VolumeTestCase(test.TestCase):
             'volume_type': None,
             'snapshot_id': None,
             'user_id': 'fake',
-            'launched_at': '',
+            'launched_at': 'DONTCARE',
             'size': 0,
         }
         self.assertDictMatch(msg['payload'], expected)
@@ -1376,14 +1377,10 @@ class VolumeTestCase(test.TestCase):
 
     def test_create_volume_from_unelevated_context(self):
         """Test context does't change after volume creation failure."""
-        def fake_create_volume(context, volume_ref, snapshot_ref,
-                               sourcevol_ref, image_service, image_id,
-                               image_location):
+        def fake_create_volume(*args, **kwargs):
             raise exception.CinderException('fake exception')
 
-        def fake_reschedule_or_error(context, volume_id, exc_info,
-                                     snapshot_id, image_id, request_spec,
-                                     filter_properties):
+        def fake_reschedule_or_error(self, context, *args, **kwargs):
             self.assertFalse(context.is_admin)
             self.assertFalse('admin' in context.roles)
             #compare context passed in with the context we saved
@@ -1398,10 +1395,9 @@ class VolumeTestCase(test.TestCase):
         #create one copy of context for future comparison
         self.saved_ctxt = ctxt.deepcopy()
 
-        self.stubs.Set(self.volume, '_reschedule_or_error',
+        self.stubs.Set(create_volume.OnFailureRescheduleTask, '_reschedule',
                        fake_reschedule_or_error)
-        self.stubs.Set(self.volume, '_create_volume',
-                       fake_create_volume)
+        self.stubs.Set(self.volume.driver, 'create_volume', fake_create_volume)
 
         volume_src = self._create_volume()
         self.assertRaises(exception.CinderException,
@@ -1490,13 +1486,6 @@ class VolumeTestCase(test.TestCase):
             db.volume_update(self.context, src_vref['id'], {'status': 'error'})
             raise exception.CinderException('fake exception')
 
-        def fake_reschedule_or_error(context, volume_id, exc_info,
-                                     snapshot_id, image_id, request_spec,
-                                     filter_properties):
-            pass
-
-        self.stubs.Set(self.volume, '_reschedule_or_error',
-                       fake_reschedule_or_error)
         self.stubs.Set(self.volume.driver, 'create_cloned_volume',
                        fake_error_create_cloned_volume)
         volume_src = self._create_volume()
