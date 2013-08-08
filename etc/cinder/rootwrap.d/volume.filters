@@ -73,6 +73,7 @@ blockdev: CommandFilter, blockdev, root
 mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
 mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
 mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
+mmchattr: CommandFilter, /usr/lpp/mmfs/bin/mmchattr, root
 mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
 mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
 find: CommandFilter, find, root

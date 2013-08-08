@@ -92,8 +92,8 @@ class GPFSDriverTestCase(test.TestCase):
                        self._fake_delete_gpfs_file)
         self.stubs.Set(GPFSDriver, '_create_sparse_file',
                        self._fake_create_sparse_file)
-        self.stubs.Set(GPFSDriver, '_create_regular_file',
-                       self._fake_create_regular_file)
+        self.stubs.Set(GPFSDriver, '_allocate_file_blocks',
+                       self._fake_allocate_file_blocks)
         self.stubs.Set(GPFSDriver, '_get_available_capacity',
                        self._fake_get_available_capacity)
         self.stubs.Set(image_utils, 'qemu_img_info',
@@ -145,6 +145,23 @@ class GPFSDriverTestCase(test.TestCase):
         """create and delete vol with default sparse creation method"""
         CONF.gpfs_sparse_volumes = True
         vol = self._create_volume(size=1)
+        volume_id = vol['id']
+        self.assertTrue(os.path.exists(self.volumes_path))
+        self.volume.create_volume(self.context, volume_id)
+        path = self.volumes_path + '/' + vol['name']
+        self.assertTrue(os.path.exists(path))
+        self.volume.delete_volume(self.context, volume_id)
+        self.assertFalse(os.path.exists(path))
+
+    def test_create_volume_with_attributes(self):
+        self.stubs.Set(GPFSDriver, '_gpfs_change_attributes',
+                       self._fake_gpfs_change_attributes)
+        attributes = {'dio': 'yes', 'data_pool_name': 'ssd_pool',
+                      'replicas': '2', 'write_affinity_depth': '1',
+                      'block_group_factor': '1',
+                      'write_affinity_failure-group':
+                      '1,1,1:2;2,1,1:2;2,0,3:4'}
+        vol = self._create_volume(size=1, metadata=attributes)
         volume_id = vol['id']
         self.assertTrue(os.path.exists(self.volumes_path))
         self.volume.create_volume(self.context, volume_id)
@@ -405,8 +422,11 @@ class GPFSDriverTestCase(test.TestCase):
     def _fake_create_sparse_file(self, path, size):
         self._fake_create_file(path)
 
-    def _fake_create_regular_file(self, path, size):
+    def _fake_allocate_file_blocks(self, path, size):
         self._fake_create_file(path)
+
+    def _fake_gpfs_change_attributes(self, options, path):
+        pass
 
     def _fake_gpfs_redirect(self, src):
         return True
