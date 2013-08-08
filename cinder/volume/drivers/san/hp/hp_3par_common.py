@@ -899,11 +899,11 @@ exit
                 if vvs_name is None:
                     qos = self._get_qos_by_volume_type(volume_type)
 
-            name = snapshot.get('display_name', None)
+            name = volume.get('display_name', None)
             if name:
-                extra['name'] = name
+                extra['display_name'] = name
 
-            description = snapshot.get('display_description', None)
+            description = volume.get('display_description', None)
             if description:
                 extra['description'] = description
 
@@ -943,7 +943,7 @@ exit
                 extra['volume_id'] = vol_id
 
             try:
-                extra['name'] = snapshot['display_name']
+                extra['display_name'] = snapshot['display_name']
             except AttributeError:
                 pass
 
