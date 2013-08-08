@@ -27,6 +27,7 @@ inline callbacks.
 import functools
 import os
 import shutil
+import tempfile
 import uuid
 
 import fixtures
@@ -168,6 +169,8 @@ class TestCase(testtools.TestCase):
         self._services = []
 
         CONF.set_override('fatal_exception_format_errors', True)
+        # This will be cleaned up by the NestedTempfile fixture
+        CONF.set_override('lock_path', tempfile.mkdtemp())
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
