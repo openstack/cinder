@@ -29,7 +29,7 @@ from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hds.hus_backend import HusBackend
 
-HDS_VERSION = '1.0.1'
+HDS_VERSION = '1.0.2'
 
 LOG = logging.getLogger(__name__)
 
@@ -51,6 +51,18 @@ HUS_DEFAULT_CONFIG = {'hus_cmd': 'hus-cmd',
 def factory_bend():
     """Factory over-ride in self-tests."""
     return HusBackend()
+
+
+def _loc_info(loc):
+    """Parse info from location string."""
+    info = {}
+    tup = loc.split(',')
+    if len(tup) < 5:
+        info['id_lu'] = tup[0].split('.')
+        return info
+    info['id_lu'] = tup[2].split('.')
+    info['tgt'] = tup
+    return info
 
 
 def _do_lu_range_check(start, end, maxlun):
@@ -316,19 +328,67 @@ class HUSDriver(driver.ISCSIDriver):
         return {'provider_location': lun}
 
     @utils.synchronized('hds_hus', external=True)
+    def create_cloned_volume(self, dst, src):
+        """Create a clone of a volume."""
+        if src['size'] != dst['size']:
+            msg = 'clone volume size mismatch'
+            raise exception.VolumeBackendAPIException(data=msg)
+        service = self._get_service(dst)
+        (_ip, _ipp, _ctl, _port, hdp) = service
+        size = int(src['size']) * 1024
+        source_vol = self._id_to_vol(src['id'])
+        (arid, slun) = _loc_info(source_vol['provider_location'])['id_lu']
+        out = self.bend.create_dup(self.config['hus_cmd'],
+                                   HDS_VERSION,
+                                   self.config['mgmt_ip0'],
+                                   self.config['mgmt_ip1'],
+                                   self.config['username'],
+                                   self.config['password'],
+                                   arid, slun,
+                                   hdp,
+                                   self.start, self.end,
+                                   '%s' % (size))
+        lun = self.arid + '.' + out.split()[1]
+        size = int(out.split()[5])
+        LOG.debug(_("LUN %(lun)s of size %(size)s MB is cloned.")
+                  % {'lun': lun,
+                     'size': size})
+        return {'provider_location': lun}
+
+    @utils.synchronized('hds_hus', external=True)
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        (arid, lun) = _loc_info(volume['provider_location'])['id_lu']
+        out = self.bend.extend_vol(self.config['hus_cmd'],
+                                   HDS_VERSION,
+                                   self.config['mgmt_ip0'],
+                                   self.config['mgmt_ip1'],
+                                   self.config['username'],
+                                   self.config['password'],
+                                   arid, lun,
+                                   '%s' % (new_size * 1024))
+        LOG.debug(_("LUN %(lun)s extended to %(size)s GB.")
+                  % {'lun': lun,
+                     'size': new_size})
+
+    @utils.synchronized('hds_hus', external=True)
     def delete_volume(self, volume):
         """Delete an LU on HUS."""
-        loc = volume['provider_location']
-        if loc is None:         # to take care of spurious input
-            return              # which could cause exception.
-        (arid, lun) = loc.split('.')
-        myid = self.arid
-        if arid != myid:
-            LOG.error(_("Array Mismatch %(myid)s vs %(arid)s")
-                      % {'myid': myid,
-                         'arid': arid})
-            msg = 'Array id mismatch in volume delete'
-            raise exception.VolumeBackendAPIException(data=msg)
+        prov_loc = volume['provider_location']
+        if prov_loc is None:
+            return
+        info = _loc_info(prov_loc)
+        (arid, lun) = info['id_lu']
+        if 'tgt' in info.keys():  # connected?
+            (_portal, iqn, loc, ctl, port) = info['tgt']
+            _out = self.bend.del_iscsi_conn(self.config['hus_cmd'],
+                                            HDS_VERSION,
+                                            self.config['mgmt_ip0'],
+                                            self.config['mgmt_ip1'],
+                                            self.config['username'],
+                                            self.config['password'],
+                                            arid, lun, ctl, port, iqn,
+                                            '')
         name = self.hus_name
         LOG.debug(_("delete lun %(lun)s on %(name)s")
                   % {'lun': lun,
@@ -339,7 +399,7 @@ class HUSDriver(driver.ISCSIDriver):
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
                                    self.config['password'],
-                                   self.arid, lun)
+                                   arid, lun)
 
     def remove_export(self, context, volume):
         """Disconnect a volume from an attached instance."""
@@ -350,8 +410,11 @@ class HUSDriver(driver.ISCSIDriver):
         """Map the created volume to connector['initiator']."""
         service = self._get_service(volume)
         (ip, ipp, ctl, port, _hdp) = service
-        loc = volume['provider_location']
-        (_array_id, lun) = loc.split('.')
+        info = _loc_info(volume['provider_location'])
+        if 'tgt' in info.keys():  # spurious repeat connection
+            return
+        (arid, lun) = info['id_lu']
+        loc = arid + '.' + lun
         iqn = HI_IQN + connector['host']
         out = self.bend.add_iscsi_conn(self.config['hus_cmd'],
                                        HDS_VERSION,
@@ -359,7 +422,7 @@ class HUSDriver(driver.ISCSIDriver):
                                        self.config['mgmt_ip1'],
                                        self.config['username'],
                                        self.config['password'],
-                                       self.arid, lun, ctl, port, iqn,
+                                       arid, lun, ctl, port, iqn,
                                        connector['initiator'])
         hus_portal = ip + ':' + ipp
         tgt = hus_portal + ',' + iqn + ',' + loc + ',' + ctl + ',' + port
@@ -377,19 +440,20 @@ class HUSDriver(driver.ISCSIDriver):
     @utils.synchronized('hds_hus', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume."""
-        info = volume['provider_location'].split(',')
-        if len(info) < 5:      # connection not setup properly. bail out
+        info = _loc_info(volume['provider_location'])
+        if 'tgt' not in info.keys():  # spurious disconnection
             return
-        (_portal, iqn, loc, ctl, port) = info
-        (_array_id, lun) = loc.split('.')
+        (arid, lun) = info['id_lu']
+        (_portal, iqn, loc, ctl, port) = info['tgt']
+
         _out = self.bend.del_iscsi_conn(self.config['hus_cmd'],
                                         HDS_VERSION,
                                         self.config['mgmt_ip0'],
                                         self.config['mgmt_ip1'],
                                         self.config['username'],
                                         self.config['password'],
-                                        self.arid, lun, ctl, port, iqn,
-                                        connector['initiator'], 1)
+                                        arid, lun, ctl, port, iqn,
+                                        connector['initiator'])
         self._update_vol_location(volume['id'], loc)
         return {'provider_location': loc}
 
@@ -397,7 +461,7 @@ class HUSDriver(driver.ISCSIDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
         size = int(snapshot['volume_size']) * 1024
-        (_arid, slun) = snapshot['provider_location'].split('.')
+        (arid, slun) = _loc_info(snapshot['provider_location'])['id_lu']
         service = self._get_service(volume)
         (_ip, _ipp, _ctl, _port, hdp) = service
         out = self.bend.create_dup(self.config['hus_cmd'],
@@ -406,7 +470,7 @@ class HUSDriver(driver.ISCSIDriver):
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
                                    self.config['password'],
-                                   self.arid, slun, hdp,
+                                   arid, slun, hdp,
                                    self.start, self.end,
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
@@ -421,20 +485,20 @@ class HUSDriver(driver.ISCSIDriver):
         """Create a snapshot."""
         source_vol = self._id_to_vol(snapshot['volume_id'])
         size = int(snapshot['volume_size']) * 1024
-        (_arid, slun) = source_vol['provider_location'].split('.')
+        (arid, slun) = _loc_info(source_vol['provider_location'])['id_lu']
         out = self.bend.create_dup(self.config['hus_cmd'],
                                    HDS_VERSION,
                                    self.config['mgmt_ip0'],
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
                                    self.config['password'],
-                                   self.arid, slun,
+                                   arid, slun,
                                    self.config['snapshot_hdp'],
                                    self.start, self.end,
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
-        LOG.debug(_("LUN %(lun)s of size %(size)s MB is created.")
+        LOG.debug(_("LUN %(lun)s of size %(size)s MB is created as snapshot.")
                   % {'lun': lun,
                      'size': size})
         return {'provider_location': lun}
@@ -446,20 +510,13 @@ class HUSDriver(driver.ISCSIDriver):
         if loc is None:         # to take care of spurious input
             return              # which could cause exception.
         (arid, lun) = loc.split('.')
-        myid = self.arid
-        if arid != myid:
-            LOG.error(_('Array mismatch %(myid)s vs %(arid)s')
-                      % {'myid': myid,
-                         'arid': arid})
-            msg = 'Array id mismatch in delete snapshot'
-            raise exception.VolumeBackendAPIException(data=msg)
         _out = self.bend.delete_lu(self.config['hus_cmd'],
                                    HDS_VERSION,
                                    self.config['mgmt_ip0'],
                                    self.config['mgmt_ip1'],
                                    self.config['username'],
                                    self.config['password'],
-                                   self.arid, lun)
+                                   arid, lun)
         LOG.debug(_("LUN %s is deleted.") % lun)
         return
 
