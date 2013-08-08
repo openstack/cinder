@@ -451,6 +451,21 @@
 #nova_api_insecure=false
 
 
+
+#
+# Options defined in cinder.backup.services.tsm
+#
+
+# Volume prefix for the backup id when backing up to TSM
+#backup_tsm_volume_prefix=backup
+
+# TSM password for the running username
+#backup_tsm_password=password
+
+# Enable or Disable compression for backups
+#backup_tsm_compression=True
+
+
 #
 # Options defined in cinder.db.api
 #

@@ -83,3 +83,6 @@ mkfs: CommandFilter, mkfs, root
 aoe-revalidate: CommandFilter, aoe-revalidate, root
 aoe-discover: CommandFilter, aoe-discover, root
 aoe-flush: CommandFilter, aoe-flush, root
+
+#cinder/backup/services/tsm.py
+dsmc:CommandFilter,/usr/bin/dsmc,root

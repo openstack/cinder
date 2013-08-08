@@ -795,6 +795,21 @@ def logging_error(message):
             LOG.exception(message)
 
 
+def make_dev_path(dev, partition=None, base='/dev'):
+    """Return a path to a particular device.
+
+    >>> make_dev_path('xvdc')
+    /dev/xvdc
+
+    >>> make_dev_path('xvdc', 1)
+    /dev/xvdc1
+    """
+    path = os.path.join(base, dev)
+    if partition:
+        path += str(partition)
+    return path
+
+
 def total_seconds(td):
     """Local total_seconds implementation for compatibility with python 2.6"""
     if hasattr(td, 'total_seconds'):
