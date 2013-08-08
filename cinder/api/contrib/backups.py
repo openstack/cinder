@@ -17,7 +17,6 @@
 
 import webob
 from webob import exc
-from xml.dom import minidom
 
 from cinder.api import common
 from cinder.api import extensions
@@ -28,6 +27,7 @@ from cinder import backup as backupAPI
 from cinder import exception
 from cinder import flags
 from cinder.openstack.common import log as logging
+from cinder import utils
 
 FLAGS = flags.FLAGS
 LOG = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class BackupRestoreTemplate(xmlutil.TemplateBuilder):
 
 class CreateDeserializer(wsgi.MetadataXMLDeserializer):
     def default(self, string):
-        dom = minidom.parseString(string)
+        dom = utils.safe_minidom_parse_string(string)
         backup = self._extract_backup(dom)
         return {'body': {'backup': backup}}
 
@@ -101,7 +101,7 @@ class CreateDeserializer(wsgi.MetadataXMLDeserializer):
 
 class RestoreDeserializer(wsgi.MetadataXMLDeserializer):
     def default(self, string):
-        dom = minidom.parseString(string)
+        dom = utils.safe_minidom_parse_string(string)
         restore = self._extract_restore(dom)
         return {'body': {'restore': restore}}
 
