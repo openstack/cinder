@@ -23,7 +23,9 @@ import tempfile
 
 import mox as mox_lib
 
+from cinder import context
 from cinder import exception
+from cinder.image import image_utils
 from cinder import test
 from cinder import utils
 from cinder.volume.drivers import scality
@@ -55,6 +57,18 @@ class ScalityDriverTestCase(test.TestCase):
     TEST_SNAPPATH = os.path.join(TEST_MOUNT,
                                  TEST_VOLDIR,
                                  TEST_SNAPNAME)
+
+    TEST_CLONENAME = 'clone_name'
+    TEST_CLONE = {
+        'name': TEST_CLONENAME,
+        'size': TEST_VOLSIZE
+    }
+
+    TEST_NEWSIZE = '2'
+
+    TEST_IMAGE_SERVICE = 'image_service'
+    TEST_IMAGE_ID = 'image_id'
+    TEST_IMAGE_META = 'image_meta'
 
     def _makedirs(self, path):
         try:
@@ -111,6 +125,9 @@ class ScalityDriverTestCase(test.TestCase):
         self.TEST_SNAPPATH = os.path.join(self.TEST_MOUNT,
                                           self.TEST_VOLDIR,
                                           self.TEST_SNAPNAME)
+        self.TEST_CLONEPATH = os.path.join(self.TEST_MOUNT,
+                                           self.TEST_VOLDIR,
+                                           self.TEST_CLONENAME)
 
         self._driver = scality.ScalityDriver()
         self._driver.set_execute(self._execute_wrapper)
@@ -211,3 +228,59 @@ class ScalityDriverTestCase(test.TestCase):
         self.assertEqual(ret['data']['sofs_path'],
                          os.path.join(self.TEST_VOLDIR,
                                       self.TEST_VOLNAME))
+
+    def test_copy_image_to_volume(self):
+        """Expected behaviour for copy_image_to_volume."""
+        self.mox.StubOutWithMock(image_utils, 'fetch_to_raw')
+
+        image_utils.fetch_to_raw(context,
+                                 self.TEST_IMAGE_SERVICE,
+                                 self.TEST_IMAGE_ID,
+                                 self.TEST_VOLPATH)
+
+        self.mox.ReplayAll()
+
+        self._driver.copy_image_to_volume(context,
+                                          self.TEST_VOLUME,
+                                          self.TEST_IMAGE_SERVICE,
+                                          self.TEST_IMAGE_ID)
+
+    def test_copy_volume_to_image(self):
+        """Expected behaviour for copy_volume_to_image."""
+        self.mox.StubOutWithMock(image_utils, 'upload_volume')
+
+        image_utils.upload_volume(context,
+                                  self.TEST_IMAGE_SERVICE,
+                                  self.TEST_IMAGE_META,
+                                  self.TEST_VOLPATH)
+
+        self.mox.ReplayAll()
+
+        self._driver.copy_volume_to_image(context,
+                                          self.TEST_VOLUME,
+                                          self.TEST_IMAGE_SERVICE,
+                                          self.TEST_IMAGE_META)
+
+    def test_create_cloned_volume(self):
+        """Expected behaviour for create_cloned_volume."""
+        self.mox.StubOutWithMock(self._driver, '_create_file')
+        self.mox.StubOutWithMock(self._driver, '_copy_file')
+
+        vol_size = self._driver._size_bytes(self.TEST_VOLSIZE)
+        self._driver._create_file(self.TEST_CLONEPATH, vol_size)
+        self._driver._copy_file(self.TEST_VOLPATH, self.TEST_CLONEPATH)
+
+        self.mox.ReplayAll()
+
+        self._driver.create_cloned_volume(self.TEST_CLONE, self.TEST_VOLUME)
+
+    def test_extend_volume(self):
+        """Expected behaviour for extend_volume."""
+        self.mox.StubOutWithMock(self._driver, '_create_file')
+
+        new_size = self._driver._size_bytes(self.TEST_NEWSIZE)
+        self._driver._create_file(self.TEST_VOLPATH, new_size)
+
+        self.mox.ReplayAll()
+
+        self._driver.extend_volume(self.TEST_VOLUME, self.TEST_NEWSIZE)

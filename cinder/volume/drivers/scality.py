@@ -257,3 +257,12 @@ class ScalityDriver(driver.VolumeDriver):
         boolean indicating whether cloning occurred
         """
         return None, False
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+        self.create_volume_from_snapshot(volume, src_vref)
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        self._create_file(self.local_path(volume),
+                          self._size_bytes(new_size))
