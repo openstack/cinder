@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-08-07 06:10+0000\n"
+"POT-Creation-Date: 2013-08-08 06:10+0000\n"
 "PO-Revision-Date: 2013-05-29 08:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Chinese (Hong Kong) "
@@ -28,11 +28,11 @@ msgstr ""
 msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr ""
 
-#: cinder/exception.py:66
+#: cinder/exception.py:65
 msgid "Unexpected error while running command."
 msgstr ""
 
-#: cinder/exception.py:69
+#: cinder/exception.py:68
 #, python-format
 msgid ""
 "%(description)s\n"
@@ -907,78 +907,78 @@ msgstr ""
 msgid "href %s does not contain version"
 msgstr ""
 
-#: cinder/api/extensions.py:185
+#: cinder/api/extensions.py:184
 msgid "Initializing extension manager."
 msgstr ""
 
-#: cinder/api/extensions.py:200
+#: cinder/api/extensions.py:199
 #, python-format
 msgid "Loaded extension: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:238
+#: cinder/api/extensions.py:237
 #, python-format
 msgid "Ext name: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:239
+#: cinder/api/extensions.py:238
 #, python-format
 msgid "Ext alias: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:240
+#: cinder/api/extensions.py:239
 #, python-format
 msgid "Ext description: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:242
+#: cinder/api/extensions.py:241
 #, python-format
 msgid "Ext namespace: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:243
+#: cinder/api/extensions.py:242
 #, python-format
 msgid "Ext updated: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:245
+#: cinder/api/extensions.py:244
 #, python-format
 msgid "Exception loading extension: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:259
+#: cinder/api/extensions.py:258
 #, python-format
 msgid "Loading extension %s"
 msgstr ""
 
-#: cinder/api/extensions.py:265
+#: cinder/api/extensions.py:264
 #, python-format
 msgid "Calling extension factory %s"
 msgstr ""
 
-#: cinder/api/extensions.py:279
+#: cinder/api/extensions.py:278
 #, python-format
 msgid "osapi_volume_extension is set to deprecated path: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:281
+#: cinder/api/extensions.py:280
 #, python-format
 msgid ""
 "Please set your flag or cinder.conf settings for osapi_volume_extension "
 "to: %s"
 msgstr ""
 
-#: cinder/api/extensions.py:290
+#: cinder/api/extensions.py:289
 #, python-format
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:359
+#: cinder/api/extensions.py:358
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:384
+#: cinder/api/extensions.py:383
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
 msgstr ""
@@ -2058,7 +2058,7 @@ msgstr ""
 msgid "Creating iscsi_target for: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:174 cinder/brick/iscsi/iscsi.py:292
+#: cinder/brick/iscsi/iscsi.py:174 cinder/brick/iscsi/iscsi.py:296
 #, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
@@ -2080,41 +2080,41 @@ msgstr ""
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:226 cinder/brick/iscsi/iscsi.py:463
-#: cinder/brick/iser/iser.py:207
+#: cinder/brick/iscsi/iscsi.py:226 cinder/brick/iscsi/iscsi.py:467
+#: cinder/brick/iser/iser.py:208
 msgid "valid iqn needed for show_target"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:299
+#: cinder/brick/iscsi/iscsi.py:303
 #, python-format
 msgid "Removing iscsi_target for volume: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:385
+#: cinder/brick/iscsi/iscsi.py:389
 msgid "rtstool is not installed correctly"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:405
+#: cinder/brick/iscsi/iscsi.py:409
 #, python-format
 msgid "Creating iscsi_target for volume: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:429 cinder/brick/iscsi/iscsi.py:438
+#: cinder/brick/iscsi/iscsi.py:433 cinder/brick/iscsi/iscsi.py:442
 #, python-format
 msgid "Failed to create iscsi target for volume id:%s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:445
+#: cinder/brick/iscsi/iscsi.py:449
 #, python-format
 msgid "Removing iscsi_target: %s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:455
+#: cinder/brick/iscsi/iscsi.py:459
 #, python-format
 msgid "Failed to remove iscsi target for volume id:%s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:484
+#: cinder/brick/iscsi/iscsi.py:488
 #, python-format
 msgid "Failed to add initiator iqn %s to target"
 msgstr ""
@@ -2136,12 +2136,12 @@ msgid ""
 " tgtd config file contains 'include %(volumes_dir)s/*'"
 msgstr ""
 
-#: cinder/brick/iser/iser.py:180
+#: cinder/brick/iser/iser.py:181
 #, python-format
 msgid "Removing iser_target for: %s"
 msgstr ""
 
-#: cinder/brick/iser/iser.py:197
+#: cinder/brick/iser/iser.py:198
 #, python-format
 msgid "Failed to remove iser target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
@@ -2347,7 +2347,7 @@ msgid "Snapshot list encountered but no header found!"
 msgstr ""
 
 #: cinder/image/image_utils.py:224 cinder/image/image_utils.py:256
-#: cinder/volume/drivers/gpfs.py:462
+#: cinder/volume/drivers/gpfs.py:511
 msgid "'qemu-img info' parsing failed."
 msgstr ""
 
@@ -2369,10 +2369,6 @@ msgstr ""
 #: cinder/image/image_utils.py:312
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
-msgstr ""
-
-#: cinder/openstack/common/exception.py:104
-msgid "Uncaught exception"
 msgstr ""
 
 #: cinder/openstack/common/excutils.py:48
@@ -3492,7 +3488,7 @@ msgstr ""
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:1507
 #: cinder/volume/drivers/netapp/iscsi.py:835
 #: cinder/volume/drivers/netapp/iscsi.py:1118
-#: cinder/volume/drivers/nexenta/volume.py:310
+#: cinder/volume/drivers/nexenta/volume.py:321
 msgid "Updating volume stats"
 msgstr ""
 
@@ -3788,7 +3784,7 @@ msgstr ""
 msgid "volume %s: Error trying to extend volume"
 msgstr ""
 
-#: cinder/volume/utils.py:160
+#: cinder/volume/utils.py:155
 #, python-format
 msgid ""
 "Incorrect value error: %(blocksize)s, it may indicate that "
@@ -3970,61 +3966,75 @@ msgstr ""
 msgid "mount.glusterfs is not installed"
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:89
+#: cinder/volume/drivers/gpfs.py:91
 #, python-format
 msgid "GPFS is not active.  Detailed output: %s"
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:90
+#: cinder/volume/drivers/gpfs.py:92
 #, python-format
 msgid "GPFS is not running - state: %s"
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:107
+#: cinder/volume/drivers/gpfs.py:135
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:114
+#: cinder/volume/drivers/gpfs.py:142
 msgid "Option gpfs_images_share_mode is not set correctly."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:120
+#: cinder/volume/drivers/gpfs.py:148
 msgid "Option gpfs_images_dir is not set correctly."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:127
+#: cinder/volume/drivers/gpfs.py:155
 #, python-format
 msgid ""
 "gpfs_images_share_mode is set to copy_on_write, but %(vol)s and %(img)s "
 "belong to different file systems"
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:140
+#: cinder/volume/drivers/gpfs.py:164
+#, python-format
+msgid ""
+"Downlevel GPFS Cluster Detected.  GPFS Clone feature not enabled in "
+"cluster daemon level %(cur)s - must be at least at level %(min)s."
+msgstr ""
+
+#: cinder/volume/drivers/gpfs.py:178
 #, python-format
 msgid "%s must be an absolute path."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:145
+#: cinder/volume/drivers/gpfs.py:183
 #, python-format
 msgid "%s is not a directory."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:153
+#: cinder/volume/drivers/gpfs.py:191
 #, python-format
 msgid "%s is not on GPFS. Perhaps GPFS not mounted."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:400
+#: cinder/volume/drivers/gpfs.py:198
+#, python-format
+msgid ""
+"The GPFS filesystem %(fs)s is not at the required release level.  Current"
+" level is %(cur)s, must be at least %(min)s."
+msgstr ""
+
+#: cinder/volume/drivers/gpfs.py:449
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:454
+#: cinder/volume/drivers/gpfs.py:503
 #, python-format
 msgid "fmt = %(fmt)s backed by: %(backing_file)s"
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:476
+#: cinder/volume/drivers/gpfs.py:525
 #, python-format
 msgid "Expected image to be in raw format, but is %s"
 msgstr ""
@@ -4920,7 +4930,7 @@ msgid "Creating folder %s "
 msgstr ""
 
 #: cinder/volume/drivers/windows.py:206
-#: cinder/volume/drivers/nexenta/volume.py:210
+#: cinder/volume/drivers/nexenta/volume.py:221
 #, python-format
 msgid "Ignored target creation error \"%s\" while ensuring export"
 msgstr ""
@@ -6414,39 +6424,44 @@ msgstr ""
 msgid "Volume %s does not exist in Nexenta SA"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:140
+#: cinder/volume/drivers/nexenta/volume.py:137
+#, python-format
+msgid "Extending volume: %(id)s New size: %(size)s GB"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/volume.py:151
 #, python-format
 msgid "Volume %s does not exist, it seems it was already deleted"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:218
+#: cinder/volume/drivers/nexenta/volume.py:229
 #, python-format
 msgid "Ignored target group creation error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:227
+#: cinder/volume/drivers/nexenta/volume.py:238
 #, python-format
 msgid "Ignored target group member addition error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:235
+#: cinder/volume/drivers/nexenta/volume.py:246
 #, python-format
 msgid "Ignored LU creation error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:245
+#: cinder/volume/drivers/nexenta/volume.py:256
 #, python-format
 msgid "Ignored LUN mapping entry addition error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:281
+#: cinder/volume/drivers/nexenta/volume.py:292
 #, python-format
 msgid ""
 "Got error trying to destroy target group %(target_group)s, assuming it is"
 " already gone: %(exc)s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/volume.py:289
+#: cinder/volume/drivers/nexenta/volume.py:300
 #, python-format
 msgid ""
 "Got error trying to delete target %(target)s, assuming it is already "
@@ -6548,19 +6563,19 @@ msgstr ""
 msgid "Error running ssh command: %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:685
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:689
 #, python-format
 msgid "Must specify a valid persona %(valid)s, value '%(persona)s' is invalid."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:746
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:750
 #, python-format
 msgid ""
 "Must specify a valid provisioning type %(valid)s, value '%(prov)s' is "
 "invalid."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:786
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:790
 #, python-format
 msgid "Volume (%s) already exists on array"
 msgstr ""
@@ -6619,5 +6634,8 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Fibre Channel device not found."
+#~ msgstr ""
+
+#~ msgid "Uncaught exception"
 #~ msgstr ""
 
