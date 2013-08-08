@@ -112,3 +112,23 @@ class ISERTargetCreateFailed(BrickException):
 
 class ISERTargetRemoveFailed(BrickException):
     message = _("Failed to remove iser target for volume %(volume_id)s.")
+
+
+class VolumeGroupNotFound(BrickException):
+    message = _('Unable to find Volume Group: %(vg_name)s')
+
+
+class VolumeGroupCreationFailed(BrickException):
+    message = _('Failed to create Volume Group: %(vg_name)s')
+
+
+class ISCSITargetCreateFailed(BrickException):
+    message = _("Failed to create iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetRemoveFailed(BrickException):
+    message = _("Failed to remove iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetAttachFailed(BrickException):
+    message = _("Failed to attach iSCSI target for volume %(volume_id)s.")

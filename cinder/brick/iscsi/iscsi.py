@@ -27,7 +27,7 @@ import stat
 
 from oslo.config import cfg
 
-from cinder import exception
+from cinder.brick import exception
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
@@ -170,7 +170,7 @@ class TgtAdm(TargetAdmin):
                                        '--update',
                                        name,
                                        run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
                       % {'vol_id': vol_id, 'e': str(e)})
@@ -212,7 +212,7 @@ class TgtAdm(TargetAdmin):
                           '--delete',
                           iqn,
                           run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to remove iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
                       % {'vol_id': vol_id, 'e': str(e)})
@@ -291,7 +291,7 @@ class IetAdm(TargetAdmin):
                     f = open(conf_file, 'a+')
                     f.write(volume_conf)
                     f.close()
-            except exception.ProcessExecutionError as e:
+            except putils.ProcessExecutionError as e:
                 vol_id = name.split(':')[1]
                 LOG.error(_("Failed to create iscsi target for volume "
                             "id:%(vol_id)s: %(e)s")
@@ -385,7 +385,7 @@ class LioAdm(TargetAdmin):
 
         try:
             self._execute('rtstool', 'verify')
-        except (OSError, exception.ProcessExecutionError):
+        except (OSError, putils.ProcessExecutionError):
             LOG.error(_('rtstool is not installed correctly'))
             raise
 
@@ -429,7 +429,7 @@ class LioAdm(TargetAdmin):
             if extra_args != []:
                 command_args += extra_args
             self._execute(*command_args, run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
                 LOG.error(_("Failed to create iscsi target for volume "
                             "id:%s.") % vol_id)
                 LOG.error("%s" % str(e))
@@ -455,7 +455,7 @@ class LioAdm(TargetAdmin):
                           'delete',
                           iqn,
                           run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to remove iscsi target for volume "
                         "id:%s.") % vol_id)
             LOG.error("%s" % str(e))
@@ -484,7 +484,7 @@ class LioAdm(TargetAdmin):
                           auth_pass,
                           connector['initiator'],
                           run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to add initiator iqn %s to target") %
                       connector['initiator'])
             raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
