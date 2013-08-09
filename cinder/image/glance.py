@@ -263,15 +263,22 @@ class GlanceImageService(object):
                image_meta, data=None, purge_props=True):
         """Modify the given image with the new data."""
         image_meta = self._translate_to_glance(image_meta)
-        image_meta['purge_props'] = purge_props
+        #NOTE(dosaboy): see comment in bug 1210467
+        if CONF.glance_api_version == 1:
+            image_meta['purge_props'] = purge_props
         #NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
         if data:
             image_meta['data'] = data
         try:
-            image_meta = self._client.call(context, 'update', image_id,
-                                           **image_meta)
+            #NOTE(dosaboy): the v2 api separates update from upload
+            if data and CONF.glance_api_version > 1:
+                image_meta = self._client.call(context, 'upload', image_id,
+                                               image_meta['data'])
+            else:
+                image_meta = self._client.call(context, 'update', image_id,
+                                               **image_meta)
         except Exception:
             _reraise_translated_image_exception(image_id)
         else:
