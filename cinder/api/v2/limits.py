@@ -292,8 +292,8 @@ class Limiter(object):
 
         # Pick up any per-user limit information
         for key, value in kwargs.items():
-            if key.startswith('user:'):
-                username = key[5:]
+            if key.startswith('limits.'):
+                username = key[7:]
                 self.levels[username] = self.parse_limits(value)
 
     def get_limits(self, username=None):
