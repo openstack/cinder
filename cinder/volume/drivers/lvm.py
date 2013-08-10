@@ -629,15 +629,10 @@ class ThinLVMVolumeDriver(LVMISCSIDriver):
             self._try_execute('lvcreate', '-s', '-n', new_name,
                               src_lvm_name, run_as_root=True)
 
-    def _create_volume(self, volume):
-        sizestr = self._sizestr(volume['size'])
+    def _create_volume(self, volume_name, sizestr):
         vg_name = ("%s/%s-pool" % (FLAGS.volume_group, FLAGS.volume_group))
         self._try_execute('lvcreate', '-T', '-V', sizestr, '-n',
-                          volume['name'], vg_name, run_as_root=True)
-
-    def create_volume(self, volume):
-        """Creates a logical volume."""
-        self._create_volume(volume)
+                          volume_name, vg_name, run_as_root=True)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
