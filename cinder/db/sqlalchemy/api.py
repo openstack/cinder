@@ -241,6 +241,47 @@ def exact_filter(query, model, filters, legal_keys):
     return query
 
 
+def _sync_volumes(context, project_id, session, volume_type_id=None,
+                  volume_type_name=None):
+    (volumes, gigs) = _volume_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id, session=session)
+    key = 'volumes'
+    if volume_type_name:
+        key += '_' + volume_type_name
+    return {key: volumes}
+
+
+def _sync_snapshots(context, project_id, session, volume_type_id=None,
+                    volume_type_name=None):
+    (snapshots, gigs) = _snapshot_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id, session=session)
+    key = 'snapshots'
+    if volume_type_name:
+        key += '_' + volume_type_name
+    return {key: snapshots}
+
+
+def _sync_gigabytes(context, project_id, session, volume_type_id=None,
+                    volume_type_name=None):
+    (_junk, vol_gigs) = _volume_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id, session=session)
+    key = 'gigabytes'
+    if volume_type_name:
+        key += '_' + volume_type_name
+    if CONF.no_snapshot_gb_quota:
+        return {key: vol_gigs}
+    (_junk, snap_gigs) = _snapshot_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id, session=session)
+    return {key: vol_gigs + snap_gigs}
+
+
+QUOTA_SYNC_FUNCTIONS = {
+    '_sync_volumes': _sync_volumes,
+    '_sync_snapshots': _sync_snapshots,
+    '_sync_gigabytes': _sync_gigabytes,
+}
+
+
 ###################
 
 
@@ -763,9 +804,15 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             # OK, refresh the usage
             if refresh:
                 # Grab the sync routine
-                sync = resources[resource].sync
-
-                updates = sync(elevated, project_id, session)
+                sync = QUOTA_SYNC_FUNCTIONS[resources[resource].sync]
+                volume_type_id = getattr(resources[resource],
+                                         'volume_type_id', None)
+                volume_type_name = getattr(resources[resource],
+                                           'volume_type_name', None)
+                updates = sync(elevated, project_id,
+                               volume_type_id=volume_type_id,
+                               volume_type_name=volume_type_name,
+                               session=session)
                 for res, in_use in updates.items():
                     # Make sure we have a destination for the usage!
                     if res not in usages:
@@ -1042,10 +1089,8 @@ def _volume_data_get_for_project(context, project_id, volume_type_id=None,
 
 
 @require_admin_context
-def volume_data_get_for_project(context, project_id, volume_type_id=None,
-                                session=None):
-    return _volume_data_get_for_project(context, project_id, volume_type_id,
-                                        session)
+def volume_data_get_for_project(context, project_id, volume_type_id=None):
+    return _volume_data_get_for_project(context, project_id, volume_type_id)
 
 
 @require_admin_context
@@ -1416,10 +1461,8 @@ def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
 
 
 @require_context
-def snapshot_data_get_for_project(context, project_id, volume_type_id=None,
-                                  session=None):
-    return _snapshot_data_get_for_project(context, project_id, volume_type_id,
-                                          session)
+def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
+    return _snapshot_data_get_for_project(context, project_id, volume_type_id)
 
 
 @require_context

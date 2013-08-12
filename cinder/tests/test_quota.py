@@ -415,35 +415,6 @@ class QuotaEngineTestCase(test.TestCase):
                               test_resource2=resources[1],
                               test_resource3=resources[2], ))
 
-    def test_sync_predeclared(self):
-        quota_obj = quota.QuotaEngine()
-
-        def spam(*args, **kwargs):
-            pass
-
-        resource = quota.ReservableResource('test_resource', spam)
-        quota_obj.register_resource(resource)
-
-        self.assertEqual(resource.sync, spam)
-
-    def test_sync_multi(self):
-        quota_obj = quota.QuotaEngine()
-
-        def spam(*args, **kwargs):
-            pass
-
-        resources = [
-            quota.ReservableResource('test_resource1', spam),
-            quota.ReservableResource('test_resource2', spam),
-            quota.ReservableResource('test_resource3', spam),
-            quota.ReservableResource('test_resource4', spam), ]
-        quota_obj.register_resources(resources[:2])
-
-        self.assertEqual(resources[0].sync, spam)
-        self.assertEqual(resources[1].sync, spam)
-        self.assertEqual(resources[2].sync, spam)
-        self.assertEqual(resources[3].sync, spam)
-
     def test_get_by_project(self):
         context = FakeContext('test_project', 'test_class')
         driver = FakeDriver(
@@ -1099,7 +1070,8 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         self.sync_called = set()
 
         def make_sync(res_name):
-            def sync(context, project_id, session):
+            def fake_sync(context, project_id, volume_type_id=None,
+                          volume_type_name=None, session=None):
                 self.sync_called.add(res_name)
                 if res_name in self.usages:
                     if self.usages[res_name].in_use < 0:
@@ -1107,13 +1079,16 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                     else:
                         return {res_name: self.usages[res_name].in_use - 1}
                 return {res_name: 0}
-            return sync
+            return fake_sync
 
         self.resources = {}
+        QUOTA_SYNC_FUNCTIONS = {}
         for res_name in ('volumes', 'gigabytes'):
-            res = quota.ReservableResource(res_name, make_sync(res_name))
+            res = quota.ReservableResource(res_name, '_sync_%s' % res_name)
+            QUOTA_SYNC_FUNCTIONS['_sync_%s' % res_name] = make_sync(res_name)
             self.resources[res_name] = res
 
+        self.stubs.Set(sqa_api, 'QUOTA_SYNC_FUNCTIONS', QUOTA_SYNC_FUNCTIONS)
         self.expire = timeutils.utcnow() + datetime.timedelta(seconds=3600)
 
         self.usages = {}

@@ -188,13 +188,9 @@ def volume_data_get_for_host(context, host):
                                          host)
 
 
-def volume_data_get_for_project(context, project_id, volume_type_id=None,
-                                session=None):
+def volume_data_get_for_project(context, project_id):
     """Get (volume_count, gigabytes) for project."""
-    return IMPL.volume_data_get_for_project(context,
-                                            project_id,
-                                            volume_type_id,
-                                            session)
+    return IMPL.volume_data_get_for_project(context, project_id)
 
 
 def finish_volume_migration(context, src_vol_id, dest_vol_id):
@@ -295,13 +291,11 @@ def snapshot_update(context, snapshot_id, values):
     return IMPL.snapshot_update(context, snapshot_id, values)
 
 
-def snapshot_data_get_for_project(context, project_id, volume_type_id=None,
-                                  session=None):
+def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
     """Get count and gigabytes used for snapshots for specified project."""
     return IMPL.snapshot_data_get_for_project(context,
                                               project_id,
-                                              volume_type_id,
-                                              session)
+                                              volume_type_id)
 
 
 def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
