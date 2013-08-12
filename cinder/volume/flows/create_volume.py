@@ -797,6 +797,7 @@ class OnFailureRescheduleTask(CinderTask):
             exception.VolumeNotFound,
             exception.SnapshotNotFound,
             exception.VolumeTypeNotFound,
+            exception.ImageUnacceptable,
         ]
 
     def _is_reschedulable(self, cause):
@@ -1248,6 +1249,11 @@ class CreateVolumeFromSpecTask(CinderTask):
                       {'volume_id': volume_id,
                        'error': ex.stderr, 'image_id': image_id})
             raise exception.ImageCopyFailure(reason=ex.stderr)
+        except exception.ImageUnacceptable as ex:
+            LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
+                        "error: %(error)s") % {'volume_id': volume_id,
+                                               'error': ex})
+            raise exception.ImageUnacceptable(ex)
         except exception.CinderException as ex:
             LOG.error(_("Failed to copy image %(image_id)s to "
                         "volume: %(volume_id)s, error: %(error)s") %
