@@ -169,10 +169,10 @@ class LVM(object):
         cmd = ['lvs', '--noheadings', '--unit=g', '-o', 'vg_name,name,size']
 
         if no_suffix:
-            cmd += ['--nosuffix']
+            cmd.append('--nosuffix')
 
         if vg_name is not None:
-            cmd += [vg_name]
+            cmd.append(vg_name)
 
         (out, err) = putils.execute(*cmd, root_helper='sudo', run_as_root=True)
 
@@ -218,10 +218,10 @@ class LVM(object):
                '-o', 'vg_name,name,size,free',
                '--separator', ':']
         if no_suffix:
-            cmd += ['--nosuffix']
+            cmd.append('--nosuffix')
 
         if vg_name is not None:
-            cmd += [vg_name]
+            cmd.append(vg_name)
 
         (out, err) = putils.execute(*cmd, root_helper='sudo', run_as_root=True)
 
@@ -261,10 +261,10 @@ class LVM(object):
                '--separator', ':']
 
         if no_suffix:
-            cmd += ['--nosuffix']
+            cmd.append('--nosuffix')
 
         if vg_name is not None:
-            cmd += [vg_name]
+            cmd.append(vg_name)
 
         (out, err) = putils.execute(*cmd, root_helper='sudo', run_as_root=True)
 
@@ -359,13 +359,13 @@ class LVM(object):
             cmd = ['lvcreate', '-n', name, self.vg_name, '-L', size_str]
 
         if mirror_count > 0:
-            cmd += ['-m', mirror_count, '--nosync']
+            cmd.extend(['-m', mirror_count, '--nosync'])
             terras = int(size_str[:-1]) / 1024.0
             if terras >= 1.5:
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
                 # NOTE(vish): Next power of two for region size. See:
                 #             http://red.ht/U2BPOD
-                cmd += ['-R', str(rsize)]
+                cmd.extend(['-R', str(rsize)])
 
         try:
             self._execute(*cmd,
@@ -394,7 +394,7 @@ class LVM(object):
                '--snapshot', '%s/%s' % (self.vg_name, source_lv_name)]
         if lv_type != 'thin':
             size = source_lvref['size']
-            cmd += ['-L', '%sg' % (size)]
+            cmd.extend(['-L', '%sg' % (size)])
 
         try:
             self._execute(*cmd,

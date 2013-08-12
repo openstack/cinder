@@ -297,7 +297,8 @@ class RBDDriver(driver.VolumeDriver):
         return ceph_backup.CephBackupDriver.get_backup_snaps(rbd_image)
 
     def _get_mon_addrs(self):
-        args = ['ceph', 'mon', 'dump', '--format=json'] + self._ceph_args()
+        args = ['ceph', 'mon', 'dump', '--format=json']
+        args.extend(self._ceph_args())
         out, _ = self._execute(*args)
         lines = out.split('\n')
         if lines[0].startswith('dumped monmap epoch'):
@@ -548,8 +549,8 @@ class RBDDriver(driver.VolumeDriver):
                     '--pool', self.configuration.rbd_pool,
                     tmp.name, volume['name']]
             if self._supports_layering():
-                args += ['--new-format']
-            args += self._ceph_args()
+                args.append('--new-format')
+            args.extend(self._ceph_args())
             self._try_execute(*args)
         self._resize(volume)
 
@@ -563,7 +564,7 @@ class RBDDriver(driver.VolumeDriver):
             args = ['rbd', 'export',
                     '--pool', self.configuration.rbd_pool,
                     volume['name'], tmp_file]
-            args += self._ceph_args()
+            args.extend(self._ceph_args())
             self._try_execute(*args)
             image_utils.upload_volume(context, image_service,
                                       image_meta, tmp_file)

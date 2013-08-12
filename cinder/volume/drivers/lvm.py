@@ -85,13 +85,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         cmd = ['lvcreate', '-L', sizestr, '-n', volume_name, vg]
         if self.configuration.lvm_mirrors:
-            cmd += ['-m', self.configuration.lvm_mirrors, '--nosync']
+            cmd.extend(['-m', self.configuration.lvm_mirrors, '--nosync'])
             terras = int(sizestr[:-1]) / 1024.0
             if terras >= 1.5:
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
                 # NOTE(vish): Next power of two for region size. See:
                 #             http://red.ht/U2BPOD
-                cmd += ['-R', str(rsize)]
+                cmd.extend(['-R', str(rsize)])
 
         self._try_execute(*cmd, run_as_root=True, no_retry_list=no_retry_list)
 

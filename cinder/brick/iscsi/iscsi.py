@@ -426,8 +426,8 @@ class LioAdm(TargetAdmin):
                             name,
                             chap_auth_userid,
                             chap_auth_password]
-            if extra_args != []:
-                command_args += extra_args
+            if extra_args:
+                command_args.extend(extra_args)
             self._execute(*command_args, run_as_root=True)
         except exception.ProcessExecutionError as e:
                 LOG.error(_("Failed to create iscsi target for volume "
