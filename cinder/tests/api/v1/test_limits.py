@@ -406,7 +406,7 @@ class LimiterTest(BaseLimitTestSuite):
     def setUp(self):
         """Run before each test."""
         super(LimiterTest, self).setUp()
-        userlimits = {'user:user3': ''}
+        userlimits = {'limits.user3': ''}
         self.limiter = limits.Limiter(TEST_LIMITS, **userlimits)
 
     def _check(self, num, verb, url, username=None):
