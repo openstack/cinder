@@ -17,7 +17,7 @@
 import os.path
 import string
 
-from cinder.brick import exceptions
+from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
@@ -251,6 +251,6 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
                        lambda: [])
         self.stubs.Set(self.connector._linuxfc, 'get_fc_hbas_info',
                        lambda: [])
-        self.assertRaises(exceptions.NoFibreChannelHostsFound,
+        self.assertRaises(exception.NoFibreChannelHostsFound,
                           self.connector.connect_volume,
                           connection_info['data'])

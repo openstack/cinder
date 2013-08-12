@@ -20,16 +20,13 @@ Helper code for the iSER volume driver.
 
 
 import os
-import re
 
 from oslo.config import cfg
 
-from cinder import exception
+from cinder.brick import exception
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder import utils
-from cinder.volume import utils as volume_utils
-
+from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
 
@@ -98,7 +95,7 @@ class TargetAdmin(object):
 class TgtAdm(TargetAdmin):
     """iSER target administration using tgtadm."""
 
-    def __init__(self, execute=utils.execute):
+    def __init__(self, execute=putils.execute):
         super(TgtAdm, self).__init__('tgtadm', execute)
 
     def _get_target(self, iqn):
@@ -154,7 +151,7 @@ class TgtAdm(TargetAdmin):
                                        '--update',
                                        name,
                                        run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to create iser target for volume "
                         "id:%(vol_id)s: %(e)s")
                       % {'vol_id': vol_id, 'e': str(e)})
@@ -194,7 +191,7 @@ class TgtAdm(TargetAdmin):
                           '--delete',
                           iqn,
                           run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to remove iser target for volume "
                         "id:%(vol_id)s: %(e)s")
                       % {'vol_id': vol_id, 'e': str(e)})

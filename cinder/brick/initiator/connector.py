@@ -25,7 +25,7 @@ import time
 
 from oslo.config import cfg
 
-from cinder.brick import exceptions
+from cinder.brick import exception
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
@@ -177,7 +177,7 @@ class ISCSIConnector(InitiatorConnector):
         tries = 0
         while not os.path.exists(host_device):
             if tries >= CONF.num_iscsi_scan_tries:
-                raise exceptions.VolumeDeviceNotFound(host_device)
+                raise exception.VolumeDeviceNotFound(device=host_device)
 
             LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
                        "Will rescan & retry.  Try number: %(tries)s"),
@@ -514,7 +514,7 @@ class FibreChannelConnector(InitiatorConnector):
             # this is empty because we don't have any FC HBAs
             msg = _("We are unable to locate any Fibre Channel devices")
             LOG.warn(msg)
-            raise exceptions.NoFibreChannelHostsFound()
+            raise exception.NoFibreChannelHostsFound()
 
         # The /dev/disk/by-path/... node is not always present immediately
         # We only need to find the first device.  Once we see the first device
@@ -534,7 +534,7 @@ class FibreChannelConnector(InitiatorConnector):
             if self.tries >= CONF.num_iscsi_scan_tries:
                 msg = _("Fibre Channel volume device not found.")
                 LOG.error(msg)
-                raise exceptions.NoFibreChannelVolumeDeviceFound()
+                raise exception.NoFibreChannelVolumeDeviceFound()
 
             LOG.warn(_("Fibre volume not yet found. "
                        "Will rescan & retry.  Try number: %(tries)s"),
