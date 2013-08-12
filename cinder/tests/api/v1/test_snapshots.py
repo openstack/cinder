@@ -380,7 +380,6 @@ class SnapshotSerializerTest(test.TestCase):
             volume_id='vol_id', )
         text = serializer.serialize(dict(snapshot=raw_snapshot))
 
-        print text
         tree = etree.fromstring(text)
 
         self._verify_snapshot(raw_snapshot, tree)
@@ -403,7 +402,6 @@ class SnapshotSerializerTest(test.TestCase):
                               volume_id='vol2_id', )]
         text = serializer.serialize(dict(snapshots=raw_snapshots))
 
-        print text
         tree = etree.fromstring(text)
 
         self.assertEqual('snapshots', tree.tag)

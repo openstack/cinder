@@ -30,8 +30,6 @@ class IsolationTestCase(test.TestCase):
 
     """
     def test_service_isolation(self):
-        import os
-        print os.path.abspath(".")
         self.start_service('volume')
 
     def test_rpc_consumer_isolation(self):

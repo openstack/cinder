@@ -18,6 +18,8 @@
 
 """Extracts OpenStack config option info from module(s)."""
 
+from __future__ import print_function
+
 import __builtin__
 setattr(__builtin__, '_', lambda x: x)
 import os
@@ -49,8 +51,8 @@ WORDWRAP_WIDTH = 60
 
 
 def main(srcfiles):
-    print '\n'.join(['#' * 20, '# cinder.conf sample #', '#' * 20,
-                     '', '[DEFAULT]', ''])
+    print('\n'.join(['#' * 20, '# cinder.conf sample #', '#' * 20,
+                     '', '[DEFAULT]', '']))
     _list_opts(cfg.ConfigOpts,
                cfg.__name__ + ':' + cfg.ConfigOpts.__name__)
     mods_by_pkg = dict()
@@ -70,7 +72,7 @@ def main(srcfiles):
         mods.sort()
         for mod_str in mods:
             _print_module(mod_str)
-    print "# Total option count: %d" % OPTION_COUNT
+    print("# Total option count: %d" % OPTION_COUNT)
 
 
 def _print_module(mod_str):
@@ -99,13 +101,13 @@ def _list_opts(obj, name):
         return
     global OPTION_COUNT
     OPTION_COUNT += len(opts)
-    print '#'
-    print '# Options defined in %s' % name
-    print '#'
-    print
+    print('#')
+    print('# Options defined in %s' % name)
+    print('#')
+    print()
     for opt in opts:
         _print_opt(opt)
-    print
+    print()
 
 
 def _get_my_ip():
@@ -157,31 +159,31 @@ def _print_opt(opt):
         sys.stderr.write("%s\n" % str(err))
         sys.exit(1)
     opt_help += ' (' + OPT_TYPES[opt_type] + ')'
-    print '#', "\n# ".join(textwrap.wrap(opt_help, WORDWRAP_WIDTH))
+    print('#', "\n# ".join(textwrap.wrap(opt_help, WORDWRAP_WIDTH)))
     try:
         if opt_default is None:
-            print '#%s=<None>' % opt_name
+            print('#%s=<None>' % opt_name)
         elif opt_type == STROPT:
             assert(isinstance(opt_default, basestring))
-            print '#%s=%s' % (opt_name, _sanitize_default(opt_default))
+            print('#%s=%s' % (opt_name, _sanitize_default(opt_default)))
         elif opt_type == BOOLOPT:
             assert(isinstance(opt_default, bool))
-            print '#%s=%s' % (opt_name, str(opt_default).lower())
+            print('#%s=%s' % (opt_name, str(opt_default).lower()))
         elif opt_type == INTOPT:
             assert(isinstance(opt_default, int) and
                    not isinstance(opt_default, bool))
-            print '#%s=%s' % (opt_name, opt_default)
+            print('#%s=%s' % (opt_name, opt_default))
         elif opt_type == FLOATOPT:
             assert(isinstance(opt_default, float))
-            print '#%s=%s' % (opt_name, opt_default)
+            print('#%s=%s' % (opt_name, opt_default))
         elif opt_type == LISTOPT:
             assert(isinstance(opt_default, list))
-            print '#%s=%s' % (opt_name, ','.join(opt_default))
+            print('#%s=%s' % (opt_name, ','.join(opt_default)))
         elif opt_type == MULTISTROPT:
             assert(isinstance(opt_default, list))
             for default in opt_default:
-                print '#%s=%s' % (opt_name, default)
-        print
+                print('#%s=%s' % (opt_name, default))
+        print()
     except Exception:
         sys.stderr.write('Error in option "%s"\n' % opt_name)
         sys.exit(1)
@@ -189,6 +191,6 @@ def _print_opt(opt):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print "usage: python %s [srcfile]...\n" % sys.argv[0]
+        print("usage: python %s [srcfile]...\n" % sys.argv[0])
         sys.exit(0)
     main(sys.argv[1:])

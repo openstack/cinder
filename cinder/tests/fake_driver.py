@@ -82,7 +82,7 @@ class LoggingVolumeDriver(driver.VolumeDriver):
         self.log_action('clear_volume', volume)
 
     def local_path(self, volume):
-        print "local_path not implemented"
+        LOG.error(_("local_path not implemented"))
         raise NotImplementedError()
 
     def ensure_export(self, context, volume):

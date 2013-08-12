@@ -34,6 +34,7 @@
         Jan 1 through Dec 31 of the previous year.
 """
 
+from __future__ import print_function
 
 import os
 import sys
@@ -71,9 +72,9 @@ if __name__ == '__main__':
          version=version.version_string())
     logging.setup("cinder")
     begin, end = utils.last_completed_audit_period()
-    print _("Starting volume usage audit")
+    print(_("Starting volume usage audit"))
     msg = _("Creating usages for %(begin_period)s until %(end_period)s")
-    print (msg % {"begin_period": str(begin), "end_period": str(end)})
+    print(msg % {"begin_period": str(begin), "end_period": str(end)})
 
     extra_info = {
         'audit_period_beginning': str(begin),
@@ -83,18 +84,18 @@ if __name__ == '__main__':
     volumes = db.volume_get_active_by_window(admin_context,
                                              begin,
                                              end)
-    print _("Found %d volumes") % len(volumes)
+    print(_("Found %d volumes") % len(volumes))
     for volume_ref in volumes:
         try:
             cinder.volume.utils.notify_usage_exists(admin_context,
                                                     volume_ref)
         except Exception as e:
-            print traceback.format_exc(e)
+            print(traceback.format_exc(e))
 
     snapshots = db.snapshot_get_active_by_window(admin_context,
                                                  begin,
                                                  end)
-    print _("Found %d snapshots") % len(snapshots)
+    print(_("Found %d snapshots") % len(snapshots))
     for snapshot_ref in snapshots:
         try:
             cinder.volume.utils.notify_about_snapshot_usage(admin_context,
@@ -102,6 +103,6 @@ if __name__ == '__main__':
                                                             'exists',
                                                             extra_info)
         except Exception as e:
-            print traceback.fromat_exc(e)
+            print(traceback.fromat_exc(e))
 
-    print _("Volume usage audit completed")
+    print(_("Volume usage audit completed"))
