@@ -165,6 +165,12 @@ class TestUtils(test.TestCase):
                 (TEST_RET, 'ignored')
             )
 
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
         utils.execute('qemu-img', 'convert', '-O', 'raw',
                       self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
 
@@ -196,6 +202,12 @@ class TestUtils(test.TestCase):
         image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
         image_utils.fetch(context, fake_image_service,
                           self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
 
         utils.execute(
             'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
@@ -235,6 +247,12 @@ class TestUtils(test.TestCase):
                 (TEST_RET, 'ignored')
             )
 
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
         mox.ReplayAll()
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_to_raw,
@@ -258,6 +276,12 @@ class TestUtils(test.TestCase):
         image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
         image_utils.fetch(context, fake_image_service,
                           self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
 
         utils.execute(
             'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
