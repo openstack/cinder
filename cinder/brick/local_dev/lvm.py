@@ -24,23 +24,12 @@ import re
 
 from itertools import izip
 
+from cinder.brick import exception
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
-
-
-class VolumeGroupNotFound(Exception):
-    def __init__(self, vg_name):
-        message = (_('Unable to find Volume Group: %s') % vg_name)
-        super(VolumeGroupNotFound, self).__init__(message)
-
-
-class VolumeGroupCreationFailed(Exception):
-    def __init__(self, vg_name):
-        message = (_('Failed to create Volume Group: %s') % vg_name)
-        super(VolumeGroupCreationFailed, self).__init__(message)
 
 
 class LVM(object):
@@ -84,11 +73,11 @@ class LVM(object):
                 LOG.error(_('Cmd     :%s') % err.cmd)
                 LOG.error(_('StdOut  :%s') % err.stdout)
                 LOG.error(_('StdErr  :%s') % err.stderr)
-                raise VolumeGroupCreationFailed(vg_name=self.vg_name)
+                raise exception.VolumeGroupCreationFailed(vg_name=self.vg_name)
 
         if self._vg_exists() is False:
             LOG.error(_('Unable to locate Volume Group %s') % vg_name)
-            raise VolumeGroupNotFound(vg_name=vg_name)
+            raise exception.VolumeGroupNotFound(vg_name=vg_name)
 
         if lvm_type == 'thin':
             pool_name = "%s-pool" % self.vg_name
@@ -294,7 +283,7 @@ class LVM(object):
 
         if len(vg_list) != 1:
             LOG.error(_('Unable to find VG: %s') % self.vg_name)
-            raise VolumeGroupNotFound(vg_name=self.vg_name)
+            raise exception.VolumeGroupNotFound(vg_name=self.vg_name)
 
         self.vg_size = vg_list[0]['size']
         self.vg_free_space = vg_list[0]['available']
