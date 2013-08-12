@@ -1393,6 +1393,11 @@
 # does not write them directly to the volume (string value)
 #volume_tmp_dir=<None>
 
+# maximum number of nested clones that can be taken of a
+# volume before enforcing a flatten prior to next clone. A
+# value of zero disables cloning (integer value)
+#rbd_max_clone_depth=5
+
 
 #
 # Options defined in cinder.volume.drivers.san.hp.hp_3par_common
@@ -1714,4 +1719,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 366
+# Total option count: 367
