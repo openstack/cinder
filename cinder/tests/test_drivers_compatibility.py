@@ -33,7 +33,7 @@ NFS_MODULE = "cinder.volume.drivers.nfs.NfsDriver"
 SOLIDFIRE_MODULE = "cinder.volume.drivers.solidfire.SolidFireDriver"
 STORWIZE_SVC_MODULE = "cinder.volume.drivers.storwize_svc.StorwizeSVCDriver"
 WINDOWS_MODULE = "cinder.volume.drivers.windows.WindowsDriver"
-XIV_MODULE = "cinder.volume.drivers.xiv.XIVDriver"
+XIV_DS8K_MODULE = "cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver"
 ZADARA_MODULE = "cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver"
 
 
@@ -148,11 +148,11 @@ class VolumeDriverCompatibility(test.TestCase):
 
     def test_xiv_old(self):
         self._load_driver('cinder.volume.xiv.XIVDriver')
-        self.assertEquals(self._driver_module_name(), XIV_MODULE)
+        self.assertEquals(self._driver_module_name(), XIV_DS8K_MODULE)
 
-    def test_xiv_new(self):
-        self._load_driver(XIV_MODULE)
-        self.assertEquals(self._driver_module_name(), XIV_MODULE)
+    def test_xiv_ds8k_new(self):
+        self._load_driver(XIV_DS8K_MODULE)
+        self.assertEquals(self._driver_module_name(), XIV_DS8K_MODULE)
 
     def test_zadara_old(self):
         self._load_driver('cinder.volume.zadara.ZadaraVPSAISCSIDriver')
