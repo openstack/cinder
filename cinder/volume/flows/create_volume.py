@@ -706,7 +706,8 @@ class VolumeCastTask(CinderTask):
                 filter_properties=filter_properties,
                 allow_reschedule=False,
                 snapshot_id=snapshot_id,
-                image_id=image_id)
+                image_id=image_id,
+                source_volid=source_volid)
 
     def __call__(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
