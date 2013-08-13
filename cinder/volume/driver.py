@@ -326,9 +326,8 @@ class VolumeDriver(object):
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
         protocol = conn['driver_volume_type']
-        connector = initiator.InitiatorConnector.factory(protocol,
-                                                         use_multipath=
-                                                         use_multipath)
+        connector = initiator.InitiatorConnector.factory(
+            protocol, use_multipath=use_multipath)
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 
@@ -348,12 +347,16 @@ class VolumeDriver(object):
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
 
-    def clone_image(self, volume, image_location):
+    def clone_image(self, volume, image_location, image_id):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
+
+        image_id is a string which represents id of the image.
+        It can be used by the driver to introspect internal
+        stores or registry to do an efficient image clone.
 
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred

@@ -1214,11 +1214,10 @@ class CreateVolumeFromSpecTask(CinderTask):
         if srcvol_ref.bootable:
             self._enable_bootable_flag(context, volume_ref['id'])
         try:
-            LOG.debug(_('Copying metadata from source volume %(source_volid)s'
-                        ' to cloned volume %(clone_vol_id)s') % {
-                            'source_volid': source_volid,
-                            'clone_vol_id': volume_ref['id'],
-                        })
+            msg = _('Copying metadata from source volume %(source_volid)s'
+                    ' to cloned volume %(clone_vol_id)s')
+            LOG.debug(msg % {'source_volid': source_volid,
+                             'clone_vol_id': volume_ref['id'], })
             self.db.volume_glance_metadata_copy_from_volume_to_volume(
                 context,
                 source_volid,
@@ -1323,8 +1322,8 @@ class CreateVolumeFromSpecTask(CinderTask):
         # NOTE (singn): two params need to be returned
         # dict containing provider_location for cloned volume
         # and clone status.
-        model_update, cloned = self.driver.clone_image(volume_ref,
-                                                       image_location)
+        model_update, cloned = self.driver.clone_image(
+            volume_ref, image_location, image_id)
         make_bootable = False
         if not cloned:
             # TODO(harlowja): what needs to be rolled back in the clone if this
