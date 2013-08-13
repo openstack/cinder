@@ -293,9 +293,19 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.snapshot_update(context,
                                 snapshot_ref['id'], {'status': 'available',
                                                      'progress': '100%'})
-        self.db.volume_glance_metadata_copy_to_snapshot(context,
-                                                        snapshot_ref['id'],
-                                                        volume_id)
+
+        vol_ref = self.db.volume_get(context, volume_id)
+        if vol_ref.bootable:
+            try:
+                self.db.volume_glance_metadata_copy_to_snapshot(
+                    context, snapshot_ref['id'], volume_id)
+            except exception.CinderException as ex:
+                LOG.exception(_("Failed updating %(snapshot_id)s"
+                                " metadata using the provided volumes"
+                                " %(volume_id)s metadata") %
+                              {'volume_id': volume_id,
+                               'snapshot_id': snapshot_id})
+                raise exception.MetadataCopyFailure(reason=ex)
         LOG.info(_("snapshot %s: created successfully"), snapshot_ref['name'])
         self._notify_about_snapshot_usage(context, snapshot_ref, "create.end")
         return snapshot_id

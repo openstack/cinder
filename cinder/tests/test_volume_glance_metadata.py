@@ -92,11 +92,8 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         vol_metadata = db.volume_glance_metadata_create(ctxt, 1, 'key1',
                                                         'value1')
         db.volume_glance_metadata_delete_by_volume(ctxt, 1)
-        metadata = db.volume_glance_metadata_get(ctxt, 1)
-        self.assertEqual(len(metadata), 0)
-        db.volume_glance_metadata_delete_by_volume(ctxt, 1)
-        metadata = db.volume_glance_metadata_get(ctxt, 1)
-        self.assertEqual(len(metadata), 0)
+        self.assertRaises(exception.GlanceMetadataNotFound,
+                          db.volume_glance_metadata_get, ctxt, 1)
 
     def test_vol_glance_metadata_copy_to_snapshot(self):
         ctxt = context.get_admin_context()
@@ -120,10 +117,9 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         db.volume_create(ctxt, {'id': 100, 'source_volid': 1})
         vol_meta = db.volume_glance_metadata_create(ctxt, 1, 'key1',
                                                     'value1')
-        db.volume_glance_metadata_copy_from_volume_to_volume(ctxt, 100, 1)
+        db.volume_glance_metadata_copy_from_volume_to_volume(ctxt, 1, 100)
 
-        expected_meta = {'id': '100',
-                         'key': 'key1',
+        expected_meta = {'key': 'key1',
                          'value': 'value1'}
 
         for meta in db.volume_glance_metadata_get(ctxt, 100):

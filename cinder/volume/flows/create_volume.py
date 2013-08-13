@@ -1176,18 +1176,20 @@ class CreateVolumeFromSpecTask(CinderTask):
             raise exception.MetadataUpdateFailure(reason=ex)
         if make_bootable:
             self._enable_bootable_flag(context, volume_id)
-        try:
-            LOG.debug(_("Copying metadata from snapshot %(snap_volume_id)s"
-                        " to %(volume_id)s") % {'snap_volume_id': snapshot_id,
-                                                'volume_id': volume_id})
-            self.db.volume_glance_metadata_copy_to_volume(context, volume_id,
-                                                          snapshot_id)
-        except exception.CinderException as ex:
-            LOG.exception(_("Failed updating volume %(volume_id)s metadata"
-                            " using the provided glance snapshot "
-                            "%(snapshot_id)s metadata") %
-                          {'volume_id': volume_id, 'snapshot_id': snapshot_id})
-            raise exception.MetadataCopyFailure(reason=ex)
+            try:
+                LOG.debug(_("Copying metadata from snapshot "
+                            "%(snap_volume_id)s to %(volume_id)s") %
+                          {'snap_volume_id': snapshot_id,
+                           'volume_id': volume_id})
+                self.db.volume_glance_metadata_copy_to_volume(
+                    context, volume_id, snapshot_id)
+            except exception.CinderException as ex:
+                LOG.exception(_("Failed updating volume %(volume_id)s "
+                                "metadata using the provided glance "
+                                "snapshot %(snapshot_id)s metadata") %
+                              {'volume_id': volume_id,
+                               'snapshot_id': snapshot_id})
+                raise exception.MetadataCopyFailure(reason=ex)
         return model_update
 
     def _enable_bootable_flag(self, context, volume_id):
@@ -1214,22 +1216,24 @@ class CreateVolumeFromSpecTask(CinderTask):
         # will not destroy the volume (although they could in the future).
         if srcvol_ref.bootable:
             self._enable_bootable_flag(context, volume_ref['id'])
-        try:
-            msg = _('Copying metadata from source volume %(source_volid)s'
-                    ' to cloned volume %(clone_vol_id)s')
-            LOG.debug(msg % {'source_volid': source_volid,
-                             'clone_vol_id': volume_ref['id'], })
-            self.db.volume_glance_metadata_copy_from_volume_to_volume(
-                context,
-                source_volid,
-                volume_ref['id'])
-        except exception.CinderException as ex:
-            LOG.exception(_("Failed updating cloned volume %(volume_id)s"
-                            " metadata using the provided source volumes"
-                            " %(source_volid)s metadata") %
-                          {'volume_id': volume_ref['id'],
-                           'source_volid': source_volid})
-            raise exception.MetadataCopyFailure(reason=ex)
+            try:
+                LOG.debug(_('Copying metadata from source volume '
+                            '%(source_volid)s to cloned volume '
+                            '%(clone_vol_id)s') % {
+                                'source_volid': source_volid,
+                                'clone_vol_id': volume_ref['id'],
+                            })
+                self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                    context,
+                    source_volid,
+                    volume_ref['id'])
+            except exception.CinderException as ex:
+                LOG.exception(_("Failed updating cloned volume %(volume_id)s"
+                                " metadata using the provided source volumes"
+                                " %(source_volid)s metadata") %
+                              {'volume_id': volume_ref['id'],
+                               'source_volid': source_volid})
+                raise exception.MetadataCopyFailure(reason=ex)
         return model_update
 
     def _copy_image_to_volume(self, context, volume_ref,
