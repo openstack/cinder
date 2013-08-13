@@ -220,7 +220,8 @@ class HP3PARCommon(object):
                 LOG.error(_("Error extending volume %s") % volume)
 
     def _get_3par_vol_name(self, volume_id):
-        """
+        """Get converted 3PAR volume name.
+
         Converts the openstack volume id from
         ecffc30f-98cb-4cf5-85ee-d7309cc17cd2
         to
@@ -291,14 +292,11 @@ class HP3PARCommon(object):
         out = tmp[5:len(tmp) - 2]
         return out
 
-    def _ssh_execute(self, ssh, cmd,
-                     check_exit_code=True):
-        """
-        We have to do this in order to get CSV output
-        from the CLI command.   We first have to issue
-        a command to tell the CLI that we want the output
-        to be formatted in CSV, then we issue the real
-        command.
+    def _ssh_execute(self, ssh, cmd, check_exit_code=True):
+        """We have to do this in order to get CSV output from the CLI command.
+
+        We first have to issue a command to tell the CLI that we want the
+        output to be formatted in CSV, then we issue the real command.
         """
         LOG.debug(_('Running cmd (SSH): %s'), cmd)
 
@@ -380,10 +378,7 @@ exit
                 raise exception.Invalid3PARDomain(err=err)
 
     def _safe_hostname(self, hostname):
-        """
-        We have to use a safe hostname length
-        for 3PAR host names.
-        """
+        """We have to use a safe hostname length for 3PAR host names."""
         try:
             index = hostname.index('.')
         except ValueError:
@@ -576,9 +571,9 @@ exit
         self.stats = stats
 
     def create_vlun(self, volume, host):
-        """
-        In order to export a volume on a 3PAR box, we have to
-        create a VLUN.
+        """Create a VLUN.
+
+        In order to export a volume on a 3PAR box, we have to create a VLUN.
         """
         volume_name = self._get_3par_vol_name(volume['id'])
         self._create_3par_vlun(volume_name, host['name'])
@@ -673,7 +668,9 @@ exit
 
     def _get_3par_vol_comment(self, volume_name):
         vol = self.client.getVolume(volume_name)
-        return vol['comment']
+        if 'comment' in vol:
+            return vol['comment']
+        return None
 
     def get_persona_type(self, volume, hp3par_keys=None):
         default_persona = self.valid_persona_values[0]
@@ -696,6 +693,65 @@ exit
         persona_id = persona_value.split(' ')
         return persona_id[0]
 
+    def get_volume_settings_from_type(self, volume):
+        cpg = None
+        snap_cpg = None
+        volume_type = None
+        vvs_name = None
+        hp3par_keys = {}
+        qos = {}
+        type_id = volume.get('volume_type_id', None)
+        if type_id is not None:
+            volume_type = self._get_volume_type(type_id)
+            hp3par_keys = self._get_keys_by_volume_type(volume_type)
+            vvs_name = self._get_key_value(hp3par_keys, 'vvs')
+            if vvs_name is None:
+                qos = self._get_qos_by_volume_type(volume_type)
+
+        cpg = self._get_key_value(hp3par_keys, 'cpg',
+                                  self.config.hp3par_cpg)
+        if cpg is not self.config.hp3par_cpg:
+            # The cpg was specified in a volume type extra spec so it
+            # needs to be validiated that it's in the correct domain.
+            self.validate_cpg(cpg)
+            # Also, look to see if the snap_cpg was specified in volume
+            # type extra spec, if not use the extra spec cpg as the
+            # default.
+            snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', cpg)
+        else:
+            # default snap_cpg to hp3par_cpg_snap if it's not specified
+            # in the volume type extra specs.
+            snap_cpg = self.config.hp3par_cpg_snap
+            # if it's still not set or empty then set it to the cpg
+            # specified in the cinder.conf file.
+            if not self.config.hp3par_cpg_snap:
+                snap_cpg = cpg
+
+        # if provisioning is not set use thin
+        default_prov = self.valid_prov_values[0]
+        prov_value = self._get_key_value(hp3par_keys, 'provisioning',
+                                         default_prov)
+        # check for valid provisioning type
+        if prov_value not in self.valid_prov_values:
+            err = _("Must specify a valid provisioning type %(valid)s, "
+                    "value '%(prov)s' is invalid.") % \
+                   ({'valid': self.valid_prov_values,
+                     'prov': prov_value})
+            raise exception.InvalidInput(reason=err)
+
+        tpvv = True
+        if prov_value == "full":
+            tpvv = False
+
+        # check for valid persona even if we don't use it until
+        # attach time, this will give the end user notice that the
+        # persona type is invalid at volume creation time
+        self.get_persona_type(volume, hp3par_keys)
+
+        return {'cpg': cpg, 'snap_cpg': snap_cpg,
+                'vvs_name': vvs_name, 'qos': qos,
+                'tpvv': tpvv, 'volume_type': volume_type}
+
     def create_volume(self, volume):
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
                   (volume['display_name'], volume['name'],
@@ -710,58 +766,15 @@ exit
                 comments['display_name'] = name
 
             # get the options supported by volume types
-            volume_type = None
-            vvs_name = None
-            hp3par_keys = {}
-            qos = {}
+            type_info = self.get_volume_settings_from_type(volume)
+            volume_type = type_info['volume_type']
+            vvs_name = type_info['vvs_name']
+            qos = type_info['qos']
+            cpg = type_info['cpg']
+            snap_cpg = type_info['snap_cpg']
+            tpvv = type_info['tpvv']
+
             type_id = volume.get('volume_type_id', None)
-            if type_id is not None:
-                volume_type = self._get_volume_type(type_id)
-                hp3par_keys = self._get_keys_by_volume_type(volume_type)
-                vvs_name = self._get_key_value(hp3par_keys, 'vvs')
-                if vvs_name is None:
-                    qos = self._get_qos_by_volume_type(volume_type)
-
-            cpg = self._get_key_value(hp3par_keys, 'cpg',
-                                      self.config.hp3par_cpg)
-            if cpg is not self.config.hp3par_cpg:
-                # The cpg was specified in a volume type extra spec so it
-                # needs to be validiated that it's in the correct domain.
-                self.validate_cpg(cpg)
-                # Also, look to see if the snap_cpg was specified in volume
-                # type extra spec, if not use the extra spec cpg as the
-                # default.
-                snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', cpg)
-            else:
-                # default snap_cpg to hp3par_cpg_snap if it's not specified
-                # in the volume type extra specs.
-                snap_cpg = self.config.hp3par_cpg_snap
-                # if it's still not set or empty then set it to the cpg
-                # specified in the cinder.conf file.
-                if not self.config.hp3par_cpg_snap:
-                    snap_cpg = cpg
-
-            # if provisioning is not set use thin
-            default_prov = self.valid_prov_values[0]
-            prov_value = self._get_key_value(hp3par_keys, 'provisioning',
-                                             default_prov)
-            # check for valid provisioning type
-            if prov_value not in self.valid_prov_values:
-                err = _("Must specify a valid provisioning type %(valid)s, "
-                        "value '%(prov)s' is invalid.") % \
-                       ({'valid': self.valid_prov_values,
-                         'prov': prov_value})
-                raise exception.InvalidInput(reason=err)
-
-            ttpv = True
-            if prov_value == "full":
-                ttpv = False
-
-            # check for valid persona even if we don't use it until
-            # attach time, this will give the end user notice that the
-            # persona type is invalid at volume creation time
-            self.get_persona_type(volume, hp3par_keys)
-
             if type_id is not None:
                 comments['volume_type_name'] = volume_type.get('name')
                 comments['volume_type_id'] = type_id
@@ -772,7 +785,7 @@ exit
 
             extras = {'comment': json.dumps(comments),
                       'snapCPG': snap_cpg,
-                      'tpvv': ttpv}
+                      'tpvv': tpvv}
 
             capacity = self._capacity_from_size(volume['size'])
             volume_name = self._get_3par_vol_name(volume['id'])
@@ -799,15 +812,25 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex.get_description())
 
-    def _copy_volume(self, src_name, dest_name):
-        self._cli_run('createvvcopy -p %s %s' % (src_name, dest_name), None)
+    def _copy_volume(self, src_name, dest_name, cpg=None, snap_cpg=None,
+                     tpvv=True):
+        # Virtual volume sets are not supported with the -online option
+        cmd = 'createvvcopy -p %s -online ' % src_name
+        if snap_cpg:
+            cmd += '-snp_cpg %s ' % snap_cpg
+        if tpvv:
+            cmd += '-tpvv '
+        if cpg:
+            cmd += cpg + ' '
+        cmd += dest_name
+        LOG.debug('Creating clone of a volume with %s' % cmd)
+        self._cli_run(cmd, None)
 
     def get_next_word(self, s, search_string):
         """Return the next word.
 
-           Search 's' for 'search_string', if found
-           return the word preceding 'search_string'
-           from 's'.
+        Search 's' for 'search_string', if found return the word preceding
+        'search_string' from 's'.
         """
         word = re.search(search_string.strip(' ') + ' ([^ ]*)', s)
         return word.groups()[0].strip(' ')
@@ -819,19 +842,18 @@ exit
         return None
 
     def create_cloned_volume(self, volume, src_vref):
-
         try:
             orig_name = self._get_3par_vol_name(volume['source_volid'])
             vol_name = self._get_3par_vol_name(volume['id'])
-            # We need to create a new volume first.  Otherwise you
-            # can't delete the original
-            new_vol = self.create_volume(volume)
+
+            type_info = self.get_volume_settings_from_type(volume)
 
             # make the 3PAR copy the contents.
             # can't delete the original until the copy is done.
-            self._copy_volume(orig_name, vol_name)
-
-            return new_vol
+            self._copy_volume(orig_name, vol_name, cpg=type_info['cpg'],
+                              snap_cpg=type_info['snap_cpg'],
+                              tpvv=type_info['tpvv'])
+            return None
         except hpexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound:
@@ -840,19 +862,55 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex)
 
-        return None
+    def _get_vvset_from_3par(self, volume_name):
+        """Get Virtual Volume Set from 3PAR.
+
+        The only way to do this currently is to try and delete the volume
+        to get the error message.
+
+        NOTE(walter-boring): don't call this unless you know the volume is
+        already in a vvset!
+        """
+        cmd = "removevv -f %s" % volume_name
+        LOG.debug("Issuing remove command to find vvset name %s" % cmd)
+        out = self._cli_run(cmd, None)
+        vvset_name = None
+        if out and len(out) > 1:
+            if out[1].startswith("Attempt to delete "):
+                words = out[1].split(" ")
+                vvset_name = words[len(words) - 1]
+
+        return vvset_name
 
     def delete_volume(self, volume):
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
-            vol_comment = self._get_3par_vol_comment(volume_name)
-            qos = self._get_3par_vol_comment_value(vol_comment, 'qos')
-            vvs_name = self._get_3par_vol_comment_value(vol_comment, 'vvs')
-            if vvs_name is not None:
-                self._remove_volume_from_volume_set(volume_name, vvs_name)
-            elif qos is not None:
-                self._remove_volume_set(self._get_3par_vvs_name(volume['id']))
-            self.client.deleteVolume(volume_name)
+            # Try and delete the volume, it might fail here because
+            # the volume is part of a volume set which will have the
+            # volume set name in the error.
+            try:
+                self.client.deleteVolume(volume_name)
+            except hpexceptions.HTTPConflict as ex:
+                if ex.get_code() == 34:
+                    # This is a special case which means the
+                    # volume is part of a volume set.
+                    vvset_name = self._get_vvset_from_3par(volume_name)
+                    LOG.debug("Returned vvset_name = %s" % vvset_name)
+                    if vvset_name is not None and \
+                       vvset_name.startswith('vvs-'):
+                        # We have a single volume per volume set, so
+                        # remove the volume set.
+                        self._remove_volume_set(
+                            self._get_3par_vvs_name(volume['id']))
+                    elif vvset_name is not None:
+                        # We have a pre-defined volume set just remove the
+                        # volume and leave the volume set.
+                        self._remove_volume_from_volume_set(volume_name,
+                                                            vvset_name)
+                    self.client.deleteVolume(volume_name)
+                else:
+                    raise ex
+
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
@@ -862,11 +920,10 @@ exit
             raise exception.NotAuthorized(ex.get_description())
         except Exception as ex:
             LOG.error(str(ex))
-            raise exception.CinderException(ex.get_description())
+            raise exception.CinderException(ex)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """
-        Creates a volume from a snapshot.
+        """Creates a volume from a snapshot.
 
         TODO: support using the size from the user.
         """
