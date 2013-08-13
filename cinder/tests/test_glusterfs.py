@@ -30,6 +30,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import imageutils
 from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder.tests.compute import test_nova
@@ -790,7 +791,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_write_info_file')
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
 
-        img_info = image_utils.QemuImgInfo(qemu_img_info_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
         image_utils.qemu_img_info(snap_path_2).AndReturn(img_info)
 
         info_file_dict = {'active': snap_file_2,
@@ -896,7 +897,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         info_path = drv._local_path_volume(volume) + '.info'
         drv._read_info_file(info_path).AndReturn(info_file_dict)
 
-        img_info = image_utils.QemuImgInfo(qemu_img_info_output_snap_1)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output_snap_1)
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
 
         snap_ref = {'name': 'test snap',
@@ -971,7 +972,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         disk size: 473K
         """ % self.VOLUME_UUID
 
-        img_info = image_utils.QemuImgInfo(qemu_img_info_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
 
         mox.StubOutWithMock(drv, '_execute')
         mox.StubOutWithMock(drv, 'get_active_image_from_info')
@@ -1156,7 +1157,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         disk size: 173K
         backing file: %s
         """ % (snap_file, volume_file)
-        img_info = image_utils.QemuImgInfo(qemu_img_info_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
 
         drv._read_info_file(info_path, empty_if_missing=True).\
@@ -1244,7 +1245,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         disk size: 173K
         backing file: %s
         """ % (snap_file, volume_file)
-        img_info = image_utils.QemuImgInfo(qemu_img_info_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
 
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
 
@@ -1327,7 +1328,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         disk size: 173K
         backing file: %s
         """ % (snap_file, volume_file)
-        img_info = image_utils.QemuImgInfo(qemu_img_info_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
 
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
 
@@ -1407,9 +1408,9 @@ class GlusterFsDriverTestCase(test.TestCase):
         qemu_img_output_3 = qemu_img_output % {'image_name': vol_filename_3,
                                                'backing_file': vol_filename_2}
 
-        info_1 = image_utils.QemuImgInfo(qemu_img_output_1)
-        info_2 = image_utils.QemuImgInfo(qemu_img_output_2)
-        info_3 = image_utils.QemuImgInfo(qemu_img_output_3)
+        info_1 = imageutils.QemuImgInfo(qemu_img_output_1)
+        info_2 = imageutils.QemuImgInfo(qemu_img_output_2)
+        info_3 = imageutils.QemuImgInfo(qemu_img_output_3)
 
         drv._local_volume_dir(volume).AndReturn(vol_dir)
         image_utils.qemu_img_info(vol_path_3).\
@@ -1476,7 +1477,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         disk size: 173K
         backing file: %s
         """ % (snap_file, src_volume['name'])
-        img_info = image_utils.QemuImgInfo(qemu_img_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_output)
 
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
 
@@ -1533,7 +1534,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         virtual size: 1.0G (1073741824 bytes)
         disk size: 173K
         """ % volume['name']
-        img_info = image_utils.QemuImgInfo(qemu_img_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_output)
 
         mox.StubOutWithMock(drv, 'get_active_image_from_info')
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
