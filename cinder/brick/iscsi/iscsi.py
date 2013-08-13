@@ -85,11 +85,11 @@ class TargetAdmin(object):
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
-        """Create a iSCSI target and logical unit"""
+        """Create a iSCSI target and logical unit."""
         raise NotImplementedError()
 
     def remove_iscsi_target(self, tid, lun, vol_id, **kwargs):
-        """Remove a iSCSI target and logical unit"""
+        """Remove a iSCSI target and logical unit."""
         raise NotImplementedError()
 
     def _new_target(self, name, tid, **kwargs):

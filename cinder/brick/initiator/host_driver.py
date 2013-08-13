@@ -21,7 +21,7 @@ import os
 class HostDriver(object):
 
     def get_all_block_devices(self):
-        """Get the list of all block devices seen in /dev/disk/by-path/"""
+        """Get the list of all block devices seen in /dev/disk/by-path/."""
         dir = "/dev/disk/by-path/"
         files = os.listdir(dir)
         devices = []
