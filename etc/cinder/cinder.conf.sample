@@ -1507,6 +1507,40 @@
 
 
 #
+# Options defined in cinder.volume.drivers.vmware.vmdk
+#
+
+# IP address for connecting to VMware ESX/VC server. (string
+# value)
+#vmware_host_ip=<None>
+
+# Username for authenticating with VMware ESX/VC server.
+# (string value)
+#vmware_host_username=<None>
+
+# Password for authenticating with VMware ESX/VC server.
+# (string value)
+#vmware_host_password=<None>
+
+# Optional VIM service WSDL Location e.g
+# http://<server>/vimService.wsdl. Optional over-ride to
+# default location for bug work-arounds. (string value)
+#vmware_wsdl_location=<None>
+
+# Number of times VMware ESX/VC server API must be retried
+# upon connection related issues. (integer value)
+#vmware_api_retry_count=10
+
+# The interval used for polling remote tasks invoked on VMware
+# ESX/VC server. (integer value)
+#vmware_task_poll_interval=5
+
+# Name for the folder in the VC datacenter that will contain
+# cinder volumes. (string value)
+#vmware_volume_folder=cinder-volumes
+
+
+#
 # Options defined in cinder.volume.drivers.windows
 #
 
@@ -1617,4 +1651,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 346
+# Total option count: 353
