@@ -112,14 +112,16 @@ class InitiatorConnector(executor.Executor):
         return True
 
     def connect_volume(self, connection_properties):
-        """Connect to a volume. The connection_properties
-        describes the information needed by the specific
-        protocol to use to make the connection.
+        """Connect to a volume.
+
+        The connection_properties describes the information needed by
+        the specific protocol to use to make the connection.
         """
         raise NotImplementedError()
 
     def disconnect_volume(self, connection_properties, device_info):
         """Disconnect a volume from the local host.
+
         The connection_properties are the same as from connect_volume.
         The device_info is returned from connect_volume.
         """
@@ -127,7 +129,7 @@ class InitiatorConnector(executor.Executor):
 
 
 class ISCSIConnector(InitiatorConnector):
-    """"Connector class to attach/detach iSCSI volumes."""
+    """Connector class to attach/detach iSCSI volumes."""
 
     def __init__(self, driver=None, execute=putils.execute,
                  root_helper="sudo", use_multipath=False,
@@ -461,7 +463,7 @@ class ISCSIConnector(InitiatorConnector):
 
 
 class FibreChannelConnector(InitiatorConnector):
-    """"Connector class to attach/detach Fibre Channel volumes."""
+    """Connector class to attach/detach Fibre Channel volumes."""
 
     def __init__(self, driver=None, execute=putils.execute,
                  root_helper="sudo", use_multipath=False,
