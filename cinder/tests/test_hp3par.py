@@ -307,6 +307,7 @@ class HP3PARBaseDriver():
     FAKE_DESC = 'test description name'
     FAKE_FC_PORTS = ['0987654321234', '123456789000987']
     QOS = {'qos:maxIOPS': '1000', 'qos:maxBWS': '50'}
+    VVS_NAME = "myvvs"
     FAKE_ISCSI_PORTS = {'1.1.1.2': {'nsp': '8:1:1',
                                     'iqn': ('iqn.2000-05.com.3pardata:'
                                             '21810002ac00383d'),
@@ -388,6 +389,9 @@ class HP3PARBaseDriver():
                        self.fake_get_ports)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_cpg",
                        self.fake_get_cpg)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "get_volume_settings_from_type",
+                       self.fake_get_volume_settings_from_type)
         self.stubs.Set(hpfcdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
 
@@ -448,25 +452,43 @@ class HP3PARBaseDriver():
                                       cpg, vvs_name, qos):
         return volume
 
-    def fake_copy_volume(self, src_name, dest_name):
+    def fake_copy_volume(self, src_name, dest_name, cpg=None,
+                         snap_cpg=None, tpvv=True):
         pass
 
     def fake_get_volume_stats(self, vol_name):
         return "normal"
 
+    def fake_get_volume_settings_from_type(self, volume):
+        return {'cpg': HP3PAR_CPG,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'tpvv': True,
+                'volume_type': self.volume_type}
+
+    def fake_get_volume_settings_from_type_noqos(self, volume):
+        return {'cpg': HP3PAR_CPG,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': None,
+                'qos': None,
+                'tpvv': True,
+                'volume_type': None}
+
     def test_create_volume(self):
         self.flags(lock_path=self.tempdir)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "get_volume_settings_from_type",
+                       self.fake_get_volume_settings_from_type_noqos)
         self.driver.create_volume(self.volume)
         volume = self.driver.common.client.getVolume(self.VOLUME_3PAR_NAME)
         self.assertEqual(volume['name'], self.VOLUME_3PAR_NAME)
 
     def test_create_volume_qos(self):
         self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_get_volume_type",
-                       self.fake_get_volume_type)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
-                       "_get_qos_by_volume_type",
-                       self.fake_get_qos_by_volume_type)
+                       "get_volume_settings_from_type",
+                       self.fake_get_volume_settings_from_type)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
                        "_add_volume_to_volume_set",
                        self.fake_add_volume_to_volume_set)
@@ -478,6 +500,9 @@ class HP3PARBaseDriver():
 
     def test_delete_volume(self):
         self.flags(lock_path=self.tempdir)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "get_volume_settings_from_type",
+                       self.fake_get_volume_settings_from_type)
         self.driver.delete_volume(self.volume)
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.common.client.getVolume,
@@ -485,11 +510,11 @@ class HP3PARBaseDriver():
 
     def test_create_cloned_volume(self):
         self.flags(lock_path=self.tempdir)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_volume_stats",
-                       self.fake_get_volume_stats)
+        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon,
+                       "get_volume_settings_from_type",
+                       self.fake_get_volume_settings_from_type)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_copy_volume",
                        self.fake_copy_volume)
-        self.state_tries = 0
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
