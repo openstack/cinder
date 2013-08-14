@@ -36,6 +36,8 @@
     "volume_extension:volume_actions:upload_image": [],
     "volume_extension:types_manage": [],
     "volume_extension:types_extra_specs": [],
+    "volume_extension:volume_type_encryption": [["rule:admin_api"]],
+    "volume_extension:volume_encryption_metadata": [["rule:admin_api"]],
     "volume_extension:extended_snapshot_attributes": [],
     "volume_extension:volume_image_metadata": [],
     "volume_extension:volume_host_attribute": [["rule:admin_api"]],

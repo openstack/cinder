@@ -68,20 +68,32 @@ class MockKeyManager(key_mgr.KeyManager):
 
         return self.store_key(ctxt, _key)
 
+    def _generate_key_id(self):
+        key_id = uuidutils.generate_uuid()
+        while key_id in self.keys:
+            key_id = uuidutils.generate_uuid()
+
+        return key_id
+
     def store_key(self, ctxt, key, **kwargs):
         """Stores (i.e., registers) a key with the key manager.
         """
         if ctxt is None:
             raise exception.NotAuthorized()
 
-        # generate UUID and ensure that it isn't in use
-        key_id = uuidutils.generate_uuid()
-        while key_id in self.keys:
-            key_id = uuidutils.generate_uuid()
-
+        key_id = self._generate_key_id()
         self.keys[key_id] = key
 
         return key_id
+
+    def copy_key(self, ctxt, key_id, **kwargs):
+        if ctxt is None:
+            raise exception.NotAuthorized()
+
+        copied_key_id = self._generate_key_id()
+        self.keys[copied_key_id] = self.keys[key_id]
+
+        return copied_key_id
 
     def get_key(self, ctxt, key_id, **kwargs):
         """Retrieves the key identified by the specified id.

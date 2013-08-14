@@ -124,6 +124,8 @@ class Volume(BASE, CinderBase):
 
     volume_type_id = Column(String(36))
     source_volid = Column(String(36))
+    encryption_key_id = Column(String(36))
+
     deleted = Column(Boolean, default=False)
     bootable = Column(Boolean, default=False)
 
@@ -291,6 +293,9 @@ class Snapshot(BASE, CinderBase):
     display_name = Column(String(255))
     display_description = Column(String(255))
 
+    encryption_key_id = Column(String(36))
+    volume_type_id = Column(String(36))
+
     provider_location = Column(String(255))
 
     volume = relationship(Volume, backref="snapshots",
@@ -356,6 +361,31 @@ class Backup(BASE, CinderBase):
     service = Column(String(255))
     size = Column(Integer)
     object_count = Column(Integer)
+
+
+class Encryption(BASE, CinderBase):
+    """Represents encryption requirement for a volume type.
+
+    Encryption here is a set of performance characteristics describing
+    cipher, provider, and key_size for a certain volume type.
+    """
+
+    __tablename__ = 'encryption'
+    cipher = Column(String(255))
+    key_size = Column(Integer)
+    provider = Column(String(255))
+    control_location = Column(String(255))
+    volume_type_id = Column(String(36),
+                            ForeignKey('volume_types.id'),
+                            primary_key=True)
+    volume_type = relationship(
+        VolumeTypes,
+        backref="encryption",
+        foreign_keys=volume_type_id,
+        primaryjoin='and_('
+        'Encryption.volume_type_id == VolumeTypes.id,'
+        'Encryption.deleted == False)'
+    )
 
 
 class Transfer(BASE, CinderBase):

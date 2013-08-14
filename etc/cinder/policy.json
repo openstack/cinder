@@ -14,6 +14,8 @@
 
     "volume_extension:types_manage": [["rule:admin_api"]],
     "volume_extension:types_extra_specs": [["rule:admin_api"]],
+    "volume_extension:volume_type_encryption": [["rule:admin_api"]],
+    "volume_extension:volume_encryption_metadata": [["rule:admin_api"]],
     "volume_extension:extended_snapshot_attributes": [],
     "volume_extension:volume_image_metadata": [],
 

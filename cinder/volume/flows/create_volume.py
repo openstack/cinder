@@ -208,7 +208,8 @@ class ExtractVolumeRequestTask(CinderTask):
         # saved to durable storage in the future so that the flow can be
         # reconstructed elsewhere and continued).
         self.provides.update(['availability_zone', 'size', 'snapshot_id',
-                              'source_volid', 'volume_type', 'volume_type_id'])
+                              'source_volid', 'volume_type', 'volume_type_id',
+                              'encryption_key_id'])
         # This task requires the following inputs to operate (provided
         # automatically to __call__(). This is done so that the flow can
         # be reconstructed elsewhere and continue running (in the future).
@@ -218,7 +219,8 @@ class ExtractVolumeRequestTask(CinderTask):
         # mostly automatic).
         self.requires.update(['availability_zone', 'image_id', 'metadata',
                               'size', 'snapshot', 'source_volume',
-                              'volume_type'])
+                              'volume_type', 'key_manager',
+                              'backup_source_volume'])
         self.image_service = image_service
         self.az_check_functor = az_check_functor
         if not self.az_check_functor:
@@ -432,8 +434,53 @@ class ExtractVolumeRequestTask(CinderTask):
 
         return availability_zone
 
+    def _get_encryption_key_id(self, key_manager, context, volume_type_id,
+                               snapshot, source_volume, backup_source_volume):
+        encryption_key_id = None
+        if volume_types.is_encrypted(context, volume_type_id):
+            if snapshot is not None:  # creating from snapshot
+                encryption_key_id = snapshot['encryption_key_id']
+            elif source_volume is not None:  # cloning volume
+                encryption_key_id = source_volume['encryption_key_id']
+            elif backup_source_volume is not None:  # creating from backup
+                encryption_key_id = backup_source_volume['encryption_key_id']
+
+            # NOTE(joel-coffman): References to the encryption key should *not*
+            # be copied because the key is deleted when the volume is deleted.
+            # Clone the existing key and associate a separate -- but
+            # identical -- key with each volume.
+            if encryption_key_id is not None:
+                encryption_key_id = key_manager.copy_key(context,
+                                                         encryption_key_id)
+            else:
+                encryption_key_id = key_manager.create_key(context)
+
+        return encryption_key_id
+
+    def _get_volume_type_id(self, volume_type, source_volume, snapshot,
+                            backup_source_volume):
+        volume_type_id = None
+        if not volume_type and source_volume:
+            volume_type_id = source_volume['volume_type_id']
+        elif snapshot is not None:
+            if volume_type:
+                current_volume_type_id = volume_type.get('id')
+                if (current_volume_type_id !=
+                        snapshot['volume_type_id']):
+                    msg = _("Volume type will be changed to "
+                            "be the same as the source volume.")
+                    LOG.warn(msg)
+            volume_type_id = snapshot['volume_type_id']
+        elif backup_source_volume is not None:
+            volume_type_id = backup_source_volume['volume_type_id']
+        else:
+            volume_type_id = volume_type.get('id')
+
+        return volume_type_id
+
     def __call__(self, context, size, snapshot, image_id, source_volume,
-                 availability_zone, volume_type, metadata):
+                 availability_zone, volume_type, metadata,
+                 key_manager, backup_source_volume):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -452,12 +499,24 @@ class ExtractVolumeRequestTask(CinderTask):
                                                             snapshot,
                                                             source_volume)
 
-        if not volume_type and not source_volume:
+        # TODO(joel-coffman): This special handling of snapshots to ensure that
+        # their volume type matches the source volume is too convoluted. We
+        # should copy encryption metadata from the encrypted volume type to the
+        # volume upon creation and propogate that information to each snapshot.
+        # This strategy avoid any dependency upon the encrypted volume type.
+        if not volume_type and not source_volume and not snapshot:
             volume_type = volume_types.get_default_volume_type()
-        if not volume_type and source_volume:
-            volume_type_id = source_volume['volume_type_id']
-        else:
-            volume_type_id = volume_type.get('id')
+
+        volume_type_id = self._get_volume_type_id(volume_type,
+                                                  source_volume, snapshot,
+                                                  backup_source_volume)
+
+        encryption_key_id = self._get_encryption_key_id(key_manager,
+                                                        context,
+                                                        volume_type_id,
+                                                        snapshot,
+                                                        source_volume,
+                                                        backup_source_volume)
 
         self._check_metadata_properties(metadata)
 
@@ -468,6 +527,7 @@ class ExtractVolumeRequestTask(CinderTask):
             'availability_zone': availability_zone,
             'volume_type': volume_type,
             'volume_type_id': volume_type_id,
+            'encryption_key_id': encryption_key_id,
         }
 
 
@@ -482,7 +542,8 @@ class EntryCreateTask(CinderTask):
         self.db = db
         self.requires.update(['availability_zone', 'description', 'metadata',
                               'name', 'reservations', 'size', 'snapshot_id',
-                              'source_volid', 'volume_type_id'])
+                              'source_volid', 'volume_type_id',
+                              'encryption_key_id'])
         self.provides.update(['volume_properties', 'volume_id'])
 
     def __call__(self, context, **kwargs):
@@ -501,6 +562,7 @@ class EntryCreateTask(CinderTask):
             'project_id': context.project_id,
             'status': 'creating',
             'attach_status': 'detached',
+            'encryption_key_id': kwargs.pop('encryption_key_id'),
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),

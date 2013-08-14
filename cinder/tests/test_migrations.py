@@ -842,3 +842,58 @@ class TestMigrations(test.TestCase):
                                                      'sm_backend_config'))
             self.assertTrue(engine.dialect.has_table(engine.connect(),
                                                      'sm_volume'))
+
+    def test_migration_017(self):
+        """Test that added encryption information works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+
+            # upgrade schema
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 16)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 17)
+
+            # encryption key UUID
+            volumes = sqlalchemy.Table('volumes', metadata, autoload=True)
+            self.assertTrue('encryption_key_id' in volumes.c)
+            self.assertTrue(isinstance(volumes.c.encryption_key_id.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
+            self.assertTrue('encryption_key_id' in snapshots.c)
+            self.assertTrue(isinstance(snapshots.c.encryption_key_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue('volume_type_id' in snapshots.c)
+            self.assertTrue(isinstance(snapshots.c.volume_type_id.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            # encryption types table
+            encryption = sqlalchemy.Table('encryption',
+                                          metadata,
+                                          autoload=True)
+            self.assertTrue(isinstance(encryption.c.volume_type_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(encryption.c.cipher.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(encryption.c.key_size.type,
+                                       sqlalchemy.types.INTEGER))
+            self.assertTrue(isinstance(encryption.c.provider.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            # downgrade schema
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 16)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            volumes = sqlalchemy.Table('volumes', metadata, autoload=True)
+            self.assertTrue('encryption_key_id' not in volumes.c)
+
+            snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
+            self.assertTrue('encryption_key_id' not in snapshots.c)
+
+            self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                      'encryption'))

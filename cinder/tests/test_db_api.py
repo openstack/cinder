@@ -494,6 +494,83 @@ class DBAPISnapshotTestCase(BaseTest):
         self.assertEquals(should_be, db.snapshot_metadata_get(self.ctxt, 1))
 
 
+class DBAPIEncryptionTestCase(BaseTest):
+
+    """Tests for the db.api.volume_type_encryption_* methods."""
+
+    _ignored_keys = [
+        'deleted',
+        'deleted_at',
+        'created_at',
+        'updated_at',
+    ]
+
+    def setUp(self):
+        super(DBAPIEncryptionTestCase, self).setUp()
+        self.created = \
+            [db.volume_type_encryption_update_or_create(self.ctxt, 'fake_type',
+                                                        values)
+             for values in self._get_values()]
+
+    def _get_values(self, one=False):
+        base_values = {
+            'cipher': 'fake_cipher',
+            'key_size': 256,
+            'provider': 'fake_provider',
+            'volume_type_id': 'fake_type',
+            'control_location': 'front-end',
+        }
+        if one:
+            return base_values
+
+        def compose(val, step):
+            if isinstance(val, str):
+                step = str(step)
+            return val + step
+
+        return [dict([(k, compose(v, i)) for k, v in base_values.items()])
+                for i in range(1, 4)]
+
+    def test_volume_type_encryption_update_or_create(self):
+        values = self._get_values()
+        for i, encryption in enumerate(self.created):
+            print "values[%s] = %s" % (i, values[i])
+            print "encryption = %s" % encryption.__dict__
+            self._assertEqualObjects(values[i], encryption,
+                                     self._ignored_keys)
+
+    def test_volume_type_encryption_get(self):
+        for encryption in self.created:
+            print "encryption = %s" % encryption.__dict__
+            encryption_get = \
+                db.volume_type_encryption_get(self.ctxt,
+                                              encryption['volume_type_id'])
+            print "encryption_get = %s" % encryption_get.__dict__
+            self._assertEqualObjects(encryption, encryption_get,
+                                     self._ignored_keys)
+
+    def test_volume_type_encryption_delete(self):
+        values = {
+            'cipher': 'fake_cipher',
+            'key_size': 256,
+            'provider': 'fake_provider',
+            'volume_type_id': 'fake_type',
+            'control_location': 'front-end',
+        }
+
+        encryption = db.volume_type_encryption_update_or_create(self.ctxt,
+                                                                'fake_type',
+                                                                values)
+        self._assertEqualObjects(values, encryption, self._ignored_keys)
+
+        db.volume_type_encryption_delete(self.ctxt,
+                                         encryption['volume_type_id'])
+        encryption_get = \
+            db.volume_type_encryption_get(self.ctxt,
+                                          encryption['volume_type_id'])
+        self.assertEqual(None, encryption_get)
+
+
 class DBAPIReservationTestCase(BaseTest):
 
     """Tests for db.api.reservation_* methods."""
