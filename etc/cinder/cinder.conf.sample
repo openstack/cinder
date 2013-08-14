@@ -75,6 +75,10 @@
 # image formats such as qcow2 .
 #glance_api_ssl_compression=false
 
+# http/https timeout value for glance operations. If no value (None) is
+# supplied, the glanceclient default value is used.
+#glance_request_timeout=None
+
 # the topic scheduler nodes listen on (string value)
 #scheduler_topic=cinder-scheduler
 
