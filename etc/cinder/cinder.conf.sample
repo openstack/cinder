@@ -1288,6 +1288,36 @@
 # prefix for iSCSI target groups on SA (string value)
 #nexenta_target_group_prefix=cinder/
 
+# File with the list of available nfs shares (string value)
+#nexenta_shares_config=/etc/cinder/nfs_shares
+
+# Base dir containing mount points for nfs shares (string
+# value)
+#nexenta_mount_point_base=$state_path/mnt
+
+# Create volumes as sparsed files which take no space.If set
+# to False volume is created as regular file.In such case
+# volume creation takes a lot of time. (boolean value)
+#nexenta_sparsed_volumes=true
+
+# Default compression value for new ZFS folders. (string
+# value)
+#nexenta_volume_compression=on
+
+# Mount options passed to the nfs client. See section of the
+# nfs man page for details (string value)
+#nexenta_mount_options=<None>
+
+# Percent of ACTUAL usage of the underlying volume before no
+# new volumes can be allocated to the volume destination.
+# (floating point value)
+#nexenta_used_ratio=0.95
+
+# This will compare the allocated to available space on the
+# volume destination.  If the ratio exceeds this number, the
+# destination will no longer be valid. (floating point value)
+#nexenta_oversub_ratio=1.0
+
 # block size for volumes (blank=default,8KB) (string value)
 #nexenta_blocksize=
 
@@ -1662,4 +1692,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 355
+# Total option count: 362
