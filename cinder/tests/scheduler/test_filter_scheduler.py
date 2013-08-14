@@ -30,17 +30,11 @@ from cinder.tests.scheduler import test_scheduler
 from cinder.tests import utils as test_utils
 
 
-def fake_get_filtered_hosts(hosts, filter_properties):
-    return list(hosts)
-
-
 class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
     """Test case for Filter Scheduler."""
 
     driver_cls = filter_scheduler.FilterScheduler
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_no_hosts(self):
         """
         Ensure empty hosts & child_zones result in NoValidHosts exception.
@@ -58,8 +52,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, {})
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_create_volume_non_admin(self):
         """Test creating an instance locally using run_instance, passing
         a non-admin context.  DB actions should work.
@@ -85,29 +77,16 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, request_spec, {})
         self.assertTrue(self.was_admin)
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_schedule_happy_day(self):
         """Make sure there's nothing glaringly wrong with _schedule()
         by doing a happy day pass through.
         """
-
-        self.next_weight = 1.0
-
-        def _fake_weigh_objects(_self, functions, hosts, options):
-            self.next_weight += 2.0
-            host_state = hosts[0]
-            return [weights.WeighedHost(host_state, self.next_weight)]
 
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        self.stubs.Set(sched.host_manager, 'get_filtered_hosts',
-                       fake_get_filtered_hosts)
-        self.stubs.Set(weights.HostWeightHandler,
-                       'get_weighed_objects', _fake_weigh_objects)
         fakes.mox_host_manager_db_calls(self.mox, fake_context)
 
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
@@ -129,8 +108,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           fakes.FakeFilterScheduler)
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_retry_disabled(self):
         # Retry info should not get populated when re-scheduling is off.
         self.flags(scheduler_max_attempts=1)
@@ -147,8 +124,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         # should not have retry info in the populated filter properties:
         self.assertFalse("retry" in filter_properties)
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_retry_attempt_one(self):
         # Test retry logic on initial scheduling attempt.
         self.flags(scheduler_max_attempts=2)
@@ -165,8 +140,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         num_attempts = filter_properties['retry']['num_attempts']
         self.assertEqual(1, num_attempts)
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_retry_attempt_two(self):
         # Test retry logic when re-scheduling.
         self.flags(scheduler_max_attempts=2)
@@ -229,29 +202,16 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertEqual(1024, host_state.total_capacity_gb)
 
     def _host_passes_filters_setup(self):
-        self.next_weight = 1.0
-
-        def _fake_weigh_objects(_self, functions, hosts, options):
-            self.next_weight += 2.0
-            host_state = hosts[0]
-            return [weights.WeighedHost(host_state, self.next_weight)]
-
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        self.stubs.Set(sched.host_manager, 'get_filtered_hosts',
-                       fake_get_filtered_hosts)
-        self.stubs.Set(weights.HostWeightHandler,
-                       'get_weighed_objects', _fake_weigh_objects)
         fakes.mox_host_manager_db_calls(self.mox, fake_context)
 
         self.mox.ReplayAll()
         return (sched, fake_context)
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_host_passes_filters_happy_day(self):
         """Do a successful pass through of with host_passes_filters()."""
         sched, ctx = self._host_passes_filters_setup()
@@ -262,8 +222,6 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         ret_host = sched.host_passes_filters(ctx, 'host1', request_spec, {})
         self.assertEqual(ret_host.host, 'host1')
 
-    @testtools.skipIf(not test_utils.is_cinder_installed(),
-                      'Test requires Cinder installed (try setup.py develop')
     def test_host_passes_filters_no_capacity(self):
         """Fail the host due to insufficient capacity."""
         sched, ctx = self._host_passes_filters_setup()

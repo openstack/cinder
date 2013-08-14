@@ -26,13 +26,6 @@ def get_test_admin_context():
     return context.get_admin_context()
 
 
-def is_cinder_installed():
-    if os.path.exists('../../cinder.cinder.egg-info'):
-        return True
-    else:
-        return False
-
-
 def create_volume(ctxt,
                   host='test_host',
                   display_name='test_volume',

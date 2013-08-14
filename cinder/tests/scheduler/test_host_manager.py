@@ -143,26 +143,39 @@ class HostManagerTestCase(test.TestCase):
         self.mox.StubOutWithMock(host_manager.LOG, 'warn')
         self.mox.StubOutWithMock(host_manager.utils, 'service_is_up')
 
-        ret_services = fakes.VOLUME_SERVICES
-        db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
-        host_manager.utils.service_is_up(ret_services[0]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[1]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[2]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[3]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[4]).AndReturn(True)
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=3, host='host3', topic='volume', disabled=False,
+                 availability_zone='zone2', updated_at=timeutils.utcnow()),
+            dict(id=4, host='host4', topic='volume', disabled=False,
+                 availability_zone='zone3', updated_at=timeutils.utcnow()),
+            # service on host5 is disabled
+            dict(id=5, host='host5', topic='volume', disabled=True,
+                 availability_zone='zone4', updated_at=timeutils.utcnow()),
+        ]
+
+        db.service_get_all_by_topic(context, topic).AndReturn(services)
+        host_manager.utils.service_is_up(services[0]).AndReturn(True)
+        host_manager.utils.service_is_up(services[1]).AndReturn(True)
+        host_manager.utils.service_is_up(services[2]).AndReturn(True)
+        host_manager.utils.service_is_up(services[3]).AndReturn(True)
+        host_manager.utils.service_is_up(services[4]).AndReturn(True)
         # Disabled service
         host_manager.LOG.warn("volume service is down or disabled. "
                               "(host: host5)")
 
-        db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
-        host_manager.utils.service_is_up(ret_services[0]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[1]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[2]).AndReturn(True)
-        host_manager.utils.service_is_up(ret_services[3]).AndReturn(False)
+        db.service_get_all_by_topic(context, topic).AndReturn(services)
+        host_manager.utils.service_is_up(services[0]).AndReturn(True)
+        host_manager.utils.service_is_up(services[1]).AndReturn(True)
+        host_manager.utils.service_is_up(services[2]).AndReturn(True)
+        host_manager.utils.service_is_up(services[3]).AndReturn(False)
         # Stopped service
         host_manager.LOG.warn("volume service is down or disabled. "
                               "(host: host4)")
-        host_manager.utils.service_is_up(ret_services[4]).AndReturn(True)
+        host_manager.utils.service_is_up(services[4]).AndReturn(True)
         # Disabled service
         host_manager.LOG.warn("volume service is down or disabled. "
                               "(host: host5)")
@@ -174,7 +187,7 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(len(host_state_map), 4)
         # Check that service is up
         for i in xrange(4):
-            volume_node = fakes.VOLUME_SERVICES[i]
+            volume_node = services[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service,
                              volume_node)
@@ -184,7 +197,7 @@ class HostManagerTestCase(test.TestCase):
 
         self.assertEqual(len(host_state_map), 3)
         for i in xrange(3):
-            volume_node = fakes.VOLUME_SERVICES[i]
+            volume_node = services[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service,
                              volume_node)
