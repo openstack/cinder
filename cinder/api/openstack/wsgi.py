@@ -1,6 +1,7 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 # Copyright 2011 OpenStack LLC.
+# Copyright 2013 IBM Corp.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,6 +22,7 @@ import time
 import webob
 
 from cinder import exception
+from cinder.openstack.common import gettextutils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -100,6 +102,12 @@ class Request(webob.Request):
             raise exception.InvalidContentType(content_type=content_type)
 
         return content_type
+
+    def best_match_language(self):
+        """Determines best available locale from the Accept-Language header."""
+        all_languages = gettextutils.get_available_languages('cinder')
+        return self.accept_language.best_match(all_languages,
+                                               default_match='en_US')
 
 
 class ActionDispatcher(object):
@@ -1069,12 +1077,15 @@ class Fault(webob.exc.HTTPException):
     def __call__(self, req):
         """Generate a WSGI response based on the exception passed to ctor."""
         # Replace the body with fault details.
+        locale = req.best_match_language()
         code = self.wrapped_exc.status_int
         fault_name = self._fault_names.get(code, "computeFault")
+        explanation = self.wrapped_exc.explanation
         fault_data = {
             fault_name: {
                 'code': code,
-                'message': self.wrapped_exc.explanation}}
+                'message': gettextutils.get_localized_message(explanation,
+                                                              locale)}}
         if code == 413:
             retry = self.wrapped_exc.headers['Retry-After']
             fault_data[fault_name]['retryAfter'] = retry
@@ -1134,12 +1145,18 @@ class OverLimitFault(webob.exc.HTTPException):
 
     @webob.dec.wsgify(RequestClass=Request)
     def __call__(self, request):
-        """
-        Return the wrapped exception with a serialized body conforming to our
-        error format.
-        """
+        """Serializes the wrapped exception conforming to our error format."""
         content_type = request.best_match_content_type()
         metadata = {"attributes": {"overLimitFault": "code"}}
+
+        def translate(msg):
+            locale = request.best_match_language()
+            return gettextutils.get_localized_message(msg, locale)
+
+        self.content['overLimitFault']['message'] = \
+            translate(self.content['overLimitFault']['message'])
+        self.content['overLimitFault']['details'] = \
+            translate(self.content['overLimitFault']['details'])
 
         xml_serializer = XMLDictSerializer(metadata, XMLNS_V1)
         serializer = {

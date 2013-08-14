@@ -87,6 +87,21 @@ class RequestTest(test.TestCase):
         result = request.best_match_content_type()
         self.assertEqual(result, "application/json")
 
+    def test_best_match_language(self):
+        # Here we test that we are actually invoking language negotiation
+        # by webob and also that the default locale always available is en-US
+        request = wsgi.Request.blank('/')
+        accepted = 'unknown-lang'
+        request.headers = {'Accept-Language': accepted}
+
+        def fake_best_match(self, offers, default_match=None):
+            return default_match
+
+        self.stubs.SmartSet(request.accept_language,
+                            'best_match', fake_best_match)
+
+        self.assertEqual(request.best_match_language(), 'en_US')
+
 
 class ActionDispatcherTest(test.TestCase):
     def test_dispatch(self):

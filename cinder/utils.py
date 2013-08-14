@@ -48,6 +48,7 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.openstack.common import excutils
+from cinder.openstack.common import gettextutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
@@ -659,6 +660,8 @@ def utf8(value):
     """
     if isinstance(value, unicode):
         return value.encode('utf-8')
+    elif isinstance(value, gettextutils.Message):
+        return unicode(value).encode('utf-8')
     elif isinstance(value, str):
         return value
     else:
