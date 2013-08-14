@@ -17,9 +17,8 @@
 """Generic linux Fibre Channel utilities."""
 
 import errno
-import executor
-import linuxscsi
 
+from cinder.brick.initiator import linuxscsi
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils

@@ -15,10 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import executor
-import host_driver
-import linuxfc
-import linuxscsi
 import os
 import socket
 import time
@@ -26,6 +22,10 @@ import time
 from oslo.config import cfg
 
 from cinder.brick import exception
+from cinder.brick.initiator import executor
+from cinder.brick.initiator import host_driver
+from cinder.brick.initiator import linuxfc
+from cinder.brick.initiator import linuxscsi
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
@@ -74,17 +74,19 @@ class InitiatorConnector(executor.Executor):
         self.driver = driver
 
     @staticmethod
-    def factory(protocol, execute=putils.execute,
+    def factory(protocol, driver=None, execute=putils.execute,
                 root_helper="sudo", use_multipath=False):
         """Build a Connector object based upon protocol."""
         LOG.debug("Factory for %s" % protocol)
         protocol = protocol.upper()
         if protocol == "ISCSI":
             return ISCSIConnector(execute=execute,
+                                  driver=driver,
                                   root_helper=root_helper,
                                   use_multipath=use_multipath)
         elif protocol == "FIBRE_CHANNEL":
             return FibreChannelConnector(execute=execute,
+                                         driver=driver,
                                          root_helper=root_helper,
                                          use_multipath=use_multipath)
         else:
@@ -134,10 +136,14 @@ class ISCSIConnector(InitiatorConnector):
     def __init__(self, driver=None, execute=putils.execute,
                  root_helper="sudo", use_multipath=False,
                  *args, **kwargs):
+        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
         super(ISCSIConnector, self).__init__(driver, execute, root_helper,
                                              *args, **kwargs)
         self.use_multipath = use_multipath
-        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
+
+    def set_execute(self, execute):
+        super(ISCSIConnector, self).set_execute(execute)
+        self._linuxscsi.set_execute(execute)
 
     @synchronized('connect_volume')
     def connect_volume(self, connection_properties):
@@ -468,12 +474,17 @@ class FibreChannelConnector(InitiatorConnector):
     def __init__(self, driver=None, execute=putils.execute,
                  root_helper="sudo", use_multipath=False,
                  *args, **kwargs):
+        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
+        self._linuxfc = linuxfc.LinuxFibreChannel(execute, root_helper)
         super(FibreChannelConnector, self).__init__(driver, execute,
                                                     root_helper,
                                                     *args, **kwargs)
         self.use_multipath = use_multipath
-        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
-        self._linuxfc = linuxfc.LinuxFibreChannel(execute, root_helper)
+
+    def set_execute(self, execute):
+        super(FibreChannelConnector, self).set_execute(execute)
+        self._linuxscsi.set_execute(execute)
+        self._linuxfc.set_execute(execute)
 
     @synchronized('connect_volume')
     def connect_volume(self, connection_properties):
