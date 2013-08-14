@@ -345,6 +345,18 @@ class TemplateElement(object):
                 # Attribute has no value, so don't include it
                 pass
 
+    def getAttrib(self, obj):
+        """Get attribute"""
+        tmpattrib = {}
+        #Now set up all the attributes...
+        for key, value in self.attrib.items():
+            try:
+                tmpattrib[key] = value(obj)
+            except KeyError:
+                # Attribute has no value, so don't include it
+                pass
+        return tmpattrib
+
     def _render(self, parent, datum, patches, nsmap):
         """Internal rendering.
 
@@ -364,25 +376,61 @@ class TemplateElement(object):
             tagname = self.tag(datum)
         else:
             tagname = self.tag
-        elem = etree.Element(tagname, nsmap=nsmap)
+
+        # If the datum is None
+        if datum is not None:
+            tmpattrib = self.getAttrib(datum)
+        else:
+            tmpattrib = {}
+
+        tagnameList = tagname.split(':')
+        insertIndex = 0
+
+        #If parent is not none and has same tagname
+        if parent is not None:
+            for i in range(0, len(tagnameList)):
+                tmpInsertPos = parent.find(tagnameList[i])
+                if tmpInsertPos is None:
+                    break
+                elif not cmp(parent.attrib, tmpattrib) == 0:
+                    break
+                parent = tmpInsertPos
+                insertIndex = i + 1
+
+        if insertIndex >= len(tagnameList):
+            insertIndex = insertIndex - 1
+
+        #Create root elem
+        elem = etree.Element(tagnameList[insertIndex], nsmap=nsmap)
+        rootelem = elem
+        subelem = elem
+
+        #Create subelem
+        for i in range((insertIndex + 1), len(tagnameList)):
+            subelem = etree.SubElement(elem, tagnameList[i])
+            elem = subelem
 
         # If we have a parent, append the node to the parent
         if parent is not None:
-            parent.append(elem)
+            #If we can merge this element, then insert
+            if insertIndex > 0:
+                parent.insert(len(list(parent)), rootelem)
+            else:
+                parent.append(rootelem)
 
         # If the datum is None, do nothing else
         if datum is None:
-            return elem
+            return rootelem
 
         # Apply this template element to the element
-        self.apply(elem, datum)
+        self.apply(subelem, datum)
 
         # Additionally, apply the patches
         for patch in patches:
-            patch.apply(elem, datum)
+            patch.apply(subelem, datum)
 
         # We have fully rendered the element; return it
-        return elem
+        return rootelem
 
     def render(self, parent, obj, patches=[], nsmap=None):
         """Render an object.

@@ -627,6 +627,35 @@ class TemplateTest(test.TestCase):
                          str(obj['test']['image']['id']))
         self.assertEqual(result[idx].text, obj['test']['image']['name'])
 
+    def test_serialize_with_delimiter(self):
+        # Our test object to serialize
+        obj = {'test': {'scope0:key1': 'Value1',
+                        'scope0:scope1:key2': 'Value2',
+                        'scope0:scope1:scope2:key3': 'Value3'
+                        }}
+
+        # Set up our master template
+        root = xmlutil.TemplateElement('test', selector='test')
+        key1 = xmlutil.SubTemplateElement(root, 'scope0:key1',
+                                          selector='scope0:key1')
+        key1.text = xmlutil.Selector()
+        key2 = xmlutil.SubTemplateElement(root, 'scope0:scope1:key2',
+                                          selector='scope0:scope1:key2')
+        key2.text = xmlutil.Selector()
+        key3 = xmlutil.SubTemplateElement(root, 'scope0:scope1:scope2:key3',
+                                          selector='scope0:scope1:scope2:key3')
+        key3.text = xmlutil.Selector()
+        serializer = xmlutil.MasterTemplate(root, 1)
+        xml_list = []
+        xml_list.append("<?xmlversion='1.0'encoding='UTF-8'?><test>")
+        xml_list.append("<scope0><key1>Value1</key1><scope1>")
+        xml_list.append("<key2>Value2</key2><scope2><key3>Value3</key3>")
+        xml_list.append("</scope2></scope1></scope0></test>")
+        expected_xml = ''.join(xml_list)
+        result = serializer.serialize(obj)
+        result = result.replace('\n', '').replace(' ', '')
+        self.assertEqual(result, expected_xml)
+
 
 class MasterTemplateBuilder(xmlutil.TemplateBuilder):
     def construct(self):
