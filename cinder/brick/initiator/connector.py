@@ -33,7 +33,18 @@ from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
+
+connector_opts = [
+    cfg.IntOpt('num_volume_device_scan_tries',
+               deprecated_name='num_iscsi_scan_tries',
+               default=3,
+               help='The maximum number of times to rescan targets'
+                    'to find volume'),
+]
+
 CONF = cfg.CONF
+CONF.register_opts(connector_opts)
+
 synchronized = lockutils.synchronized_with_prefix('brick-')
 
 
@@ -184,7 +195,7 @@ class ISCSIConnector(InitiatorConnector):
         # TODO(justinsb): This retry-with-delay is a pattern, move to utils?
         tries = 0
         while not os.path.exists(host_device):
-            if tries >= CONF.num_iscsi_scan_tries:
+            if tries >= CONF.num_volume_device_scan_tries:
                 raise exception.VolumeDeviceNotFound(device=host_device)
 
             LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
@@ -544,7 +555,7 @@ class FibreChannelConnector(InitiatorConnector):
                     self.device_name = os.path.realpath(device)
                     raise loopingcall.LoopingCallDone()
 
-            if self.tries >= CONF.num_iscsi_scan_tries:
+            if self.tries >= CONF.num_volume_device_scan_tries:
                 msg = _("Fibre Channel volume device not found.")
                 LOG.error(msg)
                 raise exception.NoFibreChannelVolumeDeviceFound()
