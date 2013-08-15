@@ -196,25 +196,31 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                                          connector['wwpns'])
         self.common.client_logout()
 
-    def _create_3par_fibrechan_host(self, hostname, wwn, domain, persona_id):
+    def _create_3par_fibrechan_host(self, hostname, wwns, domain, persona_id):
         """Create a 3PAR host.
 
         Create a 3PAR host, if there is already a host on the 3par using
         the same wwn but with a different hostname, return the hostname
         used by 3PAR.
         """
-        out = self.common._cli_run('createhost -persona %s -domain %s %s %s'
-                                   % (persona_id, domain,
-                                      hostname, " ".join(wwn)), None)
+        command = ['createhost', '-persona', persona_id, '-domain', domain,
+                   hostname]
+        for wwn in wwns:
+            command.append(wwn)
+
+        out = self.common._cli_run(command)
         if out and len(out) > 1:
             return self.common.parse_create_host_error(hostname, out)
 
         return hostname
 
-    def _modify_3par_fibrechan_host(self, hostname, wwn):
+    def _modify_3par_fibrechan_host(self, hostname, wwns):
         # when using -add, you can not send the persona or domain options
-        out = self.common._cli_run('createhost -add %s %s'
-                                   % (hostname, " ".join(wwn)), None)
+        command = ['createhost', '-add', hostname]
+        for wwn in wwns:
+            command.append(wwn)
+
+        out = self.common._cli_run(command)
 
     def _create_host(self, volume, connector):
         """Creates or modifies existing 3PAR host."""
