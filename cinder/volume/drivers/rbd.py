@@ -64,8 +64,6 @@ rbd_opts = [
                help='where to store temporary image files if the volume '
                     'driver does not write them directly to the volume'), ]
 
-VERSION = '1.1'
-
 
 def ascii_str(string):
     """Convert a string to ascii, or return None if the input is None.
@@ -240,6 +238,9 @@ CONF.register_opts(rbd_opts)
 
 class RBDDriver(driver.VolumeDriver):
     """Implements RADOS block device (RBD) volume commands."""
+
+    VERSION = '1.1.0'
+
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(rbd_opts)
@@ -317,7 +318,7 @@ class RBDDriver(driver.VolumeDriver):
     def _update_volume_stats(self):
         stats = {
             'vendor_name': 'Open Source',
-            'driver_version': VERSION,
+            'driver_version': self.VERSION,
             'storage_protocol': 'ceph',
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',

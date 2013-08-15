@@ -145,6 +145,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
 
         ctxt = context.get_admin_context()
+        LOG.info(_("Starting volume driver %(driver_name)s (%(version)s)") %
+                 {'driver_name': self.driver.__class__.__name__,
+                  'version': self.driver.get_version()})
         self.driver.do_setup(ctxt)
         self.driver.check_for_setup_error()
 

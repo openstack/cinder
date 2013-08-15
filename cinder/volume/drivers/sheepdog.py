@@ -40,6 +40,8 @@ CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
 class SheepdogDriver(driver.VolumeDriver):
     """Executes commands relating to Sheepdog Volumes"""
 
+    VERSION = "1.0.0"
+
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
@@ -157,7 +159,7 @@ class SheepdogDriver(driver.VolumeDriver):
             backend_name = self.configuration.safe_get('volume_backend_name')
         stats["volume_backend_name"] = backend_name or 'sheepdog'
         stats['vendor_name'] = 'Open Source'
-        stats['dirver_version'] = '1.0'
+        stats['dirver_version'] = self.VERSION
         stats['storage_protocol'] = 'sheepdog'
         stats['total_capacity_gb'] = 'unknown'
         stats['free_capacity_gb'] = 'unknown'

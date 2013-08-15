@@ -144,6 +144,8 @@ def _read_config(xml_config_file):
 class HUSDriver(driver.ISCSIDriver):
     """HDS HUS volume driver."""
 
+    VERSION = HDS_VERSION
+
     def _array_info_get(self):
         """Get array parameters."""
         out = self.bend.get_version(self.config['hus_cmd'],

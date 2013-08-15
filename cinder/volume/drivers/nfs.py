@@ -27,6 +27,8 @@ from cinder.openstack.common import log as logging
 from cinder import units
 from cinder.volume import driver
 
+VERSION = '1.1.0'
+
 LOG = logging.getLogger(__name__)
 
 volume_opts = [
@@ -57,7 +59,6 @@ volume_opts = [
                        'number, the destination will no longer be valid.'))
 ]
 
-VERSION = '1.1'
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
@@ -65,6 +66,8 @@ CONF.register_opts(volume_opts)
 
 class RemoteFsDriver(driver.VolumeDriver):
     """Common base for drivers that work like NFS."""
+
+    VERSION = "0.0.0"
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
@@ -295,7 +298,7 @@ class RemoteFsDriver(driver.VolumeDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.volume_backend_name
         data['vendor_name'] = 'Open Source'
-        data['driver_version'] = self.version
+        data['driver_version'] = self.get_version()
         data['storage_protocol'] = self.driver_volume_type
 
         self._ensure_shares_mounted()
@@ -346,7 +349,7 @@ class NfsDriver(RemoteFsDriver):
     driver_volume_type = 'nfs'
     driver_prefix = 'nfs'
     volume_backend_name = 'Generic_NFS'
-    version = VERSION
+    VERSION = VERSION
 
     def __init__(self, *args, **kwargs):
         super(NfsDriver, self).__init__(*args, **kwargs)

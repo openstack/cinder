@@ -129,6 +129,8 @@ class SSHConn(utils.SSHPool):
 class HuaweiISCSIDriver(driver.ISCSIDriver):
     """Huawei T series and Dorado iSCSI volume driver."""
 
+    VERSION = "1.0.0"
+
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(huawei_opt)
@@ -1509,7 +1511,7 @@ class HuaweiISCSIDriver(driver.ISCSIDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'HuaweiISCSIDriver'
         data['vendor_name'] = 'Huawei'
-        data['driver_version'] = '1.0'
+        data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'iSCSI'
 
         data['total_capacity_gb'] = 'infinite'

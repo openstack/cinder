@@ -299,7 +299,7 @@ class RBDTestCase(test.TestCase):
         expected = dict(
             volume_backend_name='RBD',
             vendor_name='Open Source',
-            driver_version=driver.VERSION,
+            driver_version=self.driver.VERSION,
             storage_protocol='ceph',
             total_capacity_gb=1177,
             free_capacity_gb=953,
@@ -325,7 +325,7 @@ class RBDTestCase(test.TestCase):
         expected = dict(
             volume_backend_name='RBD',
             vendor_name='Open Source',
-            driver_version=driver.VERSION,
+            driver_version=self.driver.VERSION,
             storage_protocol='ceph',
             total_capacity_gb='unknown',
             free_capacity_gb='unknown',

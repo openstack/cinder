@@ -119,7 +119,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                            self.configuration.reserved_percentage,
                            'QoS_support': False,
                            'vendor_name': "Open Source",
-                           'driver_version': '1.0',
+                           'driver_version': self.drv.VERSION,
                            'storage_protocol': 'unknown',
                            'volume_backend_name': 'BlockDeviceDriver',
                            })

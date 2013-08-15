@@ -31,7 +31,6 @@ from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 
-VERSION = '1.0'
 LOG = logging.getLogger(__name__)
 
 NEXENTA_OPTS = [
@@ -77,6 +76,8 @@ CONF.register_opts(NEXENTA_OPTS)
 
 class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance."""
+
+    VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
         super(NexentaDriver, self).__init__(*args, **kwargs)
@@ -367,7 +368,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'Nexenta'
-        data["driver_version"] = VERSION
+        data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
         stats = self.nms.volume.get_child_props(CONF.nexenta_volume,

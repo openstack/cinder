@@ -95,6 +95,9 @@ CONF.import_opt('iser_helper', 'cinder.brick.iser.iser')
 
 class VolumeDriver(object):
     """Executes commands relating to Volumes."""
+
+    VERSION = "N/A"
+
     def __init__(self, execute=utils.execute, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         self.db = None
@@ -106,6 +109,10 @@ class VolumeDriver(object):
 
     def set_execute(self, execute):
         self._execute = execute
+
+    def get_version(self):
+        """Get the current version of this driver."""
+        return self.VERSION
 
     def _is_non_recoverable(self, err, non_recoverable_list):
         for item in non_recoverable_list:

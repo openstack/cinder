@@ -32,6 +32,8 @@ LOG = logging.getLogger(__name__)
 class EMCSMISISCSIDriver(driver.ISCSIDriver):
     """EMC ISCSI Drivers for VMAX and VNX using SMI-S."""
 
+    VERSION = "1.0.0"
+
     def __init__(self, *args, **kwargs):
 
         super(EMCSMISISCSIDriver, self).__init__(*args, **kwargs)

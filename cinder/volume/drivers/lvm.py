@@ -60,7 +60,7 @@ CONF.register_opts(volume_opts)
 class LVMVolumeDriver(driver.VolumeDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0'
+    VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
         super(LVMVolumeDriver, self).__init__(*args, **kwargs)
