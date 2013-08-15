@@ -44,7 +44,8 @@ class BlockDeviceDriver(driver.ISCSIDriver):
     VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
-        self.tgtadm = iscsi.get_target_admin()
+        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        self.tgtadm = iscsi.get_target_admin(root_helper)
 
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)

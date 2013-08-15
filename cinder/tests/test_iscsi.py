@@ -42,7 +42,7 @@ class TargetAdminTestCase(object):
         self.stubs.Set(iscsi.LioAdm, '_get_target', self.fake_get_target)
         self.stubs.Set(iscsi.LioAdm, '__init__', self.fake_init)
 
-    def fake_init(obj):
+    def fake_init(obj, root_helper):
         return
 
     def fake_get_target(obj, iqn):
@@ -79,7 +79,7 @@ class TargetAdminTestCase(object):
         self.verify_cmds(cmds)
 
     def run_commands(self):
-        tgtadm = iscsi.get_target_admin()
+        tgtadm = iscsi.get_target_admin(None)
         tgtadm.set_execute(self.fake_execute)
         tgtadm.create_iscsi_target(self.target_name, self.tid,
                                    self.lun, self.path)

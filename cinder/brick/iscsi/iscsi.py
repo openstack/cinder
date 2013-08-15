@@ -28,6 +28,7 @@ import stat
 from oslo.config import cfg
 
 from cinder.brick import exception
+from cinder.brick import executor
 from cinder.openstack.common import fileutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
@@ -67,19 +68,15 @@ CONF.register_opts(iscsi_helper_opt)
 CONF.import_opt('volume_name_template', 'cinder.db')
 
 
-class TargetAdmin(object):
+class TargetAdmin(executor.Executor):
     """iSCSI target administration.
 
     Base class for iSCSI target admin helpers.
     """
 
-    def __init__(self, cmd, execute):
+    def __init__(self, cmd, root_helper, execute):
+        super(TargetAdmin, self).__init__(root_helper, execute=execute)
         self._cmd = cmd
-        self.set_execute(execute)
-
-    def set_execute(self, execute):
-        """Set the function to be used to execute commands."""
-        self._execute = execute
 
     def _run(self, *args, **kwargs):
         self._execute(self._cmd, *args, run_as_root=True, **kwargs)
@@ -117,8 +114,8 @@ class TargetAdmin(object):
 class TgtAdm(TargetAdmin):
     """iSCSI target administration using tgtadm."""
 
-    def __init__(self, execute=putils.execute):
-        super(TgtAdm, self).__init__('tgtadm', execute)
+    def __init__(self, root_helper, execute=putils.execute):
+        super(TgtAdm, self).__init__('tgtadm', root_helper, execute)
 
     def _get_target(self, iqn):
         (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
@@ -234,8 +231,8 @@ class TgtAdm(TargetAdmin):
 class IetAdm(TargetAdmin):
     """iSCSI target administration using ietadm."""
 
-    def __init__(self, execute=putils.execute):
-        super(IetAdm, self).__init__('ietadm', execute)
+    def __init__(self, root_helper, execute=putils.execute):
+        super(IetAdm, self).__init__('ietadm', root_helper, execute)
 
     def _is_block(self, path):
         mode = os.stat(path).st_mode
@@ -381,8 +378,8 @@ class FakeIscsiHelper(object):
 
 class LioAdm(TargetAdmin):
     """iSCSI target administration for LIO using python-rtslib."""
-    def __init__(self, execute=putils.execute):
-        super(LioAdm, self).__init__('rtstool', execute)
+    def __init__(self, root_helper, execute=putils.execute):
+        super(LioAdm, self).__init__('rtstool', root_helper, execute)
 
         try:
             self._execute('rtstool', 'verify')
@@ -491,12 +488,12 @@ class LioAdm(TargetAdmin):
             raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
 
 
-def get_target_admin():
+def get_target_admin(root_helper):
     if CONF.iscsi_helper == 'tgtadm':
-        return TgtAdm()
+        return TgtAdm(root_helper)
     elif CONF.iscsi_helper == 'fake':
         return FakeIscsiHelper()
     elif CONF.iscsi_helper == 'lioadm':
-        return LioAdm()
+        return LioAdm(root_helper)
     else:
-        return IetAdm()
+        return IetAdm(root_helper)

@@ -372,7 +372,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        self.tgtadm = iscsi.get_target_admin()
+        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        self.tgtadm = iscsi.get_target_admin(root_helper)
         super(LVMISCSIDriver, self).__init__(*args, **kwargs)
 
     def set_execute(self, execute):
@@ -723,7 +724,8 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        self.tgtadm = iser.get_target_admin()
+        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        self.tgtadm = iser.get_target_admin(root_helper)
         LVMVolumeDriver.__init__(self, *args, **kwargs)
 
     def set_execute(self, execute):

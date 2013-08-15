@@ -22,7 +22,7 @@ import time
 from oslo.config import cfg
 
 from cinder.brick import exception
-from cinder.brick.initiator import executor
+from cinder.brick import executor
 from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
