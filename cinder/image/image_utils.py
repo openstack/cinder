@@ -314,7 +314,7 @@ def upload_volume(context, image_service, image_meta, volume_path):
 
         with fileutils.file_open(tmp) as image_file:
             image_service.update(context, image_id, {}, image_file)
-        os.unlink(tmp)
+        fileutils.delete_if_exists(tmp)
 
 
 def is_xenserver_image(context, image_service, image_id):
@@ -377,7 +377,7 @@ def temporary_file():
         tmp = create_temporary_file()
         yield tmp
     finally:
-        os.unlink(tmp)
+        fileutils.delete_if_exists(tmp)
 
 
 def temporary_dir():
@@ -417,5 +417,5 @@ def replace_xenserver_image_with_coalesced_vhd(image_file):
         chain = discover_vhd_chain(tempdir)
         fix_vhd_chain(chain)
         coalesced = coalesce_chain(chain)
-        os.unlink(image_file)
+        fileutils.delete_if_exists(image_file)
         rename_file(coalesced, image_file)
