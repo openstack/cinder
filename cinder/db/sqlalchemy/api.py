@@ -1802,10 +1802,15 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
 @require_context
 @require_volume_exists
 def _volume_glance_metadata_get(context, volume_id, session=None):
-    return model_query(context, models.VolumeGlanceMetadata, session=session).\
+    rows = model_query(context, models.VolumeGlanceMetadata, session=session).\
         filter_by(volume_id=volume_id).\
         filter_by(deleted=False).\
         all()
+
+    if not rows:
+        raise exception.GlanceMetadataNotFound(id=volume_id)
+
+    return rows
 
 
 @require_context
@@ -1819,10 +1824,15 @@ def volume_glance_metadata_get(context, volume_id):
 @require_context
 @require_snapshot_exists
 def _volume_snapshot_glance_metadata_get(context, snapshot_id, session=None):
-    return model_query(context, models.VolumeGlanceMetadata, session=session).\
+    rows = model_query(context, models.VolumeGlanceMetadata, session=session).\
         filter_by(snapshot_id=snapshot_id).\
         filter_by(deleted=False).\
         all()
+
+    if not rows:
+        raise exception.GlanceMetadataNotFound(id=snapshot_id)
+
+    return rows
 
 
 @require_context

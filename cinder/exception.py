@@ -552,6 +552,10 @@ class GlanceMetadataExists(Invalid):
                 " exists for volume id %(volume_id)s")
 
 
+class GlanceMetadataNotFound(NotFound):
+    message = _("Glance metadata for volume/snapshot %(id)s cannot be found.")
+
+
 class ExportFailure(Invalid):
     message = _("Failed to export for volume: %(reason)s")
 
