@@ -19,6 +19,8 @@
 =====================================================================
 
 .. automodule:: nexenta.volume
+.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
+.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
