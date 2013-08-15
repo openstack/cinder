@@ -43,10 +43,6 @@ volume_opts = [
     cfg.IntOpt('reserved_percentage',
                default=0,
                help='The percentage of backend capacity is reserved'),
-    cfg.IntOpt('num_iscsi_scan_tries',
-               default=3,
-               help='The maximum number of times to rescan iSCSI target'
-                    'to find volume'),
     cfg.IntOpt('iscsi_num_targets',
                default=100,
                help='The maximum number of iscsi target ids per host'),
