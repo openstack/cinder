@@ -745,6 +745,7 @@ class StorwizeSVCDriver(san.SanDriver):
                 exception_msg = (_('initialize_connection: No node found in '
                                    'I/O group %(gid)s for volume %(vol)s') %
                                  {'gid': IO_group, 'vol': volume_name})
+                LOG.error(exception_msg)
                 raise exception.VolumeBackendAPIException(data=exception_msg)
 
             if not preferred_node_entry and not vol_opts['multipath']:
@@ -773,6 +774,12 @@ class StorwizeSVCDriver(san.SanDriver):
             else:
                 type_str = 'fibre_channel'
                 conn_wwpns = self._get_conn_fc_wwpns(host_name)
+                if len(conn_wwpns) == 0:
+                    msg = (_('Could not get FC connection information for the '
+                             'host-volume connection. Is the host configured '
+                             'properly for FC connections?'))
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
                 if not vol_opts['multipath']:
                     if preferred_node_entry['WWPN'] in conn_wwpns:
                         properties['target_wwn'] = preferred_node_entry['WWPN']
@@ -1052,6 +1059,7 @@ class StorwizeSVCDriver(san.SanDriver):
                                  % {'status': mapping_attrs['status'],
                                     'id': fc_map_id,
                                     'attr': mapping_attrs})
+                LOG.error(exception_msg)
                 raise exception.VolumeBackendAPIException(data=exception_msg)
             # Need to wait for mapping to be prepared, wait a few seconds
             time.sleep(wait_time)
@@ -1299,6 +1307,7 @@ class StorwizeSVCDriver(san.SanDriver):
         if volume['size'] != snapshot['volume_size']:
             exception_message = (_('create_volume_from_snapshot: '
                                    'Source and destination size differ.'))
+            LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         opts = self._get_vdisk_params(volume['volume_type_id'])
@@ -1313,6 +1322,7 @@ class StorwizeSVCDriver(san.SanDriver):
         if src_volume['size'] != tgt_volume['size']:
             exception_message = (_('create_cloned_volume: '
                                    'Source and destination size differ.'))
+            LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         opts = self._get_vdisk_params(tgt_volume['volume_type_id'])
@@ -1330,6 +1340,7 @@ class StorwizeSVCDriver(san.SanDriver):
         if not ret:
             exception_message = (_('extend_volume: Extending a volume with '
                                    'snapshots is not supported.'))
+            LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         extend_amt = int(new_size) - volume['size']
@@ -1377,7 +1388,8 @@ class StorwizeSVCDriver(san.SanDriver):
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
         if not attributes or not attributes['name']:
             exception_message = (_('_update_volume_stats: '
-                                   'Could not get system name'))
+                                   'Could not get system name.'))
+            LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         backend_name = self.configuration.safe_get('volume_backend_name')
