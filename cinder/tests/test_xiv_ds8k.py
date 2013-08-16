@@ -137,16 +137,16 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
     def test_initialized_should_set_xiv_ds8k_info(self):
         """Test that the san flags are passed to the IBM proxy."""
 
-        self.assertEquals(
+        self.assertEqual(
             self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_user'],
             self.driver.configuration.san_login)
-        self.assertEquals(
+        self.assertEqual(
             self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_pass'],
             self.driver.configuration.san_password)
-        self.assertEquals(
+        self.assertEqual(
             self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_address'],
             self.driver.configuration.san_ip)
-        self.assertEquals(
+        self.assertEqual(
             self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_vol_pool'],
             self.driver.configuration.san_clustername)
 

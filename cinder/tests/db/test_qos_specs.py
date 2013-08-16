@@ -99,8 +99,8 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         spec_id3 = self._create_qos_specs('Name3', value3)
 
         specs = db.qos_specs_get_all(self.ctxt)
-        self.assertEquals(len(specs), 3,
-                          "Unexpected number of qos specs records")
+        self.assertEqual(len(specs), 3,
+                         "Unexpected number of qos specs records")
 
         expected1 = dict(name='Name1', id=spec_id1, consumer='front-end')
         expected2 = dict(name='Name2', id=spec_id2, consumer='back-end')

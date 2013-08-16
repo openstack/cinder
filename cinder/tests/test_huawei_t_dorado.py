@@ -1387,10 +1387,10 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         self.assertEqual(LUN_INFO['Owner Controller'], 'A')
         ret = self.driver.initialize_connection(FAKE_VOLUME, FAKE_CONNECTOR)
         iscsi_propers = ret['data']
-        self.assertEquals(iscsi_propers['target_iqn'],
-                          INITIATOR_SETTING['TargetIQN-form'])
-        self.assertEquals(iscsi_propers['target_portal'],
-                          INITIATOR_SETTING['Initiator TargetIP'] + ':3260')
+        self.assertEqual(iscsi_propers['target_iqn'],
+                         INITIATOR_SETTING['TargetIQN-form'])
+        self.assertEqual(iscsi_propers['target_portal'],
+                         INITIATOR_SETTING['Initiator TargetIP'] + ':3260')
         self.assertEqual(MAP_INFO["DEV LUN ID"], LUN_INFO['ID'])
         self.assertEqual(MAP_INFO["INI Port Info"],
                          FAKE_CONNECTOR['initiator'])
@@ -1526,8 +1526,8 @@ class HuaweiTFCDriverTestCase(test.TestCase):
         self.driver.create_volume(FAKE_VOLUME)
         ret = self.driver.initialize_connection(FAKE_VOLUME, FAKE_CONNECTOR)
         fc_properties = ret['data']
-        self.assertEquals(fc_properties['target_wwn'],
-                          INITIATOR_SETTING['WWN'])
+        self.assertEqual(fc_properties['target_wwn'],
+                         INITIATOR_SETTING['WWN'])
         self.assertEqual(MAP_INFO["DEV LUN ID"], LUN_INFO['ID'])
 
         self.driver.terminate_connection(FAKE_VOLUME, FAKE_CONNECTOR)
@@ -1659,10 +1659,10 @@ class HuaweiDorado2100G2ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
         self.driver.create_volume(FAKE_VOLUME)
         ret = self.driver.initialize_connection(FAKE_VOLUME, FAKE_CONNECTOR)
         iscsi_propers = ret['data']
-        self.assertEquals(iscsi_propers['target_iqn'],
-                          INITIATOR_SETTING['TargetIQN-form'])
-        self.assertEquals(iscsi_propers['target_portal'],
-                          INITIATOR_SETTING['Initiator TargetIP'] + ':3260')
+        self.assertEqual(iscsi_propers['target_iqn'],
+                         INITIATOR_SETTING['TargetIQN-form'])
+        self.assertEqual(iscsi_propers['target_portal'],
+                         INITIATOR_SETTING['Initiator TargetIP'] + ':3260')
         self.assertEqual(MAP_INFO["DEV LUN ID"], LUN_INFO['ID'])
         self.assertEqual(MAP_INFO["INI Port Info"],
                          FAKE_CONNECTOR['initiator'])

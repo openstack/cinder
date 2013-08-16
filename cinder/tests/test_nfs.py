@@ -228,8 +228,8 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals((stat_total_size, stat_avail, du_used),
-                          drv._get_capacity_info(self.TEST_NFS_EXPORT1))
+        self.assertEqual((stat_total_size, stat_avail, du_used),
+                         drv._get_capacity_info(self.TEST_NFS_EXPORT1))
 
         mox.VerifyAll()
 
@@ -261,8 +261,8 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals((stat_total_size, stat_avail, du_used),
-                          drv._get_capacity_info(self.TEST_NFS_EXPORT_SPACES))
+        self.assertEqual((stat_total_size, stat_avail, du_used),
+                         drv._get_capacity_info(self.TEST_NFS_EXPORT_SPACES))
 
         mox.VerifyAll()
 

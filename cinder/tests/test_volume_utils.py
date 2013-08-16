@@ -98,25 +98,25 @@ class UsageInfoTestCase(test.TestCase):
 
     def test_get_host_from_queue_simple(self):
         fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTNAME, self.BACKEND)
-        self.assertEquals(volume_utils.get_host_from_queue(fullname),
-                          self.HOSTNAME)
+        self.assertEqual(volume_utils.get_host_from_queue(fullname),
+                         self.HOSTNAME)
 
     def test_get_host_from_queue_ip(self):
         fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTIP, self.BACKEND)
-        self.assertEquals(volume_utils.get_host_from_queue(fullname),
-                          self.HOSTIP)
+        self.assertEqual(volume_utils.get_host_from_queue(fullname),
+                         self.HOSTIP)
 
     def test_get_host_from_queue_multi_at_symbol(self):
         fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTNAME,
                                  self.MULTI_AT_BACKEND)
-        self.assertEquals(volume_utils.get_host_from_queue(fullname),
-                          self.HOSTNAME)
+        self.assertEqual(volume_utils.get_host_from_queue(fullname),
+                         self.HOSTNAME)
 
     def test_get_host_from_queue_ip_multi_at_symbol(self):
         fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTIP,
                                  self.MULTI_AT_BACKEND)
-        self.assertEquals(volume_utils.get_host_from_queue(fullname),
-                          self.HOSTIP)
+        self.assertEqual(volume_utils.get_host_from_queue(fullname),
+                         self.HOSTIP)
 
 
 class LVMVolumeDriverTestCase(test.TestCase):

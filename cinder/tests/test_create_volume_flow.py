@@ -31,7 +31,7 @@ class fake_sheduler_rpc_api(object):
                       image_id=None, request_spec=None,
                       filter_properties=None):
 
-        self.test_inst.assertEquals(self.expected_spec, request_spec)
+        self.test_inst.assertEqual(self.expected_spec, request_spec)
 
 
 class fake_volume_api(object):
@@ -45,13 +45,10 @@ class fake_volume_api(object):
                       snapshot_id=None, image_id=None,
                       source_volid=None):
 
-        self.test_inst.assertEquals(self.expected_spec, request_spec)
-        self.test_inst.assertEquals(request_spec['source_volid'],
-                                    source_volid)
-        self.test_inst.assertEquals(request_spec['snapshot_id'],
-                                    snapshot_id)
-        self.test_inst.assertEquals(request_spec['image_id'],
-                                    image_id)
+        self.test_inst.assertEqual(self.expected_spec, request_spec)
+        self.test_inst.assertEqual(request_spec['source_volid'], source_volid)
+        self.test_inst.assertEqual(request_spec['snapshot_id'], snapshot_id)
+        self.test_inst.assertEqual(request_spec['image_id'], image_id)
 
 
 class fake_db(object):
