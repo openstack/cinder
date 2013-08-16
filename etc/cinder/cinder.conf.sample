@@ -1647,11 +1647,11 @@
 # Name of VPSA storage pool for volumes (string value)
 #zadara_vpsa_poolname=<None>
 
-# Default cache policy for volumes (string value)
-#zadara_default_cache_policy=write-through
+# Default thin provisioning policy for volumes (boolean value)
+#zadara_vol_thin=true
 
-# Default encryption policy for volumes (string value)
-#zadara_default_encryption=NO
+# Default encryption policy for volumes (boolean value)
+#zadara_vol_encrypt=false
 
 # Default striping mode for volumes (string value)
 #zadara_default_striping_mode=simple

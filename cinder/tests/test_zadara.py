@@ -21,13 +21,14 @@ Tests for Zadara VPSA volume driver
 
 import copy
 import httplib
+import mox
 
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume.drivers import zadara
-
-from lxml import etree
+from cinder.volume import configuration as conf
+from cinder.volume.drivers.zadara import zadara_opts
+from cinder.volume.drivers.zadara import ZadaraVPSAISCSIDriver
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -38,7 +39,7 @@ DEFAULT_RUNTIME_VARS = {
     'access_key': '0123456789ABCDEF',
     'volumes': [],
     'servers': [],
-    'controllers': [('active_ctrl', {'display_name': 'test_ctrl'})],
+    'controllers': [('active_ctrl', {'display-name': 'test_ctrl'})],
     'counter': 1000,
 
     'login': """
@@ -99,11 +100,20 @@ class FakeRequest(object):
                         ('/api/volumes.xml', self._create_volume),
                         ('/api/servers.xml', self._create_server),
                         ('/api/servers/*/volumes.xml', self._attach),
-                        ('/api/volumes/*/detach.xml', self._detach)],
-               'DELETE': [('/api/volumes/*', self._delete)],
+                        ('/api/volumes/*/detach.xml', self._detach),
+                        ('/api/volumes/*/expand.xml', self._expand),
+                        ('/api/consistency_groups/*/snapshots.xml',
+                         self._create_snapshot),
+                        ('/api/consistency_groups/*/clone.xml',
+                         self._create_clone)],
+               'DELETE': [('/api/volumes/*', self._delete),
+                          ('/api/snapshots/*', self._delete_snapshot)],
                'GET': [('/api/volumes.xml', self._list_volumes),
+                       ('/api/pools.xml', self._list_pools),
                        ('/api/vcontrollers.xml', self._list_controllers),
                        ('/api/servers.xml', self._list_servers),
+                       ('/api/consistency_groups/*/snapshots.xml',
+                        self._list_vol_snapshots),
                        ('/api/volumes/*/servers.xml',
                         self._list_vol_attachments)]
                }
@@ -156,6 +166,9 @@ class FakeRequest(object):
         if self._incorrect_access_key(params):
             return RUNTIME_VARS['bad_login']
 
+        params['display-name'] = params['name']
+        params['cg-name'] = params['name']
+        params['snapshots'] = []
         params['attachments'] = []
         vpsa_vol = 'volume-%07d' % self._get_counter()
         RUNTIME_VARS['volumes'].append((vpsa_vol, params))
@@ -166,6 +179,7 @@ class FakeRequest(object):
         if self._incorrect_access_key(params):
             return RUNTIME_VARS['bad_login']
 
+        params['display-name'] = params['display_name']
         vpsa_srv = 'srv-%07d' % self._get_counter()
         RUNTIME_VARS['servers'].append((vpsa_srv, params))
         return RUNTIME_VARS['server_created'] % vpsa_srv
@@ -209,6 +223,65 @@ class FakeRequest(object):
 
         return RUNTIME_VARS['bad_volume']
 
+    def _expand(self):
+        params = self._get_parameters(self.body)
+        if self._incorrect_access_key(params):
+            return RUNTIME_VARS['bad_login']
+
+        vol = self.url.split('/')[3]
+        capacity = params['capacity']
+
+        for (vol_name, params) in RUNTIME_VARS['volumes']:
+            if vol_name == vol:
+                params['capacity'] = capacity
+                return RUNTIME_VARS['good']
+
+        return RUNTIME_VARS['bad_volume']
+
+    def _create_snapshot(self):
+        params = self._get_parameters(self.body)
+        if self._incorrect_access_key(params):
+            return RUNTIME_VARS['bad_login']
+
+        cg_name = self.url.split('/')[3]
+        snap_name = params['display_name']
+
+        for (vol_name, params) in RUNTIME_VARS['volumes']:
+            if params['cg-name'] == cg_name:
+                snapshots = params['snapshots']
+                if snap_name in snapshots:
+                    #already attached
+                    return RUNTIME_VARS['bad_volume']
+                else:
+                    snapshots.append(snap_name)
+                    return RUNTIME_VARS['good']
+
+        return RUNTIME_VARS['bad_volume']
+
+    def _delete_snapshot(self):
+        snap = self.url.split('/')[3].split('.')[0]
+
+        for (vol_name, params) in RUNTIME_VARS['volumes']:
+            if snap in params['snapshots']:
+                params['snapshots'].remove(snap)
+                return RUNTIME_VARS['good']
+
+        return RUNTIME_VARS['bad_volume']
+
+    def _create_clone(self):
+        params = self._get_parameters(self.body)
+        if self._incorrect_access_key(params):
+            return RUNTIME_VARS['bad_login']
+
+        params['display-name'] = params['name']
+        params['cg-name'] = params['name']
+        params['capacity'] = 1
+        params['snapshots'] = []
+        params['attachments'] = []
+        vpsa_vol = 'volume-%07d' % self._get_counter()
+        RUNTIME_VARS['volumes'].append((vpsa_vol, params))
+        return RUNTIME_VARS['good']
+
     def _delete(self):
         vol = self.url.split('/')[3].split('.')[0]
 
@@ -223,10 +296,16 @@ class FakeRequest(object):
 
         return RUNTIME_VARS['bad_volume']
 
-    def _generate_list_resp(self, header, footer, body, lst):
+    def _generate_list_resp(self, header, footer, body, lst, vol):
         resp = header
         for (obj, params) in lst:
-            resp += body % (obj, params['display_name'])
+            if vol:
+                resp += body % (obj,
+                                params['display-name'],
+                                params['cg-name'],
+                                params['capacity'])
+            else:
+                resp += body % (obj, params['display-name'])
         resp += footer
         return resp
 
@@ -238,8 +317,9 @@ class FakeRequest(object):
         body = """<volume>
                     <name>%s</name>
                     <display-name>%s</display-name>
+                    <cg-name>%s</cg-name>
                     <status>Available</status>
-                    <virtual-capacity type='integer'>1</virtual-capacity>
+                    <virtual-capacity type='integer'>%s</virtual-capacity>
                     <allocated-capacity type='integer'>1</allocated-capacity>
                     <raid-group-name>r5</raid-group-name>
                     <cache>write-through</cache>
@@ -249,7 +329,8 @@ class FakeRequest(object):
         return self._generate_list_resp(header,
                                         footer,
                                         body,
-                                        RUNTIME_VARS['volumes'])
+                                        RUNTIME_VARS['volumes'],
+                                        True)
 
     def _list_controllers(self):
         header = """<show-vcontrollers-response>
@@ -272,7 +353,16 @@ class FakeRequest(object):
         return self._generate_list_resp(header,
                                         footer,
                                         body,
-                                        RUNTIME_VARS['controllers'])
+                                        RUNTIME_VARS['controllers'],
+                                        False)
+
+    def _list_pools(self):
+        header = """<show-pools-response>
+                     <status type="integer">0</status>
+                     <pools type="array">
+                 """
+        footer = "</pools></show-pools-response>"
+        return header + footer
 
     def _list_servers(self):
         header = """<show-servers-response>
@@ -290,7 +380,7 @@ class FakeRequest(object):
 
         resp = header
         for (obj, params) in RUNTIME_VARS['servers']:
-            resp += body % (obj, params['display_name'], params['iqn'])
+            resp += body % (obj, params['display-name'], params['iqn'])
         resp += footer
         return resp
 
@@ -321,8 +411,35 @@ class FakeRequest(object):
                 for server in attachments:
                     srv_params = self._get_server_obj(server)
                     resp += body % (server,
-                                    srv_params['display_name'],
+                                    srv_params['display-name'],
                                     srv_params['iqn'])
+                resp += footer
+                return resp
+
+        return RUNTIME_VARS['bad_volume']
+
+    def _list_vol_snapshots(self):
+        cg_name = self.url.split('/')[3]
+
+        header = """<show-snapshots-on-cg-response>
+                    <status type="integer">0</status>
+                    <snapshots type="array">"""
+        footer = "</snapshots></show-snapshots-on-cg-response>"
+
+        body = """<snapshot>
+                    <name>%s</name>
+                    <display-name>%s</display-name>
+                    <status>normal</status>
+                    <cg-name>%s</cg-name>
+                    <pool-name>pool-00000001</pool-name>
+                </snapshot>"""
+
+        for (vol_name, params) in RUNTIME_VARS['volumes']:
+            if params['cg-name'] == cg_name:
+                snapshots = params['snapshots']
+                resp = header
+                for snap in snapshots:
+                    resp += body % (snap, snap, cg_name)
                 resp += footer
                 return resp
 
@@ -363,14 +480,18 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     def setUp(self):
         LOG.debug('Enter: setUp')
         super(ZadaraVPSADriverTestCase, self).setUp()
-        self.flags(
-            zadara_user='test',
-            zadara_password='test_password',
-        )
+
         global RUNTIME_VARS
         RUNTIME_VARS = copy.deepcopy(DEFAULT_RUNTIME_VARS)
 
-        self.driver = zadara.ZadaraVPSAISCSIDriver()
+        self.configuration = conf.Configuration(None)
+        self.configuration.append_config_values(zadara_opts)
+        self.configuration.reserved_percentage = 10
+        self.configuration.zadara_user = 'test'
+        self.configuration.zadara_password = 'test_password'
+        self.configuration.zadara_vpsa_poolname = 'pool-0001'
+
+        self.driver = ZadaraVPSAISCSIDriver(configuration=self.configuration)
         self.stubs.Set(httplib, 'HTTPConnection', FakeHTTPConnection)
         self.stubs.Set(httplib, 'HTTPSConnection', FakeHTTPSConnection)
         self.driver.do_setup(None)
@@ -417,15 +538,6 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.ensure_export(context, volume)
         self.driver.remove_export(context, volume)
 
-        self.assertRaises(NotImplementedError,
-                          self.driver.create_volume_from_snapshot,
-                          volume, None)
-        self.assertRaises(NotImplementedError,
-                          self.driver.create_snapshot,
-                          None)
-        self.assertRaises(NotImplementedError,
-                          self.driver.delete_snapshot,
-                          None)
         self.assertRaises(NotImplementedError,
                           self.driver.local_path,
                           None)
@@ -579,3 +691,107 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.assertRaises(exception.ZadaraVPSANoActiveController,
                           self.driver.initialize_connection,
                           volume, connector)
+
+    def test_create_destroy_snapshot(self):
+        """Create/Delete snapshot test."""
+        volume = {'name': 'test_volume_01', 'size': 1}
+        snapshot = {'name': 'snap_01',
+                    'volume_name': volume['name']}
+
+        self.driver.create_volume(volume)
+
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.create_snapshot,
+                          {'name': snapshot['name'],
+                           'volume_name': 'wrong_vol'})
+
+        self.driver.create_snapshot(snapshot)
+
+        # Deleted should succeed for missing volume
+        self.driver.delete_snapshot({'name': snapshot['name'],
+                                     'volume_name': 'wrong_vol'})
+        # Deleted should succeed for missing snap
+        self.driver.delete_snapshot({'name': 'wrong_snap',
+                                     'volume_name': volume['name']})
+
+        self.driver.delete_snapshot(snapshot)
+        self.driver.delete_volume(volume)
+
+    def test_expand_volume(self):
+        """Expand volume test."""
+        volume = {'name': 'test_volume_01', 'size': 10}
+        volume2 = {'name': 'test_volume_02', 'size': 10}
+
+        self.driver.create_volume(volume)
+
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.extend_volume,
+                          volume2, 15)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.extend_volume,
+                          volume, 5)
+
+        self.driver.extend_volume(volume, 15)
+        self.driver.delete_volume(volume)
+
+    def test_create_destroy_clones(self):
+        """Create/Delete clones test."""
+        volume1 = {'name': 'test_volume_01', 'size': 1}
+        volume2 = {'name': 'test_volume_02', 'size': 1}
+        volume3 = {'name': 'test_volume_03', 'size': 1}
+        snapshot = {'name': 'snap_01',
+                    'volume_name': volume1['name']}
+
+        self.driver.create_volume(volume1)
+        self.driver.create_snapshot(snapshot)
+
+        # Test invalid vol reference
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.create_volume_from_snapshot,
+                          volume2,
+                          {'name': snapshot['name'],
+                           'volume_name': 'wrong_vol'})
+        # Test invalid snap reference
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.create_volume_from_snapshot,
+                          volume2,
+                          {'name': 'wrong_snap',
+                           'volume_name': snapshot['volume_name']})
+        # Test invalid src_vref for volume clone
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.create_cloned_volume,
+                          volume3, volume2)
+
+        self.driver.create_volume_from_snapshot(volume2, snapshot)
+        self.driver.create_cloned_volume(volume3, volume1)
+
+        self.driver.delete_volume(volume3)
+        self.driver.delete_volume(volume2)
+        self.driver.delete_snapshot(snapshot)
+        self.driver.delete_volume(volume1)
+
+    def test_get_volume_stats(self):
+        """Get stats test."""
+
+        self.mox.StubOutWithMock(self.configuration, 'safe_get')
+        self.configuration.safe_get('volume_backend_name'). \
+            AndReturn('ZadaraVPSAISCSIDriver')
+        self.mox.ReplayAll()
+
+        data = self.driver.get_volume_stats(True)
+
+        self.assertEqual(data['vendor_name'], 'Zadara Storage')
+        self.assertEqual(data['total_capacity_gb'], 'infinite')
+        self.assertEqual(data['free_capacity_gb'], 'infinite')
+
+        self.assertEquals(data,
+                          {'total_capacity_gb': 'infinite',
+                           'free_capacity_gb': 'infinite',
+                           'reserved_percentage':
+                           self.configuration.reserved_percentage,
+                           'QoS_support': False,
+                           'vendor_name': 'Zadara Storage',
+                           'driver_version': self.driver.VERSION,
+                           'storage_protocol': 'iSCSI',
+                           'volume_backend_name': 'ZadaraVPSAISCSIDriver',
+                           })
