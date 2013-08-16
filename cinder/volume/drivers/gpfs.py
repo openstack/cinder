@@ -21,6 +21,7 @@ GPFS Volume Driver.
 import math
 import os
 import re
+import shutil
 
 from oslo.config import cfg
 
@@ -415,10 +416,84 @@ class GPFSDriver(driver.VolumeDriver):
             return '100M'
         return '%sG' % size_in_g
 
+    def clone_image(self, volume, image_location, image_id):
+        return self._clone_image(volume, image_location, image_id)
+
+    def _is_cloneable(self, image_id):
+        if not((self.configuration.gpfs_images_dir and
+                self.configuration.gpfs_images_share_mode)):
+            reason = 'glance repository not configured to use GPFS'
+            return False, reason, None
+
+        image_path = os.path.join(self.configuration.gpfs_images_dir, image_id)
+        try:
+            self._is_gpfs_path(image_path)
+        except exception.ProcessExecutionError:
+            reason = 'image file not in GPFS'
+            return False, reason, None
+
+        return True, None, image_path
+
+    def _clone_image(self, volume, image_location, image_id):
+        """Attempt to create a volume by efficiently copying image to volume.
+
+        If both source and target are backed by gpfs storage and the source
+        image is in raw format move the image to create a volume using either
+        gpfs clone operation or with a file copy. If the image format is not
+        raw, convert it to raw at the volume path.
+        """
+        cloneable_image, reason, image_path = self._is_cloneable(image_id)
+        if not cloneable_image:
+            LOG.debug('Image %(img)s not cloneable: %(reas)s' %
+                      {'img': image_id, 'reas': reason})
+            return (None, False)
+
+        vol_path = self.local_path(volume)
+        # if the image is not already a GPFS snap file make it so
+        if not self._is_gpfs_parent_file(image_path):
+            self._create_gpfs_snap(image_path, modebits='666')
+
+        data = image_utils.qemu_img_info(image_path)
+
+        # if image format is already raw either clone it or
+        # copy it depending on config file settings
+        if data.file_format == 'raw':
+            if (self.configuration.gpfs_images_share_mode ==
+                    'copy_on_write'):
+                LOG.debug('Clone image to vol %s using mmclone' %
+                          volume['id'])
+                self._create_gpfs_copy(image_path, vol_path)
+            elif self.configuration.gpfs_images_share_mode == 'copy':
+                LOG.debug('Clone image to vol %s using copyfile' %
+                          volume['id'])
+                shutil.copyfile(image_path, vol_path)
+                self._execute('chmod', '666', vol_path, run_as_root=True)
+
+        # if image is not raw convert it to raw into vol_path destination
+        else:
+            LOG.debug('Clone image to vol %s using qemu convert' %
+                      volume['id'])
+            image_utils.convert_image(image_path, vol_path, 'raw')
+            self._execute('chmod', '666', vol_path, run_as_root=True)
+
+        image_utils.resize_image(vol_path, volume['size'])
+
+        return {'provider_location': None}, True
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        return self._gpfs_fetch_to_raw(context, image_service, image_id,
-                                       self.local_path(volume))
+        """Fetch the image from image_service and write it to the volume.
+
+        Note that cinder.volume.flows.create_volume will attempt to use
+        clone_image to efficiently create volume from image when both
+        source and target are backed by gpfs storage.  If that is not the
+        case, this function is invoked and uses fetch_to_raw to create the
+        volume.
+        """
+        LOG.debug('Copy image to vol %s using image_utils fetch_to_raw' %
+                  volume['id'])
+        image_utils.fetch_to_raw(context, image_service, image_id,
+                                 self.local_path(volume))
+        image_utils.resize_image(self.local_path(volume), volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
@@ -462,71 +537,3 @@ class GPFSDriver(driver.VolumeDriver):
         size = int(out.split()[1])
         available = int(out.split()[3])
         return available, size
-
-    def _gpfs_fetch(self, context, image_service, image_id, path, _user_id,
-                    _project_id):
-        if not (self.configuration.gpfs_images_share_mode and
-                self.configuration.gpfs_images_dir and
-                os.path.exists(
-                    os.path.join(self.configuration.gpfs_images_dir,
-                                 image_id))):
-            with fileutils.remove_path_on_error(path):
-                with open(path, "wb") as image_file:
-                    image_service.download(context, image_id, image_file)
-        else:
-            image_path = os.path.join(self.configuration.gpfs_images_dir,
-                                      image_id)
-            if self.configuration.gpfs_images_share_mode == 'copy_on_write':
-                # check if the image is a GPFS snap file
-                if not self._is_gpfs_parent_file(image_path):
-                    self._create_gpfs_snap(image_path, modebits='666')
-                self._execute('ln', '-s', image_path, path, run_as_root=True)
-            else:  # copy
-                self._execute('cp', image_path, path, run_as_root=True)
-                self._execute('chmod', '666', path, run_as_root=True)
-
-    def _gpfs_fetch_to_raw(self, context, image_service, image_id, dest,
-                           user_id=None, project_id=None):
-        if (self.configuration.image_conversion_dir and not
-                os.path.exists(self.configuration.image_conversion_dir)):
-            os.makedirs(self.configuration.image_conversion_dir)
-
-        tmp = "%s.part" % dest
-        with fileutils.remove_path_on_error(tmp):
-            self._gpfs_fetch(context, image_service, image_id, tmp, user_id,
-                             project_id)
-
-            data = image_utils.qemu_img_info(tmp)
-            fmt = data.file_format
-            backing_file = data.backing_file
-
-            if backing_file is not None:
-                msg = (_("fmt = %(fmt)s backed by: %(backing_file)s") %
-                       {'fmt': fmt, 'backing_file': backing_file})
-                LOG.error(msg)
-                raise exception.ImageUnacceptable(
-                    image_id=image_id,
-                    reason=msg)
-
-            if fmt is None:
-                msg = _("'qemu-img info' parsing failed.")
-                LOG.error(msg)
-                raise exception.ImageUnacceptable(
-                    reason=msg,
-                    image_id=image_id)
-            elif fmt == 'raw':  # already in raw format - just rename to dest
-                self._execute('mv', tmp, dest, run_as_root=True)
-            else:  # conversion to raw format required
-                LOG.debug("%s was %s, converting to raw" % (image_id, fmt))
-                image_utils.convert_image(tmp, dest, 'raw')
-                os.unlink(tmp)
-
-            data = image_utils.qemu_img_info(dest)
-            if data.file_format != "raw":
-                msg = (_("Expected image to be in raw format, but is %s") %
-                       data.file_format)
-                LOG.error(msg)
-                raise exception.ImageUnacceptable(
-                    image_id=image_id,
-                    reason=msg)
-            return {'size': math.ceil(data.virtual_size / 1024.0 ** 3)}
