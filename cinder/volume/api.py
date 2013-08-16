@@ -430,9 +430,11 @@ class API(base.Base):
                                                        force)
 
     @wrap_check_policy
-    def accept_transfer(self, context, volume):
+    def accept_transfer(self, context, volume, new_user, new_project):
         return self.volume_rpcapi.accept_transfer(context,
-                                                  volume)
+                                                  volume,
+                                                  new_user,
+                                                  new_project)
 
     def _create_snapshot(self, context,
                          volume, name, description,

@@ -184,7 +184,10 @@ class API(base.Base):
         try:
             # Transfer ownership of the volume now, must use an elevated
             # context.
-            self.volume_api.accept_transfer(context, vol_ref)
+            self.volume_api.accept_transfer(context,
+                                            vol_ref,
+                                            context.user_id,
+                                            context.project_id)
             self.db.transfer_accept(context.elevated(),
                                     transfer_id,
                                     context.user_id,
