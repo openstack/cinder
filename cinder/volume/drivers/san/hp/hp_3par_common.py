@@ -623,7 +623,7 @@ exit
         if max_io is not None:
             cmd.extend(['-io', '%s' % max_io])
         if max_bw is not None:
-            cmd.append(['-bw', '%sM' % max_bw])
+            cmd.extend(['-bw', '%sM' % max_bw])
         cmd.append('vvset:' + vvs_name)
         self._cli_run(cmd)
 
