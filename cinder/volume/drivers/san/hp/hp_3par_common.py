@@ -619,12 +619,13 @@ exit
     def _set_qos_rule(self, qos, vvs_name):
         max_io = self._get_qos_value(qos, 'maxIOPS')
         max_bw = self._get_qos_value(qos, 'maxBWS')
-        cli_qos_string = ""
+        cmd = ['setqos']
         if max_io is not None:
-            cli_qos_string += ('-io %s ' % max_io)
+            cmd.extend(['-io', '%s' % max_io])
         if max_bw is not None:
-            cli_qos_string += ('-bw %sM ' % max_bw)
-        self._cli_run(['setqos', '%svvset:%s' % (cli_qos_string, vvs_name)])
+            cmd.append(['-bw', '%sM' % max_bw])
+        cmd.append('vvset:' + vvs_name)
+        self._cli_run(cmd)
 
     def _add_volume_to_volume_set(self, volume, volume_name,
                                   cpg, vvs_name, qos):
