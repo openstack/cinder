@@ -25,6 +25,7 @@ import webob.exc
 
 from cinder.api.contrib import quotas
 from cinder import context
+from cinder import db
 from cinder import test
 
 
@@ -33,6 +34,13 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes}
+    # need to consider preexisting volume types as well
+    volume_types = db.volume_type_get_all(context.get_admin_context())
+    for volume_type in volume_types:
+        resources['gigabytes_' + volume_type] = -1
+        resources['snapshots_' + volume_type] = -1
+        resources['volumes_' + volume_type] = -1
+
     if tenant_id:
         resources['id'] = tenant_id
     if root:

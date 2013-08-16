@@ -405,6 +405,37 @@ def volume_type_extra_specs_update_or_create(context,
 ###################
 
 
+def volume_type_encryption_get(context, volume_type_id, session=None):
+    return IMPL.volume_type_encryption_get(context, volume_type_id, session)
+
+
+def volume_type_encryption_delete(context, volume_type_id):
+    return IMPL.volume_type_encryption_delete(context, volume_type_id)
+
+
+# TODO(joel-coffman): split into two functions -- update and create
+def volume_type_encryption_update_or_create(context, volume_type_id,
+                                            encryption_specs):
+    return IMPL.volume_type_encryption_update_or_create(context,
+                                                        volume_type_id,
+                                                        encryption_specs)
+
+
+def volume_type_encryption_volume_get(context, volume_type_id, session=None):
+    return IMPL.volume_type_encryption_volume_get(context, volume_type_id,
+                                                  session)
+
+
+###################
+
+
+def volume_encryption_metadata_get(context, volume_id, session=None):
+    return IMPL.volume_encryption_metadata_get(context, volume_id, session)
+
+
+###################
+
+
 def volume_glance_metadata_create(context, volume_id, key, value):
     """Update the Glance metadata for the specified volume."""
     return IMPL.volume_glance_metadata_create(context,

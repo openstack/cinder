@@ -401,6 +401,10 @@ class VolumeTypeExists(Duplicate):
     message = _("Volume Type %(id)s already exists.")
 
 
+class VolumeTypeEncryptionExists(Invalid):
+    message = _("Volume type encryption for type %(type_id)s already exists.")
+
+
 class MigrationError(CinderException):
     message = _("Migration error") + ": %(reason)s"
 

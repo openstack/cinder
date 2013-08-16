@@ -88,6 +88,8 @@ def return_volume(context, volume_id):
             'name': 'fake',
             'host': 'fake-host',
             'status': 'available',
+            'encryption_key_id': None,
+            'volume_type_id': None,
             'metadata': {}}
 
 

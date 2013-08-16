@@ -37,6 +37,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
+from cinder import keymgr
 from cinder.openstack.common import importutils
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
@@ -46,6 +47,8 @@ from cinder import quota
 from cinder import test
 from cinder.tests import conf_fixture
 from cinder.tests.image import fake as fake_image
+from cinder.tests.keymgr import fake as fake_keymgr
+import cinder.volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
@@ -137,6 +140,7 @@ class VolumeTestCase(test.TestCase):
 
         volume = self._create_volume()
         volume_id = volume['id']
+        self.assertIsNone(volume['encryption_key_id'])
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
         self.volume.create_volume(self.context, volume_id)
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 2)
@@ -272,6 +276,7 @@ class VolumeTestCase(test.TestCase):
                                    'name',
                                    'description')
         self.assertEquals(volume['volume_type_id'], None)
+        self.assertEquals(volume['encryption_key_id'], None)
 
         # Create default volume type
         vol_type = conf_fixture.def_vol_type
@@ -287,6 +292,7 @@ class VolumeTestCase(test.TestCase):
                                    'name',
                                    'description')
         self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
+        self.assertIsNone(volume['encryption_key_id'])
 
         # Create volume with specific volume type
         vol_type = 'test'
@@ -301,6 +307,22 @@ class VolumeTestCase(test.TestCase):
                                    'description',
                                    volume_type=db_vol_type)
         self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
+
+    def test_create_volume_with_encrypted_volume_type(self):
+        self.stubs.Set(keymgr, "API", fake_keymgr.fake_api)
+
+        volume_api = cinder.volume.api.API()
+
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 'LUKS')
+
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description',
+                                   volume_type=db_vol_type)
+        self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
+        self.assertIsNotNone(volume['encryption_key_id'])
 
     def test_delete_busy_volume(self):
         """Test volume survives deletion if driver reports it as busy."""
@@ -342,6 +364,87 @@ class VolumeTestCase(test.TestCase):
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_src['id'])
+
+    def test_create_volume_from_snapshot_with_encryption(self):
+        """Test volume can be created from a snapshot of
+        an encrypted volume.
+        """
+        self.stubs.Set(keymgr, 'API', fake_keymgr.fake_api)
+
+        volume_api = cinder.volume.api.API()
+
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 'LUKS')
+        volume_src = volume_api.create(self.context,
+                                       1,
+                                       'name',
+                                       'description',
+                                       volume_type=db_vol_type)
+        snapshot_ref = volume_api.create_snapshot_force(self.context,
+                                                        volume_src,
+                                                        'name',
+                                                        'description')
+        snapshot_ref['status'] = 'available'  # status must be available
+        volume_dst = volume_api.create(self.context,
+                                       1,
+                                       'name',
+                                       'description',
+                                       snapshot=snapshot_ref)
+        self.assertEqual(volume_dst['id'],
+                         db.volume_get(
+                             context.get_admin_context(),
+                             volume_dst['id']).id)
+        self.assertEqual(snapshot_ref['id'],
+                         db.volume_get(context.get_admin_context(),
+                                       volume_dst['id']).snapshot_id)
+
+        # ensure encryption keys match
+        self.assertIsNotNone(volume_src['encryption_key_id'])
+        self.assertIsNotNone(volume_dst['encryption_key_id'])
+
+        key_manager = volume_api.key_manager  # must use *same* key manager
+        volume_src_key = key_manager.get_key(self.context,
+                                             volume_src['encryption_key_id'])
+        volume_dst_key = key_manager.get_key(self.context,
+                                             volume_dst['encryption_key_id'])
+        self.assertEqual(volume_src_key, volume_dst_key)
+
+    def test_create_volume_from_encrypted_volume(self):
+        """Test volume can be created from an encrypted volume."""
+        self.stubs.Set(keymgr, 'API', fake_keymgr.fake_api)
+
+        volume_api = cinder.volume.api.API()
+
+        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
+                                                 'LUKS')
+        volume_src = volume_api.create(self.context,
+                                       1,
+                                       'name',
+                                       'description',
+                                       volume_type=db_vol_type)
+        volume_src['status'] = 'available'  # status must be available
+        volume_dst = volume_api.create(self.context,
+                                       1,
+                                       'name',
+                                       'description',
+                                       source_volume=volume_src)
+        self.assertEqual(volume_dst['id'],
+                         db.volume_get(context.get_admin_context(),
+                                       volume_dst['id']).id)
+        self.assertEqual(volume_src['id'],
+                         db.volume_get(context.get_admin_context(),
+                                       volume_dst['id']).source_volid)
+
+        # ensure encryption keys match
+        self.assertIsNotNone(volume_src['encryption_key_id'])
+        self.assertIsNotNone(volume_dst['encryption_key_id'])
+
+        key_manager = volume_api.key_manager  # must use *same* key manager
+        volume_src_key = key_manager.get_key(self.context,
+                                             volume_src['encryption_key_id'])
+        volume_dst_key = key_manager.get_key(self.context,
+                                             volume_dst['encryption_key_id'])
+        self.assertEqual(volume_src_key, volume_dst_key)
 
     def test_create_volume_from_snapshot_fail_bad_size(self):
         """Test volume can't be created from snapshot with bad volume size."""

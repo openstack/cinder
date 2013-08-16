@@ -187,3 +187,17 @@ class VolumeTypeTestCase(test.TestCase):
                          {"key1": "val1", "key2": "val2", "key3": "val3"})
         self.assertEqual(vol_types['type3']['extra_specs'],
                          {"key1": "val1", "key3": "val3", "key4": "val4"})
+
+    def test_is_encrypted(self):
+        volume_type = volume_types.create(self.ctxt, "type1")
+        volume_type_id = volume_type.get('id')
+        self.assertFalse(volume_types.is_encrypted(self.ctxt, volume_type_id))
+
+        encryption = {
+            'control_location': 'front-end',
+            'provider': 'fake_provider',
+        }
+        db_api.volume_type_encryption_update_or_create(self.ctxt,
+                                                       volume_type_id,
+                                                       encryption)
+        self.assertTrue(volume_types.is_encrypted(self.ctxt, volume_type_id))

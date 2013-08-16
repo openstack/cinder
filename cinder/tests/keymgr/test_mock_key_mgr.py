@@ -66,6 +66,20 @@ class MockKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         self.assertRaises(exception.NotAuthorized,
                           self.key_mgr.store_key, None, None)
 
+    def test_copy_key(self):
+        key_id = self.key_mgr.create_key(self.ctxt)
+        key = self.key_mgr.get_key(self.ctxt, key_id)
+
+        copied_key_id = self.key_mgr.copy_key(self.ctxt, key_id)
+        copied_key = self.key_mgr.get_key(self.ctxt, copied_key_id)
+
+        self.assertNotEqual(key_id, copied_key_id)
+        self.assertEqual(key, copied_key)
+
+    def test_copy_null_context(self):
+        self.assertRaises(exception.NotAuthorized,
+                          self.key_mgr.copy_key, None, None)
+
     def test_get_key(self):
         pass
 

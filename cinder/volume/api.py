@@ -29,6 +29,7 @@ from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder.image import glance
+from cinder import keymgr
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -95,6 +96,7 @@ class API(base.Base):
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         self.availability_zone_names = ()
+        self.key_manager = keymgr.API()
         super(API, self).__init__(db_driver)
 
     def _valid_availabilty_zone(self, availability_zone):
@@ -132,7 +134,7 @@ class API(base.Base):
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
-               scheduler_hints=None):
+               scheduler_hints=None, backup_source_volume=None):
 
         def check_volume_az_zone(availability_zone):
             try:
@@ -153,6 +155,8 @@ class API(base.Base):
             'availability_zone': availability_zone,
             'source_volume': source_volume,
             'scheduler_hints': scheduler_hints,
+            'key_manager': self.key_manager,
+            'backup_source_volume': backup_source_volume,
         }
         (flow, uuid) = create_volume.get_api_flow(self.scheduler_rpcapi,
                                                   self.volume_rpcapi,
@@ -225,6 +229,13 @@ class API(base.Base):
         if len(snapshots):
             msg = _("Volume still has %d dependent snapshots") % len(snapshots)
             raise exception.InvalidVolume(reason=msg)
+
+        # If the volume is encrypted, delete its encryption key from the key
+        # manager. This operation makes volume deletion an irreversible process
+        # because the volume cannot be decrypted without its key.
+        encryption_key_id = volume.get('encryption_key_id', None)
+        if encryption_key_id is not None:
+            self.key_manager.delete_key(encryption_key_id)
 
         now = timeutils.utcnow()
         self.db.volume_update(context, volume_id, {'status': 'deleting',
@@ -478,6 +489,8 @@ class API(base.Base):
                    'volume_size': volume['size'],
                    'display_name': name,
                    'display_description': description,
+                   'volume_type_id': volume['volume_type_id'],
+                   'encryption_key_id': volume['encryption_key_id'],
                    'metadata': metadata}
 
         try:

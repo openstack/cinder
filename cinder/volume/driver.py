@@ -506,6 +506,9 @@ class ISCSIDriver(VolumeDriver):
             properties['physical_block_size'] = physical_block_size
             properties['logical_block_size'] = logical_block_size
 
+        encryption_key_id = volume.get('encryption_key_id', None)
+        properties['encrypted'] = encryption_key_id is not None
+
         return properties
 
     def _run_iscsiadm(self, iscsi_properties, iscsi_command, **kwargs):

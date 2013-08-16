@@ -680,6 +680,10 @@ class QuotaEngineTestCase(test.TestCase):
 
 class VolumeTypeQuotaEngineTestCase(test.TestCase):
     def test_default_resources(self):
+        def fake_vtga(context, inactive=False, filters=None):
+            return {}
+        self.stubs.Set(db, 'volume_type_get_all', fake_vtga)
+
         engine = quota.VolumeTypeQuotaEngine()
         self.assertEqual(engine.resource_names,
                          ['gigabytes', 'snapshots', 'volumes'])
@@ -688,6 +692,22 @@ class VolumeTypeQuotaEngineTestCase(test.TestCase):
         ctx = context.RequestContext('admin', 'admin', is_admin=True)
         vtype = db.volume_type_create(ctx, {'name': 'type1'})
         vtype2 = db.volume_type_create(ctx, {'name': 'type_2'})
+
+        def fake_vtga(context, inactive=False, filters=None):
+            return {
+                'type1': {
+                    'id': vtype['id'],
+                    'name': 'type1',
+                    'extra_specs': {},
+                },
+                'type_2': {
+                    'id': vtype['id'],
+                    'name': 'type_2',
+                    'extra_specs': {},
+                },
+            }
+        self.stubs.Set(db, 'volume_type_get_all', fake_vtga)
+
         engine = quota.VolumeTypeQuotaEngine()
         self.assertEqual(engine.resource_names,
                          ['gigabytes', 'gigabytes_type1', 'gigabytes_type_2',
@@ -722,6 +742,7 @@ class DbQuotaDriverTestCase(test.TestCase):
     def test_get_defaults(self):
         # Use our pre-defined resources
         self._stub_quota_class_get_default()
+        self._stub_volume_type_get_all()
         result = self.driver.get_defaults(None, quota.QUOTAS.resources)
 
         self.assertEqual(
@@ -740,6 +761,11 @@ class DbQuotaDriverTestCase(test.TestCase):
                         gigabytes=1000,)
         self.stubs.Set(db, 'quota_class_get_default', fake_qcgd)
 
+    def _stub_volume_type_get_all(self):
+        def fake_vtga(context, inactive=False, filters=None):
+            return {}
+        self.stubs.Set(db, 'volume_type_get_all', fake_vtga)
+
     def _stub_quota_class_get_all_by_name(self):
         # Stub out quota_class_get_all_by_name
         def fake_qcgabn(context, quota_class):
@@ -750,6 +776,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_class_quotas(self):
         self._stub_quota_class_get_all_by_name()
+        self._stub_volume_type_get_all()
         result = self.driver.get_class_quotas(None, quota.QUOTAS.resources,
                                               'test_class')
 
@@ -789,6 +816,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_project_quotas(self):
         self._stub_get_by_project()
+        self._stub_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project')
@@ -809,6 +837,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_project_quotas_alt_context_no_class(self):
         self._stub_get_by_project()
+        self._stub_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('other_project', 'other_class'),
             quota.QUOTAS.resources, 'test_project')
@@ -828,6 +857,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_project_quotas_alt_context_with_class(self):
         self._stub_get_by_project()
+        self._stub_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('other_project', 'other_class'),
             quota.QUOTAS.resources, 'test_project', quota_class='test_class')
@@ -848,6 +878,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_project_quotas_no_defaults(self):
         self._stub_get_by_project()
+        self._stub_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project', defaults=False)
@@ -869,6 +900,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_get_project_quotas_no_usages(self):
         self._stub_get_by_project()
+        self._stub_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project', usages=False)
