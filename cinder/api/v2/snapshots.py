@@ -108,7 +108,8 @@ class SnapshotsController(wsgi.Controller):
         try:
             vol = self.volume_api.get_snapshot(context, id)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Snapshot could not be found")
+            raise exc.HTTPNotFound(explanation=msg)
 
         return {'snapshot': _translate_snapshot_detail_view(context, vol)}
 
@@ -122,7 +123,9 @@ class SnapshotsController(wsgi.Controller):
             snapshot = self.volume_api.get_snapshot(context, id)
             self.volume_api.delete_snapshot(context, snapshot)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Snapshot could not be found")
+            raise exc.HTTPNotFound(explanation=msg)
+
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=SnapshotsTemplate)
@@ -168,7 +171,9 @@ class SnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         if not self.is_valid_body(body, 'snapshot'):
-            raise exc.HTTPBadRequest()
+            msg = (_("Missing required element '%s' in request body") %
+                   'snapshot')
+            raise exc.HTTPBadRequest(explanation=msg)
 
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)
@@ -213,10 +218,13 @@ class SnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         if not body:
-            raise exc.HTTPBadRequest()
+            msg = _("Missing request body")
+            raise exc.HTTPBadRequest(explanation=msg)
 
         if 'snapshot' not in body:
-            raise exc.HTTPBadRequest()
+            msg = (_("Missing required element '%s' in request body") %
+                   'snapshot')
+            raise exc.HTTPBadRequest(explanation=msg)
 
         snapshot = body['snapshot']
         update_dict = {}
@@ -246,7 +254,8 @@ class SnapshotsController(wsgi.Controller):
             snapshot = self.volume_api.get_snapshot(context, id)
             self.volume_api.update_snapshot(context, snapshot, update_dict)
         except exception.NotFound:
-            raise exc.HTTPNotFound()
+            msg = _("Snapshot could not be found")
+            raise exc.HTTPNotFound(explanation=msg)
 
         snapshot.update(update_dict)
 
