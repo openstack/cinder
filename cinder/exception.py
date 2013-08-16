@@ -622,3 +622,31 @@ class ProtocolNotSupported(CinderException):
 
 class SSHInjectionThreat(CinderException):
     message = _("SSH command injection detected") + ": %(command)s"
+
+
+class CoraidException(CinderException):
+    message = _('Coraid Cinder Driver exception.')
+
+
+class CoraidJsonEncodeFailure(CoraidException):
+    message = _('Failed to encode json data.')
+
+
+class CoraidESMBadCredentials(CoraidException):
+    message = _('Login on ESM failed.')
+
+
+class CoraidESMReloginFailed(CoraidException):
+    message = _('Relogin on ESM failed.')
+
+
+class CoraidESMBadGroup(CoraidException):
+    message = _('Group with name "%(group_name)s" not found.')
+
+
+class CoraidESMConfigureError(CoraidException):
+    message = _('ESM configure request failed: %(message)s.')
+
+
+class CoraidESMNotAvailable(CoraidException):
+    message = _('Coraid ESM not available with reason: %(reason)s.')

@@ -18,17 +18,24 @@
 Desc    : Driver to store volumes on Coraid Appliances.
 Require : Coraid EtherCloud ESM, Coraid VSX and Coraid SRX.
 Author  : Jean-Baptiste RANSY <openstack@alyseo.com>
+Author  : Alex Zasimov <azasimov@mirantis.com>
+Author  : Nikolay Sobolevsky <nsobolevsky@mirantis.com>
 Contrib : Larry Matter <support@coraid.com>
 """
 
 import cookielib
-import time
+import math
+import urllib
 import urllib2
+import urlparse
 
 from oslo.config import cfg
 
+from cinder import exception
 from cinder.openstack.common import jsonutils
+from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
+from cinder import units
 from cinder.volume import driver
 from cinder.volume import volume_types
 
@@ -57,391 +64,473 @@ CONF = cfg.CONF
 CONF.register_opts(coraid_opts)
 
 
-class CoraidException(Exception):
-    def __init__(self, message=None, error=None):
-        super(CoraidException, self).__init__(message, error)
-
-    def __str__(self):
-        return '%s: %s' % self.args
-
-
-class CoraidRESTException(CoraidException):
-    pass
-
-
-class CoraidESMException(CoraidException):
-    pass
+ESM_SESSION_EXPIRED_STATES = ['GeneralAdminFailure',
+                              'passwordInactivityTimeout',
+                              'passwordAbsoluteTimeout']
 
 
 class CoraidRESTClient(object):
-    """Executes volume driver commands on Coraid ESM EtherCloud Appliance."""
+    """Executes REST RPC requests on Coraid ESM EtherCloud Appliance."""
 
-    def __init__(self, ipaddress, user, group, password):
-        self.url = "https://%s:8443/" % ipaddress
-        self.user = user
-        self.group = group
-        self.password = password
-        self.session = False
-        self.cookiejar = cookielib.CookieJar()
-        self.urlOpener = urllib2.build_opener(
-            urllib2.HTTPCookieProcessor(self.cookiejar))
-        LOG.debug(_('Running with CoraidDriver for ESM EtherCLoud'))
+    def __init__(self, esm_url):
+        self._check_esm_url(esm_url)
+        self._esm_url = esm_url
+        self._cookie_jar = cookielib.CookieJar()
+        self._url_opener = urllib2.build_opener(
+            urllib2.HTTPCookieProcessor(self._cookie_jar))
+
+    def _check_esm_url(self, esm_url):
+        splitted = urlparse.urlsplit(esm_url)
+        if splitted.scheme != 'https':
+            raise ValueError(
+                _('Invalid ESM url scheme "%s". Supported https only.') %
+                splitted.scheme)
+
+    @lockutils.synchronized('coraid_rpc', 'cinder-', False)
+    def rpc(self, handle, url_params, data, allow_empty_response=False):
+        return self._rpc(handle, url_params, data, allow_empty_response)
+
+    def _rpc(self, handle, url_params, data, allow_empty_response):
+        """Execute REST RPC using url <esm_url>/handle?url_params.
+
+        Send JSON encoded data in body of POST request.
+
+        Exceptions:
+            urllib2.URLError
+              1. Name or service not found (e.reason is socket.gaierror)
+              2. Socket blocking operation timeout (e.reason is
+                 socket.timeout)
+              3. Network IO error (e.reason is socket.error)
+
+            urllib2.HTTPError
+              1. HTTP 404, HTTP 500 etc.
+
+            CoraidJsonEncodeFailure - bad REST response
+        """
+        # Handle must be simple path, for example:
+        #    /configure
+        if '?' in handle or '&' in handle:
+            raise ValueError(_('Invalid REST handle name. Expected path.'))
+
+        # Request url includes base ESM url, handle path and optional
+        # URL params.
+        rest_url = urlparse.urljoin(self._esm_url, handle)
+        encoded_url_params = urllib.urlencode(url_params)
+        if encoded_url_params:
+            rest_url += '?' + encoded_url_params
+
+        if data is None:
+            json_request = None
+        else:
+            json_request = jsonutils.dumps(data)
+
+        request = urllib2.Request(rest_url, json_request)
+        response = self._url_opener.open(request).read()
+
+        try:
+            if not response and allow_empty_response:
+                reply = {}
+            else:
+                reply = jsonutils.loads(response)
+        except (TypeError, ValueError) as exc:
+            msg = (_('Call to json.loads() failed: %(ex)s.'
+                     ' Response: %(resp)s') %
+                   {'ex': exc, 'resp': response})
+            raise exception.CoraidJsonEncodeFailure(msg)
+
+        return reply
+
+
+def to_coraid_kb(gb):
+    return math.ceil(float(gb) * units.GiB / 1000)
+
+
+def coraid_volume_size(gb):
+    return '{0}K'.format(to_coraid_kb(gb))
+
+
+class CoraidAppliance(object):
+    def __init__(self, rest_client, username, password, group):
+        self._rest_client = rest_client
+        self._username = username
+        self._password = password
+        self._group = group
+        self._logined = False
 
     def _login(self):
-        """Login and Session Handler."""
-        if not self.session or self.session < time.time():
-            url = ('admin?op=login&username=%s&password=%s' %
-                   (self.user, self.password))
-            data = 'Login'
-            reply = self._admin_esm_cmd(url, data)
-            if reply.get('state') == 'adminSucceed':
-                self.session = time.time() + 1100
-                msg = _('Update session cookie %(session)s')
-                LOG.debug(msg % dict(session=self.session))
-                self._set_group(reply)
-                return True
-            else:
-                errmsg = reply.get('message', '')
-                msg = _('Message : %(message)s')
-                raise CoraidESMException(msg % dict(message=errmsg))
-        return True
+        """Login into ESM.
 
-    def _set_group(self, reply):
-        """Set effective group."""
-        if self.group:
-            group = self.group
-            groupId = self._get_group_id(group, reply)
-            if groupId:
-                url = ('admin?op=setRbacGroup&groupId=%s' % (groupId))
-                data = 'Group'
-                reply = self._admin_esm_cmd(url, data)
-                if reply.get('state') == 'adminSucceed':
-                    return True
-                else:
-                    errmsg = reply.get('message', '')
-                    msg = _('Error while trying to set group: %(message)s')
-                    raise CoraidRESTException(msg % dict(message=errmsg))
-            else:
-                msg = _('Unable to find group: %(group)s')
-                raise CoraidESMException(msg % dict(group=group))
-        return True
+        Perform login request and return available groups.
 
-    def _get_group_id(self, groupName, loginResult):
-        """Map group name to group ID."""
-        # NOTE(lmatter): All other groups are under the admin group
-        fullName = "admin group:%s" % groupName
-        groupId = False
-        for kid in loginResult['values']:
-            fullPath = kid['fullPath']
-            if fullPath == fullName:
-                return kid['groupId']
-        return False
-
-    def _esm_cmd(self, url=False, data=None):
-        self._login()
-        return self._admin_esm_cmd(url, data)
-
-    def _admin_esm_cmd(self, url=False, data=None):
+        :returns: dict -- map with group_name to group_id
         """
-        _admin_esm_cmd represent the entry point to send requests to ESM
-        Appliance.  Send the HTTPS call, get response in JSON
-        convert response into Python Object and return it.
+        ADMIN_GROUP_PREFIX = 'admin group:'
+
+        url_params = {'op': 'login',
+                      'username': self._username,
+                      'password': self._password}
+        reply = self._rest_client.rpc('admin', url_params, 'Login')
+        if reply['state'] != 'adminSucceed':
+            raise exception.CoraidESMBadCredentials()
+
+        # Read groups map from login reply.
+        groups_map = {}
+        for group_info in reply.get('values', []):
+            full_group_name = group_info['fullPath']
+            if full_group_name.startswith(ADMIN_GROUP_PREFIX):
+                group_name = full_group_name[len(ADMIN_GROUP_PREFIX):]
+                groups_map[group_name] = group_info['groupId']
+
+        return groups_map
+
+    def _set_effective_group(self, groups_map, group):
+        """Set effective group.
+
+        Use groups_map returned from _login method.
         """
-        if url:
-            url = self.url + url
-
-            req = urllib2.Request(url, data)
-
-            try:
-                res = self.urlOpener.open(req).read()
-            except Exception:
-                raise CoraidRESTException(_('ESM urlOpen error'))
-
-            try:
-                res_json = jsonutils.loads(res)
-            except Exception:
-                raise CoraidRESTException(_('JSON Error'))
-
-            return res_json
-        else:
-            raise CoraidRESTException(_('Request without URL'))
-
-    def _check_esm_alive(self):
         try:
-            url = self.url + 'fetch'
-            req = urllib2.Request(url)
-            code = self.urlOpener.open(req).getcode()
-            if code == '200':
-                return True
-            return False
-        except Exception:
-            return False
+            group_id = groups_map[group]
+        except KeyError:
+            raise exception.CoraidESMBadGroup(group_name=group)
 
-    def _configure(self, data):
-        """In charge of all commands into 'configure'."""
-        url = 'configure'
-        LOG.debug(_('Configure data : %s'), data)
-        response = self._esm_cmd(url, data)
-        LOG.debug(_("Configure response : %s"), response)
-        if response:
-            if response.get('configState') == 'completedSuccessfully':
-                return True
+        url_params = {'op': 'setRbacGroup',
+                      'groupId': group_id}
+        reply = self._rest_client.rpc('admin', url_params, 'Group')
+        if reply['state'] != 'adminSucceed':
+            raise exception.CoraidESMBadCredentials()
+
+        self._logined = True
+
+    def _ensure_session(self):
+        if not self._logined:
+            groups_map = self._login()
+            self._set_effective_group(groups_map, self._group)
+
+    def _relogin(self):
+        self._logined = False
+        self._ensure_session()
+
+    def rpc(self, handle, url_params, data, allow_empty_response=False):
+        self._ensure_session()
+
+        relogin_attempts = 3
+        # Do action, relogin if needed and repeat action.
+        while True:
+            reply = self._rest_client.rpc(handle, url_params, data,
+                                          allow_empty_response)
+
+            if ('state' in reply and
+                reply['state'] in ESM_SESSION_EXPIRED_STATES and
+                    reply['metaCROp'] == 'reboot'):
+                relogin_attempts -= 1
+                if relogin_attempts <= 0:
+                    raise exception.CoraidESMReloginFailed()
+                LOG.debug(_('Session is expired. Relogin on ESM.'))
+                self._relogin()
             else:
-                errmsg = response.get('message', '')
-                msg = _('Message : %(message)s')
-                raise CoraidESMException(msg % dict(message=errmsg))
-        return False
+                return reply
 
-    def _get_volume_info(self, volume_name):
-        """Retrive volume informations for a given volume name."""
-        url = 'fetch?shelf=cms&orchStrRepo&lv=%s' % (volume_name)
+    def _is_bad_config_state(self, reply):
+        return (not reply or
+                'configState' not in reply or
+                reply['configState'] != 'completedSuccessfully')
+
+    def configure(self, json_request):
+        reply = self.rpc('configure', {}, json_request)
+        if self._is_bad_config_state(reply):
+            # Calculate error message
+            if not reply:
+                message = _('Reply is empty.')
+            else:
+                message = reply.get('message', _('Error message is empty.'))
+            raise exception.CoraidESMConfigureError(message=message)
+        return reply
+
+    def esm_command(self, request):
+        request['data'] = jsonutils.dumps(request['data'])
+        return self.configure([request])
+
+    def get_volume_info(self, volume_name):
+        """Retrieve volume information for a given volume name."""
+        url_params = {'shelf': 'cms',
+                      'orchStrRepo': '',
+                      'lv': volume_name}
+        reply = self.rpc('fetch', url_params, None)
         try:
-            response = self._esm_cmd(url)
-            info = response[0][1]['reply'][0]
-            return {"pool": info['lv']['containingPool'],
-                    "repo": info['repoName'],
-                    "vsxidx": info['lv']['lunIndex'],
-                    "index": info['lv']['lvStatus']['exportedLun']['lun'],
-                    "shelf": info['lv']['lvStatus']['exportedLun']['shelf']}
-        except Exception:
-            msg = _('Unable to retrive volume infos for volume %(volname)s')
-            raise CoraidESMException(msg % dict(volname=volume_name))
+            volume_info = reply[0][1]['reply'][0]
+        except (IndexError, KeyError):
+            raise exception.VolumeNotFound(volume_id=volume_name)
+        return {'pool': volume_info['lv']['containingPool'],
+                'repo': volume_info['repoName'],
+                'lun': volume_info['lv']['lvStatus']['exportedLun']['lun'],
+                'shelf': volume_info['lv']['lvStatus']['exportedLun']['shelf']}
 
-    def _get_lun_address(self, volume_name):
-        """Return AoE Address for a given Volume."""
-        volume_info = self._get_volume_info(volume_name)
-        shelf = volume_info['shelf']
-        lun = volume_info['index']
-        return {'shelf': shelf, 'lun': lun}
+    def get_volume_repository(self, volume_name):
+        volume_info = self.get_volume_info(volume_name)
+        return volume_info['repo']
 
-    def create_lun(self, volume_name, volume_size, repository):
-        """Create LUN on Coraid Backend Storage."""
-        data = '[{"addr":"cms","data":"{' \
-               '\\"servers\\":[\\"\\"],' \
-               '\\"repoName\\":\\"%s\\",' \
-               '\\"size\\":\\"%sG\\",' \
-               '\\"lvName\\":\\"%s\\"}",' \
-               '"op":"orchStrLun",' \
-               '"args":"add"}]' % (repository, volume_size,
-                                   volume_name)
-        return self._configure(data)
+    def get_all_repos(self):
+        reply = self.rpc('fetch', {'orchStrRepo': ''}, None)
+        try:
+            return reply[0][1]['reply']
+        except (IndexError, KeyError):
+            return []
+
+    def ping(self):
+        try:
+            self.rpc('fetch', {}, None, allow_empty_response=True)
+        except Exception as e:
+            LOG.debug(_('Coraid Appliance ping failed: %s'), str(e))
+            raise exception.CoraidESMNotAvailable(reason=str(e))
+
+    def create_lun(self, repository_name, volume_name, volume_size_in_gb):
+        request = {'addr': 'cms',
+                   'data': {
+                       'servers': [],
+                       'repoName': repository_name,
+                       'lvName': volume_name,
+                       'size': coraid_volume_size(volume_size_in_gb)},
+                   'op': 'orchStrLun',
+                   'args': 'add'}
+        esm_result = self.esm_command(request)
+        LOG.debug(_('Volume "%(name)s" created with VSX LUN "%(lun)s"') %
+                  {'name': volume_name,
+                   'lun': esm_result['firstParam']})
+        return esm_result
 
     def delete_lun(self, volume_name):
-        """Delete LUN."""
-        try:
-            volume_info = self._get_volume_info(volume_name)
-            repository = volume_info['repo']
-            data = '[{"addr":"cms","data":"{' \
-                   '\\"repoName\\":\\"%(repo)s\\",' \
-                   '\\"lvName\\":\\"%(volname)s\\"}",' \
-                   '"op":"orchStrLun/verified",' \
-                   '"args":"delete"}]' % dict(repo=repository,
-                                              volname=volume_name)
-            return self._configure(data)
-        except Exception:
-            if self._check_esm_alive():
-                return True
-            else:
-                return False
+        repository_name = self.get_volume_repository(volume_name)
+        request = {'addr': 'cms',
+                   'data': {
+                       'repoName': repository_name,
+                       'lvName': volume_name},
+                   'op': 'orchStrLun/verified',
+                   'args': 'delete'}
+        esm_result = self.esm_command(request)
+        LOG.debug(_('Volume "%s" deleted.'), volume_name)
+        return esm_result
+
+    def resize_volume(self, volume_name, new_volume_size_in_gb):
+        LOG.debug(_('Resize volume "%(name)s" to %(size)s') %
+                  {'name': volume_name,
+                   'size': new_volume_size_in_gb})
+        repository = self.get_volume_repository(volume_name)
+        LOG.debug(_('Repository for volume "%(name)s" found: "%(repo)s"') %
+                  {'name': volume_name,
+                   'repo': repository})
+
+        request = {'addr': 'cms',
+                   'data': {
+                       'lvName': volume_name,
+                       'newLvName': volume_name + '-resize',
+                       'size': coraid_volume_size(new_volume_size_in_gb),
+                       'repoName': repository},
+                   'op': 'orchStrLunMods',
+                   'args': 'resize'}
+        esm_result = self.esm_command(request)
+
+        LOG.debug(_('Volume "%(name)s" resized. New size is %(size)s') %
+                  {'name': volume_name,
+                   'size': new_volume_size_in_gb})
+        return esm_result
 
     def create_snapshot(self, volume_name, snapshot_name):
-        """Create Snapshot."""
-        volume_info = self._get_volume_info(volume_name)
-        repository = volume_info['repo']
-        data = '[{"addr":"cms","data":"{' \
-               '\\"repoName\\":\\"%s\\",' \
-               '\\"lvName\\":\\"%s\\",' \
-               '\\"newLvName\\":\\"%s\\"}",' \
-               '"op":"orchStrLunMods",' \
-               '"args":"addClSnap"}]' % (repository, volume_name,
-                                         snapshot_name)
-        return self._configure(data)
+        volume_repository = self.get_volume_repository(volume_name)
+        request = {'addr': 'cms',
+                   'data': {
+                       'repoName': volume_repository,
+                       'lvName': volume_name,
+                       'newLvName': snapshot_name},
+                   'op': 'orchStrLunMods',
+                   'args': 'addClSnap'}
+        esm_result = self.esm_command(request)
+        return esm_result
 
     def delete_snapshot(self, snapshot_name):
-        """Delete Snapshot."""
-        snapshot_info = self._get_volume_info(snapshot_name)
-        repository = snapshot_info['repo']
-        data = '[{"addr":"cms","data":"{' \
-               '\\"repoName\\":\\"%s\\",' \
-               '\\"lvName\\":\\"%s\\"}",' \
-               '"op":"orchStrLunMods",' \
-               '"args":"delClSnap"}]' % (repository, snapshot_name)
-        return self._configure(data)
+        repository_name = self.get_volume_repository(snapshot_name)
+        request = {'addr': 'cms',
+                   'data': {
+                       'repoName': repository_name,
+                       'lvName': snapshot_name},
+                   'op': 'orchStrLunMods',
+                   'args': 'delClSnap'}
+        esm_result = self.esm_command(request)
+        return esm_result
 
-    def create_volume_from_snapshot(self, snapshot_name,
-                                    volume_name, repository):
-        """Create a LUN from a Snapshot."""
-        snapshot_info = self._get_volume_info(snapshot_name)
-        snapshot_repo = snapshot_info['repo']
-        data = '[{"addr":"cms","data":"{' \
-               '\\"lvName\\":\\"%s\\",' \
-               '\\"repoName\\":\\"%s\\",' \
-               '\\"newLvName\\":\\"%s\\",' \
-               '\\"newRepoName\\":\\"%s\\"}",' \
-               '"op":"orchStrLunMods",' \
-               '"args":"addClone"}]' % (snapshot_name, snapshot_repo,
-                                        volume_name, repository)
-        return self._configure(data)
+    def create_volume_from_snapshot(self,
+                                    snapshot_name,
+                                    volume_name,
+                                    dest_repository_name):
+        snapshot_repo = self.get_volume_repository(snapshot_name)
+        request = {'addr': 'cms',
+                   'data': {
+                       'lvName': snapshot_name,
+                       'repoName': snapshot_repo,
+                       'newLvName': volume_name,
+                       'newRepoName': dest_repository_name},
+                   'op': 'orchStrLunMods',
+                   'args': 'addClone'}
+        esm_result = self.esm_command(request)
+        return esm_result
 
-    def resize_volume(self, volume_name, volume_size):
-        volume_info = self._get_volume_info(volume_name)
-        repository = volume_info['repo']
-        data = '[{"addr":"cms","data":"{' \
-               '\\"lvName\\":\\"%s\\",' \
-               '\\"newLvSize\\":\\"%s\\"}",' \
-               '\\"repoName\\":\\"%s\\"}",' \
-               '"op":"orchStrLunMods",' \
-               '"args":"resizeVolume"}]' % (volume_name,
-                                            volume_size,
-                                            repository)
-        return self._configure(data)
+    def clone_volume(self,
+                     src_volume_name,
+                     dst_volume_name,
+                     dst_repository_name):
+        src_volume_info = self.get_volume_info(src_volume_name)
+
+        if src_volume_info['repo'] != dst_repository_name:
+            raise exception.CoraidException(
+                _('Cannot create clone volume in different repository.'))
+
+        request = {'addr': 'cms',
+                   'data': {
+                       'shelfLun': '{0}.{1}'.format(src_volume_info['shelf'],
+                                                    src_volume_info['lun']),
+                       'lvName': src_volume_name,
+                       'repoName': src_volume_info['repo'],
+                       'newLvName': dst_volume_name,
+                       'newRepoName': dst_repository_name},
+                   'op': 'orchStrLunMods',
+                   'args': 'addClone'}
+        return self.esm_command(request)
 
 
 class CoraidDriver(driver.VolumeDriver):
     """This is the Class to set in cinder.conf (volume_driver)."""
 
+    VERSION = '1.0.0'
+
     def __init__(self, *args, **kwargs):
         super(CoraidDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(coraid_opts)
+        self._appliance = None
+
+        self._stats = {'driver_version': self.VERSION,
+                       'free_capacity_gb': 'unknown',
+                       'reserved_percentage': 0,
+                       'storage_protocol': 'aoe',
+                       'total_capacity_gb': 'unknown',
+                       'vendor_name': 'Coraid'}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        self._stats['volume_backend_name'] = backend_name or 'EtherCloud ESM'
 
     def do_setup(self, context):
         """Initialize the volume driver."""
-        self.esm = CoraidRESTClient(self.configuration.coraid_esm_address,
-                                    self.configuration.coraid_user,
-                                    self.configuration.coraid_group,
-                                    self.configuration.coraid_password)
+        esm_url = "https://{0}:8443".format(
+            self.configuration.coraid_esm_address)
+
+        rest_client = CoraidRESTClient(esm_url)
+        self._appliance = CoraidAppliance(rest_client,
+                                          self.configuration.coraid_user,
+                                          self.configuration.coraid_password,
+                                          self.configuration.coraid_group)
 
     def check_for_setup_error(self):
         """Return an error if prerequisites aren't met."""
-        if not self.esm._login():
-            raise LookupError(_("Cannot login on Coraid ESM"))
+        self._appliance.ping()
 
     def _get_repository(self, volume_type):
-        """
-        Return the ESM Repository from the Volume Type.
+        """Get the ESM Repository from the Volume Type.
+
         The ESM Repository is stored into a volume_type_extra_specs key.
         """
         volume_type_id = volume_type['id']
         repository_key_name = self.configuration.coraid_repository_key
         repository = volume_types.get_volume_type_extra_specs(
             volume_type_id, repository_key_name)
-        return repository
+        # Remove <in> keyword from repository name if needed
+        if repository.startswith('<in> '):
+            return repository[len('<in> '):]
+        else:
+            return repository
 
     def create_volume(self, volume):
         """Create a Volume."""
-        try:
-            repository = self._get_repository(volume['volume_type'])
-            self.esm.create_lun(volume['name'], volume['size'], repository)
-        except Exception:
-            msg = _('Fail to create volume %(volname)s')
-            LOG.debug(msg % dict(volname=volume['name']))
-            raise
+        repository = self._get_repository(volume['volume_type'])
+        self._appliance.create_lun(repository, volume['name'], volume['size'])
         # NOTE(jbr_): The manager currently interprets any return as
         # being the model_update for provider location.
         # return None to not break it (thank to jgriffith and DuncanT)
         return
 
+    def create_cloned_volume(self, volume, src_vref):
+        dst_volume_repository = self._get_repository(volume['volume_type'])
+
+        self._appliance.clone_volume(src_vref['name'],
+                                     volume['name'],
+                                     dst_volume_repository)
+
+        if volume['size'] != src_vref['size']:
+            self._appliance.resize_volume(volume['name'], volume['size'])
+
+        return
+
     def delete_volume(self, volume):
         """Delete a Volume."""
         try:
-            self.esm.delete_lun(volume['name'])
-        except Exception:
-            msg = _('Failed to delete volume %(volname)s')
-            LOG.debug(msg % dict(volname=volume['name']))
-            raise
-        return
+            self._appliance.delete_lun(volume['name'])
+        except exception.VolumeNotFound:
+            self._appliance.ping()
 
     def create_snapshot(self, snapshot):
         """Create a Snapshot."""
-        volume_name = (self.configuration.volume_name_template
-                       % snapshot['volume_id'])
-        snapshot_name = (self.configuration.snapshot_name_template
-                         % snapshot['id'])
-        try:
-            self.esm.create_snapshot(volume_name, snapshot_name)
-        except Exception as e:
-            msg = _('Failed to Create Snapshot %(snapname)s')
-            LOG.debug(msg % dict(snapname=snapshot_name))
-            raise
-        return
+        volume_name = snapshot['volume_name']
+        snapshot_name = snapshot['name']
+        self._appliance.create_snapshot(volume_name, snapshot_name)
 
     def delete_snapshot(self, snapshot):
         """Delete a Snapshot."""
-        snapshot_name = (self.configuration.snapshot_name_template
-                         % snapshot['id'])
-        try:
-            self.esm.delete_snapshot(snapshot_name)
-        except Exception:
-            msg = _('Failed to Delete Snapshot %(snapname)s')
-            LOG.debug(msg % dict(snapname=snapshot_name))
-            raise
-        return
+        snapshot_name = snapshot['name']
+        self._appliance.delete_snapshot(snapshot_name)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a Volume from a Snapshot."""
-        snapshot_name = (self.configuration.snapshot_name_template
-                         % snapshot['id'])
+        snapshot_name = snapshot['name']
         repository = self._get_repository(volume['volume_type'])
-        try:
-            self.esm.create_volume_from_snapshot(snapshot_name,
-                                                 volume['name'],
-                                                 repository)
-            resize = volume['size'] > snapshot['volume_size']
-            if resize:
-                self.esm.resize_volume(volume['name'], volume['size'])
-        except Exception:
-            msg = _('Failed to Create Volume from Snapshot %(snapname)s')
-            LOG.debug(msg % dict(snapname=snapshot_name))
-            raise
-        return
+        self._appliance.create_volume_from_snapshot(snapshot_name,
+                                                    volume['name'],
+                                                    repository)
+        if volume['size'] > snapshot['volume_size']:
+            self._appliance.resize_volume(volume['name'], volume['size'])
 
     def extend_volume(self, volume, new_size):
-        """Extend an Existing Volume."""
-        try:
-            self.esm.resize_volume(volume['name'], new_size)
-        except Exception:
-            msg = _('Failed to Extend Volume %(volname)s')
-            LOG.debug(msg % dict(volname=volume['name']))
-            raise
+        """Extend an existing volume."""
+        self._appliance.resize_volume(volume['name'], new_size)
         return
 
     def initialize_connection(self, volume, connector):
         """Return connection information."""
-        try:
-            infos = self.esm._get_lun_address(volume['name'])
-            shelf = infos['shelf']
-            lun = infos['lun']
+        volume_info = self._appliance.get_volume_info(volume['name'])
 
-            aoe_properties = {
-                'target_shelf': shelf,
-                'target_lun': lun,
-            }
-            return {
-                'driver_volume_type': 'aoe',
-                'data': aoe_properties,
-            }
-        except Exception:
-            msg = _('Failed to Initialize Connection. '
-                    'Volume Name: %(volname)s '
-                    'Shelf: %(shelf)s, '
-                    'Lun: %(lun)s')
-            LOG.debug(msg % dict(volname=volume['name'],
-                                 shelf=shelf,
-                                 lun=lun))
-            raise
-        return
+        shelf = volume_info['shelf']
+        lun = volume_info['lun']
+
+        LOG.debug(_('Initialize connection %(shelf)s/%(lun)s for %(name)s') %
+                  {'shelf': shelf,
+                   'lun': lun,
+                   'name': volume['name']})
+
+        aoe_properties = {'target_shelf': shelf,
+                          'target_lun': lun}
+
+        return {'driver_volume_type': 'aoe',
+                'data': aoe_properties}
+
+    def _get_repository_capabilities(self):
+        repos_list = map(lambda i: i['profile']['fullName'] + ':' + i['name'],
+                         self._appliance.get_all_repos())
+        return ' '.join(repos_list)
+
+    def update_volume_stats(self):
+        capabilities = self._get_repository_capabilities()
+        self._stats[self.configuration.coraid_repository_key] = capabilities
 
     def get_volume_stats(self, refresh=False):
         """Return Volume Stats."""
-        data = {'driver_version': self.VERSION,
-                'free_capacity_gb': 'unknown',
-                'reserved_percentage': 0,
-                'storage_protocol': 'aoe',
-                'total_capacity_gb': 'unknown',
-                'vendor_name': 'Coraid'}
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or 'EtherCloud ESM'
-        return data
+        if refresh:
+            self.update_volume_stats()
+        return self._stats
 
     def local_path(self, volume):
         pass
@@ -456,7 +545,4 @@ class CoraidDriver(driver.VolumeDriver):
         pass
 
     def ensure_export(self, context, volume):
-        pass
-
-    def detach_volume(self, context, volume):
         pass

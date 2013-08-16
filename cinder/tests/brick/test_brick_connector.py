@@ -18,6 +18,8 @@ import os.path
 import string
 import time
 
+import mox
+
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
@@ -59,6 +61,10 @@ class ConnectorTestCase(test.TestCase):
         obj = connector.InitiatorConnector.factory('fibre_channel')
         self.assertTrue(obj.__class__.__name__,
                         "FibreChannelConnector")
+
+        obj = connector.InitiatorConnector.factory('aoe')
+        self.assertTrue(obj.__class__.__name__,
+                        "AoEConnector")
 
         self.assertRaises(ValueError,
                           connector.InitiatorConnector.factory,
@@ -322,3 +328,100 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
         self.assertRaises(exception.NoFibreChannelHostsFound,
                           self.connector.connect_volume,
                           connection_info['data'])
+
+
+class AoEConnectorTestCase(ConnectorTestCase):
+    """Test cases for AoE initiator class."""
+    def setUp(self):
+        super(AoEConnectorTestCase, self).setUp()
+        self.mox = mox.Mox()
+        self.connector = connector.AoEConnector()
+        self.connection_properties = {'target_shelf': 'fake_shelf',
+                                      'target_lun': 'fake_lun'}
+
+    def tearDown(self):
+        self.mox.VerifyAll()
+        self.mox.UnsetStubs()
+        super(AoEConnectorTestCase, self).tearDown()
+
+    def _mock_path_exists(self, aoe_path, mock_values=[]):
+        self.mox.StubOutWithMock(os.path, 'exists')
+        for value in mock_values:
+            os.path.exists(aoe_path).AndReturn(value)
+
+    def test_connect_volume(self):
+        """Ensure that if path exist aoe-revaliadte was called."""
+        aoe_device, aoe_path = self.connector._get_aoe_info(
+            self.connection_properties)
+
+        self._mock_path_exists(aoe_path, [True, True])
+
+        self.mox.StubOutWithMock(self.connector, '_execute')
+        self.connector._execute('aoe-revalidate',
+                                aoe_device,
+                                run_as_root=True,
+                                root_helper='sudo',
+                                check_exit_code=0).AndReturn(("", ""))
+        self.mox.ReplayAll()
+
+        self.connector.connect_volume(self.connection_properties)
+
+    def test_connect_volume_without_path(self):
+        """Ensure that if path doesn't exist aoe-discovery was called."""
+
+        aoe_device, aoe_path = self.connector._get_aoe_info(
+            self.connection_properties)
+        expected_info = {
+            'type': 'block',
+            'device': aoe_device,
+            'path': aoe_path,
+        }
+
+        self._mock_path_exists(aoe_path, [False, True])
+
+        self.mox.StubOutWithMock(self.connector, '_execute')
+        self.connector._execute('aoe-discover',
+                                run_as_root=True,
+                                root_helper='sudo',
+                                check_exit_code=0).AndReturn(("", ""))
+        self.mox.ReplayAll()
+
+        volume_info = self.connector.connect_volume(
+            self.connection_properties)
+
+        self.assertDictMatch(volume_info, expected_info)
+
+    def test_connect_volume_could_not_discover_path(self):
+        aoe_device, aoe_path = self.connector._get_aoe_info(
+            self.connection_properties)
+
+        number_of_calls = 4
+        self._mock_path_exists(aoe_path, [False] * (number_of_calls + 1))
+        self.mox.StubOutWithMock(self.connector, '_execute')
+
+        for i in xrange(number_of_calls):
+            self.connector._execute('aoe-discover',
+                                    run_as_root=True,
+                                    root_helper='sudo',
+                                    check_exit_code=0).AndReturn(("", ""))
+        self.mox.ReplayAll()
+        self.assertRaises(exception.VolumeDeviceNotFound,
+                          self.connector.connect_volume,
+                          self.connection_properties)
+
+    def test_disconnect_volume(self):
+        """Ensure that if path exist aoe-revaliadte was called."""
+        aoe_device, aoe_path = self.connector._get_aoe_info(
+            self.connection_properties)
+
+        self._mock_path_exists(aoe_path, [True])
+
+        self.mox.StubOutWithMock(self.connector, '_execute')
+        self.connector._execute('aoe-flush',
+                                aoe_device,
+                                run_as_root=True,
+                                root_helper='sudo',
+                                check_exit_code=0).AndReturn(("", ""))
+        self.mox.ReplayAll()
+
+        self.connector.disconnect_volume(self.connection_properties, {})
