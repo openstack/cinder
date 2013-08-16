@@ -24,7 +24,7 @@ from cinder.openstack.common import processutils as putils
 
 
 class Executor(object):
-    def __init__(self, execute=putils.execute, root_helper="sudo",
+    def __init__(self, root_helper, execute=putils.execute,
                  *args, **kwargs):
         self.set_execute(execute)
         self.set_root_helper(root_helper)

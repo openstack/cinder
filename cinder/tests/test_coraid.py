@@ -773,15 +773,19 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
         self.driver.terminate_connection(fake_volume, mox.IgnoreArg())\
             .AndReturn(None)
 
+        root_helper = 'sudo cinder-rootwrap None'
+
         self.mox.StubOutWithMock(connector, 'get_connector_properties')
-        connector.get_connector_properties().AndReturn({})
+        connector.get_connector_properties(root_helper).\
+            AndReturn({})
 
         self.mox.StubOutWithMock(connector.InitiatorConnector, 'factory')
 
         aoe_initiator = self.mox.CreateMockAnything()
 
-        connector.InitiatorConnector.factory('aoe', use_multipath=False)\
-            .AndReturn(aoe_initiator)
+        connector.InitiatorConnector.factory('aoe', root_helper,
+                                             use_multipath=False).\
+            AndReturn(aoe_initiator)
 
         aoe_initiator\
             .connect_volume(self.fake_connection['data'])\

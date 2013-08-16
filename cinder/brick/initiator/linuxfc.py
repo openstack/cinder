@@ -27,9 +27,9 @@ LOG = logging.getLogger(__name__)
 
 
 class LinuxFibreChannel(linuxscsi.LinuxSCSI):
-    def __init__(self, execute=putils.execute, root_helper="sudo",
+    def __init__(self, root_helper, execute=putils.execute,
                  *args, **kwargs):
-        super(LinuxFibreChannel, self).__init__(execute, root_helper,
+        super(LinuxFibreChannel, self).__init__(root_helper, execute,
                                                 *args, **kwargs)
 
     def rescan_hosts(self, hbas):

@@ -30,7 +30,7 @@ class LinuxSCSITestCase(test.TestCase):
         super(LinuxSCSITestCase, self).setUp()
         self.cmds = []
         self.stubs.Set(os.path, 'realpath', lambda x: '/dev/sdc')
-        self.linuxscsi = linuxscsi.LinuxSCSI(execute=self.fake_execute)
+        self.linuxscsi = linuxscsi.LinuxSCSI(None, execute=self.fake_execute)
 
     def fake_execute(self, *cmd, **kwargs):
         self.cmds.append(string.join(cmd))
