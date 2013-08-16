@@ -720,3 +720,27 @@ class SolidFireDriver(SanISCSIDriver):
 
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
+
+    def accept_transfer(self, context, volume,
+                        new_user, new_project):
+
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(volume['id'], params)
+
+        if new_project != volume['project_id']:
+            # do a create_sfaccount here as this tenant
+            # may not exist on the cluster yet
+            sfaccount = self._create_sfaccount(new_project)
+
+        params = {
+            'volumeID': sf_vol['volumeID'],
+            'accountID': sfaccount['accountID']
+        }
+        data = self._issue_api_request('ModifyVolume',
+                                       params, version='5.0')
+
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+
+        LOG.debug(_("Leaving SolidFire transfer volume"))
