@@ -1076,11 +1076,8 @@
 
 
 #
-# Options defined in cinder.volume.drivers.nexenta.volume
+# Options defined in cinder.volume.drivers.nexenta.volume.options
 #
-
-# IP address of Nexenta SA (string value)
-#nexenta_host=
 
 # HTTP port to connect to Nexenta REST API server (integer
 # value)
@@ -1089,15 +1086,6 @@
 # Use http or https for REST connection (default auto) (string
 # value)
 #nexenta_rest_protocol=auto
-
-# User name to connect to Nexenta SA (string value)
-#nexenta_user=admin
-
-# Password to connect to Nexenta SA (string value)
-#nexenta_password=nexenta
-
-# Nexenta target portal port (integer value)
-#nexenta_iscsi_target_portal_port=3260
 
 # pool on SA that will hold all volumes (string value)
 #nexenta_volume=cinder

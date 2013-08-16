@@ -22,15 +22,13 @@ Unit tests for OpenStack Cinder volume driver
 import base64
 import urllib2
 
-from oslo.config import cfg
+import mox as mox_lib
 
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import volume
-
-
-CONF = cfg.CONF
 
 
 class TestNexentaDriver(test.TestCase):
@@ -57,21 +55,25 @@ class TestNexentaDriver(test.TestCase):
 
     def setUp(self):
         super(TestNexentaDriver, self).setUp()
-        self.flags(
-            nexenta_host='1.1.1.1',
-            nexenta_volume='cinder',
-            nexenta_target_prefix='iqn:',
-            nexenta_target_group_prefix='cinder/',
-            nexenta_blocksize='8K',
-            nexenta_sparse=True,
-        )
+        self.configuration = mox_lib.MockObject(conf.Configuration)
+        self.configuration.san_ip = '1.1.1.1'
+        self.configuration.san_login = 'admin'
+        self.configuration.san_password = 'nexenta'
+        self.configuration.nexenta_volume = 'cinder'
+        self.configuration.nexenta_rest_port = 2000
+        self.configuration.nexenta_rest_protocol = 'http'
+        self.configuration.iscsi_port = 3260
+        self.configuration.nexenta_target_prefix = 'iqn:'
+        self.configuration.nexenta_target_group_prefix = 'cinder/'
+        self.configuration.nexenta_blocksize = '8K'
+        self.configuration.nexenta_sparse = True
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ['volume', 'zvol', 'iscsitarget', 'appliance',
                     'stmf', 'scsidisk', 'snapshot']:
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
                        lambda *_, **__: self.nms_mock)
-        self.drv = volume.NexentaDriver()
+        self.drv = volume.NexentaDriver(configuration=self.configuration)
         self.drv.do_setup({})
 
     def test_setup_error(self):
@@ -174,9 +176,9 @@ class TestNexentaDriver(test.TestCase):
         self.assertEquals(
             retval,
             {'provider_location':
-                '%s:%s,1 %s%s 0' % (CONF.nexenta_host,
-                                    CONF.nexenta_iscsi_target_portal_port,
-                                    CONF.nexenta_target_prefix,
+                '%s:%s,1 %s%s 0' % (self.configuration.san_ip,
+                                    self.configuration.iscsi_port,
+                                    self.configuration.nexenta_target_prefix,
                                     self.TEST_VOLUME_NAME)})
 
     def __get_test(i):
@@ -229,12 +231,11 @@ class TestNexentaDriver(test.TestCase):
                  'available': '5368709120G',
                  'health': 'ONLINE'}
         self.nms_mock.volume.get_child_props(
-            CONF.nexenta_volume,
+            self.configuration.nexenta_volume,
             'health|size|used|available').AndReturn(stats)
         self.mox.ReplayAll()
         stats = self.drv.get_volume_stats(True)
         self.assertEquals(stats['storage_protocol'], 'iSCSI')
-        self.assertEquals(stats['volume_backend_name'], 'NexentaDriver')
         self.assertEquals(stats['total_capacity_gb'], 5368709120.0)
         self.assertEquals(stats['free_capacity_gb'], 5368709120.0)
         self.assertEquals(stats['reserved_percentage'], 0)

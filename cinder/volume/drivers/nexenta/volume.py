@@ -30,48 +30,14 @@ from cinder import units
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
+from cinder.volume.drivers.nexenta import options
 
 LOG = logging.getLogger(__name__)
 
-NEXENTA_OPTS = [
-    cfg.StrOpt('nexenta_host',
-               default='',
-               help='IP address of Nexenta SA'),
-    cfg.IntOpt('nexenta_rest_port',
-               default=2000,
-               help='HTTP port to connect to Nexenta REST API server'),
-    cfg.StrOpt('nexenta_rest_protocol',
-               default='auto',
-               help='Use http or https for REST connection (default auto)'),
-    cfg.StrOpt('nexenta_user',
-               default='admin',
-               help='User name to connect to Nexenta SA'),
-    cfg.StrOpt('nexenta_password',
-               default='nexenta',
-               help='Password to connect to Nexenta SA',
-               secret=True),
-    cfg.IntOpt('nexenta_iscsi_target_portal_port',
-               default=3260,
-               help='Nexenta target portal port'),
-    cfg.StrOpt('nexenta_volume',
-               default='cinder',
-               help='pool on SA that will hold all volumes'),
-    cfg.StrOpt('nexenta_target_prefix',
-               default='iqn.1986-03.com.sun:02:cinder-',
-               help='IQN prefix for iSCSI targets'),
-    cfg.StrOpt('nexenta_target_group_prefix',
-               default='cinder/',
-               help='prefix for iSCSI target groups on SA'),
-    cfg.StrOpt('nexenta_blocksize',
-               default='',
-               help='block size for volumes (blank=default,8KB)'),
-    cfg.BoolOpt('nexenta_sparse',
-                default=False,
-                help='flag to create sparse volumes'),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(NEXENTA_OPTS)
+CONF.register_opts(options.NEXENTA_CONNECTION_OPTIONS)
+CONF.register_opts(options.NEXENTA_ISCSI_OPTIONS)
+CONF.register_opts(options.NEXENTA_VOLUME_OPTIONS)
 
 
 class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
@@ -83,38 +49,46 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         super(NexentaDriver, self).__init__(*args, **kwargs)
         self.nms = None
         if self.configuration:
-            self.configuration.append_config_values(NEXENTA_OPTS)
+            self.configuration.append_config_values(
+                options.NEXENTA_CONNECTION_OPTIONS)
+            self.configuration.append_config_values(
+                options.NEXENTA_ISCSI_OPTIONS)
+            self.configuration.append_config_values(
+                options.NEXENTA_VOLUME_OPTIONS)
 
     def do_setup(self, context):
-        protocol = CONF.nexenta_rest_protocol
+        protocol = self.configuration.nexenta_rest_protocol
         auto = protocol == 'auto'
         if auto:
             protocol = 'http'
         self.nms = jsonrpc.NexentaJSONProxy(
-            '%s://%s:%s/rest/nms/' % (protocol, CONF.nexenta_host,
-                                      CONF.nexenta_rest_port),
-            CONF.nexenta_user, CONF.nexenta_password, auto=auto)
+            '%s://%s:%s/rest/nms/' % (protocol, self.configuration.san_ip,
+                                      self.configuration.nexenta_rest_port),
+            self.configuration.san_login, self.configuration.san_password,
+            auto=auto)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
 
         :raise: :py:exc:`LookupError`
         """
-        if not self.nms.volume.object_exists(CONF.nexenta_volume):
+        if not self.nms.volume.object_exists(
+                self.configuration.nexenta_volume):
             raise LookupError(_("Volume %s does not exist in Nexenta SA"),
-                              CONF.nexenta_volume)
+                              self.configuration.nexenta_volume)
 
     def _get_zvol_name(self, volume_name):
         """Return zvol name that corresponds given volume name."""
-        return '%s/%s' % (CONF.nexenta_volume, volume_name)
+        return '%s/%s' % (self.configuration.nexenta_volume, volume_name)
 
     def _get_target_name(self, volume_name):
         """Return iSCSI target name to access volume."""
-        return '%s%s' % (CONF.nexenta_target_prefix, volume_name)
+        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
 
     def _get_target_group_name(self, volume_name):
         """Return Nexenta iSCSI target group name for volume."""
-        return '%s%s' % (CONF.nexenta_target_group_prefix, volume_name)
+        return '%s%s' % (self.configuration.nexenta_target_group_prefix,
+                         volume_name)
 
     def _get_clone_snap_name(self, volume):
         """Return name for snapshot that will be used to clone the volume."""
@@ -128,7 +102,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nms.zvol.create(
             self._get_zvol_name(volume['name']),
             '%sG' % (volume['size'],),
-            CONF.nexenta_blocksize, CONF.nexenta_sparse)
+            self.configuration.nexenta_blocksize,
+            self.configuration.nexenta_sparse)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -298,9 +273,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise
             LOG.info(_('Ignored LUN mapping entry addition error "%s"'
                        ' while ensuring export'), exc)
-        return '%s:%s,1 %s 0' % (CONF.nexenta_host,
-                                 CONF.nexenta_iscsi_target_portal_port,
-                                 target_name)
+        return '%s:%s,1 %s 0' % (self.configuration.san_ip,
+                                 self.configuration.iscsi_port, target_name)
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
@@ -371,8 +345,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
-        stats = self.nms.volume.get_child_props(CONF.nexenta_volume,
-                                                'health|size|used|available')
+        stats = self.nms.volume.get_child_props(
+            self.configuration.nexenta_volume, 'health|size|used|available')
         total_unit = stats['size'][-1]
         total_amount = float(stats['size'][:-1])
         free_unit = stats['available'][-1]
