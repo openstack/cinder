@@ -68,7 +68,7 @@ class SheepdogTestCase(test.TestCase):
         expected = dict(
             volume_backend_name='sheepdog',
             vendor_name='Open Source',
-            dirver_version='1.0',
+            dirver_version=self.driver.VERSION,
             storage_protocol='sheepdog',
             total_capacity_gb=float(107287605248) / (1024 ** 3),
             free_capacity_gb=float(107287605248 - 3623897354) / (1024 ** 3),
@@ -84,7 +84,7 @@ class SheepdogTestCase(test.TestCase):
         expected = dict(
             volume_backend_name='sheepdog',
             vendor_name='Open Source',
-            dirver_version='1.0',
+            dirver_version=self.driver.VERSION,
             storage_protocol='sheepdog',
             total_capacity_gb='unknown',
             free_capacity_gb='unknown',

@@ -83,6 +83,8 @@ class NetAppLun(object):
 class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     """NetApp Direct iSCSI volume driver."""
 
+    VERSION = "1.0.0"
+
     IGROUP_PREFIX = 'openstack-'
     required_flags = ['netapp_transport_type', 'netapp_login',
                       'netapp_password', 'netapp_server_hostname',
@@ -1122,7 +1124,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         data["volume_backend_name"] = (
             backend_name or 'NetApp_iSCSI_7mode_direct')
         data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
+        data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] = 'infinite'

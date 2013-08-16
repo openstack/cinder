@@ -40,7 +40,6 @@ import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
 
-VERSION = 1.1
 LOG = logging.getLogger(__name__)
 
 
@@ -53,6 +52,8 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
               session changes, faster clone, requires 3.1.2 MU2 firmware,
               copy volume <--> Image.
     """
+
+    VERSION = "1.1.0"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -75,6 +76,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         self.common.client_login()
         stats = self.common.get_volume_stats(refresh)
         stats['storage_protocol'] = 'FC'
+        stats['driver_version'] = self.VERSION
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or self.__class__.__name__
         self.common.client_logout()

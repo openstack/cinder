@@ -55,6 +55,8 @@ class ScalityDriver(driver.VolumeDriver):
     devices.
     """
 
+    VERSION = '1.0.0'
+
     def _check_prerequisites(self):
         """Sanity checks before attempting to mount SOFS."""
 
@@ -221,7 +223,7 @@ class ScalityDriver(driver.VolumeDriver):
         """
         stats = {
             'vendor_name': 'Scality',
-            'driver_version': '1.0',
+            'driver_version': self.VERSION,
             'storage_protocol': 'scality',
             'total_capacity_gb': 'infinite',
             'free_capacity_gb': 'infinite',

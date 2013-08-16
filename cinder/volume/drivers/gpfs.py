@@ -31,7 +31,6 @@ from cinder.openstack.common import log as logging
 from cinder import units
 from cinder.volume import driver
 
-VERSION = 1.0
 GPFS_CLONE_MIN_RELEASE = 1200
 
 LOG = logging.getLogger(__name__)
@@ -73,6 +72,8 @@ CONF.register_opts(gpfs_opts)
 class GPFSDriver(driver.VolumeDriver):
 
     """Implements volume functions using GPFS primitives."""
+
+    VERSION = "1.0.0"
 
     def __init__(self, *args, **kwargs):
         super(GPFSDriver, self).__init__(*args, **kwargs)
@@ -399,7 +400,7 @@ class GPFSDriver(driver.VolumeDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'GPFS'
         data["vendor_name"] = 'IBM'
-        data["driver_version"] = '1.0'
+        data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'file'
         free, capacity = self._get_available_capacity(self.configuration.
                                                       gpfs_mount_point_base)

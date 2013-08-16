@@ -34,7 +34,6 @@ from cinder.openstack.common import timeutils
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import volume_types
 
-VERSION = '1.2'
 LOG = logging.getLogger(__name__)
 
 sf_opts = [
@@ -63,6 +62,8 @@ class SolidFireDriver(SanISCSIDriver):
         1.1 - Refactor, clone support, qos by type and minor bug fixes
 
     """
+
+    VERSION = '1.2.0'
 
     sf_qos_dict = {'slow': {'minIOPS': 100,
                             'maxIOPS': 200,
@@ -652,7 +653,7 @@ class SolidFireDriver(SanISCSIDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'SolidFire Inc'
-        data["driver_version"] = VERSION
+        data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] = results['maxProvisionedSpace']

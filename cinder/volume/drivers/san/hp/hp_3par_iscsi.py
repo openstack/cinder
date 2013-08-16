@@ -41,7 +41,6 @@ import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
 
-VERSION = 1.1
 LOG = logging.getLogger(__name__)
 DEFAULT_ISCSI_PORT = 3260
 
@@ -55,6 +54,9 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
               session changes, faster clone, requires 3.1.2 MU2 firmware.
 
     """
+
+    VERSION = "1.1.0"
+
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
@@ -76,6 +78,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.common.client_login()
         stats = self.common.get_volume_stats(refresh)
         stats['storage_protocol'] = 'iSCSI'
+        stats['driver_version'] = self.VERSION
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or self.__class__.__name__
         self.common.client_logout()

@@ -41,7 +41,7 @@ CONF.register_opts(volume_opts)
 
 
 class BlockDeviceDriver(driver.ISCSIDriver):
-    VERSION = '1.0'
+    VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
         self.tgtadm = iscsi.get_target_admin()

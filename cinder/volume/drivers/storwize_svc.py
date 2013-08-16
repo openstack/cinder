@@ -56,7 +56,6 @@ from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
-VERSION = 1.1
 LOG = logging.getLogger(__name__)
 
 storwize_svc_opts = [
@@ -118,6 +117,7 @@ class StorwizeSVCDriver(san.SanDriver):
     """====================================================================="""
     """ SETUP                                                               """
     """====================================================================="""
+    VERSION = "1.1.0"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
@@ -1363,7 +1363,7 @@ class StorwizeSVCDriver(san.SanDriver):
         data = {}
 
         data['vendor_name'] = 'IBM'
-        data['driver_version'] = '1.1'
+        data['driver_version'] = self.VERSION
         data['storage_protocol'] = list(self._enabled_protocols)
 
         data['total_capacity_gb'] = 0  # To be overwritten

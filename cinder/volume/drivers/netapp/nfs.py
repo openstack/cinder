@@ -49,6 +49,9 @@ class NetAppNFSDriver(nfs.NfsDriver):
     """Base class for NetApp NFS driver.
       Executes commands relating to Volumes.
     """
+
+    VERSION = "1.0.0"
+
     def __init__(self, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         validate_instantiation(**kwargs)
@@ -484,6 +487,6 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         self._stats["volume_backend_name"] = (backend_name or
                                               'NetApp_NFS_7mode_direct')
         self._stats["vendor_name"] = 'NetApp'
-        self._stats["driver_version"] = '1.0'
+        self._stats["driver_version"] = self.VERSION
         provide_ems(self, self._client, self._stats, netapp_backend,
                     server_type="7mode")

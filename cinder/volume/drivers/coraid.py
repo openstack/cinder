@@ -433,7 +433,7 @@ class CoraidDriver(driver.VolumeDriver):
 
     def get_volume_stats(self, refresh=False):
         """Return Volume Stats."""
-        data = {'driver_version': '1.0',
+        data = {'driver_version': self.VERSION,
                 'free_capacity_gb': 'unknown',
                 'reserved_percentage': 0,
                 'storage_protocol': 'aoe',
