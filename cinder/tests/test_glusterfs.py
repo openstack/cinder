@@ -989,3 +989,34 @@ class GlusterFsDriverTestCase(test.TestCase):
                           'volume-%s' % self.VOLUME_UUID)
 
         mox.VerifyAll()
+
+    def test_extend_volume(self):
+        (mox, drv) = self._mox, self._driver
+
+        volume = self._simple_volume()
+
+        mox.StubOutWithMock(drv, '_execute')
+        mox.StubOutWithMock(drv, 'get_active_image_from_info')
+
+        drv.get_active_image_from_info(volume).AndReturn(volume['name'])
+
+        qemu_img_info_output = """image: volume-%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 473K
+        """ % self.VOLUME_UUID
+
+        volume_path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
+                                           drv._get_hash_str(
+                                               self.TEST_EXPORT1),
+                                           self.VOLUME_UUID)
+        drv._execute('qemu-img', 'info', volume_path).\
+            AndReturn((qemu_img_info_output, ''))
+
+        drv._execute('qemu-img', 'resize', volume_path, '3G', run_as_root=True)
+
+        mox.ReplayAll()
+
+        drv.extend_volume(volume, 3)
+
+        mox.VerifyAll()
