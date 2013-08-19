@@ -20,10 +20,12 @@ import hashlib
 import json
 import os
 import re
+import time
 
 from oslo.config import cfg
 
 from cinder.brick.remotefs import remotefs
+from cinder import compute
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
@@ -68,10 +70,13 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
         self.configuration.append_config_values(remotefs.remotefs_client_opts)
+        self._nova = None
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(GlusterfsDriver, self).do_setup(context)
+
+        self._nova = compute.API()
 
         config = self.configuration.glusterfs_shares_config
         if not config:
@@ -143,7 +148,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         volume_name = CONF.volume_name_template % src_vref['id']
 
-        temp_id = src_vref['id']
         volume_info = {'provider_location': src_vref['provider_location'],
                        'size': src_vref['size'],
                        'id': volume['id'],
@@ -215,7 +219,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                      'vol': volume['id'],
                      'size': volume_size})
 
-        path1 = self._get_hash_str(snapshot['volume']['provider_location'])
         path_to_disk = self._local_path_volume(snapshot['volume'])
 
         path_to_new_vol = self._local_path_volume(volume)
@@ -324,11 +327,90 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         them and handling live transfers of data between files as required.
         """
 
-        # Check that volume is not attached (even for force):
-        # Online snapshots must be done via Nova
-        if snapshot['volume']['status'] != 'available':
-            msg = _("Volume status must be 'available'.")
+        status = snapshot['volume']['status']
+        if status not in ['available', 'in-use']:
+            msg = _('Volume status must be "available" or "in-use"'
+                    ' for snapshot. (is %s)') % status
             raise exception.InvalidVolume(msg)
+
+        if status == 'in-use':
+            # Perform online snapshot via Nova
+            context = snapshot['context']
+
+            backing_filename = self.get_active_image_from_info(
+                snapshot['volume'])
+            path_to_disk = self._local_path_volume(snapshot['volume'])
+            new_snap_path = '%s.%s' % (
+                self._local_path_volume(snapshot['volume']),
+                snapshot['id'])
+
+            self._create_qcow2_snap_file(snapshot,
+                                         backing_filename,
+                                         new_snap_path)
+
+            connection_info = {
+                'type': 'qcow2',
+                'new_file': os.path.basename(new_snap_path),
+                'snapshot_id': snapshot['id']
+            }
+
+            try:
+                result = self._nova.create_volume_snapshot(
+                    context,
+                    snapshot['volume_id'],
+                    connection_info)
+                LOG.debug(_('nova call result: %s') % result)
+            except Exception as e:
+                LOG.error(_('Call to Nova to create snapshot failed'))
+                LOG.exception(e)
+                raise e
+
+            # Loop and wait for result
+            # Nova will call Cinderclient to update the status in the database
+            # An update of progress = '90%' means that Nova is done
+            seconds_elapsed = 0
+            increment = 1
+            timeout = 600
+            while True:
+                s = db.snapshot_get(context, snapshot['id'])
+
+                if s['status'] == 'creating':
+                    if s['progress'] == '90%':
+                        # Nova tasks completed successfully
+                        break
+
+                    time.sleep(increment)
+                    seconds_elapsed += increment
+                elif s['status'] == 'error':
+
+                    msg = _('Nova returned "error" status '
+                            'while creating snapshot.')
+                    raise exception.GlusterfsException(msg)
+
+                LOG.debug(_('Status of snapshot %(id)s is now %(status)s') % {
+                    'id': snapshot['id'],
+                    'status': s['status']
+                })
+
+                if 10 < seconds_elapsed <= 20:
+                    increment = 2
+                elif 20 < seconds_elapsed <= 60:
+                    increment = 5
+                elif 60 < seconds_elapsed:
+                    increment = 10
+
+                if seconds_elapsed > timeout:
+                    msg = _('Timed out while waiting for Nova update '
+                            'for creation of snapshot %s.') % snapshot['id']
+                    raise exception.GlusterfsException(msg)
+
+            info_path = self._local_path_volume(snapshot['volume']) + '.info'
+            snap_info = self._read_info_file(info_path, empty_if_missing=True)
+            snap_info['active'] = os.path.basename(new_snap_path)
+            snap_info[snapshot['id']] = os.path.basename(new_snap_path)
+            self._write_info_file(info_path, snap_info)
+
+            return
 
         LOG.debug(_('create snapshot: %s') % snapshot)
         LOG.debug(_('volume id: %s') % snapshot['volume_id'])
@@ -384,8 +466,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         snap_info = self._read_info_file(info_path,
                                          empty_if_missing=True)
 
-        snap_info[snapshot['id']] = os.path.basename(new_snap_path)
         snap_info['active'] = os.path.basename(new_snap_path)
+        snap_info[snapshot['id']] = os.path.basename(new_snap_path)
         self._write_info_file(info_path, snap_info)
 
     def _read_file(self, filename):
@@ -423,12 +505,17 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         If volume status is 'available', delete snapshot here in Cinder
         using qemu-img.
+
+        If volume status is 'in-use', calculate what qcow2 files need to
+        merge, and call to Nova to perform this operation.
+
         """
 
         LOG.debug(_('deleting snapshot %s') % snapshot['id'])
 
-        if snapshot['volume']['status'] != 'available':
-            msg = _("Volume status must be 'available'.")
+        volume_status = snapshot['volume']['status']
+        if volume_status not in ['available', 'in-use']:
+            msg = _('Volume status must be "available" or "in-use".')
             raise exception.InvalidVolume(msg)
 
         # Determine the true snapshot file for this snapshot
@@ -446,18 +533,46 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             msg = _('Snapshot file at %s does not exist.') % snapshot_path
             raise exception.InvalidSnapshot(msg)
 
-        base_file = self._get_backing_file_for_path(snapshot_path)
-
         vol_path = self._local_volume_dir(snapshot['volume'])
-        base_file_fmt = self._get_file_format_for_path('%s/%s' %
-                                                       (vol_path, base_file))
-        if base_file_fmt not in ['qcow2', 'raw']:
-            msg = _("Invalid snapshot backing file format: %s") % base_file_fmt
-            raise exception.InvalidSnapshot(msg)
 
         # Find what file has this as its backing file
         active_file = self.get_active_image_from_info(snapshot['volume'])
         active_file_path = '%s/%s' % (vol_path, active_file)
+
+        if volume_status == 'in-use':
+            # Online delete
+            context = snapshot['context']
+
+            base_file = self._get_backing_file_for_path(snapshot_path)
+            if base_file is None:
+                # There should always be at least the original volume
+                # file as base.
+                msg = _('No base file found for %s.') % snapshot_path
+                raise exception.GlusterfsException(msg)
+            base_id = None
+            info_path = self._local_path_volume(snapshot['volume']) + '.info'
+            snap_info = self._read_info_file(info_path)
+            for key, value in snap_info.iteritems():
+                if value == base_file and key != 'active':
+                    base_id = key
+                    break
+            if base_id is None:
+                # This means we are deleting the oldest snapshot
+                msg = _('No %(base_id)s found for %(file)s') % {
+                    'base_id': 'base_id',
+                    'file': snapshot_file}
+                LOG.debug(msg)
+
+            online_delete_info = {
+                'active_file': active_file,
+                'snapshot_file': snapshot_file,
+                'base_file': base_file,
+                'base_id': base_id
+            }
+
+            return self._delete_snapshot_online(context,
+                                                snapshot,
+                                                online_delete_info)
 
         if snapshot_file == active_file:
             # Need to merge snapshot_file into its backing file
@@ -476,11 +591,11 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             # Remove snapshot_file from info
             info_path = self._local_path_volume(snapshot['volume']) + '.info'
             snap_info = self._read_info_file(info_path)
+
             del(snap_info[snapshot['id']])
             # Active file has changed
             snap_info['active'] = base_file
             self._write_info_file(info_path, snap_info)
-
         else:
             #    T0         |      T1        |     T2         |       T3
             #    base       |  snapshot_file |  higher_file   |  highest_file
@@ -489,7 +604,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             #  used here)   |                | committed down)|     if so)
 
             backing_chain = self._get_backing_chain_for_path(active_file_path)
-
             # This file is guaranteed to exist since we aren't operating on
             # the active file.
             higher_file = next((os.path.basename(f['filename'])
@@ -541,7 +655,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             # Remove snapshot_file from info
             info_path = self._local_path_volume(snapshot['volume']) + '.info'
             snap_info = self._read_info_file(info_path)
-
             del(snap_info[snapshot['id']])
             snap_info[higher_id] = snapshot_file
             if higher_file == active_file:
@@ -552,6 +665,93 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                 # Active file has changed
                 snap_info['active'] = snapshot_file
             self._write_info_file(info_path, snap_info)
+
+    def _delete_snapshot_online(self, context, snapshot, info):
+        # Update info over the course of this method
+        # active file never changes
+        info_path = self._local_path_volume(snapshot['volume']) + '.info'
+        snap_info = self._read_info_file(info_path)
+
+        if info['active_file'] == info['snapshot_file']:
+            # blockRebase/Pull base into active
+            # info['base'] => snapshot_file
+
+            file_to_delete = info['base_file']
+
+            delete_info = {'file_to_merge': info['base_file'],
+                           'merge_target_file': None,  # current
+                           'type': 'qcow2',
+                           'volume_id': snapshot['volume']['id']}
+
+            del(snap_info[snapshot['id']])
+        else:
+            # blockCommit snapshot into base
+            # info['base'] <= snapshot_file
+            # delete record of snapshot
+            file_to_delete = info['snapshot_file']
+
+            delete_info = {'file_to_merge': info['snapshot_file'],
+                           'merge_target_file': info['base_file'],
+                           'type': 'qcow2',
+                           'volume_id': snapshot['volume']['id']}
+
+            del(snap_info[snapshot['id']])
+
+        try:
+            self._nova.delete_volume_snapshot(
+                context,
+                snapshot['id'],
+                delete_info)
+        except Exception as e:
+            LOG.error(_('Call to Nova delete snapshot failed'))
+            LOG.exception(e)
+            raise e
+
+        # Loop and wait for result
+        # Nova will call Cinderclient to update the status in the database
+        # An update of progress = '90%' means that Nova is done
+        seconds_elapsed = 0
+        increment = 1
+        timeout = 600
+        while True:
+            s = db.snapshot_get(context, snapshot['id'])
+
+            if s['status'] == 'deleting':
+                if s['progress'] == '90%':
+                    # Nova tasks completed successfully
+                    break
+                else:
+                    msg = _('status of snapshot %s is '
+                            'still "deleting"... waiting') % snapshot['id']
+                    LOG.debug(msg)
+                    time.sleep(increment)
+                    seconds_elapsed += increment
+            else:
+                msg = _('Unable to delete snapshot %(id)s, '
+                        'status: %(status)s.') % {'id': snapshot['id'],
+                                                  'status': s['status']}
+                raise exception.GlusterfsException(msg)
+
+            if 10 < seconds_elapsed <= 20:
+                increment = 2
+            elif 20 < seconds_elapsed <= 60:
+                increment = 5
+            elif 60 < seconds_elapsed:
+                increment = 10
+
+            if seconds_elapsed > timeout:
+                msg = _('Timed out while waiting for Nova update '
+                        'for deletion of snapshot %(id)s.') %\
+                    {'id': snapshot['id']}
+                raise exception.GlusterfsException(msg)
+
+        # Write info file updated above
+        self._write_info_file(info_path, snap_info)
+
+        # Delete stale file
+        path_to_delete = os.path.join(
+            self._local_volume_dir(snapshot['volume']), file_to_delete)
+        self._execute('rm', '-f', path_to_delete, run_as_root=True)
 
     def _get_backing_file(self, output):
         for line in output.split('\n'):

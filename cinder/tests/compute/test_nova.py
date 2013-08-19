@@ -26,6 +26,12 @@ class FakeNovaClient(object):
     def __init__(self):
         self.volumes = self.Volumes()
 
+    def create_volume_snapshot(self, *args, **kwargs):
+        pass
+
+    def delete_volume_snapshot(self, *args, **kwargs):
+        pass
+
 
 class NovaApiTestCase(test.TestCase):
     def setUp(self):

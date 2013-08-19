@@ -17,8 +17,13 @@ Handles all requests to Nova.
 """
 
 
+from novaclient import extension
 from novaclient import service_catalog
 from novaclient.v1_1 import client as nova_client
+try:
+    from novaclient.v1_1.contrib import assisted_volume_snapshots
+except ImportError:
+    assisted_volume_snapshots = None
 from oslo.config import cfg
 
 from cinder.db import base
@@ -30,10 +35,16 @@ nova_opts = [
                help='Info to match when looking for nova in the service '
                     'catalog. Format is : separated values of the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
+    cfg.StrOpt('nova_catalog_admin_info',
+               default='compute:nova:adminURL',
+               help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('nova_endpoint_template',
                default=None,
                help='Override service catalog lookup with template for nova '
                     'endpoint e.g. http://localhost:8774/v2/%(tenant_id)s'),
+    cfg.StrOpt('nova_endpoint_admin_template',
+               default=None,
+               help='Same as nova_endpoint_template, but for admin endpoint.'),
     cfg.StrOpt('os_region_name',
                default=None,
                help='region name of this node'),
@@ -52,8 +63,7 @@ CONF.register_opts(nova_opts)
 LOG = logging.getLogger(__name__)
 
 
-def novaclient(context):
-
+def novaclient(context, admin=False):
     # FIXME: the novaclient ServiceCatalog object is mis-named.
     #        It actually contains the entire access blob.
     # Only needed parts of the service catalog are passed in, see
@@ -62,10 +72,18 @@ def novaclient(context):
         'access': {'serviceCatalog': context.service_catalog or []}
     }
     sc = service_catalog.ServiceCatalog(compat_catalog)
-    if CONF.nova_endpoint_template:
-        url = CONF.nova_endpoint_template % context.to_dict()
+
+    nova_endpoint_template = CONF.nova_endpoint_template
+    nova_catalog_info = CONF.nova_catalog_info
+
+    if admin:
+            nova_endpoint_template = CONF.nova_endpoint_admin_template
+            nova_catalog_info = CONF.nova_catalog_admin_info
+
+    if nova_endpoint_template:
+        url = nova_endpoint_template % context.to_dict()
     else:
-        info = CONF.nova_catalog_info
+        info = nova_catalog_info
         service_type, service_name, endpoint_type = info.split(':')
         # extract the region if set in configuration
         if CONF.os_region_name:
@@ -82,12 +100,17 @@ def novaclient(context):
 
     LOG.debug(_('Novaclient connection created using URL: %s') % url)
 
+    extensions = []
+    if assisted_volume_snapshots:
+        extensions.append(assisted_volume_snapshots)
+
     c = nova_client.Client(context.user_id,
                            context.auth_token,
                            context.project_id,
                            auth_url=url,
                            insecure=CONF.nova_api_insecure,
-                           cacert=CONF.nova_ca_certificates_file)
+                           cacert=CONF.nova_ca_certificates_file,
+                           extensions=extensions)
     # noauth extracts user_id:project_id from auth_token
     c.client.auth_token = context.auth_token or '%s:%s' % (context.user_id,
                                                            context.project_id)
@@ -103,3 +126,17 @@ class API(base.Base):
         novaclient(context).volumes.update_server_volume(server_id,
                                                          attachment_id,
                                                          new_volume_id)
+
+    def create_volume_snapshot(self, context, volume_id, create_info):
+        nova = novaclient(context, admin=True)
+
+        nova.assisted_volume_snapshots.create(
+            volume_id,
+            create_info=create_info)
+
+    def delete_volume_snapshot(self, context, snapshot_id, delete_info):
+        nova = novaclient(context, admin=True)
+
+        nova.assisted_volume_snapshots.delete(
+            snapshot_id,
+            delete_info=delete_info)

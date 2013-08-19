@@ -466,10 +466,18 @@
 # <service_type>:<service_name>:<endpoint_type> (string value)
 #nova_catalog_info=compute:nova:publicURL
 
+# Same as nova_catalog_info, but for admin endpoint. (string
+# value)
+#nova_catalog_admin_info=compute:nova:adminURL
+
 # Override service catalog lookup with template for nova
 # endpoint e.g. http://localhost:8774/v2/%(tenant_id)s (string
 # value)
 #nova_endpoint_template=<None>
+
+# Same as nova_endpoint_template, but for admin endpoint.
+# (string value)
+#nova_endpoint_admin_template=<None>
 
 # region name of this node (string value)
 #os_region_name=<None>
@@ -1692,4 +1700,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 362
+# Total option count: 364
