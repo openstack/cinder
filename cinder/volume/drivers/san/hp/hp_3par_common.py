@@ -199,12 +199,9 @@ class HP3PARCommon(object):
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
-        domain = cpg['domain']
-        if not domain:
-            err = (_("CPG (%s) must be in a domain") % cpg_name)
-            LOG.error(err)
-            raise exception.InvalidInput(reason=err)
-        return domain
+        if 'domain' in cpg:
+            return cpg['domain']
+        return None
 
     def extend_volume(self, volume, new_size):
         volume_name = self._get_3par_vol_name(volume['id'])
