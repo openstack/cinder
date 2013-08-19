@@ -374,14 +374,10 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
         self.mox.VerifyAll()
 
     def test_ping_failed(self):
-        self.mox.StubOutWithMock(self.driver._appliance, 'rpc')
-
-        def rpc(handle, url_params, data,
-                allow_empty_response=True):
+        def rpc(*args, **kwargs):
             raise Exception("Some exception")
 
-        self.driver._appliance.rpc = rpc
-
+        self.stubs.Set(self.driver._appliance, 'rpc', rpc)
         self.mox.ReplayAll()
 
         self.assertRaises(exception.CoraidESMNotAvailable,
