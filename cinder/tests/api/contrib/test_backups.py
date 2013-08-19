@@ -914,8 +914,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 413)
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
-                         'Maximum number of volumes allowed '
-                         '(%(allowed)d) exceeded')
+                         'Maximum number of volumes allowed (1) exceeded')
 
     def test_restore_backup_to_undersized_volume(self):
         backup_size = 10

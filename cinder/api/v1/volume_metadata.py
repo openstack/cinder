@@ -124,10 +124,10 @@ class Controller(object):
             raise exc.HTTPBadRequest(explanation=msg)
 
         except exception.InvalidVolumeMetadata as error:
-            raise exc.HTTPBadRequest(explanation=unicode(error))
+            raise exc.HTTPBadRequest(explanation=error.msg)
 
         except exception.InvalidVolumeMetadataSize as error:
-            raise exc.HTTPRequestEntityTooLarge(explanation=unicode(error))
+            raise exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
     @wsgi.serializers(xml=common.MetaItemTemplate)
     def show(self, req, volume_id, id):

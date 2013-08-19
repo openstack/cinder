@@ -183,7 +183,7 @@ class VolumeActionsController(wsgi.Controller):
         try:
             volume = self.volume_api.get(context, id)
         except exception.VolumeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=unicode(error))
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
         authorize(context, "upload_image")
         image_metadata = {"container_format": params.get("container_format",
                                                          "bare"),
@@ -195,7 +195,7 @@ class VolumeActionsController(wsgi.Controller):
                                                             image_metadata,
                                                             force)
         except exception.InvalidVolume as error:
-            raise webob.exc.HTTPBadRequest(explanation=unicode(error))
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
         except ValueError as error:
             raise webob.exc.HTTPBadRequest(explanation=unicode(error))
         except rpc_common.RemoteError as error:

@@ -119,7 +119,14 @@ class CinderException(Exception):
                 # at least get the core message out if something happened
                 message = self.message
 
+        # NOTE(luisg): We put the actual message in 'msg' so that we can access
+        # it, because if we try to access the message via 'message' it will be
+        # overshadowed by the class' message attribute
+        self.msg = message
         super(CinderException, self).__init__(message)
+
+    def __unicode__(self):
+        return unicode(self.msg)
 
 
 class GlanceConnectionFailed(CinderException):
