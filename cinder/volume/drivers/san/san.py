@@ -29,6 +29,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume import driver
 
@@ -124,7 +125,7 @@ class SanDriver(driver.VolumeDriver):
                 while attempts > 0:
                     attempts -= 1
                     try:
-                        return utils.ssh_execute(
+                        return processutils.ssh_execute(
                             ssh,
                             command,
                             check_exit_code=check_exit_code)
