@@ -69,7 +69,7 @@ exit 1
 ''')
             fp.close()
             os.chmod(tmpfilename, 0o755)
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(putils.ProcessExecutionError,
                               utils.execute,
                               tmpfilename, tmpfilename2, attempts=10,
                               process_input='foo',
@@ -88,14 +88,14 @@ exit 1
             os.unlink(tmpfilename2)
 
     def test_unknown_kwargs_raises_error(self):
-        self.assertRaises(exception.UnknownArgumentError,
+        self.assertRaises(putils.UnknownArgumentError,
                           utils.execute,
                           '/usr/bin/env', 'true',
                           this_is_not_a_valid_kwarg=True)
 
     def test_check_exit_code_boolean(self):
         utils.execute('/usr/bin/env', 'false', check_exit_code=False)
-        self.assertRaises(exception.ProcessExecutionError,
+        self.assertRaises(putils.ProcessExecutionError,
                           utils.execute,
                           '/usr/bin/env', 'false', check_exit_code=True)
 
@@ -359,7 +359,7 @@ class GenericUtilsTestCase(test.TestCase):
     def test_read_file_as_root(self):
         def fake_execute(*args, **kwargs):
             if args[1] == 'bad':
-                raise exception.ProcessExecutionError
+                raise putils.ProcessExecutionError
             return 'fakecontents', None
 
         self.stubs.Set(utils, 'execute', fake_execute)

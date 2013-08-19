@@ -51,6 +51,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
 from cinder import utils
 from cinder.volume.drivers.san import san
@@ -211,7 +212,7 @@ class StorwizeSVCDriver(san.SanDriver):
                             'license_compression_capacity') and value != '0':
                     self._compression_enabled = True
                     break
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             LOG.exception(_('Failed to get license information.'))
 
         # Get the available I/O groups
@@ -1055,7 +1056,7 @@ class StorwizeSVCDriver(san.SanDriver):
     def _call_prepare_fc_map(self, fc_map_id, source, target):
         try:
             out, err = self._run_ssh(['svctask', 'prestartfcmap', fc_map_id])
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_('_prepare_fc_map: Failed to prepare FlashCopy '
                             'from %(source)s to %(target)s.\n'
@@ -1113,7 +1114,7 @@ class StorwizeSVCDriver(san.SanDriver):
     def _start_fc_map(self, fc_map_id, source, target):
         try:
             out, err = self._run_ssh(['svctask', 'startfcmap', fc_map_id])
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_('_start_fc_map: Failed to start FlashCopy '
                             'from %(source)s to %(target)s.\n'
@@ -1527,7 +1528,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         try:
             out, err = self._run_ssh(ssh_cmd)
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             # Didn't get details from the storage, return None
             LOG.error(_('CLI Exception output:\n command: %(cmd)s\n '
                         'stdout: %(out)s\n stderr: %(err)s') %

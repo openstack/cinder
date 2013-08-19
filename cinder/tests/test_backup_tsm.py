@@ -26,6 +26,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder import utils
 
@@ -143,10 +144,10 @@ class TSMBackupSimulator:
 
         kwargs = self._cmd_to_dict(cmd)
         if kwargs['cmd'] != 'dsmc' or kwargs['type'] not in cmd_switch:
-            raise exception.ProcessExecutionError(exit_code=1,
-                                                  stdout='',
-                                                  stderr='Not dsmc command',
-                                                  cmd=' '.join(cmd))
+            raise putils.ProcessExecutionError(exit_code=1,
+                                               stdout='',
+                                               stderr='Not dsmc command',
+                                               cmd=' '.join(cmd))
         out, err, ret = cmd_switch[kwargs['type']](**kwargs)
         return (out, err, ret)
 
@@ -178,10 +179,10 @@ class TSMBackupSimulator:
                 err = ''
                 ret = 0
         else:
-            raise exception.ProcessExecutionError(exit_code=1,
-                                                  stdout='',
-                                                  stderr='Unsupported command',
-                                                  cmd=' '.join(cmd))
+            raise putils.ProcessExecutionError(exit_code=1,
+                                               stdout='',
+                                               stderr='Unsupported command',
+                                               cmd=' '.join(cmd))
         return (out, err, ret)
 
     def error_injection(self, cmd, error):
@@ -195,7 +196,7 @@ def fake_exec(*cmd, **kwargs):
 
     out, err, ret = SIM.exec_cmd(cmd)
     if ret and check_exit_code:
-        raise exception.ProcessExecutionError(
+        raise putils.ProcessExecutionError(
             exit_code=-1,
             stdout=out,
             stderr=err,

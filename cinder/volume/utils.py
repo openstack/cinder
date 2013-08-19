@@ -27,6 +27,7 @@ from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
+from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
 from cinder import units
@@ -177,7 +178,7 @@ def copy_volume(srcstr, deststr, size_in_m, sync=False,
     try:
         execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
                 *extra_flags, run_as_root=True)
-    except exception.ProcessExecutionError:
+    except processutils.ProcessExecutionError:
         extra_flags = []
 
     # If the volume is being unprovisioned then

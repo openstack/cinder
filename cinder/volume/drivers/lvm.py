@@ -33,6 +33,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -109,7 +110,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             if self.vg.get_volume(pool_name) is None:
                 try:
                     self.vg.create_thin_pool(pool_name)
-                except exception.ProcessExecutionError as exc:
+                except processutils.ProcessExecutionError as exc:
                     exception_message = ("Failed to create thin pool, "
                                          "error message was: %s"
                                          % exc.stderr)
@@ -481,7 +482,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
         try:
             (out, err) = self._execute('readlink', old_name)
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             link_path = '/dev/%s/%s' % (self.configuration.volume_group,
                                         old_name)
             LOG.debug(_('Symbolic link %s not found') % link_path)

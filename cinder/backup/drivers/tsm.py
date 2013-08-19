@@ -27,11 +27,13 @@ Cinder host for using TSM.
 import os
 import stat
 
+from oslo.config import cfg
+
 from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import utils
-from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
 
@@ -79,7 +81,7 @@ class TSMBackupDriver(BackupDriver):
             utils.execute('ln', volume_path, backup_path,
                           run_as_root=True,
                           check_exit_code=True)
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             err = (_('backup: %(vol_id)s Failed to create device hardlink '
                      'from %(vpath)s to %(bpath)s.\n'
                      'stdout: %(out)s\n stderr: %(err)s')
@@ -254,7 +256,7 @@ class TSMBackupDriver(BackupDriver):
                           '-f',
                           hardlink_path,
                           run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             err = (_('backup: %(vol_id)s Failed to remove backup hardlink'
                      ' from %(vpath)s to %(bpath)s.\n'
                      'stdout: %(out)s\n stderr: %(err)s')
@@ -292,7 +294,7 @@ class TSMBackupDriver(BackupDriver):
                                                     volume_id)
         try:
             self._do_backup(backup_path, volume_id)
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             err = (_('backup: %(vol_id)s Failed to run dsmc '
                      'on %(bpath)s.\n'
                      'stdout: %(out)s\n stderr: %(err)s')
@@ -346,7 +348,7 @@ class TSMBackupDriver(BackupDriver):
 
         try:
             self._do_restore(restore_path, volume_id)
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             err = (_('restore: %(vol_id)s Failed to run dsmc '
                      'on %(bpath)s.\n'
                      'stdout: %(out)s\n stderr: %(err)s')
@@ -407,7 +409,7 @@ class TSMBackupDriver(BackupDriver):
                                      run_as_root=True,
                                      check_exit_code=False)
 
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             err = (_('delete: %(vol_id)s Failed to run dsmc with '
                      'stdout: %(out)s\n stderr: %(err)s')
                    % {'vol_id': volume_id,

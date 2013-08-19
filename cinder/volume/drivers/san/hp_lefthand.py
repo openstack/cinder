@@ -21,6 +21,7 @@ from lxml import etree
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
 
@@ -228,7 +229,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         cliq_args['prompt'] = 'false'  # Don't confirm
         try:
             volume_info = self._cliq_get_volume_info(volume['name'])
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             LOG.error("Volume did not exist. It will not be deleted")
             return
         self._cliq_run_xml("deleteVolume", cliq_args)

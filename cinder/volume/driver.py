@@ -31,6 +31,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
@@ -134,7 +135,7 @@ class VolumeDriver(object):
             try:
                 self._execute(*command, **kwargs)
                 return True
-            except exception.ProcessExecutionError as ex:
+            except processutils.ProcessExecutionError as ex:
                 tries = tries + 1
 
                 if tries >= self.configuration.num_shell_tries or\
@@ -814,7 +815,7 @@ class ISERDriver(ISCSIDriver):
         out, info = None, None
         try:
             out, info = self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             LOG.error(_("Failed to access the device on the path "
                         "%(path)s: %(error)s.") %
                       {"path": path, "error": e.stderr})
@@ -834,7 +835,7 @@ class ISERDriver(ISCSIDriver):
         # code "inspired by" nova/virt/libvirt/volume.py
         try:
             self._run_iscsiadm(iser_properties, ())
-        except exception.ProcessExecutionError as exc:
+        except processutils.ProcessExecutionError as exc:
             # iscsiadm returns 21 for "No records found" after version 2.0-871
             if exc.exit_code in [21, 255]:
                 self._run_iscsiadm(iser_properties, ('--op', 'new'))
@@ -873,7 +874,7 @@ class ISERDriver(ISCSIDriver):
             try:
                 self._run_iscsiadm(iser_properties, ("--login",),
                                    check_exit_code=[0, 255])
-            except exception.ProcessExecutionError as err:
+            except processutils.ProcessExecutionError as err:
                 if err.exit_code in [15]:
                     self._iscsiadm_update(iser_properties,
                                           "node.startup",

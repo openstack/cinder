@@ -49,6 +49,7 @@ import time
 from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import units
 from cinder import utils
 import cinder.volume.drivers as drivers
@@ -383,8 +384,8 @@ class CephBackupDriver(BackupDriver):
         cmd.extend([path, '-'])
         try:
             out, err = self._execute(*cmd)
-        except (exception.ProcessExecutionError,
-                exception.UnknownArgumentError) as exc:
+        except (processutils.ProcessExecutionError,
+                processutils.UnknownArgumentError) as exc:
             LOG.info(_("rbd export-diff failed - %s") % (str(exc)))
             raise exception.BackupRBDOperationFailed("rbd export-diff failed")
 
@@ -392,8 +393,8 @@ class CephBackupDriver(BackupDriver):
         cmd.extend(['-', self._utf8("%s/%s" % (dest_pool, dest_name))])
         try:
             out, err = self._execute(*cmd, process_input=out)
-        except (exception.ProcessExecutionError,
-                exception.UnknownArgumentError) as exc:
+        except (processutils.ProcessExecutionError,
+                processutils.UnknownArgumentError) as exc:
             LOG.info(_("rbd import-diff failed - %s") % (str(exc)))
             raise exception.BackupRBDOperationFailed("rbd import-diff failed")
 

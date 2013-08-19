@@ -27,6 +27,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import units
 from cinder.volume import driver
 
@@ -59,7 +60,7 @@ class SheepdogDriver(driver.VolumeDriver):
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             exception_message = _("Sheepdog is not working")
             raise exception.VolumeBackendAPIException(data=exception_message)
 
@@ -173,7 +174,7 @@ class SheepdogDriver(driver.VolumeDriver):
             used = float(m.group(2))
             stats['total_capacity_gb'] = total / (1024 ** 3)
             stats['free_capacity_gb'] = (total - used) / (1024 ** 3)
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             LOG.exception(_('error refreshing volume stats'))
 
         self._stats = stats

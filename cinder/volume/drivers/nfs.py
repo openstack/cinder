@@ -24,6 +24,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import units
 from cinder.volume import driver
 
@@ -333,7 +334,7 @@ class RemoteFsDriver(driver.VolumeDriver):
         """
         try:
             self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as exc:
+        except processutils.ProcessExecutionError as exc:
             if ensure and 'already mounted' in exc.stderr:
                 LOG.warn(_("%s is already mounted"), share)
             else:

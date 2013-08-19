@@ -57,6 +57,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume import volume_types
 
@@ -314,10 +315,10 @@ exit
         if exit_status != -1:
             LOG.debug(_('Result was %s') % exit_status)
             if check_exit_code and exit_status != 0:
-                raise exception.ProcessExecutionError(exit_code=exit_status,
-                                                      stdout=stdout,
-                                                      stderr=stderr,
-                                                      cmd=cmd)
+                raise processutils.ProcessExecutionError(exit_code=exit_status,
+                                                         stdout=stdout,
+                                                         stderr=stderr,
+                                                         cmd=cmd)
         channel.close()
         return (stdout, stderr)
 

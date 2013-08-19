@@ -33,6 +33,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import test
 from cinder import units
 from cinder import utils
@@ -1229,10 +1230,10 @@ port_speed!N/A
             out, err = ('', 'ERROR: Unsupported command')
 
         if (check_exit_code) and (len(err) != 0):
-            raise exception.ProcessExecutionError(exit_code=1,
-                                                  stdout=out,
-                                                  stderr=err,
-                                                  cmd=' '.join(cmd))
+            raise processutils.ProcessExecutionError(exit_code=1,
+                                                     stdout=out,
+                                                     stderr=err,
+                                                     cmd=' '.join(cmd))
 
         return (out, err)
 
@@ -1257,7 +1258,7 @@ class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
             LOG.debug(_('CLI output:\n stdout: %(stdout)s\n stderr: '
                         '%(stderr)s') % {'stdout': stdout, 'stderr': stderr})
 
-        except exception.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError as e:
             with excutils.save_and_reraise_exception():
                 LOG.debug(_('CLI Exception output:\n stdout: %(out)s\n '
                             'stderr: %(err)s') % {'out': e.stdout,
@@ -1441,10 +1442,10 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         return attrs
 
     def _fail_prepare_fc_map(self, fc_map_id, source, target):
-        raise exception.ProcessExecutionError(exit_code=1,
-                                              stdout='',
-                                              stderr='unit-test-fail',
-                                              cmd='prestartfcmap id')
+        raise processutils.ProcessExecutionError(exit_code=1,
+                                                 stdout='',
+                                                 stderr='unit-test-fail',
+                                                 cmd='prestartfcmap id')
 
     def test_storwize_svc_snapshots(self):
         vol1 = self._generate_vol_info(None, None)
@@ -1462,18 +1463,18 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Test prestartfcmap, startfcmap, and rmfcmap failing
         orig = self.driver._call_prepare_fc_map
         self.driver._call_prepare_fc_map = self._fail_prepare_fc_map
-        self.assertRaises(exception.ProcessExecutionError,
+        self.assertRaises(processutils.ProcessExecutionError,
                           self.driver.create_snapshot, snap1)
         self.driver._call_prepare_fc_map = orig
 
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
             self.sim.error_injection('startfcmap', 'bad_id')
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(processutils.ProcessExecutionError,
                               self.driver.create_snapshot, snap1)
             self._assert_vol_exists(snap1['name'], False)
             self.sim.error_injection('prestartfcmap', 'bad_id')
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(processutils.ProcessExecutionError,
                               self.driver.create_snapshot, snap1)
             self._assert_vol_exists(snap1['name'], False)
 
@@ -1512,7 +1513,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Fail the snapshot
         orig = self.driver._call_prepare_fc_map
         self.driver._call_prepare_fc_map = self._fail_prepare_fc_map
-        self.assertRaises(exception.ProcessExecutionError,
+        self.assertRaises(processutils.ProcessExecutionError,
                           self.driver.create_volume_from_snapshot,
                           vol2, snap1)
         self.driver._call_prepare_fc_map = orig
@@ -1574,7 +1575,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.assertEqual(attributes['mdisk_grp_name'], pool)
 
         # Try to create the volume again (should fail)
-        self.assertRaises(exception.ProcessExecutionError,
+        self.assertRaises(processutils.ProcessExecutionError,
                           self.driver.create_volume,
                           volume)
 
@@ -1637,7 +1638,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                         self.assertNotEqual(attrs[k], v)
                     else:
                         self.assertEqual(attrs[k], v)
-                except exception.ProcessExecutionError as e:
+                except processutils.ProcessExecutionError as e:
                     if 'CMMVC7050E' not in e.stderr:
                         raise
 
@@ -1753,7 +1754,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.driver.initialize_connection(volume1, self._connector)
 
             # Try to delete the 1st volume (should fail because it is mapped)
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(processutils.ProcessExecutionError,
                               self.driver.delete_volume,
                               volume1)
 
@@ -1892,7 +1893,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         if self.USESIM and False:
             snap = self._generate_vol_info(master['name'], master['id'])
             self.sim.error_injection('startfcmap', 'bad_id')
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(processutils.ProcessExecutionError,
                               self.driver.create_snapshot, snap)
             self._assert_vol_exists(snap['name'], False)
 
@@ -1915,7 +1916,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             volfs = self._generate_vol_info(None, None)
             self.sim.error_injection('startfcmap', 'bad_id')
             self.sim.error_injection('lsfcmap', 'speed_up')
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(processutils.ProcessExecutionError,
                               self.driver.create_volume_from_snapshot,
                               volfs, snap)
             self._assert_vol_exists(volfs['name'], False)
@@ -1942,7 +1943,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             clone = self._generate_vol_info(None, None)
             self.sim.error_injection('startfcmap', 'bad_id')
             self.sim.error_injection('lsfcmap', 'speed_up')
-            self.assertRaises(exception.ProcessExecutionError,
+            self.assertRaises(processutils.ProcessExecutionError,
                               self.driver.create_cloned_volume,
                               clone, volfs)
             self._assert_vol_exists(clone['name'], False)
