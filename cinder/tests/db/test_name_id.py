@@ -50,3 +50,11 @@ class NameIDsTestCase(test.TestCase):
         vol_ref = db.volume_get(self.ctxt, vol_ref['id'])
         expected_name = CONF.volume_name_template % 'fake'
         self.assertEqual(vol_ref['name'], expected_name)
+
+    def test_name_id_snapshot_volume_name(self):
+        """Make sure snapshot['volume_name'] is updated."""
+        vol_ref = testutils.create_volume(self.ctxt, size=1)
+        db.volume_update(self.ctxt, vol_ref['id'], {'name_id': 'fake'})
+        snap_ref = testutils.create_snapshot(self.ctxt, vol_ref['id'])
+        expected_name = CONF.volume_name_template % 'fake'
+        self.assertEquals(snap_ref['volume_name'], expected_name)

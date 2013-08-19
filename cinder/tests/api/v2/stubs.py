@@ -35,6 +35,7 @@ def stub_volume(id, **kwargs):
         'attached_host': None,
         'mountpoint': '/',
         'status': 'fakestatus',
+        'migration_status': None,
         'attach_status': 'attached',
         'bootable': 'false',
         'name': 'vol name',

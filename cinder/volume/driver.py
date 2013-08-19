@@ -425,14 +425,6 @@ class VolumeDriver(object):
         """
         return (False, None)
 
-    def rename_volume(self, volume, orig_name):
-        """Rename the volume according to the volume object.
-
-        The original name is passed for reference, and the function can return
-        model_update.
-        """
-        return None
-
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.

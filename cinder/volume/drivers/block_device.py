@@ -132,7 +132,8 @@ class BlockDeviceDriver(driver.ISCSIDriver):
                 LOG.info(_("Skipping remove_export. No iscsi_target "
                            "provisioned for volume: %s"), volume['id'])
                 return
-            self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'])
+            self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'],
+                                            volume['name'])
             return
         elif not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
@@ -157,7 +158,8 @@ class BlockDeviceDriver(driver.ISCSIDriver):
             LOG.info(_("Skipping remove_export. No iscsi_target "
                        "is presently exported for volume: %s"), volume['id'])
             return
-        self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'])
+        self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'],
+                                        volume['name'])
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume.

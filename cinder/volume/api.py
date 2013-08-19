@@ -221,7 +221,7 @@ class API(base.Base):
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
 
-        if volume['attach_status'] == "migrating":
+        if volume['migration_status'] != None:
             # Volume is migrating, wait until done
             msg = _("Volume cannot be deleted while migrating")
             raise exception.InvalidVolume(reason=msg)
@@ -298,9 +298,10 @@ class API(base.Base):
                 return True
 
             def _check_migration_target(volume, searchdict):
-                if not volume['status'].startswith('migration_target'):
-                    return True
-                return False
+                status = volume['migration_status']
+                if status and status.startswith('target:'):
+                    return False
+                return True
 
             # search_option to filter_name mapping.
             filter_mapping = {'metadata': _check_metadata_match,
@@ -397,7 +398,11 @@ class API(base.Base):
 
     @wrap_check_policy
     def begin_detaching(self, context, volume):
-        self.update(context, volume, {"status": "detaching"})
+        # If we are in the middle of a volume migration, we don't want the user
+        # to see that the volume is 'detaching'. Having 'migration_status' set
+        # will have the same effect internally.
+        if not volume['migration_status']:
+            self.update(context, volume, {"status": "detaching"})
 
     @wrap_check_policy
     def roll_detaching(self, context, volume):
@@ -441,6 +446,11 @@ class API(base.Base):
                          volume, name, description,
                          force=False, metadata=None):
         check_policy(context, 'create_snapshot', volume)
+
+        if volume['migration_status'] != None:
+            # Volume is migrating, wait until done
+            msg = _("Volume cannot be deleted while migrating")
+            raise exception.InvalidVolume(reason=msg)
 
         if ((not force) and (volume['status'] != "available")):
             msg = _("must be available")
@@ -692,13 +702,19 @@ class API(base.Base):
         self.update(context, volume, {'status': 'extending'})
         self.volume_rpcapi.extend_volume(context, volume, new_size)
 
+    @wrap_check_policy
     def migrate_volume(self, context, volume, host, force_host_copy):
         """Migrate the volume to the specified host."""
 
         # We only handle "available" volumes for now
-        if volume['status'] != "available":
-            msg = _("status must be available")
+        if volume['status'] not in ['available', 'in-use']:
+            msg = _('Volume status must be available/in-use.')
             LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        # Make sure volume is not part of a migration
+        if volume['migration_status'] != None:
+            msg = _("Volume is already part of an active migration")
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle volumes without snapshots for now
@@ -727,13 +743,14 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
 
-        self.update(context, volume, {'status': 'migrating'})
+        self.update(context, volume, {'migration_status': 'starting'})
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
         volume_type = {}
-        if volume['volume_type_id']:
-            volume_types.get_volume_type(context, volume['volume_type_id'])
+        volume_type_id = volume['volume_type_id']
+        if volume_type_id:
+            volume_type = volume_types.get_volume_type(context, volume_type_id)
         request_spec = {'volume_properties': volume,
                         'volume_type': volume_type,
                         'volume_id': volume['id']}
@@ -743,6 +760,31 @@ class API(base.Base):
                                                      host,
                                                      force_host_copy,
                                                      request_spec)
+
+    @wrap_check_policy
+    def migrate_volume_completion(self, context, volume, new_volume, error):
+        # This is a volume swap initiated by Nova, not Cinder. Nova expects
+        # us to return the new_volume_id.
+        if not (volume['migration_status'] or new_volume['migration_status']):
+            return new_volume['id']
+
+        if not volume['migration_status']:
+            msg = _('Source volume not mid-migration.')
+            raise exception.InvalidVolume(reason=msg)
+
+        if not new_volume['migration_status']:
+            msg = _('Destination volume not mid-migration.')
+            raise exception.InvalidVolume(reason=msg)
+
+        expected_status = 'target:%s' % volume['id']
+        if not new_volume['migration_status'] == expected_status:
+            msg = (_('Destination has migration_status %(stat)s, expected '
+                     '%(exp)s.') % {'stat': new_volume['migration_status'],
+                                    'exp': expected_status})
+            raise exception.InvalidVolume(reason=msg)
+
+        return self.volume_rpcapi.migrate_volume_completion(context, volume,
+                                                            new_volume, error)
 
 
 class HostAPI(base.Base):

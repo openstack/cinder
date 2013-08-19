@@ -120,7 +120,7 @@ class BaseVolumeTestCase(test.TestCase):
     @staticmethod
     def _create_volume(size=0, snapshot_id=None, image_id=None,
                        source_volid=None, metadata=None, status="creating",
-                       availability_zone=None):
+                       migration_status=None, availability_zone=None):
         """Create a volume object."""
         vol = {}
         vol['size'] = size
@@ -1381,7 +1381,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.stubs.Set(self.volume.driver, 'migrate_volume',
                        lambda x, y, z: (True, {'user_id': 'foo'}))
 
-        volume = self._create_volume(status='migrating')
+        volume = self._create_volume(status='available',
+                                     migration_status='migrating')
         host_obj = {'host': 'newhost', 'capabilities': {}}
         self.volume.migrate_volume(self.context, volume['id'],
                                    host_obj, False)
@@ -1389,10 +1390,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         # check volume properties
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEquals(volume['host'], 'newhost')
-        self.assertEquals(volume['status'], 'available')
+        self.assertEquals(volume['migration_status'], None)
 
     def test_migrate_volume_generic(self):
-        """Test the generic offline volume migration."""
         def fake_migr(vol, host):
             raise Exception('should not be called')
 
@@ -1401,10 +1401,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         def fake_create_volume(self, ctxt, volume, host, req_spec, filters):
             db.volume_update(ctxt, volume['id'],
-                             {'status': 'migration_target'})
-
-        def fake_rename_volume(self, ctxt, volume, new_name_id):
-            db.volume_update(ctxt, volume['id'], {'name_id': new_name_id})
+                             {'status': 'available'})
 
         self.stubs.Set(self.volume.driver, 'migrate_volume', fake_migr)
         self.stubs.Set(volume_rpcapi.VolumeAPI, 'create_volume',
@@ -1413,24 +1410,14 @@ class VolumeTestCase(BaseVolumeTestCase):
                        lambda x, y, z, remote='dest': True)
         self.stubs.Set(volume_rpcapi.VolumeAPI, 'delete_volume',
                        fake_delete_volume_rpc)
-        self.stubs.Set(volume_rpcapi.VolumeAPI, 'rename_volume',
-                       fake_rename_volume)
 
-        volume = self._create_volume(status='migrating')
+        volume = self._create_volume(status='available')
         host_obj = {'host': 'newhost', 'capabilities': {}}
         self.volume.migrate_volume(self.context, volume['id'],
                                    host_obj, True)
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEquals(volume['host'], 'newhost')
-        self.assertEquals(volume['status'], 'available')
-
-    def test_rename_volume(self):
-        self.stubs.Set(self.volume.driver, 'rename_volume',
-                       lambda x, y: None)
-        volume = self._create_volume()
-        self.volume.rename_volume(self.context, volume['id'], 'new_id')
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEquals(volume['name_id'], 'new_id')
+        self.assertEquals(volume['migration_status'], None)
 
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
@@ -1745,7 +1732,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
 
     def test_lvm_migrate_volume_no_loc_info(self):
         host = {'capabilities': {}}
-        vol = {'name': 'test', 'id': 1, 'size': 1}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
         self.assertEqual(moved, False)
@@ -1754,7 +1741,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
     def test_lvm_migrate_volume_bad_loc_info(self):
         capabilities = {'location_info': 'foo'}
         host = {'capabilities': capabilities}
-        vol = {'name': 'test', 'id': 1, 'size': 1}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
         self.assertEqual(moved, False)
@@ -1763,7 +1750,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
     def test_lvm_migrate_volume_diff_driver(self):
         capabilities = {'location_info': 'FooDriver:foo:bar'}
         host = {'capabilities': capabilities}
-        vol = {'name': 'test', 'id': 1, 'size': 1}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
         self.assertEqual(moved, False)
@@ -1772,7 +1759,17 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
     def test_lvm_migrate_volume_diff_host(self):
         capabilities = {'location_info': 'LVMVolumeDriver:foo:bar'}
         host = {'capabilities': capabilities}
-        vol = {'name': 'test', 'id': 1, 'size': 1}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
+        moved, model_update = self.volume.driver.migrate_volume(self.context,
+                                                                vol, host)
+        self.assertEqual(moved, False)
+        self.assertEqual(model_update, None)
+
+    def test_lvm_migrate_volume_in_use(self):
+        hostname = socket.gethostname()
+        capabilities = {'location_info': 'LVMVolumeDriver:%s:bar' % hostname}
+        host = {'capabilities': capabilities}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'in-use'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
         self.assertEqual(moved, False)
@@ -1783,7 +1780,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
                         'cinder-volumes:default:0' % hostname}
         host = {'capabilities': capabilities}
-        vol = {'name': 'test', 'id': 1, 'size': 1}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         self.stubs.Set(self.volume.driver, 'remove_export',
                        lambda x, y: None)
         self.stubs.Set(self.volume.driver, '_create_volume',

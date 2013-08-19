@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinderclient import exceptions as cinder_exception
-
 from cinder.compute import nova
 from cinder import context
 from cinder import exception
@@ -21,8 +19,12 @@ from cinder import test
 
 
 class FakeNovaClient(object):
+    class Volumes(object):
+        def __getattr__(self, item):
+            return None
+
     def __init__(self):
-        pass
+        self.volumes = self.Volumes()
 
 
 class NovaApiTestCase(test.TestCase):
@@ -33,3 +35,14 @@ class NovaApiTestCase(test.TestCase):
         self.novaclient = FakeNovaClient()
         self.ctx = context.get_admin_context()
         self.mox.StubOutWithMock(nova, 'novaclient')
+
+    def test_update_server_volume(self):
+        volume_id = 'volume_id1'
+        nova.novaclient(self.ctx).AndReturn(self.novaclient)
+        self.mox.StubOutWithMock(self.novaclient.volumes,
+                                 'update_server_volume')
+        self.novaclient.volumes.update_server_volume('server_id', 'attach_id',
+                                                     'new_volume_id')
+        self.mox.ReplayAll()
+        self.api.update_server_volume(self.ctx, 'server_id', 'attach_id',
+                                      'new_volume_id')

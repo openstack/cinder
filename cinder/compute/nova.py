@@ -97,3 +97,9 @@ def novaclient(context):
 
 class API(base.Base):
     """API for interacting with novaclient."""
+
+    def update_server_volume(self, context, server_id, attachment_id,
+                             new_volume_id):
+        novaclient(context).volumes.update_server_volume(server_id,
+                                                         attachment_id,
+                                                         new_volume_id)

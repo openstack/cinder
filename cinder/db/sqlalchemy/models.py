@@ -111,6 +111,7 @@ class Volume(BASE, CinderBase):
     attach_time = Column(String(255))  # TODO(vish): datetime
     status = Column(String(255))  # TODO(vish): enum?
     attach_status = Column(String(255))  # TODO(vish): enum
+    migration_status = Column(String(255))
 
     scheduled_at = Column(DateTime)
     launched_at = Column(DateTime)
@@ -340,7 +341,7 @@ class Snapshot(BASE, CinderBase):
 
     @property
     def volume_name(self):
-        return CONF.volume_name_template % self.volume_id
+        return self.volume.name  # pylint: disable=E1101
 
     user_id = Column(String(255))
     project_id = Column(String(255))

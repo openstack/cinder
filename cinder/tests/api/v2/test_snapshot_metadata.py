@@ -90,6 +90,7 @@ def return_volume(context, volume_id):
             'status': 'available',
             'encryption_key_id': None,
             'volume_type_id': None,
+            'migration_status': None,
             'metadata': {}}
 
 

@@ -34,6 +34,7 @@ def stub_volume(id, **kwargs):
         'instance_uuid': 'fakeuuid',
         'mountpoint': '/',
         'status': 'fakestatus',
+        'migration_status': None,
         'attach_status': 'attached',
         'bootable': 'false',
         'name': 'vol name',

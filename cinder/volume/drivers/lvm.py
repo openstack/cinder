@@ -572,7 +572,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                            "provisioned for volume: %s"), volume['id'])
                 return
 
-            self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'])
+            self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'],
+                                            volume['name'])
 
             return
 
@@ -604,7 +605,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                        "is presently exported for volume: %s"), volume['id'])
             return
 
-        self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'])
+        self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['name_id'],
+                                        volume['name'])
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
         """Optimize the migration if the destination is on the same server.
@@ -615,6 +617,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         """
 
         false_ret = (False, None)
+        if volume['status'] != 'available':
+            return false_ret
         if 'location_info' not in host['capabilities']:
             return false_ret
         info = host['capabilities']['location_info']
@@ -653,11 +657,6 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         model_update = self._create_export(ctxt, volume, vg=dest_vg)
 
         return (True, model_update)
-
-    def rename_volume(self, volume, orig_name):
-        self._execute('lvrename', self.configuration.volume_group,
-                      orig_name, volume['name'],
-                      run_as_root=True)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -852,7 +851,8 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
                        "is presently exported for volume: %s"), volume['id'])
             return
 
-        self.tgtadm.remove_iser_target(iser_target, 0, volume['id'])
+        self.tgtadm.remove_iser_target(iser_target, 0, volume['id'],
+                                       volume['name'])
 
     def _update_volume_status(self):
         """Retrieve status info from volume group."""
