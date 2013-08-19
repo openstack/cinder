@@ -42,6 +42,27 @@ CLI_CR = '\r\n'
 
 class FakeHP3ParClient(object):
 
+    PORT_MODE_TARGET = 2
+    PORT_MODE_INITIATOR = 3
+    PORT_MODE_PEER = 4
+
+    PORT_TYPE_HOST = 1
+    PORT_TYPE_DISK = 2
+    PORT_TYPE_FREE = 3
+    PORT_TYPE_RCIP = 6
+    PORT_TYPE_ISCSI = 7
+
+    PORT_PROTO_FC = 1
+    PORT_PROTO_ISCSI = 2
+    PORT_PROTO_IP = 4
+
+    PORT_STATE_READY = 4
+    PORT_STATE_SYNC = 5
+    PORT_STATE_OFFLINE = 10
+
+    HOST_EDIT_ADD = 1
+    HOST_EDIT_REMOVE = 2
+
     api_url = None
     debug = False
 
@@ -290,6 +311,15 @@ class FakeHP3ParClient(object):
                'desc': "VLUN '%s' was not found" % volumeName}
         raise hpexceptions.HTTPNotFound(msg)
 
+    def getHost(self, hostname):
+        return None
+
+    def modifyHost(self, hostname, options):
+        return None
+
+    def getPorts(self):
+        return None
+
 
 class HP3PARBaseDriver():
 
@@ -305,14 +335,25 @@ class HP3PARBaseDriver():
     PROJECT_ID = 'fac88235b9d64685a3530f73e490348f'
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
     FAKE_DESC = 'test description name'
-    FAKE_FC_PORTS = ['0987654321234', '123456789000987']
+    FAKE_FC_PORTS = [{'portPos': {'node': 7, 'slot': 1, 'cardPort': 1},
+                      'portWWN': '0987654321234',
+                      'protocol': 1,
+                      'mode': 2,
+                      'linkState': 4},
+                     {'portPos': {'node': 6, 'slot': 1, 'cardPort': 1},
+                      'portWWN': '123456789000987',
+                      'protocol': 1,
+                      'mode': 2,
+                      'linkState': 4}]
     QOS = {'qos:maxIOPS': '1000', 'qos:maxBWS': '50'}
     VVS_NAME = "myvvs"
-    FAKE_ISCSI_PORTS = {'1.1.1.2': {'nsp': '8:1:1',
-                                    'iqn': ('iqn.2000-05.com.3pardata:'
-                                            '21810002ac00383d'),
-                                    'ip_port': '3262'}}
-
+    FAKE_ISCSI_PORT = {'portPos': {'node': 8, 'slot': 1, 'cardPort': 1},
+                       'protocol': 2,
+                       'mode': 2,
+                       'IPAddr': '1.1.1.2',
+                       'iSCSIName': ('iqn.2000-05.com.3pardata:'
+                                     '21810002ac00383d'),
+                       'linkState': 4}
     volume = {'name': VOLUME_NAME,
               'id': VOLUME_ID,
               'display_name': 'Foo Volume',
@@ -440,7 +481,9 @@ class HP3PARBaseDriver():
         self.driver.common.client.createVLUN(volume, 19, hostname)
 
     def fake_get_ports(self):
-        return {'FC': self.FAKE_FC_PORTS, 'iSCSI': self.FAKE_ISCSI_PORTS}
+        ports = self.FAKE_FC_PORTS
+        ports.append(self.FAKE_ISCSI_PORT)
+        return {'members': ports}
 
     def fake_get_volume_type(self, type_id):
         return self.volume_type
@@ -725,15 +768,18 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+        getHost = self.mox.CreateMock(FakeHP3ParClient.getHost)
+        self.stubs.Set(FakeHP3ParClient, "getHost", getHost)
+
+        ex = hpexceptions.HTTPNotFound('Host not found.')
+        getHost('fakehost').AndRaise(ex)
 
         create_host_cmd = (['createhost', '-persona', '1', '-domain',
                             ('OpenStack',), 'fakehost', '123456789012345',
                             '123456789054321'])
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
 
-        _run_ssh(show_host_cmd, False).AndReturn([pack(FC_HOST_RET), ''])
+        getHost('fakehost').AndReturn({'name': self.FAKE_HOST})
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
@@ -751,8 +797,11 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+        getHost = self.mox.CreateMock(FakeHP3ParClient.getHost)
+        self.stubs.Set(FakeHP3ParClient, "getHost", getHost)
+
+        not_found_ex = hpexceptions.HTTPNotFound('Host not found.')
+        getHost('fakehost').AndRaise(not_found_ex)
 
         create_host_cmd = (['createhost', '-persona', '1', '-domain',
                             ('OpenStack',), 'fakehost', '123456789012345',
@@ -761,8 +810,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                                'already used by host fakehost.foo (19)')
         _run_ssh(create_host_cmd, False).AndReturn([create_host_ret, ''])
 
-        show_3par_cmd = ['showhost', '-verbose', 'fakehost.foo']
-        _run_ssh(show_3par_cmd, False).AndReturn([pack(FC_SHOWHOST_RET), ''])
+        getHost('fakehost.foo').AndReturn({'name': 'fakehost.foo'})
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
@@ -778,22 +826,30 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                        self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack(NO_FC_HOST_RET), ''])
+        getHost = self.mox.CreateMock(FakeHP3ParClient.getHost)
+        self.stubs.Set(FakeHP3ParClient, "getHost", getHost)
 
-        create_host_cmd = ['createhost', '-add', 'fakehost', '123456789012345',
-                           '123456789054321']
-        _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
+        modifyHost = self.mox.CreateMock(FakeHP3ParClient.modifyHost)
+        self.stubs.Set(FakeHP3ParClient, "modifyHost", modifyHost)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack(FC_HOST_RET), ''])
+        getHost('fakehost').AndReturn(({'name': self.FAKE_HOST,
+                                        'FCPaths': []}))
+
+        modifyHost('fakehost', {'FCWWNs':
+                                ['123456789012345', '123456789054321'],
+                                'pathOperation': 1})
+
+        getHost('fakehost').AndReturn({'name': self.FAKE_HOST,
+                                       'FCPaths': [{'WWN': '123456789012345'},
+                                                   {'WWN': '123456789054321'}]}
+                                      )
+
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
         self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(len(host['FCPaths']), 2)
 
 
 class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
@@ -920,15 +976,18 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+        getHost = self.mox.CreateMock(FakeHP3ParClient.getHost)
+        self.stubs.Set(FakeHP3ParClient, "getHost", getHost)
+
+        not_found_ex = hpexceptions.HTTPNotFound('Host not found.')
+        getHost('fakehost').AndRaise(not_found_ex)
 
         create_host_cmd = (['createhost', '-iscsi', '-persona', '1', '-domain',
                             ('OpenStack',), 'fakehost',
                             'iqn.1993-08.org.debian:01:222'])
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
 
-        _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_HOST_RET), ''])
+        getHost('fakehost').AndReturn({'name': self.FAKE_HOST})
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
@@ -946,8 +1005,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack('no hosts listed'), ''])
+        getHost = self.mox.CreateMock(FakeHP3ParClient.getHost)
+        self.stubs.Set(FakeHP3ParClient, "getHost", getHost)
+
+        not_found_ex = hpexceptions.HTTPNotFound('Host not found.')
+        getHost('fakehost').AndRaise(not_found_ex)
 
         create_host_cmd = (['createhost', '-iscsi', '-persona', '1', '-domain',
                            ('OpenStack',), 'fakehost',
@@ -955,8 +1017,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         in_use_ret = pack('\r\nalready used by host fakehost.foo ')
         _run_ssh(create_host_cmd, False).AndReturn([in_use_ret, ''])
 
-        show_3par_cmd = ['showhost', '-verbose', 'fakehost.foo']
-        _run_ssh(show_3par_cmd, False).AndReturn([pack(ISCSI_3PAR_RET), ''])
+        getHost('fakehost.foo').AndReturn({'name': 'fakehost.foo'})
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
@@ -972,77 +1033,63 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                        self.fake_get_cpg)
         self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "get_domain",
                        self.fake_get_domain)
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_host_cmd = ['showhost', '-verbose', 'fakehost']
-        _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_NO_HOST_RET), ''])
+        getHost = self.mox.CreateMock(FakeHP3ParClient.getHost)
+        self.stubs.Set(FakeHP3ParClient, "getHost", getHost)
 
-        create_host_cmd = ['createhost', '-iscsi', '-add', 'fakehost',
-                           'iqn.1993-08.org.debian:01:222']
-        _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
-        _run_ssh(show_host_cmd, False).AndReturn([pack(ISCSI_HOST_RET), ''])
+        modifyHost = self.mox.CreateMock(FakeHP3ParClient.modifyHost)
+        self.stubs.Set(FakeHP3ParClient, "modifyHost", modifyHost)
+
+        getHost('fakehost').AndReturn(({'name': self.FAKE_HOST,
+                                        'iSCSIPaths': []}))
+
+        modifyHost('fakehost', {'iSCSINames':
+                                ['iqn.1993-08.org.debian:01:222'],
+                                'pathOperation': 1})
+
+        ret_value = {'name': self.FAKE_HOST,
+                     'iSCSIPaths': [{'name': 'iqn.1993-08.org.debian:01:222'}]
+                     }
+        getHost('fakehost').AndReturn(ret_value)
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
         self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(len(host['iSCSIPaths']), 1)
 
     def test_get_ports(self):
         self.flags(lock_path=self.tempdir)
 
         #record
         self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+        getPorts = self.mox.CreateMock(FakeHP3ParClient.getPorts)
+        self.stubs.Set(FakeHP3ParClient, "getPorts", getPorts)
 
-        show_port_cmd = ['showport']
-        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
-
-        show_port_i_cmd = ['showport', '-iscsi']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
-                                                    ''])
-
-        show_port_i_cmd = ['showport', '-iscsiname']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI),
-                                                    ''])
+        getPorts().AndReturn(PORTS1_RET)
         self.mox.ReplayAll()
 
-        ports = self.driver.common.get_ports()
-        self.assertEqual(ports['FC'][0], '20210002AC00383D')
-        self.assertEqual(ports['iSCSI']['10.10.120.252']['nsp'], '0:8:2')
+        ports = self.driver.common.get_ports()['members']
+        self.assertTrue(len(ports) == 3)
 
     def test_get_iscsi_ip_active(self):
         self.flags(lock_path=self.tempdir)
 
         #record set up
         self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
 
-        show_port_cmd = ['showport']
-        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
+        getPorts = self.mox.CreateMock(FakeHP3ParClient.getPorts)
+        self.stubs.Set(FakeHP3ParClient, "getPorts", getPorts)
 
-        show_port_i_cmd = ['showport', '-iscsi']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
-                                                    ''])
+        getVLUNs = self.mox.CreateMock(FakeHP3ParClient.getVLUNs)
+        self.stubs.Set(FakeHP3ParClient, "getVLUNs", getVLUNs)
 
-        show_port_i_cmd = ['showport', '-iscsiname']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
-
+        getPorts().AndReturn(PORTS_RET)
+        getVLUNs().AndReturn(VLUNS2_RET)
         self.mox.ReplayAll()
 
         config = self.setup_configuration()
         config.hp3par_iscsi_ips = ['10.10.220.253', '10.10.220.252']
         self.setup_driver(config, set_up_fakes=False)
-
-        #record
-        self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
-
-        show_vlun_cmd = ['showvlun', '-a', '-host', 'fakehost']
-        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN), ''])
-
         self.mox.ReplayAll()
 
         ip = self.driver._get_iscsi_ip('fakehost')
@@ -1053,26 +1100,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record driver set up
         self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+        getPorts = self.mox.CreateMock(FakeHP3ParClient.getPorts)
+        self.stubs.Set(FakeHP3ParClient, "getPorts", getPorts)
 
-        show_port_cmd = ['showport']
-        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
+        getVLUNs = self.mox.CreateMock(FakeHP3ParClient.getVLUNs)
+        self.stubs.Set(FakeHP3ParClient, "getVLUNs", getVLUNs)
 
-        show_port_i_cmd = ['showport', '-iscsi']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
-                                                    ''])
-
-        show_port_i_cmd = ['showport', '-iscsiname']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
-
-        #record
-        show_vlun_cmd = ['showvlun', '-a', '-host', 'fakehost']
-        show_vlun_ret = 'no vluns listed\r\n'
-        _run_ssh(show_vlun_cmd, False).AndReturn([pack(show_vlun_ret), ''])
-        show_vlun_cmd = ['showvlun', '-a', '-showcols', 'Port']
-        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
-
+        getPorts().AndReturn(PORTS_RET)
+        getVLUNs().AndReturn(VLUNS1_RET)
         self.mox.ReplayAll()
 
         config = self.setup_configuration()
@@ -1088,18 +1123,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record driver set up
         self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+        getPorts = self.mox.CreateMock(FakeHP3ParClient.getPorts)
+        self.stubs.Set(FakeHP3ParClient, "getPorts", getPorts)
 
-        show_port_cmd = ['showport']
-        _run_ssh(show_port_cmd, False).AndReturn([pack(PORT_RET), ''])
-
-        show_port_i_cmd = ['showport', '-iscsi']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(READY_ISCSI_PORT_RET),
-                                                    ''])
-
-        show_port_i_cmd = ['showport', '-iscsiname']
-        _run_ssh(show_port_i_cmd, False).AndReturn([pack(SHOW_PORT_ISCSI), ''])
+        getPorts().AndReturn(PORTS_RET)
 
         config = self.setup_configuration()
         config.hp3par_iscsi_ips = ['10.10.220.250', '10.10.220.251']
@@ -1117,25 +1144,30 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         #record
         self.clear_mox()
-        _run_ssh = self.mox.CreateMock(hpdriver.hpcommon.HP3PARCommon._run_ssh)
-        self.stubs.Set(hpdriver.hpcommon.HP3PARCommon, "_run_ssh", _run_ssh)
+        getVLUNs = self.mox.CreateMock(FakeHP3ParClient.getVLUNs)
+        self.stubs.Set(FakeHP3ParClient, "getVLUNs", getVLUNs)
 
-        show_vlun_cmd = ['showvlun', '-a', '-showcols', 'Port']
-        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
-        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
-        _run_ssh(show_vlun_cmd, False).AndReturn([pack(SHOW_VLUN_NONE), ''])
+        getVLUNs().AndReturn(VLUNS3_RET)
+        getVLUNs().AndReturn(VLUNS4_RET)
+        getVLUNs().AndReturn(VLUNS4_RET)
 
         self.mox.ReplayAll()
-        # in use count                           11       12
-        nsp = self.driver._get_least_used_nsp(['0:2:1', '1:8:1'])
-        self.assertEqual(nsp, '0:2:1')
+        # in use count
+        vluns = self.driver.common.client.getVLUNs()
+        nsp = self.driver._get_least_used_nsp(vluns['members'],
+                                              ['0:2:1', '1:8:1'])
+        self.assertEqual(nsp, '1:8:1')
 
-        # in use count                            11       10
-        nsp = self.driver._get_least_used_nsp(['0:2:1', '1:2:1'])
+        # in use count
+        vluns = self.driver.common.client.getVLUNs()
+        nsp = self.driver._get_least_used_nsp(vluns['members'],
+                                              ['0:2:1', '1:2:1'])
         self.assertEqual(nsp, '1:2:1')
 
-        # in use count                            0       10
-        nsp = self.driver._get_least_used_nsp(['1:1:1', '1:2:1'])
+        # in use count
+        vluns = self.driver.common.client.getVLUNs()
+        nsp = self.driver._get_least_used_nsp(vluns['members'],
+                                              ['1:1:1', '1:2:1'])
         self.assertEqual(nsp, '1:1:1')
 
 
@@ -1144,209 +1176,108 @@ def pack(arg):
     footer = '\r\n\r\n\r\n'
     return header + arg + footer
 
-FC_HOST_RET = (
-    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
-    '75,fakehost,Generic,50014380242B8B4C,0:2:1,n/a\r\n'
-    '75,fakehost,Generic,50014380242B8B4E,---,n/a\r\n'
-    '75,fakehost,Generic,1000843497F90711,0:2:1,n/a \r\n'
-    '75,fakehost,Generic,1000843497F90715,1:2:1,n/a\r\n'
-    '\r\n'
-    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
-    '75,fakehost,--,--\r\n'
-    '\r\n'
-    '---------- Host fakehost ----------\r\n'
-    'Name       : fakehost\r\n'
-    'Domain     : FAKE_TEST\r\n'
-    'Id         : 75\r\n'
-    'Location   : --\r\n'
-    'IP Address : --\r\n'
-    'OS         : --\r\n'
-    'Model      : --\r\n'
-    'Contact    : --\r\n'
-    'Comment    : --  \r\n\r\n\r\n')
+PORTS_RET = ({'members':
+              [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                'protocol': 2,
+                'IPAddr': '10.10.220.252',
+                'linkState': 4,
+                'device': [],
+                'iSCSIName': 'iqn.2000-05.com.3pardata:21820002ac00383d',
+                'mode': 2,
+                'HWAddr': '2C27D75375D2',
+                'type': 8},
+               {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                'protocol': 2,
+                'IPAddr': '10.10.220.253',
+                'linkState': 4,
+                'device': [],
+                'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
+                'mode': 2,
+                'HWAddr': '2C27D75375D6',
+                'type': 8}]})
 
-FC_SHOWHOST_RET = (
-    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
-    '75,fakehost.foo,Generic,50014380242B8B4C,0:2:1,n/a\r\n'
-    '75,fakehost.foo,Generic,50014380242B8B4E,---,n/a\r\n'
-    '75,fakehost.foo,Generic,1000843497F90711,0:2:1,n/a \r\n'
-    '75,fakehost.foo,Generic,1000843497F90715,1:2:1,n/a\r\n'
-    '\r\n'
-    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
-    '75,fakehost.foo,--,--\r\n'
-    '\r\n'
-    '---------- Host fakehost.foo ----------\r\n'
-    'Name       : fakehost.foo\r\n'
-    'Domain     : FAKE_TEST\r\n'
-    'Id         : 75\r\n'
-    'Location   : --\r\n'
-    'IP Address : --\r\n'
-    'OS         : --\r\n'
-    'Model      : --\r\n'
-    'Contact    : --\r\n'
-    'Comment    : --  \r\n\r\n\r\n')
+PORTS1_RET = ({'members':
+               [{'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},
+                 'protocol': 2,
+                 'IPAddr': '10.10.120.252',
+                 'linkState': 4,
+                 'device': [],
+                 'iSCSIName': 'iqn.2000-05.com.3pardata:21820002ac00383d',
+                 'mode': 2,
+                 'HWAddr': '2C27D75375D2',
+                 'type': 8},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'protocol': 2,
+                 'IPAddr': '10.10.220.253',
+                 'linkState': 4,
+                 'device': [],
+                 'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
+                 'mode': 2,
+                 'HWAddr': '2C27D75375D6',
+                 'type': 8},
+                {'portWWN': '20210002AC00383D',
+                 'protocol': 1,
+                 'linkState': 4,
+                 'mode': 2,
+                 'device': ['cage2'],
+                 'nodeWWN': '20210002AC00383D',
+                 'type': 2,
+                 'portPos': {'node': 0, 'slot': 6, 'cardPort': 3}}]})
 
-NO_FC_HOST_RET = (
-    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
-    '\r\n'
-    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
-    '75,fakehost,--,--\r\n'
-    '\r\n'
-    '---------- Host fakehost ----------\r\n'
-    'Name       : fakehost\r\n'
-    'Domain     : FAKE_TEST\r\n'
-    'Id         : 75\r\n'
-    'Location   : --\r\n'
-    'IP Address : --\r\n'
-    'OS         : --\r\n'
-    'Model      : --\r\n'
-    'Contact    : --\r\n'
-    'Comment    : --  \r\n\r\n\r\n')
+VLUNS1_RET = ({'members':
+               [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                 'hostname': 'foo', 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'hostname': 'bar', 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'hostname': 'bar', 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'hostname': 'bar', 'active': True}]})
 
-ISCSI_HOST_RET = (
-    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
-    '75,fakehost,Generic,iqn.1993-08.org.debian:01:222,---,10.10.222.12\r\n'
-    '\r\n'
-    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
-    '75,fakehost,--,--\r\n'
-    '\r\n'
-    '---------- Host fakehost ----------\r\n'
-    'Name       : fakehost\r\n'
-    'Domain     : FAKE_TEST\r\n'
-    'Id         : 75\r\n'
-    'Location   : --\r\n'
-    'IP Address : --\r\n'
-    'OS         : --\r\n'
-    'Model      : --\r\n'
-    'Contact    : --\r\n'
-    'Comment    : --  \r\n\r\n\r\n')
+VLUNS2_RET = ({'members':
+               [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                 'hostname': 'bar', 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'hostname': 'fakehost', 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                 'hostname': 'bar', 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                 'hostname': 'bar', 'active': True}]})
 
-ISCSI_NO_HOST_RET = (
-    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
-    '\r\n'
-    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
-    '75,fakehost,--,--\r\n'
-    '\r\n'
-    '---------- Host fakehost ----------\r\n'
-    'Name       : fakehost\r\n'
-    'Domain     : FAKE_TEST\r\n'
-    'Id         : 75\r\n'
-    'Location   : --\r\n'
-    'IP Address : --\r\n'
-    'OS         : --\r\n'
-    'Model      : --\r\n'
-    'Contact    : --\r\n'
-    'Comment    : --  \r\n\r\n\r\n')
+VLUNS3_RET = ({'members':
+               [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 2},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True}]})
 
-ISCSI_PORT_IDS_RET = (
-    'N:S:P,-Node_WWN/IPAddr-,-----------Port_WWN/iSCSI_Name-----------\r\n'
-    '0:2:1,28210002AC00383D,20210002AC00383D\r\n'
-    '0:2:2,2FF70002AC00383D,20220002AC00383D\r\n'
-    '0:2:3,2FF70002AC00383D,20230002AC00383D\r\n'
-    '0:2:4,2FF70002AC00383D,20240002AC00383D\r\n'
-    '0:5:1,2FF70002AC00383D,20510002AC00383D\r\n'
-    '0:5:2,2FF70002AC00383D,20520002AC00383D\r\n'
-    '0:5:3,2FF70002AC00383D,20530002AC00383D\r\n'
-    '0:5:4,2FF70202AC00383D,20540202AC00383D\r\n'
-    '0:6:4,2FF70002AC00383D,20640002AC00383D\r\n'
-    '0:8:1,10.10.120.253,iqn.2000-05.com.3pardata:21810002ac00383d\r\n'
-    '0:8:2,0.0.0.0,iqn.2000-05.com.3pardata:20820002ac00383d\r\n'
-    '1:2:1,29210002AC00383D,21210002AC00383D\r\n'
-    '1:2:2,2FF70002AC00383D,21220002AC00383D\r\n'
-    '-----------------------------------------------------------------\r\n')
-
-VOLUME_STATE_RET = (
-    'Id,Name,Prov,Type,State,-Detailed_State-\r\n'
-    '410,volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7,snp,vcopy,normal,'
-    'normal\r\n'
-    '-----------------------------------------------------------------\r\n')
-
-PORT_RET = (
-    'N:S:P,Mode,State,----Node_WWN----,-Port_WWN/HW_Addr-,Type,Protocol,'
-    'Label,Partner,FailoverState\r\n'
-    '0:2:1,target,ready,28210002AC00383D,20210002AC00383D,host,FC,'
-    '-,1:2:1,none\r\n'
-    '0:2:2,initiator,loss_sync,2FF70002AC00383D,20220002AC00383D,free,FC,'
-    '-,-,-\r\n'
-    '0:2:3,initiator,loss_sync,2FF70002AC00383D,20230002AC00383D,free,FC,'
-    '-,-,-\r\n'
-    '0:2:4,initiator,loss_sync,2FF70002AC00383D,20240002AC00383D,free,FC,'
-    '-,-,-\r\n'
-    '0:5:1,initiator,loss_sync,2FF70002AC00383D,20510002AC00383D,free,FC,'
-    '-,-,-\r\n'
-    '0:5:2,initiator,loss_sync,2FF70002AC00383D,20520002AC00383D,free,FC,'
-    '-,-,-\r\n'
-    '0:5:3,initiator,loss_sync,2FF70002AC00383D,20530002AC00383D,free,FC,'
-    '-,-,-\r\n'
-    '0:5:4,initiator,ready,2FF70202AC00383D,20540202AC00383D,host,FC,'
-    '-,1:5:4,active\r\n'
-    '0:6:1,initiator,ready,2FF70002AC00383D,20610002AC00383D,disk,FC,'
-    '-,-,-\r\n'
-    '0:6:2,initiator,ready,2FF70002AC00383D,20620002AC00383D,disk,FC,'
-    '-,-,-\r\n')
-
-ISCSI_PORT_RET = (
-    'N:S:P,State,IPAddr,Netmask,Gateway,TPGT,MTU,Rate,DHCP,iSNS_Addr,'
-    'iSNS_Port\r\n'
-    '0:8:1,ready,10.10.120.253,255.255.224.0,0.0.0.0,81,1500,10Gbps,'
-    '0,0.0.0.0,3205\r\n'
-    '0:8:2,loss_sync,0.0.0.0,0.0.0.0,0.0.0.0,82,1500,n/a,0,0.0.0.0,3205\r\n'
-    '1:8:1,ready,10.10.220.253,255.255.224.0,0.0.0.0,181,1500,10Gbps,'
-    '0,0.0.0.0,3205\r\n'
-    '1:8:2,loss_sync,0.0.0.0,0.0.0.0,0.0.0.0,182,1500,n/a,0,0.0.0.0,3205\r\n')
-
-ISCSI_3PAR_RET = (
-    'Id,Name,Persona,-WWN/iSCSI_Name-,Port,IP_addr\r\n'
-    '75,fakehost.foo,Generic,iqn.1993-08.org.debian:01:222,---,'
-    '10.10.222.12\r\n'
-    '\r\n'
-    'Id,Name,-Initiator_CHAP_Name-,-Target_CHAP_Name-\r\n'
-    '75,fakehost.foo,--,--\r\n'
-    '\r\n'
-    '---------- Host fakehost.foo ----------\r\n'
-    'Name       : fakehost.foo\r\n'
-    'Domain     : FAKE_TEST\r\n'
-    'Id         : 75\r\n'
-    'Location   : --\r\n'
-    'IP Address : --\r\n'
-    'OS         : --\r\n'
-    'Model      : --\r\n'
-    'Contact    : --\r\n'
-    'Comment    : --  \r\n\r\n\r\n')
-
-SHOW_PORT_ISCSI = (
-    'N:S:P,IPAddr,---------------iSCSI_Name----------------\r\n'
-    '0:8:1,1.1.1.2,iqn.2000-05.com.3pardata:21810002ac00383d\r\n'
-    '0:8:2,10.10.120.252,iqn.2000-05.com.3pardata:20820002ac00383d\r\n'
-    '1:8:1,10.10.220.253,iqn.2000-05.com.3pardata:21810002ac00383d\r\n'
-    '1:8:2,10.10.220.252,iqn.2000-05.com.3pardata:21820002ac00383d\r\n'
-    '-------------------------------------------------------------\r\n')
-
-SHOW_VLUN = (
-    'Lun,VVName,HostName,---------Host_WWN/iSCSI_Name----------,Port,Type,'
-    'Status,ID\r\n'
-    '0,a,fakehost,iqn.1993-08.org.debian:01:3a779e4abc22,1:8:1,matched set,'
-    'active,0\r\n'
-    '------------------------------------------------------------------------'
-    '--------------\r\n')
-
-SHOW_VLUN_NONE = (
-    'Port\r\n0:2:1\r\n0:2:1\r\n1:8:1\r\n1:8:1\r\n1:8:1\r\n1:2:1\r\n'
-    '1:2:1\r\n1:2:1\r\n1:2:1\r\n1:2:1\r\n1:2:1\r\n1:8:1\r\n1:8:1\r\n1:8:1\r\n'
-    '1:8:1\r\n1:8:1\r\n1:8:1\r\n0:2:1\r\n0:2:1\r\n0:2:1\r\n0:2:1\r\n0:2:1\r\n'
-    '0:2:1\r\n0:2:1\r\n1:8:1\r\n1:8:1\r\n0:2:1\r\n0:2:1\r\n1:2:1\r\n1:2:1\r\n'
-    '1:2:1\r\n1:2:1\r\n1:8:1\r\n-----')
-
-READY_ISCSI_PORT_RET = (
-    'N:S:P,State,IPAddr,Netmask,Gateway,TPGT,MTU,Rate,DHCP,iSNS_Addr,'
-    'iSNS_Port\r\n'
-    '0:8:1,ready,10.10.120.253,255.255.224.0,0.0.0.0,81,1500,10Gbps,'
-    '0,0.0.0.0,3205\r\n'
-    '0:8:2,ready,10.10.120.252,255.255.224.0,0.0.0.0,82,1500,10Gbps,0,'
-    '0.0.0.0,3205\r\n'
-    '1:8:1,ready,10.10.220.253,255.255.224.0,0.0.0.0,181,1500,10Gbps,'
-    '0,0.0.0.0,3205\r\n'
-    '1:8:2,ready,10.10.220.252,255.255.224.0,0.0.0.0,182,1500,10Gbps,0,'
-    '0.0.0.0,3205\r\n'
-    '-------------------------------------------------------------------'
-    '----------------------\r\n')
+VLUNS4_RET = ({'members':
+               [{'portPos': {'node': 1, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 1, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 1, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 1, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True},
+                {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True}]})

@@ -48,6 +48,7 @@ import time
 import uuid
 
 from eventlet import greenthread
+import hp3parclient
 from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
 from oslo.config import cfg
@@ -63,6 +64,8 @@ from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
+
+MIN_CLIENT_VERSION = '2.0.0'
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -144,7 +147,17 @@ class HP3PARCommon(object):
                 raise exception.InvalidInput(reason=_('%s is not set') % flag)
 
     def _create_client(self):
-        return client.HP3ParClient(self.config.hp3par_api_url)
+        cl = client.HP3ParClient(self.config.hp3par_api_url)
+        client_version = hp3parclient.version
+
+        if (client_version < MIN_CLIENT_VERSION):
+            ex_msg = (_('Invalid hp3parclient version. Version %s or greater '
+                        'required.') % MIN_CLIENT_VERSION)
+            raise hpexceptions.UnsupportedVersion(ex_msg)
+        else:
+            LOG.debug(('Using hp3parclient %s.') % client_version)
+
+        return cl
 
     def client_login(self):
         try:
@@ -358,15 +371,14 @@ exit
                 LOG.error(_("Error running ssh command: %s") % command)
 
     def _delete_3par_host(self, hostname):
-        self._cli_run(['removehost', hostname])
+        self.client.deleteHost(hostname)
 
     def _create_3par_vlun(self, volume, hostname):
-        out = self._cli_run(['createvlun', volume, 'auto', hostname])
-        if out and len(out) > 1:
-            if "must be in the same domain" in out[0]:
-                err = out[0].strip()
-                err = err + " " + out[1].strip()
-                raise exception.Invalid3PARDomain(err=err)
+        try:
+            self.client.createVLUN(volume, hostname=hostname, auto=True)
+        except hpexceptions.HTTPBadRequest as e:
+            if 'must be in the same domain' in e.get_description():
+                raise exception.Invalid3PARDomain(err=e.get_description())
 
     def _safe_hostname(self, hostname):
         """We have to use a safe hostname length for 3PAR host names."""
@@ -383,142 +395,41 @@ exit
         return hostname[:index]
 
     def _get_3par_host(self, hostname):
-        out = self._cli_run(['showhost', '-verbose', hostname])
-        LOG.debug("OUTPUT = \n%s" % (pprint.pformat(out)))
-        host = {'id': None, 'name': None,
-                'domain': None,
-                'descriptors': {},
-                'iSCSIPaths': [],
-                'FCPaths': []}
-
-        if out:
-            err = out[0]
-            if err == 'no hosts listed':
-                msg = {'code': 'NON_EXISTENT_HOST',
-                       'desc': "HOST '%s' was not found" % hostname}
-                raise hpexceptions.HTTPNotFound(msg)
-
-            # start parsing the lines after the header line
-            for line in out[1:]:
-                if line == '':
-                    break
-                tmp = line.split(',')
-                paths = {}
-
-                LOG.debug("line = %s" % (pprint.pformat(tmp)))
-                host['id'] = tmp[0]
-                host['name'] = tmp[1]
-
-                portPos = tmp[4]
-                LOG.debug("portPos = %s" % (pprint.pformat(portPos)))
-                if portPos == '---':
-                    portPos = None
-                else:
-                    port = portPos.split(':')
-                    portPos = {'node': int(port[0]), 'slot': int(port[1]),
-                               'cardPort': int(port[2])}
-
-                paths['portPos'] = portPos
-
-                # If FC entry
-                if tmp[5] == 'n/a':
-                    paths['wwn'] = tmp[3]
-                    host['FCPaths'].append(paths)
-                # else iSCSI entry
-                else:
-                    paths['name'] = tmp[3]
-                    paths['ipAddr'] = tmp[5]
-                    host['iSCSIPaths'].append(paths)
-
-            # find the offset to the description stuff
-            offset = 0
-            for line in out:
-                if line[:15] == '---------- Host':
-                    break
-                else:
-                    offset += 1
-
-            info = out[offset + 2]
-            tmp = info.split(':')
-            host['domain'] = tmp[1]
-
-            info = out[offset + 4]
-            tmp = info.split(':')
-            host['descriptors']['location'] = tmp[1]
-
-            info = out[offset + 5]
-            tmp = info.split(':')
-            host['descriptors']['ipAddr'] = tmp[1]
-
-            info = out[offset + 6]
-            tmp = info.split(':')
-            host['descriptors']['os'] = tmp[1]
-
-            info = out[offset + 7]
-            tmp = info.split(':')
-            host['descriptors']['model'] = tmp[1]
-
-            info = out[offset + 8]
-            tmp = info.split(':')
-            host['descriptors']['contact'] = tmp[1]
-
-            info = out[offset + 9]
-            tmp = info.split(':')
-            host['descriptors']['comment'] = tmp[1]
-
-        return host
+        return self.client.getHost(hostname)
 
     def get_ports(self):
-        # First get the active FC ports
-        out = self._cli_run(['showport'])
+        return self.client.getPorts()
 
-        # strip out header
-        # N:S:P,Mode,State,----Node_WWN----,-Port_WWN/HW_Addr-,Type,
-        # Protocol,Label,Partner,FailoverState
-        out = out[1:len(out) - 2]
+    def get_active_target_ports(self):
+        ports = self.get_ports()
+        target_ports = []
+        for port in ports['members']:
+            if (
+                port['mode'] == self.client.PORT_MODE_TARGET and
+                port['linkState'] == self.client.PORT_STATE_READY
+            ):
+                port['nsp'] = self.build_nsp(port['portPos'])
+                target_ports.append(port)
 
-        ports = {'FC': [], 'iSCSI': {}}
-        for line in out:
-            tmp = line.split(',')
+        return target_ports
 
-            if tmp:
-                if tmp[1] == 'target' and tmp[2] == 'ready':
-                    if tmp[6] == 'FC':
-                        ports['FC'].append(tmp[4])
+    def get_active_fc_target_ports(self):
+        ports = self.get_active_target_ports()
+        fc_ports = []
+        for port in ports:
+            if port['protocol'] == self.client.PORT_PROTO_FC:
+                fc_ports.append(port)
 
-        # now get the active iSCSI ports
-        out = self._cli_run(['showport', '-iscsi'])
+        return fc_ports
 
-        # strip out header
-        # N:S:P,State,IPAddr,Netmask,Gateway,
-        # TPGT,MTU,Rate,DHCP,iSNS_Addr,iSNS_Port
-        out = out[1:len(out) - 2]
-        for line in out:
-            tmp = line.split(',')
+    def get_active_iscsi_target_ports(self):
+        ports = self.get_active_target_ports()
+        iscsi_ports = []
+        for port in ports:
+            if port['protocol'] == self.client.PORT_PROTO_ISCSI:
+                iscsi_ports.append(port)
 
-            if tmp and len(tmp) > 2:
-                if tmp[1] == 'ready':
-                    ports['iSCSI'][tmp[2]] = {}
-
-        # now get the nsp and iqn
-        result = self._cli_run(['showport', '-iscsiname'])
-        if result:
-            # first line is header
-            # nsp, ip,iqn
-            result = result[1:]
-            for line in result:
-                info = line.split(",")
-                if info and len(info) > 2:
-                    if info[1] in ports['iSCSI']:
-                        nsp = info[0]
-                        ip_addr = info[1]
-                        iqn = info[2]
-                        ports['iSCSI'][ip_addr] = {'nsp': nsp,
-                                                   'iqn': iqn
-                                                   }
-
-        LOG.debug("PORTS = %s" % pprint.pformat(ports))
-        return ports
+        return iscsi_ports
 
     def get_volume_stats(self, refresh):
         if refresh:
@@ -574,7 +485,15 @@ exit
         volume_name = self._get_3par_vol_name(volume['id'])
         vlun = self.client.getVLUN(volume_name)
         self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
-        self._delete_3par_host(hostname)
+        try:
+            self._delete_3par_host(hostname)
+        except hpexceptions.HTTPConflict as ex:
+            # host will only be removed after all vluns
+            # have been removed
+            if 'has exported VLUN' in ex.get_description():
+                pass
+            else:
+                raise
 
     def _get_volume_type(self, type_id):
         ctxt = context.get_admin_context()
@@ -1027,21 +946,30 @@ exit
         except hpexceptions.HTTPNotFound as ex:
             LOG.error(str(ex))
 
-    def _get_3par_hostname_from_wwn_iqn(self, wwns_iqn):
-        out = self._cli_run(['showhost', '-d'])
-        # wwns_iqn may be a list of strings or a single
-        # string. So, if necessary, create a list to loop.
-        if not isinstance(wwns_iqn, list):
-            wwn_iqn_list = [wwns_iqn]
-        else:
-            wwn_iqn_list = wwns_iqn
+    def _get_3par_hostname_from_wwn_iqn(self, wwns, iqns):
+        if wwns is not None and not isinstance(wwns, list):
+            wwns = [wwns]
+        if iqns is not None and not isinstance(iqns, list):
+            iqns = [iqns]
 
-        for wwn_iqn in wwn_iqn_list:
-            for showhost in out:
-                if (wwn_iqn.upper() in showhost.upper()):
-                    return showhost.split(',')[1]
+        out = self.client.getHosts()
+        hosts = out['members']
+        for host in hosts:
+            if 'iSCSIPaths' in host and iqns is not None:
+                iscsi_paths = host['iSCSIPaths']
+                for iscsi in iscsi_paths:
+                    for iqn in iqns:
+                        if iqn == iscsi['name']:
+                            return host['name']
 
-    def terminate_connection(self, volume, hostname, wwn_iqn):
+            if 'FCPaths' in host and wwns is not None:
+                fc_paths = host['FCPaths']
+                for fc in fc_paths:
+                    for wwn in wwns:
+                        if wwn == fc['WWN']:
+                            return host['name']
+
+    def terminate_connection(self, volume, hostname, wwn=None, iqn=None):
         """Driver entry point to unattach a volume from an instance."""
         try:
             # does 3par know this host by a different name?
@@ -1052,7 +980,7 @@ exit
         except hpexceptions.HTTPNotFound as e:
             if 'host does not exist' in e.get_description():
                 # use the wwn to see if we can find the hostname
-                hostname = self._get_3par_hostname_from_wwn_iqn(wwn_iqn)
+                hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
                 # no 3par host, re-throw
                 if (hostname is None):
                     raise
@@ -1060,13 +988,18 @@ exit
             # not a 'host does not exist' HTTPNotFound exception, re-throw
                 raise
 
-        #try again with name retrieved from 3par
+        # try again with name retrieved from 3par
         self.delete_vlun(volume, hostname)
 
     def parse_create_host_error(self, hostname, out):
         search_str = "already used by host "
         if search_str in out[1]:
-            #host exists, return name used by 3par
+            # host exists, return name used by 3par
             hostname_3par = self.get_next_word(out[1], search_str)
             self.hosts_naming_dict[hostname] = hostname_3par
             return hostname_3par
+
+    def build_nsp(self, portPos):
+        return '%s:%s:%s' % (portPos['node'],
+                             portPos['slot'],
+                             portPos['cardPort'])
