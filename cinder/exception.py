@@ -30,6 +30,7 @@ from oslo.config import cfg
 import webob.exc
 
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 
 
 LOG = logging.getLogger(__name__)
@@ -52,29 +53,12 @@ class ConvertedException(webob.exc.WSGIHTTPException):
         super(ConvertedException, self).__init__()
 
 
-class ProcessExecutionError(IOError):
-    def __init__(self, stdout=None, stderr=None, exit_code=None, cmd=None,
-                 description=None):
-        self.exit_code = exit_code
-        self.stderr = stderr
-        self.stdout = stdout
-        self.cmd = cmd
-        self.description = description
+class ProcessExecutionError(processutils.ProcessExecutionError):
+    pass
 
-        if description is None:
-            description = _('Unexpected error while running command.')
-        if exit_code is None:
-            exit_code = '-'
-        message = _('%(description)s\nCommand: %(cmd)s\n'
-                    'Exit code: %(exit_code)s\nStdout: %(stdout)r\n'
-                    'Stderr: %(stderr)r') % {
-                        'description': description,
-                        'cmd': cmd,
-                        'exit_code': exit_code,
-                        'stdout': stdout,
-                        'stderr': stderr,
-                    }
-        IOError.__init__(self, message)
+
+class UnknownArgumentError(processutils.UnknownArgumentError):
+    pass
 
 
 class Error(Exception):

@@ -373,25 +373,27 @@ class CephBackupDriver(BackupDriver):
         src_ceph_args = self._ceph_args(src_user, src_conf, pool=src_pool)
         dest_ceph_args = self._ceph_args(dest_user, dest_conf, pool=dest_pool)
 
+        cmd = ['rbd', 'export-diff'] + src_ceph_args
+        if from_snap is not None:
+            cmd.extend(['--from-snap', from_snap])
+        if src_snap:
+            path = self._utf8("%s/%s@%s" % (src_pool, src_name, src_snap))
+        else:
+            path = self._utf8("%s/%s" % (src_pool, src_name))
+        cmd.extend([path, '-'])
         try:
-            cmd = ['rbd', 'export-diff'] + src_ceph_args
-            if from_snap is not None:
-                cmd.extend(['--from-snap', from_snap])
-            if src_snap:
-                path = self._utf8("%s/%s@%s" % (src_pool, src_name, src_snap))
-            else:
-                path = self._utf8("%s/%s" % (src_pool, src_name))
-            cmd.extend([path, '-'])
             out, err = self._execute(*cmd)
-        except (exception.ProcessExecutionError, exception.Error) as exc:
+        except (exception.ProcessExecutionError,
+                exception.UnknownArgumentError) as exc:
             LOG.info(_("rbd export-diff failed - %s") % (str(exc)))
             raise exception.BackupRBDOperationFailed("rbd export-diff failed")
 
+        cmd = ['rbd', 'import-diff'] + dest_ceph_args
+        cmd.extend(['-', self._utf8("%s/%s" % (dest_pool, dest_name))])
         try:
-            cmd = ['rbd', 'import-diff'] + dest_ceph_args
-            cmd.extend(['-', self._utf8("%s/%s" % (dest_pool, dest_name))])
             out, err = self._execute(*cmd, process_input=out)
-        except (exception.ProcessExecutionError, exception.Error) as exc:
+        except (exception.ProcessExecutionError,
+                exception.UnknownArgumentError) as exc:
             LOG.info(_("rbd import-diff failed - %s") % (str(exc)))
             raise exception.BackupRBDOperationFailed("rbd import-diff failed")
 
