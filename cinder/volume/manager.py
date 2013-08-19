@@ -162,7 +162,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.driver.clear_download(ctxt, volume)
                 self.db.volume_update(ctxt, volume['id'], {'status': 'error'})
             else:
-                LOG.info(_("volume %s: skipping export"), volume['name'])
+                LOG.info(_("volume %s: skipping export"), volume['id'])
 
         LOG.debug(_('Resuming any in progress delete operations'))
         for volume in volumes:
@@ -212,7 +212,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             project_id = context.project_id
 
-        LOG.info(_("volume %s: deleting"), volume_ref['name'])
+        LOG.info(_("volume %s: deleting"), volume_ref['id'])
         if volume_ref['attach_status'] == "attached":
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
@@ -223,13 +223,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_volume_usage(context, volume_ref, "delete.start")
         self._reset_stats()
         try:
-            LOG.debug(_("volume %s: removing export"), volume_ref['name'])
+            LOG.debug(_("volume %s: removing export"), volume_ref['id'])
             self.driver.remove_export(context, volume_ref)
-            LOG.debug(_("volume %s: deleting"), volume_ref['name'])
+            LOG.debug(_("volume %s: deleting"), volume_ref['id'])
             self.driver.delete_volume(volume_ref)
         except exception.VolumeIsBusy:
             LOG.error(_("Cannot delete volume %s: volume is busy"),
-                      volume_ref['name'])
+                      volume_ref['id'])
             self.driver.ensure_export(context, volume_ref)
             self.db.volume_update(context, volume_ref['id'],
                                   {'status': 'available'})
@@ -260,7 +260,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
         self.db.volume_destroy(context, volume_id)
-        LOG.info(_("volume %s: deleted successfully"), volume_ref['name'])
+        LOG.info(_("volume %s: deleted successfully"), volume_ref['id'])
         self._notify_about_volume_usage(context, volume_ref, "delete.end")
 
         # Commit the reservations
@@ -275,13 +275,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Creates and exports the snapshot."""
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-        LOG.info(_("snapshot %s: creating"), snapshot_ref['name'])
+        LOG.info(_("snapshot %s: creating"), snapshot_ref['id'])
         self._notify_about_snapshot_usage(
             context, snapshot_ref, "create.start")
 
         try:
-            LOG.debug(_("snapshot %(snap_name)s: creating"),
-                      {'snap_name': snapshot_ref['name']})
+            LOG.debug(_("snapshot %(snap_id)s: creating"),
+                      {'snap_id': snapshot_ref['id']})
             model_update = self.driver.create_snapshot(snapshot_ref)
             if model_update:
                 self.db.snapshot_update(context, snapshot_ref['id'],
@@ -309,7 +309,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                               {'volume_id': volume_id,
                                'snapshot_id': snapshot_id})
                 raise exception.MetadataCopyFailure(reason=ex)
-        LOG.info(_("snapshot %s: created successfully"), snapshot_ref['name'])
+        LOG.info(_("snapshot %s: created successfully"), snapshot_ref['id'])
         self._notify_about_snapshot_usage(context, snapshot_ref, "create.end")
         return snapshot_id
 
@@ -318,16 +318,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         project_id = snapshot_ref['project_id']
-        LOG.info(_("snapshot %s: deleting"), snapshot_ref['name'])
+        LOG.info(_("snapshot %s: deleting"), snapshot_ref['id'])
         self._notify_about_snapshot_usage(
             context, snapshot_ref, "delete.start")
 
         try:
-            LOG.debug(_("snapshot %s: deleting"), snapshot_ref['name'])
+            LOG.debug(_("snapshot %s: deleting"), snapshot_ref['id'])
             self.driver.delete_snapshot(snapshot_ref)
         except exception.SnapshotIsBusy:
             LOG.error(_("Cannot delete snapshot %s: snapshot is busy"),
-                      snapshot_ref['name'])
+                      snapshot_ref['id'])
             self.db.snapshot_update(context,
                                     snapshot_ref['id'],
                                     {'status': 'available'})
@@ -359,7 +359,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_("Failed to update usages deleting snapshot"))
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
         self.db.snapshot_destroy(context, snapshot_id)
-        LOG.info(_("snapshot %s: deleted successfully"), snapshot_ref['name'])
+        LOG.info(_("snapshot %s: deleted successfully"), snapshot_ref['id'])
         self._notify_about_snapshot_usage(context, snapshot_ref, "delete.end")
 
         # Commit the reservations
@@ -604,7 +604,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if not force_host_copy:
             try:
                 LOG.debug(_("volume %s: calling driver migrate_volume"),
-                          volume_ref['name'])
+                          volume_ref['id'])
                 moved, model_update = self.driver.migrate_volume(ctxt,
                                                                  volume_ref,
                                                                  host)
@@ -716,9 +716,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             return
 
         try:
-            LOG.info(_("volume %s: extending"), volume['name'])
+            LOG.info(_("volume %s: extending"), volume['id'])
             self.driver.extend_volume(volume, new_size)
-            LOG.info(_("volume %s: extended successfully"), volume['name'])
+            LOG.info(_("volume %s: extended successfully"), volume['id'])
         except Exception:
             LOG.exception(_("volume %s: Error trying to extend volume"),
                           volume_id)
