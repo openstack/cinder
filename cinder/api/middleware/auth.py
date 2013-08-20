@@ -28,6 +28,7 @@ import webob.exc
 
 from cinder.api.openstack import wsgi
 from cinder import context
+from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import wsgi as base_wsgi
 
@@ -98,6 +99,16 @@ class CinderKeystoneContext(base_wsgi.Middleware):
 
         # Build a context, including the auth_token...
         remote_address = req.remote_addr
+
+        service_catalog = None
+        if req.headers.get('X_SERVICE_CATALOG') is not None:
+            try:
+                catalog_header = req.headers.get('X_SERVICE_CATALOG')
+                service_catalog = jsonutils.loads(catalog_header)
+            except ValueError:
+                raise webob.exc.HTTPInternalServerError(
+                    _('Invalid service catalog json.'))
+
         if CONF.use_forwarded_for:
             remote_address = req.headers.get('X-Forwarded-For', remote_address)
         ctx = context.RequestContext(user_id,
@@ -105,7 +116,8 @@ class CinderKeystoneContext(base_wsgi.Middleware):
                                      project_name=project_name,
                                      roles=roles,
                                      auth_token=auth_token,
-                                     remote_address=remote_address)
+                                     remote_address=remote_address,
+                                     service_catalog=service_catalog)
 
         req.environ['cinder.context'] = ctx
         return self.application
