@@ -47,7 +47,12 @@ sf_opts = [
 
     cfg.StrOpt('sf_account_prefix',
                default=socket.gethostname(),
-               help='Create SolidFire accounts with this prefix'), ]
+               help='Create SolidFire accounts with this prefix'),
+
+    cfg.IntOpt('sf_api_port',
+               default=443,
+               help='SolidFire API port. Useful if the device api is behind '
+                    'a proxy on a different port.'), ]
 
 
 CONF = cfg.CONF
@@ -105,8 +110,7 @@ class SolidFireDriver(SanISCSIDriver):
                                    'xMaxSnapshotsPerNodeExceeded',
                                    'xMaxClonesPerNodeExceeded']
         host = self.configuration.san_ip
-        # For now 443 is the only port our server accepts requests on
-        port = 443
+        port = self.configuration.sf_api_port
 
         cluster_admin = self.configuration.san_login
         cluster_password = self.configuration.san_password
