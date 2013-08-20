@@ -354,6 +354,19 @@ class VolumeTestCase(test.TestCase):
         self.mox.UnsetStubs()
         self.volume.delete_volume(self.context, volume_id)
 
+    def test_delete_volume_in_error_extending(self):
+        """Test volume can be deleted in error_extending stats."""
+        # create a volume
+        volume = self._create_volume()
+        self.volume.create_volume(self.context, volume['id'])
+
+        # delete 'error_extending' volume
+        db.volume_update(self.context, volume['id'],
+                         {'status': 'error_extending'})
+        self.volume.delete_volume(self.context, volume['id'])
+        self.assertRaises(exception.NotFound, db.volume_get,
+                          self.context, volume['id'])
+
     def test_create_volume_from_snapshot(self):
         """Test volume can be created from a snapshot."""
         volume_src = self._create_volume()
