@@ -1548,16 +1548,18 @@ def _attach_debug_listeners(flow):
     """
 
     def flow_log_change(state, details):
+        # TODO(harlowja): the bug 1214083 is causing problems
         LOG.debug(_("%(flow)s has moved into state %(state)s from state"
                     " %(old_state)s") % {'state': state,
                                          'old_state': details.get('old_state'),
-                                         'flow': details['flow']})
+                                         'flow': str(details['flow'])})
 
     def task_log_change(state, details):
+        # TODO(harlowja): the bug 1214083 is causing problems
         LOG.debug(_("%(flow)s has moved %(runner)s into state %(state)s with"
                     " result: %(result)s") % {'state': state,
-                                              'flow': details['flow'],
-                                              'runner': details['runner'],
+                                              'flow': str(details['flow']),
+                                              'runner': str(details['runner']),
                                               'result': details.get('result')})
 
     # Register * for all state changes (and not selective state changes to be
