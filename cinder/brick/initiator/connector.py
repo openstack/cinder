@@ -48,11 +48,11 @@ CONF.register_opts(connector_opts)
 synchronized = lockutils.synchronized_with_prefix('brick-')
 
 
-def get_connector_properties():
+def get_connector_properties(root_helper):
     """Get the connection properties for all protocols."""
 
-    iscsi = ISCSIConnector()
-    fc = linuxfc.LinuxFibreChannel()
+    iscsi = ISCSIConnector(root_helper=root_helper)
+    fc = linuxfc.LinuxFibreChannel(root_helper=root_helper)
 
     props = {}
     props['ip'] = CONF.my_ip
@@ -71,9 +71,9 @@ def get_connector_properties():
 
 
 class InitiatorConnector(executor.Executor):
-    def __init__(self, driver=None, execute=putils.execute,
-                 root_helper="sudo", *args, **kwargs):
-        super(InitiatorConnector, self).__init__(execute, root_helper,
+    def __init__(self, root_helper, driver=None,
+                 execute=putils.execute, *args, **kwargs):
+        super(InitiatorConnector, self).__init__(root_helper, execute,
                                                  *args, **kwargs)
         if not driver:
             driver = host_driver.HostDriver()
@@ -85,8 +85,8 @@ class InitiatorConnector(executor.Executor):
         self.driver = driver
 
     @staticmethod
-    def factory(protocol, driver=None, execute=putils.execute,
-                root_helper="sudo", use_multipath=False):
+    def factory(protocol, root_helper, driver=None,
+                execute=putils.execute, use_multipath=False):
         """Build a Connector object based upon protocol."""
         LOG.debug("Factory for %s" % protocol)
         protocol = protocol.upper()
@@ -148,11 +148,11 @@ class InitiatorConnector(executor.Executor):
 class ISCSIConnector(InitiatorConnector):
     """Connector class to attach/detach iSCSI volumes."""
 
-    def __init__(self, driver=None, execute=putils.execute,
-                 root_helper="sudo", use_multipath=False,
+    def __init__(self, root_helper, driver=None,
+                 execute=putils.execute, use_multipath=False,
                  *args, **kwargs):
-        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
-        super(ISCSIConnector, self).__init__(driver, execute, root_helper,
+        self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
+        super(ISCSIConnector, self).__init__(root_helper, driver, execute,
                                              *args, **kwargs)
         self.use_multipath = use_multipath
 
@@ -486,14 +486,13 @@ class ISCSIConnector(InitiatorConnector):
 class FibreChannelConnector(InitiatorConnector):
     """Connector class to attach/detach Fibre Channel volumes."""
 
-    def __init__(self, driver=None, execute=putils.execute,
-                 root_helper="sudo", use_multipath=False,
+    def __init__(self, root_helper, driver=None,
+                 execute=putils.execute, use_multipath=False,
                  *args, **kwargs):
-        self._linuxscsi = linuxscsi.LinuxSCSI(execute, root_helper)
-        self._linuxfc = linuxfc.LinuxFibreChannel(execute, root_helper)
-        super(FibreChannelConnector, self).__init__(driver, execute,
-                                                    root_helper,
-                                                    *args, **kwargs)
+        self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
+        self._linuxfc = linuxfc.LinuxFibreChannel(root_helper, execute)
+        super(FibreChannelConnector, self).__init__(root_helper, driver,
+                                                    execute, *args, **kwargs)
         self.use_multipath = use_multipath
 
     def set_execute(self, execute):
@@ -658,9 +657,9 @@ class FibreChannelConnector(InitiatorConnector):
 
 class AoEConnector(InitiatorConnector):
     """Connector class to attach/detach AoE volumes."""
-    def __init__(self, driver=None, execute=putils.execute,
-                 root_helper="sudo", *args, **kwargs):
-        super(AoEConnector, self).__init__(driver, execute, root_helper,
+    def __init__(self, root_helper, driver=None,
+                 execute=putils.execute, *args, **kwargs):
+        super(AoEConnector, self).__init__(root_helper, driver, execute,
                                            *args, **kwargs)
 
     def _get_aoe_info(self, connection_properties):

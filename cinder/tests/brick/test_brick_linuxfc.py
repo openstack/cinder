@@ -30,7 +30,7 @@ class LinuxFCTestCase(test.TestCase):
         super(LinuxFCTestCase, self).setUp()
         self.cmds = []
         self.stubs.Set(os.path, 'exists', lambda x: True)
-        self.lfc = linuxfc.LinuxFibreChannel(execute=self.fake_execute)
+        self.lfc = linuxfc.LinuxFibreChannel(None, execute=self.fake_execute)
 
     def fake_execute(self, *cmd, **kwargs):
         self.cmds.append(string.join(cmd))
