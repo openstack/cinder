@@ -40,7 +40,7 @@ class VolumeTypeEncryptionTemplate(xmlutil.TemplateBuilder):
 
 
 class VolumeTypeEncryptionController(wsgi.Controller):
-    """The volume type encryption API controller for the OpenStack API """
+    """The volume type encryption API controller for the OpenStack API."""
 
     def _get_volume_type_encryption(self, context, type_id):
         encryption_ref = db.volume_type_encryption_get(context, type_id)

@@ -1,6 +1,7 @@
 {
     "context_is_admin": [["role:admin"]],
     "admin_api": [["is_admin:True"]],
+    "admin_or_owner":  [["is_admin:True"], ["project_id:%(project_id)s"]],
 
     "volume:create": [],
     "volume:get": [],
@@ -37,7 +38,7 @@
     "volume_extension:types_manage": [],
     "volume_extension:types_extra_specs": [],
     "volume_extension:volume_type_encryption": [["rule:admin_api"]],
-    "volume_extension:volume_encryption_metadata": [["rule:admin_api"]],
+    "volume_extension:volume_encryption_metadata": [["rule:admin_or_owner"]],
     "volume_extension:extended_snapshot_attributes": [],
     "volume_extension:volume_image_metadata": [],
     "volume_extension:volume_host_attribute": [["rule:admin_api"]],

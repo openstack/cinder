@@ -1817,7 +1817,6 @@ def volume_type_encryption_delete(context, volume_type_id):
                            'updated_at': literal_column('updated_at')})
 
 
-# TODO(joel-coffman): split into two functions -- update and create
 @require_admin_context
 def volume_type_encryption_update_or_create(context, volume_type_id,
                                             values):
@@ -1847,7 +1846,7 @@ def volume_type_encryption_volume_get(context, volume_type_id, session=None):
 ####################
 
 
-@require_admin_context
+@require_context
 def volume_encryption_metadata_get(context, volume_id, session=None):
     """Return the encryption key id for a given volume."""
 
