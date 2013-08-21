@@ -77,7 +77,7 @@ class TargetAdminTestCase(object):
         self.verify_cmds(cmds)
 
     def run_commands(self):
-        tgtadm = iser.get_target_admin()
+        tgtadm = iser.get_target_admin(None)
         tgtadm.set_execute(self.fake_execute)
         tgtadm.create_iser_target(self.target_name, self.tid,
                                   self.lun, self.path)
