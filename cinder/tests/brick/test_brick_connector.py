@@ -309,18 +309,28 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
                        lambda x: devices['devices'][0])
         location = '10.0.2.15:3260'
         name = 'volume-00000001'
-        wwn = '1234567890123456'
         vol = {'id': 1, 'name': name}
-        connection_info = self.fibrechan_connection(vol, location, wwn)
-        mount_device = "vde"
-        device_info = self.connector.connect_volume(connection_info['data'])
-        dev_str = '/dev/disk/by-path/pci-0000:05:00.2-fc-0x%s-lun-1' % wwn
-        self.assertEquals(device_info['type'], 'block')
-        self.assertEquals(device_info['path'], dev_str)
+        # Should work for string, unicode, and list
+        wwns = ['1234567890123456', unicode('1234567890123456'),
+                ['1234567890123456', '1234567890123457']]
+        for wwn in wwns:
+            connection_info = self.fibrechan_connection(vol, location, wwn)
+            dev_info = self.connector.connect_volume(connection_info['data'])
+            exp_wwn = wwn[0] if isinstance(wwn, list) else wwn
+            dev_str = ('/dev/disk/by-path/pci-0000:05:00.2-fc-0x%s-lun-1' %
+                       exp_wwn)
+            self.assertEquals(dev_info['type'], 'block')
+            self.assertEquals(dev_info['path'], dev_str)
 
-        self.connector.disconnect_volume(connection_info['data'], device_info)
-        expected_commands = []
-        self.assertEqual(expected_commands, self.cmds)
+            self.connector.disconnect_volume(connection_info['data'], dev_info)
+            expected_commands = []
+            self.assertEqual(expected_commands, self.cmds)
+
+        # Should not work for anything other than string, unicode, and list
+        connection_info = self.fibrechan_connection(vol, location, 123)
+        self.assertRaises(exception.NoFibreChannelHostsFound,
+                          self.connector.connect_volume,
+                          connection_info['data'])
 
         self.stubs.Set(self.connector._linuxfc, 'get_fc_hbas',
                        lambda: [])
