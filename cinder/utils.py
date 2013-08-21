@@ -730,18 +730,6 @@ def flatten_dict(dict_, flattened=None):
     return flattened
 
 
-def partition_dict(dict_, keys):
-    """Return two dicts, one with `keys` the other with everything else."""
-    intersection = {}
-    difference = {}
-    for key, value in dict_.iteritems():
-        if key in keys:
-            intersection[key] = value
-        else:
-            difference[key] = value
-    return intersection, difference
-
-
 def map_dict_keys(dict_, key_map):
     """Return a dict in which the dictionaries keys are mapped to new keys."""
     mapped = {}
@@ -749,12 +737,6 @@ def map_dict_keys(dict_, key_map):
         mapped_key = key_map[key] if key in key_map else key
         mapped[mapped_key] = value
     return mapped
-
-
-def subset_dict(dict_, keys):
-    """Return a dict that only contains a subset of keys."""
-    subset = partition_dict(dict_, keys)[0]
-    return subset
 
 
 def check_isinstance(obj, cls):
@@ -773,22 +755,6 @@ def is_valid_boolstr(val):
             val == 'yes' or val == 'no' or
             val == 'y' or val == 'n' or
             val == '1' or val == '0')
-
-
-def is_valid_ipv4(address):
-    """valid the address strictly as per format xxx.xxx.xxx.xxx.
-    where xxx is a value between 0 and 255.
-    """
-    parts = address.split(".")
-    if len(parts) != 4:
-        return False
-    for item in parts:
-        try:
-            if not 0 <= int(item) <= 255:
-                return False
-        except ValueError:
-            return False
-    return True
 
 
 def monkey_patch():
@@ -834,15 +800,6 @@ def monkey_patch():
                         decorator("%s.%s" % (module, key), func))
 
 
-def convert_to_list_dict(lst, label):
-    """Convert a value or list into a list of dicts"""
-    if not lst:
-        return None
-    if not isinstance(lst, list):
-        lst = [lst]
-    return [{label: x} for x in lst]
-
-
 def timefunc(func):
     """Decorator that logs how long a particular function took to execute"""
     @functools.wraps(func)
@@ -875,21 +832,6 @@ def logging_error(message):
     except Exception as error:
         with excutils.save_and_reraise_exception():
             LOG.exception(message)
-
-
-def make_dev_path(dev, partition=None, base='/dev'):
-    """Return a path to a particular device.
-
-    >>> make_dev_path('xvdc')
-    /dev/xvdc
-
-    >>> make_dev_path('xvdc', 1)
-    /dev/xvdc1
-    """
-    path = os.path.join(base, dev)
-    if partition:
-        path += str(partition)
-    return path
 
 
 def total_seconds(td):
