@@ -39,6 +39,7 @@ from cinder.taskflow import task
 from cinder import units
 from cinder import utils
 from cinder.volume.flows import base
+from cinder.volume.flows import utils as flow_utils
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
@@ -1516,36 +1517,6 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
         })
 
 
-def _attach_debug_listeners(flow):
-    """Sets up a nice set of debug listeners for the flow.
-
-    These listeners will log when tasks/flows are transitioning from state to
-    state so that said states can be seen in the debug log output which is very
-    useful for figuring out where problems are occuring.
-    """
-
-    def flow_log_change(state, details):
-        # TODO(harlowja): the bug 1214083 is causing problems
-        LOG.debug(_("%(flow)s has moved into state %(state)s from state"
-                    " %(old_state)s") % {'state': state,
-                                         'old_state': details.get('old_state'),
-                                         'flow': str(details['flow'])})
-
-    def task_log_change(state, details):
-        # TODO(harlowja): the bug 1214083 is causing problems
-        LOG.debug(_("%(flow)s has moved %(runner)s into state %(state)s with"
-                    " result: %(result)s") % {'state': state,
-                                              'flow': str(details['flow']),
-                                              'runner': str(details['runner']),
-                                              'result': details.get('result')})
-
-    # Register * for all state changes (and not selective state changes to be
-    # called upon) since all the changes is more useful.
-    flow.notifier.register('*', flow_log_change)
-    flow.task_notifier.register('*', task_log_change)
-    return flow
-
-
 def get_api_flow(scheduler_rpcapi, volume_rpcapi, db,
                  image_service,
                  az_check_functor,
@@ -1586,7 +1557,7 @@ def get_api_flow(scheduler_rpcapi, volume_rpcapi, db,
     # Note(harlowja): this will return the flow as well as the uuid of the
     # task which will produce the 'volume' database reference (since said
     # reference is returned to other callers in the api for further usage).
-    return (_attach_debug_listeners(api_flow), v_uuid)
+    return (flow_utils.attach_debug_listeners(api_flow), v_uuid)
 
 
 def get_scheduler_flow(db, driver, request_spec=None, filter_properties=None,
@@ -1673,7 +1644,7 @@ def get_scheduler_flow(db, driver, request_spec=None, filter_properties=None,
 
     scheduler_flow.add(schedule_create_volume)
 
-    return _attach_debug_listeners(scheduler_flow)
+    return flow_utils.attach_debug_listeners(scheduler_flow)
 
 
 def get_manager_flow(db, driver, scheduler_rpcapi, host, volume_id,
@@ -1739,4 +1710,4 @@ def get_manager_flow(db, driver, scheduler_rpcapi, host, volume_id,
     volume_flow.add(CreateVolumeFromSpecTask(db, host, driver))
     volume_flow.add(CreateVolumeOnFinishTask(db, host, "create.end"))
 
-    return _attach_debug_listeners(volume_flow)
+    return flow_utils.attach_debug_listeners(volume_flow)
