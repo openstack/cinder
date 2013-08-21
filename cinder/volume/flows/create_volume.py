@@ -35,6 +35,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
 from cinder.openstack.common import timeutils
+from cinder.volume.flows import base
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
@@ -93,15 +94,6 @@ def _find_result_spec(flow):
     return None
 
 
-def _make_task_name(klass, addons=None):
-    """Makes a pretty name for a task class."""
-    components = [klass.__module__, klass.__name__]
-    if addons:
-        for a in addons:
-            components.append(str(a))
-    return "%s#%s" % (ACTION, ".".join(components))
-
-
 def _restore_source_status(context, db, volume_spec):
     # NOTE(harlowja): Only if the type of the volume that was being created is
     # the source volume type should we try to reset the source volume status
@@ -154,22 +146,7 @@ def _error_out_volume(context, db, volume_id, reason=None):
                                           'update': update})
 
 
-class CinderTask(task.Task):
-    """The root task class for all cinder tasks.
-
-    It automatically names the given task using the module and class that
-    implement the given task as the task name.
-
-    TODO(harlowja): this likely should be moved later to a common folder in the
-    future when more of cinders flows are implemented.
-    """
-
-    def __init__(self, addons=None):
-        super(CinderTask, self).__init__(_make_task_name(self.__class__,
-                                                         addons))
-
-
-class ValuesInjectTask(CinderTask):
+class ValuesInjectTask(base.CinderTask):
     """This injects a dict into the flow.
 
     This injection is done so that the keys (and values) provided can be
@@ -183,7 +160,7 @@ class ValuesInjectTask(CinderTask):
     """
 
     def __init__(self, inject_what):
-        super(ValuesInjectTask, self).__init__()
+        super(ValuesInjectTask, self).__init__(addons=[ACTION])
         self.provides.update(inject_what.keys())
         self._inject = inject_what
 
@@ -191,7 +168,7 @@ class ValuesInjectTask(CinderTask):
         return dict(self._inject)
 
 
-class ExtractVolumeRequestTask(CinderTask):
+class ExtractVolumeRequestTask(base.CinderTask):
     """Processes an api request values into a validated set of values.
 
     This tasks responsibility is to take in a set of inputs that will form
@@ -203,7 +180,7 @@ class ExtractVolumeRequestTask(CinderTask):
     """
 
     def __init__(self, image_service, az_check_functor=None):
-        super(ExtractVolumeRequestTask, self).__init__()
+        super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION])
         # This task will produce the following outputs (said outputs can be
         # saved to durable storage in the future so that the flow can be
         # reconstructed elsewhere and continued).
@@ -531,14 +508,14 @@ class ExtractVolumeRequestTask(CinderTask):
         }
 
 
-class EntryCreateTask(CinderTask):
+class EntryCreateTask(base.CinderTask):
     """Creates an entry for the given volume creation in the database.
 
     Reversion strategy: remove the volume_id created from the database.
     """
 
     def __init__(self, db):
-        super(EntryCreateTask, self).__init__()
+        super(EntryCreateTask, self).__init__(addons=[ACTION])
         self.db = db
         self.requires.update(['availability_zone', 'description', 'metadata',
                               'name', 'reservations', 'size', 'snapshot_id',
@@ -603,7 +580,7 @@ class EntryCreateTask(CinderTask):
             LOG.exception(_("Failed destroying volume entry %s"), vol_id)
 
 
-class QuotaReserveTask(CinderTask):
+class QuotaReserveTask(base.CinderTask):
     """Reserves a single volume with the given size & the given volume type.
 
     Reversion strategy: rollback the quota reservation.
@@ -618,7 +595,7 @@ class QuotaReserveTask(CinderTask):
     """
 
     def __init__(self):
-        super(QuotaReserveTask, self).__init__()
+        super(QuotaReserveTask, self).__init__(addons=[ACTION])
         self.requires.update(['size', 'volume_type_id'])
         self.provides.update(['reservations'])
 
@@ -681,7 +658,7 @@ class QuotaReserveTask(CinderTask):
                             " %s reservations"), reservations)
 
 
-class QuotaCommitTask(CinderTask):
+class QuotaCommitTask(base.CinderTask):
     """Commits the reservation.
 
     Reversion strategy: N/A (the rollback will be handled by the task that did
@@ -697,14 +674,14 @@ class QuotaCommitTask(CinderTask):
     """
 
     def __init__(self):
-        super(QuotaCommitTask, self).__init__()
+        super(QuotaCommitTask, self).__init__(addons=[ACTION])
         self.requires.update(['reservations'])
 
     def __call__(self, context, reservations):
         QUOTAS.commit(context, reservations)
 
 
-class VolumeCastTask(CinderTask):
+class VolumeCastTask(base.CinderTask):
     """Performs a volume create cast to the scheduler or to the volume manager.
 
     This which will signal a transition of the api workflow to another child
@@ -714,7 +691,7 @@ class VolumeCastTask(CinderTask):
     """
 
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
-        super(VolumeCastTask, self).__init__()
+        super(VolumeCastTask, self).__init__(addons=[ACTION])
         self.volume_rpcapi = volume_rpcapi
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
@@ -780,7 +757,7 @@ class VolumeCastTask(CinderTask):
         self._cast_create_volume(context, request_spec, filter_properties)
 
 
-class OnFailureChangeStatusTask(CinderTask):
+class OnFailureChangeStatusTask(base.CinderTask):
     """Helper task that sets a volume id to status error.
 
     Reversion strategy: On failure of any flow that includes this task the
@@ -791,7 +768,7 @@ class OnFailureChangeStatusTask(CinderTask):
     """
 
     def __init__(self, db):
-        super(OnFailureChangeStatusTask, self).__init__()
+        super(OnFailureChangeStatusTask, self).__init__(addons=[ACTION])
         self.db = db
         self.requires.update(['volume_id'])
         self.optional.update(['volume_spec'])
@@ -822,7 +799,7 @@ class OnFailureChangeStatusTask(CinderTask):
         LOG.error(_('Unexpected build error:'), exc_info=exc_info)
 
 
-class OnFailureRescheduleTask(CinderTask):
+class OnFailureRescheduleTask(base.CinderTask):
     """Triggers a rescheduling request to be sent when reverting occurs.
 
     Reversion strategy: Triggers the rescheduling mechanism whereby a cast gets
@@ -831,7 +808,7 @@ class OnFailureRescheduleTask(CinderTask):
     """
 
     def __init__(self, reschedule_context, db, scheduler_rpcapi):
-        super(OnFailureRescheduleTask, self).__init__()
+        super(OnFailureRescheduleTask, self).__init__(addons=[ACTION])
         self.requires.update(['filter_properties', 'image_id', 'request_spec',
                               'snapshot_id', 'volume_id'])
         self.optional.update(['volume_spec'])
@@ -971,7 +948,7 @@ class OnFailureRescheduleTask(CinderTask):
         LOG.error(_('Unexpected build error:'), exc_info=exc_info)
 
 
-class NotifySchedulerFailureTask(CinderTask):
+class NotifySchedulerFailureTask(base.CinderTask):
     """Helper task that notifies some external service on failure.
 
     Reversion strategy: On failure of any flow that includes this task the
@@ -981,7 +958,7 @@ class NotifySchedulerFailureTask(CinderTask):
     """
 
     def __init__(self, method):
-        super(NotifySchedulerFailureTask, self).__init__()
+        super(NotifySchedulerFailureTask, self).__init__(addons=[ACTION])
         self.requires.update(['request_spec', 'volume_id'])
         self.method = method
         self.topic = 'scheduler.%s' % self.method
@@ -1012,14 +989,14 @@ class NotifySchedulerFailureTask(CinderTask):
                                                       'payload': payload})
 
 
-class ExtractSchedulerSpecTask(CinderTask):
+class ExtractSchedulerSpecTask(base.CinderTask):
     """Extracts a spec object from a partial and/or incomplete request spec.
 
     Reversion strategy: N/A
     """
 
     def __init__(self, db):
-        super(ExtractSchedulerSpecTask, self).__init__()
+        super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION])
         self.db = db
         self.requires.update(['image_id', 'request_spec', 'snapshot_id',
                               'volume_id'])
@@ -1063,7 +1040,7 @@ class ExtractSchedulerSpecTask(CinderTask):
         }
 
 
-class ExtractVolumeSpecTask(CinderTask):
+class ExtractVolumeSpecTask(base.CinderTask):
     """Extracts a spec of a volume to be created into a common structure.
 
     This task extracts and organizes the input requirements into a common
@@ -1075,7 +1052,7 @@ class ExtractVolumeSpecTask(CinderTask):
     """
 
     def __init__(self, db):
-        super(ExtractVolumeSpecTask, self).__init__()
+        super(ExtractVolumeSpecTask, self).__init__(addons=[ACTION])
         self.db = db
         self.requires.update(['filter_properties', 'image_id', 'snapshot_id',
                               'source_volid', 'volume_id'])
@@ -1165,14 +1142,15 @@ class ExtractVolumeSpecTask(CinderTask):
         }
 
 
-class NotifyVolumeActionTask(CinderTask):
+class NotifyVolumeActionTask(base.CinderTask):
     """Performs a notification about the given volume when called.
 
     Reversion strategy: N/A
     """
 
     def __init__(self, db, host, event_suffix):
-        super(NotifyVolumeActionTask, self).__init__(addons=[event_suffix])
+        super(NotifyVolumeActionTask, self).__init__(addons=[ACTION,
+                                                             event_suffix])
         self.requires.update(['volume_ref'])
         self.db = db
         self.event_suffix = event_suffix
@@ -1194,14 +1172,14 @@ class NotifyVolumeActionTask(CinderTask):
                            'volume_id': volume_id})
 
 
-class CreateVolumeFromSpecTask(CinderTask):
+class CreateVolumeFromSpecTask(base.CinderTask):
     """Creates a volume from a provided specification.
 
     Reversion strategy: N/A
     """
 
     def __init__(self, db, host, driver):
-        super(CreateVolumeFromSpecTask, self).__init__()
+        super(CreateVolumeFromSpecTask, self).__init__(addons=[ACTION])
         self.db = db
         self.driver = driver
         self.requires.update(['volume_spec', 'volume_ref'])
