@@ -617,7 +617,7 @@ class ISCSIDriver(VolumeDriver):
         data['QoS_support'] = False
         self._stats = data
 
-    def accept_transfer(self, volume, new_user, new_project):
+    def accept_transfer(self, context, volume, new_user, new_project):
         pass
 
 

@@ -38,13 +38,10 @@ intact.
 """
 
 
-import sys
 import time
-import traceback
 
 from oslo.config import cfg
 
-from cinder.brick.initiator import connector as initiator
 from cinder import context
 from cinder import exception
 from cinder.image import glance
@@ -531,7 +528,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # NOTE(jdg): need elevated context as we haven't "given" the vol
         # yet
         volume_ref = self.db.volume_get(context.elevated(), volume_id)
-        self.driver.accept_transfer(volume_ref, new_user, new_project)
+        self.driver.accept_transfer(context, volume_ref, new_user, new_project)
 
     def _migrate_volume_generic(self, ctxt, volume, host):
         rpcapi = volume_rpcapi.VolumeAPI()
