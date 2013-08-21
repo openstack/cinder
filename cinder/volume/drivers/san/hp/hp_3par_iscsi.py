@@ -252,8 +252,8 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         self.common.client_login()
-        self.common.terminate_connection(volume,
-                                         connector['host'],
+        hostname = self.common._safe_hostname(connector['host'])
+        self.common.terminate_connection(volume, hostname,
                                          connector['initiator'])
         self.common.client_logout()
 

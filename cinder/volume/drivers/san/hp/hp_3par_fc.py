@@ -193,8 +193,8 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         self.common.client_login()
-        self.common.terminate_connection(volume,
-                                         connector['host'],
+        hostname = self.common._safe_hostname(connector['host'])
+        self.common.terminate_connection(volume, hostname,
                                          connector['wwpns'])
         self.common.client_logout()
 
