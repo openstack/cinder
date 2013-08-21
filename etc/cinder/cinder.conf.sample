@@ -1266,11 +1266,18 @@
 # Options defined in cinder.volume.drivers.solidfire
 #
 
-# Set 512 byte emulation on volume creation;  (boolean value)
+# Set 512 byte emulation on volume creation (boolean value)
 #sf_emulate_512=true
 
 # Allow tenants to specify QOS on create (boolean value)
 #sf_allow_tenant_qos=false
+
+# Create solidfire accounts with this prefix. Defaults to current
+# hostname (string value)
+#sf_account_prefix=
+
+# Solidfire API port. Useful if the device is behind a proxy (integer value)
+#sf_api_port=443
 
 
 #
