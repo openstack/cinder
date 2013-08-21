@@ -184,9 +184,9 @@ class TestTemporaryFile(test.TestCase):
 
         def sut():
             with image_utils.temporary_file():
-                raise Exception()
+                raise test.TestingException()
 
-        self.assertRaises(Exception, sut)
+        self.assertRaises(test.TestingException, sut)
 
 
 class TestCoalesceChain(test.TestCase):
