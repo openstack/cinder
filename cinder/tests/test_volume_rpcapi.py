@@ -193,7 +193,11 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('accept_transfer',
                               rpc_method='cast',
                               volume=self.fake_volume,
-                              version='1.5')
+                              new_user='e5565fd0-06c8-11e3-'
+                                       '8ffd-0800200c9b77',
+                              new_project='e4465fd0-06c8-11e3'
+                                          '-8ffd-0800200c9a66',
+                              version='1.9')
 
     def test_extend_volume(self):
         self._test_volume_api('extend_volume',

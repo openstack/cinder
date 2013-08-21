@@ -114,7 +114,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.8'
+    RPC_API_VERSION = '1.9'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -527,9 +527,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.terminate_connection(volume_ref, connector, force=force)
 
-    def accept_transfer(self, context, volume_id):
-        volume_ref = self.db.volume_get(context, volume_id)
-        self.driver.accept_transfer(volume_ref)
+    def accept_transfer(self, context, volume_id, new_user, new_project):
+        # NOTE(jdg): need elevated context as we haven't "given" the vol
+        # yet
+        volume_ref = self.db.volume_get(context.elevated(), volume_id)
+        self.driver.accept_transfer(volume_ref, new_user, new_project)
 
     def _migrate_volume_generic(self, ctxt, volume, host):
         rpcapi = volume_rpcapi.VolumeAPI()
