@@ -20,6 +20,7 @@ import datetime
 import hashlib
 import os
 import paramiko
+import socket
 import StringIO
 import tempfile
 import uuid
@@ -28,7 +29,10 @@ import mox
 from oslo.config import cfg
 
 import cinder
+from cinder.brick.initiator import connector
+from cinder.brick.initiator import linuxfc
 from cinder import exception
+from cinder.openstack.common import processutils as putils
 from cinder.openstack.common import timeutils
 from cinder import test
 from cinder import utils
@@ -721,3 +725,60 @@ class SSHPoolTestCase(test.TestCase):
             third_id = ssh.id
 
         self.assertNotEqual(first_id, third_id)
+
+
+class BrickUtils(test.TestCase):
+    """Unit test to test the brick utility
+    wrapper functions.
+    """
+
+    def test_brick_get_connector_properties(self):
+
+        self.mox.StubOutWithMock(socket, 'gethostname')
+        socket.gethostname().AndReturn('fakehost')
+
+        self.mox.StubOutWithMock(connector.ISCSIConnector, 'get_initiator')
+        connector.ISCSIConnector.get_initiator().AndReturn('fakeinitiator')
+
+        self.mox.StubOutWithMock(linuxfc.LinuxFibreChannel, 'get_fc_wwpns')
+        linuxfc.LinuxFibreChannel.get_fc_wwpns().AndReturn(None)
+
+        self.mox.StubOutWithMock(linuxfc.LinuxFibreChannel, 'get_fc_wwnns')
+        linuxfc.LinuxFibreChannel.get_fc_wwnns().AndReturn(None)
+
+        props = {'initiator': 'fakeinitiator',
+                 'host': 'fakehost',
+                 'ip': CONF.my_ip,
+                 }
+
+        self.mox.ReplayAll()
+        props_actual = utils.brick_get_connector_properties()
+        self.assertEqual(props, props_actual)
+        self.mox.VerifyAll()
+
+    def test_brick_get_connector(self):
+
+        root_helper = utils.get_root_helper()
+
+        self.mox.StubOutClassWithMocks(connector, 'ISCSIConnector')
+        connector.ISCSIConnector(execute=putils.execute,
+                                 driver=None,
+                                 root_helper=root_helper,
+                                 use_multipath=False)
+
+        self.mox.StubOutClassWithMocks(connector, 'FibreChannelConnector')
+        connector.FibreChannelConnector(execute=putils.execute,
+                                        driver=None,
+                                        root_helper=root_helper,
+                                        use_multipath=False)
+
+        self.mox.StubOutClassWithMocks(connector, 'AoEConnector')
+        connector.AoEConnector(execute=putils.execute,
+                               driver=None,
+                               root_helper=root_helper)
+
+        self.mox.ReplayAll()
+        utils.brick_get_connector('iscsi')
+        utils.brick_get_connector('fibre_channel')
+        utils.brick_get_connector('aoe')
+        self.mox.VerifyAll()

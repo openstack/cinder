@@ -236,8 +236,7 @@ class VolumeDriver(object):
         LOG.debug(_('copy_data_between_volumes %(src)s -> %(dest)s.')
                   % {'src': src_vol['name'], 'dest': dest_vol['name']})
 
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        properties = initiator.get_connector_properties(root_helper)
+        properties = utils.brick_get_connector_properties()
         dest_remote = True if remote in ['dest', 'both'] else False
         dest_orig_status = dest_vol['status']
         try:
@@ -291,8 +290,7 @@ class VolumeDriver(object):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
 
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        properties = initiator.get_connector_properties(root_helper)
+        properties = utils.brick_get_connector_properties()
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -308,8 +306,7 @@ class VolumeDriver(object):
         """Copy the volume to the specified image."""
         LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
 
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        properties = initiator.get_connector_properties(root_helper)
+        properties = utils.brick_get_connector_properties()
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -332,9 +329,8 @@ class VolumeDriver(object):
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
         protocol = conn['driver_volume_type']
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        connector = initiator.InitiatorConnector.factory(
-            protocol, root_helper, use_multipath=use_multipath)
+        connector = utils.brick_get_connector(protocol,
+                                              use_multipath=use_multipath)
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 

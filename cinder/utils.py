@@ -46,6 +46,7 @@ from eventlet import pools
 
 from oslo.config import cfg
 
+from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import gettextutils
@@ -143,8 +144,7 @@ def fetchfile(url, target):
 def execute(*cmd, **kwargs):
     """Convenience wrapper around oslo's execute() method."""
     if 'run_as_root' in kwargs and not 'root_helper' in kwargs:
-        kwargs['root_helper'] =\
-            'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        kwargs['root_helper'] = get_root_helper()
     try:
         (stdout, stderr) = processutils.execute(*cmd, **kwargs)
     except processutils.ProcessExecutionError as ex:
@@ -162,8 +162,7 @@ def execute(*cmd, **kwargs):
 def trycmd(*args, **kwargs):
     """Convenience wrapper around oslo's trycmd() method."""
     if 'run_as_root' in kwargs and not 'root_helper' in kwargs:
-        kwargs['root_helper'] =\
-            'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        kwargs['root_helper'] = get_root_helper()
     try:
         (stdout, stderr) = processutils.trycmd(*args, **kwargs)
     except processutils.ProcessExecutionError as ex:
@@ -1013,3 +1012,31 @@ class UndoManager(object):
                 LOG.exception(msg, **kwargs)
 
             self._rollback()
+
+
+def get_root_helper():
+    return 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+
+
+def brick_get_connector_properties():
+    """wrapper for the brick calls to automatically set
+    the root_helper needed for cinder.
+    """
+
+    root_helper = get_root_helper()
+    return connector.get_connector_properties(root_helper)
+
+
+def brick_get_connector(protocol, driver=None,
+                        execute=processutils.execute,
+                        use_multipath=False):
+    """Wrapper to get a brick connector object.
+    This automatically populates the required protocol as well
+    as the root_helper needed to execute commands.
+    """
+
+    root_helper = get_root_helper()
+    return connector.InitiatorConnector.factory(protocol, root_helper,
+                                                driver=driver,
+                                                execute=execute,
+                                                use_multipath=use_multipath)
