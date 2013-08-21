@@ -264,8 +264,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         the same iqn but with a different hostname, return the hostname
         used by 3PAR.
         """
-        cmd = ['createhost', '-iscsi', '-persona', persona_id, '-domain',
-               domain, hostname, iscsi_iqn]
+        if domain is not None:
+            cmd = ['createhost', '-iscsi', '-persona', persona_id, '-domain',
+                   domain, hostname, iscsi_iqn]
+        else:
+            cmd = ['createhost', '-iscsi', '-persona', persona_id, hostname,
+                   iscsi_iqn]
         out = self.common._cli_run(cmd)
         if out and len(out) > 1:
             return self.common.parse_create_host_error(hostname, out)

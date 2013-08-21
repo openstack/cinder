@@ -205,8 +205,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         the same wwn but with a different hostname, return the hostname
         used by 3PAR.
         """
-        command = ['createhost', '-persona', persona_id, '-domain', domain,
-                   hostname]
+        if domain is not None:
+            command = ['createhost', '-persona', persona_id, '-domain', domain,
+                       hostname]
+        else:
+            command = ['createhost', '-persona', persona_id, hostname]
         for wwn in wwns:
             command.append(wwn)
 
