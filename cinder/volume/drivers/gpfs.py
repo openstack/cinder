@@ -212,8 +212,8 @@ class GPFSDriver(driver.VolumeDriver):
         self._execute('truncate', '-s', sizestr, path, run_as_root=True)
         self._execute('chmod', '666', path, run_as_root=True)
 
-    def _create_regular_file(self, path, size):
-        """Creates regular file of given size."""
+    def _allocate_file_blocks(self, path, size):
+        """Preallocate file blocks by writing zeros."""
 
         block_size_mb = 1
         block_count = size * units.GiB / (block_size_mb * units.MiB)
@@ -222,19 +222,51 @@ class GPFSDriver(driver.VolumeDriver):
                       'bs=%dM' % block_size_mb,
                       'count=%d' % block_count,
                       run_as_root=True)
-        self._execute('chmod', '666', path, run_as_root=True)
+
+    def _gpfs_change_attributes(self, options, path):
+        cmd = ['mmchattr']
+        cmd.extend(options)
+        cmd.append(path)
+        self._execute(*cmd, run_as_root=True)
+
+    def _set_volume_attributes(self, path, metadata):
+        """Set various GPFS attributes for this volume."""
+
+        options = []
+        for item in metadata:
+            if item['key'] == 'data_pool_name':
+                options.extend(['-P', item['value']])
+            elif item['key'] == 'replicas':
+                options.extend(['-r', item['value'], '-m', item['value']])
+            elif item['key'] == 'dio':
+                options.extend(['-D', item['value']])
+            elif item['key'] == 'write_affinity_depth':
+                options.extend(['--write-affinity-depth', item['value']])
+            elif item['key'] == 'block_group_factor':
+                options.extend(['--block-group-factor', item['value']])
+            elif item['key'] == 'write_affinity_failure_group':
+                options.extend(['--write-affinity-failure-group',
+                               item['value']])
+
+        if options:
+            self._gpfs_change_attributes(options, path)
 
     def create_volume(self, volume):
         """Creates a GPFS volume."""
         volume_path = self.local_path(volume)
         volume_size = volume['size']
 
-        if self.configuration.gpfs_sparse_volumes:
-            self._create_sparse_file(volume_path, volume_size)
-        else:
-            self._create_regular_file(volume_path, volume_size)
+        # Create a sparse file first; allocate blocks later if requested
+        self._create_sparse_file(volume_path, volume_size)
 
+        # Set the attributes prior to allocating any blocks so that
+        # they are allocated according to the policy
         v_metadata = volume.get('volume_metadata')
+        self._set_volume_attributes(volume_path, v_metadata)
+
+        if not self.configuration.gpfs_sparse_volumes:
+            self._allocate_file_blocks(volume_path, volume_size)
+
         fstype = None
         fslabel = None
         for item in v_metadata:
