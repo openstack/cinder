@@ -219,9 +219,7 @@ class CoraidAppliance(object):
             reply = self._rest_client.rpc(handle, url_params, data,
                                           allow_empty_response)
 
-            if ('state' in reply and
-                reply['state'] in ESM_SESSION_EXPIRED_STATES and
-                    reply['metaCROp'] == 'reboot'):
+            if self._is_session_expired(reply):
                 relogin_attempts -= 1
                 if relogin_attempts <= 0:
                     raise exception.CoraidESMReloginFailed()
@@ -229,6 +227,11 @@ class CoraidAppliance(object):
                 self._relogin()
             else:
                 return reply
+
+    def _is_session_expired(self, reply):
+        return ('state' in reply and
+                reply['state'] in ESM_SESSION_EXPIRED_STATES and
+                reply['metaCROp'] == 'reboot')
 
     def _is_bad_config_state(self, reply):
         return (not reply or
