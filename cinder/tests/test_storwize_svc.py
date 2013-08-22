@@ -29,7 +29,6 @@ import random
 import re
 import socket
 
-from cinder.brick.initiator import connector
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
@@ -514,6 +513,8 @@ port_speed!N/A
         capacity = int(kwargs['size'])
         unit = kwargs['unit']
         volume_info['capacity'] = self._convert_units_bytes(capacity, unit)
+        volume_info['IO_group_id'] = kwargs['iogrp']
+        volume_info['IO_group_name'] = 'io_grp%s' % kwargs['iogrp']
 
         if 'easytier' in kwargs:
             if kwargs['easytier'] == 'on':
@@ -631,8 +632,8 @@ port_speed!N/A
                     cap = self._convert_bytes_units(vol['capacity'])
                 else:
                     cap = vol['capacity']
-                rows.append([str(vol['id']), vol['name'], '0', 'io_grp0',
-                            'online', '0',
+                rows.append([str(vol['id']), vol['name'], vol['IO_group_id'],
+                            vol['IO_group_name'], 'online', '0',
                             self._flags['storwize_svc_volpool_name'],
                             cap, 'striped',
                             fcmap_info['fc_id'], fcmap_info['fc_name'],
@@ -658,8 +659,8 @@ port_speed!N/A
 
             rows.append(['id', str(vol['id'])])
             rows.append(['name', vol['name']])
-            rows.append(['IO_group_id', '0'])
-            rows.append(['IO_group_name', 'io_grp0'])
+            rows.append(['IO_group_id', vol['IO_group_id']])
+            rows.append(['IO_group_name', vol['IO_group_name']])
             rows.append(['status', 'online'])
             rows.append(['mdisk_grp_id', '0'])
             rows.append([
@@ -711,6 +712,16 @@ port_speed!N/A
                     rows[index] = kwargs['delim'].join(rows[index])
 
             return ('%s' % '\n'.join(rows), '')
+
+    def _cmd_lsiogrp(self, **kwargs):
+        rows = [None] * 6
+        rows[0] = ['id', 'name', 'node_count', 'vdisk_count', 'host_count']
+        rows[1] = ['0', 'io_grp0', '2', '22', '4']
+        rows[2] = ['1', 'io_grp1', '2', '22', '4']
+        rows[3] = ['2', 'io_grp2', '0', '0', '4']
+        rows[4] = ['3', 'io_grp3', '0', '0', '4']
+        rows[5] = ['4', 'recovery_io_grp', '0', '0', '0']
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     def _add_port_to_host(self, host_info, **kwargs):
         if 'iscsiname' in kwargs:
@@ -1178,6 +1189,8 @@ port_speed!N/A
             out, err = self._cmd_expandvdisksize(**kwargs)
         elif command == 'lsvdisk':
             out, err = self._cmd_lsvdisk(**kwargs)
+        elif command == 'lsiogrp':
+            out, err = self._cmd_lsiogrp(**kwargs)
         elif command == 'mkhost':
             out, err = self._cmd_mkhost(**kwargs)
         elif command == 'addhostport':
@@ -1297,7 +1310,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.driver.configuration.set_override('rootwrap_config',
                                                    '/etc/cinder/rootwrap.conf',
                                                    config_group)
-            self._connector = connector.get_connector_properties()
+            self._connector = utils.brick_get_connector_properties()
 
         self._reset_flags()
         self.driver.db = StorwizeSVCFakeDB()
@@ -1385,8 +1398,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           self.driver.check_for_setup_error)
         self._reset_flags()
 
-        self._set_flag('storwize_svc_connection_protocol', 'iSCSI')
-        self._set_flag('storwize_svc_multipath_enabled', True)
+        self._set_flag('storwize_svc_vol_iogrp', 5)
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
         self._reset_flags()
@@ -1590,17 +1602,22 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # compression   False   2,3
         # easytier      True    1,3
         # easytier      False   2
+        # iogrp         0       1
+        # iogrp         1       2
 
         opts_list = []
         chck_list = []
-        opts_list.append({'rsize': -1, 'easytier': True})
-        chck_list.append({'free_capacity': '0', 'easy_tier': 'on'})
+        opts_list.append({'rsize': -1, 'easytier': True, 'iogrp': 0})
+        chck_list.append({'free_capacity': '0', 'easy_tier': 'on',
+                          'IO_group_id': '0'})
+        test_iogrp = 1 if self.USESIM else 0
         opts_list.append({'rsize': 2, 'compression': False, 'warning': 0,
                           'autoexpand': True, 'grainsize': 32,
-                          'easytier': False})
+                          'easytier': False, 'iogrp': test_iogrp})
         chck_list.append({'-free_capacity': '0', 'compressed_copy': 'no',
                           'warning': '0', 'autoexpand': 'on',
-                          'grainsize': '32', 'easy_tier': 'off'})
+                          'grainsize': '32', 'easy_tier': 'off',
+                          'IO_group_id': str(test_iogrp)})
         opts_list.append({'rsize': 2, 'compression': False, 'warning': 80,
                           'autoexpand': False, 'grainsize': 256,
                           'easytier': True})
