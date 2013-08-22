@@ -340,6 +340,14 @@ class RemoteFsDriver(driver.VolumeDriver):
     def _ensure_share_mounted(self, nfs_share):
         raise NotImplementedError()
 
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        raise NotImplementedError()
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume."""
+        raise NotImplementedError()
+
 
 class NfsDriver(RemoteFsDriver):
     """NFS based cinder driver. Creates file on NFS share for using it

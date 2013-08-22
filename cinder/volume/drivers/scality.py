@@ -272,3 +272,11 @@ class ScalityDriver(driver.VolumeDriver):
         """Extend an existing volume."""
         self._create_file(self.local_path(volume),
                           self._size_bytes(new_size))
+
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        raise NotImplementedError()
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume."""
+        raise NotImplementedError()
