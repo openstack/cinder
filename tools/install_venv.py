@@ -21,6 +21,8 @@
 
 """Installation script for Cinder's development virtualenv."""
 
+from __future__ import print_function
+
 import optparse
 import os
 import subprocess
@@ -48,7 +50,7 @@ def print_help():
 
     Also, make test will automatically use the virtualenv.
     """
-    print help
+    print(help)
 
 
 def main(argv):

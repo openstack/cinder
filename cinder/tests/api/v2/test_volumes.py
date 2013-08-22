@@ -826,7 +826,6 @@ class VolumeSerializerTest(test.TestCase):
             self.assertEqual(str(vol[attr]), tree.get(attr))
 
         for child in tree:
-            print child.tag
             self.assertTrue(child.tag in (NS + 'attachments', NS + 'metadata'))
             if child.tag == 'attachments':
                 self.assertEqual(1, len(child))
@@ -870,7 +869,6 @@ class VolumeSerializerTest(test.TestCase):
         )
         text = serializer.serialize(dict(volume=raw_volume))
 
-        print text
         tree = etree.fromstring(text)
 
         self._verify_volume(raw_volume, tree)
@@ -920,7 +918,6 @@ class VolumeSerializerTest(test.TestCase):
                               bar='vol2_bar', ), )]
         text = serializer.serialize(dict(volumes=raw_volumes))
 
-        print text
         tree = etree.fromstring(text)
 
         self.assertEqual(NS + 'volumes', tree.tag)
