@@ -26,6 +26,7 @@ from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import units
+from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import coraid
 from cinder.volume import volume_types
@@ -775,12 +776,12 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
         connector.get_connector_properties(root_helper).\
             AndReturn({})
 
-        self.mox.StubOutWithMock(connector.InitiatorConnector, 'factory')
+        self.mox.StubOutWithMock(utils, 'brick_get_connector')
 
         aoe_initiator = self.mox.CreateMockAnything()
 
-        connector.InitiatorConnector.factory('aoe', root_helper,
-                                             use_multipath=False).\
+        utils.brick_get_connector('aoe',
+                                  use_multipath=False).\
             AndReturn(aoe_initiator)
 
         aoe_initiator\
