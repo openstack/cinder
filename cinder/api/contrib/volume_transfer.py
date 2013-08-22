@@ -113,7 +113,7 @@ class VolumeTransferController(wsgi.Controller):
         try:
             transfer = self.transfer_api.get(context, transfer_id=id)
         except exception.TransferNotFound as error:
-            raise exc.HTTPNotFound(explanation=unicode(error))
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         return self._view_builder.detail(req, transfer)
 
@@ -168,9 +168,9 @@ class VolumeTransferController(wsgi.Controller):
         try:
             new_transfer = self.transfer_api.create(context, volume_id, name)
         except exception.InvalidVolume as error:
-            raise exc.HTTPBadRequest(explanation=unicode(error))
+            raise exc.HTTPBadRequest(explanation=error.msg)
         except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=unicode(error))
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         transfer = self._view_builder.create(req,
                                              dict(new_transfer.iteritems()))
@@ -203,9 +203,9 @@ class VolumeTransferController(wsgi.Controller):
                                                          auth_key)
         except exception.VolumeSizeExceedsAvailableQuota as error:
             raise exc.HTTPRequestEntityTooLarge(
-                explanation=error.message, headers={'Retry-After': 0})
+                explanation=error.msg, headers={'Retry-After': 0})
         except exception.InvalidVolume as error:
-            raise exc.HTTPBadRequest(explanation=unicode(error))
+            raise exc.HTTPBadRequest(explanation=error.msg)
 
         transfer = \
             self._view_builder.summary(req,
@@ -221,7 +221,7 @@ class VolumeTransferController(wsgi.Controller):
         try:
             self.transfer_api.delete(context, transfer_id=id)
         except exception.TransferNotFound as error:
-            raise exc.HTTPNotFound(explanation=unicode(error))
+            raise exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=202)
 
 

@@ -55,7 +55,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         try:
             volume_types.get_volume_type(context, type_id)
         except exception.NotFound as ex:
-            raise webob.exc.HTTPNotFound(explanation=unicode(ex))
+            raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     def _check_encryption_input(self, encryption, create=True):
         if 'key_size' in encryption.keys():

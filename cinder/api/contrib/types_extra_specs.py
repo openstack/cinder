@@ -64,7 +64,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         try:
             volume_types.get_volume_type(context, type_id)
         except exception.NotFound as ex:
-            raise webob.exc.HTTPNotFound(explanation=unicode(ex))
+            raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
     def index(self, req, type_id):
@@ -138,7 +138,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         try:
             db.volume_type_extra_specs_delete(context, type_id, id)
         except exception.VolumeTypeExtraSpecsNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=unicode(error))
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         notifier_info = dict(type_id=type_id, id=id)
         notifier_api.notify(context, 'volumeTypeExtraSpecs',
