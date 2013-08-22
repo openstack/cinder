@@ -74,11 +74,11 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.stubs.Set(db.sqlalchemy.api, 'volume_type_encryption_get',
                        return_volume_type_encryption_metadata)
 
-        self.ctxt = context.RequestContext('fake', 'fake', is_admin=True)
+        self.ctxt = context.RequestContext('fake', 'fake')
         self.volume_id = self._create_volume(self.ctxt)
 
     def tearDown(self):
-        db.volume_destroy(self.ctxt, self.volume_id)
+        db.volume_destroy(self.ctxt.elevated(), self.volume_id)
         super(VolumeEncryptionMetadataTest, self).tearDown()
 
     def test_index(self):
@@ -189,26 +189,17 @@ class VolumeEncryptionMetadataTest(test.TestCase):
                                                 % bad_volume_id}}
         self.assertEqual(expected, res_dict)
 
-    def test_retrieve_key_not_admin(self):
+    def test_retrieve_key_admin(self):
         self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
 
-        ctxt = self.ctxt.deepcopy()
-        ctxt.is_admin = False
+        ctxt = context.RequestContext('fake', 'fake', is_admin=True)
 
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
                                   'encryption_key_id' % self.volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
-        self.assertEqual(403, res.status_code)
-        res_dict = json.loads(res.body)
+        self.assertEqual(200, res.status_code)
 
-        expected = {
-            'forbidden': {
-                'code': 403,
-                'message': ("Policy doesn't allow volume_extension:"
-                            "volume_encryption_metadata to be performed.")
-            }
-        }
-        self.assertEqual(expected, res_dict)
+        self.assertEqual('fake_key', res.body)
 
     def test_show_volume_not_encrypted_type(self):
         self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: False)
