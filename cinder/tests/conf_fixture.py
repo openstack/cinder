@@ -25,7 +25,7 @@ CONF = cfg.CONF
 CONF.import_opt('iscsi_num_targets', 'cinder.volume.drivers.lvm')
 CONF.import_opt('policy_file', 'cinder.policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager')
-CONF.import_opt('xiv_proxy', 'cinder.volume.drivers.xiv')
+CONF.import_opt('xiv_ds8k_proxy', 'cinder.volume.drivers.xiv_ds8k')
 CONF.import_opt('backup_driver', 'cinder.backup.manager')
 
 def_vol_type = 'fake_vol_type'
@@ -44,5 +44,7 @@ def set_defaults(conf):
     conf.set_default('connection', 'sqlite://', group='database')
     conf.set_default('sqlite_synchronous', False)
     conf.set_default('policy_file', 'cinder/tests/policy.json')
-    conf.set_default('xiv_proxy', 'cinder.tests.test_xiv.XIVFakeProxyDriver')
+    conf.set_default(
+        'xiv_ds8k_proxy',
+        'cinder.tests.test_xiv_ds8k.XIVDS8KFakeProxyDriver')
     conf.set_default('backup_driver', 'cinder.tests.backup.fake_service')

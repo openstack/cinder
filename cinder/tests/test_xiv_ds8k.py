@@ -1,7 +1,7 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2012 IBM Corp.
-# Copyright (c) 2012 OpenStack LLC.
+# Copyright 2013 IBM Corp.
+# Copyright (c) 2013 OpenStack LLC.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -27,7 +27,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers import xiv
+from cinder.volume.drivers import xiv_ds8k
 
 
 FAKE = "fake"
@@ -40,27 +40,30 @@ CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 CONF = cfg.CONF
 
 
-class XIVFakeProxyDriver(object):
-    """Fake XIV Proxy Driver."""
+class XIVDS8KFakeProxyDriver(object):
+    """Fake IBM XIV and DS8K Proxy Driver."""
 
-    def __init__(self, xiv_info, logger, expt):
+    def __init__(self, xiv_ds8k_info, logger, expt, driver=None):
         """
         Initialize Proxy
         """
 
-        self.xiv_info = xiv_info
+        self.xiv_ds8k_info = xiv_ds8k_info
         self.logger = logger
         self.exception = expt
-        self.xiv_portal = \
-            self.xiv_iqn = FAKE
+        self.xiv_ds8k_portal = \
+            self.xiv_ds8k_iqn = FAKE
 
         self.volumes = {}
+        self.driver = driver
 
     def setup(self, context):
-        if self.xiv_info['xiv_user'] != CONF.san_login:
+        if self.xiv_ds8k_info['xiv_ds8k_user'] != self.driver\
+                .configuration.san_login:
             raise self.exception.NotAuthorized()
 
-        if self.xiv_info['xiv_address'] != CONF.san_ip:
+        if self.xiv_ds8k_info['xiv_ds8k_address'] != self.driver\
+                .configuration.san_ip:
             raise self.exception.HostNotFound(host='fake')
 
     def create_volume(self, volume):
@@ -85,14 +88,14 @@ class XIVFakeProxyDriver(object):
         return {'driver_volume_type': 'iscsi',
                 'data': {'target_discovered': True,
                          'target_discovered': True,
-                         'target_portal': self.xiv_portal,
-                         'target_iqn': self.xiv_iqn,
+                         'target_portal': self.xiv_ds8k_portal,
+                         'target_iqn': self.xiv_ds8k_iqn,
                          'target_lun': lun_id,
                          'volume_id': volume['id'],
                          'multipath': True,
                          'provider_location': "%s,1 %s %s" % (
-                             self.xiv_portal,
-                             self.xiv_iqn,
+                             self.xiv_ds8k_portal,
+                             self.xiv_ds8k_iqn,
                              lun_id), },
                 }
 
@@ -111,41 +114,53 @@ class XIVFakeProxyDriver(object):
                 == connector)
 
 
-class XIVVolumeDriverTest(test.TestCase):
-    """Test IBM XIV volume driver."""
+class XIVDS8KVolumeDriverTest(test.TestCase):
+    """Test IBM XIV and DS8K volume driver."""
 
     def setUp(self):
-        """Initialize IVM XIV Driver."""
-        super(XIVVolumeDriverTest, self).setUp()
+        """Initialize IBM XIV and DS8K Driver."""
+        super(XIVDS8KVolumeDriverTest, self).setUp()
 
         configuration = mox.MockObject(conf.Configuration)
         configuration.san_is_local = False
+        configuration.xiv_ds8k_proxy = \
+            'cinder.tests.test_xiv_ds8k.XIVDS8KFakeProxyDriver'
+        configuration.xiv_ds8k_connection_type = 'iscsi'
+        configuration.san_ip = FAKE
+        configuration.san_login = FAKE
+        configuration.san_clustername = FAKE
+        configuration.san_password = FAKE
         configuration.append_config_values(mox.IgnoreArg())
 
-        self.driver = xiv.XIVDriver(configuration=configuration)
+        self.driver = xiv_ds8k.XIVDS8KDriver(configuration=configuration)
 
-    def test_initialized_should_set_xiv_info(self):
-        """Test that the san flags are passed to the XIV proxy."""
+    def test_initialized_should_set_xiv_ds8k_info(self):
+        """Test that the san flags are passed to the IBM proxy."""
 
-        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_user'],
-                          CONF.san_login)
-        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_pass'],
-                          CONF.san_password)
-        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_address'],
-                          CONF.san_ip)
-        self.assertEquals(self.driver.xiv_proxy.xiv_info['xiv_vol_pool'],
-                          CONF.san_clustername)
+        self.assertEquals(
+            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_user'],
+            self.driver.configuration.san_login)
+        self.assertEquals(
+            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_pass'],
+            self.driver.configuration.san_password)
+        self.assertEquals(
+            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_address'],
+            self.driver.configuration.san_ip)
+        self.assertEquals(
+            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_vol_pool'],
+            self.driver.configuration.san_clustername)
 
     def test_setup_should_fail_if_credentials_are_invalid(self):
-        """Test that the xiv_proxy validates credentials."""
+        """Test that the xiv_ds8k_proxy validates credentials."""
 
-        self.driver.xiv_proxy.xiv_info['xiv_user'] = 'invalid'
+        self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_user'] = 'invalid'
         self.assertRaises(exception.NotAuthorized, self.driver.do_setup, None)
 
     def test_setup_should_fail_if_connection_is_invalid(self):
-        """Test that the xiv_proxy validates connection."""
+        """Test that the xiv_ds8k_proxy validates connection."""
 
-        self.driver.xiv_proxy.xiv_info['xiv_address'] = 'invalid'
+        self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_address'] = \
+            'invalid'
         self.assertRaises(exception.HostNotFound, self.driver.do_setup, None)
 
     def test_create_volume(self):
@@ -153,7 +168,7 @@ class XIVVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.driver.create_volume(VOLUME)
-        has_volume = self.driver.xiv_proxy.volume_exists(VOLUME)
+        has_volume = self.driver.xiv_ds8k_proxy.volume_exists(VOLUME)
         self.assertTrue(has_volume)
         self.driver.delete_volume(VOLUME)
 
@@ -161,7 +176,8 @@ class XIVVolumeDriverTest(test.TestCase):
         """Test the volume exist method with a volume that doesn't exist."""
 
         self.driver.do_setup(None)
-        self.assertFalse(self.driver.xiv_proxy.volume_exists({'name': FAKE}))
+        self.assertFalse(
+            self.driver.xiv_ds8k_proxy.volume_exists({'name': FAKE}))
 
     def test_delete_volume(self):
         """Verify that a volume is deleted."""
@@ -169,7 +185,7 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.do_setup(None)
         self.driver.create_volume(VOLUME)
         self.driver.delete_volume(VOLUME)
-        has_volume = self.driver.xiv_proxy.volume_exists(VOLUME)
+        has_volume = self.driver.xiv_ds8k_proxy.volume_exists(VOLUME)
         self.assertFalse(has_volume)
 
     def test_delete_volume_should_fail_for_not_existing_volume(self):
@@ -179,7 +195,7 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(VOLUME)
 
     def test_create_volume_should_fail_if_no_pool_space_left(self):
-        """Vertify that the xiv_proxy validates volume pool space."""
+        """Vertify that the xiv_ds8k_proxy validates volume pool space."""
 
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -196,7 +212,7 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.initialize_connection(VOLUME, CONNECTOR)
 
         self.assertTrue(
-            self.driver.xiv_proxy.is_volume_attached(VOLUME, CONNECTOR))
+            self.driver.xiv_ds8k_proxy.is_volume_attached(VOLUME, CONNECTOR))
 
         self.driver.terminate_connection(VOLUME, CONNECTOR)
         self.driver.delete_volume(VOLUME)
@@ -218,8 +234,9 @@ class XIVVolumeDriverTest(test.TestCase):
         self.driver.initialize_connection(VOLUME, CONNECTOR)
         self.driver.terminate_connection(VOLUME, CONNECTOR)
 
-        self.assertFalse(self.driver.xiv_proxy.is_volume_attached(VOLUME,
-                                                                  CONNECTOR))
+        self.assertFalse(self.driver.xiv_ds8k_proxy.is_volume_attached(
+            VOLUME,
+            CONNECTOR))
 
         self.driver.delete_volume(VOLUME)
 
