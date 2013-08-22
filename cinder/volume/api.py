@@ -211,7 +211,8 @@ class API(base.Base):
                 QUOTAS.commit(context, reservations, project_id=project_id)
             return
         if not force and volume['status'] not in ["available", "error",
-                                                  "error_restoring"]:
+                                                  "error_restoring",
+                                                  "error_extending"]:
             msg = _("Volume status must be available or error, "
                     "but current status is: %s") % volume['status']
             raise exception.InvalidVolume(reason=msg)
