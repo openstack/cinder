@@ -126,7 +126,39 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         # zero out old volumes to prevent data leaking between users
         # TODO(ja): reclaiming space should be done lazy and low priority
-        self.clear_volume(volume, is_snapshot)
+        if not self.configuration.lvm_type == 'thin' and \
+                self.configuration.volume_clear != 'none':
+            if is_snapshot:
+                # if the volume to be cleared is a snapshot of another volume
+                # we need to clear out the volume using the -cow instead of the
+                # directly volume path.  We need to skip this if we are using
+                # thin provisioned LVs.
+                # bug# lp1191812
+                dev_path = self.local_path(volume) + "-cow"
+            else:
+                dev_path = self.local_path(volume)
+
+            # TODO(jdg): Maybe we could optimize this for snaps by looking at
+            # the cow table and only overwriting what's necessary?
+            # for now we're still skipping on snaps due to hang issue
+            if not os.path.exists(dev_path):
+                msg = (_('Volume device file path %s does not exist.')
+                       % dev_path)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            size_in_g = volume.get('size', volume.get('volume_size', None))
+            if size_in_g is None:
+                msg = (_("Size for volume: %s not found, "
+                         "cannot secure delete.") % volume['id'])
+                LOG.error(msg)
+                raise exception.InvalidParameterValue(msg)
+            vol_size = size_in_g * 1024
+
+            volutils.clear_volume(
+                vol_size, dev_path,
+                volume_clear=self.configuration.volume_clear,
+                volume_clear_size=self.configuration.volume_clear_size)
         name = volume['name']
         if is_snapshot:
             name = self._escape_snapshot(volume['name'])
@@ -191,62 +223,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
-
-    def clear_volume(self, volume, is_snapshot=False):
-        """unprovision old volumes to prevent data leaking between users."""
-
-        # NOTE(jdg): Don't write the blocks of thin provisioned
-        # volumes
-        if self.configuration.volume_clear == 'none' or \
-                self.configuration.lvm_type == 'thin':
-            return
-
-        if is_snapshot:
-            # if the volume to be cleared is a snapshot of another volume
-            # we need to clear out the volume using the -cow instead of the
-            # directly volume path.  We need to skip this if we are using
-            # thin provisioned LVs.
-            # bug# lp1191812
-            dev_path = self.local_path(volume) + "-cow"
-        else:
-            dev_path = self.local_path(volume)
-
-        if not os.path.exists(dev_path):
-            msg = (_('Volume device file path %s does not exist.') % dev_path)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        size_in_g = volume.get('size', volume.get('volume_size', None))
-        if size_in_g is None:
-            msg = (_("Size for volume: %s not found, "
-                     "cannot secure delete.") % volume['id'])
-            LOG.error(msg)
-            raise exception.InvalidParameterValue(msg)
-        size_in_m = self.configuration.volume_clear_size
-
-        LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
-
-        if self.configuration.volume_clear == 'zero':
-            if size_in_m == 0:
-                return volutils.copy_volume(
-                    '/dev/zero',
-                    dev_path, size_in_g * 1024,
-                    self.configuration.volume_dd_blocksize,
-                    sync=True,
-                    execute=self._execute)
-            else:
-                clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
-        elif self.configuration.volume_clear == 'shred':
-            clear_cmd = ['shred', '-n3']
-            if size_in_m:
-                clear_cmd.append('-s%dMiB' % size_in_m)
-        else:
-            raise exception.InvalidConfigurationValue(
-                option='volume_clear',
-                value=self.configuration.volume_clear)
-
-        clear_cmd.append(dev_path)
-        self._execute(*clear_cmd, run_as_root=True)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""

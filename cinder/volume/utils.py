@@ -20,6 +20,7 @@ import math
 from oslo.config import cfg
 
 from cinder.brick.local_dev import lvm as brick_lvm
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import processutils
@@ -181,6 +182,37 @@ def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
             'count=%d' % count,
             'bs=%s' % blocksize,
             *extra_flags, run_as_root=True)
+
+
+def clear_volume(volume_size, volume_path, volume_clear=None,
+                 volume_clear_size=None):
+    """Unprovision old volumes to prevent data leaking between users."""
+    if volume_clear is None:
+        volume_clear = CONF.volume_clear
+
+    if volume_clear_size is None:
+        volume_clear_size = CONF.volume_clear_size
+
+    LOG.info(_("Performing secure delete on volume: %s") % volume_path)
+
+    if volume_clear == 'zero':
+        if volume_clear_size == 0:
+            return copy_volume('/dev/zero', volume_path, volume_size,
+                               CONF.volume_dd_blocksize,
+                               sync=True, execute=utils.execute)
+        else:
+            clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % volume_clear_size]
+    elif volume_clear == 'shred':
+        clear_cmd = ['shred', '-n3']
+        if volume_clear_size:
+            clear_cmd.append('-s%dMiB' % volume_clear_size)
+    else:
+        raise exception.InvalidConfigurationValue(
+            option='volume_clear',
+            value=volume_clear)
+
+    clear_cmd.append(volume_path)
+    utils.execute(*clear_cmd, run_as_root=True)
 
 
 def supports_thin_provisioning():

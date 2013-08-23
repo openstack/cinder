@@ -15,16 +15,20 @@
 
 """Tests For miscellaneous util methods used with volume."""
 
+import os
+import re
 
 from oslo.config import cfg
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
 from cinder import test
+from cinder import utils
 from cinder.volume import utils as volume_utils
 
 
@@ -146,3 +150,72 @@ class LVMVolumeDriverTestCase(test.TestCase):
         bs, count = volume_utils._calculate_count(1024, 'ABM')
         self.assertEqual(bs, '1M')
         self.assertEqual(count, 1024)
+
+
+class ClearVolumeTestCase(test.TestCase):
+
+    def test_clear_volume(self):
+        CONF.volume_clear = 'zero'
+        CONF.volume_clear_size = 0
+        CONF.volume_dd_blocksize = '1M'
+        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
+        volume_utils.copy_volume("/dev/zero", "volume_path", 1024,
+                                 CONF.volume_dd_blocksize, sync=True,
+                                 execute=utils.execute)
+        self.mox.ReplayAll()
+        volume_utils.clear_volume(1024, "volume_path")
+
+    def test_clear_volume_zero_and_shred(self):
+        CONF.volume_clear = 'zero'
+        CONF.volume_clear_size = 1
+        clear_cmd = ['shred', '-n0', '-z', '-s1MiB', "volume_path"]
+        self.mox.StubOutWithMock(utils, "execute")
+        utils.execute(*clear_cmd, run_as_root=True)
+        self.mox.ReplayAll()
+        volume_utils.clear_volume(1024, "volume_path")
+
+    def test_clear_volume_shred(self):
+        CONF.volume_clear = 'shred'
+        CONF.volume_clear_size = 1
+        clear_cmd = ['shred', '-n3', '-s1MiB', "volume_path"]
+        self.mox.StubOutWithMock(utils, "execute")
+        utils.execute(*clear_cmd, run_as_root=True)
+        self.mox.ReplayAll()
+        volume_utils.clear_volume(1024, "volume_path")
+
+    def test_clear_volume_shred_not_clear_size(self):
+        CONF.volume_clear = 'shred'
+        CONF.volume_clear_size = None
+        clear_cmd = ['shred', '-n3', "volume_path"]
+        self.mox.StubOutWithMock(utils, "execute")
+        utils.execute(*clear_cmd, run_as_root=True)
+        self.mox.ReplayAll()
+        volume_utils.clear_volume(1024, "volume_path")
+
+    def test_clear_volume_invalid_opt(self):
+        CONF.volume_clear = 'non_existent_volume_clearer'
+        CONF.volume_clear_size = 0
+        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          volume_utils.clear_volume,
+                          1024, "volume_path")
+
+    def test_clear_volume_lvm_snap(self):
+        self.stubs.Set(os.path, 'exists', lambda x: True)
+        CONF.volume_clear = 'zero'
+        CONF.volume_clear_size = 0
+
+        uuid = '00000000-0000-0000-0000-90ed32cdeed3'
+        name = 'snapshot-' + uuid
+        mangle_name = '_' + re.sub(r'-', r'--', name)
+        vol_path = '/dev/mapper/cinder--volumes-%s-cow' % mangle_name
+
+        def fake_copy_volume(srcstr, deststr, size, blocksize, **kwargs):
+            self.assertEqual(deststr, vol_path)
+            return True
+
+        self.stubs.Set(volume_utils, 'copy_volume', fake_copy_volume)
+        volume_utils.clear_volume(123, vol_path)
