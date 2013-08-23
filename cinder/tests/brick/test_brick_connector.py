@@ -235,6 +235,86 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                           self.connector.connect_volume,
                           connection_info['data'])
 
+    def test_get_target_portals_from_iscsiadm_output(self):
+        connector = self.connector
+        test_output = '''10.15.84.19:3260 iqn.1992-08.com.netapp:sn.33615311
+                         10.15.85.19:3260 iqn.1992-08.com.netapp:sn.33615311'''
+        res = connector._get_target_portals_from_iscsiadm_output(test_output)
+        expected = ['10.15.84.19:3260', '10.15.85.19:3260']
+        self.assertEqual(expected, res)
+
+    def test_get_multipath_device_name(self):
+        self.stubs.Set(os.path, 'realpath', lambda x: None)
+        multipath_return_string = [('mpath2 (20017380006c00036)'
+                                   'dm-7 IBM,2810XIV')]
+        self.stubs.Set(self.connector, '_run_multipath',
+                       lambda *args, **kwargs: multipath_return_string)
+        expected = '/dev/mapper/mpath2'
+        self.assertEqual(expected,
+                         self.connector.
+                         _get_multipath_device_name('/dev/md-1'))
+
+    def test_get_iscsi_devices(self):
+        paths = [('ip-10.0.0.1:3260-iscsi-iqn.2013-01.ro.'
+                 'com.netapp:node.netapp02-lun-0')]
+        self.stubs.Set(os, 'walk', lambda x: [(['.'], ['by-path'], paths)])
+        self.assertEqual(self.connector._get_iscsi_devices(), paths)
+
+    def test_get_iscsi_devices_with_empty_dir(self):
+        self.stubs.Set(os, 'walk', lambda x: [])
+        self.assertEqual(self.connector._get_iscsi_devices(), [])
+
+    def test_get_multipath_iqn(self):
+        paths = [('ip-10.0.0.1:3260-iscsi-iqn.2013-01.ro.'
+                 'com.netapp:node.netapp02-lun-0')]
+        self.stubs.Set(os.path, 'realpath',
+                       lambda x: '/dev/disk/by-path/%s' % paths[0])
+        self.stubs.Set(self.connector, '_get_iscsi_devices', lambda: paths)
+        self.stubs.Set(self.connector, '_get_multipath_device_name',
+                       lambda x: paths[0])
+        self.assertEqual(self.connector._get_multipath_iqn(paths[0]),
+                         'iqn.2013-01.ro.com.netapp:node.netapp02')
+
+    def test_disconnect_volume_multipath_iscsi(self):
+        result = []
+
+        def fake_disconnect_mpath(properties):
+            result.append(properties)
+        iqn1 = 'iqn.2013-01.ro.com.netapp:node.netapp01'
+        iqn2 = 'iqn.2013-01.ro.com.netapp:node.netapp02'
+        iqns = [iqn1, iqn2]
+        dev = ('ip-10.0.0.1:3260-iscsi-%s-lun-0' % iqn1)
+        self.stubs.Set(self.connector, '_rescan_iscsi', lambda: None)
+        self.stubs.Set(self.connector, '_rescan_multipath', lambda: None)
+        self.stubs.Set(self.connector.driver, 'get_all_block_devices',
+                       lambda: [dev, '/dev/mapper/md-1'])
+        self.stubs.Set(self.connector, '_get_multipath_device_name',
+                       lambda x: '/dev/mapper/md-3')
+        self.stubs.Set(self.connector, '_get_multipath_iqn',
+                       lambda x: iqns.pop())
+        self.stubs.Set(self.connector, '_disconnect_mpath',
+                       fake_disconnect_mpath)
+        fake_property = {'target_iqn': "You'll-never-find-this-iqn"}
+        self.connector._disconnect_volume_multipath_iscsi(fake_property,
+                                                          'fake/multipath')
+        self.assertEqual([fake_property], result)
+
+    def test_disconnect_volume_multipath_iscsi_without_other_mp_devices(self):
+        result = []
+
+        def fake_disconnect_mpath(properties):
+            result.append(properties)
+        self.stubs.Set(self.connector, '_rescan_iscsi', lambda: None)
+        self.stubs.Set(self.connector, '_rescan_multipath', lambda: None)
+        self.stubs.Set(self.connector.driver, 'get_all_block_devices',
+                       lambda: [])
+        self.stubs.Set(self.connector, '_disconnect_mpath',
+                       fake_disconnect_mpath)
+        fake_property = {'target_iqn': "You'll-never-find-this-iqn"}
+        self.connector._disconnect_volume_multipath_iscsi(fake_property,
+                                                          'fake/multipath')
+        self.assertEqual([fake_property], result)
+
 
 class FibreChannelConnectorTestCase(ConnectorTestCase):
     def setUp(self):
