@@ -88,18 +88,6 @@ class LVM(executor.Executor):
             else:
                 self.vg_thin_pool = pool_name
 
-    def _set_execute(self, execute):
-        self._execute = execute
-
-    def _size_str(self, size_in_g):
-        if '.00' in size_in_g:
-            size_in_g = size_in_g.replace('.00', '')
-
-        if int(size_in_g) == 0:
-            return '100m'
-
-        return '%sg' % size_in_g
-
     def _vg_exists(self):
         """Simple check to see if VG exists.
 
