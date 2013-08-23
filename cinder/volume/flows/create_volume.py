@@ -52,7 +52,8 @@ QUOTAS = quota.QUOTAS
 # Only in these 'sources' status can we attempt to create a volume from a
 # source volume or a source snapshot, other status states we can not create
 # from, 'error' being the common example.
-PROCEED_STATUS = ('available',)
+SNAPSHOT_PROCEED_STATUS = ('available',)
+SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
 
 # When a volume errors out we have the ability to save a piece of the exception
 # that caused said failure, but we don't want to save the whole message since
@@ -236,10 +237,10 @@ class ExtractVolumeRequestTask(CinderTask):
 
         snapshot_id = None
         if snapshot is not None:
-            if snapshot['status'] not in PROCEED_STATUS:
+            if snapshot['status'] not in SNAPSHOT_PROCEED_STATUS:
                 msg = _("Originating snapshot status must be one"
                         " of %s values")
-                msg = msg % (", ".join(PROCEED_STATUS))
+                msg = msg % (", ".join(SNAPSHOT_PROCEED_STATUS))
                 # TODO(harlowja): what happens if the status changes after this
                 # initial snapshot status check occurs??? Seems like someone
                 # could delete the snapshot after this check passes but before
@@ -258,11 +259,11 @@ class ExtractVolumeRequestTask(CinderTask):
 
         source_volid = None
         if source_volume is not None:
-            if source_volume['status'] not in PROCEED_STATUS:
+            if source_volume['status'] not in SRC_VOL_PROCEED_STATUS:
                 msg = _("Unable to create a volume from an originating source"
                         " volume when its status is not one of %s"
                         " values")
-                msg = msg % (", ".join(PROCEED_STATUS))
+                msg = msg % (", ".join(SRC_VOL_PROCEED_STATUS))
                 # TODO(harlowja): what happens if the status changes after this
                 # initial volume status check occurs??? Seems like someone
                 # could delete the volume after this check passes but before
