@@ -557,7 +557,10 @@ class SolidFireDriver(SanISCSIDriver):
     def ensure_export(self, context, volume):
         """Verify the iscsi export info."""
         LOG.debug(_("Executing SolidFire ensure_export..."))
-        return self._do_export(volume)
+        try:
+            return self._do_export(volume)
+        except exception.SolidFireAPIException:
+            return None
 
     def create_export(self, context, volume):
         """Setup the iscsi export info."""
