@@ -91,6 +91,18 @@ class TestNexentaDriver(test.TestCase):
 
     def test_create_volume(self):
         self.nms_mock.zvol.create('cinder/volume1', '1G', '8K', True)
+        self.nms_mock.stmf.list_targets()
+        self.nms_mock.iscsitarget.create_target({'target_name': 'iqn:volume1'})
+        self.nms_mock.stmf.list_targetgroups()
+        self.nms_mock.stmf.create_targetgroup('cinder/volume1')
+        self.nms_mock.stmf.list_targetgroup_members('cinder/volume1')
+        self.nms_mock.stmf.add_targetgroup_member('cinder/volume1',
+                                                  'iqn:volume1')
+        self.nms_mock.scsidisk.lu_exists('cinder/volume1')
+        self.nms_mock.scsidisk.create_lu('cinder/volume1', {})
+        self.nms_mock.scsidisk.lu_shared('cinder/volume1')
+        self.nms_mock.scsidisk.add_lun_mapping_entry(
+            'cinder/volume1', {'target_group': 'cinder/volume1', 'lun': '0'})
         self.mox.ReplayAll()
         self.drv.create_volume(self.TEST_VOLUME_REF)
 
@@ -138,32 +150,43 @@ class TestNexentaDriver(test.TestCase):
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
 
     _CREATE_EXPORT_METHODS = [
+        ('stmf', 'list_targets', tuple(), [], False, ),
         ('iscsitarget', 'create_target', ({'target_name': 'iqn:volume1'},),
             u'Unable to create iscsi target\n'
             u' iSCSI target iqn.1986-03.com.sun:02:cinder-volume1 already'
             u' configured\n'
-            u' itadm create-target failed with error 17\n', ),
+            u' itadm create-target failed with error 17\n', True, ),
+        ('stmf', 'list_targetgroups', tuple(), [], False, ),
         ('stmf', 'create_targetgroup', ('cinder/volume1',),
             u'Unable to create targetgroup: stmfadm: cinder/volume1:'
-            u' already exists\n', ),
+            u' already exists\n', True, ),
+        ('stmf', 'list_targetgroup_members', ('cinder/volume1', ), [],
+         False, ),
         ('stmf', 'add_targetgroup_member', ('cinder/volume1', 'iqn:volume1'),
             u'Unable to add member to targetgroup: stmfadm:'
-            u' iqn.1986-03.com.sun:02:cinder-volume1: already exists\n', ),
+            u' iqn.1986-03.com.sun:02:cinder-volume1: already exists\n',
+            True, ),
+        ('scsidisk', 'lu_exists', ('cinder/volume1', ), 0, False, ),
         ('scsidisk', 'create_lu', ('cinder/volume1', {}),
             u"Unable to create lu with zvol 'cinder/volume1':\n"
-            u" sbdadm: filename /dev/zvol/rdsk/cinder/volume1: in use\n", ),
+            u" sbdadm: filename /dev/zvol/rdsk/cinder/volume1: in use\n",
+            True, ),
+        ('scsidisk', 'lu_shared', ('cinder/volume1', ), 0, False, ),
         ('scsidisk', 'add_lun_mapping_entry', ('cinder/volume1', {
             'target_group': 'cinder/volume1', 'lun': '0'}),
             u"Unable to add view to zvol 'cinder/volume1' (LUNs in use: ):\n"
-            u" stmfadm: view entry exists\n", ),
+            u" stmfadm: view entry exists\n", True, ),
     ]
 
-    def _stub_export_method(self, module, method, args, error, fail=False):
+    def _stub_export_method(self, module, method, args, error, raise_exception,
+                            fail=False):
         m = getattr(self.nms_mock, module)
         m = getattr(m, method)
         mock = m(*args)
-        if fail:
+        if raise_exception and fail:
             mock.AndRaise(nexenta.NexentaException(error))
+        else:
+            mock.AndReturn(error)
 
     def _stub_all_export_methods(self, fail=False):
         for params in self._CREATE_EXPORT_METHODS:
@@ -195,7 +218,8 @@ class TestNexentaDriver(test.TestCase):
         return _test_create_export_fail
 
     for i in range(len(_CREATE_EXPORT_METHODS)):
-        locals()['test_create_export_fail_%d' % i] = __get_test(i)
+        if i % 2:
+            locals()['test_create_export_fail_%d' % i] = __get_test(i)
 
     def test_ensure_export(self):
         self._stub_all_export_methods(fail=True)
