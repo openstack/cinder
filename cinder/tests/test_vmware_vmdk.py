@@ -22,6 +22,7 @@ Test suite for VMware VMDK driver.
 import mox
 
 from cinder import exception
+from cinder.image import glance
 from cinder import test
 from cinder import units
 from cinder.volume import configuration
@@ -29,12 +30,17 @@ from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 from cinder.volume.drivers.vmware import vmdk
+from cinder.volume.drivers.vmware import vmware_images
 from cinder.volume.drivers.vmware import volumeops
 
 
 class FakeVim(object):
     @property
     def service_content(self):
+        return mox.MockAnything()
+
+    @property
+    def client(self):
         return mox.MockAnything()
 
     def Login(self, session_manager, userName, password):
@@ -100,6 +106,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     VOLUME_FOLDER = 'cinder-volumes'
     API_RETRY_COUNT = 3
     TASK_POLL_INTERVAL = 5.0
+    IMG_TX_TIMEOUT = 10
 
     def setUp(self):
         super(VMwareEsxVmdkDriverTestCase, self).setUp()
@@ -112,6 +119,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._config.vmware_volume_folder = self.VOLUME_FOLDER
         self._config.vmware_api_retry_count = self.API_RETRY_COUNT
         self._config.vmware_task_poll_interval = self.TASK_POLL_INTERVAL
+        self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
         self._driver = vmdk.VMwareEsxVmdkDriver(configuration=self._config)
         api_retry_count = self._config.vmware_api_retry_count,
         task_poll_interval = self._config.vmware_task_poll_interval,
@@ -832,7 +840,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.VerifyAll()
 
     def test_delete_file(self):
-        """Test _delete_file."""
+        """Test delete_file."""
         m = mox.Mox()
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
@@ -846,7 +854,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._session.wait_for_task(task)
 
         m.ReplayAll()
-        self._volumeops._delete_file(src_path)
+        self._volumeops.delete_file(src_path)
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -902,7 +910,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume['name'] = 'volume_name'
         volume['size'] = 1
         m.StubOutWithMock(self._volumeops, 'get_path_name')
-        src_path = '/vmfs/volumes/datastore/vm/'
+        src_path = '[datastore1] vm/'
         vmx_name = 'vm.vmx'
         backing = FakeMor('VirtualMachine', 'my_back')
         self._volumeops.get_path_name(backing).AndReturn(src_path + vmx_name)
@@ -921,10 +929,10 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                             datastores).AndReturn((folder,
                                                                    summary))
         m.StubOutWithMock(self._volumeops, 'copy_backing')
-        dest_path = '[%s] %s' % (summary.name, volume['name'])
+        dest_path = '[%s] %s/' % (summary.name, volume['name'])
         self._volumeops.copy_backing(src_path, dest_path)
         m.StubOutWithMock(self._volumeops, 'register_backing')
-        self._volumeops.register_backing(dest_path + '/' + vmx_name,
+        self._volumeops.register_backing(dest_path + vmx_name,
                                          volume['name'], folder, resource_pool)
 
         m.ReplayAll()
@@ -1036,6 +1044,296 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         self._driver.create_volume_from_snapshot(volume, snapshot)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_get_entity_name(self):
+        """Test volumeops get_entity_name."""
+        m = mox.Mox()
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        entity = FakeMor('VirtualMachine', 'virt')
+        self._session.invoke_api(vim_util, 'get_object_property',
+                                 self._vim, entity, 'name')
+
+        m.ReplayAll()
+        self._volumeops.get_entity_name(entity)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_get_vmdk_path(self):
+        """Test volumeops get_vmdk_path."""
+        m = mox.Mox()
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        backing = FakeMor('VirtualMachine', 'my_back')
+        vmdk_path = '[datastore 1] folders/myvols/volume-123.vmdk'
+
+        class VirtualDisk:
+            pass
+        virtualDisk = VirtualDisk()
+
+        class VirtualDiskFlatVer2BackingInfo:
+            pass
+        backingInfo = VirtualDiskFlatVer2BackingInfo()
+        backingInfo.fileName = vmdk_path
+        virtualDisk.backing = backingInfo
+        devices = [FakeObject(), virtualDisk, FakeObject()]
+
+        moxed = self._session.invoke_api(vim_util, 'get_object_property',
+                                         self._vim, backing,
+                                         'config.hardware.device')
+        moxed.AndReturn(devices)
+
+        m.ReplayAll()
+        actual_vmdk_path = self._volumeops.get_vmdk_path(backing)
+        self.assertEquals(backingInfo.__class__.__name__,
+                          'VirtualDiskFlatVer2BackingInfo')
+        self.assertEquals(virtualDisk.__class__.__name__, 'VirtualDisk')
+        self.assertEquals(actual_vmdk_path, vmdk_path)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_copy_vmdk_file(self):
+        """Test copy_vmdk_file."""
+        m = mox.Mox()
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        dc_ref = FakeMor('Datacenter', 'dc1')
+        src_path = 'src_path'
+        dest_path = 'dest_path'
+        task = FakeMor('Task', 'my_task')
+        self._session.invoke_api(self._vim, 'CopyVirtualDisk_Task',
+                                 mox.IgnoreArg(), sourceName=src_path,
+                                 sourceDatacenter=dc_ref, destName=dest_path,
+                                 destDatacenter=dc_ref,
+                                 force=True).AndReturn(task)
+        m.StubOutWithMock(self._session, 'wait_for_task')
+        self._session.wait_for_task(task)
+
+        m.ReplayAll()
+        self._volumeops.copy_vmdk_file(dc_ref, src_path, dest_path)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_delete_vmdk_file(self):
+        """Test delete_vmdk_file."""
+        m = mox.Mox()
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        dc_ref = FakeMor('Datacenter', 'dc1')
+        vmdk_path = 'vmdk_path'
+        task = FakeMor('Task', 'my_task')
+        self._session.invoke_api(self._vim, 'DeleteVirtualDisk_Task',
+                                 mox.IgnoreArg(), name=vmdk_path,
+                                 datacenter=dc_ref).AndReturn(task)
+        m.StubOutWithMock(self._session, 'wait_for_task')
+        self._session.wait_for_task(task)
+
+        m.ReplayAll()
+        self._volumeops.delete_vmdk_file(vmdk_path, dc_ref)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_split_datastore_path(self):
+        """Test volumeops split_datastore_path."""
+        test1 = '[datastore1] myfolder/mysubfolder/myvm.vmx'
+        (datastore,
+         folder,
+         file_name) = volumeops.split_datastore_path(test1)
+        self.assertEquals(datastore, 'datastore1')
+        self.assertEquals(folder, 'myfolder/mysubfolder/')
+        self.assertEquals(file_name, 'myvm.vmx')
+        test2 = '[datastore2 ]   myfolder/myvm.vmdk'
+        (datastore,
+         folder,
+         file_name) = volumeops.split_datastore_path(test2)
+        self.assertEquals(datastore, 'datastore2')
+        self.assertEquals(folder, 'myfolder/')
+        self.assertEquals(file_name, 'myvm.vmdk')
+        test3 = 'myfolder/myvm.vmdk'
+        self.assertRaises(IndexError, volumeops.split_datastore_path, test3)
+
+    def test_copy_image_to_volume_non_vmdk(self):
+        """Test copy_image_to_volume for a non-vmdk disk format."""
+        m = mox.Mox()
+        image_id = 'image-123456789'
+        image_meta = FakeObject()
+        image_meta['disk_format'] = 'novmdk'
+        image_service = m.CreateMock(glance.GlanceImageService)
+        image_service.show(mox.IgnoreArg(), image_id).AndReturn(image_meta)
+
+        m.ReplayAll()
+        self.assertRaises(exception.ImageUnacceptable,
+                          self._driver.copy_image_to_volume,
+                          mox.IgnoreArg(), mox.IgnoreArg(),
+                          image_service, image_id)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_copy_image_to_volume_vmdk(self):
+        """Test copy_image_to_volume with an acceptable vmdk disk format."""
+        m = mox.Mox()
+        m.StubOutWithMock(self._driver.__class__, 'session')
+        self._driver.session = self._session
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+
+        image_id = 'image-id'
+        image_meta = FakeObject()
+        image_meta['disk_format'] = 'vmdk'
+        image_meta['size'] = 1024 * 1024
+        image_service = m.CreateMock(glance.GlanceImageService)
+        image_service.show(mox.IgnoreArg(), image_id).AndReturn(image_meta)
+        volume = FakeObject()
+        vol_name = 'volume name'
+        volume['name'] = vol_name
+        backing = FakeMor('VirtualMachine', 'my_vm')
+        m.StubOutWithMock(self._driver, '_create_backing_in_inventory')
+        self._driver._create_backing_in_inventory(volume).AndReturn(backing)
+        datastore_name = 'datastore1'
+        flat_vmdk_path = 'myvolumes/myvm-flat.vmdk'
+        m.StubOutWithMock(self._driver, '_get_ds_name_flat_vmdk_path')
+        moxed = self._driver._get_ds_name_flat_vmdk_path(mox.IgnoreArg(),
+                                                         vol_name)
+        moxed.AndReturn((datastore_name, flat_vmdk_path))
+        host = FakeMor('Host', 'my_host')
+        m.StubOutWithMock(self._volumeops, 'get_host')
+        self._volumeops.get_host(backing).AndReturn(host)
+        datacenter = FakeMor('Datacenter', 'my_datacenter')
+        m.StubOutWithMock(self._volumeops, 'get_dc')
+        self._volumeops.get_dc(host).AndReturn(datacenter)
+        datacenter_name = 'my-datacenter'
+        m.StubOutWithMock(self._volumeops, 'get_entity_name')
+        self._volumeops.get_entity_name(datacenter).AndReturn(datacenter_name)
+        flat_path = '[%s] %s' % (datastore_name, flat_vmdk_path)
+        m.StubOutWithMock(self._volumeops, 'delete_file')
+        self._volumeops.delete_file(flat_path, datacenter)
+        client = FakeObject()
+        client.options = FakeObject()
+        client.options.transport = FakeObject()
+        cookies = FakeObject()
+        client.options.transport.cookiejar = cookies
+        m.StubOutWithMock(self._vim.__class__, 'client')
+        self._vim.client = client
+        m.StubOutWithMock(vmware_images, 'fetch_image')
+        timeout = self._config.vmware_image_transfer_timeout_secs
+        vmware_images.fetch_image(mox.IgnoreArg(), timeout, image_service,
+                                  image_id, host=self.IP,
+                                  data_center_name=datacenter_name,
+                                  datastore_name=datastore_name,
+                                  cookies=cookies,
+                                  file_path=flat_vmdk_path)
+
+        m.ReplayAll()
+        self._driver.copy_image_to_volume(mox.IgnoreArg(), volume,
+                                          image_service, image_id)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_copy_volume_to_image_non_vmdk(self):
+        """Test copy_volume_to_image for a non-vmdk disk format."""
+        m = mox.Mox()
+        image_meta = FakeObject()
+        image_meta['disk_format'] = 'novmdk'
+        volume = FakeObject()
+        volume['name'] = 'vol-name'
+
+        m.ReplayAll()
+        self.assertRaises(exception.ImageUnacceptable,
+                          self._driver.copy_volume_to_image,
+                          mox.IgnoreArg(), volume,
+                          mox.IgnoreArg(), image_meta)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_copy_volume_to_image_vmdk(self):
+        """Test copy_volume_to_image for a valid vmdk disk format."""
+        m = mox.Mox()
+        m.StubOutWithMock(self._driver.__class__, 'session')
+        self._driver.session = self._session
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+
+        image_id = 'image-id-1'
+        image_meta = FakeObject()
+        image_meta['disk_format'] = 'vmdk'
+        image_meta['id'] = image_id
+        image_meta['name'] = image_id
+        image_service = FakeObject()
+        vol_name = 'volume-123456789'
+        project_id = 'project-owner-id-123'
+        volume = FakeObject()
+        volume['name'] = vol_name
+        volume['project_id'] = project_id
+        # volumeops.get_backing
+        backing = FakeMor("VirtualMachine", "my_vm")
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        self._volumeops.get_backing(vol_name).AndReturn(backing)
+        # volumeops.get_vmdk_path
+        datastore_name = 'datastore1'
+        file_path = 'my_folder/my_nested_folder/my_vm.vmdk'
+        vmdk_file_path = '[%s] %s' % (datastore_name, file_path)
+        m.StubOutWithMock(self._volumeops, 'get_vmdk_path')
+        self._volumeops.get_vmdk_path(backing).AndReturn(vmdk_file_path)
+        # volumeops.create_snapshot
+        snapshot_name = 'snapshot-%s' % image_id
+        m.StubOutWithMock(self._volumeops, 'create_snapshot')
+        self._volumeops.create_snapshot(backing, snapshot_name, None, True)
+        tmp_vmdk = '[datastore1] %s.vmdk' % image_id
+        # volumeops.get_host
+        host = FakeMor('Host', 'my_host')
+        m.StubOutWithMock(self._volumeops, 'get_host')
+        self._volumeops.get_host(backing).AndReturn(host)
+        # volumeops.get_dc
+        datacenter_name = 'my_datacenter'
+        datacenter = FakeMor('Datacenter', datacenter_name)
+        m.StubOutWithMock(self._volumeops, 'get_dc')
+        self._volumeops.get_dc(host).AndReturn(datacenter)
+        # volumeops.copy_vmdk_file
+        m.StubOutWithMock(self._volumeops, 'copy_vmdk_file')
+        self._volumeops.copy_vmdk_file(datacenter, vmdk_file_path, tmp_vmdk)
+        # host_ip
+        host_ip = self.IP
+        # volumeops.get_entity_name
+        m.StubOutWithMock(self._volumeops, 'get_entity_name')
+        self._volumeops.get_entity_name(datacenter).AndReturn(datacenter_name)
+        # cookiejar
+        client = FakeObject()
+        client.options = FakeObject()
+        client.options.transport = FakeObject()
+        cookies = FakeObject()
+        client.options.transport.cookiejar = cookies
+        m.StubOutWithMock(self._vim.__class__, 'client')
+        self._vim.client = client
+        # flat_vmdk
+        flat_vmdk_file = '%s-flat.vmdk' % image_id
+        # vmware_images.upload_image
+        timeout = self._config.vmware_image_transfer_timeout_secs
+        m.StubOutWithMock(vmware_images, 'upload_image')
+        vmware_images.upload_image(mox.IgnoreArg(), timeout, image_service,
+                                   image_id, project_id, host=host_ip,
+                                   data_center_name=datacenter_name,
+                                   datastore_name=datastore_name,
+                                   cookies=cookies,
+                                   file_path=flat_vmdk_file,
+                                   snapshot_name=image_meta['name'],
+                                   image_version=1)
+        # volumeops.delete_vmdk_file
+        m.StubOutWithMock(self._volumeops, 'delete_vmdk_file')
+        self._volumeops.delete_vmdk_file(tmp_vmdk, datacenter)
+
+        m.ReplayAll()
+        self._driver.copy_volume_to_image(mox.IgnoreArg(), volume,
+                                          image_service, image_meta)
         m.UnsetStubs()
         m.VerifyAll()
 

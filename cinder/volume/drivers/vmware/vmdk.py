@@ -28,6 +28,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim
+from cinder.volume.drivers.vmware import vmware_images
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
 
@@ -63,7 +64,11 @@ vmdk_opts = [
     cfg.StrOpt('vmware_volume_folder',
                default='cinder-volumes',
                help='Name for the folder in the VC datacenter that will '
-                    'contain cinder volumes.')
+                    'contain cinder volumes.'),
+    cfg.IntOpt('vmware_image_transfer_timeout_secs',
+               default=7200,
+               help='Timeout in seconds for VMDK volume transfer between '
+                    'Cinder and Glance.'),
 ]
 
 
@@ -477,22 +482,20 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :return: Reference to the cloned backing
         """
         src_path_name = self.volumeops.get_path_name(backing)
-        # If we have path like /vmfs/volumes/datastore/vm/vm.vmx
-        # we need to use /vmfs/volumes/datastore/vm/ are src_path
-        splits = src_path_name.split('/')
-        last_split = splits[len(splits) - 1]
-        src_path = src_path_name[:-len(last_split)]
+        (datastore_name,
+         folder_path, filename) = volumeops.split_datastore_path(src_path_name)
         # Pick a datastore where to create the full clone under same host
         host = self.volumeops.get_host(backing)
         (datastores, resource_pool) = self.volumeops.get_dss_rp(host)
         (folder, summary) = self._get_folder_ds_summary(volume['size'],
                                                         resource_pool,
                                                         datastores)
-        dest_path = '[%s] %s' % (summary.name, volume['name'])
+        src_path = '[%s] %s' % (datastore_name, folder_path)
+        dest_path = '[%s] %s/' % (summary.name, volume['name'])
         # Copy source backing files to a destination location
         self.volumeops.copy_backing(src_path, dest_path)
         # Register the backing to the inventory
-        dest_path_name = '%s/%s' % (dest_path, last_split)
+        dest_path_name = '%s%s' % (dest_path, filename)
         clone = self.volumeops.register_backing(dest_path_name,
                                                 volume['name'], folder,
                                                 resource_pool)
@@ -571,6 +574,150 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :param snapshot: Snapshot object
         """
         self._create_volume_from_snapshot(volume, snapshot)
+
+    def _get_ds_name_flat_vmdk_path(self, backing, vol_name):
+        """Get datastore name and folder path of the flat VMDK of the backing.
+
+        :param backing: Reference to the backing entity
+        :param vol_name: Name of the volume
+        :return: datastore name and folder path of the VMDK of the backing
+        """
+        file_path_name = self.volumeops.get_path_name(backing)
+        (datastore_name,
+         folder_path, _) = volumeops.split_datastore_path(file_path_name)
+        flat_vmdk_path = '%s%s-flat.vmdk' % (folder_path, vol_name)
+        return (datastore_name, flat_vmdk_path)
+
+    @staticmethod
+    def _validate_disk_format(disk_format):
+        """Verify vmdk as disk format.
+
+        :param disk_format: Disk format of the image
+        """
+        if disk_format and disk_format.lower() != 'vmdk':
+            msg = _("Cannot create image of disk format: %s. Only vmdk "
+                    "disk format is accepted.") % disk_format
+            LOG.error(msg)
+            raise exception.ImageUnacceptable(msg)
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Creates volume from image.
+
+        Creates a backing for the volume under the ESX/VC server and
+        copies the VMDK flat file from the glance image content.
+        The method supports only image with VMDK disk format.
+
+        :param context: context
+        :param volume: Volume object
+        :param image_service: Glance image service
+        :param image_id: Glance image id
+        """
+        LOG.debug(_("Copy glance image: %s to create new volume.") % image_id)
+
+        # Verify glance image is vmdk disk format
+        metadata = image_service.show(context, image_id)
+        disk_format = metadata['disk_format']
+        VMwareEsxVmdkDriver._validate_disk_format(disk_format)
+
+        # Set volume size in GB from image metadata
+        volume['size'] = float(metadata['size']) / units.GiB
+        # First create empty backing in the inventory
+        backing = self._create_backing_in_inventory(volume)
+
+        try:
+            (datastore_name,
+             flat_vmdk_path) = self._get_ds_name_flat_vmdk_path(backing,
+                                                                volume['name'])
+            host = self.volumeops.get_host(backing)
+            datacenter = self.volumeops.get_dc(host)
+            datacenter_name = self.volumeops.get_entity_name(datacenter)
+            flat_vmdk_ds_path = '[%s] %s' % (datastore_name, flat_vmdk_path)
+            # Delete the *-flat.vmdk file within the backing
+            self.volumeops.delete_file(flat_vmdk_ds_path, datacenter)
+
+            # copy over image from glance into *-flat.vmdk
+            timeout = self.configuration.vmware_image_transfer_timeout_secs
+            host_ip = self.configuration.vmware_host_ip
+            cookies = self.session.vim.client.options.transport.cookiejar
+            LOG.debug(_("Fetching glance image: %(id)s to server: %(host)s.") %
+                      {'id': image_id, 'host': host_ip})
+            vmware_images.fetch_image(context, timeout, image_service,
+                                      image_id, host=host_ip,
+                                      data_center_name=datacenter_name,
+                                      datastore_name=datastore_name,
+                                      cookies=cookies,
+                                      file_path=flat_vmdk_path)
+            LOG.info(_("Done copying image: %(id)s to volume: %(vol)s.") %
+                     {'id': image_id, 'vol': volume['name']})
+        except Exception as excep:
+            LOG.exception(_("Exception in copy_image_to_volume: %(excep)s. "
+                            "Deleting the backing: %(back)s.") %
+                          {'excep': excep, 'back': backing})
+            # delete the backing
+            self.volumeops.delete_backing(backing)
+            raise excep
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Creates glance image from volume.
+
+        Steps followed are:
+
+        1. Get the name of the vmdk file which the volume points to right now.
+           Can be a chain of snapshots, so we need to know the last in the
+           chain.
+        2. Create the snapshot. A new vmdk is created which the volume points
+           to now. The earlier vmdk becomes read-only.
+        3. Call CopyVirtualDisk which coalesces the disk chain to form a
+           single vmdk, rather a .vmdk metadata file and a -flat.vmdk disk
+           data file.
+        4. Now upload the -flat.vmdk file to the image store.
+        5. Delete the coalesced .vmdk and -flat.vmdk created.
+        """
+        LOG.debug(_("Copy Volume: %s to new image.") % volume['name'])
+        VMwareEsxVmdkDriver._validate_disk_format(image_meta['disk_format'])
+
+        backing = self.volumeops.get_backing(volume['name'])
+        if not backing:
+            LOG.info(_("Backing not found, creating for volume: %s") %
+                     volume['name'])
+            backing = self._create_backing_in_inventory(volume)
+
+        vmdk_file_path = self.volumeops.get_vmdk_path(backing)
+        datastore_name = volumeops.split_datastore_path(vmdk_file_path)[0]
+
+        # Create a snapshot
+        image_id = image_meta['id']
+        snapshot_name = "snapshot-%s" % image_id
+        self.volumeops.create_snapshot(backing, snapshot_name, None, True)
+
+        # Create a copy of the snapshotted vmdk into a tmp file
+        tmp_vmdk_file_path = '[%s] %s.vmdk' % (datastore_name, image_id)
+        host = self.volumeops.get_host(backing)
+        datacenter = self.volumeops.get_dc(host)
+        self.volumeops.copy_vmdk_file(datacenter, vmdk_file_path,
+                                      tmp_vmdk_file_path)
+        try:
+            # Upload image from copy of -flat.vmdk
+            timeout = self.configuration.vmware_image_transfer_timeout_secs
+            host_ip = self.configuration.vmware_host_ip
+            datacenter_name = self.volumeops.get_entity_name(datacenter)
+            cookies = self.session.vim.client.options.transport.cookiejar
+            flat_vmdk_copy = '%s-flat.vmdk' % image_id
+
+            vmware_images.upload_image(context, timeout, image_service,
+                                       image_meta['id'],
+                                       volume['project_id'], host=host_ip,
+                                       data_center_name=datacenter_name,
+                                       datastore_name=datastore_name,
+                                       cookies=cookies,
+                                       file_path=flat_vmdk_copy,
+                                       snapshot_name=image_meta['name'],
+                                       image_version=1)
+            LOG.info(_("Done copying volume %(vol)s to a new image %(img)s") %
+                     {'vol': volume['name'], 'img': image_meta['name']})
+        finally:
+            # Delete the coalesced .vmdk and -flat.vmdk created
+            self.volumeops.delete_vmdk_file(tmp_vmdk_file_path, datacenter)
 
 
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
