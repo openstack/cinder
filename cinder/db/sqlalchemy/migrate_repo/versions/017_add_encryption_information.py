@@ -26,54 +26,6 @@ from cinder.openstack.common import uuidutils
 LOG = logging.getLogger(__name__)
 
 
-def _populate_encryption_types(volume_types, encryption):
-    # TODO(joel-coffman): The database currently doesn't enforce uniqueness
-    # for volume type names.
-    default_encryption_types = {
-        'dm-crypt': {
-            'cipher': 'aes-xts-plain64',
-            'control_location': 'front-end',
-            'key_size': 512,  # only half of key is used for cipher in XTS mode
-            'provider':
-            'nova.volume.encryptors.cryptsetup.CryptsetupEncryptor',
-        },
-        'LUKS': {
-            'cipher': 'aes-xts-plain64',
-            'control_location': 'front-end',
-            'key_size': 512,  # only half of key is used for cipher in XTS mode
-            'provider': 'nova.volume.encryptors.luks.LuksEncryptor',
-        },
-    }
-
-    try:
-        volume_types_insert = volume_types.insert()
-        encryption_insert = encryption.insert()
-
-        for key, values in default_encryption_types.iteritems():
-            current_time = timeutils.utcnow()
-            volume_type = {
-                'id': uuidutils.generate_uuid(),
-                'name': key,
-                'created_at': current_time,
-                'updated_at': current_time,
-                'deleted': False,
-            }
-            volume_types_insert.execute(volume_type)
-
-            values['id'] = uuidutils.generate_uuid()
-            values['volume_type_id'] = volume_type['id']
-
-            values['created_at'] = timeutils.utcnow()
-            values['updated_at'] = values['created_at']
-            values['deleted'] = False
-
-            encryption_insert.execute(values)
-    except Exception:
-        LOG.error(_("Error populating default encryption types!"))
-        # NOTE(joel-coffman): do not raise because deployed environment may
-        # have volume types already defined with the same name
-
-
 def upgrade(migrate_engine):
     meta = MetaData(bind=migrate_engine)
 
@@ -131,8 +83,6 @@ def upgrade(migrate_engine):
         LOG.error(_("Table |%s| not created!"), repr(encryption))
         raise
 
-    _populate_encryption_types(volume_types, encryption)
-
 
 def downgrade(migrate_engine):
     meta = MetaData(bind=migrate_engine)
@@ -165,5 +115,3 @@ def downgrade(migrate_engine):
     except Exception:
         LOG.error(_("encryption table not dropped"))
         raise
-
-    # TODO(joel-coffman): Should remove volume_types related to encryption...

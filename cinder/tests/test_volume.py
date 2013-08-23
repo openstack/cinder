@@ -30,7 +30,6 @@ import mox
 from oslo.config import cfg
 
 from cinder.backup import driver as backup_driver
-from cinder.brick.initiator import connector as brick_conn
 from cinder.brick.iscsi import iscsi
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
@@ -64,6 +63,8 @@ from cinder.volume import utils as volutils
 QUOTAS = quota.QUOTAS
 
 CONF = cfg.CONF
+
+ENCRYPTION_PROVIDER = 'nova.volume.encryptors.cryptsetup.CryptsetupEncryptor'
 
 fake_opt = [
     cfg.StrOpt('fake_opt', default='fake', help='fake opts')
@@ -269,7 +270,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         # Create default volume type
         vol_type = conf_fixture.def_vol_type
         db.volume_type_create(context.get_admin_context(),
-                              dict(name=vol_type, extra_specs={}))
+                              {'name': vol_type, 'extra_specs': {}})
 
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  vol_type)
@@ -285,7 +286,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         # Create volume with specific volume type
         vol_type = 'test'
         db.volume_type_create(context.get_admin_context(),
-                              dict(name=vol_type, extra_specs={}))
+                              {'name': vol_type, 'extra_specs': {}})
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  vol_type)
 
@@ -299,10 +300,19 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_create_volume_with_encrypted_volume_type(self):
         self.stubs.Set(keymgr, "API", fake_keymgr.fake_api)
 
+        ctxt = context.get_admin_context()
+
+        db.volume_type_create(ctxt,
+                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
+                               'name': 'LUKS'})
+        db.volume_type_encryption_update_or_create(
+            ctxt,
+            '61298380-0c12-11e3-bfd6-4b48424183be',
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+
         volume_api = cinder.volume.api.API()
 
-        db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
-                                                 'LUKS')
+        db_vol_type = db.volume_type_get_by_name(ctxt, 'LUKS')
 
         volume = volume_api.create(self.context,
                                    1,
@@ -372,6 +382,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         """
         self.stubs.Set(keymgr, 'API', fake_keymgr.fake_api)
 
+        ctxt = context.get_admin_context()
+
+        db.volume_type_create(ctxt,
+                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
+                               'name': 'LUKS'})
+        db.volume_type_encryption_update_or_create(
+            ctxt,
+            '61298380-0c12-11e3-bfd6-4b48424183be',
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+
         volume_api = cinder.volume.api.API()
 
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
@@ -416,6 +436,16 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         volume_api = cinder.volume.api.API()
 
+        ctxt = context.get_admin_context()
+
+        db.volume_type_create(ctxt,
+                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
+                               'name': 'LUKS'})
+        db.volume_type_encryption_update_or_create(
+            ctxt,
+            '61298380-0c12-11e3-bfd6-4b48424183be',
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  'LUKS')
         volume_src = volume_api.create(self.context,
@@ -450,9 +480,9 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_create_volume_from_snapshot_fail_bad_size(self):
         """Test volume can't be created from snapshot with bad volume size."""
         volume_api = cinder.volume.api.API()
-        snapshot = dict(id=1234,
-                        status='available',
-                        volume_size=10)
+        snapshot = {'id': 1234,
+                    'status': 'available',
+                    'volume_size': 10}
         self.assertRaises(exception.InvalidInput,
                           volume_api.create,
                           self.context,
