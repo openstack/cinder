@@ -63,11 +63,12 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         auto = protocol == 'auto'
         if auto:
             protocol = 'http'
+        url = '%s://%s:%s/rest/nms/' % (protocol,
+                                        self.configuration.nexenta_host,
+                                        self.configuration.nexenta_rest_port)
         self.nms = jsonrpc.NexentaJSONProxy(
-            '%s://%s:%s/rest/nms/' % (protocol, self.configuration.san_ip,
-                                      self.configuration.nexenta_rest_port),
-            self.configuration.san_login, self.configuration.san_password,
-            auto=auto)
+            url, self.configuration.nexenta_user,
+            self.configuration.nexenta_password, auto=auto)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
@@ -237,8 +238,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if ensure and 'already configured' in exc.args[0]:
                 target_already_configured = True
-                LOG.exception(_('Ignored target creation error while ensuring '
-                                'export'))
+                LOG.info(_('Ignored target creation error "%s" while ensuring '
+                           'export'), exc)
             else:
                 raise
         try:
@@ -247,8 +248,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             if ((ensure and 'already exists' in exc.args[0]) or
                     (target_already_configured and
                      'target must be offline' in exc.args[0])):
-                LOG.exception(_('Ignored target group creation error while '
-                                'ensuring export'))
+                LOG.info(_('Ignored target group creation error "%s" while '
+                           'ensuring export'), exc)
             else:
                 raise
         try:
@@ -257,8 +258,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if ensure and ('already exists' in exc.args[0] or
                            'target must be offline' in exc.args[0]):
-                LOG.exception(_('Ignored target group member addition error '
-                                'while ensuring export'))
+                LOG.info(_('Ignored target group member addition error "%s" '
+                           'while ensuring export'), exc)
             else:
                 raise
         try:
@@ -266,7 +267,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if not ensure or 'in use' not in exc.args[0]:
                 raise
-            LOG.exception(_('Ignored LU creation error while ensuring export'))
+            LOG.info(_('Ignored LU creation error "%s" while ensuring export'),
+                     exc)
         try:
             self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
                 'target_group': target_group_name,
@@ -275,10 +277,13 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if not ensure or 'view entry exists' not in exc.args[0]:
                 raise
-            LOG.exception(_('Ignored LUN mapping entry addition error while '
-                            'ensuring export'))
-        return '%s:%s,1 %s 0' % (self.configuration.san_ip,
-                                 self.configuration.iscsi_port, target_name)
+            LOG.info(_('Ignored LUN mapping entry addition error "%s" while '
+                       'ensuring export'), exc)
+        return '%(host)s:%(port)s,1 %(name)s 0' % {
+            'host': self.configuration.nexenta_host,
+            'port': self.configuration.nexenta_iscsi_target_portal_port,
+            'name': target_name
+        }
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.

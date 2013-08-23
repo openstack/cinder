@@ -56,13 +56,13 @@ class TestNexentaDriver(test.TestCase):
     def setUp(self):
         super(TestNexentaDriver, self).setUp()
         self.configuration = mox_lib.MockObject(conf.Configuration)
-        self.configuration.san_ip = '1.1.1.1'
-        self.configuration.san_login = 'admin'
-        self.configuration.san_password = 'nexenta'
+        self.configuration.nexenta_host = '1.1.1.1'
+        self.configuration.nexenta_user = 'admin'
+        self.configuration.nexenta_password = 'nexenta'
         self.configuration.nexenta_volume = 'cinder'
         self.configuration.nexenta_rest_port = 2000
         self.configuration.nexenta_rest_protocol = 'http'
-        self.configuration.iscsi_port = 3260
+        self.configuration.nexenta_iscsi_target_portal_port = 3260
         self.configuration.nexenta_target_prefix = 'iqn:'
         self.configuration.nexenta_target_group_prefix = 'cinder/'
         self.configuration.nexenta_blocksize = '8K'
@@ -173,13 +173,13 @@ class TestNexentaDriver(test.TestCase):
         self._stub_all_export_methods()
         self.mox.ReplayAll()
         retval = self.drv.create_export({}, self.TEST_VOLUME_REF)
-        self.assertEquals(
-            retval,
-            {'provider_location':
-                '%s:%s,1 %s%s 0' % (self.configuration.san_ip,
-                                    self.configuration.iscsi_port,
-                                    self.configuration.nexenta_target_prefix,
-                                    self.TEST_VOLUME_NAME)})
+        location = '%(host)s:%(port)s,1 %(prefix)s%(volume)s 0' % {
+            'host': self.configuration.nexenta_host,
+            'port': self.configuration.nexenta_iscsi_target_portal_port,
+            'prefix': self.configuration.nexenta_target_prefix,
+            'volume': self.TEST_VOLUME_NAME
+        }
+        self.assertEquals(retval, {'provider_location': location})
 
     def __get_test(i):
         def _test_create_export_fail(self):
