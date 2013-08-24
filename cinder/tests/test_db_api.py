@@ -534,18 +534,14 @@ class DBAPIEncryptionTestCase(BaseTest):
     def test_volume_type_encryption_update_or_create(self):
         values = self._get_values()
         for i, encryption in enumerate(self.created):
-            print "values[%s] = %s" % (i, values[i])
-            print "encryption = %s" % encryption.__dict__
             self._assertEqualObjects(values[i], encryption,
                                      self._ignored_keys)
 
     def test_volume_type_encryption_get(self):
         for encryption in self.created:
-            print "encryption = %s" % encryption.__dict__
             encryption_get = \
                 db.volume_type_encryption_get(self.ctxt,
                                               encryption['volume_type_id'])
-            print "encryption_get = %s" % encryption_get.__dict__
             self._assertEqualObjects(encryption, encryption_get,
                                      self._ignored_keys)
 
