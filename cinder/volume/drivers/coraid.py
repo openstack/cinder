@@ -407,7 +407,6 @@ class CoraidDriver(driver.VolumeDriver):
     def __init__(self, *args, **kwargs):
         super(CoraidDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(coraid_opts)
-        self._appliance = None
 
         self._stats = {'driver_version': self.VERSION,
                        'free_capacity_gb': 'unknown',
@@ -418,20 +417,23 @@ class CoraidDriver(driver.VolumeDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         self._stats['volume_backend_name'] = backend_name or 'EtherCloud ESM'
 
-    def do_setup(self, context):
-        """Initialize the volume driver."""
+    @property
+    def appliance(self):
+        # NOTE(nsobolevsky): This is workaround for bug in the ESM appliance.
+        # If there is a lot of request with the same session/cookie/connection,
+        # the appliance could corrupt all following request in session.
+        # For that purpose we just create a new appliance.
         esm_url = "https://{0}:8443".format(
             self.configuration.coraid_esm_address)
 
-        rest_client = CoraidRESTClient(esm_url)
-        self._appliance = CoraidAppliance(rest_client,
-                                          self.configuration.coraid_user,
-                                          self.configuration.coraid_password,
-                                          self.configuration.coraid_group)
+        return CoraidAppliance(CoraidRESTClient(esm_url),
+                               self.configuration.coraid_user,
+                               self.configuration.coraid_password,
+                               self.configuration.coraid_group)
 
     def check_for_setup_error(self):
         """Return an error if prerequisites aren't met."""
-        self._appliance.ping()
+        self.appliance.ping()
 
     def _get_repository(self, volume_type):
         """Get the ESM Repository from the Volume Type.
@@ -451,60 +453,53 @@ class CoraidDriver(driver.VolumeDriver):
     def create_volume(self, volume):
         """Create a Volume."""
         repository = self._get_repository(volume['volume_type'])
-        self._appliance.create_lun(repository, volume['name'], volume['size'])
-        # NOTE(jbr_): The manager currently interprets any return as
-        # being the model_update for provider location.
-        # return None to not break it (thank to jgriffith and DuncanT)
-        return
+        self.appliance.create_lun(repository, volume['name'], volume['size'])
 
     def create_cloned_volume(self, volume, src_vref):
         dst_volume_repository = self._get_repository(volume['volume_type'])
 
-        self._appliance.clone_volume(src_vref['name'],
-                                     volume['name'],
-                                     dst_volume_repository)
+        self.appliance.clone_volume(src_vref['name'],
+                                    volume['name'],
+                                    dst_volume_repository)
 
         if volume['size'] != src_vref['size']:
-            self._appliance.resize_volume(volume['name'], volume['size'])
-
-        return
+            self.appliance.resize_volume(volume['name'], volume['size'])
 
     def delete_volume(self, volume):
         """Delete a Volume."""
         try:
-            self._appliance.delete_lun(volume['name'])
+            self.appliance.delete_lun(volume['name'])
         except exception.VolumeNotFound:
-            self._appliance.ping()
+            self.appliance.ping()
 
     def create_snapshot(self, snapshot):
         """Create a Snapshot."""
         volume_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
-        self._appliance.create_snapshot(volume_name, snapshot_name)
+        self.appliance.create_snapshot(volume_name, snapshot_name)
 
     def delete_snapshot(self, snapshot):
         """Delete a Snapshot."""
         snapshot_name = snapshot['name']
-        self._appliance.delete_snapshot(snapshot_name)
+        self.appliance.delete_snapshot(snapshot_name)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a Volume from a Snapshot."""
         snapshot_name = snapshot['name']
         repository = self._get_repository(volume['volume_type'])
-        self._appliance.create_volume_from_snapshot(snapshot_name,
-                                                    volume['name'],
-                                                    repository)
+        self.appliance.create_volume_from_snapshot(snapshot_name,
+                                                   volume['name'],
+                                                   repository)
         if volume['size'] > snapshot['volume_size']:
-            self._appliance.resize_volume(volume['name'], volume['size'])
+            self.appliance.resize_volume(volume['name'], volume['size'])
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
-        self._appliance.resize_volume(volume['name'], new_size)
-        return
+        self.appliance.resize_volume(volume['name'], new_size)
 
     def initialize_connection(self, volume, connector):
         """Return connection information."""
-        volume_info = self._appliance.get_volume_info(volume['name'])
+        volume_info = self.appliance.get_volume_info(volume['name'])
 
         shelf = volume_info['shelf']
         lun = volume_info['lun']
@@ -522,7 +517,7 @@ class CoraidDriver(driver.VolumeDriver):
 
     def _get_repository_capabilities(self):
         repos_list = map(lambda i: i['profile']['fullName'] + ':' + i['name'],
-                         self._appliance.get_all_repos())
+                         self.appliance.get_all_repos())
         return ' '.join(repos_list)
 
     def update_volume_stats(self):

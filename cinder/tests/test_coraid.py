@@ -243,8 +243,7 @@ class CoraidDriverTestCase(test.TestCase):
         configuration.use_multipath_for_image_xfer = False
         self.fake_rpc = FakeRpc()
 
-        self.mox.StubOutWithMock(coraid.CoraidRESTClient, 'rpc')
-        coraid.CoraidRESTClient.rpc = self.fake_rpc
+        self.stubs.Set(coraid.CoraidRESTClient, 'rpc', self.fake_rpc)
 
         self.driver = coraid.CoraidDriver(configuration=configuration)
         self.driver.do_setup({})
@@ -310,13 +309,19 @@ class CoraidDriverApplianceTestCase(CoraidDriverLoginSuccessTestCase):
         self.fake_rpc.handle('configure', {}, [resize_volume_request],
                              reply)
 
-        real_reply = self.driver._appliance.resize_volume(fake_volume_name,
-                                                          new_volume_size)
+        real_reply = self.driver.appliance.resize_volume(fake_volume_name,
+                                                         new_volume_size)
 
         self.assertEqual(reply['configState'], real_reply['configState'])
 
 
 class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
+    def setUp(self):
+        super(CoraidDriverIntegrationalTestCase, self).setUp()
+        self.appliance = self.driver.appliance
+        # NOTE(nsobolevsky) prevent re-creation esm appliance
+        self.stubs.Set(coraid.CoraidDriver, 'appliance', self.appliance)
+
     def test_create_volume(self):
         self.mock_volume_types()
 
@@ -370,19 +375,20 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
 
         self.mox.ReplayAll()
 
-        self.driver._appliance.ping()
+        self.driver.appliance.ping()
 
         self.mox.VerifyAll()
 
     def test_ping_failed(self):
-        def rpc(*args, **kwargs):
-            raise Exception("Some exception")
+        def rpc(handle, url_params, data,
+                allow_empty_response=True):
+            raise test.TestingException("Some exception")
 
-        self.stubs.Set(self.driver._appliance, 'rpc', rpc)
+        self.stubs.Set(self.driver.appliance, 'rpc', rpc)
         self.mox.ReplayAll()
 
         self.assertRaises(exception.CoraidESMNotAvailable,
-                          self.driver._appliance.ping)
+                          self.driver.appliance.ping)
 
         self.mox.VerifyAll()
 
@@ -408,25 +414,21 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
 
         self.assertRaises(
             exception.VolumeNotFound,
-            self.driver._appliance.delete_lun,
+            self.driver.appliance.delete_lun,
             fake_volume['name'])
 
         self.mox.VerifyAll()
 
-    def test_delete_not_existing_volume_appliance_is_ok(self):
-        self.mox.StubOutWithMock(self.driver._appliance, 'delete_lun')
-
+    def test_delete_not_existing_volumeappliance_is_ok(self):
         def delete_lun(volume_name):
             raise exception.VolumeNotFound(volume_id=fake_volume['name'])
 
-        self.driver._appliance.delete_lun = delete_lun
-
-        self.mox.StubOutWithMock(self.driver._appliance, 'ping')
+        self.stubs.Set(self.driver.appliance, 'delete_lun', delete_lun)
 
         def ping():
             pass
 
-        self.driver._appliance.ping = ping
+        self.stubs.Set(self.driver.appliance, 'ping', ping)
 
         self.mox.ReplayAll()
 
@@ -434,20 +436,18 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
 
         self.mox.VerifyAll()
 
-    def test_delete_not_existing_volume_sleeping_appliance(self):
-        self.mox.StubOutWithMock(self.driver._appliance, 'delete_lun')
-
+    def test_delete_not_existing_volume_sleepingappliance(self):
         def delete_lun(volume_name):
             raise exception.VolumeNotFound(volume_id=fake_volume['name'])
 
-        self.driver._appliance.delete_lun = delete_lun
-
-        self.mox.StubOutWithMock(self.driver._appliance, 'ping')
+        self.stubs.Set(self.driver.appliance, 'delete_lun', delete_lun)
 
         def ping():
             raise exception.CoraidESMNotAvailable(reason="Any reason")
 
-        self.driver._appliance.ping = ping
+        self.stubs.Set(self.driver.appliance, 'ping', ping)
+
+        self.driver.appliance.ping = ping
 
         self.mox.ReplayAll()
 
@@ -507,9 +507,9 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
     def test_create_volume_from_snapshot(self):
         self.mock_volume_types()
 
-        self.mox.StubOutWithMock(self.driver._appliance, 'resize_volume')
-        self.driver._appliance.resize_volume(fake_volume_name,
-                                             fake_volume['size'])\
+        self.mox.StubOutWithMock(self.driver.appliance, 'resize_volume')
+        self.driver.appliance.resize_volume(fake_volume_name,
+                                            fake_volume['size'])\
             .AndReturn(None)
 
         fetch_request = {'shelf': 'cms',
@@ -607,9 +607,9 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
     def test_create_cloned_volume_with_resize(self):
         self.mock_volume_types([fake_repository_name])
 
-        self.mox.StubOutWithMock(self.driver._appliance, 'resize_volume')
-        self.driver._appliance.resize_volume(fake_big_clone_volume['name'],
-                                             fake_big_clone_volume['size'])\
+        self.mox.StubOutWithMock(self.driver.appliance, 'resize_volume')
+        self.driver.appliance.resize_volume(fake_big_clone_volume['name'],
+                                            fake_big_clone_volume['size'])\
             .AndReturn(None)
 
         fetch_request = {'shelf': 'cms',
@@ -658,8 +658,8 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
         self.mox.VerifyAll()
 
     def test_extend_volume(self):
-        self.mox.StubOutWithMock(self.driver._appliance, 'resize_volume')
-        self.driver._appliance.resize_volume(fake_volume_name, 10)\
+        self.mox.StubOutWithMock(self.driver.appliance, 'resize_volume')
+        self.driver.appliance.resize_volume(fake_volume_name, 10)\
             .AndReturn(None)
 
         self.mox.ReplayAll()
@@ -829,5 +829,29 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
                                          fake_volume,
                                          fake_image_service,
                                          fake_image_id)
+
+        self.mox.VerifyAll()
+
+
+class CoraidResetConnectionTestCase(CoraidDriverTestCase):
+    def test_create_new_appliance_for_every_request(self):
+        self.mox.StubOutWithMock(coraid, 'CoraidRESTClient')
+        self.mox.StubOutWithMock(coraid, 'CoraidAppliance')
+
+        coraid.CoraidRESTClient(mox.IgnoreArg())
+        coraid.CoraidRESTClient(mox.IgnoreArg())
+
+        coraid.CoraidAppliance(mox.IgnoreArg(),
+                               mox.IgnoreArg(),
+                               mox.IgnoreArg(),
+                               mox.IgnoreArg()).AndReturn('fake_app1')
+        coraid.CoraidAppliance(mox.IgnoreArg(),
+                               mox.IgnoreArg(),
+                               mox.IgnoreArg(),
+                               mox.IgnoreArg()).AndReturn('fake_app2')
+        self.mox.ReplayAll()
+
+        self.assertEqual(self.driver.appliance, 'fake_app1')
+        self.assertEqual(self.driver.appliance, 'fake_app2')
 
         self.mox.VerifyAll()
