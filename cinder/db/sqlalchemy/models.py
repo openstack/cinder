@@ -26,6 +26,7 @@ from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from oslo.config import cfg
 
@@ -149,7 +150,9 @@ class VolumeTypes(BASE, CinderBase):
     __tablename__ = "volume_types"
     id = Column(String(36), primary_key=True)
     name = Column(String(255))
-
+    # A reference to qos_specs entity
+    qos_specs_id = Column(String(36),
+                          ForeignKey('quality_of_service_specs.id'))
     volumes = relationship(Volume,
                            backref=backref('volume_type', uselist=False),
                            foreign_keys=id,
@@ -175,6 +178,63 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
         'VolumeTypeExtraSpecs.volume_type_id == VolumeTypes.id,'
         'VolumeTypeExtraSpecs.deleted == False)'
     )
+
+
+class QualityOfServiceSpecs(BASE, CinderBase):
+    """Represents QoS specs as key/value pairs.
+
+    QoS specs is standalone entity that can be associated/disassociated
+    with volume types (one to many relation).  Adjacency list relationship
+    pattern is used in this model in order to represent following hierarchical
+    data with in flat table, e.g, following structure
+
+    qos-specs-1  'Rate-Limit'
+         |
+         +------>  consumer = 'front-end'
+         +------>  total_bytes_sec = 1048576
+         +------>  total_iops_sec = 500
+
+    qos-specs-2  'QoS_Level1'
+         |
+         +------>  consumer = 'back-end'
+         +------>  max-iops =  1000
+         +------>  min-iops = 200
+
+    is represented by:
+
+      id       specs_id       key                  value
+    ------     --------   -------------            -----
+    UUID-1     NULL       QoSSpec_Name           Rate-Limit
+    UUID-2     UUID-1       consumer             front-end
+    UUID-3     UUID-1     total_bytes_sec        1048576
+    UUID-4     UUID-1     total_iops_sec           500
+    UUID-5     NULL       QoSSpec_Name           QoS_Level1
+    UUID-6     UUID-5       consumer             back-end
+    UUID-7     UUID-5       max-iops               1000
+    UUID-8     UUID-5       min-iops               200
+    """
+    __tablename__ = 'quality_of_service_specs'
+    id = Column(String(36), primary_key=True)
+    specs_id = Column(String(36), ForeignKey(id))
+    key = Column(String(255))
+    value = Column(String(255))
+
+    specs = relationship(
+        "QualityOfServiceSpecs",
+        cascade="all, delete-orphan",
+        backref=backref("qos_spec", remote_side=id),
+    )
+
+    vol_types = relationship(
+        VolumeTypes,
+        backref=backref('qos_specs'),
+        foreign_keys=id,
+        primaryjoin='and_('
+                    'or_(VolumeTypes.qos_specs_id == '
+                    'QualityOfServiceSpecs.id,'
+                    'VolumeTypes.qos_specs_id == '
+                    'QualityOfServiceSpecs.specs_id),'
+                    'QualityOfServiceSpecs.deleted == False)')
 
 
 class VolumeGlanceMetadata(BASE, CinderBase):

@@ -58,6 +58,7 @@ from cinder.volume.configuration import Configuration
 from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
+from cinder.volume import volume_types
 
 from cinder.taskflow import states
 
@@ -516,7 +517,21 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.validate_connector(connector)
-        return self.driver.initialize_connection(volume_ref, connector)
+        conn_info = self.driver.initialize_connection(volume_ref, connector)
+
+        # Add qos_specs to connection info
+        typeid = volume_ref['volume_type_id']
+        specs = {}
+        if typeid:
+            res = volume_types.get_volume_type_qos_specs(typeid)
+            specs = res['qos_specs']
+
+        # Don't pass qos_spec as empty dict
+        qos_spec = dict(qos_spec=specs if specs else None)
+
+        conn_info['data'].update(qos_spec)
+
+        return conn_info
 
     def terminate_connection(self, context, volume_id, connector, force=False):
         """Cleanup connection from host represented by connector.

@@ -39,6 +39,7 @@
     "volume_extension:types_extra_specs": [],
     "volume_extension:volume_type_encryption": [["rule:admin_api"]],
     "volume_extension:volume_encryption_metadata": [["rule:admin_or_owner"]],
+    "volume_extension:qos_specs_manage": [],
     "volume_extension:extended_snapshot_attributes": [],
     "volume_extension:volume_image_metadata": [],
     "volume_extension:volume_host_attribute": [["rule:admin_api"]],
@@ -51,7 +52,7 @@
     "volume:accept_transfer": [],
     "volume:delete_transfer": [],
     "volume:get_all_transfers": [],
-    
+
     "backup:create" : [],
     "backup:delete": [],
     "backup:get": [],

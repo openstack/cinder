@@ -168,3 +168,10 @@ def is_encrypted(context, volume_type_id):
 
     encryption = db.volume_type_encryption_get(context, volume_type_id)
     return encryption is not None
+
+
+def get_volume_type_qos_specs(volume_type_id):
+    ctxt = context.get_admin_context()
+    res = db.volume_type_qos_specs_get(ctxt,
+                                       volume_type_id)
+    return res

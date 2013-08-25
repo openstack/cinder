@@ -657,3 +657,44 @@ class CoraidESMConfigureError(CoraidException):
 
 class CoraidESMNotAvailable(CoraidException):
     message = _('Coraid ESM not available with reason: %(reason)s.')
+
+
+class QoSSpecsExists(Duplicate):
+    message = _("QoS Specs %(specs_id)s already exists.")
+
+
+class QoSSpecsCreateFailed(CinderException):
+    message = _("Failed to create qos_specs: "
+                "%(name)s with specs %(qos_specs)s.")
+
+
+class QoSSpecsUpdateFailed(CinderException):
+    message = _("Failed to update qos_specs: "
+                "%(specs_id)s with specs %(qos_specs)s.")
+
+
+class QoSSpecsNotFound(NotFound):
+    message = _("No such QoS spec %(specs_id)s.")
+
+
+class QoSSpecsAssociateFailed(CinderException):
+    message = _("Failed to associate qos_specs: "
+                "%(specs_id)s with type %(type_id)s.")
+
+
+class QoSSpecsDisassociateFailed(CinderException):
+    message = _("Failed to disassociate qos_specs: "
+                "%(specs_id)s with type %(type_id)s.")
+
+
+class QoSSpecsKeyNotFound(NotFound):
+    message = _("QoS spec %(specs_id)s has no spec with "
+                "key %(specs_key)s.")
+
+
+class InvalidQoSSpecs(Invalid):
+    message = _("Invalid qos specs") + ": %(reason)s"
+
+
+class QoSSpecsInUse(CinderException):
+    message = _("QoS Specs %(specs_id)s is still associated with entities.")

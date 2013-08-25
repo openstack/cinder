@@ -28,7 +28,7 @@ import warnings
 from oslo.config import cfg
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql import func
 
@@ -430,16 +430,15 @@ def _metadata_refs(metadata_dict, meta_class):
 
 
 def _dict_with_extra_specs(inst_type_query):
-    """Takes an instance, volume, or instance type query returned
-    by sqlalchemy and returns it as a dictionary, converting the
-    extra_specs entry from a list of dicts:
+    """Convert type query result to dict with extra_spec and rate_limit.
+
+    Takes a volume type query returned by sqlalchemy and returns it
+    as a dictionary, converting the extra_specs entry from a list
+    of dicts:
 
     'extra_specs' : [{'key': 'k1', 'value': 'v1', ...}, ...]
-
     to a single dict:
-
     'extra_specs' : {'k1': 'v1'}
-
     """
     inst_type_dict = dict(inst_type_query)
     extra_specs = dict([(x['key'], x['value'])
@@ -1587,11 +1586,11 @@ def snapshot_metadata_update(context, snapshot_id, metadata, delete):
 
 @require_admin_context
 def volume_type_create(context, values):
-    """Create a new instance type. In order to pass in extra specs,
-    the values dict should contain a 'extra_specs' key/value pair:
+    """Create a new instance type.
 
+    In order to pass in extra specs, the values dict should contain a
+    'extra_specs' key/value pair:
     {'extra_specs' : {'k1': 'v1', 'k2': 'v2', ...}}
-
     """
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
@@ -1633,8 +1632,6 @@ def volume_type_get_all(context, inactive=False, filters=None):
         order_by("name").\
         all()
 
-    # TODO(sirp): this patern of converting rows to a result with extra_specs
-    # is repeated quite a bit, might be worth creating a method for it
     result = {}
     for row in rows:
         result[row['name']] = _dict_with_extra_specs(row)
@@ -1684,6 +1681,88 @@ def volume_type_get_by_name(context, name):
     """Returns a dict describing specific volume_type"""
 
     return _volume_type_get_by_name(context, name)
+
+
+@require_admin_context
+def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
+    read_deleted = "yes" if inactive else "no"
+    return model_query(context, models.VolumeTypes,
+                       read_deleted=read_deleted). \
+        filter_by(qos_specs_id=qos_specs_id).all()
+
+
+@require_admin_context
+def volume_type_qos_associate(context, type_id, qos_specs_id):
+    session = get_session()
+    with session.begin():
+        _volume_type_get(context, type_id, session)
+
+        session.query(models.VolumeTypes). \
+            filter_by(id=type_id). \
+            update({'qos_specs_id': qos_specs_id,
+                    'updated_at': timeutils.utcnow()})
+
+
+@require_admin_context
+def volume_type_qos_disassociate(context, qos_specs_id, type_id):
+    """Disassociate volume type from qos specs."""
+    session = get_session()
+    with session.begin():
+        _volume_type_get(context, type_id, session)
+
+        session.query(models.VolumeTypes). \
+            filter_by(id=type_id). \
+            filter_by(qos_specs_id=qos_specs_id). \
+            update({'qos_specs_id': None,
+                    'updated_at': timeutils.utcnow()})
+
+
+@require_admin_context
+def volume_type_qos_disassociate_all(context, qos_specs_id):
+    """Disassociate all volume types associated with specified qos specs."""
+    session = get_session()
+    with session.begin():
+        session.query(models.VolumeTypes). \
+            filter_by(qos_specs_id=qos_specs_id). \
+            update({'qos_specs_id': None,
+                    'updated_at': timeutils.utcnow()})
+
+
+@require_admin_context
+def volume_type_qos_specs_get(context, type_id):
+    """Return all qos specs for given volume type.
+
+    result looks like:
+        {
+         'qos_specs':
+                     {
+                        'id': 'qos-specs-id',
+                        'name': 'qos_specs_name',
+                        'consumer': 'Consumer',
+                        'key1': 'value1',
+                        'key2': 'value2',
+                        'key3': 'value3'
+                     }
+        }
+
+    """
+    session = get_session()
+    with session.begin():
+        _volume_type_get(context, type_id, session)
+
+        row = session.query(models.VolumeTypes). \
+            options(joinedload('qos_specs')). \
+            filter_by(id=type_id). \
+            first()
+
+        # row.qos_specs is a list of QualityOfServiceSpecs ref
+        specs = {}
+        for item in row.qos_specs:
+            if item.key == 'QoS_Specs_Name':
+                if item.specs:
+                    specs = _dict_with_children_specs(item.specs)
+
+        return {'qos_specs': specs}
 
 
 @require_admin_context
@@ -1791,6 +1870,270 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
             spec_ref.update({"key": key, "value": value,
                              "volume_type_id": volume_type_id,
                              "deleted": False})
+            spec_ref.save(session=session)
+
+        return specs
+
+
+####################
+
+
+@require_admin_context
+def qos_specs_create(context, values):
+    """Create a new QoS specs.
+
+    :param values dictionary that contains specifications for QoS
+          e.g. {'name': 'Name',
+                'qos_specs': {
+                    'consumer': 'front-end',
+                    'total_iops_sec': 1000,
+                    'total_bytes_sec': 1024000
+                    }
+                }
+    """
+    specs_id = str(uuid.uuid4())
+
+    session = get_session()
+    with session.begin():
+        try:
+            _qos_specs_get_by_name(context, values['name'], session)
+            raise exception.QoSSpecsExists(specs_id=values['name'])
+        except exception.QoSSpecsNotFound:
+            pass
+        try:
+            # Insert a root entry for QoS specs
+            specs_root = models.QualityOfServiceSpecs()
+            root = dict(id=specs_id)
+            # 'QoS_Specs_Name' is a internal reserved key to store
+            # the name of QoS specs
+            root['key'] = 'QoS_Specs_Name'
+            root['value'] = values['name']
+            LOG.debug("qos_specs_create(): root %s", root)
+            specs_root.update(root)
+            specs_root.save(session=session)
+
+            # Insert all specification entries for QoS specs
+            for k, v in values['qos_specs'].iteritems():
+                item = dict(key=k, value=v, specs_id=specs_id)
+                item['id'] = str(uuid.uuid4())
+                spec_entry = models.QualityOfServiceSpecs()
+                spec_entry.update(item)
+                spec_entry.save(session=session)
+        except Exception as e:
+            raise db_exc.DBError(e)
+
+        return specs_root
+
+
+@require_admin_context
+def _qos_specs_get_by_name(context, name, session=None, inactive=False):
+    read_deleted = 'yes' if inactive else 'no'
+    results = model_query(context, models.QualityOfServiceSpecs,
+                          read_deleted=read_deleted, session=session). \
+        filter_by(key='QoS_Specs_Name'). \
+        filter_by(value=name). \
+        options(joinedload('specs')).all()
+
+    if not results:
+        raise exception.QoSSpecsNotFound(specs_id=name)
+
+    return results
+
+
+@require_admin_context
+def _qos_specs_get_ref(context, qos_specs_id, session=None, inactive=False):
+    read_deleted = 'yes' if inactive else 'no'
+    result = model_query(context, models.QualityOfServiceSpecs,
+                         read_deleted=read_deleted, session=session). \
+        filter_by(id=qos_specs_id). \
+        options(joinedload_all('specs')).all()
+
+    if not result:
+        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
+
+    return result
+
+
+def _dict_with_children_specs(specs):
+    """Convert specs list to a dict."""
+    result = {}
+    for spec in specs:
+        result.update({spec['key']: spec['value']})
+
+    return result
+
+
+def _dict_with_qos_specs(rows):
+    """Convert qos specs query results to dict with name as key.
+
+    Qos specs query results are a list of quality_of_service_specs refs,
+    some are root entry of a qos specs (key == 'QoS_Specs_Name') and the
+    rest are children entry, a.k.a detailed specs for a qos specs. This
+    funtion converts query results to a dict using spec name as key.
+    """
+    result = {}
+    for row in rows:
+        if row['key'] == 'QoS_Specs_Name':
+            result[row['value']] = dict(id=row['id'])
+            if row.specs:
+                spec_dict = _dict_with_children_specs(row.specs)
+                result[row['value']].update(spec_dict)
+
+    return result
+
+
+@require_admin_context
+def qos_specs_get(context, qos_specs_id, inactive=False):
+    rows = _qos_specs_get_ref(context, qos_specs_id, None, inactive)
+
+    return _dict_with_qos_specs(rows)
+
+
+@require_admin_context
+def qos_specs_get_all(context, inactive=False, filters=None):
+    """Returns dicts describing all qos_specs.
+
+    Results is like:
+        {'qos-spec-1': {'id': SPECS-UUID,
+                        'key1': 'value1',
+                        'key2': 'value2',
+                        ...
+                        'consumer': 'back-end'}
+         'qos-spec-2': {'id': SPECS-UUID,
+                        'key1': 'value1',
+                        'key2': 'value2',
+                        ...
+                        'consumer': 'back-end'}
+        }
+    """
+    filters = filters or {}
+    #TODO(zhiteng) Add filters for 'consumer'
+
+    read_deleted = "yes" if inactive else "no"
+    rows = model_query(context, models.QualityOfServiceSpecs,
+                       read_deleted=read_deleted). \
+        options(joinedload_all('specs')).all()
+
+    return _dict_with_qos_specs(rows)
+
+
+@require_admin_context
+def qos_specs_get_by_name(context, name, inactive=False):
+    rows = _qos_specs_get_by_name(context, name, None, inactive)
+
+    return _dict_with_qos_specs(rows)
+
+
+@require_admin_context
+def qos_specs_associations_get(context, qos_specs_id):
+    """Return all entities associated with specified qos specs.
+
+    For now, the only entity that is possible to associate with
+    a qos specs is volume type, so this is just a wrapper of
+    volume_type_qos_associations_get(). But it's possible to
+    extend qos specs association to other entities, such as volumes,
+    sometime in future.
+    """
+    rows = _qos_specs_get_ref(context, qos_specs_id, None)
+    if not rows:
+        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
+
+    return volume_type_qos_associations_get(context, qos_specs_id)
+
+
+@require_admin_context
+def qos_specs_associate(context, qos_specs_id, type_id):
+    """Associate volume type from specified qos specs."""
+    return volume_type_qos_associate(context, type_id, qos_specs_id)
+
+
+@require_admin_context
+def qos_specs_disassociate(context, qos_specs_id, type_id):
+    """Disassociate volume type from specified qos specs."""
+    return volume_type_qos_disassociate(context, qos_specs_id, type_id)
+
+
+@require_admin_context
+def qos_specs_disassociate_all(context, qos_specs_id):
+    """Disassociate all entities associated with specified qos specs.
+
+    For now, the only entity that is possible to associate with
+    a qos specs is volume type, so this is just a wrapper of
+    volume_type_qos_disassociate_all(). But it's possible to
+    extend qos specs association to other entities, such as volumes,
+    sometime in future.
+    """
+    return volume_type_qos_disassociate_all(context, qos_specs_id)
+
+
+@require_admin_context
+def qos_specs_item_delete(context, qos_specs_id, key):
+    _qos_specs_get_item(context, qos_specs_id, key)
+    _qos_specs_get_ref(context, qos_specs_id, None). \
+        filter_by(key=key). \
+        update({'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
+
+
+@require_admin_context
+def qos_specs_delete(context, qos_specs_id):
+    session = get_session()
+    with session.begin():
+        _qos_specs_get_ref(context, qos_specs_id, session)
+        session.query(models.QualityOfServiceSpecs).\
+            filter(or_(models.QualityOfServiceSpecs.id == qos_specs_id,
+                       models.QualityOfServiceSpecs.specs_id ==
+                       qos_specs_id)).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+@require_admin_context
+def _qos_specs_get_item(context, qos_specs_id, key, session=None):
+    result = model_query(context, models.QualityOfServiceSpecs,
+                         session=session). \
+        filter(models.QualityOfServiceSpecs.key == key). \
+        filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id). \
+        first()
+
+    if not result:
+        raise exception.QoSSpecsKeyNotFound(
+            specs_key=key,
+            specs_id=qos_specs_id)
+
+    return result
+
+
+@require_admin_context
+def qos_specs_update(context, qos_specs_id, specs):
+    """Make updates to a existing qos specs.
+
+    Perform add, update or delete key/values to a qos specs.
+    """
+
+    session = get_session()
+    with session.begin():
+        # make sure qos specs exists
+        _qos_specs_get_ref(context, qos_specs_id, session)
+        spec_ref = None
+        for key in specs.keys():
+            try:
+                spec_ref = _qos_specs_get_item(
+                    context, qos_specs_id, key, session)
+            except exception.QoSSpecsKeyNotFound as e:
+                spec_ref = models.QualityOfServiceSpecs()
+            id = None
+            if spec_ref.get('id', None):
+                id = spec_ref['id']
+            else:
+                id = str(uuid.uuid4())
+            value = dict(id=id, key=key, value=specs[key],
+                         specs_id=qos_specs_id,
+                         deleted=False)
+            LOG.debug('qos_specs_update() value: %s' % value)
+            spec_ref.update(value)
             spec_ref.save(session=session)
 
         return specs
