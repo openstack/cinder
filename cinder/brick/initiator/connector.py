@@ -518,7 +518,7 @@ class FibreChannelConnector(InitiatorConnector):
         if isinstance(ports, list):
             for wwn in ports:
                 wwns.append(str(wwn))
-        elif isinstance(ports, str) or isinstance(ports, unicode):
+        elif isinstance(ports, basestring):
             wwns.append(str(ports))
 
         # We need to look for wwns on every hba
