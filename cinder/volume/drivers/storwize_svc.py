@@ -84,16 +84,20 @@ storwize_svc_opts = [
     cfg.BoolOpt('storwize_svc_vol_easytier',
                 default=True,
                 help='Enable Easy Tier for volumes'),
+    cfg.IntOpt('storwize_svc_vol_iogrp',
+               default=0,
+               help='The I/O group in which to allocate volumes'),
     cfg.IntOpt('storwize_svc_flashcopy_timeout',
                default=120,
                help='Maximum number of seconds to wait for FlashCopy to be '
-                    'prepared. Maximum value is 600 seconds (10 minutes).'),
+                    'prepared. Maximum value is 600 seconds (10 minutes)'),
     cfg.StrOpt('storwize_svc_connection_protocol',
                default='iSCSI',
                help='Connection protocol (iSCSI/FC)'),
     cfg.BoolOpt('storwize_svc_multipath_enabled',
                 default=False,
-                help='Connect with multipath (currently FC-only)'),
+                help='Connect with multipath (FC only; iSCSI multipath is '
+                     'controlled by Nova)'),
     cfg.BoolOpt('storwize_svc_multihostmap_enabled',
                 default=True,
                 help='Allows vdisk to multi host mapping'),
@@ -125,6 +129,7 @@ class StorwizeSVCDriver(san.SanDriver):
         self._storage_nodes = {}
         self._enabled_protocols = set()
         self._compression_enabled = False
+        self._available_iogrps = []
         self._context = None
 
         # Build cleanup translation tables for host names
@@ -209,6 +214,34 @@ class StorwizeSVCDriver(san.SanDriver):
         except exception.ProcessExecutionError:
             LOG.exception(_('Failed to get license information.'))
 
+        # Get the available I/O groups
+        ssh_cmd = ['svcinfo', 'lsiogrp', '-delim', '!']
+        out, err = self._run_ssh(ssh_cmd)
+        self._assert_ssh_return(len(out.strip()), 'do_setup',
+                                ssh_cmd, out, err)
+        iogrps = out.strip().split('\n')
+        self._assert_ssh_return(len(iogrps), 'do_setup', ssh_cmd, out, err)
+        header = iogrps.pop(0)
+        for iogrp_line in iogrps:
+            try:
+                iogrp_data = self._get_hdr_dic(header, iogrp_line, '!')
+                if (int(iogrp_data['node_count']) > 0 and
+                        int(iogrp_data['vdisk_count']) > 0):
+                    self._available_iogrps.append(int(iogrp_data['id']))
+            except exception.VolumeBackendAPIException:
+                with excutils.save_and_reraise_exception():
+                    self._log_cli_output_error('do_setup',
+                                               ssh_cmd, out, err)
+            except KeyError:
+                self._handle_keyerror('lsnode', header)
+            except ValueError:
+                msg = (_('Expected integers for node_count and vdisk_count, '
+                         'svcinfo lsiogrp returned: %(node)s and %(vdisk)s') %
+                       {'node': iogrp_data['node_count'],
+                        'vdisk': iogrp_data['vdisk_count']})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
         # Get the iSCSI and FC names of the Storwize/SVC nodes
         ssh_cmd = ['svcinfo', 'lsnode', '-delim', '!']
         out, err = self._run_ssh(ssh_cmd)
@@ -216,8 +249,7 @@ class StorwizeSVCDriver(san.SanDriver):
                                 ssh_cmd, out, err)
 
         nodes = out.strip().split('\n')
-        self._assert_ssh_return(len(nodes),
-                                'do_setup', ssh_cmd, out, err)
+        self._assert_ssh_return(len(nodes), 'do_setup', ssh_cmd, out, err)
         header = nodes.pop(0)
         for node_line in nodes:
             try:
@@ -285,7 +317,8 @@ class StorwizeSVCDriver(san.SanDriver):
                'compression': self.configuration.storwize_svc_vol_compression,
                'easytier': self.configuration.storwize_svc_vol_easytier,
                'protocol': protocol,
-               'multipath': self.configuration.storwize_svc_multipath_enabled}
+               'multipath': self.configuration.storwize_svc_multipath_enabled,
+               'iogrp': self.configuration.storwize_svc_vol_iogrp}
         return opt
 
     def check_for_setup_error(self):
@@ -760,8 +793,6 @@ class StorwizeSVCDriver(san.SanDriver):
             properties['volume_id'] = volume['id']
             if vol_opts['protocol'] == 'iSCSI':
                 type_str = 'iscsi'
-                # We take the first IP address for now. Ideally, OpenStack will
-                # support iSCSI multipath for improved performance.
                 if len(preferred_node_entry['ipv4']):
                     ipaddr = preferred_node_entry['ipv4'][0]
                 else:
@@ -949,7 +980,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp',
                    self.configuration.storwize_svc_volpool_name,
-                   '-iogrp', '0', '-size', size, '-unit',
+                   '-iogrp', str(opts['iogrp']), '-size', size, '-unit',
                    units, '-easytier', easytier] + ssh_cmd_se_opt
         out, err = self._run_ssh(ssh_cmd)
         self._assert_ssh_return(len(out.strip()), '_create_vdisk',
@@ -1476,12 +1507,12 @@ class StorwizeSVCDriver(san.SanDriver):
                 % {'prot': opts['protocol'],
                    'enabled': ','.join(self._enabled_protocols)})
 
-        # Check that multipath is only enabled for fc
-        if opts['protocol'] != 'FC' and opts['multipath']:
+        if opts['iogrp'] not in self._available_iogrps:
             raise exception.InvalidInput(
-                reason=_('Multipath is currently only supported for FC '
-                         'connections and not iSCSI.  (This is a Nova '
-                         'limitation.)'))
+                reason=_('I/O group %(iogrp)d is not valid; available '
+                         'I/O groups are %(avail)s')
+                % {'iogrp': opts['iogrp'],
+                   'avail': ''.join(str(e) for e in self._available_iogrps)})
 
     def _execute_command_and_parse_attributes(self, ssh_cmd):
         """Execute command on the Storwize/SVC and parse attributes.
