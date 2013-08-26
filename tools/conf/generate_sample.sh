@@ -1,24 +1,51 @@
 #!/usr/bin/env bash
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright 2012 SINA Corporation
-# All Rights Reserved.
-# Author: Zhongyue Luo <lzyeval@gmail.com>
-#
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
+print_hint() {
+    echo "Try \`${0##*/} --help' for more information." >&2
+}
+
+PARSED_OPTIONS=$(getopt -n "${0##*/}" -o ho: \
+                 --long help,output-dir: -- "$@")
+
+if [ $? != 0 ] ; then print_hint ; exit 1 ; fi
+
+eval set -- "$PARSED_OPTIONS"
+
+while true; do
+    case "$1" in
+        -h|--help)
+            echo "${0##*/} [options]"
+            echo ""
+            echo "options:"
+            echo "-h, --help                show brief help"
+            echo "-o, --output-dir=DIR      File output directory"
+            exit 0
+            ;;
+        -o|--output-dir)
+            shift
+            OUTPUTDIR=`echo $1 | sed -e 's/\/*$//g'`
+            shift
+            ;;
+        --)
+            break
+            ;;
+    esac
+done
+
+OUTPUTDIR=${OUTPUTDIR:-etc/cinder}
+if ! [ -d $OUTPUTDIR ]
+then
+    echo "${0##*/}: cannot access \`$OUTPUTDIR': No such file or directory" >&2
+    exit 1
+fi
+
+OUTPUTFILE=$OUTPUTDIR/cinder.conf.sample
 FILES=$(find cinder -type f -name "*.py" ! -path "cinder/tests/*" -exec \
     grep -l "Opt(" {} \; | sort -u)
 
 PYTHONPATH=./:${PYTHONPATH} \
     python $(dirname "$0")/extract_opts.py ${FILES} > \
-    etc/cinder/cinder.conf.sample
+    $OUTPUTFILE
+
+# When we use openstack.common.config.generate we won't need this any more
+sed -i 's/^#connection=sqlite.*/#connection=sqlite:\/\/\/\/cinder\/openstack\/common\/db\/$sqlite_db/' $OUTPUTFILE

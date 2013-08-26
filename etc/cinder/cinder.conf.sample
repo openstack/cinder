@@ -208,6 +208,21 @@
 
 
 #
+# Options defined in cinder.backup.drivers.tsm
+#
+
+# Volume prefix for the backup id when backing up to TSM
+# (string value)
+#backup_tsm_volume_prefix=backup
+
+# TSM password for the running username (string value)
+#backup_tsm_password=password
+
+# Enable or Disable compression for backups (boolean value)
+#backup_tsm_compression=true
+
+
+#
 # Options defined in cinder.backup.manager
 #
 
@@ -451,21 +466,6 @@
 #nova_api_insecure=false
 
 
-
-#
-# Options defined in cinder.backup.services.tsm
-#
-
-# Volume prefix for the backup id when backing up to TSM
-#backup_tsm_volume_prefix=backup
-
-# TSM password for the running username
-#backup_tsm_password=password
-
-# Enable or Disable compression for backups
-#backup_tsm_compression=True
-
-
 #
 # Options defined in cinder.db.api
 #
@@ -534,7 +534,7 @@
 
 # The SQLAlchemy connection string used to connect to the
 # database (string value)
-#connection=sqlite:////Users/erikzaadi/Storage/Code/Opensource/other/Openstack/cinder/cinder/openstack/common/db/$sqlite_db
+#connection=sqlite:////cinder/openstack/common/db/$sqlite_db
 
 # timeout before idle sql connections are reaped (integer
 # value)
@@ -1115,6 +1115,10 @@
 # volume creation takes a lot of time. (boolean value)
 #glusterfs_sparsed_volumes=true
 
+# Create volumes as QCOW2 files rather than raw files.
+# (boolean value)
+#glusterfs_qcow2_volumes=false
+
 
 #
 # Options defined in cinder.volume.drivers.gpfs
@@ -1466,15 +1470,19 @@
 # Enable Easy Tier for volumes (boolean value)
 #storwize_svc_vol_easytier=true
 
+# The I/O group in which to allocate volumes (integer value)
+#storwize_svc_vol_iogrp=0
+
 # Maximum number of seconds to wait for FlashCopy to be
-# prepared. Maximum value is 600 seconds (10 minutes).
-# (integer value)
+# prepared. Maximum value is 600 seconds (10 minutes) (integer
+# value)
 #storwize_svc_flashcopy_timeout=120
 
 # Connection protocol (iSCSI/FC) (string value)
 #storwize_svc_connection_protocol=iSCSI
 
-# Connect with multipath (currently FC-only) (boolean value)
+# Connect with multipath (FC only; iSCSI multipath is
+# controlled by Nova) (boolean value)
 #storwize_svc_multipath_enabled=false
 
 # Allows vdisk to multi host mapping (boolean value)
@@ -1592,4 +1600,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 337
+# Total option count: 342
