@@ -16,7 +16,6 @@
 #    under the License.
 """Unit tests for the GlusterFS driver module."""
 
-
 import errno
 import os
 
@@ -25,10 +24,13 @@ from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
 
+import json
+
 from cinder import context
 from cinder import exception
 from cinder.exception import ProcessExecutionError
 from cinder import test
+from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import glusterfs
 
@@ -55,7 +57,9 @@ class GlusterFsDriverTestCase(test.TestCase):
     TEST_LOCAL_PATH = '/mnt/glusterfs/volume-123'
     TEST_FILE_NAME = 'test.txt'
     TEST_SHARES_CONFIG_FILE = '/etc/cinder/test-shares.conf'
-    ONE_GB_IN_BYTES = 1024 * 1024 * 1024
+    VOLUME_UUID = 'abcdefab-cdef-abcd-efab-cdefabcdefab'
+    SNAP_UUID = 'bacadaca-baca-daca-baca-dacadacadaca'
+    SNAP_UUID_2 = 'bebedede-bebe-dede-bebe-dedebebedede'
 
     def setUp(self):
         super(GlusterFsDriverTestCase, self).setUp()
@@ -68,6 +72,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.TEST_MNT_POINT_BASE
         self._configuration.glusterfs_disk_util = 'df'
         self._configuration.glusterfs_sparsed_volumes = True
+        self._configuration.glusterfs_qcow2_volumes = False
 
         self.stubs = stubout.StubOutForTesting()
         self._driver =\
@@ -410,9 +415,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_available_capacity')
         drv._get_available_capacity(self.TEST_EXPORT1).\
-            AndReturn((2 * self.ONE_GB_IN_BYTES, 5 * self.ONE_GB_IN_BYTES))
+            AndReturn((2 * units.GiB, 5 * units.GiB))
         drv._get_available_capacity(self.TEST_EXPORT2).\
-            AndReturn((3 * self.ONE_GB_IN_BYTES, 10 * self.ONE_GB_IN_BYTES))
+            AndReturn((3 * units.GiB, 10 * units.GiB))
 
         mox.ReplayAll()
 
@@ -431,9 +436,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_available_capacity')
         drv._get_available_capacity(self.TEST_EXPORT1).\
-            AndReturn((0, 5 * self.ONE_GB_IN_BYTES))
+            AndReturn((0, 5 * units.GiB))
         drv._get_available_capacity(self.TEST_EXPORT2).\
-            AndReturn((0, 10 * self.ONE_GB_IN_BYTES))
+            AndReturn((0, 10 * units.GiB))
 
         mox.ReplayAll()
 
@@ -445,9 +450,12 @@ class GlusterFsDriverTestCase(test.TestCase):
 
     def _simple_volume(self):
         volume = DumbVolume()
-        volume['provider_location'] = '127.0.0.1:/mnt'
-        volume['name'] = 'volume_name'
+        volume['provider_location'] = self.TEST_EXPORT1
+        # volume['name'] mirrors format from db/sqlalchemy/models.py
+        volume['name'] = 'volume-%s' % self.VOLUME_UUID
         volume['size'] = 10
+        volume['id'] = self.VOLUME_UUID
+        volume['status'] = 'available'
 
         return volume
 
@@ -493,6 +501,35 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
         self._configuration.glusterfs_sparsed_volumes = old_value
+
+    def test_create_qcow2_volume(self):
+        (mox, drv) = self._mox, self._driver
+
+        volume = self._simple_volume()
+        old_value = self._configuration.glusterfs_qcow2_volumes
+        self._configuration.glusterfs_qcow2_volumes = True
+
+        mox.StubOutWithMock(drv, '_execute')
+
+        hashed = drv._get_hash_str(volume['provider_location'])
+        path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
+                                    hashed,
+                                    self.VOLUME_UUID)
+
+        drv._execute('qemu-img', 'create', '-f', 'qcow2',
+                     '-o', 'preallocation=metadata', path,
+                     str(volume['size'] * units.GiB),
+                     run_as_root=True)
+
+        drv._execute('chmod', 'ugo+rw', path, run_as_root=True)
+
+        mox.ReplayAll()
+
+        drv._do_create_volume(volume)
+
+        mox.VerifyAll()
+
+        self._configuration.glusterfs_qcow2_volumes = old_value
 
     def test_create_volume_should_ensure_glusterfs_mounted(self):
         """create_volume ensures shares provided in config are mounted."""
@@ -594,5 +631,361 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox.ReplayAll()
 
         drv.delete_volume(volume)
+
+        mox.VerifyAll()
+
+    def test_create_snapshot(self):
+        (mox, drv) = self._mox, self._driver
+
+        self.stub_out_not_replaying(drv, '_ensure_share_mounted')
+        mox.StubOutWithMock(drv, '_create_qcow2_snap_file')
+        mox.StubOutWithMock(drv, '_read_info_file')
+        mox.StubOutWithMock(drv, '_write_info_file')
+
+        volume = self._simple_volume()
+        snap_ref = {'name': 'test snap',
+                    'volume_id': self.VOLUME_UUID,
+                    'volume': volume,
+                    'id': self.SNAP_UUID}
+
+        mox.StubOutWithMock(drv, '_execute')
+
+        vol_filename = 'volume-%s' % self.VOLUME_UUID
+        snap_filename = '%s.%s' % (vol_filename, self.SNAP_UUID)
+
+        hashed = drv._get_hash_str(self.TEST_EXPORT1)
+        vol_path = '%s/%s/%s' % (self.TEST_MNT_POINT_BASE,
+                                 hashed,
+                                 vol_filename)
+        snap_path = '%s.%s' % (vol_path, self.SNAP_UUID)
+        info_path = '%s%s' % (vol_path, '.info')
+
+        info_dict = {'active': vol_filename}
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(info_dict)
+
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(info_dict)
+
+        drv._create_qcow2_snap_file(snap_ref, vol_filename, snap_path)
+
+        qemu_img_info_output = ("""image: volume-%s
+        file format: raw
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 152K
+        """ % self.VOLUME_UUID, '')
+
+        # SNAP_UUID_2 has been removed from dict.
+        info_file_dict = {'active': 'volume-%s.%s' %
+                          (self.VOLUME_UUID, self.SNAP_UUID),
+                          self.SNAP_UUID: 'volume-%s.%s' %
+                          (self.VOLUME_UUID, self.SNAP_UUID)}
+
+        drv._write_info_file(info_path, info_file_dict)
+
+        mox.ReplayAll()
+
+        drv.create_snapshot(snap_ref)
+
+        mox.VerifyAll()
+
+    def test_delete_snapshot_bottom(self):
+        """Multiple snapshots exist.
+
+           In this test, path (volume-<uuid>) is backed by
+            snap_path (volume-<uuid>.<snap_uuid>) which is backed by
+            snap_path_2 (volume-<uuid>.<snap_uuid_2>).
+
+           Delete the snapshot identified by SNAP_UUID_2.
+
+           Chain goes from
+                               (SNAP_UUID)      (SNAP_UUID_2)
+             volume-abc -> volume-abc.baca -> volume-abc.bebe
+           to
+                               (SNAP_UUID)
+             volume-abc -> volume-abc.baca
+        """
+        (mox, drv) = self._mox, self._driver
+
+        hashed = drv._get_hash_str(self.TEST_EXPORT1)
+        volume_path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
+                                           hashed,
+                                           self.VOLUME_UUID)
+        volume_filename = 'volume-%s' % self.VOLUME_UUID
+
+        snap_path = '%s.%s' % (volume_path, self.SNAP_UUID)
+        snap_path_2 = '%s.%s' % (volume_path, self.SNAP_UUID_2)
+        snap_file = '%s.%s' % (volume_filename, self.SNAP_UUID)
+        snap_file_2 = '%s.%s' % (volume_filename, self.SNAP_UUID_2)
+        info_path = '%s%s' % (volume_path, '.info')
+
+        mox.StubOutWithMock(drv, '_execute')
+        mox.StubOutWithMock(os.path, 'exists')
+        mox.StubOutWithMock(drv, '_read_file')
+        mox.StubOutWithMock(drv, '_read_info_file')
+        mox.StubOutWithMock(drv, '_get_backing_chain_for_path')
+        mox.StubOutWithMock(drv, '_get_matching_backing_file')
+        mox.StubOutWithMock(drv, '_write_info_file')
+
+        os.path.exists(snap_path_2).AndReturn(True)
+
+        info_file_json = """
+        {
+             %(SNAP_UUID)s: "volume-%(VOLUME_UUID)s.%(SNAP_UUID)s",
+             %(SNAP_UUID_2)s": "volume-%(VOLUME_UUID)s.%(SNAP_UUID_2)s",
+             "active": "volume-%(VOLUME_UUID)s.%(SNAP_UUID_2)s"
+        }
+        """ % {'SNAP_UUID': self.SNAP_UUID,
+               'SNAP_UUID_2': self.SNAP_UUID_2,
+               'VOLUME_UUID': self.VOLUME_UUID}
+
+        info_file_dict = {'active': 'volume-%s.%s' %
+                          (self.VOLUME_UUID, self.SNAP_UUID_2),
+                          self.SNAP_UUID_2: 'volume-%s.%s' %
+                          (self.VOLUME_UUID, self.SNAP_UUID_2),
+                          self.SNAP_UUID: snap_file}
+
+        snap_ref = {'name': 'test snap',
+                    'volume_id': self.VOLUME_UUID,
+                    'volume': self._simple_volume(),
+                    'id': self.SNAP_UUID_2}
+
+        qemu_img_info_output = """image: volume-%s.%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        backing file: %s
+        """ % (self.VOLUME_UUID, self.SNAP_UUID, volume_filename)
+
+        qemu_img_info_output_2 = """image: volume-%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        """ % self.VOLUME_UUID
+
+        drv._execute('qemu-img', 'info', snap_path_2,
+                     run_as_root=True).\
+            AndReturn((qemu_img_info_output, ''))
+
+        snap_path_2_chain = [{self.SNAP_UUID_2: snap_file_2},
+                             {self.SNAP_UUID: snap_file},
+                             {'active': snap_file_2}]
+
+        snap_path_chain = [{self.SNAP_UUID: snap_file},
+                           {'active': snap_file}]
+
+        drv._read_info_file(mox_lib.IgnoreArg()).AndReturn(info_file_dict)
+
+        drv._execute('qemu-img', 'info', volume_path, run_as_root=True).\
+            AndReturn((qemu_img_info_output_2, ''))
+
+        drv._execute('qemu-img', 'info', snap_path_2, run_as_root=True).\
+            AndReturn((qemu_img_info_output_2, ''))
+
+        drv._execute('qemu-img', 'commit', snap_path_2, run_as_root=True)
+
+        drv._execute('rm', '-f', snap_path_2, run_as_root=True)
+
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(info_file_dict)
+
+        drv._read_info_file(info_path).AndReturn(info_file_dict)
+
+        drv._write_info_file(info_path, info_file_dict)
+
+        mox.ReplayAll()
+
+        drv.delete_snapshot(snap_ref)
+
+        mox.VerifyAll()
+
+    def test_delete_snapshot_middle(self):
+        """Multiple snapshots exist.
+
+           In this test, path (volume-<uuid>) is backed by
+            snap_path (volume-<uuid>.<snap_uuid>) which is backed by
+            snap_path_2 (volume-<uuid>.<snap_uuid_2>).
+
+           Delete the snapshot identified with SNAP_UUID.
+
+           Chain goes from
+                               (SNAP_UUID)      (SNAP_UUID_2)
+             volume-abc -> volume-abc.baca -> volume-abc.bebe
+           to                (SNAP_UUID_2)
+             volume-abc -> volume-abc.bebe
+        """
+        (mox, drv) = self._mox, self._driver
+
+        #volume = DumbVolume()
+        volume = self._simple_volume()
+
+        hashed = drv._get_hash_str(self.TEST_EXPORT1)
+        volume_file = 'volume-%s' % self.VOLUME_UUID
+        volume_path = '%s/%s/%s' % (self.TEST_MNT_POINT_BASE,
+                                    hashed,
+                                    volume_file)
+
+        info_path = '%s%s' % (volume_path, '.info')
+        snap_path = '%s.%s' % (volume_path, self.SNAP_UUID)
+        snap_file = 'volume-%s.%s' % (self.VOLUME_UUID, self.SNAP_UUID)
+        snap_path_2 = '%s.%s' % (volume_path, self.SNAP_UUID_2)
+        snap_file_2 = 'volume-%s.%s' % (self.VOLUME_UUID, self.SNAP_UUID_2)
+
+        mox.StubOutWithMock(drv, '_execute')
+        mox.StubOutWithMock(os.path, 'exists')
+        mox.StubOutWithMock(drv, '_read_info_file')
+        mox.StubOutWithMock(drv, '_write_info_file')
+        mox.StubOutWithMock(drv, '_get_backing_chain_for_path')
+        mox.StubOutWithMock(drv, 'get_active_image_from_info')
+
+        info_file_dict = {self.SNAP_UUID_2: 'volume-%s.%s' %
+                          (self.VOLUME_UUID, self.SNAP_UUID_2),
+                          self.SNAP_UUID: 'volume-%s.%s' %
+                          (self.VOLUME_UUID, self.SNAP_UUID)}
+
+        info_path = drv._local_path_volume(volume) + '.info'
+        drv._read_info_file(info_path).AndReturn(info_file_dict)
+
+        os.path.exists(snap_path).AndReturn(True)
+
+        snap_ref = {'name': 'test snap',
+                    'volume_id': self.VOLUME_UUID,
+                    'volume': volume,
+                    'id': self.SNAP_UUID}
+
+        qemu_img_info_output_snap_2 = """image: volume-%s.%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        backing file: %s
+        """ % (self.VOLUME_UUID, self.SNAP_UUID_2,
+               'volume-%s.%s' % (self.VOLUME_UUID, self.SNAP_UUID_2))
+
+        qemu_img_info_output_snap_1 = """image: volume-%s.%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 122K
+        backing file: %s
+        """ % (self.VOLUME_UUID, self.SNAP_UUID,
+               'volume-%s.%s' % (self.VOLUME_UUID, self.SNAP_UUID))
+
+        qemu_img_info_output = """image: volume-%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 175K
+        """ % self.VOLUME_UUID
+
+        drv._execute('qemu-img', 'info', mox_lib.IgnoreArg(),
+                     run_as_root=True).\
+            AndReturn((qemu_img_info_output_snap_2, ''))
+
+        snap_path_chain = [{'filename': snap_file_2,
+                            'backing-filename': snap_file},
+                           {'filename': snap_file,
+                            'backing-filename': volume_file}]
+
+        drv.get_active_image_from_info(volume).AndReturn(snap_file_2)
+        drv._get_backing_chain_for_path(snap_path_2).AndReturn(snap_path_chain)
+
+        drv._read_info_file(info_path).AndReturn(info_file_dict)
+
+        drv._execute('qemu-img', 'info', snap_path_2,
+                     run_as_root=True).\
+            AndReturn((qemu_img_info_output_snap_1, ''))
+
+        drv._execute('qemu-img', 'commit', snap_path_2, run_as_root=True)
+
+        drv._execute('rm', '-f', snap_path_2, run_as_root=True)
+
+        drv._read_info_file(info_path).AndReturn(info_file_dict)
+
+        drv._write_info_file(info_path, info_file_dict)
+
+        mox.ReplayAll()
+
+        drv.delete_snapshot(snap_ref)
+
+        mox.VerifyAll()
+
+    def test_get_backing_file(self, path='', actual_path=''):
+        (mox, drv) = self._mox, self._driver
+
+        qemu_img_info_output = """image: volume-%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 152K
+        backing file: %svolume-%s.%s%s
+        """ % (self.VOLUME_UUID,
+               path, self.VOLUME_UUID, self.SNAP_UUID, actual_path)
+
+        mox.ReplayAll()
+
+        expected_file = 'volume-%s.%s' % (self.VOLUME_UUID, self.SNAP_UUID)
+        self.assertEquals(drv._get_backing_file(qemu_img_info_output),
+                          expected_file)
+
+        mox.VerifyAll()
+
+    def test_get_backing_file_with_path(self):
+        self.test_get_backing_file(path='/mnt/asdf/')
+
+    def test_get_backing_file_other_cwd(self):
+        ap = ' (actual path: /mnt/asdf/volume-%s.%s)' % \
+             (self.VOLUME_UUID, self.SNAP_UUID)
+        self.test_get_backing_file(actual_path=ap)
+
+    def test_get_backing_file_none(self):
+        (mox, drv) = self._mox, self._driver
+
+        qemu_img_info_output = """image: volume-%s
+        file format: raw
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 152K
+        """ % self.VOLUME_UUID
+
+        mox.ReplayAll()
+
+        self.assertIsNone(drv._get_backing_file(qemu_img_info_output))
+
+        mox.VerifyAll()
+
+    def test_get_file_format(self):
+        (mox, drv) = self._mox, self._driver
+
+        qemu_img_info_output = """image: volume-%s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 152K
+        """ % self.VOLUME_UUID
+
+        mox.ReplayAll()
+
+        self.assertEquals(drv._get_file_format(qemu_img_info_output), 'qcow2')
+
+        mox.VerifyAll()
+
+    def test_read_info_file(self):
+        (mox, drv) = self._mox, self._driver
+
+        mox.StubOutWithMock(drv, '_read_file')
+        hashed = drv._get_hash_str(self.TEST_EXPORT1)
+        volume_path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
+                                           hashed,
+                                           self.VOLUME_UUID)
+        info_path = '%s%s' % (volume_path, '.info')
+
+        drv._read_file(info_path).AndReturn('{"%(id)s": "volume-%(id)s"}' %
+                                            {'id': self.VOLUME_UUID})
+
+        mox.ReplayAll()
+
+        volume = DumbVolume()
+        volume['id'] = self.VOLUME_UUID
+        volume['name'] = 'volume-%s' % self.VOLUME_UUID
+
+        info = drv._read_info_file(info_path)
+
+        self.assertEquals(info[self.VOLUME_UUID],
+                          'volume-%s' % self.VOLUME_UUID)
 
         mox.VerifyAll()

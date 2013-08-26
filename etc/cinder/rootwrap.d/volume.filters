@@ -57,6 +57,9 @@ chmod: CommandFilter, chmod, root
 rm: CommandFilter, rm, root
 lvs: CommandFilter, lvs, root
 
+# cinder/volume/drivers/glusterfs.py
+mv: CommandFilter, mv, root
+
 # cinder/volumes/drivers/hds/hds.py: 
 hus-cmd: CommandFilter, hus-cmd, root
 

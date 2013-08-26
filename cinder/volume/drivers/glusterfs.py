@@ -16,11 +16,15 @@
 #    under the License.
 
 import errno
+import json
 import os
+import re
 
 from oslo.config import cfg
 
+from cinder import db
 from cinder import exception
+from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nfs
 
@@ -40,10 +44,15 @@ volume_opts = [
                 default=True,
                 help=('Create volumes as sparsed files which take no space.'
                       'If set to False volume is created as regular file.'
-                      'In such case volume creation takes a lot of time.'))]
+                      'In such case volume creation takes a lot of time.')),
+    cfg.BoolOpt('glusterfs_qcow2_volumes',
+                default=False,
+                help=('Create volumes as QCOW2 files rather than raw files.')),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
+CONF.import_opt('volume_name_template', 'cinder.db')
 
 
 class GlusterfsDriver(nfs.RemoteFsDriver):
@@ -54,7 +63,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     driver_volume_type = 'glusterfs'
     driver_prefix = 'glusterfs'
     volume_backend_name = 'GlusterFS'
-    VERSION = '1.0.0'
+    VERSION = '1.1.0'
 
     def __init__(self, *args, **kwargs):
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
@@ -90,6 +99,649 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     def check_for_setup_error(self):
         """Just to override parent behavior."""
         pass
+
+    def _local_volume_dir(self, volume):
+        hashed = self._get_hash_str(volume['provider_location'])
+        path = '%s/%s' % (self.configuration.glusterfs_mount_point_base,
+                          hashed)
+        return path
+
+    def _local_path_volume(self, volume):
+        path_to_disk = '%s/%s' % (
+            self._local_volume_dir(volume),
+            volume['name'])
+
+        return path_to_disk
+
+    def _local_path_volume_info(self, volume):
+        return '%s%s' % (self._local_path_volume(volume), '.info')
+
+    def get_active_image_from_info(self, volume):
+        """Returns filename of the active image from the info file."""
+
+        info_file = self._local_path_volume_info(volume)
+
+        snap_info = self._read_info_file(info_file, empty_if_missing=True)
+
+        if snap_info == {}:
+            # No info file = no snapshots exist
+            vol_path = os.path.basename(self._local_path_volume(volume))
+            return vol_path
+
+        return snap_info['active']
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+
+        LOG.info(_('Cloning volume %(src)s to volume %(dst)s') %
+                 {'src': src_vref['id'],
+                  'dst': volume['id']})
+
+        if src_vref['status'] != 'available':
+            msg = _("Volume status must be 'available'.")
+            raise exception.InvalidVolume(msg)
+
+        volume_name = CONF.volume_name_template % src_vref['id']
+
+        temp_id = src_vref['id']
+        volume_info = {'provider_location': src_vref['provider_location'],
+                       'size': src_vref['size'],
+                       'id': volume['id'],
+                       'name': '%s-clone' % volume_name,
+                       'status': src_vref['status']}
+        temp_snapshot = {'volume_name': volume_name,
+                         'size': src_vref['size'],
+                         'volume_size': src_vref['size'],
+                         'name': 'clone-snap-%s' % src_vref['id'],
+                         'volume_id': src_vref['id'],
+                         'id': 'tmp-snap-%s' % src_vref['id'],
+                         'volume': src_vref}
+        self.create_snapshot(temp_snapshot)
+        try:
+            self._copy_volume_from_snapshot(temp_snapshot,
+                                            volume_info,
+                                            src_vref['size'])
+
+        finally:
+            self.delete_snapshot(temp_snapshot)
+
+        return {'provider_location': src_vref['provider_location']}
+
+    def create_volume(self, volume):
+        """Creates a volume."""
+
+        self._ensure_shares_mounted()
+
+        volume['provider_location'] = self._find_share(volume['size'])
+
+        LOG.info(_('casted to %s') % volume['provider_location'])
+
+        self._do_create_volume(volume)
+
+        return {'provider_location': volume['provider_location']}
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        Snapshot must not be the active snapshot. (offline)
+        """
+
+        if snapshot['status'] != 'available':
+            msg = _('Snapshot status must be "available" to clone.')
+            raise exception.InvalidSnapshot(msg)
+
+        self._ensure_shares_mounted()
+
+        volume['provider_location'] = self._find_share(volume['size'])
+
+        self._do_create_volume(volume)
+
+        self._copy_volume_from_snapshot(snapshot,
+                                        volume,
+                                        snapshot['volume_size'])
+
+        return {'provider_location': volume['provider_location']}
+
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+        """Copy data from snapshot to destination volume.
+
+        This is done with a qemu-img convert to raw/qcow2 from the snapshot
+        qcow2.
+        """
+
+        LOG.debug(_("snapshot: %(snap)s, volume: %(vol)s, "
+                    "volume_size: %(size)s")
+                  % {'snap': snapshot['id'],
+                     'vol': volume['id'],
+                     'size': volume_size})
+
+        path1 = self._get_hash_str(snapshot['volume']['provider_location'])
+        path_to_disk = self._local_path_volume(snapshot['volume'])
+
+        path_to_new_vol = self._local_path_volume(volume)
+
+        LOG.debug(_("will copy from snapshot at %s") % path_to_disk)
+
+        if self.configuration.glusterfs_qcow2_volumes:
+            out_format = 'qcow2'
+        else:
+            out_format = 'raw'
+
+        command = ['qemu-img', 'convert',
+                   '-O', out_format,
+                   path_to_disk,
+                   path_to_new_vol]
+
+        self._execute(*command, run_as_root=True)
+
+    def delete_volume(self, volume):
+        """Deletes a logical volume."""
+
+        if not volume['provider_location']:
+            LOG.warn(_('Volume %s does not have provider_location specified, '
+                     'skipping'), volume['name'])
+            return
+
+        self._ensure_share_mounted(volume['provider_location'])
+
+        mounted_path = self.local_path(volume)
+
+        self._execute('rm', '-f', mounted_path, run_as_root=True)
+
+    def create_snapshot(self, snapshot):
+        """Create a snapshot.
+
+        If volume is attached, call to Nova to create snapshot,
+        providing a qcow2 file.
+        Otherwise, create locally with qemu-img.
+
+        A file named volume-<uuid>.info is stored with the volume
+        data and is a JSON table which contains a mapping between
+        Cinder snapshot UUIDs and filenames, as these associations
+        will change as snapshots are deleted.
+
+
+        Basic snapshot operation:
+
+        1. Initial volume file:
+            volume-1234
+
+        2. Snapshot created:
+            volume-1234  <- volume-1234.aaaa
+
+            volume-1234.aaaa becomes the new "active" disk image.
+            If the volume is not attached, this filename will be used to
+            attach the volume to a VM at volume-attach time.
+            If the volume is attached, the VM will switch to this file as
+            part of the snapshot process.
+
+            This file has a qcow2 header recording the fact that volume-1234 is
+            its backing file.  Delta changes since the snapshot was created are
+            stored in this file, and the backing file (volume-1234) does not
+            change.
+
+            info file: { 'active': 'volume-1234.aaaa',
+                         'aaaa':   'volume-1234.aaaa' }
+
+        3. Second snapshot created:
+            volume-1234 <- volume-1234.aaaa <- volume-1234.bbbb
+
+            volume-1234.bbbb now becomes the "active" disk image, recording
+            changes made to the volume.
+
+            info file: { 'active': 'volume-1234.bbbb',
+                         'aaaa':   'volume-1234.aaaa',
+                         'bbbb':   'volume-1234.bbbb' }
+
+        4. First snapshot deleted:
+            volume-1234 <- volume-1234.aaaa(* now with bbbb's data)
+
+            volume-1234.aaaa is removed (logically) from the snapshot chain.
+            The data from volume-1234.bbbb is merged into it.
+
+            (*) Since bbbb's data was committed into the aaaa file, we have
+                "removed" aaaa's snapshot point but the .aaaa file now
+                represents snapshot with id "bbbb".
+
+
+            info file: { 'active': 'volume-1234.bbbb',
+                         'bbbb':   'volume-1234.aaaa'   (* changed!)
+                       }
+
+        5. Second snapshot deleted:
+            volume-1234
+
+            volume-1234.bbbb is removed from the snapshot chain, as above.
+            The base image, volume-1234, becomes the active image for this
+            volume again.  If in-use, the VM begins using the volume-1234.bbbb
+            file immediately as part of the snapshot delete process.
+
+            info file: { 'active': 'volume-1234' }
+
+        For the above operations, Cinder handles manipulation of qcow2 files
+        when the volume is detached.  When attached, Cinder creates and deletes
+        qcow2 files, but Nova is responsible for transitioning the VM between
+        them and handling live transfers of data between files as required.
+        """
+
+        # Check that volume is not attached (even for force):
+        # Online snapshots must be done via Nova
+        if snapshot['volume']['status'] != 'available':
+            msg = _("Volume status must be 'available'.")
+            raise exception.InvalidVolume(msg)
+
+        LOG.debug(_('create snapshot: %s') % snapshot)
+        LOG.debug(_('volume id: %s') % snapshot['volume_id'])
+
+        path_to_disk = self._local_path_volume(snapshot['volume'])
+        snap_id = snapshot['id']
+        self._create_snapshot(snapshot, path_to_disk, snap_id)
+
+    def _create_qcow2_snap_file(self, snapshot, backing_filename,
+                                new_snap_path):
+        """Create a QCOW2 file backed by another file.
+
+        :param snapshot: snapshot reference
+        :param backing_filename: filename of file that will back the
+            new qcow2 file
+        :param new_snap_path: filename of new qcow2 file
+        """
+
+        backing_path_full_path = '%s/%s' % (
+            self._local_volume_dir(snapshot['volume']),
+            backing_filename)
+
+        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
+                   'backing_file=%s' % backing_path_full_path, new_snap_path]
+        self._execute(*command, run_as_root=True)
+
+        command = ['qemu-img', 'info', backing_path_full_path]
+        (out, err) = self._execute(*command, run_as_root=True)
+        backing_fmt = self._get_file_format(out)
+
+        command = ['qemu-img', 'rebase', '-u',
+                   '-b', backing_filename,
+                   '-F', backing_fmt,
+                   new_snap_path]
+        self._execute(*command, run_as_root=True)
+
+    def _create_snapshot(self, snapshot, path_to_disk, snap_id):
+        """Create snapshot (offline case)."""
+
+        # Requires volume status = 'available'
+
+        new_snap_path = '%s.%s' % (path_to_disk, snapshot['id'])
+
+        backing_filename = self.get_active_image_from_info(snapshot['volume'])
+
+        self._create_qcow2_snap_file(snapshot,
+                                     backing_filename,
+                                     new_snap_path)
+
+        # Update info file
+
+        info_path = self._local_path_volume_info(snapshot['volume'])
+        snap_info = self._read_info_file(info_path,
+                                         empty_if_missing=True)
+
+        snap_info[snapshot['id']] = os.path.basename(new_snap_path)
+        snap_info['active'] = os.path.basename(new_snap_path)
+        self._write_info_file(info_path, snap_info)
+
+    def _read_file(self, filename):
+        """This method is to make it easier to stub out code for testing.
+
+        Returns a string representing the contents of the file.
+        """
+
+        with open(filename, 'r') as f:
+            return f.read()
+
+    def _read_info_file(self, info_path, empty_if_missing=False):
+        """Return dict of snapshot information."""
+
+        if not os.path.exists(info_path):
+            if empty_if_missing is True:
+                return {}
+
+        return json.loads(self._read_file(info_path))
+
+    def _write_info_file(self, info_path, snap_info):
+        if 'active' not in snap_info.keys():
+            msg = _("'active' must be present when writing snap_info.")
+            raise exception.GlusterfsException(msg)
+
+        with open(info_path, 'w') as f:
+            json.dump(snap_info, f, indent=1, sort_keys=True)
+
+    def _get_matching_backing_file(self, backing_chain, snapshot_file):
+        return next(f for f in backing_chain
+                    if f.get('backing-filename', '') == snapshot_file)
+
+    def delete_snapshot(self, snapshot):
+        """Delete a snapshot.
+
+        If volume status is 'available', delete snapshot here in Cinder
+        using qemu-img.
+        """
+
+        LOG.debug(_('deleting snapshot %s') % snapshot['id'])
+
+        if snapshot['volume']['status'] != 'available':
+            msg = _("Volume status must be 'available'.")
+            raise exception.InvalidVolume(msg)
+
+        # Determine the true snapshot file for this snapshot
+        #  based on the .info file
+        info_path = self._local_path_volume(snapshot['volume']) + '.info'
+        snap_info = self._read_info_file(info_path)
+        snapshot_file = snap_info[snapshot['id']]
+
+        LOG.debug(_('snapshot_file for this snap is %s') % snapshot_file)
+
+        snapshot_path = '%s/%s' % (self._local_volume_dir(snapshot['volume']),
+                                   snapshot_file)
+
+        if not os.path.exists(snapshot_path):
+            msg = _('Snapshot file at %s does not exist.') % snapshot_path
+            raise exception.InvalidSnapshot(msg)
+
+        base_file = self._get_backing_file_for_path(snapshot_path)
+
+        vol_path = self._local_volume_dir(snapshot['volume'])
+        base_file_fmt = self._get_file_format_for_path('%s/%s' %
+                                                       (vol_path, base_file))
+        if base_file_fmt not in ['qcow2', 'raw']:
+            msg = _("Invalid snapshot backing file format: %s") % base_file_fmt
+            raise exception.InvalidSnapshot(msg)
+
+        # Find what file has this as its backing file
+        active_file = self.get_active_image_from_info(snapshot['volume'])
+        active_file_path = '%s/%s' % (vol_path, active_file)
+
+        if snapshot_file == active_file:
+            # Need to merge snapshot_file into its backing file
+            # There is no top file
+            #      T0       |        T1         |
+            #     base      |   snapshot_file   | None
+            # (guaranteed to|  (being deleted)  |
+            #    exist)     |                   |
+
+            base_file = self._get_backing_file_for_path(snapshot_path)
+            snapshot_file_path = '%s/%s' % (vol_path, snapshot_file)
+
+            self._qemu_img_commit(snapshot_file_path)
+            self._execute('rm', '-f', snapshot_file_path, run_as_root=True)
+
+            # Remove snapshot_file from info
+            info_path = self._local_path_volume(snapshot['volume']) + '.info'
+            snap_info = self._read_info_file(info_path)
+            del(snap_info[snapshot['id']])
+            # Active file has changed
+            snap_info['active'] = base_file
+            self._write_info_file(info_path, snap_info)
+
+        else:
+            #    T0         |      T1        |     T2         |       T3
+            #    base       |  snapshot_file |  higher_file   |  highest_file
+            #(guaranteed to | (being deleted)|(guaranteed to  |  (may exist,
+            #  exist, not   |                | exist, being   |needs ptr update
+            #  used here)   |                | committed down)|     if so)
+
+            backing_chain = self._get_backing_chain_for_path(active_file_path)
+
+            # This file is guaranteed to exist since we aren't operating on
+            # the active file.
+            higher_file = next((os.path.basename(f['filename'])
+                                for f in backing_chain
+                                if f.get('backing-filename', '') ==
+                                snapshot_file),
+                               None)
+            if higher_file is None:
+                msg = _('No file found with %s as backing file.') %\
+                    snapshot_file
+                raise exception.GlusterfsException(msg)
+
+            snap_info = self._read_info_file(info_path)
+            higher_id = next((i for i in snap_info
+                              if snap_info[i] == higher_file
+                              and i != 'active'),
+                             None)
+            if higher_id is None:
+                msg = _('No snap found with %s as backing file.') %\
+                    higher_file
+                raise exception.GlusterfsException(msg)
+
+            # Is there a file depending on higher_file?
+            highest_file = next((os.path.basename(f['filename'])
+                                for f in backing_chain
+                                if f.get('backing-filename', '') ==
+                                higher_file),
+                                None)
+            if highest_file is None:
+                msg = _('No file depends on %s.') % higher_file
+                LOG.debug(msg)
+
+            # Committing higher_file into snapshot_file
+            # And update pointer in highest_file
+            higher_file_path = '%s/%s' % (vol_path, higher_file)
+            self._qemu_img_commit(higher_file_path)
+            if highest_file is not None:
+                highest_file_path = '%s/%s' % (vol_path, highest_file)
+                snapshot_file_fmt = self._get_file_format_for_path(
+                    '%s/%s' % (vol_path, snapshot_file))
+
+                backing_fmt = ('-F', snapshot_file_fmt)
+                self._execute('qemu-img', 'rebase', '-u',
+                              '-b', snapshot_file,
+                              highest_file_path, *backing_fmt,
+                              run_as_root=True)
+            self._execute('rm', '-f', higher_file_path, run_as_root=True)
+
+            # Remove snapshot_file from info
+            info_path = self._local_path_volume(snapshot['volume']) + '.info'
+            snap_info = self._read_info_file(info_path)
+
+            del(snap_info[snapshot['id']])
+            snap_info[higher_id] = snapshot_file
+            if higher_file == active_file:
+                if highest_file is not None:
+                    msg = _('Check condition failed: '
+                            '%s expected to be None.') % 'highest_file'
+                    raise exception.GlusterfsException(msg)
+                # Active file has changed
+                snap_info['active'] = snapshot_file
+            self._write_info_file(info_path, snap_info)
+
+    def _get_backing_file(self, output):
+        for line in output.split('\n'):
+            backing_file = None
+
+            m = re.search(r'(?<=backing\ file: )(.*)', line)
+            if m:
+                backing_file = m.group(0)
+
+            if backing_file is None:
+                continue
+
+            # Remove "(actual path: /mnt/asdf/a.img)" suffix added when
+            #  running from a different directory
+            backing_file = re.sub(r' \(actual path: .*$', '',
+                                  backing_file, count=1)
+
+            return os.path.basename(backing_file)
+
+    def _get_backing_file_for_path(self, path):
+        (out, err) = self._execute('qemu-img', 'info', path,
+                                   run_as_root=True)
+        return self._get_backing_file(out)
+
+    def _get_file_format_for_path(self, path):
+        (out, err) = self._execute('qemu-img', 'info', path,
+                                   run_as_root=True)
+        return self._get_file_format(out)
+
+    def _get_backing_chain_for_path(self, path):
+        """Returns dict containing backing-chain information."""
+
+        # TODO(eharney): these args aren't available on el6.4's qemu-img
+        #  Need to rewrite
+        #  --backing-chain added in qemu 1.3.0
+        #  --output=json added in qemu 1.5.0
+
+        (out, err) = self._execute('qemu-img', 'info',
+                                   '--backing-chain',
+                                   '--output=json',
+                                   path)
+        return json.loads(out)
+
+    def _get_file_format(self, output):
+        for line in output.split('\n'):
+            m = re.search(r'(?<=file\ format: )(.*)', line)
+            if m:
+                return m.group(0)
+
+    def _get_backing_file_format(self, output):
+        for line in output.split('\n'):
+            m = re.search(r'(?<=backing\ file\ format: )(.*)', line)
+            if m:
+                return m.group(0)
+
+    def _qemu_img_commit(self, path):
+        return self._execute('qemu-img', 'commit', path, run_as_root=True)
+
+    def ensure_export(self, ctx, volume):
+        """Synchronously recreates an export for a logical volume."""
+
+        self._ensure_share_mounted(volume['provider_location'])
+
+    def create_export(self, ctx, volume):
+        """Exports the volume."""
+
+        pass
+
+    def remove_export(self, ctx, volume):
+        """Removes an export for a logical volume."""
+
+        pass
+
+    def validate_connector(self, connector):
+        pass
+
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+
+        # Find active qcow2 file
+        active_file = self.get_active_image_from_info(volume)
+        path = '%s/%s/%s' % (self.configuration.glusterfs_mount_point_base,
+                             self._get_hash_str(volume['provider_location']),
+                             active_file)
+
+        data = {'export': volume['provider_location'],
+                'name': active_file}
+        if volume['provider_location'] in self.shares:
+            data['options'] = self.shares[volume['provider_location']]
+
+        # Test file for raw vs. qcow2 format
+        (out, err) = self._execute('qemu-img', 'info', path,
+                                   run_as_root=True)
+        data['format'] = self._get_file_format(out)
+        if data['format'] not in ['raw', 'qcow2']:
+            msg = _('%s must be a valid raw or qcow2 image.') % path
+            raise exception.InvalidVolume(msg)
+
+        return {
+            'driver_volume_type': 'glusterfs',
+            'data': data
+        }
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Disallow connection from connector."""
+        pass
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+
+        # If snapshots exist, flatten to a temporary image, and upload it
+
+        active_file = self.get_active_image_from_info(volume)
+        active_file_path = '%s/%s' % (self._local_volume_dir(volume),
+                                      active_file)
+        backing_file = self._get_backing_file_for_path(active_file_path)
+        if backing_file is not None:
+            snapshots_exist = True
+        else:
+            snapshots_exist = False
+
+        root_file_fmt = self._get_file_format_for_path(
+            self._local_path_volume(volume))
+
+        temp_path = None
+
+        try:
+            if snapshots_exist or (root_file_fmt != 'raw'):
+                # Convert due to snapshots
+                # or volume data not being stored in raw format
+                #  (upload_volume assumes raw format input)
+                temp_path = '%s/%s.temp_image.%s' % (
+                    self._local_volume_dir(volume),
+                    volume['id'],
+                    image_meta['id'])
+
+                image_utils.convert_image(active_file_path, temp_path, 'raw')
+                upload_path = temp_path
+            else:
+                upload_path = active_file_path
+
+            image_utils.upload_volume(context,
+                                      image_service,
+                                      image_meta,
+                                      upload_path)
+        finally:
+            if temp_path is not None:
+                self._execute('rm', '-f', temp_path)
+
+    def _do_create_volume(self, volume):
+        """Create a volume on given glusterfs_share.
+
+        :param volume: volume reference
+        """
+
+        volume_path = self.local_path(volume)
+        volume_size = volume['size']
+
+        LOG.debug(_("creating new volume at %s") % volume_path)
+
+        if os.path.exists(volume_path):
+            msg = _('file already exists at %s') % volume_path
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        if self.configuration.glusterfs_qcow2_volumes:
+            self._create_qcow2_file(volume_path, volume_size)
+        else:
+            if self.configuration.glusterfs_sparsed_volumes:
+                self._create_sparsed_file(volume_path, volume_size)
+            else:
+                self._create_regular_file(volume_path, volume_size)
+
+        self._set_rw_permissions_for_all(volume_path)
+
+    def _ensure_shares_mounted(self):
+        """Mount all configured GlusterFS shares."""
+
+        self._mounted_shares = []
+
+        self._load_shares_config(self.configuration.glusterfs_shares_config)
+
+        for share in self.shares.keys():
+            try:
+                self._ensure_share_mounted(share)
+                self._mounted_shares.append(share)
+            except Exception as exc:
+                LOG.warning(_('Exception during mounting %s') % (exc,))
+
+        LOG.debug(_('Available shares: %s') % str(self._mounted_shares))
 
     def _ensure_share_mounted(self, glusterfs_share):
         """Mount GlusterFS share.

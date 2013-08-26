@@ -195,6 +195,14 @@ class RemoteFsDriver(driver.VolumeDriver):
                       'count=%d' % block_count,
                       run_as_root=True)
 
+    def _create_qcow2_file(self, path, size_gb):
+        """Creates a QCOW2 file of a given size."""
+
+        self._execute('qemu-img', 'create', '-f', 'qcow2',
+                      '-o', 'preallocation=metadata',
+                      path, str(size_gb * units.GiB),
+                      run_as_root=True)
+
     def _set_rw_permissions_for_all(self, path):
         """Sets 666 permissions for the path."""
         self._execute('chmod', 'ugo+rw', path, run_as_root=True)

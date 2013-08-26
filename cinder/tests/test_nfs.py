@@ -85,6 +85,22 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
+    def test_create_qcow2_file(self):
+        (mox, drv) = self._mox, self._driver
+
+        file_size = 1
+
+        mox.StubOutWithMock(drv, '_execute')
+        drv._execute('qemu-img', 'create', '-f', 'qcow2',
+                     '-o', 'preallocation=metadata', '/path',
+                     '%s' % str(file_size * units.GiB), run_as_root=True)
+
+        mox.ReplayAll()
+
+        drv._create_qcow2_file('/path', file_size)
+
+        mox.VerifyAll()
+
     def test_set_rw_permissions_for_all(self):
         (mox, drv) = self._mox, self._driver
 
