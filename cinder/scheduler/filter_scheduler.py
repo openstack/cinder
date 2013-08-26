@@ -223,7 +223,7 @@ class FilterScheduler(driver.Scheduler):
         hosts = self.host_manager.get_filtered_hosts(hosts,
                                                      filter_properties)
         if not hosts:
-            return None
+            return []
 
         LOG.debug(_("Filtered %s") % hosts)
         # weighted_host = WeightedHost() ... the best
