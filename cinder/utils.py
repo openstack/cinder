@@ -150,7 +150,7 @@ def execute(*cmd, **kwargs):
             cmd=ex.cmd,
             description=ex.description)
     except processutils.UnknownArgumentError as ex:
-        raise exception.Error(ex.message)
+        raise exception.UnknownArgumentError(ex.message)
     return (stdout, stderr)
 
 
