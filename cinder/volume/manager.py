@@ -102,7 +102,9 @@ MAPPING = {
     'cinder.volume.storwize_svc.StorwizeSVCDriver':
     'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver',
     'cinder.volume.windows.WindowsDriver':
-    'cinder.volume.drivers.windows.WindowsDriver',
+    'cinder.volume.drivers.windows.windows.WindowsDriver',
+    'cinder.volume.drivers.windows.WindowsDriver':
+    'cinder.volume.drivers.windows.windows.WindowsDriver',
     'cinder.volume.xiv.XIVDriver':
     'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver',
     'cinder.volume.drivers.xiv.XIVDriver':
