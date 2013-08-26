@@ -899,9 +899,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_id)
 
-    def _create_volume_from_image(self, fakeout_copy_image_to_volume=False):
-        """Call copy image to volume, Test the status of volume after calling
-        copying image to volume.
+    def _create_volume_from_image(self, fakeout_copy_image_to_volume=False,
+                                  fakeout_clone_image=False):
+        """Test function of create_volume_from_image.
+
+        Test cases call this function to create a volume from image, caller
+        can choose whether to fake out copy_image_to_volume and conle_image,
+        after calling this, test cases should check status of the volume.
         """
         def fake_local_path(volume):
             return dst_path
@@ -913,9 +917,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         def fake_fetch_to_raw(context, image_service, image_id, vol_path):
             pass
 
+        def fake_clone_image(volume_ref, image_location, image_id):
+            return {'provider_location': None}, True
+
         dst_fd, dst_path = tempfile.mkstemp()
         os.close(dst_fd)
         self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
+        if fakeout_clone_image:
+            self.stubs.Set(self.volume.driver, 'clone_image', fake_clone_image)
         self.stubs.Set(image_utils, 'fetch_to_raw', fake_fetch_to_raw)
         if fakeout_copy_image_to_volume:
             self.stubs.Set(self.volume, '_copy_image_to_volume',
@@ -934,17 +943,31 @@ class VolumeTestCase(BaseVolumeTestCase):
             volume = db.volume_get(self.context, volume_id)
             return volume
 
-    def test_create_volume_from_image_status_available(self):
-        """Verify that before copying image to volume, it is in available
-        state.
+    def test_create_volume_from_image_cloned_status_available(self):
+        """Test create volume from image via cloning.
+
+        Verify that after cloning image to volume, it is in available
+        state and is bootable.
         """
         volume = self._create_volume_from_image()
         self.assertEqual(volume['status'], 'available')
+        self.assertEqual(volume['bootable'], True)
+        self.volume.delete_volume(self.context, volume['id'])
+
+    def test_create_volume_from_image_not_cloned_status_available(self):
+        """Test create volume from image via full copy.
+
+        Verify that after copying image to volume, it is in available
+        state and is bootable.
+        """
+        volume = self._create_volume_from_image(fakeout_clone_image=True)
+        self.assertEqual(volume['status'], 'available')
+        self.assertEqual(volume['bootable'], True)
         self.volume.delete_volume(self.context, volume['id'])
 
     def test_create_volume_from_image_exception(self):
-        """Verify that create volume from image, the volume status is
-        'downloading'.
+        """Verify that create volume from a non-existing image, the volume
+        status is 'error' and is not bootable.
         """
         dst_fd, dst_path = tempfile.mkstemp()
         os.close(dst_fd)
@@ -970,6 +993,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           image_id)
         volume = db.volume_get(self.context, volume_id)
         self.assertEqual(volume['status'], "error")
+        self.assertEqual(volume['bootable'], False)
         # cleanup
         db.volume_destroy(self.context, volume_id)
         os.unlink(dst_path)

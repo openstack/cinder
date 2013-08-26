@@ -1181,6 +1181,60 @@ class CreateVolumeFromSpecTask(base.CinderTask):
         }
         self.host = host
 
+    def _handle_bootable_volume_glance_meta(self, context, volume_id,
+                                            **kwargs):
+        """Enable bootable flag and properly handle glance metadata.
+
+        Caller should provide one and only one of snapshot_id,source_volid
+        and image_id. If an image_id specified, a image_meta should also be
+        provided, otherwise will be treated as an empty dictionary.
+        """
+
+        log_template = _("Copying metadata from %(src_type)s %(src_id)s to "
+                         "%(vol_id)s")
+        exception_template = _("Failed updating volume %(vol_id)s metadata"
+                               " using the provided %(src_type)s"
+                               " %(src_id)s metadata")
+        src_type = None
+        src_id = None
+        self._enable_bootable_flag(context, volume_id)
+        try:
+            if kwargs.get('snapshot_id'):
+                src_type = 'snapshot'
+                src_id = kwargs['snapshot_id']
+                snapshot_id = src_id
+                LOG.debug(log_template % {'src_type': src_type,
+                                          'src_id': src_id,
+                                          'vol_id': volume_id})
+                self.db.volume_glance_metadata_copy_to_volume(
+                    context, volume_id, snapshot_id)
+            elif kwargs.get('source_volid'):
+                src_type = 'source volume'
+                src_id = kwargs['source_volid']
+                source_volid = src_id
+                LOG.debug(log_template % {'src_type': src_type,
+                                          'src_id': src_id,
+                                          'vol_id': volume_id})
+                self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                    context,
+                    source_volid,
+                    volume_id)
+            elif kwargs.get('image_id'):
+                src_type = 'image'
+                src_id = kwargs['image_id']
+                image_id = src_id
+                image_meta = kwargs.get('image_meta', {})
+                LOG.debug(log_template % {'src_type': src_type,
+                                          'src_id': src_id,
+                                          'vol_id': volume_id})
+                self._capture_volume_image_metadata(context, volume_id,
+                                                    image_id, image_meta)
+        except exception.CinderException as ex:
+            LOG.exception(exception_template % {'src_type': src_type,
+                                                'src_id': src_id,
+                                                'vol_id': volume_id})
+            raise exception.MetadataCopyFailure(reason=ex)
+
     def _create_from_snapshot(self, context, volume_ref, snapshot_id,
                               **kwargs):
         volume_id = volume_ref['id']
@@ -1203,21 +1257,8 @@ class CreateVolumeFromSpecTask(base.CinderTask):
                            'snapshot_ref_id': snapshot_ref['volume_id']})
             raise exception.MetadataUpdateFailure(reason=ex)
         if make_bootable:
-            self._enable_bootable_flag(context, volume_id)
-            try:
-                LOG.debug(_("Copying metadata from snapshot "
-                            "%(snap_volume_id)s to %(volume_id)s") %
-                          {'snap_volume_id': snapshot_id,
-                           'volume_id': volume_id})
-                self.db.volume_glance_metadata_copy_to_volume(
-                    context, volume_id, snapshot_id)
-            except exception.CinderException as ex:
-                LOG.exception(_("Failed updating volume %(volume_id)s "
-                                "metadata using the provided glance "
-                                "snapshot %(snapshot_id)s metadata") %
-                              {'volume_id': volume_id,
-                               'snapshot_id': snapshot_id})
-                raise exception.MetadataCopyFailure(reason=ex)
+            self._handle_bootable_volume_glance_meta(context, volume_id,
+                                                     snapshot_id=snapshot_id)
         return model_update
 
     def _enable_bootable_flag(self, context, volume_id):
@@ -1243,25 +1284,8 @@ class CreateVolumeFromSpecTask(base.CinderTask):
         # point the volume has already been created and further failures
         # will not destroy the volume (although they could in the future).
         if srcvol_ref.bootable:
-            self._enable_bootable_flag(context, volume_ref['id'])
-            try:
-                LOG.debug(_('Copying metadata from source volume '
-                            '%(source_volid)s to cloned volume '
-                            '%(clone_vol_id)s') % {
-                                'source_volid': source_volid,
-                                'clone_vol_id': volume_ref['id'],
-                            })
-                self.db.volume_glance_metadata_copy_from_volume_to_volume(
-                    context,
-                    source_volid,
-                    volume_ref['id'])
-            except exception.CinderException as ex:
-                LOG.exception(_("Failed updating cloned volume %(volume_id)s"
-                                " metadata using the provided source volumes"
-                                " %(source_volid)s metadata") %
-                              {'volume_id': volume_ref['id'],
-                               'source_volid': source_volid})
-                raise exception.MetadataCopyFailure(reason=ex)
+            self._handle_bootable_volume_glance_meta(context, volume_ref['id'],
+                                                     source_volid=source_volid)
         return model_update
 
     def _copy_image_to_volume(self, context, volume_ref,
@@ -1300,8 +1324,6 @@ class CreateVolumeFromSpecTask(base.CinderTask):
 
     def _capture_volume_image_metadata(self, context, volume_id,
                                        image_id, image_meta):
-        if not image_meta:
-            image_meta = {}
 
         # Save some base attributes into the volume metadata
         base_metadata = {
@@ -1357,7 +1379,6 @@ class CreateVolumeFromSpecTask(base.CinderTask):
         # and clone status.
         model_update, cloned = self.driver.clone_image(
             volume_ref, image_location, image_id)
-        make_bootable = False
         if not cloned:
             # TODO(harlowja): what needs to be rolled back in the clone if this
             # volume create fails?? Likely this should be a subflow or broken
@@ -1379,19 +1400,10 @@ class CreateVolumeFromSpecTask(base.CinderTask):
                                'updates': updates})
             self._copy_image_to_volume(context, volume_ref,
                                        image_id, image_location, image_service)
-            make_bootable = True
-        if make_bootable:
-            self._enable_bootable_flag(context, volume_ref['id'])
-        try:
-            self._capture_volume_image_metadata(context, volume_ref['id'],
-                                                image_id, image_meta)
-        except exception.CinderException as ex:
-            LOG.exception(_("Failed updating volume %(volume_id)s metadata"
-                            " using the provided image metadata"
-                            " %(image_meta)s from image %(image_id)s") %
-                          {'volume_id': volume_ref['id'],
-                           'image_meta': image_meta, 'image_id': image_id})
-            raise exception.MetadataUpdateFailure(reason=ex)
+
+        self._handle_bootable_volume_glance_meta(context, volume_ref['id'],
+                                                 image_id=image_id,
+                                                 image_meta=image_meta)
         return model_update
 
     def _create_raw_volume(self, context, volume_ref, **kwargs):
