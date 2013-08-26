@@ -37,3 +37,25 @@ class CinderTask(task.Task):
     def __init__(self, addons=None):
         super(CinderTask, self).__init__(_make_task_name(self.__class__,
                                                          addons))
+
+
+class InjectTask(CinderTask):
+    """This injects a dict into the flow.
+
+    This injection is done so that the keys (and values) provided can be
+    dependended on by tasks further down the line. Since taskflow is dependency
+    based this can be considered the bootstrapping task that provides an
+    initial set of values for other tasks to get started with. If this did not
+    exist then tasks would fail locating there dependent tasks and the values
+    said dependent tasks produce.
+
+    Reversion strategy: N/A
+    """
+
+    def __init__(self, inject_what, addons=None):
+        super(InjectTask, self).__init__(addons=addons)
+        self.provides.update(inject_what.keys())
+        self._inject = inject_what
+
+    def __call__(self, context):
+        return dict(self._inject)

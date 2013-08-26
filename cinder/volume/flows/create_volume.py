@@ -147,28 +147,6 @@ def _error_out_volume(context, db, volume_id, reason=None):
                                           'update': update})
 
 
-class ValuesInjectTask(base.CinderTask):
-    """This injects a dict into the flow.
-
-    This injection is done so that the keys (and values) provided can be
-    dependended on by tasks further down the line. Since taskflow is dependency
-    based this can be considered the bootstrapping task that provides an
-    initial set of values for other tasks to get started with. If this did not
-    exist then tasks would fail locating there dependent tasks and the values
-    said dependent tasks produce.
-
-    Reversion strategy: N/A
-    """
-
-    def __init__(self, inject_what):
-        super(ValuesInjectTask, self).__init__(addons=[ACTION])
-        self.provides.update(inject_what.keys())
-        self._inject = inject_what
-
-    def __call__(self, context):
-        return dict(self._inject)
-
-
 class ExtractVolumeRequestTask(base.CinderTask):
     """Processes an api request values into a validated set of values.
 
@@ -1579,7 +1557,7 @@ def get_api_flow(scheduler_rpcapi, volume_rpcapi, db,
     # This injects the initial starting flow values into the workflow so that
     # the dependency order of the tasks provides/requires can be correctly
     # determined.
-    api_flow.add(ValuesInjectTask(create_what))
+    api_flow.add(base.InjectTask(create_what, addons=[ACTION]))
     api_flow.add(ExtractVolumeRequestTask(image_service,
                                           az_check_functor))
     api_flow.add(QuotaReserveTask())
@@ -1621,13 +1599,13 @@ def get_scheduler_flow(db, driver, request_spec=None, filter_properties=None,
     # This injects the initial starting flow values into the workflow so that
     # the dependency order of the tasks provides/requires can be correctly
     # determined.
-    scheduler_flow.add(ValuesInjectTask({
+    scheduler_flow.add(base.InjectTask({
         'request_spec': request_spec,
         'filter_properties': filter_properties,
         'volume_id': volume_id,
         'snapshot_id': snapshot_id,
         'image_id': image_id,
-    }))
+    }, addons=[ACTION]))
 
     # This will extract and clean the spec from the starting values.
     scheduler_flow.add(ExtractSchedulerSpecTask(db))
@@ -1725,14 +1703,14 @@ def get_manager_flow(db, driver, scheduler_rpcapi, host, volume_id,
     # This injects the initial starting flow values into the workflow so that
     # the dependency order of the tasks provides/requires can be correctly
     # determined.
-    volume_flow.add(ValuesInjectTask({
+    volume_flow.add(base.InjectTask({
         'filter_properties': filter_properties,
         'image_id': image_id,
         'request_spec': request_spec,
         'snapshot_id': snapshot_id,
         'source_volid': source_volid,
         'volume_id': volume_id,
-    }))
+    }, addons=[ACTION]))
 
     # We can actually just check if we should reschedule on failure ahead of
     # time instead of trying to determine this later, certain values are needed
