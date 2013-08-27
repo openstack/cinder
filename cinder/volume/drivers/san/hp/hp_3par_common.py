@@ -41,7 +41,6 @@ array.
 import ast
 import base64
 import json
-import paramiko
 import pprint
 from random import randint
 import re
@@ -52,6 +51,7 @@ from eventlet import greenthread
 from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
 from oslo.config import cfg
+import paramiko
 
 from cinder import context
 from cinder import exception

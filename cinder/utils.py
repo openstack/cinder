@@ -26,7 +26,6 @@ import functools
 import hashlib
 import inspect
 import os
-import paramiko
 import pyclbr
 import random
 import re
@@ -43,8 +42,8 @@ from xml.sax import saxutils
 from eventlet import event
 from eventlet import greenthread
 from eventlet import pools
-
 from oslo.config import cfg
+import paramiko
 
 from cinder.brick.initiator import connector
 from cinder import exception

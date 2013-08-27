@@ -41,10 +41,12 @@ was deemed the safest action to take. It is therefore recommended to always
 restore to a new volume (default).
 """
 
-import eventlet
 import os
 import re
 import time
+
+import eventlet
+from oslo.config import cfg
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
@@ -53,7 +55,6 @@ from cinder.openstack.common import processutils
 from cinder import units
 from cinder import utils
 import cinder.volume.drivers as drivers
-from oslo.config import cfg
 
 try:
     import rados

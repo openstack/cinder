@@ -19,7 +19,6 @@ import __builtin__
 import datetime
 import hashlib
 import os
-import paramiko
 import socket
 import StringIO
 import tempfile
@@ -27,6 +26,7 @@ import uuid
 
 import mox
 from oslo.config import cfg
+import paramiko
 
 import cinder
 from cinder.brick.initiator import connector
