@@ -24,6 +24,7 @@ import time
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
@@ -136,7 +137,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         try:
             self._try_execute('ls', self._get_volume_path(nfs_mount,
                                                           volume_name))
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             # If the volume isn't present
             return True
         return False
@@ -150,7 +151,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             try:
                 self._execute(*command, **kwargs)
                 return True
-            except exception.ProcessExecutionError:
+            except processutils.ProcessExecutionError:
                 tries = tries + 1
                 if tries >= self.configuration.num_shell_tries:
                     raise

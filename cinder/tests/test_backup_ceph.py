@@ -26,6 +26,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import test
 from cinder.tests.backup.fake_rados import mock_rados
 from cinder.tests.backup.fake_rados import mock_rbd
@@ -46,7 +47,7 @@ class BackupCephTestCase(test.TestCase):
         return db.backup_create(self.ctxt, backup)['id']
 
     def fake_execute_w_exception(*args, **kwargs):
-        raise exception.ProcessExecutionError()
+        raise processutils.ProcessExecutionError()
 
     def time_inc(self):
         self.counter += 1

@@ -34,6 +34,7 @@ from cinder import utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
+from cinder.openstack.common import processutils
 from cinder.openstack.common import timeutils
 from cinder.volume.flows import base
 from cinder.volume import utils as volume_utils
@@ -1299,7 +1300,7 @@ class CreateVolumeFromSpecTask(base.CinderTask):
                    'image_location': image_location})
         try:
             copy_image_to_volume(context, volume_ref, image_service, image_id)
-        except exception.ProcessExecutionError as ex:
+        except processutils.ProcessExecutionError as ex:
             LOG.error(_("Failed to copy image %(image_id)s to volume: "
                         "%(volume_id)s, error: %(error)s") %
                       {'volume_id': volume_id,

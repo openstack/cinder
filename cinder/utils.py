@@ -140,18 +140,7 @@ def execute(*cmd, **kwargs):
     """Convenience wrapper around oslo's execute() method."""
     if 'run_as_root' in kwargs and not 'root_helper' in kwargs:
         kwargs['root_helper'] = get_root_helper()
-    try:
-        (stdout, stderr) = processutils.execute(*cmd, **kwargs)
-    except processutils.ProcessExecutionError as ex:
-        raise exception.ProcessExecutionError(
-            exit_code=ex.exit_code,
-            stderr=ex.stderr,
-            stdout=ex.stdout,
-            cmd=ex.cmd,
-            description=ex.description)
-    except processutils.UnknownArgumentError as ex:
-        raise exception.UnknownArgumentError(ex.message)
-    return (stdout, stderr)
+    return processutils.execute(*cmd, **kwargs)
 
 
 def check_ssh_injection(cmd_list):
@@ -836,7 +825,7 @@ def read_file_as_root(file_path):
     try:
         out, _err = execute('cat', file_path, run_as_root=True)
         return out
-    except exception.ProcessExecutionError:
+    except processutils.ProcessExecutionError:
         raise exception.FileNotFound(file_path=file_path)
 
 

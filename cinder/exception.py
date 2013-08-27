@@ -53,14 +53,6 @@ class ConvertedException(webob.exc.WSGIHTTPException):
         super(ConvertedException, self).__init__()
 
 
-class ProcessExecutionError(processutils.ProcessExecutionError):
-    pass
-
-
-class UnknownArgumentError(processutils.UnknownArgumentError):
-    pass
-
-
 class Error(Exception):
     pass
 

@@ -134,13 +134,13 @@ class SanDriver(driver.VolumeDriver):
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 try:
-                    raise exception.ProcessExecutionError(
+                    raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,
                         stdout=last_exception.stdout,
                         stderr=last_exception.stderr,
                         cmd=last_exception.cmd)
                 except AttributeError:
-                    raise exception.ProcessExecutionError(
+                    raise processutils.ProcessExecutionError(
                         exit_code=-1,
                         stdout="",
                         stderr="Error running SSH command",

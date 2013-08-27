@@ -29,6 +29,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import units
 from cinder.volume import driver
 
@@ -189,7 +190,7 @@ class GPFSDriver(driver.VolumeDriver):
             try:
                 # check that configured directories are on GPFS
                 self._is_gpfs_path(directory)
-            except exception.ProcessExecutionError:
+            except processutils.ProcessExecutionError:
                 msg = (_('%s is not on GPFS. Perhaps GPFS not mounted.') %
                        directory)
                 LOG.error(msg)
@@ -460,7 +461,7 @@ class GPFSDriver(driver.VolumeDriver):
         image_path = os.path.join(self.configuration.gpfs_images_dir, image_id)
         try:
             self._is_gpfs_path(image_path)
-        except exception.ProcessExecutionError:
+        except processutils.ProcessExecutionError:
             reason = 'image file not in GPFS'
             return False, reason, None
 
@@ -561,7 +562,7 @@ class GPFSDriver(driver.VolumeDriver):
         cmd.append(path)
         try:
             self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as exc:
+        except processutils.ProcessExecutionError as exc:
             exception_message = (_("mkfs failed on volume %(vol)s, "
                                    "error message was: %(err)s")
                                  % {'vol': volume['name'], 'err': exc.stderr})

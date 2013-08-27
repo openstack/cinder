@@ -22,6 +22,7 @@ import tempfile
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import processutils
 from cinder import test
 from cinder import units
 from cinder.volume.drivers.sheepdog import SheepdogDriver
@@ -79,7 +80,7 @@ class SheepdogTestCase(test.TestCase):
 
     def test_update_volume_stats_error(self):
         def fake_stats(*args):
-            raise exception.ProcessExecutionError()
+            raise processutils.ProcessExecutionError()
         self.stubs.Set(self.driver, '_execute', fake_stats)
         expected = dict(
             volume_backend_name='sheepdog',

@@ -25,6 +25,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -476,7 +477,7 @@ class GPFSDriverTestCase(test.TestCase):
         pass
 
     def _fake_is_not_gpfs_path(self, path):
-        raise(exception.ProcessExecutionError('invalid gpfs path'))
+        raise(processutils.ProcessExecutionError('invalid gpfs path'))
 
     def _fake_convert_image(self, source, dest, out_format):
         utils.execute('cp', source, dest)

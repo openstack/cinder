@@ -28,7 +28,7 @@ import json
 
 from cinder import context
 from cinder import exception
-from cinder.exception import ProcessExecutionError
+from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder import units
 from cinder.volume import configuration as conf
@@ -129,7 +129,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute('mount', '-t', 'glusterfs', self.TEST_EXPORT1,
                      self.TEST_MNT_POINT, run_as_root=True).\
-            AndRaise(ProcessExecutionError(
+            AndRaise(putils.ProcessExecutionError(
                      stderr='is busy or already mounted'))
 
         mox.ReplayAll()
@@ -155,12 +155,12 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.TEST_EXPORT1,
             self.TEST_MNT_POINT,
             run_as_root=True). \
-            AndRaise(ProcessExecutionError(stderr='is busy or '
-                                                  'already mounted'))
+            AndRaise(putils.ProcessExecutionError(stderr='is busy or '
+                                                         'already mounted'))
 
         mox.ReplayAll()
 
-        self.assertRaises(ProcessExecutionError, drv._mount_glusterfs,
+        self.assertRaises(putils.ProcessExecutionError, drv._mount_glusterfs,
                           self.TEST_EXPORT1, self.TEST_MNT_POINT,
                           ensure=False)
 

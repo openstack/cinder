@@ -29,7 +29,7 @@ from mox import stubout
 
 from cinder import context
 from cinder import exception
-from cinder.exception import ProcessExecutionError
+from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder import units
 
@@ -228,7 +228,7 @@ class NfsDriverTestCase(test.TestCase):
         drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
         drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
                      self.TEST_MNT_POINT, run_as_root=True).\
-            AndRaise(ProcessExecutionError(
+            AndRaise(putils.ProcessExecutionError(
                      stderr='is busy or already mounted'))
 
         mox.ReplayAll()
@@ -250,12 +250,12 @@ class NfsDriverTestCase(test.TestCase):
             '-t',
             'nfs',
             self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT, run_as_root=True).\
-            AndRaise(ProcessExecutionError(stderr='is busy or '
-                                                  'already mounted'))
+            AndRaise(putils.ProcessExecutionError(stderr='is busy or '
+                                                         'already mounted'))
 
         mox.ReplayAll()
 
-        self.assertRaises(ProcessExecutionError, drv._mount_nfs,
+        self.assertRaises(putils.ProcessExecutionError, drv._mount_nfs,
                           self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
                           ensure=False)
 
