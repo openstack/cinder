@@ -26,7 +26,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
-from cinder import volume
+from cinder import volume as cinder_volume
 from cinder.volume import volume_types
 
 
@@ -212,7 +212,7 @@ class VolumeController(wsgi.Controller):
     _visible_admin_metadata_keys = ['readonly', 'attached_mode']
 
     def __init__(self, ext_mgr):
-        self.volume_api = volume.API()
+        self.volume_api = cinder_volume.API()
         self.ext_mgr = ext_mgr
         super(VolumeController, self).__init__()
 

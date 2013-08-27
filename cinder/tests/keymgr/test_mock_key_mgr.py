@@ -22,7 +22,7 @@ import array
 
 from cinder import context
 from cinder import exception
-from cinder.keymgr import key
+from cinder.keymgr import key as keymgr_key
 from cinder.tests.keymgr import mock_key_mgr
 from cinder.tests.keymgr import test_key_mgr
 
@@ -54,9 +54,8 @@ class MockKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
                           self.key_mgr.create_key, None)
 
     def test_store_key(self):
-        _key = key.SymmetricKey('AES',
-                                array.array('B',
-                                            ('0' * 64).decode('hex')).tolist())
+        secret_key = array.array('B', ('0' * 64).decode('hex')).tolist()
+        _key = keymgr_key.SymmetricKey('AES', secret_key)
         key_id = self.key_mgr.store_key(self.ctxt, _key)
 
         actual_key = self.key_mgr.get_key(self.ctxt, key_id)

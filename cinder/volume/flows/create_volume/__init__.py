@@ -829,7 +829,7 @@ class OnFailureRescheduleTask(base.CinderTask):
         ]
 
     def _is_reschedulable(self, cause):
-        (exc_type, value, traceback) = cause.exc_info
+        exc_type, value = cause.exc_info()[:2]
         if not exc_type and cause.exc:
             exc_type = type(cause.exc)
         if not exc_type:
