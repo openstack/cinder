@@ -1,17 +1,18 @@
-# Chinese (Simplified) translation for cinder
-# Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
-# This file is distributed under the same license as the cinder package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
+# Slovak translations for cinder.
+# Copyright (C) 2013 ORGANIZATION
+# This file is distributed under the same license as the cinder project.
 #
+# Translators:
 msgid ""
 msgstr ""
-"Project-Id-Version:  cinder\n"
-"Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
+"Project-Id-Version:  Cinder\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2013-08-27 06:09+0000\n"
-"PO-Revision-Date: 2012-04-03 23:36+0000\n"
-"Last-Translator: cheesecake <Unknown>\n"
-"Language-Team: Chinese (Simplified) <zh_CN@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0\n"
+"PO-Revision-Date: 2013-08-27 04:58+0000\n"
+"Last-Translator: daisy.ycguo <daisy.ycguo@gmail.com>\n"
+"Language-Team: Slovak "
+"(http://www.transifex.com/projects/p/openstack/language/sk/)\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -29,7 +30,7 @@ msgstr ""
 
 #: cinder/exception.py:76 cinder/brick/exception.py:39
 msgid "An unknown exception occurred."
-msgstr "发生未知异常。"
+msgstr ""
 
 #: cinder/exception.py:98 cinder/brick/exception.py:61
 #: cinder/openstack/common/rpc/common.py:86
@@ -38,33 +39,33 @@ msgstr ""
 
 #: cinder/exception.py:117
 msgid "Connection to glance failed"
-msgstr "连接到glance失败"
+msgstr ""
 
 #: cinder/exception.py:121
 msgid "Not authorized."
-msgstr "未授权。"
+msgstr ""
 
 #: cinder/exception.py:126
 msgid "User does not have admin privileges"
-msgstr "用户没有管理员权限"
+msgstr ""
 
 #: cinder/exception.py:130
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
-msgstr "政策不允许 %(action)s 被执行。"
+msgstr ""
 
 #: cinder/exception.py:134
-#, fuzzy, python-format
+#, python-format
 msgid "Not authorized for image %(image_id)s."
-msgstr "没有为镜像 %(image_id)s 找到内核。"
+msgstr ""
 
 #: cinder/exception.py:138 cinder/brick/exception.py:81
 msgid "Unacceptable parameters."
-msgstr "无法接受的参数。"
+msgstr ""
 
 #: cinder/exception.py:143
 msgid "Invalid snapshot"
-msgstr "无效的快照"
+msgstr ""
 
 #: cinder/exception.py:147
 #, python-format
@@ -72,39 +73,38 @@ msgid "Invalid source volume %(reason)s."
 msgstr ""
 
 #: cinder/exception.py:151
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
-msgstr "卷 %(volume_id)s 没有附加任何东西"
+msgstr ""
 
 #: cinder/exception.py:155
 msgid "Failed to load data into json format"
-msgstr "把数据加载为json格式失败"
+msgstr ""
 
 #: cinder/exception.py:159
 msgid "The request is invalid."
-msgstr "请求无效。"
+msgstr ""
 
 #: cinder/exception.py:163
-#, fuzzy
 msgid "The results are invalid."
-msgstr "请求无效。"
+msgstr ""
 
 #: cinder/exception.py:167
 msgid "Invalid input received"
-msgstr "收到无效的输入"
+msgstr ""
 
 #: cinder/exception.py:171
 msgid "Invalid volume type"
-msgstr "无效的卷类型"
+msgstr ""
 
 #: cinder/exception.py:175
 msgid "Invalid volume"
-msgstr "无效的卷"
+msgstr ""
 
 #: cinder/exception.py:179
 #, python-format
 msgid "Invalid content type %(content_type)s."
-msgstr "无效的内容类型 %(content_type)s。"
+msgstr ""
 
 #: cinder/exception.py:183
 msgid "Invalid host"
@@ -113,21 +113,20 @@ msgstr ""
 #: cinder/exception.py:189 cinder/brick/exception.py:88
 #, python-format
 msgid "%(err)s"
-msgstr "%(err)s"
+msgstr ""
 
 #: cinder/exception.py:193
-#, fuzzy
 msgid "Invalid auth key"
-msgstr "无效的快照"
+msgstr ""
 
 #: cinder/exception.py:197
 msgid "Service is unavailable at this time."
-msgstr "该时刻服务无法使用。"
+msgstr ""
 
 #: cinder/exception.py:201
 #, python-format
 msgid "Image %(image_id)s is unacceptable: %(reason)s"
-msgstr "镜像 %(image_id)s 无法接受，原因是： %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:205
 #, python-format
@@ -141,73 +140,72 @@ msgstr ""
 
 #: cinder/exception.py:213 cinder/brick/exception.py:75
 msgid "Resource could not be found."
-msgstr "资源没有找到。"
+msgstr ""
 
 #: cinder/exception.py:219
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(volume_id)s persistence file could not be found."
-msgstr "卷 %(volume_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:223
 #, python-format
 msgid "Volume %(volume_id)s could not be found."
-msgstr "卷 %(volume_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:227
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr "无法找到帐户 %(account_name) on Solidfire 设备"
+msgstr ""
 
 #: cinder/exception.py:232
 #, python-format
 msgid "Volume not found for instance %(instance_id)s."
-msgstr "没有为实例 %(instance_id)s 找到卷。"
+msgstr ""
 
 #: cinder/exception.py:236
 #, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
-msgstr "卷 %(volume_id)s 没有含键 %(metadata_key)s 的元数据。"
+msgstr ""
 
 #: cinder/exception.py:241 cinder/exception.py:254
 msgid "Invalid metadata"
-msgstr "无效的元数据"
+msgstr ""
 
 #: cinder/exception.py:245 cinder/exception.py:258
-#, fuzzy
 msgid "Invalid metadata size"
-msgstr "无效的元数据键"
+msgstr ""
 
 #: cinder/exception.py:249
-#, fuzzy, python-format
+#, python-format
 msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
-msgstr "实例 %(instance_id)s 没有键为 %(metadata_key)s 的元数据。"
+msgstr ""
 
 #: cinder/exception.py:262
 #, python-format
 msgid "Volume type %(volume_type_id)s could not be found."
-msgstr "卷类型 %(volume_type_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:266
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
-msgstr "名为 %(volume_type_name)s 的卷类型没有找到。"
+msgstr ""
 
 #: cinder/exception.py:271
 #, python-format
 msgid ""
 "Volume Type %(volume_type_id)s has no extra specs with key "
 "%(extra_specs_key)s."
-msgstr "卷类型 %(volume_type_id)s 没有额外说明键 %(extra_specs_key)s 。"
+msgstr ""
 
 #: cinder/exception.py:276
 #, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
-msgstr "快照 %(snapshot_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:280
 #, python-format
 msgid "deleting volume %(volume_name)s that has snapshot"
-msgstr "正在删除有快照的卷  %(volume_name)s"
+msgstr ""
 
 #: cinder/exception.py:284
 #, python-format
@@ -217,47 +215,47 @@ msgstr ""
 #: cinder/exception.py:289
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
+msgstr ""
 
 #: cinder/exception.py:293
 #, python-format
 msgid "No disk at %(location)s"
-msgstr "在 %(location)s 没有磁盘"
+msgstr ""
 
 #: cinder/exception.py:297
 #, python-format
 msgid "Invalid image href %(image_href)s."
-msgstr "无效的镜像href %(image_href)s。"
+msgstr ""
 
 #: cinder/exception.py:301
 #, python-format
 msgid "Image %(image_id)s could not be found."
-msgstr "镜像 %(image_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:305
 #, python-format
 msgid "Service %(service_id)s could not be found."
-msgstr "服务 %(service_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:309
 #, python-format
 msgid "Host %(host)s could not be found."
-msgstr "主机 %(host)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:313
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
-msgstr "调度器主机过滤器 %(filter_name)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:317
-#, fuzzy, python-format
+#, python-format
 msgid "Scheduler Host Weigher %(weigher_name)s could not be found."
-msgstr "调度器主机过滤器 %(filter_name)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:321
 #, python-format
 msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "没有找到二进制 %(binary)s 在主机 %(host)s 上。"
+msgstr ""
 
 #: cinder/exception.py:325
 #, python-format
@@ -273,7 +271,7 @@ msgstr ""
 
 #: cinder/exception.py:334
 msgid "Quota could not be found"
-msgstr "配额没有找到。"
+msgstr ""
 
 #: cinder/exception.py:338
 #, python-format
@@ -283,61 +281,61 @@ msgstr ""
 #: cinder/exception.py:342
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
-msgstr "没有为项目 %(project_id)s 找到配额。"
+msgstr ""
 
 #: cinder/exception.py:346
-#, fuzzy, python-format
+#, python-format
 msgid "Quota class %(class_name)s could not be found."
-msgstr "找不到类 %(class_name)s ：异常 %(exception)s"
+msgstr ""
 
 #: cinder/exception.py:350
-#, fuzzy, python-format
+#, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
-msgstr "没有为项目 %(project_id)s 找到配额。"
+msgstr ""
 
 #: cinder/exception.py:354
-#, fuzzy, python-format
+#, python-format
 msgid "Quota reservation %(uuid)s could not be found."
-msgstr "用户 %(user_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:358
-#, fuzzy, python-format
+#, python-format
 msgid "Quota exceeded for resources: %(overs)s"
-msgstr "超出配额"
+msgstr ""
 
 #: cinder/exception.py:362
 #, python-format
 msgid "Migration %(migration_id)s could not be found."
-msgstr "迁移 %(migration_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:366
 #, python-format
 msgid "Migration not found for instance %(instance_id)s with status %(status)s."
-msgstr "没有为实例 %(instance_id)s 找到迁移其状态为 %(status)s 。"
+msgstr ""
 
 #: cinder/exception.py:371
 #, python-format
 msgid "File %(file_path)s could not be found."
-msgstr "找不到文件 %(file_path)s。"
+msgstr ""
 
 #: cinder/exception.py:375
 #, python-format
 msgid "Class %(class_name)s could not be found: %(exception)s"
-msgstr "找不到类 %(class_name)s ：异常 %(exception)s"
+msgstr ""
 
 #: cinder/exception.py:379
 msgid "Action not allowed."
-msgstr "操作不允许。"
+msgstr ""
 
 #: cinder/exception.py:388
 #, python-format
 msgid "Key pair %(key_name)s already exists."
-msgstr "密钥对 %(key_name)s 已经存在。"
+msgstr ""
 
 #: cinder/exception.py:392
-#, fuzzy, python-format
+#, python-format
 msgid "Volume Type %(id)s already exists."
-msgstr "卷类型 %(name)s 已经存在。"
+msgstr ""
 
 #: cinder/exception.py:396
 #, python-format
@@ -346,41 +344,41 @@ msgstr ""
 
 #: cinder/exception.py:400
 msgid "Migration error"
-msgstr "迁移错误"
+msgstr ""
 
 #: cinder/exception.py:404
 #, python-format
 msgid "Malformed message body: %(reason)s"
-msgstr "错误格式的消息体： %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:408
 #, python-format
 msgid "Could not find config at %(path)s"
-msgstr "在 %(path)s 找不到配置文件。"
+msgstr ""
 
 #: cinder/exception.py:412
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find parameter %(param)s"
-msgstr "在 %(path)s 找不到配置文件。"
+msgstr ""
 
 #: cinder/exception.py:416
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
-msgstr "无法从路径 %(path)s 中加载应用 '%(name)s'"
+msgstr ""
 
 #: cinder/exception.py:420
 #, python-format
 msgid "No valid host was found. %(reason)s"
-msgstr "找不到有效主机，原因是 %(reason)s。"
+msgstr ""
 
 #: cinder/exception.py:424
 #, python-format
 msgid "Host %(host)s is not up or doesn't exist."
-msgstr "主机 %(host)s 没有启动或者不存在。"
+msgstr ""
 
 #: cinder/exception.py:428
 msgid "Quota exceeded"
-msgstr "超出配额"
+msgstr ""
 
 #: cinder/exception.py:435
 msgid "Requested volume or snapshot exceeds allowed Gigabytes quota"
@@ -401,9 +399,9 @@ msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
 msgstr ""
 
 #: cinder/exception.py:452
-#, fuzzy, python-format
+#, python-format
 msgid "Detected more than one volume with name %(vol_name)s"
-msgstr "检测到不止一个名称为 %(vol_name) 的卷。"
+msgstr ""
 
 #: cinder/exception.py:456
 #, python-format
@@ -418,16 +416,16 @@ msgstr ""
 #: cinder/exception.py:464
 #, python-format
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
-msgstr "无法创建名称为 %(name)s 规格为 %(extra_specs)s 的卷类型。"
+msgstr ""
 
 #: cinder/exception.py:469
 msgid "Bad response from SolidFire API"
-msgstr "来自SolidFire API的错误响应"
+msgstr ""
 
 #: cinder/exception.py:473
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
-msgstr "SolidFire API响应里发生错误：data=%(data)s"
+msgstr ""
 
 #: cinder/exception.py:477
 #, python-format
@@ -435,14 +433,14 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr ""
 
 #: cinder/exception.py:481
-#, fuzzy, python-format
+#, python-format
 msgid "Malformed response to command %(cmd)s: %(reason)s"
-msgstr "错误格式的消息体： %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:485
-#, fuzzy, python-format
+#, python-format
 msgid "Bad HTTP response status %(status)s"
-msgstr "无效的服务器状态：%(status)s"
+msgstr ""
 
 #: cinder/exception.py:489
 #, python-format
@@ -450,14 +448,14 @@ msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr ""
 
 #: cinder/exception.py:493
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to create server object for initiator %(name)s"
-msgstr "无法在存储库 %(sr_ref)s 上为实例 %(instance_name)s 创建 VDI"
+msgstr ""
 
 #: cinder/exception.py:497
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find server object for initiator %(name)s"
-msgstr "无法找到实例 %s 的宿主机"
+msgstr ""
 
 #: cinder/exception.py:501
 msgid "Unable to find any active VPSA controller"
@@ -476,7 +474,7 @@ msgstr ""
 #: cinder/exception.py:513
 #, python-format
 msgid "Instance %(instance_id)s could not be found."
-msgstr "实例 %(instance_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:517
 #, python-format
@@ -484,9 +482,8 @@ msgid "Bad or unexpected response from the storage volume backend API: %(data)s"
 msgstr ""
 
 #: cinder/exception.py:522
-#, fuzzy
 msgid "Unknown NFS exception"
-msgstr "发生未知异常。"
+msgstr ""
 
 #: cinder/exception.py:526
 msgid "No mounted NFS shares found"
@@ -498,9 +495,8 @@ msgid "There is no share which can host %(volume_size)sG"
 msgstr ""
 
 #: cinder/exception.py:534
-#, fuzzy
 msgid "Unknown Gluster exception"
-msgstr "发生未知异常。"
+msgstr ""
 
 #: cinder/exception.py:538
 msgid "No mounted Gluster shares found"
@@ -539,9 +535,9 @@ msgid "Failed to copy metadata to volume: %(reason)s"
 msgstr ""
 
 #: cinder/exception.py:571
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to copy image to volume: %(reason)s"
-msgstr "无法找到 %s 卷"
+msgstr ""
 
 #: cinder/exception.py:575
 msgid "Invalid Ceph args provided for backup rbd operation"
@@ -561,24 +557,23 @@ msgid "Backup volume %(volume_id)s type not recognised."
 msgstr ""
 
 #: cinder/exception.py:591
-#, fuzzy, python-format
+#, python-format
 msgid "Backup %(backup_id)s could not be found."
-msgstr "没有找到LDAP用户组 %(group_id)s。"
+msgstr ""
 
 #: cinder/exception.py:595
-#, fuzzy, python-format
+#, python-format
 msgid "Invalid backup: %(reason)s"
-msgstr "无效的后台：%s"
+msgstr ""
 
 #: cinder/exception.py:599
-#, fuzzy
 msgid "Connection to swift failed"
-msgstr "连接到glance失败"
+msgstr ""
 
 #: cinder/exception.py:603
-#, fuzzy, python-format
+#, python-format
 msgid "Transfer %(transfer_id)s could not be found."
-msgstr "镜像 %(image_id)s 没有找到。"
+msgstr ""
 
 #: cinder/exception.py:607
 msgid "Volume migration failed"
@@ -670,15 +665,15 @@ msgstr ""
 
 #: cinder/manager.py:135
 msgid "Notifying Schedulers of capabilities ..."
-msgstr "向调度器通报能力。"
+msgstr ""
 
 #: cinder/policy.py:31
 msgid "JSON file representing policy"
-msgstr "JSON文件表示策略。"
+msgstr ""
 
 #: cinder/policy.py:34
 msgid "Rule checked when requested rule is not found"
-msgstr "请求的规则找不到时的检查缺省规则。"
+msgstr ""
 
 #: cinder/quota.py:106
 #, python-format
@@ -725,14 +720,13 @@ msgstr ""
 
 #: cinder/service.py:232 cinder/openstack/common/service.py:122
 #: cinder/openstack/common/service.py:219
-#, fuzzy, python-format
+#, python-format
 msgid "Caught %s, exiting"
-msgstr "快照 %s：正在删除"
+msgstr ""
 
 #: cinder/service.py:237 cinder/openstack/common/service.py:224
-#, fuzzy
 msgid "Unhandled exception"
-msgstr "内层异常：%s"
+msgstr ""
 
 #: cinder/service.py:244 cinder/openstack/common/service.py:231
 #, python-format
@@ -740,9 +734,9 @@ msgid "Started child %d"
 msgstr ""
 
 #: cinder/service.py:254 cinder/openstack/common/service.py:241
-#, fuzzy, python-format
+#, python-format
 msgid "Starting %d workers"
-msgstr "起始地址"
+msgstr ""
 
 #: cinder/service.py:273 cinder/openstack/common/service.py:258
 #, python-format
@@ -765,9 +759,9 @@ msgid "_wait_child %d"
 msgstr ""
 
 #: cinder/service.py:305
-#, fuzzy, python-format
+#, python-format
 msgid "wait wrap.failed %s"
-msgstr "未知的基文件：%s"
+msgstr ""
 
 #: cinder/service.py:313 cinder/openstack/common/service.py:294
 #, python-format
@@ -780,36 +774,35 @@ msgid "Waiting on %d children to exit"
 msgstr ""
 
 #: cinder/service.py:357
-#, fuzzy, python-format
+#, python-format
 msgid "Starting %(topic)s node (version %(version_string)s)"
-msgstr "启动 %(topic)s 节点 (版本 %(vcs_string)s)"
+msgstr ""
 
 #: cinder/service.py:370 cinder/openstack/common/rpc/service.py:47
 #, python-format
 msgid "Creating Consumer connection for Service %s"
-msgstr "为服务 %s 创建消费者"
+msgstr ""
 
 #: cinder/service.py:462
 msgid "Service killed that has no database entry"
-msgstr "因无数据库记录，服务已被中止"
+msgstr ""
 
 #: cinder/service.py:499
 msgid "The service database object disappeared, Recreating it."
-msgstr "服务数据库对象消失，正在重新创建。"
+msgstr ""
 
 #: cinder/service.py:514
 msgid "Recovered model server connection!"
-msgstr "与模型服务器(model server)的连接已恢复！"
+msgstr ""
 
 #: cinder/service.py:520
 msgid "model server went away"
-msgstr "失去与模型服务器的连接"
+msgstr ""
 
 #: cinder/service.py:612 cinder/openstack/common/service.py:113
 #: cinder/openstack/common/service.py:276
-#, fuzzy
 msgid "Full set of CONF:"
-msgstr "标记全集："
+msgstr ""
 
 #: cinder/service.py:619
 #, python-format
@@ -827,63 +820,62 @@ msgid "May specify only one of %s"
 msgstr ""
 
 #: cinder/utils.py:220 cinder/volume/drivers/huawei/huawei_iscsi.py:95
-#, fuzzy
 msgid "Specify a password or private_key"
-msgstr "指定san_password或者san_private_key"
+msgstr ""
 
 #: cinder/utils.py:236 cinder/volume/drivers/huawei/huawei_iscsi.py:103
-#, fuzzy, python-format
+#, python-format
 msgid "Error connecting via ssh: %s"
-msgstr "正在连接 libvirt：%s"
+msgstr ""
 
 #: cinder/utils.py:271
 #, python-format
 msgid "debug in callback: %s"
-msgstr "回调中debug：%s"
+msgstr ""
 
 #: cinder/utils.py:424
 #, python-format
 msgid "Invalid backend: %s"
-msgstr "无效的后台：%s"
+msgstr ""
 
 #: cinder/utils.py:435
 #, python-format
 msgid "backend %s"
-msgstr "后台 %s"
+msgstr ""
 
 #: cinder/utils.py:485
 msgid "in looping call"
-msgstr "循环调用中。"
+msgstr ""
 
 #: cinder/utils.py:628
 #, python-format
 msgid "Expected object of type: %s"
-msgstr "期望的对象类型：%s"
+msgstr ""
 
 #: cinder/utils.py:694
 #, python-format
 msgid "timefunc: '%(name)s' took %(total_time).2f secs"
-msgstr "timefunc：'%(name)s' 用了%(total_time).2f 秒"
+msgstr ""
 
 #: cinder/utils.py:872
-#, fuzzy, python-format
+#, python-format
 msgid "Could not remove tmpdir: %s"
-msgstr "移除容器失败：%s"
+msgstr ""
 
 #: cinder/wsgi.py:122
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find cert_file : %s"
-msgstr "无法找到地址 %r"
+msgstr ""
 
 #: cinder/wsgi.py:125
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find ca_file : %s"
-msgstr "无法找到地址 %r"
+msgstr ""
 
 #: cinder/wsgi.py:128
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find key_file : %s"
-msgstr "无法找到地址 %r"
+msgstr ""
 
 #: cinder/wsgi.py:131
 msgid ""
@@ -903,15 +895,15 @@ msgstr ""
 
 #: cinder/wsgi.py:228
 msgid "Stopping WSGI server."
-msgstr "关闭WSGI服务器"
+msgstr ""
 
 #: cinder/wsgi.py:242
 msgid "WSGI server has stopped."
-msgstr "WSGI服务器已经停止。"
+msgstr ""
 
 #: cinder/wsgi.py:311
 msgid "You must implement __call__"
-msgstr "你必须执行 __call__"
+msgstr ""
 
 #: cinder/api/auth.py:26
 msgid ""
@@ -927,78 +919,78 @@ msgstr ""
 
 #: cinder/api/common.py:78 cinder/api/common.py:112 cinder/volume/api.py:268
 msgid "limit param must be an integer"
-msgstr "limit 参数必须是整数"
+msgstr ""
 
 #: cinder/api/common.py:81 cinder/api/common.py:116 cinder/volume/api.py:265
 msgid "limit param must be positive"
-msgstr "limit参数必须是正数"
+msgstr ""
 
 #: cinder/api/common.py:106
 msgid "offset param must be an integer"
-msgstr "offset 参数必须是整数"
+msgstr ""
 
 #: cinder/api/common.py:120
 msgid "offset param must be positive"
-msgstr "offset 参数必须是正数"
+msgstr ""
 
 #: cinder/api/common.py:148
 #, python-format
 msgid "marker [%s] not found"
-msgstr "没有找到标记 [%s]"
+msgstr ""
 
 #: cinder/api/common.py:175
 #, python-format
 msgid "href %s does not contain version"
-msgstr "href %s 不包含版本"
+msgstr ""
 
 #: cinder/api/extensions.py:184
 msgid "Initializing extension manager."
-msgstr "正在初始化扩展管理员。"
+msgstr ""
 
 #: cinder/api/extensions.py:199
 #, python-format
 msgid "Loaded extension: %s"
-msgstr "加载的扩展：%s"
+msgstr ""
 
 #: cinder/api/extensions.py:237
 #, python-format
 msgid "Ext name: %s"
-msgstr "Ext name: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:238
 #, python-format
 msgid "Ext alias: %s"
-msgstr "Ext alias: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:239
 #, python-format
 msgid "Ext description: %s"
-msgstr "Ext 描述: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:241
 #, python-format
 msgid "Ext namespace: %s"
-msgstr "Ext 命名空间: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:242
 #, python-format
 msgid "Ext updated: %s"
-msgstr "Ext updated: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:244
 #, python-format
 msgid "Exception loading extension: %s"
-msgstr "加载扩展发生异常：%s"
+msgstr ""
 
 #: cinder/api/extensions.py:258
 #, python-format
 msgid "Loading extension %s"
-msgstr "正在加载扩展 %s"
+msgstr ""
 
 #: cinder/api/extensions.py:264
 #, python-format
 msgid "Calling extension factory %s"
-msgstr "调用扩展工厂 %s"
+msgstr ""
 
 #: cinder/api/extensions.py:278
 #, python-format
@@ -1015,17 +1007,17 @@ msgstr ""
 #: cinder/api/extensions.py:289
 #, python-format
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
-msgstr "加载扩展 %(ext_factory)s 失败：%(exc)s"
+msgstr ""
 
 #: cinder/api/extensions.py:358
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
-msgstr "加载扩展 %(classpath)s 失败：%(exc)s"
+msgstr ""
 
 #: cinder/api/extensions.py:383
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
-msgstr "加载扩展 %(ext_name)s 失败：%(exc)s"
+msgstr ""
 
 #: cinder/api/sizelimit.py:25
 msgid ""
@@ -1035,20 +1027,20 @@ msgstr ""
 
 #: cinder/api/xmlutil.py:268
 msgid "element is not a child"
-msgstr "元素不是子节点"
+msgstr ""
 
 #: cinder/api/xmlutil.py:465
 msgid "root element selecting a list"
-msgstr "根元素选择列表"
+msgstr ""
 
 #: cinder/api/xmlutil.py:788
 #, python-format
 msgid "Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr "模板数不匹配；把slave %(slavetag)s 添加到master %(mastertag)s"
+msgstr ""
 
 #: cinder/api/xmlutil.py:909
 msgid "subclasses must implement construct()!"
-msgstr "subclasses必须执行construct()!"
+msgstr ""
 
 #: cinder/api/contrib/admin_actions.py:80
 #, python-format
@@ -1061,30 +1053,30 @@ msgid "show called for member %s"
 msgstr ""
 
 #: cinder/api/contrib/backups.py:140
-#, fuzzy, python-format
+#, python-format
 msgid "delete called for member %s"
-msgstr "修改用户 %s 的私钥"
+msgstr ""
 
 #: cinder/api/contrib/backups.py:143
-#, fuzzy, python-format
+#, python-format
 msgid "Delete backup with id: %s"
-msgstr "删除id为 %s 的快照"
+msgstr ""
 
 #: cinder/api/contrib/backups.py:185
-#, fuzzy, python-format
+#, python-format
 msgid "Creating new backup %s"
-msgstr "轮换出%d个备份"
+msgstr ""
 
 #: cinder/api/contrib/backups.py:195 cinder/api/contrib/backups.py:234
 #: cinder/api/contrib/volume_transfer.py:159
 #: cinder/api/contrib/volume_transfer.py:195
 msgid "Incorrect request body format"
-msgstr "不正确的请求主体格式"
+msgstr ""
 
 #: cinder/api/contrib/backups.py:201
-#, fuzzy, python-format
+#, python-format
 msgid "Creating backup of volume %(volume_id)s in container %(container)s"
-msgstr "卷 %(volume_id)s 正在 %(mountpoint)s 上启动"
+msgstr ""
 
 #: cinder/api/contrib/backups.py:224
 #, python-format
@@ -1097,41 +1089,40 @@ msgid "Restoring backup %(backup_id)s to volume %(volume_id)s"
 msgstr ""
 
 #: cinder/api/contrib/extended_snapshot_attributes.py:60
-#, fuzzy
 msgid "Snapshot not found."
-msgstr "没有找到主机"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:171
 msgid "cannot understand XML"
-msgstr "无法理解XML"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:136
-#, fuzzy, python-format
+#, python-format
 msgid "Host '%s' could not be found."
-msgstr "主机 %(host)s 没有找到。"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:165
 #, python-format
 msgid "Invalid status: '%s'"
-msgstr "无效的状态：'%s'"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:168
 #, python-format
 msgid "Invalid update setting: '%s'"
-msgstr "无效的更新设置：'%s'"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:180
 #, python-format
 msgid "Setting host %(host)s to %(state)s."
-msgstr "把主机 %(host)s 设置为 %(state)s。"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:206
 msgid "Describe-resource is admin only functionality"
-msgstr "Describe-resource是只有管理员才能执行的功能。"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:214
 msgid "Host not found"
-msgstr "没有找到主机"
+msgstr ""
 
 #: cinder/api/contrib/qos_specs_manage.py:96
 msgid "Please specify a name for QoS specs."
@@ -1165,21 +1156,20 @@ msgid ""
 msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:102
-#, fuzzy
 msgid "Request body empty"
-msgstr "不正确的请求主体格式"
+msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:106
 #: cinder/api/v1/snapshot_metadata.py:77 cinder/api/v1/volume_metadata.py:77
 #: cinder/api/v2/snapshot_metadata.py:77
 msgid "Request body and URI mismatch"
-msgstr "请求主体和URI不匹配"
+msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:109
 #: cinder/api/v1/snapshot_metadata.py:81 cinder/api/v1/volume_metadata.py:81
 #: cinder/api/v2/snapshot_metadata.py:81
 msgid "Request body contains too many items"
-msgstr "请求主体包含太多items"
+msgstr ""
 
 #: cinder/api/contrib/volume_actions.py:90
 #, python-format
@@ -1194,7 +1184,7 @@ msgstr ""
 
 #: cinder/api/contrib/volume_actions.py:175
 msgid "Invalid request body"
-msgstr "无效的请求主体"
+msgstr ""
 
 #: cinder/api/contrib/volume_actions.py:179
 msgid "No image_name was specified in request."
@@ -1205,34 +1195,33 @@ msgid "New volume size must be specified as an integer."
 msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:133
-#, fuzzy
 msgid "Listing volume transfers"
-msgstr "更新主机状态"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:149
-#, fuzzy, python-format
+#, python-format
 msgid "Creating new volume transfer %s"
-msgstr "创建卷 %s 的快照"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:164
-#, fuzzy, python-format
+#, python-format
 msgid "Creating transfer of volume %s"
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:185
-#, fuzzy, python-format
+#, python-format
 msgid "Accepting volume transfer %s"
-msgstr "更新主机状态"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:198
-#, fuzzy, python-format
+#, python-format
 msgid "Accepting transfer %s"
-msgstr "更新主机状态"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:219
-#, fuzzy, python-format
+#, python-format
 msgid "Delete transfer with id: %s"
-msgstr "删除id为 %s 的卷"
+msgstr ""
 
 #: cinder/api/contrib/volume_type_encryption.py:66
 msgid "key_size must be non-negative"
@@ -1266,12 +1255,12 @@ msgstr ""
 #: cinder/api/middleware/fault.py:45
 #, python-format
 msgid "Caught error: %s"
-msgstr "抓到错误：%s"
+msgstr ""
 
 #: cinder/api/middleware/fault.py:54 cinder/api/openstack/wsgi.py:907
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
-msgstr "%(url)s 随HTTP %(status)d返回"
+msgstr ""
 
 #: cinder/api/middleware/sizelimit.py:56 cinder/api/middleware/sizelimit.py:65
 #: cinder/api/middleware/sizelimit.py:79
@@ -1280,24 +1269,24 @@ msgstr ""
 
 #: cinder/api/openstack/__init__.py:73
 msgid "Must specify an ExtensionManager class"
-msgstr "必须明确一个ExtensionManager类"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:84
 #, python-format
 msgid "Extended resource: %s"
-msgstr "扩展资源：%s"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:108
 #, python-format
 msgid ""
 "Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
 "resource"
-msgstr "扩展%(ext_name)s：无法扩展资源 %(collection)s：没有那种资源"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:114
 #, python-format
 msgid "Extension %(ext_name)s extending resource: %(collection)s"
-msgstr "扩展资源的扩展 %(ext_name)s：%(collection)s"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:130
 msgid ""
@@ -1313,43 +1302,43 @@ msgstr ""
 
 #: cinder/api/openstack/wsgi.py:147 cinder/api/openstack/wsgi.py:559
 msgid "cannot understand JSON"
-msgstr "无法理解JSON"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:564
 msgid "too many body keys"
-msgstr "过多主体密钥"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:602
-#, fuzzy, python-format
+#, python-format
 msgid "Exception handling resource: %s"
-msgstr "扩展资源：%s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:607
 #, python-format
 msgid "Fault thrown: %s"
-msgstr "错误抛出: %s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:610
 #, python-format
 msgid "HTTP exception thrown: %s"
-msgstr "HTTP 异常抛出：%s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:718
 msgid "Unrecognized Content-Type provided in request"
-msgstr "请求中提供了无法识别的 Content-Type"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:722
 msgid "No Content-Type provided in request"
-msgstr "请求中没有提供 Content-Type"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:726
 msgid "Empty body provided in request"
-msgstr "请求中没有提供主体"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:837
 #, python-format
 msgid "There is no such action: %s"
-msgstr "没有该动作：%s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:840 cinder/api/openstack/wsgi.py:853
 #: cinder/api/v1/snapshot_metadata.py:55 cinder/api/v1/snapshot_metadata.py:73
@@ -1359,20 +1348,20 @@ msgstr "没有该动作：%s"
 #: cinder/api/v2/snapshot_metadata.py:55 cinder/api/v2/snapshot_metadata.py:73
 #: cinder/api/v2/snapshot_metadata.py:98 cinder/api/v2/snapshot_metadata.py:123
 msgid "Malformed request body"
-msgstr "错误格式的请求主体"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:850
 msgid "Unsupported Content-Type"
-msgstr "不支持的Content-Type"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:862
 msgid "Malformed request url"
-msgstr "错误格式的请求url"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:910
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
-msgstr "%(url)s返回错误：%(e)s"
+msgstr ""
 
 #: cinder/api/openstack/volume/__init__.py:25
 msgid ""
@@ -1391,36 +1380,35 @@ msgstr ""
 msgid ""
 "Only %(value)s %(verb)s request(s) can be made to %(uri)s every "
 "%(unit_string)s."
-msgstr "只能有 %(value)s 个 %(verb)s 请求发送给 %(uri)s 限定是每一个 %(unit_string)s。"
+msgstr ""
 
 #: cinder/api/v1/limits.py:270 cinder/api/v2/limits.py:270
 msgid "This request was rate-limited."
-msgstr "这个请求受到频率限制。"
+msgstr ""
 
 #: cinder/api/v1/snapshot_metadata.py:39 cinder/api/v1/snapshot_metadata.py:119
 #: cinder/api/v1/snapshot_metadata.py:158 cinder/api/v2/snapshot_metadata.py:39
 #: cinder/api/v2/snapshot_metadata.py:119
 #: cinder/api/v2/snapshot_metadata.py:158
-#, fuzzy
 msgid "snapshot does not exist"
-msgstr "实例不存在"
+msgstr ""
 
 #: cinder/api/v1/snapshot_metadata.py:141
 #: cinder/api/v1/snapshot_metadata.py:151 cinder/api/v1/volume_metadata.py:141
 #: cinder/api/v1/volume_metadata.py:151 cinder/api/v2/snapshot_metadata.py:141
 #: cinder/api/v2/snapshot_metadata.py:151
 msgid "Metadata item was not found"
-msgstr "元数据项目未找到"
+msgstr ""
 
 #: cinder/api/v1/snapshots.py:119 cinder/api/v2/snapshots.py:120
 #, python-format
 msgid "Delete snapshot with id: %s"
-msgstr "删除id为 %s 的快照"
+msgstr ""
 
 #: cinder/api/v1/snapshots.py:173 cinder/api/v2/snapshots.py:184
 #, python-format
 msgid "Create snapshot from volume %s"
-msgstr "为卷 %s 创建快照"
+msgstr ""
 
 #: cinder/api/v1/snapshots.py:177 cinder/api/v2/snapshots.py:193
 #, python-format
@@ -1429,34 +1417,33 @@ msgstr ""
 
 #: cinder/api/v1/volume_metadata.py:39 cinder/api/v1/volume_metadata.py:119
 #: cinder/api/v1/volume_metadata.py:158
-#, fuzzy
 msgid "volume does not exist"
-msgstr "域不存在"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:105
 #, python-format
 msgid "vol=%s"
-msgstr "vol=%s"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:233 cinder/api/v2/volumes.py:177
 #, python-format
 msgid "Delete volume with id: %s"
-msgstr "删除id为 %s 的卷"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:280 cinder/api/v1/volumes.py:284
 #: cinder/api/v2/volumes.py:240 cinder/api/v2/volumes.py:244
 msgid "Invalid imageRef provided."
-msgstr "提供了无效的imageRef。"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:342 cinder/api/v2/volumes.py:305
 #, python-format
 msgid "Create volume of %s GB"
-msgstr "创建 %s GB的卷"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:422
-#, fuzzy, python-format
+#, python-format
 msgid "Removing options '%(bad_options)s' from query"
-msgstr "正在从查询语句中移除选项 '%(unk_opt_str)s'"
+msgstr ""
 
 #: cinder/api/v2/snapshots.py:111 cinder/api/v2/snapshots.py:126
 #: cinder/api/v2/snapshots.py:257
@@ -1487,24 +1474,21 @@ msgid "Volume cannot be deleted while in attached state"
 msgstr ""
 
 #: cinder/api/v2/volumes.py:396
-#, fuzzy, python-format
+#, python-format
 msgid "Removing options '%s' from query"
-msgstr "正在从查询语句中移除选项 '%(unk_opt_str)s'"
+msgstr ""
 
 #: cinder/backup/api.py:68
-#, fuzzy
 msgid "Backup status must be available or error"
-msgstr "卷组状态必须可获取"
+msgstr ""
 
 #: cinder/backup/api.py:109
-#, fuzzy
 msgid "Volume to be backed up must be available"
-msgstr "卷组状态必须可获取"
+msgstr ""
 
 #: cinder/backup/api.py:146
-#, fuzzy
 msgid "Backup status must be available"
-msgstr "状态必须可用"
+msgstr ""
 
 #: cinder/backup/api.py:151
 msgid "Backup to be restored has invalid size"
@@ -1523,18 +1507,17 @@ msgid ""
 msgstr ""
 
 #: cinder/backup/api.py:182
-#, fuzzy
 msgid "Volume to be restored to must be available"
-msgstr "卷组状态必须可获取"
+msgstr ""
 
 #: cinder/backup/api.py:188
 msgid "Volume to be restored to is smaller than the backup to be restored"
 msgstr ""
 
 #: cinder/backup/api.py:192
-#, fuzzy, python-format
+#, python-format
 msgid "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
-msgstr "正在把卷 %(volume_id)s 附加到 %(mountpoint)s"
+msgstr ""
 
 #: cinder/backup/manager.py:101
 msgid "Cleaning up incomplete backup operations"
@@ -1893,9 +1876,9 @@ msgid "delete '%s' finished"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:105
-#, fuzzy, python-format
+#, python-format
 msgid "unsupported compression algorithm: %s"
-msgstr "不支持的分区：%s"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:122
 #, python-format
@@ -1908,14 +1891,14 @@ msgid "_check_container_exists: container: %s"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:145
-#, fuzzy, python-format
+#, python-format
 msgid "container %s does not exist"
-msgstr "实例不存在"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:150
-#, fuzzy, python-format
+#, python-format
 msgid "container %s exists"
-msgstr "实例不存在"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:156
 #, python-format
@@ -1928,9 +1911,9 @@ msgid "_generate_swift_object_name_prefix: %s"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:181
-#, fuzzy, python-format
+#, python-format
 msgid "generated object list: %s"
-msgstr "期望的对象类型：%s"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:191
 #, python-format
@@ -1964,9 +1947,9 @@ msgid "_read_metadata finished (%s)"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:233
-#, fuzzy, python-format
+#, python-format
 msgid "volume size %d is invalid."
-msgstr "请求无效。"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:247
 #, python-format
@@ -2091,9 +2074,9 @@ msgid "deleted swift object: %(swift_object_name)s in container: %(container)s"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:467 cinder/backup/drivers/tsm.py:438
-#, fuzzy, python-format
+#, python-format
 msgid "delete %s finished"
-msgstr "_delete: %s"
+msgstr ""
 
 #: cinder/backup/drivers/tsm.py:83
 #, python-format
@@ -2249,19 +2232,19 @@ msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr ""
 
 #: cinder/brick/exception.py:120
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
+msgstr ""
 
 #: cinder/brick/exception.py:124
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
+msgstr ""
 
 #: cinder/brick/exception.py:128
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to attach iSCSI target for volume %(volume_id)s."
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
+msgstr ""
 
 #: cinder/brick/initiator/connector.py:108
 #, python-format
@@ -2370,9 +2353,9 @@ msgid "Creating iscsi_target for: %s"
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:172 cinder/brick/iscsi/iscsi.py:294
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:183
 #, python-format
@@ -2382,14 +2365,14 @@ msgid ""
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:197
-#, fuzzy, python-format
+#, python-format
 msgid "Removing iscsi_target for: %s"
-msgstr "正在删除基文件：%s"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:214
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
-msgstr "尝试删除不存在的控制台%(console_id)s。"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:224 cinder/brick/iscsi/iscsi.py:465
 #: cinder/brick/iser/iser.py:203
@@ -2397,9 +2380,9 @@ msgid "valid iqn needed for show_target"
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:301
-#, fuzzy, python-format
+#, python-format
 msgid "Removing iscsi_target for volume: %s"
-msgstr "跳过remove_export。没有为卷提供iscsi_target：%d"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:387
 msgid "rtstool is not installed correctly"
@@ -2416,9 +2399,9 @@ msgid "Failed to create iscsi target for volume id:%s."
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:447
-#, fuzzy, python-format
+#, python-format
 msgid "Removing iscsi_target: %s"
-msgstr "正在重启虚拟机 %s"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:457
 #, python-format
@@ -2480,14 +2463,14 @@ msgid "StdErr  :%s"
 msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:81
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to locate Volume Group %s"
-msgstr "无法找到 %s 卷"
+msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:293
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find VG: %s"
-msgstr "无法为VDI %s 找到VBD"
+msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:319
 msgid ""
@@ -2500,9 +2483,9 @@ msgid "Error creating Volume"
 msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:388
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find LV: %s"
-msgstr "无法为VDI %s 找到VBD"
+msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:401
 msgid "Error creating snapshot"
@@ -2533,12 +2516,12 @@ msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:67
 msgid "Use of empty request context is deprecated"
-msgstr "使用空的请求上下文是不推荐的"
+msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:194
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
-msgstr "无法识别的 read_deleted 取值”%s“"
+msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:895
 #, python-format
@@ -2551,9 +2534,8 @@ msgid "No backup with id %s"
 msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:2512
-#, fuzzy
 msgid "Volume must be available"
-msgstr "必须可用"
+msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:2536
 #, python-format
@@ -2569,7 +2551,7 @@ msgstr ""
 
 #: cinder/db/sqlalchemy/migration.py:72
 msgid "version should be an integer"
-msgstr "version应该是整数"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migration.py:99
 msgid "Upgrade DB using Essex release first."
@@ -2592,46 +2574,39 @@ msgstr ""
 #: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:83
 #, python-format
 msgid "Table |%s| not created!"
-msgstr "表 |%s| 没有创建"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:118
-#, fuzzy
 msgid "quota_classes table not dropped"
-msgstr "instance_info_caches 没有删除掉"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:125
-#, fuzzy
 msgid "quota_usages table not dropped"
-msgstr "instance_info_caches 没有删除掉"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:132
-#, fuzzy
 msgid "reservations table not dropped"
-msgstr "dns_domains 表没有删除"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/003_glance_metadata.py:62
 msgid "Exception while creating table 'volume_glance_metadata'"
 msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/003_glance_metadata.py:77
-#, fuzzy
 msgid "volume_glance_metadata table not dropped"
-msgstr "instance_info_caches 没有删除掉"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/008_add_backup.py:70
-#, fuzzy
 msgid "backups table not dropped"
-msgstr "dns_domains 表没有删除"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/009_add_snapshot_metadata_table.py:60
-#, fuzzy
 msgid "snapshot_metadata table not dropped"
-msgstr "instance_info_caches 没有删除掉"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/010_add_transfers_table.py:62
-#, fuzzy
 msgid "transfers table not dropped"
-msgstr "dns_domains 表没有删除"
+msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/015_drop_migrations_table.py:33
 msgid "migrations table not dropped"
@@ -2702,7 +2677,7 @@ msgstr ""
 
 #: cinder/image/image_utils.py:224 cinder/image/image_utils.py:256
 msgid "'qemu-img info' parsing failed."
-msgstr "'qemu-img info'解析失败"
+msgstr ""
 
 #: cinder/image/image_utils.py:231
 #, python-format
@@ -2710,24 +2685,24 @@ msgid "fmt=%(fmt)s backed by: %(backing_file)s"
 msgstr ""
 
 #: cinder/image/image_utils.py:263
-#, fuzzy, python-format
+#, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
-msgstr "fmt=%(fmt)s 由 %(backing_file)s 支持"
+msgstr ""
 
 #: cinder/image/image_utils.py:283
 #, python-format
 msgid "Converted to raw, but format is now %s"
-msgstr "转化为裸格式，但目前格式是 %s"
+msgstr ""
 
 #: cinder/image/image_utils.py:312
-#, fuzzy, python-format
+#, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
-msgstr "转化为裸格式，但目前格式是 %s"
+msgstr ""
 
 #: cinder/openstack/common/excutils.py:48
-#, fuzzy, python-format
+#, python-format
 msgid "Original exception being dropped: %s"
-msgstr "正在丢弃原来的异常。"
+msgstr ""
 
 #: cinder/openstack/common/fileutils.py:64
 #, python-format
@@ -2740,29 +2715,29 @@ msgid "Could not release the acquired lock `%s`"
 msgstr ""
 
 #: cinder/openstack/common/lockutils.py:189
-#, fuzzy, python-format
+#, python-format
 msgid "Got semaphore \"%(lock)s\" for method \"%(method)s\"..."
-msgstr "获得信号量 \"%(lock)s\" 为方法 \"%(method)s\" ...锁"
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:200
-#, fuzzy, python-format
+#, python-format
 msgid "Attempting to grab file lock \"%(lock)s\" for method \"%(method)s\"..."
-msgstr "正在 试图获取锁 \"%(lock)s\" 为方法 \"%(method)s\"...锁"
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:227
-#, fuzzy, python-format
+#, python-format
 msgid "Got file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
-msgstr "获得文件锁 \"%(lock)s\" 为方法 \"%(method)s\"...锁"
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:235
-#, fuzzy, python-format
+#, python-format
 msgid "Released file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
-msgstr "获得文件锁 \"%(lock)s\" 为方法 \"%(method)s\"...锁"
+msgstr ""
 
 #: cinder/openstack/common/log.py:244
-#, fuzzy, python-format
+#, python-format
 msgid "Deprecated: %s"
-msgstr "_delete: %s"
+msgstr ""
 
 #: cinder/openstack/common/log.py:336
 #, python-format
@@ -2772,12 +2747,12 @@ msgstr ""
 #: cinder/openstack/common/log.py:386
 #, python-format
 msgid "syslog facility must be one of: %s"
-msgstr "syslog设备必须作为一个 %s 。"
+msgstr ""
 
 #: cinder/openstack/common/log.py:556
-#, fuzzy, python-format
+#, python-format
 msgid "Fatal call to deprecated config: %(msg)s"
-msgstr "类 %(fullname)s 是不推荐的：%(msg)s"
+msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:84
 #, python-format
@@ -2786,9 +2761,8 @@ msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:91
 #: cinder/tests/brick/test_brick_connector.py:444
-#, fuzzy
 msgid "in fixed duration looping call"
-msgstr "循环调用中。"
+msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:131
 #, python-format
@@ -2796,9 +2770,8 @@ msgid "Dynamic looping call sleeping for %.02f seconds"
 msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:138
-#, fuzzy
 msgid "in dynamic looping call"
-msgstr "循环调用中。"
+msgstr ""
 
 #: cinder/openstack/common/periodic_task.py:42
 #, python-format
@@ -2818,12 +2791,12 @@ msgstr ""
 #: cinder/openstack/common/periodic_task.py:176
 #, python-format
 msgid "Running periodic task %(full_task_name)s"
-msgstr "正在运行周期性任务 %(full_task_name)s"
+msgstr ""
 
 #: cinder/openstack/common/periodic_task.py:184
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
-msgstr "在 %(full_task_name)s 期间发生的错误：%(e)s"
+msgstr ""
 
 #: cinder/openstack/common/policy.py:149
 #, python-format
@@ -2833,9 +2806,9 @@ msgid ""
 msgstr ""
 
 #: cinder/openstack/common/policy.py:163
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to understand rule %(match)r"
-msgstr "注入文件失败：%(resp)r"
+msgstr ""
 
 #: cinder/openstack/common/policy.py:173
 #, python-format
@@ -2850,38 +2823,38 @@ msgstr ""
 #: cinder/openstack/common/processutils.py:127
 #, python-format
 msgid "Got unknown keyword args to utils.execute: %r"
-msgstr "发现未知的 utils.execute 关键字参数：%r"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:142
 #, python-format
 msgid "Running cmd (subprocess): %s"
-msgstr "正在运行cmd (subprocess)：%s"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:167
 #: cinder/openstack/common/processutils.py:239
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:315
 #, python-format
 msgid "Result was %s"
-msgstr "运行结果为 %s"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:179
 #, python-format
 msgid "%r failed. Retrying."
-msgstr "%r 失败，重试。"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:218
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:288
 #, python-format
 msgid "Running cmd (SSH): %s"
-msgstr "运行cmd (SSH)：%s"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:220
 msgid "Environment not supported over SSH"
-msgstr "SSH上不支持环境变量"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:224
 msgid "process_input not supported over SSH"
-msgstr "SSH上不支持的进程输入参数。"
+msgstr ""
 
 #: cinder/openstack/common/service.py:262
 #, python-format
@@ -2899,9 +2872,9 @@ msgid "Invalid string format: %s"
 msgstr ""
 
 #: cinder/openstack/common/strutils.py:189
-#, fuzzy, python-format
+#, python-format
 msgid "Unknown byte multiplier: %s"
-msgstr "未知的基文件：%s"
+msgstr ""
 
 #: cinder/openstack/common/db/exception.py:44
 msgid "Invalid Parameter: Unicode is not supported by the current database."
@@ -2909,7 +2882,7 @@ msgstr ""
 
 #: cinder/openstack/common/db/sqlalchemy/session.py:487
 msgid "DB exception wrapped."
-msgstr "数据库异常被包裹。"
+msgstr ""
 
 #: cinder/openstack/common/db/sqlalchemy/session.py:538
 #, python-format
@@ -2917,9 +2890,9 @@ msgid "Got mysql server has gone away: %s"
 msgstr ""
 
 #: cinder/openstack/common/db/sqlalchemy/session.py:610
-#, fuzzy, python-format
+#, python-format
 msgid "SQL connection failed. %s attempts left."
-msgstr "SQL连接失败 (%(connstring)s)。还剩 %(attempts)d 次。"
+msgstr ""
 
 #: cinder/openstack/common/db/sqlalchemy/utils.py:33
 msgid "Sort key supplied was not valid."
@@ -2928,14 +2901,14 @@ msgstr ""
 #: cinder/openstack/common/notifier/api.py:129
 #, python-format
 msgid "%s not in valid priorities"
-msgstr "%s 不在有效的优先级"
+msgstr ""
 
 #: cinder/openstack/common/notifier/api.py:145
 #, python-format
 msgid ""
 "Problem '%(e)s' attempting to send to notification system. "
 "Payload=%(payload)s"
-msgstr "Problem '%(e)s' 试图发送到通知系统。Payload=%(payload)s"
+msgstr ""
 
 #: cinder/openstack/common/notifier/api.py:164
 #, python-format
@@ -2979,7 +2952,7 @@ msgstr ""
 #: cinder/openstack/common/rpc/amqp.py:291
 #, python-format
 msgid "unpacked context: %s"
-msgstr "未打包的上下文：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:337
 #, python-format
@@ -2989,17 +2962,17 @@ msgstr ""
 #: cinder/openstack/common/rpc/amqp.py:406
 #, python-format
 msgid "received %s"
-msgstr "已接收 %s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:414
 #, python-format
 msgid "no method for message: %s"
-msgstr "没有适用于消息的方法：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:415
 #, python-format
 msgid "No method for message: %s"
-msgstr "没有适用于消息的方法：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:443
 #: cinder/openstack/common/rpc/impl_zmq.py:280
@@ -3013,23 +2986,23 @@ msgid "Exception during message handling"
 msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:586
-#, fuzzy, python-format
+#, python-format
 msgid "Making synchronous call on %s ..."
-msgstr "在 %s 做异步call"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:589
 #, python-format
 msgid "MSG_ID is %s"
-msgstr "消息ID(MSG_ID)是 %s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:623
 #, python-format
 msgid "Making asynchronous cast on %s..."
-msgstr "在 %s 做异步cast"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:632
 msgid "Making asynchronous fanout cast..."
-msgstr "做异步fanout cast"
+msgstr ""
 
 #: cinder/openstack/common/rpc/amqp.py:660
 #, python-format
@@ -3037,9 +3010,8 @@ msgid "Sending %(event_type)s on %(topic)s"
 msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:74
-#, fuzzy
 msgid "An unknown RPC related exception occurred."
-msgstr "发生未知异常。"
+msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:104
 #, python-format
@@ -3047,8 +3019,6 @@ msgid ""
 "Remote error: %(exc_type)s %(value)s\n"
 "%(traceback)s."
 msgstr ""
-"远程错误：%(exc_type)s %(value)s\n"
-"%(traceback)s。"
 
 #: cinder/openstack/common/rpc/common.py:121
 #, python-format
@@ -3070,7 +3040,7 @@ msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:147
 msgid "Invalid reuse of an RPC connection."
-msgstr "无效的RPC连接重用。"
+msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:151
 #, python-format
@@ -3085,14 +3055,14 @@ msgid ""
 msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:280
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to sanitize %(item)s. Key error %(err)s"
-msgstr "删除 %(base_file)s 失败，错误是 %(error)s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:302
 #, python-format
 msgid "Returning exception %s to caller"
-msgstr "返回 %s 异常给调用者"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:169
 #: cinder/openstack/common/rpc/impl_qpid.py:133
@@ -3102,12 +3072,12 @@ msgstr ""
 #: cinder/openstack/common/rpc/impl_kombu.py:480
 #, python-format
 msgid "Reconnecting to AMQP server on %(hostname)s:%(port)d"
-msgstr "正在重新连接位于 %(hostname)s:%(port)d 的AMQP服务器"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:502
 #, python-format
 msgid "Connected to AMQP server on %(hostname)s:%(port)d"
-msgstr "连接到位于 %(hostname)s:%(port)d 的AMQP服务器"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:539
 #, python-format
@@ -3115,53 +3085,51 @@ msgid ""
 "Unable to connect to AMQP server on %(hostname)s:%(port)d after "
 "%(max_retries)d tries: %(err_str)s"
 msgstr ""
-"无法连接到位于%(hostname)s:%(port)d的AMQP server，尝试已经 %(max_retries)d "
-"次：%(err_str)s"
 
 #: cinder/openstack/common/rpc/impl_kombu.py:555
 #, python-format
 msgid ""
 "AMQP server on %(hostname)s:%(port)d is unreachable: %(err_str)s. Trying "
 "again in %(sleep_time)d seconds."
-msgstr "位于%(hostname)s:%(port)d的AMQP服务器不可达：%(err_str)s。%(sleep_time)d 秒钟后请再尝试。"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:609
 #: cinder/openstack/common/rpc/impl_qpid.py:404
 #, python-format
 msgid "Failed to declare consumer for topic '%(topic)s': %(err_str)s"
-msgstr "为topic '%(topic)s'声明消费者失败：%(err_str)s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:627
 #: cinder/openstack/common/rpc/impl_qpid.py:419
 #, python-format
 msgid "Timed out waiting for RPC response: %s"
-msgstr "等待RPC响应超时：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:631
 #: cinder/openstack/common/rpc/impl_qpid.py:423
 #, python-format
 msgid "Failed to consume message from queue: %s"
-msgstr "从队列中消费消息失败：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_kombu.py:670
 #: cinder/openstack/common/rpc/impl_qpid.py:458
 #, python-format
 msgid "Failed to publish message to topic '%(topic)s': %(err_str)s"
-msgstr "给topic '%(topic)s'发布消息失败：%(err_str)s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_qpid.py:352
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to connect to AMQP server: %(e)s. Sleeping %(delay)s seconds"
-msgstr "无法连接到AMQP服务器：%s "
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_qpid.py:358
 #, python-format
 msgid "Connected to AMQP server on %s"
-msgstr "连接到 %s 的AMQP服务器"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_qpid.py:371
 msgid "Re-established AMQP queues"
-msgstr "重建AMQP队列"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_qpid.py:431
 msgid "Error processing message.  Skipping it."
@@ -3172,9 +3140,9 @@ msgid "JSON serialization failed."
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:101
-#, fuzzy, python-format
+#, python-format
 msgid "Deserializing: %s"
-msgstr "Ext 描述: %s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:136
 #, python-format
@@ -3209,9 +3177,9 @@ msgid "You cannot send on this socket."
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:267
-#, fuzzy, python-format
+#, python-format
 msgid "Running func with context: %s"
-msgstr "未打包的上下文：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:305
 msgid "Sending reply"
@@ -3222,14 +3190,12 @@ msgid "RPC message did not include method."
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:371
-#, fuzzy
 msgid "Registering reactor"
-msgstr "正在注销虚拟机 %s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:383
-#, fuzzy
 msgid "In reactor registered"
-msgstr "没有虚拟机注册"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:387
 msgid "Consuming socket"
@@ -3268,9 +3234,9 @@ msgid "Could not create ZeroMQ receiver daemon. Socket may already be in use."
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:543
-#, fuzzy, python-format
+#, python-format
 msgid "CONSUMER RECEIVED DATA: %s"
-msgstr "给定数据：%s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:562
 msgid "ZMQ Envelope version unsupported or unknown."
@@ -3286,9 +3252,8 @@ msgid "Consumer is a zmq.%s"
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:649
-#, fuzzy
 msgid "Creating payload"
-msgstr "正在创建镜像"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:662
 msgid "Creating queue socket for reply waiter"
@@ -3303,9 +3268,9 @@ msgid "Cast sent; Waiting reply"
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:681
-#, fuzzy, python-format
+#, python-format
 msgid "Received message: %s"
-msgstr "已接收 %s"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:682
 msgid "Unpacking response"
@@ -3316,9 +3281,8 @@ msgid "Unsupported or unknown ZMQ envelope returned."
 msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:698
-#, fuzzy
 msgid "RPC Message Invalid."
-msgstr "请求无效。"
+msgstr ""
 
 #: cinder/openstack/common/rpc/impl_zmq.py:721
 #, python-format
@@ -3353,9 +3317,8 @@ msgid "Match not found by MatchMaker."
 msgstr ""
 
 #: cinder/openstack/common/rpc/matchmaker.py:89
-#, fuzzy
 msgid "Matchmaker does not implement registration or heartbeat."
-msgstr "xenapi.fake 没有 %s 的实现"
+msgstr ""
 
 #: cinder/openstack/common/rpc/matchmaker.py:239
 #, python-format
@@ -3374,12 +3337,11 @@ msgstr ""
 
 #: cinder/scheduler/chance.py:54 cinder/scheduler/simple.py:90
 msgid "Is the appropriate service running?"
-msgstr "正确的服务在运行吗？"
+msgstr ""
 
 #: cinder/scheduler/chance.py:64
-#, fuzzy
 msgid "Could not find another host"
-msgstr "无法找到另一个计算节点"
+msgstr ""
 
 #: cinder/scheduler/chance.py:98 cinder/scheduler/filter_scheduler.py:99
 #, python-format
@@ -3392,12 +3354,11 @@ msgstr ""
 
 #: cinder/scheduler/driver.py:93
 msgid "Must implement a fallback schedule"
-msgstr "必须实现一个回滚 schedule"
+msgstr ""
 
 #: cinder/scheduler/driver.py:97
-#, fuzzy
 msgid "Must implement schedule_create_volume"
-msgstr "必须实现一个回滚 schedule"
+msgstr ""
 
 #: cinder/scheduler/filter_scheduler.py:125
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
@@ -3426,14 +3387,14 @@ msgid "Choosing %s"
 msgstr ""
 
 #: cinder/scheduler/host_manager.py:240
-#, fuzzy, python-format
+#, python-format
 msgid "Ignoring %(service_name)s service update from %(host)s"
-msgstr "接收到 %(service_name)s 服务更新，来自 %(host)s。"
+msgstr ""
 
 #: cinder/scheduler/host_manager.py:245
 #, python-format
 msgid "Received %(service_name)s service update from %(host)s."
-msgstr "接收到 %(service_name)s 服务更新，来自 %(host)s。"
+msgstr ""
 
 #: cinder/scheduler/host_manager.py:270
 #, python-format
@@ -3452,12 +3413,12 @@ msgstr ""
 #: cinder/scheduler/manager.py:131
 #, python-format
 msgid "Failed to schedule_%(method)s: %(ex)s"
-msgstr "schedule_%(method)s 失败：%(ex)s"
+msgstr ""
 
 #: cinder/scheduler/scheduler_options.py:70
 #, python-format
 msgid "Could not stat scheduler options file %(filename)s: '%(e)s'"
-msgstr "无法统计调度器的选项文件 %(filename)s：“%(e)s”"
+msgstr ""
 
 #: cinder/scheduler/scheduler_options.py:80
 #, python-format
@@ -3466,12 +3427,11 @@ msgstr ""
 
 #: cinder/scheduler/simple.py:79
 msgid "Not enough allocatable volume gigabytes remaining"
-msgstr "卷没有足够可分配的空间"
+msgstr ""
 
 #: cinder/scheduler/filters/capacity_filter.py:37
-#, fuzzy
 msgid "Free capacity not set: volume node info collection broken."
-msgstr "未设置 VCPUs；假设 CPU 集合损坏了"
+msgstr ""
 
 #: cinder/scheduler/filters/capacity_filter.py:51
 #, python-format
@@ -3488,7 +3448,7 @@ msgstr ""
 #: cinder/tests/fake_driver.py:49 cinder/volume/driver.py:680
 #, python-format
 msgid "FAKE ISCSI: %s"
-msgstr "FAKE ISCSI: %s"
+msgstr ""
 
 #: cinder/tests/fake_driver.py:68 cinder/volume/driver.py:955
 #, python-format
@@ -3502,27 +3462,27 @@ msgstr ""
 #: cinder/tests/fake_driver.py:116 cinder/tests/fake_driver.py:121
 #, python-format
 msgid "LoggingVolumeDriver: %s"
-msgstr "LoggingVolumeDriver: %s"
+msgstr ""
 
 #: cinder/tests/fake_utils.py:72
 #, python-format
 msgid "Faking execution of cmd (subprocess): %s"
-msgstr "伪执行命令（子进程）：%s"
+msgstr ""
 
 #: cinder/tests/fake_utils.py:80
 #, python-format
 msgid "Faked command matched %s"
-msgstr "伪命令匹配 %s"
+msgstr ""
 
 #: cinder/tests/fake_utils.py:96
 #, python-format
 msgid "Faked command raised an exception %s"
-msgstr "伪命令引起异常 %s"
+msgstr ""
 
 #: cinder/tests/fake_utils.py:99
 #, python-format
 msgid "Reply to faked command is stdout='%(stdout)s' stderr='%(stderr)s'"
-msgstr "伪命令的标准输出stdout='%(stdout)s' 标准错误输出 stderr='%(stderr)s'"
+msgstr ""
 
 #: cinder/tests/test_misc.py:59
 #, python-format
@@ -3530,13 +3490,11 @@ msgid ""
 "The following migrations are missing a downgrade:\n"
 "\t%s"
 msgstr ""
-"下面的迁移缺少了降级：\n"
-"\t%s"
 
 #: cinder/tests/test_storwize_svc.py:243
-#, fuzzy, python-format
+#, python-format
 msgid "unrecognized argument %s"
-msgstr "无法识别的 read_deleted 取值”%s“"
+msgstr ""
 
 #: cinder/tests/test_storwize_svc.py:1254
 #, python-format
@@ -3544,12 +3502,12 @@ msgid "Run CLI command: %s"
 msgstr ""
 
 #: cinder/tests/test_storwize_svc.py:1257
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "CLI output:\n"
 " stdout: %(stdout)s\n"
 " stderr: %(stderr)s"
-msgstr "伪命令的标准输出stdout='%(stdout)s' 标准错误输出 stderr='%(stderr)s'"
+msgstr ""
 
 #: cinder/tests/test_storwize_svc.py:1262
 #, python-format
@@ -3562,22 +3520,21 @@ msgstr ""
 #: cinder/tests/test_volume_types.py:60
 #, python-format
 msgid "Given data: %s"
-msgstr "给定数据：%s"
+msgstr ""
 
 #: cinder/tests/test_volume_types.py:61
 #, python-format
 msgid "Result data: %s"
-msgstr "结果数据：%s"
+msgstr ""
 
 #: cinder/tests/api/contrib/test_backups.py:744
-#, fuzzy
 msgid "Invalid input"
-msgstr "无效的快照"
+msgstr ""
 
 #: cinder/tests/integrated/test_login.py:31
-#, fuzzy, python-format
+#, python-format
 msgid "volume: %s"
-msgstr "分离卷 %s"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:34
 #, python-format
@@ -3586,65 +3543,61 @@ msgid ""
 "Status Code: %(_status)s\n"
 "Body: %(_body)s"
 msgstr ""
-"%(message)s\n"
-"状态码: %(_status)s\n"
-"主体: %(_body)s"
 
 #: cinder/tests/integrated/api/client.py:44
 msgid "Authentication error"
-msgstr "认证错误"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:52
 msgid "Authorization error"
-msgstr "授权错误"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:60
 msgid "Item not found"
-msgstr "条目没有找到"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:102
 #, python-format
 msgid "Doing %(method)s on %(relative_url)s"
-msgstr "正在 %(relative_url)s 执行 %(method)s"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:105
 #, python-format
 msgid "Body: %s"
-msgstr "主体：%s"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:123
 #, python-format
 msgid "%(auth_uri)s => code %(http_status)s"
-msgstr "%(auth_uri)s => code %(http_status)s"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:150
 #, python-format
 msgid "%(relative_uri)s => code %(http_status)s"
-msgstr "%(relative_uri)s => code %(http_status)s"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:161
 msgid "Unexpected status code"
-msgstr "意外的状态码"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:168
 #, python-format
 msgid "Decoding JSON: %s"
-msgstr "解码JSON：%s"
+msgstr ""
 
 #: cinder/transfer/api.py:70
-#, fuzzy
 msgid "Volume in unexpected state"
-msgstr "意外的状态码"
+msgstr ""
 
 #: cinder/transfer/api.py:104 cinder/volume/api.py:368 cinder/volume/api.py:700
 #: cinder/volume/manager.py:395
 msgid "status must be available"
-msgstr "状态必须可用"
+msgstr ""
 
 #: cinder/transfer/api.py:121
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create transfer record for %s"
-msgstr "为ip： %s获取元数据失败"
+msgstr ""
 
 #: cinder/transfer/api.py:138
 #, python-format
@@ -3652,23 +3605,23 @@ msgid "Attempt to transfer %s with invalid auth key."
 msgstr ""
 
 #: cinder/transfer/api.py:158 cinder/volume/flows/create_volume.py:613
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr "%(pid)s 的配额超出，尝试创建 %(size)sG 的卷"
+msgstr ""
 
 #: cinder/transfer/api.py:167 cinder/volume/flows/create_volume.py:622
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d "
 "volumes already consumed)"
-msgstr "%(pid)s 的配额超出，尝试创建 %(size)sG 的卷"
+msgstr ""
 
 #: cinder/transfer/api.py:181
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to update quota donating volumetransfer id %s"
-msgstr "更新代理失败：%(resp)r"
+msgstr ""
 
 #: cinder/transfer/api.py:198
 #, python-format
@@ -3714,67 +3667,61 @@ msgstr ""
 #: cinder/volume/qos_specs.py:203 cinder/volume/volume_types.py:69
 #, python-format
 msgid "Searching by: %s"
-msgstr "搜索条件： %s"
+msgstr ""
 
 #: cinder/volume/api.py:371
 msgid "already attached"
-msgstr "已经附加"
+msgstr ""
 
 #: cinder/volume/api.py:378
 msgid "status must be in-use to detach"
 msgstr ""
 
 #: cinder/volume/api.py:389
-#, fuzzy
 msgid "Volume status must be available to reserve"
-msgstr "卷组状态必须可获取"
+msgstr ""
 
 #: cinder/volume/api.py:446
 msgid "must be available"
-msgstr "必须可用"
+msgstr ""
 
 #: cinder/volume/api.py:468
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
-msgstr "%(pid)s 的配额超出，尝试创建 %(size)sG 的卷"
+msgstr ""
 
 #: cinder/volume/api.py:477
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
-msgstr "%(pid)s 已经超过配额，试图运行 %(min_count)s 个实例"
+msgstr ""
 
 #: cinder/volume/api.py:528
-#, fuzzy
 msgid "Volume Snapshot status must be available or error"
-msgstr "卷组状态必须可获取"
+msgstr ""
 
 #: cinder/volume/api.py:556 cinder/volume/flows/create_volume.py:323
 msgid "Metadata property key blank"
 msgstr ""
 
 #: cinder/volume/api.py:560
-#, fuzzy
 msgid "Metadata property key greater than 255 characters"
-msgstr "安全组 %s 不能比255个字符更长。"
+msgstr ""
 
 #: cinder/volume/api.py:564
-#, fuzzy
 msgid "Metadata property value greater than 255 characters"
-msgstr "安全组 %s 不能比255个字符更长。"
+msgstr ""
 
 #: cinder/volume/api.py:649
-#, fuzzy
 msgid "Volume status must be available/in-use."
-msgstr "卷组状态必须可获取"
+msgstr ""
 
 #: cinder/volume/api.py:652
-#, fuzzy
 msgid "Volume status is in-use."
-msgstr "卷 %s：卷繁忙"
+msgstr ""
 
 #: cinder/volume/api.py:681
 msgid "Volume status must be available to extend."
@@ -3803,7 +3750,7 @@ msgstr ""
 #: cinder/volume/driver.py:144 cinder/volume/drivers/netapp/nfs.py:157
 #, python-format
 msgid "Recovering from a failed execute.  Try number %s"
-msgstr "从失败的执行中恢复。尝试编号 %s"
+msgstr ""
 
 #: cinder/volume/driver.py:237
 #, python-format
@@ -3851,17 +3798,17 @@ msgstr ""
 
 #: cinder/volume/driver.py:459 cinder/volume/drivers/emc/emc_smis_iscsi.py:115
 msgid "ISCSI provider_location not stored, using discovery"
-msgstr "采用discovery，ISCSI provider_location 没有存储"
+msgstr ""
 
 #: cinder/volume/driver.py:507
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find iSCSI export for volume %s"
-msgstr "无法为卷 %s 找到 iSCSI 导出"
+msgstr ""
 
 #: cinder/volume/driver.py:511 cinder/volume/drivers/emc/emc_smis_iscsi.py:158
 #, python-format
 msgid "ISCSI Discovery: Found %s"
-msgstr "ISCSI Discovery：找到 %s"
+msgstr ""
 
 #: cinder/volume/driver.py:607
 msgid "The volume driver requires the iSCSI initiator name in the connector."
@@ -3916,9 +3863,8 @@ msgstr ""
 
 #: cinder/volume/driver.py:925 cinder/volume/manager.py:677
 #: cinder/volume/drivers/lvm.py:333 cinder/volume/drivers/lvm.py:860
-#, fuzzy
 msgid "Updating volume status"
-msgstr "更新主机状态"
+msgstr ""
 
 #: cinder/volume/driver.py:993
 msgid "Driver must implement initialize_connection"
@@ -3937,7 +3883,7 @@ msgstr ""
 #: cinder/volume/manager.py:155
 #, python-format
 msgid "Re-exporting %s volumes"
-msgstr "重新导出卷%s"
+msgstr ""
 
 #: cinder/volume/manager.py:160
 #, python-format
@@ -3947,16 +3893,16 @@ msgstr ""
 #: cinder/volume/manager.py:165
 #, python-format
 msgid "volume %s: skipping export"
-msgstr "卷 %s：跳过导出"
+msgstr ""
 
 #: cinder/volume/manager.py:167
 msgid "Resuming any in progress delete operations"
 msgstr ""
 
 #: cinder/volume/manager.py:170
-#, fuzzy, python-format
+#, python-format
 msgid "Resuming delete on volume: %s"
-msgstr "正在删除volumeID：%s "
+msgstr ""
 
 #: cinder/volume/manager.py:195
 msgid "Manager volume flow not retrieved"
@@ -3969,17 +3915,16 @@ msgstr ""
 #: cinder/volume/manager.py:215 cinder/volume/manager.py:228
 #, python-format
 msgid "volume %s: deleting"
-msgstr "卷%s：删除中"
+msgstr ""
 
 #: cinder/volume/manager.py:221
-#, fuzzy
 msgid "volume is not local to this node"
-msgstr "卷不属于这个节点"
+msgstr ""
 
 #: cinder/volume/manager.py:226
 #, python-format
 msgid "volume %s: removing export"
-msgstr "卷%s：正在移除导出"
+msgstr ""
 
 #: cinder/volume/manager.py:231
 #, python-format
@@ -3987,9 +3932,8 @@ msgid "Cannot delete volume %s: volume is busy"
 msgstr ""
 
 #: cinder/volume/manager.py:259
-#, fuzzy
 msgid "Failed to update usages deleting volume"
-msgstr "更新代理失败：%(resp)r"
+msgstr ""
 
 #: cinder/volume/manager.py:264
 #, python-format
@@ -4004,12 +3948,12 @@ msgstr ""
 #: cinder/volume/manager.py:271
 #, python-format
 msgid "volume %s: deleted successfully"
-msgstr "卷%s：删除成功"
+msgstr ""
 
 #: cinder/volume/manager.py:286
 #, python-format
 msgid "snapshot %s: creating"
-msgstr "快照 %s：正在创建"
+msgstr ""
 
 #: cinder/volume/manager.py:291
 #, python-format
@@ -4026,12 +3970,12 @@ msgstr ""
 #: cinder/volume/manager.py:320
 #, python-format
 msgid "snapshot %s: created successfully"
-msgstr "快照 %s：创建成功"
+msgstr ""
 
 #: cinder/volume/manager.py:329 cinder/volume/manager.py:334
 #, python-format
 msgid "snapshot %s: deleting"
-msgstr "快照 %s：正在删除"
+msgstr ""
 
 #: cinder/volume/manager.py:337
 #, python-format
@@ -4045,7 +3989,7 @@ msgstr ""
 #: cinder/volume/manager.py:370
 #, python-format
 msgid "snapshot %s: deleted successfully"
-msgstr "快照 %s：删除成功"
+msgstr ""
 
 #: cinder/volume/manager.py:388
 msgid "being attached by another instance"
@@ -4056,9 +4000,9 @@ msgid "being attached by another host"
 msgstr ""
 
 #: cinder/volume/manager.py:474
-#, fuzzy, python-format
+#, python-format
 msgid "Uploaded volume %(volume_id)s to image (%(image_id)s) successfully"
-msgstr "把卷 %(volume_id)s 附加到实例 %(instance_id)s 上位置在 %(device)s"
+msgstr ""
 
 #: cinder/volume/manager.py:581
 msgid "failed to create new_volume on destination host"
@@ -4090,12 +4034,12 @@ msgstr ""
 
 #: cinder/volume/manager.py:690
 msgid "Clear capabilities"
-msgstr "清理能力"
+msgstr ""
 
 #: cinder/volume/manager.py:694
 #, python-format
 msgid "Notification {%s} received"
-msgstr "收到通知 {%s}"
+msgstr ""
 
 #: cinder/volume/manager.py:732
 #, python-format
@@ -4130,12 +4074,12 @@ msgstr ""
 #: cinder/volume/volume_types.py:45
 #, python-format
 msgid "DB error: %s"
-msgstr "数据库错误：%s"
+msgstr ""
 
 #: cinder/volume/qos_specs.py:124 cinder/volume/qos_specs.py:235
 #: cinder/volume/volume_types.py:54 cinder/volume/volume_types.py:101
 msgid "id cannot be None"
-msgstr "id不能是None"
+msgstr ""
 
 #: cinder/volume/qos_specs.py:145
 #, python-format
@@ -4159,7 +4103,7 @@ msgstr ""
 
 #: cinder/volume/qos_specs.py:247 cinder/volume/volume_types.py:113
 msgid "name cannot be None"
-msgstr "name不能是None"
+msgstr ""
 
 #: cinder/volume/utils.py:156
 #, python-format
@@ -4178,26 +4122,26 @@ msgstr ""
 #: cinder/volume/drivers/block_device.py:132
 #: cinder/volume/drivers/block_device.py:143 cinder/volume/drivers/lvm.py:571
 #: cinder/volume/drivers/lvm.py:585
-#, fuzzy, python-format
+#, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
-msgstr "跳过remove_export。没有为卷提供iscsi_target：%d"
+msgstr ""
 
 #: cinder/volume/drivers/block_device.py:157 cinder/volume/drivers/lvm.py:603
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume:"
 " %s"
-msgstr "跳过remove_export。没有为卷导出iscsi_target：%d"
+msgstr ""
 
 #: cinder/volume/drivers/block_device.py:182 cinder/volume/drivers/lvm.py:400
-#, fuzzy, python-format
+#, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
-msgstr "跳过ensure_export。没有为卷提供iscsi_target：%d"
+msgstr ""
 
 #: cinder/volume/drivers/block_device.py:199 cinder/volume/drivers/lvm.py:421
-#, fuzzy, python-format
+#, python-format
 msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
-msgstr "跳过ensure_export。没有为卷提供iscsi_target：%d"
+msgstr ""
 
 #: cinder/volume/drivers/block_device.py:271 cinder/volume/drivers/lvm.py:206
 #, python-format
@@ -4210,9 +4154,9 @@ msgid "Error unrecognized volume_clear option: %s"
 msgstr ""
 
 #: cinder/volume/drivers/block_device.py:306 cinder/volume/drivers/lvm.py:275
-#, fuzzy, python-format
+#, python-format
 msgid "Creating clone of volume: %s"
-msgstr "创建卷 %s 的快照"
+msgstr ""
 
 #: cinder/volume/drivers/block_device.py:373
 msgid "No free disk"
@@ -4313,9 +4257,9 @@ msgid "Volume status must be 'available'."
 msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:177 cinder/volume/drivers/nfs.py:100
-#, fuzzy, python-format
+#, python-format
 msgid "casted to %s"
-msgstr "嵌套(调用)返回 %s"
+msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:190
 msgid "Snapshot status must be \"available\" to clone."
@@ -4415,9 +4359,9 @@ msgid "file already exists at %s"
 msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:764 cinder/volume/drivers/nfs.py:137
-#, fuzzy, python-format
+#, python-format
 msgid "Exception during mounting %s"
-msgstr "加载扩展发生异常：%s"
+msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:766
 #, python-format
@@ -4512,9 +4456,9 @@ msgid "%s"
 msgstr ""
 
 #: cinder/volume/drivers/lvm.py:487
-#, fuzzy, python-format
+#, python-format
 msgid "Symbolic link %s not found"
-msgstr "没有找到标记 [%s]"
+msgstr ""
 
 #: cinder/volume/drivers/lvm.py:744
 #, python-format
@@ -4544,9 +4488,9 @@ msgid " but size is now %d"
 msgstr ""
 
 #: cinder/volume/drivers/nfs.py:338
-#, fuzzy, python-format
+#, python-format
 msgid "%s is already mounted"
-msgstr "镜像已经挂载"
+msgstr ""
 
 #: cinder/volume/drivers/nfs.py:380
 #, python-format
@@ -4593,18 +4537,17 @@ msgid "flush() not supported in this version of librbd"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:203
-#, fuzzy, python-format
+#, python-format
 msgid "error opening rbd image %s"
-msgstr "启动xvp发生错误：%s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:255
 msgid "rados and rbd python libraries not found"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:261
-#, fuzzy
 msgid "error connecting to ceph cluster"
-msgstr "正在连接 libvirt：%s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:337 cinder/volume/drivers/sheepdog.py:177
 msgid "error refreshing volume stats"
@@ -4621,9 +4564,9 @@ msgid "cloning %(pool)s/%(img)s@%(snap)s to %(dst)s"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:476
-#, fuzzy, python-format
+#, python-format
 msgid "connection data: %s"
-msgstr "给定数据：%s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:485
 msgid "Not stored in rbd"
@@ -4634,14 +4577,13 @@ msgid "Blank components"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:492
-#, fuzzy
 msgid "Not an rbd snapshot"
-msgstr "无效的快照"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:504
-#, fuzzy, python-format
+#, python-format
 msgid "not cloneable: %s"
-msgstr "Ext name: %s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:508
 #, python-format
@@ -4649,9 +4591,9 @@ msgid "%s is in a different ceph cluster"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:520
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to open image %(loc)s: %(err)s"
-msgstr "无法找到 %s 卷"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:610 cinder/volume/drivers/sheepdog.py:194
 #, python-format
@@ -4687,16 +4629,16 @@ msgstr ""
 #: cinder/volume/drivers/sheepdog.py:58
 #, python-format
 msgid "Sheepdog is not working: %s"
-msgstr "Sheepdog 没有工作：%s"
+msgstr ""
 
 #: cinder/volume/drivers/sheepdog.py:63
 msgid "Sheepdog is not working"
-msgstr "Sheepdog 没有工作"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:142
 #, python-format
 msgid "Payload for SolidFire API call: %s"
-msgstr "SolidFire API 调用的参数：%s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:149
 #, python-format
@@ -4725,12 +4667,12 @@ msgstr ""
 #: cinder/volume/drivers/solidfire.py:175
 #, python-format
 msgid "Call to json.loads() raised an exception: %s"
-msgstr "调用 json.loads() 引起异常：%s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:181
 #, python-format
 msgid "Results of SolidFire API call: %s"
-msgstr "SolidFire API调用结果：%s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:185
 #, python-format
@@ -4750,19 +4692,19 @@ msgstr ""
 #: cinder/volume/drivers/solidfire.py:200
 #: cinder/volume/drivers/solidfire.py:267
 #: cinder/volume/drivers/solidfire.py:356
-#, fuzzy, python-format
+#, python-format
 msgid "API response: %s"
-msgstr "响应 %s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:220
 #, python-format
 msgid "Found solidfire account: %s"
-msgstr "找到solidfire帐户：%s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:249
 #, python-format
 msgid "solidfire account: %s does not exist, create it..."
-msgstr "solidfire帐户：%s 不存在，正在创建..."
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:311
 #, python-format
@@ -4770,9 +4712,8 @@ msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:388
-#, fuzzy
 msgid "Failed to get model update from clone"
-msgstr "为ip： %s获取元数据失败"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:400
 #, python-format
@@ -4806,7 +4747,7 @@ msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:530
 msgid "Enter SolidFire delete_volume..."
-msgstr "进入SolidFire delete_volume..."
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:534
 #, python-format
@@ -4832,15 +4773,15 @@ msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:555
 msgid "Leaving SolidFire delete_volume"
-msgstr "离开SolidFire delete_volume"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:559
 msgid "Executing SolidFire ensure_export..."
-msgstr "正在执行SolidFire ensure_export..."
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:567
 msgid "Executing SolidFire create_export..."
-msgstr "正在执行SolidFire create_export..."
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:618
 msgid "Entering SolidFire extend_volume..."
@@ -4851,14 +4792,12 @@ msgid "Leaving SolidFire extend_volume"
 msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:645
-#, fuzzy
 msgid "Updating cluster status info"
-msgstr "更新主机状态"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:653
-#, fuzzy
 msgid "Failed to get updated stats"
-msgstr "无法得到最新的状态：%s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:683
 #: cinder/volume/drivers/solidfire.py:708
@@ -4879,9 +4818,9 @@ msgid "enter: do_setup"
 msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:199
-#, fuzzy, python-format
+#, python-format
 msgid "pool %s doesn't exist"
-msgstr "卷组 %s 不存在"
+msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:215
 msgid "Failed to get license information."
@@ -4910,9 +4849,9 @@ msgstr ""
 #: cinder/volume/drivers/netapp/iscsi.py:125
 #: cinder/volume/drivers/netapp/nfs.py:224
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:143
-#, fuzzy, python-format
+#, python-format
 msgid "%s is not set"
-msgstr "租户ID没有设"
+msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:338
 msgid ""
@@ -4972,14 +4911,14 @@ msgid "_create_host: No connector ports"
 msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:590
-#, fuzzy, python-format
+#, python-format
 msgid "leave: _create_host: host %(host)s - %(host_name)s"
-msgstr "把主机 %(host)s 设置为 %(state)s。"
+msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:613
-#, fuzzy, python-format
+#, python-format
 msgid "enter: _map_vol_to_host: volume %(volume_name)s to host %(host_name)s"
-msgstr "正在删除有快照的卷  %(volume_name)s"
+msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:643
 msgid ""
@@ -4988,9 +4927,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:656
-#, fuzzy, python-format
+#, python-format
 msgid "volume %s mapping to multi host"
-msgstr "卷 %s：跳过导出"
+msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:662
 #, python-format
@@ -5165,9 +5104,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:1111
-#, fuzzy, python-format
+#, python-format
 msgid "_prepare_fc_map: %s"
-msgstr "_create: %s"
+msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:1118
 #, python-format
@@ -5331,18 +5270,13 @@ msgid "enter: _execute_command_and_parse_attributes:  command %s"
 msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:1532
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "CLI Exception output:\n"
 " command: %(cmd)s\n"
 " stdout: %(out)s\n"
 " stderr: %(err)s"
 msgstr ""
-"%(description)s\n"
-"命令：%(cmd)s\n"
-"退出代码：%(exit_code)s\n"
-"标准输出：%(stdout)r\n"
-"标准错误输出：%(stderr)r"
 
 #: cinder/volume/drivers/storwize_svc.py:1549
 #, python-format
@@ -5384,9 +5318,9 @@ msgid "Did not find expected column in %(fun)s: %(hdr)s"
 msgstr ""
 
 #: cinder/volume/drivers/windows.py:141
-#, fuzzy, python-format
+#, python-format
 msgid "Creating folder %s "
-msgstr "正在创建存储库 %s"
+msgstr ""
 
 #: cinder/volume/drivers/windows.py:206
 #, python-format
@@ -5394,24 +5328,24 @@ msgid "Ignored target creation error \"%s\" while ensuring export"
 msgstr ""
 
 #: cinder/volume/drivers/windows.py:212
-#, fuzzy, python-format
+#, python-format
 msgid "Disk not found: %s"
-msgstr "没有找到主机"
+msgstr ""
 
 #: cinder/volume/drivers/zadara.py:218
-#, fuzzy, python-format
+#, python-format
 msgid "Sending %(method)s to %(url)s. Body \"%(body)s\""
-msgstr "把“%(method)s”投放在 %(topic)s \"%(host)s\""
+msgstr ""
 
 #: cinder/volume/drivers/zadara.py:240
-#, fuzzy, python-format
+#, python-format
 msgid "Operation completed. %(data)s"
-msgstr "确认完成"
+msgstr ""
 
 #: cinder/volume/drivers/zadara.py:350
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(name)s could not be found. It might be already deleted"
-msgstr "卷 %(volume_id)s 没有找到。"
+msgstr ""
 
 #: cinder/volume/drivers/zadara.py:447
 #, python-format
@@ -5425,14 +5359,13 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:77
-#, fuzzy
 msgid "Entering create_volume."
-msgstr "进入SolidFire create_volume..."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:81
-#, fuzzy, python-format
+#, python-format
 msgid "Create Volume: %(volume)s  Size: %(size)lu"
-msgstr "卷%(vol_name)s:创建大小为%(vol_size)s的逻辑卷"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:89
 #, python-format
@@ -5479,9 +5412,8 @@ msgid "Leaving create_volume: %(volumename)s  Return code: %(rc)lu"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:150
-#, fuzzy
 msgid "Entering create_volume_from_snapshot."
-msgstr "从快照 %s 创建卷"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:155
 #, python-format
@@ -5568,9 +5500,8 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:285
-#, fuzzy
 msgid "Entering create_cloned_volume."
-msgstr "进入SolidFire create_volume..."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:290
 #, python-format
@@ -5648,14 +5579,13 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:409
-#, fuzzy
 msgid "Entering delete_volume."
-msgstr "进入SolidFire delete_volume..."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:411
-#, fuzzy, python-format
+#, python-format
 msgid "Delete Volume: %(volume)s"
-msgstr "删除id为 %s 的卷"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:418
 #, python-format
@@ -5698,9 +5628,9 @@ msgid "Entering create_snapshot."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:474
-#, fuzzy, python-format
+#, python-format
 msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "创建卷 %s 的快照"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:486
 #, python-format
@@ -5730,11 +5660,11 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:525
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Error Create Snapshot: %(snapshot)s Volume: %(volume)s Error: "
 "%(errordesc)s"
-msgstr "创建卷 %s 的快照"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:533
 #, python-format
@@ -5748,9 +5678,9 @@ msgid "Entering delete_snapshot."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:543
-#, fuzzy, python-format
+#, python-format
 msgid "Delete Snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "创建卷 %s 的快照"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:549
 #, python-format
@@ -5796,14 +5726,14 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:619
-#, fuzzy, python-format
+#, python-format
 msgid "Create export: %(volume)s"
-msgstr "重新导出卷%s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:624
-#, fuzzy, python-format
+#, python-format
 msgid "create_export: Volume: %(volume)s  Device ID: %(device_id)s"
-msgstr "把卷 %(volume_id)s 附加到实例 %(server_id)s 的 %(device)s 设备上"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:646
 #, python-format
@@ -5818,14 +5748,14 @@ msgid "ExposePaths parameter LunMaskingSCSIProtocolController: %(lunmasking)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:672
-#, fuzzy, python-format
+#, python-format
 msgid "Error mapping volume %s."
-msgstr "启动xvp发生错误：%s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:676
-#, fuzzy, python-format
+#, python-format
 msgid "ExposePaths for volume %s completed successfully."
-msgstr "卷%s：删除成功"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:692
 #, python-format
@@ -5840,9 +5770,9 @@ msgid "Error unmapping volume %s."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:709
-#, fuzzy, python-format
+#, python-format
 msgid "HidePaths for volume %s completed successfully."
-msgstr "卷%s：删除成功"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:722
 #, python-format
@@ -5857,9 +5787,9 @@ msgid "Error mapping volume %(vol)s. %(error)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:742
-#, fuzzy, python-format
+#, python-format
 msgid "AddMembers for volume %s completed successfully."
-msgstr "卷%s：删除成功"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:755
 #, python-format
@@ -5874,14 +5804,14 @@ msgid "Error unmapping volume %(vol)s. %(error)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:773
-#, fuzzy, python-format
+#, python-format
 msgid "RemoveMembers for volume %s completed successfully."
-msgstr "卷%s：删除成功"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:779
-#, fuzzy, python-format
+#, python-format
 msgid "Map volume: %(volume)s"
-msgstr "没有id为 %(volume_id)s 的 sm_volume"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:788
 #: cinder/volume/drivers/emc/emc_smis_common.py:818
@@ -5890,9 +5820,9 @@ msgid "Cannot find Controller Configuration Service for storage system %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:802
-#, fuzzy, python-format
+#, python-format
 msgid "Unmap volume: %(volume)s"
-msgstr "没有id为 %(volume_id)s 的 sm_volume"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:808
 #, python-format
@@ -5905,9 +5835,9 @@ msgid "Initialize connection: %(volume)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:838
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %s is already mapped."
-msgstr "rootfs 已经被移除了"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:850
 #, python-format
@@ -5915,14 +5845,13 @@ msgid "Terminate connection: %(volume)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:882
-#, fuzzy, python-format
+#, python-format
 msgid "Found Storage Type: %s"
-msgstr "找到solidfire帐户：%s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:885
-#, fuzzy
 msgid "Storage type not found."
-msgstr "镜像没有找到。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:901
 #, python-format
@@ -5930,14 +5859,12 @@ msgid "Found Masking View: %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:904
-#, fuzzy
 msgid "Masking View not found."
-msgstr "镜像没有找到。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:926
-#, fuzzy
 msgid "Ecom user not found."
-msgstr "没有找到服务器。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:946
 #, python-format
@@ -5945,14 +5872,12 @@ msgid "Ecom IP: %(ecomIp)s Port: %(ecomPort)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:950
-#, fuzzy
 msgid "Ecom server not found."
-msgstr "没有找到服务器。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:957
-#, fuzzy
 msgid "Cannot connect to ECOM server"
-msgstr "连接到 %s 的AMQP服务器"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:969
 #, python-format
@@ -5975,9 +5900,9 @@ msgid "Found Storage Hardware ID Management Service: %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1052
-#, fuzzy, python-format
+#, python-format
 msgid "Pool %(storage_type)s is not found."
-msgstr "角色 %(role_id)s 没有找到。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1058
 #, python-format
@@ -5995,14 +5920,14 @@ msgid "Pool name: %(poolname)s  System name: %(systemname)s."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1112
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(volumename)s not found on the array."
-msgstr "卷 %(volume_id)s 没有找到。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1115
-#, fuzzy, python-format
+#, python-format
 msgid "Volume name: %(volumename)s  Volume instance: %(vol_instance)s."
-msgstr "没有为实例 %(instance_id)s 找到卷。"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1128
 #, python-format
@@ -6024,9 +5949,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1182
-#, fuzzy, python-format
+#, python-format
 msgid "Error finding %s."
-msgstr "在存储库 %s 寻找VDIs出错"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1186
 #, python-format
@@ -6138,17 +6063,17 @@ msgstr ""
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:154
 #, python-format
 msgid "Could not find iSCSI export  for volume %s"
-msgstr "无法为卷 %s 找到 iSCSI 导出"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:163
-#, fuzzy, python-format
+#, python-format
 msgid "Cannot find device number for volume %s"
-msgstr "无法为卷 %s 找到 iSCSI 导出"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:193
-#, fuzzy, python-format
+#, python-format
 msgid "Found iSCSI endpoint: %s"
-msgstr "引起异常 NotFound: %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:200
 #, python-format
@@ -6176,9 +6101,9 @@ msgid "%(element)s: %(val)s"
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:103 cinder/volume/drivers/hds/hds.py:105
-#, fuzzy, python-format
+#, python-format
 msgid "XML exception reading parameter: %s"
-msgstr "加载扩展发生异常：%s"
+msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:178
 #, python-format
@@ -6191,9 +6116,9 @@ msgid "No configuration found for service: %s"
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:250
-#, fuzzy, python-format
+#, python-format
 msgid "HDP not found: %s"
-msgstr "没有找到主机"
+msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:289
 #, python-format
@@ -6216,9 +6141,9 @@ msgid "LUN %(lun)s extended to %(size)s GB."
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:395
-#, fuzzy, python-format
+#, python-format
 msgid "delete lun %(lun)s on %(name)s"
-msgstr "删除id为 %s 的卷"
+msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:480
 #, python-format
@@ -6231,9 +6156,9 @@ msgid "LUN %(lun)s of size %(size)s MB is created as snapshot."
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:522
-#, fuzzy, python-format
+#, python-format
 msgid "LUN %s is deleted."
-msgstr "rootfs 已经被移除了"
+msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:117
 msgid "read timed out"
@@ -6272,9 +6197,9 @@ msgid "create_volume:volume name: %s."
 msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:200
-#, fuzzy, python-format
+#, python-format
 msgid "delete_volume: volume name: %s."
-msgstr "删除id为 %s 的卷"
+msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:207
 #, python-format
@@ -6282,9 +6207,9 @@ msgid "delete_volume:No need to delete volume. Volume %(name)s does not exist."
 msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:216
-#, fuzzy, python-format
+#, python-format
 msgid "create_export: volume name:%s"
-msgstr "创建卷 %s 的快照"
+msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:220
 #, python-format
@@ -6419,9 +6344,9 @@ msgid "_check_conf_file: %s"
 msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:590
-#, fuzzy, python-format
+#, python-format
 msgid "_read_xml:%s"
-msgstr "_create: %s"
+msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:618
 #, python-format
@@ -6472,9 +6397,9 @@ msgid "CLI command:%s"
 msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:837
-#, fuzzy, python-format
+#, python-format
 msgid "_execute_cli:%s"
-msgstr "_delete: %s"
+msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_iscsi.py:844
 #, python-format
@@ -6677,18 +6602,18 @@ msgid "No metadata property %(prop)s defined for the LUN %(name)s"
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:108
-#, fuzzy, python-format
+#, python-format
 msgid "Using NetApp filer: %s"
-msgstr "正在删除基文件：%s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:151
 msgid "Success getting LUN list from server"
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:166
-#, fuzzy, python-format
+#, python-format
 msgid "Created LUN with name %s"
-msgstr "已经创建路径为 %s 的目录"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:175
 #, python-format
@@ -6696,9 +6621,9 @@ msgid "No entry in LUN table for volume/snapshot %(name)s."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:184
-#, fuzzy, python-format
+#, python-format
 msgid "Destroyed LUN %s"
-msgstr "嵌套(调用)返回 %s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:219
 #, python-format
@@ -6713,24 +6638,24 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:230
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get LUN target details for the LUN %s"
-msgstr "为ip： %s获取元数据失败"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:241
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get target portal for the LUN %s"
-msgstr "为ip： %s获取元数据失败"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:244
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get target IQN for the LUN %s"
-msgstr "为ip： %s获取元数据失败"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:281
-#, fuzzy, python-format
+#, python-format
 msgid "Snapshot %s deletion successful"
-msgstr "快照 %s：删除成功"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:292
 #: cinder/volume/drivers/netapp/nfs.py:81
@@ -6746,9 +6671,9 @@ msgid "Unmapped LUN %(name)s from the initiator %(initiator_name)s"
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:330
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get vol with required size for volume: %s"
-msgstr "为ip： %s获取元数据失败"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:406
 #, python-format
@@ -6765,9 +6690,9 @@ msgid "Object is not a NetApp LUN."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:521
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find attribute for LUN named %s"
-msgstr "无法为卷 %s 找到 iSCSI 导出"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:534
 #, python-format
@@ -6860,9 +6785,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:64
-#, fuzzy, python-format
+#, python-format
 msgid "Sending JSON data: %s"
-msgstr "给定数据：%s"
+msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:69
 #, python-format
@@ -6874,19 +6799,18 @@ msgid "No headers in server response"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:76
-#, fuzzy
 msgid "Bad response from server"
-msgstr "来自SolidFire API的错误响应"
+msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:79
-#, fuzzy, python-format
+#, python-format
 msgid "Got response: %s"
-msgstr "响应 %s"
+msgstr ""
 
 #: cinder/volume/drivers/nexenta/volume.py:79
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %s does not exist in Nexenta SA"
-msgstr "卷组 %s 不存在"
+msgstr ""
 
 #: cinder/volume/drivers/nexenta/volume.py:116
 #, python-format
@@ -6959,46 +6883,46 @@ msgstr ""
 #: cinder/volume/drivers/san/hp_lefthand.py:75
 #, python-format
 msgid "CLIQ command returned %s"
-msgstr "返回CLIQ命令 %s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp_lefthand.py:81
 #, python-format
 msgid "Malformed response to CLIQ command %(verb)s %(cliq_args)s. Result=%(out)s"
-msgstr "CLIQ命令 %(verb)s %(cliq_args)s 错误格式的响应。Result=%(out)s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp_lefthand.py:89
 #, python-format
 msgid "Error running CLIQ command %(verb)s %(cliq_args)s.  Result=%(out)s"
-msgstr "在运行CLIQ命令 %(verb)s %(cliq_args)s 时发生错误。输出结果 Result=%(out)s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp_lefthand.py:119
 #, python-format
 msgid ""
 "Unexpected number of virtual ips for cluster  %(cluster_name)s. "
 "Result=%(_xml)s"
-msgstr "集群 %(cluster_name)s 有意外数量的虚拟 ip 地址。输出结果 Result=%(_xml)s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp_lefthand.py:172
 #, python-format
 msgid "Volume info: %(volume_name)s => %(volume_attributes)s"
-msgstr "卷信息：%(volume_name)s => %(volume_attributes)s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp_lefthand.py:237
 msgid "local_path not supported"
-msgstr "不支持local_path"
+msgstr ""
 
 #: cinder/volume/drivers/san/san.py:151
-#, fuzzy, python-format
+#, python-format
 msgid "Error running SSH command: %s"
-msgstr "握手出错：%s"
+msgstr ""
 
 #: cinder/volume/drivers/san/san.py:171
 msgid "Specify san_password or san_private_key"
-msgstr "指定san_password或者san_private_key"
+msgstr ""
 
 #: cinder/volume/drivers/san/san.py:175
 msgid "san_ip must be set"
-msgstr "san_ip必须设置"
+msgstr ""
 
 #: cinder/volume/drivers/san/solaris.py:79
 #, python-format
@@ -7008,7 +6932,7 @@ msgstr ""
 #: cinder/volume/drivers/san/solaris.py:174
 #, python-format
 msgid "LUID not found for %(zfs_poolname)s. Output=%(out)s"
-msgstr "没有为 %(zfs_poolname)s 找到LUID。Output=%(out)s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:136
 msgid ""
@@ -7042,9 +6966,9 @@ msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:357
-#, fuzzy, python-format
+#, python-format
 msgid "Error running ssh command: %s"
-msgstr "握手出错：%s"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:676
 #, python-format
@@ -7059,9 +6983,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:793
-#, fuzzy, python-format
+#, python-format
 msgid "Volume (%s) already exists on array"
-msgstr "安全组 %s 已经存在"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_iscsi.py:107
 #, python-format
@@ -7382,299 +7306,4 @@ msgstr ""
 #: cinder/volume/flows/create_volume.py:1732
 msgid "Retry info not present, will not reschedule"
 msgstr ""
-
-#~ msgid "Error retrieving volume status: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get storage pool data"
-#~ msgstr ""
-
-#~ msgid "Cannot find any Fibre Channel HBAs"
-#~ msgstr ""
-
-#~ msgid "Volume status must be available or error"
-#~ msgstr "卷组状态必须可获取"
-
-#~ msgid "No backend config with id %s"
-#~ msgstr ""
-
-#~ msgid "No sm_flavor called %s"
-#~ msgstr ""
-
-#~ msgid "No sm_volume with id %s"
-#~ msgstr ""
-
-#~ msgid "Error: %s"
-#~ msgstr "数据库错误：%s"
-
-#~ msgid "Unexpected state while cloning %s"
-#~ msgstr "运行命令时出现意外错误"
-
-#~ msgid "iSCSI device not found at %s"
-#~ msgstr "在 %s 未找到iSCSI设备"
-
-#~ msgid "Fibre Channel device not found."
-#~ msgstr ""
-
-#~ msgid "Uncaught exception"
-#~ msgstr "得到异常：%s"
-
-#~ msgid "Out reactor registered"
-#~ msgstr ""
-
-#~ msgid "CONSUMER GOT %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT SUCCEEDED %(data)s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT QUEUED %(data)s"
-#~ msgstr ""
-
-#~ msgid "Could not create IPC directory %s"
-#~ msgstr "移除容器失败：%s"
-
-#~ msgid "ROUTER RELAY-OUT %(data)s"
-#~ msgstr ""
-
-#~ msgid "May specify only one of snapshot, imageRef or source volume"
-#~ msgstr ""
-
-#~ msgid "Volume size cannot be lesser than the Snapshot size"
-#~ msgstr ""
-
-#~ msgid "Unable to clone volumes that are in an error state"
-#~ msgstr ""
-
-#~ msgid "Clones currently must be >= original volume size."
-#~ msgstr ""
-
-#~ msgid "Volume size '%s' must be an integer and greater than 0"
-#~ msgstr ""
-
-#~ msgid "Size of specified image is larger than volume size."
-#~ msgstr ""
-
-#~ msgid "Image minDisk size is larger than the volume size."
-#~ msgstr ""
-
-#~ msgid ""
-#~ msgstr ""
-
-#~ msgid "Availability zone is invalid"
-#~ msgstr ""
-
-#~ msgid "volume %(vol_name)s: creating lv of size %(vol_size)sG"
-#~ msgstr "卷%(vol_name)s:创建大小为%(vol_size)s的逻辑卷"
-
-#~ msgid "volume %s: creating from snapshot"
-#~ msgstr "卷%s：正在创建导出"
-
-#~ msgid "volume %s: creating from existing volume"
-#~ msgstr "卷%s：正在创建导出"
-
-#~ msgid "volume %s: creating from image"
-#~ msgstr "卷 %s: 创建中"
-
-#~ msgid "volume %s: creating"
-#~ msgstr "卷 %s: 创建中"
-
-#~ msgid "Setting volume: %s status to error after failed image copy."
-#~ msgstr ""
-
-#~ msgid "Unexpected Error: "
-#~ msgstr ""
-
-#~ msgid "volume %s: creating export"
-#~ msgstr "卷%s：正在创建导出"
-
-#~ msgid "volume %s: create failed"
-#~ msgstr "卷 %s: 创建中"
-
-#~ msgid "volume %s: created successfully"
-#~ msgstr "卷%s：创建成功"
-
-#~ msgid "volume %s: Error trying to reschedule create"
-#~ msgstr ""
-
-#~ msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
-#~ msgstr ""
-
-#~ msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
-#~ msgstr "没有为卷 %(volume_id)s 找到目标id。"
-
-#~ msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
-#~ msgstr ""
-
-#~ msgid "Array Mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "LUN %(lun)s of size %(size)s MB is created."
-#~ msgstr ""
-
-#~ msgid "Array mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "Failed to attach iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "Fetching %s"
-#~ msgstr "正在抓取 %s"
-
-#~ msgid "Link Local address is not found.:%s"
-#~ msgstr "本地IP地址没有找到：%s"
-
-#~ msgid "Couldn't get Link Local IP of %(interface)s :%(ex)s"
-#~ msgstr "无法连接到 %(interface)s 的本地IP：%(ex)s"
-
-#~ msgid "Started %(name)s on %(_host)s:%(_port)s"
-#~ msgstr "启动%(name)s 位置在 %(host)s:%(port)s"
-
-#~ msgid "Unable to find a Fibre Channel volume device"
-#~ msgstr ""
-
-#~ msgid "Volume device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Unable to find Volume Group: %s"
-#~ msgstr "无法分离 %s 卷"
-
-#~ msgid "Failed to create Volume Group: %s"
-#~ msgstr "无法找到 %s 卷"
-
-#~ msgid "snapshot %(snap_name)s: creating"
-#~ msgstr "快照 %(snap_name)s：正在创建"
-
-#~ msgid "Running with CoraidDriver for ESM EtherCLoud"
-#~ msgstr ""
-
-#~ msgid "Update session cookie %(session)s"
-#~ msgstr ""
-
-#~ msgid "Message : %(message)s"
-#~ msgstr "%(code)s: %(message)s"
-
-#~ msgid "Error while trying to set group: %(message)s"
-#~ msgstr ""
-
-#~ msgid "Unable to find group: %(group)s"
-#~ msgstr "无法找到地址 %r"
-
-#~ msgid "ESM urlOpen error"
-#~ msgstr ""
-
-#~ msgid "JSON Error"
-#~ msgstr "迁移错误"
-
-#~ msgid "Request without URL"
-#~ msgstr ""
-
-#~ msgid "Configure data : %s"
-#~ msgstr "给定数据：%s"
-
-#~ msgid "Configure response : %s"
-#~ msgstr "响应 %s"
-
-#~ msgid "Unable to retrive volume infos for volume %(volname)s"
-#~ msgstr "没有为卷 %(volume_id)s 找到目标id。"
-
-#~ msgid "Cannot login on Coraid ESM"
-#~ msgstr ""
-
-#~ msgid "Fail to create volume %(volname)s"
-#~ msgstr "无法找到 %s 卷"
-
-#~ msgid "Failed to delete volume %(volname)s"
-#~ msgstr "无法找到 %s 卷"
-
-#~ msgid "Failed to Create Snapshot %(snapname)s"
-#~ msgstr "重新启动实例失败"
-
-#~ msgid "Failed to Delete Snapshot %(snapname)s"
-#~ msgstr "快照 %(snap_name)s：正在创建"
-
-#~ msgid "Failed to Create Volume from Snapshot %(snapname)s"
-#~ msgstr "从快照 %s 创建卷"
-
-#~ msgid "fmt = %(fmt)s backed by: %(backing_file)s"
-#~ msgstr ""
-
-#~ msgid "Expected image to be in raw format, but is %s"
-#~ msgstr ""
-
-#~ msgid "volume group %s doesn't exist"
-#~ msgstr "卷组 %s 不存在"
-
-#~ msgid "Error retrieving volume stats: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "CPG (%s) must be in a domain"
-#~ msgstr ""
-
-#~ msgid "Error populating default encryption types!"
-#~ msgstr ""
-
-#~ msgid "Unexpected error while running command."
-#~ msgstr "运行命令时出现意外错误"
-
-#~ msgid ""
-#~ "%(description)s\n"
-#~ "Command: %(cmd)s\n"
-#~ "Exit code: %(exit_code)s\n"
-#~ "Stdout: %(stdout)r\n"
-#~ "Stderr: %(stderr)r"
-#~ msgstr ""
-#~ "%(description)s\n"
-#~ "命令：%(cmd)s\n"
-#~ "退出代码：%(exit_code)s\n"
-#~ "标准输出：%(stdout)r\n"
-#~ "标准错误输出：%(stderr)r"
-
-#~ msgid "Nexenta SA returned the error"
-#~ msgstr "服务器返回错误：%s"
-
-#~ msgid "Ignored target group creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Copying metadata from snapshot %(snap_volume_id)s to %(volume_id)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Failed updating volume %(volume_id)s metadata"
-#~ " using the provided glance snapshot "
-#~ "%(snapshot_id)s metadata"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Copying metadata from source volume "
-#~ "%(source_volid)s to cloned volume "
-#~ "%(clone_vol_id)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Failed updating cloned volume %(volume_id)s"
-#~ " metadata using the provided source "
-#~ "volumes %(source_volid)s metadata"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Failed updating volume %(volume_id)s metadata"
-#~ " using the provided image metadata "
-#~ "%(image_meta)s from image %(image_id)s"
-#~ msgstr ""
 
