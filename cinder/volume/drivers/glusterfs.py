@@ -701,6 +701,28 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             if temp_path is not None:
                 self._execute('rm', '-f', temp_path)
 
+    def extend_volume(self, volume, size_gb):
+        volume_path = self.local_path(volume)
+        volume_filename = os.path.basename(volume_path)
+
+        # Ensure no snapshots exist for the volume
+        active_image = self.get_active_image_from_info(volume)
+        if volume_filename != active_image:
+            msg = _('Extend volume is only supported for this'
+                    ' driver when no snapshots exist.')
+            raise exception.InvalidVolume(msg)
+
+        (out, err) = self._execute('qemu-img', 'info', volume_path)
+        backing_fmt = self._get_file_format(out)
+
+        if backing_fmt not in ['raw', 'qcow2']:
+            msg = _('Unrecognized backing format: %s')
+            raise exception.InvalidVolume(msg % backing_fmt)
+
+        # qemu-img can resize both raw and qcow2 files
+        cmd = ['qemu-img', 'resize', volume_path, '%sG' % size_gb]
+        self._execute(*cmd, run_as_root=True)
+
     def _do_create_volume(self, volume):
         """Create a volume on given glusterfs_share.
 
