@@ -20,14 +20,9 @@
 
 .. automodule:: nexenta
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
+.. moduleauthor:: Mikhaik Khodos <mikhail.khodos@nexenta.com>
 """
 
 
 class NexentaException(Exception):
-    MESSAGE = _('Nexenta SA returned the error')
-
-    def __init__(self, error=None):
-        super(NexentaException, self).__init__(self.message, error)
-
-    def __str__(self):
-        return '%s: %s' % self.args
+    pass

@@ -126,11 +126,11 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nms.zvol.destroy(self._get_zvol_name(volume['name']), '')
         except nexenta.NexentaException as exc:
-            if "does not exist" in exc.args[1]:
+            if "does not exist" in exc.args[0]:
                 LOG.info(_('Volume %s does not exist, it seems it was already '
                            'deleted'), volume['name'])
                 return
-            if "zvol has children" in exc.args[1]:
+            if "zvol has children" in exc.args[0]:
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
             raise
 
@@ -205,7 +205,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                            snapshot['name']),
                 '')
         except nexenta.NexentaException as exc:
-            if "snapshot has dependent clones" in exc.args[1]:
+            if "snapshot has dependent clones" in exc.args[0]:
                 raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
             else:
                 raise
@@ -235,7 +235,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nms.iscsitarget.create_target({'target_name': target_name})
         except nexenta.NexentaException as exc:
-            if ensure and 'already configured' in exc.args[1]:
+            if ensure and 'already configured' in exc.args[0]:
                 target_already_configured = True
                 LOG.exception(_('Ignored target creation error while ensuring '
                                 'export'))
@@ -244,9 +244,9 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nms.stmf.create_targetgroup(target_group_name)
         except nexenta.NexentaException as exc:
-            if ((ensure and 'already exists' in exc.args[1]) or
+            if ((ensure and 'already exists' in exc.args[0]) or
                     (target_already_configured and
-                     'target must be offline' in exc.args[1])):
+                     'target must be offline' in exc.args[0])):
                 LOG.exception(_('Ignored target group creation error while '
                                 'ensuring export'))
             else:
@@ -255,8 +255,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.nms.stmf.add_targetgroup_member(target_group_name,
                                                  target_name)
         except nexenta.NexentaException as exc:
-            if ensure and ('already exists' in exc.args[1] or
-                           'target must be offline' in exc.args[1]):
+            if ensure and ('already exists' in exc.args[0] or
+                           'target must be offline' in exc.args[0]):
                 LOG.exception(_('Ignored target group member addition error '
                                 'while ensuring export'))
             else:
@@ -264,7 +264,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nms.scsidisk.create_lu(zvol_name, {})
         except nexenta.NexentaException as exc:
-            if not ensure or 'in use' not in exc.args[1]:
+            if not ensure or 'in use' not in exc.args[0]:
                 raise
             LOG.exception(_('Ignored LU creation error while ensuring export'))
         try:
@@ -273,7 +273,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'lun': '0'
             })
         except nexenta.NexentaException as exc:
-            if not ensure or 'view entry exists' not in exc.args[1]:
+            if not ensure or 'view entry exists' not in exc.args[0]:
                 raise
             LOG.exception(_('Ignored LUN mapping entry addition error while '
                             'ensuring export'))
