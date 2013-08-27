@@ -26,6 +26,7 @@ import socket
 
 from oslo.config import cfg
 
+from cinder.brick import exception as brick_exception
 from cinder.brick.iscsi import iscsi
 from cinder.brick.iser import iser
 from cinder.brick.local_dev import lvm as lvm
@@ -85,7 +86,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                   root_helper,
                                   lvm_type=self.configuration.lvm_type,
                                   executor=self._execute)
-            except lvm.VolumeGroupNotFound:
+            except brick_exception.VolumeGroupNotFound:
                 message = ("Volume Group %s does not exist" %
                            self.configuration.volume_group)
                 raise exception.VolumeBackendAPIException(data=message)
