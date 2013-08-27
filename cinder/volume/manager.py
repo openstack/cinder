@@ -442,7 +442,15 @@ class VolumeManager(manager.SchedulerDependentManager):
             reservations = None
             LOG.exception(_("Failed to update usages deleting volume"))
 
-        self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+        # Delete glance metadata if it exists
+        try:
+            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+            LOG.debug(_("volume %s: glance metadata deleted"),
+                      volume_ref['id'])
+        except exception.GlanceMetadataNotFound:
+            LOG.debug(_("no glance metadata found for volume %s"),
+                      volume_ref['id'])
+
         self.db.volume_destroy(context, volume_id)
         LOG.info(_("volume %s: deleted successfully"), volume_ref['name'])
         self._notify_about_volume_usage(context, volume_ref, "delete.end")
@@ -476,9 +484,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.snapshot_update(context,
                                 snapshot_ref['id'], {'status': 'available',
                                                      'progress': '100%'})
-        self.db.volume_glance_metadata_copy_to_snapshot(context,
-                                                        snapshot_ref['id'],
-                                                        volume_id)
+        # only shows the trace for the exception
+        try:
+            self.db.volume_glance_metadata_copy_to_snapshot(
+                            context, snapshot_ref['id'], volume_id)
+        except exception.CinderException as ex:
+            LOG.exception(_("Failed updating %(snapshot_id)s"
+                            " metadata using the provided volumes"
+                            " %(volume_id)s metadata") %
+                          {'volume_id': volume_id,
+                           'snapshot_id': snapshot_id})
         LOG.info(_("snapshot %s: created successfully"), snapshot_ref['name'])
         return snapshot_id
 
