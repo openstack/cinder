@@ -19,13 +19,11 @@ Driver for Linux servers running LVM.
 """
 
 import os
-import re
 import socket
 
 from oslo.config import cfg
 
 from cinder.brick import exception as brick_exception
-from cinder.brick.iscsi import iscsi
 from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.image import image_utils
@@ -406,7 +404,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        self.target_helper = self.get_target_helper()
+        self.db = kwargs.get('db')
+        self.target_helper = self.get_target_helper(self.db)
         super(LVMISCSIDriver, self).__init__(*args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'LVM_iSCSI'
@@ -414,7 +413,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
     def set_execute(self, execute):
         super(LVMISCSIDriver, self).set_execute(execute)
-        self.target_helper.set_execute(execute)
+        if self.target_helper is not None:
+            self.target_helper.set_execute(execute)
 
     def _create_target(self, iscsi_name, iscsi_target,
                        volume_path, chap_auth, lun=0,
@@ -451,140 +451,18 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         return tid
 
     def ensure_export(self, context, volume):
-        """Synchronously recreates an export for a logical volume."""
-        # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # corresponding target admin class
-
-        if isinstance(self.target_helper, iscsi.LioAdm):
-            try:
-                volume_info = self.db.volume_get(context, volume['id'])
-                (auth_method,
-                 auth_user,
-                 auth_pass) = volume_info['provider_auth'].split(' ', 3)
-                chap_auth = self._iscsi_authentication(auth_method,
-                                                       auth_user,
-                                                       auth_pass)
-            except exception.NotFound:
-                LOG.debug(_("volume_info:%s"), volume_info)
-                LOG.info(_("Skipping ensure_export. No iscsi_target "
-                           "provision for volume: %s"), volume['id'])
-                return
-
-            iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                                   volume['name'])
-            volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                          volume['name'])
-            iscsi_target = 1
-
-            self._create_target(iscsi_name, iscsi_target,
-                                volume_path, chap_auth)
-
-            return
-
-        if not isinstance(self.target_helper, iscsi.TgtAdm):
-            try:
-                iscsi_target = self.db.volume_get_iscsi_target_num(
-                    context,
-                    volume['id'])
-            except exception.NotFound:
-                LOG.info(_("Skipping ensure_export. No iscsi_target "
-                           "provisioned for volume: %s"), volume['id'])
-                return
-        else:
-            iscsi_target = 1  # dummy value when using TgtAdm
-
-        chap_auth = None
-
-        # Check for https://bugs.launchpad.net/cinder/+bug/1065702
-        old_name = None
         volume_name = volume['name']
-        if (volume['provider_location'] is not None and
-                volume['name'] not in volume['provider_location']):
-
-            msg = _('Detected inconsistency in provider_location id')
-            LOG.debug(_('%s'), msg)
-            old_name = self._fix_id_migration(context, volume)
-            if 'in-use' in volume['status']:
-                volume_name = old_name
-                old_name = None
-
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume_name)
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
                                       volume_name)
-
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
-        self._create_target(iscsi_name, iscsi_target,
-                            volume_path, chap_auth,
-                            lun=0,
-                            check_exit_code=False,
-                            old_name=old_name)
-
-        return
-
-    def _fix_id_migration(self, context, volume):
-        """Fix provider_location and dev files to address bug 1065702.
-
-        For volumes that the provider_location has NOT been updated
-        and are not currently in-use we'll create a new iscsi target
-        and remove the persist file.
-
-        If the volume is in-use, we'll just stick with the old name
-        and when detach is called we'll feed back into ensure_export
-        again if necessary and fix things up then.
-
-        Details at: https://bugs.launchpad.net/cinder/+bug/1065702
-        """
-
-        model_update = {}
-        pattern = re.compile(r":|\s")
-        fields = pattern.split(volume['provider_location'])
-        old_name = fields[3]
-
-        volume['provider_location'] = \
-            volume['provider_location'].replace(old_name, volume['name'])
-        model_update['provider_location'] = volume['provider_location']
-
-        self.db.volume_update(context, volume['id'], model_update)
-
-        start = os.getcwd()
-        os.chdir('/dev/%s' % self.configuration.volume_group)
-
-        try:
-            (out, err) = self._execute('readlink', old_name)
-        except processutils.ProcessExecutionError:
-            link_path = '/dev/%s/%s' % (self.configuration.volume_group,
-                                        old_name)
-            LOG.debug(_('Symbolic link %s not found') % link_path)
-            os.chdir(start)
-            return
-
-        rel_path = out.rstrip()
-        self._execute('ln',
-                      '-s',
-                      rel_path, volume['name'],
-                      run_as_root=True)
-        os.chdir(start)
-        return old_name
-
-    def _ensure_iscsi_targets(self, context, host):
-        """Ensure that target ids have been created in datastore."""
-        # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # corresponding target admin class
-        if not isinstance(self.target_helper, iscsi.TgtAdm):
-            host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
-                                                                    host)
-            if host_iscsi_targets >= self.configuration.iscsi_num_targets:
-                return
-
-            # NOTE(vish): Target ids start at 1, not 0.
-            target_end = self.configuration.iscsi_num_targets + 1
-            for target_num in xrange(1, target_end):
-                target = {'host': host, 'target_num': target_num}
-                self.db.iscsi_target_create_safe(context, target)
+        model_update = self.target_helper.ensure_export(context, volume,
+                                                        iscsi_name,
+                                                        volume_path)
+        if model_update:
+            self.db.volume_update(context, volume['id'], model_update)
 
     def create_export(self, context, volume):
         return self._create_export(context, volume)
@@ -594,94 +472,16 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         if vg is None:
             vg = self.configuration.volume_group
 
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                               volume['name'])
         volume_path = "/dev/%s/%s" % (vg, volume['name'])
-        model_update = {}
 
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # corresponding target admin class
-        if not isinstance(self.target_helper, iscsi.TgtAdm):
-            lun = 0
-            self._ensure_iscsi_targets(context, volume['host'])
-            iscsi_target = self.db.volume_allocate_iscsi_target(context,
-                                                                volume['id'],
-                                                                volume['host'])
-        else:
-            lun = 1  # For tgtadm the controller is lun 0, dev starts at lun 1
-            iscsi_target = 0  # NOTE(jdg): Not used by tgtadm
-
-        # Use the same method to generate the username and the password.
-        chap_username = utils.generate_username()
-        chap_password = utils.generate_password()
-        chap_auth = self._iscsi_authentication('IncomingUser', chap_username,
-                                               chap_password)
-
-        tid = self._create_target(iscsi_name, iscsi_target,
-                                  volume_path, chap_auth)
-
-        model_update['provider_location'] = self._iscsi_location(
-            self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
-        model_update['provider_auth'] = self._iscsi_authentication(
-            'CHAP', chap_username, chap_password)
-        return model_update
+        data = self.target_helper.create_export(context, volume, volume_path)
+        return {
+            'provider_location': data['location'],
+            'provider_auth': data['auth'],
+        }
 
     def remove_export(self, context, volume):
-        """Removes an export for a logical volume."""
-        # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # corresponding target admin class
-
-        if isinstance(self.target_helper, iscsi.LioAdm):
-            try:
-                iscsi_target = self.db.volume_get_iscsi_target_num(
-                    context,
-                    volume['id'])
-            except exception.NotFound:
-                LOG.info(_("Skipping remove_export. No iscsi_target "
-                           "provisioned for volume: %s"), volume['id'])
-                return
-
-            self.target_helper.remove_iscsi_target(iscsi_target,
-                                                   0,
-                                                   volume['id'],
-                                                   volume['name'])
-
-            return
-
-        elif not isinstance(self.target_helper, iscsi.TgtAdm):
-            try:
-                iscsi_target = self.db.volume_get_iscsi_target_num(
-                    context,
-                    volume['id'])
-            except exception.NotFound:
-                LOG.info(_("Skipping remove_export. No iscsi_target "
-                           "provisioned for volume: %s"), volume['id'])
-                return
-
-        else:
-            iscsi_target = 0
-
-        try:
-
-            # NOTE: provider_location may be unset if the volume hasn't
-            # been exported
-            location = volume['provider_location'].split(' ')
-            iqn = location[1]
-
-            # ietadm show will exit with an error
-            # this export has already been removed
-            self.target_helper.show_target(iscsi_target, iqn=iqn)
-
-        except Exception:
-            LOG.info(_("Skipping remove_export. No iscsi_target "
-                       "is presently exported for volume: %s"), volume['id'])
-            return
-
-        self.target_helper.remove_iscsi_target(iscsi_target,
-                                               0,
-                                               volume['name_id'],
-                                               volume['name'])
+        self.target_helper.remove_export(context, volume)
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
         """Optimize the migration if the destination is on the same server.
@@ -762,7 +562,7 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        self.target_helper = self.get_target_helper()
+        self.target_helper = self.get_target_helper(kwargs.get('db'))
         LVMVolumeDriver.__init__(self, *args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'LVM_iSER'

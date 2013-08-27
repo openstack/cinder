@@ -34,6 +34,7 @@ class TargetAdminTestCase(object):
         self.path = '/foo'
         self.vol_id = 'blaa'
         self.vol_name = 'volume-blaa'
+        self.db = {}
 
         self.script_template = None
         self.stubs.Set(os.path, 'isfile', lambda _: True)
@@ -89,7 +90,7 @@ class TargetAdminTestCase(object):
         self.verify_cmds(cmds)
 
     def run_commands(self):
-        target_helper = self.driver.get_target_helper()
+        target_helper = self.driver.get_target_helper(self.db)
         target_helper.set_execute(self.fake_execute)
         target_helper.create_iscsi_target(self.target_name, self.tid,
                                           self.lun, self.path)
