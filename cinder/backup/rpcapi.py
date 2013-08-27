@@ -33,12 +33,12 @@ LOG = logging.getLogger(__name__)
 
 
 class BackupAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
-    '''Client side of the volume rpc API.
+    """Client side of the volume rpc API.
 
     API version history:
 
         1.0 - Initial version.
-    '''
+    """
 
     BASE_RPC_API_VERSION = '1.0'
 
