@@ -22,6 +22,8 @@ import copy
 import os
 import time
 
+from oslo.config import cfg
+
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
@@ -34,7 +36,6 @@ from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp.utils import provide_ems
 from cinder.volume.drivers.netapp.utils import validate_instantiation
 from cinder.volume.drivers import nfs
-from oslo.config import cfg
 
 
 LOG = logging.getLogger(__name__)

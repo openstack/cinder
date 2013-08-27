@@ -17,14 +17,13 @@
 """Unit tests for the GlusterFS driver module."""
 
 import errno
+import json
 import os
 
 import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
-
-import json
 
 from cinder import context
 from cinder import exception

@@ -26,23 +26,21 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.image import glance
-from cinder import policy
-from cinder import quota
-from cinder import units
-from cinder import utils
-
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
 from cinder.openstack.common import processutils
 from cinder.openstack.common import timeutils
-from cinder.volume.flows import base
-from cinder.volume import utils as volume_utils
-from cinder.volume import volume_types
-
+from cinder import policy
+from cinder import quota
 from cinder.taskflow import decorators
 from cinder.taskflow.patterns import linear_flow
 from cinder.taskflow import task
+from cinder import units
+from cinder import utils
+from cinder.volume.flows import base
+from cinder.volume import utils as volume_utils
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 

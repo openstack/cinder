@@ -20,21 +20,18 @@ import __builtin__
 import errno
 import os
 
-from oslo.config import cfg
-
 import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
+from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
+from cinder.image import image_utils
 from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder import units
-
-from cinder.image import image_utils
-
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 

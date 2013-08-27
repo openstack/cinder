@@ -14,12 +14,13 @@
 #    under the License.
 """ Tests for Ceph backup service """
 
-import eventlet
 import hashlib
 import os
 import tempfile
 import time
 import uuid
+
+import eventlet
 
 from cinder.backup.drivers import ceph
 from cinder import context
