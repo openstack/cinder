@@ -31,6 +31,7 @@ def create_volume(ctxt,
                   display_name='test_volume',
                   display_description='this is a test volume',
                   status='available',
+                  migration_status=None,
                   size=1):
     """Create a volume object in the DB."""
     vol = {}
@@ -39,7 +40,25 @@ def create_volume(ctxt,
     vol['user_id'] = ctxt.user_id
     vol['project_id'] = ctxt.project_id
     vol['status'] = status
+    vol['migration_status'] = migration_status
     vol['display_name'] = display_name
     vol['display_description'] = display_description
     vol['attach_status'] = 'detached'
     return db.volume_create(ctxt, vol)
+
+
+def create_snapshot(ctxt,
+                    volume_id,
+                    display_name='test_snapshot',
+                    display_description='this is a test snapshot',
+                    status='creating'):
+    vol = db.volume_get(ctxt, volume_id)
+    snap = {}
+    snap['volume_id'] = volume_id
+    snap['user_id'] = ctxt.user_id
+    snap['project_id'] = ctxt.project_id
+    snap['status'] = status
+    snap['volume_size'] = vol['size']
+    snap['display_name'] = display_name
+    snap['display_description'] = display_description
+    return db.snapshot_create(ctxt, snap)

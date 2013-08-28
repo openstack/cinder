@@ -100,7 +100,7 @@ class SchedulerManager(manager.Manager):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
 
     def _migrate_volume_set_error(self, context, ex, request_spec):
-        volume_state = {'volume_state': {'status': 'error_migrating'}}
+        volume_state = {'volume_state': {'migration_status': None}}
         self._set_volume_state_and_notify('migrate_volume_to_host',
                                           volume_state,
                                           context, ex, request_spec)

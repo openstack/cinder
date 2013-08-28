@@ -42,6 +42,8 @@ import time
 
 from oslo.config import cfg
 
+from cinder.brick.initiator import connector as initiator
+from cinder import compute
 from cinder import context
 from cinder import exception
 from cinder.image import glance
@@ -114,7 +116,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.9'
+    RPC_API_VERSION = '1.10'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -242,7 +244,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # If deleting the source volume in a migration, we want to skip quotas
         # and other database updates.
-        if volume_ref['status'] == 'migrating':
+        if volume_ref['migration_status']:
             return True
 
         # Get reservations
@@ -399,10 +401,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             # we should update this to a date-time object
             # also consider adding detach_time?
             now = timeutils.strtime()
+            new_status = 'attaching'
             self.db.volume_update(context, volume_id,
                                   {"instance_uuid": instance_uuid,
                                    "attached_host": host_name,
-                                   "status": "attaching",
+                                   "status": new_status,
                                    "attach_time": now})
 
             if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
@@ -563,8 +566,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         for k, v in volume.iteritems():
             new_vol_values[k] = v
         del new_vol_values['id']
+        del new_vol_values['_name_id']
+        # We don't copy volume_type because the db sets that according to
+        # volume_type_id, which we do copy
+        del new_vol_values['volume_type']
         new_vol_values['host'] = host['host']
-        new_vol_values['status'] = 'migration_target_creating'
+        new_vol_values['status'] = 'creating'
+        new_vol_values['migration_status'] = 'target:%s' % volume['id']
+        new_vol_values['attach_status'] = 'detached'
         new_volume = self.db.volume_create(ctxt, new_vol_values)
         rpcapi.create_volume(ctxt, new_volume, host['host'],
                              None, None)
@@ -574,7 +583,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         deadline = starttime + CONF.migration_create_volume_timeout_secs
         new_volume = self.db.volume_get(ctxt, new_volume['id'])
         tries = 0
-        while new_volume['status'] != 'migration_target':
+        while new_volume['status'] != 'available':
             tries = tries + 1
             now = time.time()
             if new_volume['status'] == 'error':
@@ -589,42 +598,64 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Copy the source volume to the destination volume
         try:
-            self.driver.copy_volume_data(ctxt, volume, new_volume,
-                                         remote='dest')
+            if volume['status'] == 'available':
+                self.driver.copy_volume_data(ctxt, volume, new_volume,
+                                             remote='dest')
+                # The above call is synchronous so we complete the migration
+                self.migrate_volume_completion(ctxt, volume['id'],
+                                               new_volume['id'], error=False)
+            else:
+                nova_api = compute.API()
+                # This is an async call to Nova, which will call the completion
+                # when it's done
+                nova_api.update_server_volume(ctxt, volume['instance_uuid'],
+                                              volume['id'], new_volume['id'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _("Failed to copy volume %(vol1)s to %(vol2)s")
                 LOG.error(msg % {'vol1': volume['id'],
                                  'vol2': new_volume['id']})
-                rpcapi.delete_volume(ctxt, volume)
+                volume = self.db.volume_get(ctxt, volume['id'])
+                # If we're in the completing phase don't delete the target
+                # because we may have already deleted the source!
+                if volume['migration_status'] == 'migrating':
+                    rpcapi.delete_volume(ctxt, new_volume)
+                new_volume['migration_status'] = None
+
+    def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
+                                  error=False):
+        volume = self.db.volume_get(ctxt, volume_id)
+        new_volume = self.db.volume_get(ctxt, new_volume_id)
+        rpcapi = volume_rpcapi.VolumeAPI()
+
+        if error:
+            new_volume['migration_status'] = None
+            rpcapi.delete_volume(ctxt, new_volume)
+            self.db.volume_update(ctxt, volume_id, {'migration_status': None})
+            return volume_id
+
+        self.db.volume_update(ctxt, volume_id,
+                              {'migration_status': 'completing'})
 
         # Delete the source volume (if it fails, don't fail the migration)
         try:
-            self.delete_volume(ctxt, volume['id'])
+            self.delete_volume(ctxt, volume_id)
         except Exception as ex:
             msg = _("Failed to delete migration source vol %(vol)s: %(err)s")
-            LOG.error(msg % {'vol': volume['id'], 'err': ex})
+            LOG.error(msg % {'vol': volume_id, 'err': ex})
 
-        # Rename the destination volume to the name of the source volume.
-        # We rename rather than create the destination with the same as the
-        # source because: (a) some backends require unique names between pools
-        # in addition to within pools, and (b) we want to enable migration
-        # within one pool (for example, changing a volume's type by creating a
-        # new volume and copying the data over)
-        try:
-            rpcapi.rename_volume(ctxt, new_volume, volume['id'])
-        except Exception:
-            msg = _("Failed to rename migration destination volume "
-                    "%(vol)s to %(name)s")
-            LOG.error(msg % {'vol': new_volume['id'], 'name': volume['name']})
-
-        self.db.finish_volume_migration(ctxt, volume['id'], new_volume['id'])
+        self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
+        self.db.volume_update(ctxt, volume_id, {'migration_status': None})
+        return volume['id']
 
     def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False):
         """Migrate the volume to the specified host (called on source host)."""
         volume_ref = self.db.volume_get(ctxt, volume_id)
         model_update = None
         moved = False
+
+        self.db.volume_update(ctxt, volume_ref['id'],
+                              {'migration_status': 'migrating'})
         if not force_host_copy:
             try:
                 LOG.debug(_("volume %s: calling driver migrate_volume"),
@@ -633,7 +664,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                                  volume_ref,
                                                                  host)
                 if moved:
-                    updates = {'host': host['host']}
+                    updates = {'host': host['host'],
+                               'migration_status': None}
                     if model_update:
                         updates.update(model_update)
                     volume_ref = self.db.volume_update(ctxt,
@@ -641,7 +673,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                        updates)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    updates = {'status': 'error_migrating'}
+                    updates = {'migration_status': None}
                     model_update = self.driver.create_export(ctxt, volume_ref)
                     if model_update:
                         updates.update(model_update)
@@ -651,26 +683,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self._migrate_volume_generic(ctxt, volume_ref, host)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    updates = {'status': 'error_migrating'}
+                    updates = {'migration_status': None}
                     model_update = self.driver.create_export(ctxt, volume_ref)
                     if model_update:
                         updates.update(model_update)
                     self.db.volume_update(ctxt, volume_ref['id'], updates)
-        self.db.volume_update(ctxt, volume_ref['id'],
-                              {'status': 'available'})
-
-    def rename_volume(self, ctxt, volume_id, new_name_id):
-        volume_ref = self.db.volume_get(ctxt, volume_id)
-        orig_name = volume_ref['name']
-        self.driver.remove_export(ctxt, volume_ref)
-        self.db.volume_update(ctxt, volume_id, {'name_id': new_name_id})
-        volume_ref = self.db.volume_get(ctxt, volume_id)
-        model_update = self.driver.rename_volume(volume_ref, orig_name)
-        if model_update:
-            self.db.volume_update(ctxt, volume_ref['id'], model_update)
-        model_update = self.driver.create_export(ctxt, volume_ref)
-        if model_update:
-            self.db.volume_update(ctxt, volume_ref['id'], model_update)
 
     @periodic_task.periodic_task
     def _report_driver_status(self, context):

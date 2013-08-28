@@ -105,7 +105,7 @@ class SchedulerManagerTestCase(test.TestCase):
                                    request_spec=request_spec,
                                    filter_properties={})
 
-    def test_migrate_volume_exception_puts_volume_in_error_state(self):
+    def test_migrate_volume_exception_returns_volume_state(self):
         """Test NoValidHost exception behavior for migrate_volume_to_host.
 
         Puts the volume in 'error_migrating' state and eats the exception.
@@ -122,7 +122,7 @@ class SchedulerManagerTestCase(test.TestCase):
             self.context, 'host',
             request_spec, {}).AndRaise(exception.NoValidHost(reason=""))
         db.volume_update(self.context, fake_volume_id,
-                         {'status': 'error_migrating'})
+                         {'migration_status': None})
 
         self.mox.ReplayAll()
         self.manager.migrate_volume_to_host(self.context, topic, volume_id,

@@ -44,7 +44,6 @@ iser_helper_opt = [cfg.StrOpt('iser_helper',
 
 CONF = cfg.CONF
 CONF.register_opts(iser_helper_opt)
-CONF.import_opt('volume_name_template', 'cinder.db')
 
 
 class TargetAdmin(executor.Executor):
@@ -65,7 +64,7 @@ class TargetAdmin(executor.Executor):
         """Create a iSER target and logical unit."""
         raise NotImplementedError()
 
-    def remove_iser_target(self, tid, lun, vol_id, **kwargs):
+    def remove_iser_target(self, tid, lun, vol_id, vol_name, **kwargs):
         """Remove a iSER target and logical unit."""
         raise NotImplementedError()
 
@@ -172,9 +171,9 @@ class TgtAdm(TargetAdmin):
 
         return tid
 
-    def remove_iser_target(self, tid, lun, vol_id, **kwargs):
+    def remove_iser_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_('Removing iser_target for: %s') % vol_id)
-        vol_uuid_file = CONF.volume_name_template % vol_id
+        vol_uuid_file = vol_name
         volume_path = os.path.join(CONF.volumes_dir, vol_uuid_file)
         if os.path.isfile(volume_path):
             iqn = '%s%s' % (CONF.iser_target_prefix,

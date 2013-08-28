@@ -36,14 +36,20 @@ class FinishVolumeMigrationTestCase(test.TestCase):
                                       project_id='project_id',
                                       is_admin=True)
         src_volume = testutils.create_volume(ctxt, host='src',
-                                             status='migrating')
+                                             migration_status='migrating',
+                                             status='available')
         dest_volume = testutils.create_volume(ctxt, host='dest',
-                                              status='migration_target')
+                                              migration_status='target:fake',
+                                              status='available')
         db.finish_volume_migration(ctxt, src_volume['id'],
                                    dest_volume['id'])
 
         self.assertRaises(exception.VolumeNotFound, db.volume_get, ctxt,
                           dest_volume['id'])
         src_volume = db.volume_get(ctxt, src_volume['id'])
+        expected_name = 'volume-%s' % dest_volume['id']
+        self.assertEqual(src_volume['_name_id'], dest_volume['id'])
+        self.assertEqual(src_volume['name'], expected_name)
         self.assertEqual(src_volume['host'], 'dest')
-        self.assertEqual(src_volume['status'], 'migrating')
+        self.assertEqual(src_volume['status'], 'available')
+        self.assertEqual(src_volume['migration_status'], None)

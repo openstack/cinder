@@ -1099,8 +1099,15 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
     with session.begin():
         dest_volume_ref = _volume_get(context, dest_vol_id, session=session)
         updates = {}
+        if dest_volume_ref['_name_id']:
+            updates['_name_id'] = dest_volume_ref['_name_id']
+        else:
+            updates['_name_id'] = dest_volume_ref['id']
         for key, value in dest_volume_ref.iteritems():
-            if key in ['id', 'status']:
+            if key in ['id', '_name_id']:
+                continue
+            if key == 'migration_status':
+                updates[key] = None
                 continue
             updates[key] = value
         session.query(models.Volume).\
@@ -1136,7 +1143,9 @@ def volume_detached(context, volume_id):
     session = get_session()
     with session.begin():
         volume_ref = _volume_get(context, volume_id, session=session)
-        volume_ref['status'] = 'available'
+        # Hide status update from user if we're performing a volume migration
+        if not volume_ref['migration_status']:
+            volume_ref['status'] = 'available'
         volume_ref['mountpoint'] = None
         volume_ref['attach_status'] = 'detached'
         volume_ref['instance_uuid'] = None

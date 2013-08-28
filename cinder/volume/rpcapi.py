@@ -44,6 +44,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
               to allow attaching to host rather than instance.
         1.8 - Add migrate_volume, rename_volume.
         1.9 - Add new_user and new_project to accept_transfer.
+        1.10 - Add migrate_volume_completion, remove rename_volume.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -166,10 +167,12 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                   topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
                   version='1.8')
 
-    def rename_volume(self, ctxt, volume, new_name_id):
-        self.call(ctxt,
-                  self.make_msg('rename_volume',
-                                volume_id=volume['id'],
-                                new_name_id=new_name_id),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
-                  version='1.8')
+    def migrate_volume_completion(self, ctxt, volume, new_volume, error):
+        return self.call(ctxt,
+                         self.make_msg('migrate_volume_completion',
+                                       volume_id=volume['id'],
+                                       new_volume_id=new_volume['id'],
+                                       error=error),
+                         topic=rpc.queue_get_for(ctxt, self.topic,
+                                                 volume['host']),
+                         version='1.10')

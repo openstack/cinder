@@ -92,7 +92,8 @@ fake_snapshot = {"id": fake_snapshot_id,
                  "name": fake_snapshot_name,
                  "volume_id": fake_volume_id,
                  "volume_name": fake_volume_name,
-                 "volume_size": int(fake_volume_size) - 1}
+                 "volume_size": int(fake_volume_size) - 1,
+                 "volume": fake_volume}
 
 fake_configure_data = [{"addr": "cms", "data": "FAKE"}]
 

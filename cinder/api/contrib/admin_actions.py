@@ -155,6 +155,33 @@ class VolumeAdminController(AdminController):
         self.volume_api.migrate_volume(context, volume, host, force_host_copy)
         return webob.Response(status_int=202)
 
+    @wsgi.action('os-migrate_volume_completion')
+    def _migrate_volume_completion(self, req, id, body):
+        """Migrate a volume to the specified host."""
+        context = req.environ['cinder.context']
+        self.authorize(context, 'migrate_volume_completion')
+        try:
+            volume = self._get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        try:
+            params = body['os-migrate_volume_completion']
+        except KeyError:
+            raise exc.HTTPBadRequest("Body does not contain "
+                                     "'os-migrate_volume_completion'")
+        try:
+            new_volume_id = params['new_volume']
+        except KeyError:
+            raise exc.HTTPBadRequest("Must specify 'new_volume'")
+        try:
+            new_volume = self._get(context, new_volume_id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+        error = params.get('error', False)
+        ret = self.volume_api.migrate_volume_completion(context, volume,
+                                                        new_volume, error)
+        return {'save_volume_id': ret}
+
 
 class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""

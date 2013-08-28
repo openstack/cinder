@@ -34,6 +34,7 @@ class TargetAdminTestCase(object):
         self.lun = 10
         self.path = '/foo'
         self.vol_id = 'blaa'
+        self.vol_name = 'volume-blaa'
 
         self.script_template = None
         self.stubs.Set(os.path, 'isfile', lambda _: True)
@@ -82,7 +83,8 @@ class TargetAdminTestCase(object):
         tgtadm.create_iser_target(self.target_name, self.tid,
                                   self.lun, self.path)
         tgtadm.show_target(self.tid, iqn=self.target_name)
-        tgtadm.remove_iser_target(self.tid, self.lun, self.vol_id)
+        tgtadm.remove_iser_target(self.tid, self.lun, self.vol_id,
+                                  self.vol_name)
 
     def test_target_admin(self):
         self.clear_cmds()

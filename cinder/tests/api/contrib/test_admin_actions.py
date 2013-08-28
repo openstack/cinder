@@ -10,6 +10,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import ast
 import shutil
 import tempfile
 import webob
@@ -495,7 +496,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_prep()
         volume = self._migrate_volume_exec(ctx, volume, host, expected_status)
-        self.assertEquals(volume['status'], 'migrating')
+        self.assertEquals(volume['migration_status'], 'starting')
 
     def test_migrate_volume_as_non_admin(self):
         expected_status = 403
@@ -518,12 +519,12 @@ class AdminActionsTest(test.TestCase):
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
-    def test_migrate_volume_in_use(self):
+    def test_migrate_volume_migrating(self):
         expected_status = 400
         host = 'test2'
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_prep()
-        model_update = {'status': 'in-use'}
+        model_update = {'migration_status': 'migrating'}
         volume = db.volume_update(ctx, volume['id'], model_update)
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
@@ -534,3 +535,79 @@ class AdminActionsTest(test.TestCase):
         volume = self._migrate_volume_prep()
         db.snapshot_create(ctx, {'volume_id': volume['id']})
         self._migrate_volume_exec(ctx, volume, host, expected_status)
+
+    def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
+                                  expected_status, expected_id):
+        admin_ctx = context.get_admin_context()
+        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        body_dict = {'new_volume': new_volume['id'], 'error': error}
+        req.body = jsonutils.dumps({'os-migrate_volume_completion': body_dict})
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        resp_dict = ast.literal_eval(resp.body)
+        # verify status
+        self.assertEquals(resp.status_int, expected_status)
+        if expected_id:
+            self.assertEquals(resp_dict['save_volume_id'], expected_id)
+        else:
+            self.assertNotIn('save_volume_id', resp_dict)
+
+    def test_migrate_volume_comp_as_non_admin(self):
+        admin_ctx = context.get_admin_context()
+        volume = db.volume_create(admin_ctx, {'id': 'fake1'})
+        new_volume = db.volume_create(admin_ctx, {'id': 'fake2'})
+        expected_status = 403
+        expected_id = None
+        ctx = context.RequestContext('fake', 'fake')
+        volume = self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
+                                                expected_status, expected_id)
+
+    def test_migrate_volume_comp_no_mig_status(self):
+        admin_ctx = context.get_admin_context()
+        volume1 = db.volume_create(admin_ctx, {'id': 'fake1',
+                                               'migration_status': 'foo'})
+        volume2 = db.volume_create(admin_ctx, {'id': 'fake2',
+                                               'migration_status': None})
+        expected_status = 400
+        expected_id = None
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
+                                                expected_status, expected_id)
+        volume = self._migrate_volume_comp_exec(ctx, volume2, volume1, False,
+                                                expected_status, expected_id)
+
+    def test_migrate_volume_comp_bad_mig_status(self):
+        admin_ctx = context.get_admin_context()
+        volume1 = db.volume_create(admin_ctx,
+                                   {'id': 'fake1',
+                                    'migration_status': 'migrating'})
+        volume2 = db.volume_create(admin_ctx,
+                                   {'id': 'fake2',
+                                    'migration_status': 'target:foo'})
+        expected_status = 400
+        expected_id = None
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
+                                                expected_status, expected_id)
+
+    def test_migrate_volume_comp_from_nova(self):
+        admin_ctx = context.get_admin_context()
+        volume = db.volume_create(admin_ctx,
+                                  {'id': 'fake1',
+                                   'status': 'in-use',
+                                   'host': 'test',
+                                   'migration_status': None,
+                                   'attach_status': 'attached'})
+        new_volume = db.volume_create(admin_ctx,
+                                      {'id': 'fake2',
+                                       'status': 'available',
+                                       'host': 'test',
+                                       'migration_status': None,
+                                       'attach_status': 'detached'})
+        expected_status = 200
+        expected_id = 'fake2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
+                                                expected_status, expected_id)
