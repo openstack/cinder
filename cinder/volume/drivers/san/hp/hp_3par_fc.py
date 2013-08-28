@@ -19,10 +19,11 @@
 #
 """
 Volume driver for HP 3PAR Storage array.
-This driver requires 3.1.2 MU2 firmware on the 3PAR array.
+This driver requires 3.1.2 MU2 firmware on the 3PAR array, using
+the 2.x version of the hp3parclient.
 
 You will need to install the python hp3parclient.
-sudo pip install hp3parclient
+sudo pip install --upgrade "hp3parclient>=2.0"
 
 Set the following in the cinder.conf file to enable the
 3PAR Fibre Channel Driver along with the required flags:
@@ -47,13 +48,15 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     """OpenStack Fibre Channel driver to enable 3PAR storage array.
 
     Version history:
-        1.0 - Initial driver
-        1.1 - QoS, extend volume, multiple iscsi ports, remove domain,
-              session changes, faster clone, requires 3.1.2 MU2 firmware,
-              copy volume <--> Image.
+        1.0   - Initial driver
+        1.1   - QoS, extend volume, multiple iscsi ports, remove domain,
+                session changes, faster clone, requires 3.1.2 MU2 firmware,
+                copy volume <--> Image.
+        1.2.0 - Updated the use of the hp3parclient to 2.0.0 and refactored
+                the drivers to use the new APIs.
     """
 
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
