@@ -110,6 +110,11 @@ class InitiatorConnector(executor.Executor):
                                      execute=execute,
                                      driver=driver,
                                      root_helper=root_helper)
+
+        elif protocol == "LOCAL":
+            return LocalConnector(execute=execute,
+                                  driver=driver,
+                                  root_helper=root_helper)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -808,4 +813,34 @@ class RemoteFsConnector(InitiatorConnector):
 
     def disconnect_volume(self, connection_properties, device_info):
         """No need to do anything to disconnect a volume in a filesystem."""
+
+
+class LocalConnector(InitiatorConnector):
+    """"Connector class to attach/detach File System backed volumes."""
+
+    def __init__(self, root_helper, driver=None, execute=putils.execute,
+                 *args, **kwargs):
+        super(LocalConnector, self).__init__(root_helper,
+                                             driver,
+                                             execute,
+                                             *args,
+                                             **kwargs)
+
+    def connect_volume(self, connection_properties):
+        """Connect to a volume.
+
+        connection_properties must include:
+        device_path - path to the volume to be connected
+        """
+        if 'device_path' not in connection_properties:
+            msg = (_("Invalid connection_properties specified "
+                     "no device_path attribute"))
+            raise ValueError(msg)
+
+        device_info = {'type': 'local',
+                       'path': connection_properties['device_path']}
+        return device_info
+
+    def disconnect_volume(self, connection_properties, device_info):
+        """Disconnect a volume from the local host."""
         pass

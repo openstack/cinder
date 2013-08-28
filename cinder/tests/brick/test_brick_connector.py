@@ -71,6 +71,9 @@ class ConnectorTestCase(test.TestCase):
         obj = connector.InitiatorConnector.factory('glusterfs', None)
         self.assertEqual(obj.__class__.__name__, "RemoteFsConnector")
 
+        obj = connector.InitiatorConnector.factory('local', None)
+        self.assertEqual(obj.__class__.__name__, "LocalConnector")
+
         self.assertRaises(ValueError,
                           connector.InitiatorConnector.factory,
                           "bogus", None)
@@ -588,3 +591,24 @@ class RemoteFsConnectorTestCase(ConnectorTestCase):
     def test_disconnect_volume(self):
         """Nothing should happen here -- make sure it doesn't blow up."""
         self.connector.disconnect_volume(self.connection_properties, {})
+
+
+class LocalConnectorTestCase(test.TestCase):
+
+    def setUp(self):
+        super(LocalConnectorTestCase, self).setUp()
+        self.connection_properties = {'name': 'foo',
+                                      'device_path': '/tmp/bar'}
+
+    def test_connect_volume(self):
+        self.connector = connector.LocalConnector(None)
+        cprops = self.connection_properties
+        dev_info = self.connector.connect_volume(cprops)
+        self.assertTrue(dev_info['type'] == 'local')
+        self.assertTrue(dev_info['path'] == cprops['device_path'])
+
+    def test_connect_volume_with_invalid_connection_data(self):
+        self.connector = connector.LocalConnector(None)
+        cprops = {}
+        self.assertRaises(ValueError,
+                          self.connector.connect_volume, cprops)

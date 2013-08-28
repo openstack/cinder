@@ -805,8 +805,14 @@ class BrickUtils(test.TestCase):
                                driver=None,
                                root_helper=root_helper)
 
+        self.mox.StubOutClassWithMocks(connector, 'LocalConnector')
+        connector.LocalConnector(execute=putils.execute,
+                                 driver=None,
+                                 root_helper=root_helper)
+
         self.mox.ReplayAll()
         utils.brick_get_connector('iscsi')
         utils.brick_get_connector('fibre_channel')
         utils.brick_get_connector('aoe')
+        utils.brick_get_connector('local')
         self.mox.VerifyAll()

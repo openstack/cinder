@@ -167,6 +167,16 @@ class GPFSDriverTestCase(test.TestCase):
         self.volume.delete_volume(self.context, volume_id)
         self.assertFalse(os.path.exists(path))
 
+    def test_migrate_volume(self):
+        """Test volume migration done by driver."""
+        loc = 'GPFSDriver:cindertest:openstack'
+        cap = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+        volume = test_utils.create_volume(self.context, host=CONF.host)
+        self.driver.create_volume(volume)
+        self.driver.migrate_volume(self.context, volume, host)
+        self.driver.delete_volume(volume)
+
     def _create_snapshot(self, volume_id, size='0'):
         """Create a snapshot object."""
         snap = {}
