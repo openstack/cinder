@@ -180,13 +180,17 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         # now that we have a host, create the VLUN
         vlun = self.common.create_vlun(volume, host)
 
-        ports = self.common.get_ports()
+        fc_ports = self.common.get_active_fc_target_ports()
+        wwns = []
+
+        for port in fc_ports:
+            wwns.append(port['portWWN'])
 
         self.common.client_logout()
         info = {'driver_volume_type': 'fibre_channel',
                 'data': {'target_lun': vlun['lun'],
                          'target_discovered': True,
-                         'target_wwn': ports['FC']}}
+                         'target_wwn': wwns}}
         return info
 
     @utils.synchronized('3par', external=True)
@@ -195,7 +199,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         self.common.client_login()
         hostname = self.common._safe_hostname(connector['host'])
         self.common.terminate_connection(volume, hostname,
-                                         connector['wwpns'])
+                                         wwn=connector['wwpns'])
         self.common.client_logout()
 
     def _create_3par_fibrechan_host(self, hostname, wwns, domain, persona_id):
@@ -219,13 +223,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
 
         return hostname
 
-    def _modify_3par_fibrechan_host(self, hostname, wwns):
-        # when using -add, you can not send the persona or domain options
-        command = ['createhost', '-add', hostname]
-        for wwn in wwns:
-            command.append(wwn)
+    def _modify_3par_fibrechan_host(self, hostname, wwn):
+        mod_request = {'pathOperation': self.common.client.HOST_EDIT_ADD,
+                       'FCWWNs': wwn}
 
-        out = self.common._cli_run(command)
+        self.common.client.modifyHost(hostname, mod_request)
 
     def _create_host(self, volume, connector):
         """Creates or modifies existing 3PAR host."""
@@ -235,7 +237,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)
-            if not host['FCPaths']:
+            if 'FCPaths' not in host or len(host['FCPaths']) < 1:
                 self._modify_3par_fibrechan_host(hostname, connector['wwpns'])
                 host = self.common._get_3par_host(hostname)
         except hpexceptions.HTTPNotFound as ex:

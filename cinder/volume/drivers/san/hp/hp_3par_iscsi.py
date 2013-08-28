@@ -87,6 +87,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def do_setup(self, context):
         self.common = self._init_common()
         self._check_flags()
+        self.common.do_setup(context)
 
         # map iscsi_ip-> ip_port
         #             -> iqn
@@ -118,14 +119,15 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         # get all the valid iSCSI ports from 3PAR
         # when found, add the valid iSCSI ip, ip port, iqn and nsp
         # to the iSCSI IP dictionary
-        # ...this will also make sure ssh works.
-        iscsi_ports = self.common.get_ports()['iSCSI']
-        for (ip, iscsi_info) in iscsi_ports.iteritems():
+        iscsi_ports = self.common.get_active_iscsi_target_ports()
+
+        for port in iscsi_ports:
+            ip = port['IPAddr']
             if ip in temp_iscsi_ip:
                 ip_port = temp_iscsi_ip[ip]['ip_port']
                 self.iscsi_ips[ip] = {'ip_port': ip_port,
-                                      'nsp': iscsi_info['nsp'],
-                                      'iqn': iscsi_info['iqn']
+                                      'nsp': port['nsp'],
+                                      'iqn': port['iSCSIName']
                                       }
                 del temp_iscsi_ip[ip]
 
@@ -145,8 +147,6 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         if not len(self.iscsi_ips) > 0:
             msg = _('At least one valid iSCSI IP address must be set.')
             raise exception.InvalidInput(reason=(msg))
-
-        self.common.do_setup(context)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -233,9 +233,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         # now that we have a host, create the VLUN
         vlun = self.common.create_vlun(volume, host)
 
+        iscsi_ip = self._get_iscsi_ip(host['name'])
+
         self.common.client_logout()
 
-        iscsi_ip = self._get_iscsi_ip(host['name'])
         iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
         iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
         info = {'driver_volume_type': 'iscsi',
@@ -254,7 +255,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.common.client_login()
         hostname = self.common._safe_hostname(connector['host'])
         self.common.terminate_connection(volume, hostname,
-                                         connector['initiator'])
+                                         iqn=connector['initiator'])
         self.common.client_logout()
 
     def _create_3par_iscsi_host(self, hostname, iscsi_iqn, domain, persona_id):
@@ -276,9 +277,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         return hostname
 
     def _modify_3par_iscsi_host(self, hostname, iscsi_iqn):
-        # when using -add, you can not send the persona or domain options
-        command = ['createhost', '-iscsi', '-add', hostname, iscsi_iqn]
-        self.common._cli_run(command)
+        mod_request = {'pathOperation': self.common.client.HOST_EDIT_ADD,
+                       'iSCSINames': [iscsi_iqn]}
+
+        self.common.client.modifyHost(hostname, mod_request)
 
     def _create_host(self, volume, connector):
         """Creates or modifies existing 3PAR host."""
@@ -289,7 +291,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)
-            if not host['iSCSIPaths']:
+            if 'iSCSIPaths' not in host or len(host['iSCSIPaths']) < 1:
                 self._modify_3par_iscsi_host(hostname, connector['initiator'])
                 host = self.common._get_3par_host(hostname)
         except hpexceptions.HTTPNotFound:
@@ -327,19 +329,27 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         if len(self.iscsi_ips) == 1:
             return self.iscsi_ips.keys()[0]
 
-        # if we currently have an active port, use it
-        nsp = self._get_active_nsp(hostname)
+        vluns = self.common.client.getVLUNs()
+        # see if there is already a path to the
+        # host, if so use it
+        for vlun in vluns['members']:
+            if vlun['active'] == 'true':
+                if vlun['hostname'] == hostname:
+                    # this host already has a path, so use it
+                    nsp = self.common.build_nsp(vlun['portPos'])
+                    return self._get_ip_using_nsp(nsp)
 
-        if nsp is None:
-            # no active vlun, find least busy port
-            nsp = self._get_least_used_nsp(self._get_iscsi_nsps())
-            if nsp is None:
-                msg = _("Least busy iSCSI port not found, "
-                        "using first iSCSI port in list.")
-                LOG.warn(msg)
-                return self.iscsi_ips.keys()[0]
+        # no current path find least used port
+        least_used_nsp = self._get_least_used_nsp(vluns['members'],
+                                                  self._get_iscsi_nsps())
 
-        return self._get_ip_using_nsp(nsp)
+        if least_used_nsp is None:
+            msg = _("Least busy iSCSI port not found, "
+                    "using first iSCSI port in list.")
+            LOG.warn(msg)
+            return self.iscsi_ips.keys()[0]
+
+        return self._get_ip_using_nsp(least_used_nsp)
 
     def _get_iscsi_nsps(self):
         """Return the list of candidate nsps."""
@@ -354,43 +364,29 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             if value['nsp'] == nsp:
                 return key
 
-    def _get_active_nsp(self, hostname):
-        """Return the active nsp, if one exists, for the given host."""
-        result = self.common._cli_run(['showvlun', '-a', '-host', hostname])
-        if result:
-            # first line is header
-            result = result[1:]
-            for line in result:
-                info = line.split(",")
-                if info and len(info) > 4:
-                    return info[4]
-
-    def _get_least_used_nsp(self, nspss):
+    def _get_least_used_nsp(self, vluns, nspss):
         """"Return the nsp that has the fewest active vluns."""
         # return only the nsp (node:server:port)
-        result = self.common._cli_run(['showvlun', '-a', '-showcols', 'Port'])
-
-        # count the number of nsps (there is 1 for each active vlun)
+        # count the number of nsps
         nsp_counts = {}
         for nsp in nspss:
             # initialize counts to zero
             nsp_counts[nsp] = 0
 
         current_least_used_nsp = None
-        if result:
-            # first line is header
-            result = result[1:]
-            for line in result:
-                nsp = line.strip()
+
+        for vlun in vluns:
+            if vlun['active']:
+                nsp = self.common.build_nsp(vlun['portPos'])
                 if nsp in nsp_counts:
                     nsp_counts[nsp] = nsp_counts[nsp] + 1
 
-            # identify key (nsp) of least used nsp
-            current_smallest_count = sys.maxint
-            for (nsp, count) in nsp_counts.iteritems():
-                if count < current_smallest_count:
-                    current_least_used_nsp = nsp
-                    current_smallest_count = count
+        # identify key (nsp) of least used nsp
+        current_smallest_count = sys.maxint
+        for (nsp, count) in nsp_counts.iteritems():
+            if count < current_smallest_count:
+                current_least_used_nsp = nsp
+                current_smallest_count = count
 
         return current_least_used_nsp
 
