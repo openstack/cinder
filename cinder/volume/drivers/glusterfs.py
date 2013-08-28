@@ -16,12 +16,14 @@
 #    under the License.
 
 import errno
+import hashlib
 import json
 import os
 import re
 
 from oslo.config import cfg
 
+from cinder.brick.remotefs import remotefs
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
@@ -34,9 +36,6 @@ volume_opts = [
     cfg.StrOpt('glusterfs_shares_config',
                default='/etc/cinder/glusterfs_shares',
                help='File with the list of available gluster shares'),
-    cfg.StrOpt('glusterfs_mount_point_base',
-               default='$state_path/mnt',
-               help='Base dir containing mount points for gluster shares'),
     cfg.StrOpt('glusterfs_disk_util',
                default='df',
                help='Use du or df for free space calculation'),
@@ -68,6 +67,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     def __init__(self, *args, **kwargs):
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
+        self.configuration.append_config_values(remotefs.remotefs_client_opts)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -794,6 +794,12 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             raise exception.GlusterfsNoSuitableShareFound(
                 volume_size=volume_size_for)
         return greatest_share
+
+    def _get_hash_str(self, base_str):
+        """Return a string that represents hash of base_str
+        (in a hex format).
+        """
+        return hashlib.md5(base_str).hexdigest()
 
     def _get_mount_point_for_share(self, glusterfs_share):
         """Return mount point for share.

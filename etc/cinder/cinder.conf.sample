@@ -274,6 +274,23 @@
 
 
 #
+# Options defined in cinder.brick.remotefs.remotefs
+#
+
+# Base dir containing mount points for nfs shares (string
+# value)
+#nfs_mount_point_base=$state_path/mnt
+
+# Mount options passed to the nfs client. See section of the
+# nfs man page for details (string value)
+#nfs_mount_options=<None>
+
+# Base dir containing mount points for gluster shares (string
+# value)
+#glusterfs_mount_point_base=$state_path/mnt
+
+
+#
 # Options defined in cinder.common.config
 #
 
@@ -1103,10 +1120,6 @@
 # value)
 #glusterfs_shares_config=/etc/cinder/glusterfs_shares
 
-# Base dir containing mount points for gluster shares (string
-# value)
-#glusterfs_mount_point_base=$state_path/mnt
-
 # Use du or df for free space calculation (string value)
 #glusterfs_disk_util=df
 
@@ -1266,18 +1279,10 @@
 # File with the list of available nfs shares (string value)
 #nfs_shares_config=/etc/cinder/nfs_shares
 
-# Base dir containing mount points for nfs shares (string
-# value)
-#nfs_mount_point_base=$state_path/mnt
-
 # Create volumes as sparsed files which take no space.If set
 # to False volume is created as regular file.In such case
 # volume creation takes a lot of time. (boolean value)
 #nfs_sparsed_volumes=true
-
-# Mount options passed to the nfs client. See section of the
-# nfs man page for details (string value)
-#nfs_mount_options=<None>
 
 # Percent of ACTUAL usage of the underlying volume before no
 # new volumes can be allocated to the volume destination.

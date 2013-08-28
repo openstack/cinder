@@ -47,7 +47,6 @@ class DumbVolume(object):
 
 
 class RemoteFsDriverTestCase(test.TestCase):
-    TEST_EXPORT = '1.2.3.4/export1'
     TEST_FILE_NAME = 'test.txt'
 
     def setUp(self):
@@ -110,13 +109,6 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-    def test_get_hash_str(self):
-        """_get_hash_str should calculation correct value."""
-        drv = self._driver
-
-        self.assertEqual('4d664fd43b6ff86d80a4ea969c07b3b9',
-                         drv._get_hash_str(self.TEST_EXPORT))
-
 
 class NfsDriverTestCase(test.TestCase):
     """Test case for NFS driver."""
@@ -140,13 +132,13 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration = mox_lib.MockObject(conf.Configuration)
         self.configuration.append_config_values(mox_lib.IgnoreArg())
         self.configuration.nfs_shares_config = None
-        self.configuration.nfs_mount_options = None
-        self.configuration.nfs_mount_point_base = '$state_path/mnt'
         self.configuration.nfs_sparsed_volumes = True
         self.configuration.nfs_used_ratio = 0.95
         self.configuration.nfs_oversub_ratio = 1.0
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
+        self._driver._remotefsclient._mount_options = None
+        self._driver._remotefsclient._mount_base = self.TEST_MNT_POINT_BASE
         self.addCleanup(self.stubs.UnsetAll)
         self.addCleanup(self._mox.UnsetStubs)
 
@@ -167,22 +159,6 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual(
             '/mnt/test/2f4f60214cf43c595666dd815f0360a4/volume-123',
             drv.local_path(volume))
-
-    def test_mount_nfs_should_mount_correctly(self):
-        """_mount_nfs common case usage."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
-        drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
-                     self.TEST_MNT_POINT, run_as_root=True)
-
-        mox.ReplayAll()
-
-        drv._mount_nfs(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT)
-
-        mox.VerifyAll()
 
     def test_copy_image_to_volume(self):
         """resize_image common case usage."""
@@ -214,86 +190,6 @@ class NfsDriverTestCase(test.TestCase):
         drv.copy_image_to_volume(None, volume, None, None)
 
         mox.VerifyAll()
-
-    def test_mount_nfs_should_suppress_already_mounted_error(self):
-        """_mount_nfs should suppress already mounted error if ensure=True
-        """
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
-        drv._execute('mount', '-t', 'nfs', self.TEST_NFS_EXPORT1,
-                     self.TEST_MNT_POINT, run_as_root=True).\
-            AndRaise(putils.ProcessExecutionError(
-                     stderr='is busy or already mounted'))
-
-        mox.ReplayAll()
-
-        drv._mount_nfs(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT, ensure=True)
-
-        mox.VerifyAll()
-
-    def test_mount_nfs_should_reraise_already_mounted_error(self):
-        """_mount_nfs should not suppress already mounted error if ensure=False
-        """
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
-        drv._execute(
-            'mount',
-            '-t',
-            'nfs',
-            self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT, run_as_root=True).\
-            AndRaise(putils.ProcessExecutionError(stderr='is busy or '
-                                                         'already mounted'))
-
-        mox.ReplayAll()
-
-        self.assertRaises(putils.ProcessExecutionError, drv._mount_nfs,
-                          self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
-                          ensure=False)
-
-        mox.VerifyAll()
-
-    def test_mount_nfs_should_create_mountpoint_if_not_yet(self):
-        """_mount_nfs should create mountpoint if it doesn't exist."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
-        drv._execute(*([IgnoreArg()] * 5), run_as_root=IgnoreArg())
-
-        mox.ReplayAll()
-
-        drv._mount_nfs(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT)
-
-        mox.VerifyAll()
-
-    def test_mount_nfs_should_not_create_mountpoint_if_already(self):
-        """_mount_nfs should not create mountpoint if it already exists."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mkdir', '-p', self.TEST_MNT_POINT)
-        drv._execute(*([IgnoreArg()] * 5), run_as_root=IgnoreArg())
-
-        mox.ReplayAll()
-
-        drv._mount_nfs(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT)
-
-        mox.VerifyAll()
-
-    def test_get_hash_str(self):
-        """_get_hash_str should calculation correct value."""
-        drv = self._driver
-
-        self.assertEqual('2f4f60214cf43c595666dd815f0360a4',
-                         drv._get_hash_str(self.TEST_NFS_EXPORT1))
 
     def test_get_mount_point_for_share(self):
         """_get_mount_point_for_share should calculate correct value."""
@@ -395,24 +291,6 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual(drv.shares[self.TEST_NFS_EXPORT2],
                          self.TEST_NFS_EXPORT2_OPTIONS)
-
-        mox.VerifyAll()
-
-    def test_ensure_share_mounted(self):
-        """_ensure_share_mounted simple use case."""
-        mox = self._mox
-        drv = self._driver
-
-        mox.StubOutWithMock(drv, '_get_mount_point_for_share')
-        drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1).\
-            AndReturn(self.TEST_MNT_POINT)
-
-        mox.StubOutWithMock(drv, '_mount_nfs')
-        drv._mount_nfs(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT, ensure=True)
-
-        mox.ReplayAll()
-
-        drv._ensure_share_mounted(self.TEST_NFS_EXPORT1)
 
         mox.VerifyAll()
 

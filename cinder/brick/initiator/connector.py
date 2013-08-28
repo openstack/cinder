@@ -26,6 +26,7 @@ from cinder.brick import executor
 from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
+from cinder.brick.remotefs import remotefs
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
@@ -104,6 +105,11 @@ class InitiatorConnector(executor.Executor):
             return AoEConnector(execute=execute,
                                 driver=driver,
                                 root_helper=root_helper)
+        elif protocol == "NFS" or protocol == "GLUSTERFS":
+            return RemoteFsConnector(mount_type=protocol.lower(),
+                                     execute=execute,
+                                     driver=driver,
+                                     root_helper=root_helper)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -761,3 +767,45 @@ class AoEConnector(InitiatorConnector):
                                    check_exit_code=0)
         LOG.debug(_('aoe-flush %(dev)s: stdout=%(out)s stderr%(err)s') %
                   {'dev': aoe_device, 'out': out, 'err': err})
+
+
+class RemoteFsConnector(InitiatorConnector):
+    """Connector class to attach/detach NFS and GlusterFS volumes."""
+
+    def __init__(self, mount_type, root_helper, driver=None,
+                 execute=putils.execute, *args, **kwargs):
+        self._remotefsclient = remotefs.RemoteFsClient(mount_type,
+                                                       execute, root_helper)
+        super(RemoteFsConnector, self).__init__(driver, execute, root_helper,
+                                                *args, **kwargs)
+
+    def set_execute(self, execute):
+        super(RemoteFsConnector, self).set_execute(execute)
+        self._remotefsclient.set_execute(execute)
+
+    def connect_volume(self, connection_properties):
+        """Ensure that the filesystem containing the volume is mounted.
+
+        connection_properties must include:
+        export - remote filesystem device (e.g. '172.18.194.100:/var/nfs')
+        name - file name within the filesystem
+
+        connection_properties may optionally include:
+        options - options to pass to mount
+        """
+
+        mnt_flags = []
+        if 'options' in connection_properties:
+            mnt_flags = connection_properties['options'].split()
+
+        nfs_share = connection_properties['export']
+        self._remotefsclient.mount(nfs_share, mnt_flags)
+        mount_point = self._remotefsclient.get_mount_point(nfs_share)
+
+        path = mount_point + '/' + connection_properties['name']
+
+        return {'path': path}
+
+    def disconnect_volume(self, connection_properties, device_info):
+        """No need to do anything to disconnect a volume in a filesystem."""
+        pass

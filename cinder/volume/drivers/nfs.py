@@ -16,15 +16,15 @@
 #    under the License.
 
 import errno
-import hashlib
 import os
 
 from oslo.config import cfg
 
+from cinder.brick.remotefs import remotefs
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
+from cinder.openstack.common import processutils as putils
 from cinder import units
 from cinder.volume import driver
 
@@ -36,18 +36,11 @@ volume_opts = [
     cfg.StrOpt('nfs_shares_config',
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
-    cfg.StrOpt('nfs_mount_point_base',
-               default='$state_path/mnt',
-               help='Base dir containing mount points for nfs shares'),
     cfg.BoolOpt('nfs_sparsed_volumes',
                 default=True,
                 help=('Create volumes as sparsed files which take no space.'
                       'If set to False volume is created as regular file.'
                       'In such case volume creation takes a lot of time.')),
-    cfg.StrOpt('nfs_mount_options',
-               default=None,
-               help='Mount options passed to the nfs client. See section '
-                    'of the nfs man page for details'),
     cfg.FloatOpt('nfs_used_ratio',
                  default=0.95,
                  help=('Percent of ACTUAL usage of the underlying volume '
@@ -216,12 +209,6 @@ class RemoteFsDriver(driver.VolumeDriver):
         return os.path.join(self._get_mount_point_for_share(nfs_share),
                             volume['name'])
 
-    def _get_hash_str(self, base_str):
-        """returns string that represents hash of base_str
-        (in a hex format).
-        """
-        return hashlib.md5(base_str).hexdigest()
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         image_utils.fetch_to_raw(context,
@@ -334,7 +321,7 @@ class RemoteFsDriver(driver.VolumeDriver):
         """
         try:
             self._execute(*cmd, run_as_root=True)
-        except processutils.ProcessExecutionError as exc:
+        except putils.ProcessExecutionError as exc:
             if ensure and 'already mounted' in exc.stderr:
                 LOG.warn(_("%s is already mounted"), share)
             else:
@@ -368,9 +355,16 @@ class NfsDriver(RemoteFsDriver):
     volume_backend_name = 'Generic_NFS'
     VERSION = VERSION
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, execute=putils.execute, *args, **kwargs):
+        self._remotefsclient = None
         super(NfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
+        self._remotefsclient = remotefs.RemoteFsClient('nfs', execute)
+
+    def set_execute(self, execute):
+        super(NfsDriver, self).set_execute(execute)
+        if self._remotefsclient:
+            self._remotefsclient.set_execute(execute)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting"""
@@ -412,8 +406,10 @@ class NfsDriver(RemoteFsDriver):
                 raise
 
     def _ensure_share_mounted(self, nfs_share):
-        mount_path = self._get_mount_point_for_share(nfs_share)
-        self._mount_nfs(nfs_share, mount_path, ensure=True)
+        mnt_flags = []
+        if self.shares.get(nfs_share) is not None:
+            mnt_flags = self.shares[nfs_share].split()
+        self._remotefsclient.mount(nfs_share, mnt_flags)
 
     def _find_share(self, volume_size_in_gib):
         """Choose NFS share among available ones for given volume size.
@@ -482,11 +478,8 @@ class NfsDriver(RemoteFsDriver):
         return target_share
 
     def _get_mount_point_for_share(self, nfs_share):
-        """
-        :param nfs_share: example 172.18.194.100:/var/nfs
-        """
-        return os.path.join(self.configuration.nfs_mount_point_base,
-                            self._get_hash_str(nfs_share))
+        """Needed by parent class."""
+        return self._remotefsclient.get_mount_point(nfs_share)
 
     def _get_capacity_info(self, nfs_share):
         """Calculate available space on the NFS share.
@@ -504,17 +497,3 @@ class NfsDriver(RemoteFsDriver):
                               '*snapshot*', mount_point, run_as_root=True)
         total_allocated = float(du.split()[0])
         return total_size, total_available, total_allocated
-
-    def _mount_nfs(self, nfs_share, mount_path, ensure=False):
-        """Mount NFS share to mount path."""
-        self._execute('mkdir', '-p', mount_path)
-
-        # Construct the NFS mount command.
-        nfs_cmd = ['mount', '-t', 'nfs']
-        if self.configuration.nfs_mount_options is not None:
-            nfs_cmd.extend(['-o', self.configuration.nfs_mount_options])
-        if self.shares.get(nfs_share) is not None:
-            nfs_cmd.extend(self.shares[nfs_share].split())
-        nfs_cmd.extend([nfs_share, mount_path])
-
-        self._do_mount(nfs_cmd, ensure, nfs_share)
