@@ -1851,6 +1851,7 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             {
                 'id': 1,
                 'host': 'devstack',
+                'project_id': 'p1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
@@ -1859,6 +1860,7 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             {
                 'id': 2,
                 'host': 'devstack',
+                'project_id': 'p1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1),
@@ -1866,6 +1868,7 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             {
                 'id': 3,
                 'host': 'devstack',
+                'project_id': 'p1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1),
@@ -1873,11 +1876,13 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             {
                 'id': 4,
                 'host': 'devstack',
+                'project_id': 'p1',
                 'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
             },
             {
                 'id': 5,
                 'host': 'devstack',
+                'project_id': 'p1',
                 'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
             }
         ]
@@ -1903,7 +1908,8 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
         volumes = db.volume_get_active_by_window(
             self.context,
             datetime.datetime(1, 3, 1, 1, 1, 1),
-            datetime.datetime(1, 4, 1, 1, 1, 1))
+            datetime.datetime(1, 4, 1, 1, 1, 1),
+            project_id='p1')
         self.assertEqual(len(volumes), 3)
         self.assertEqual(volumes[0].id, u'2')
         self.assertEqual(volumes[1].id, u'3')
@@ -1932,7 +1938,8 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
         snapshots = db.snapshot_get_active_by_window(
             self.context,
             datetime.datetime(1, 3, 1, 1, 1, 1),
-            datetime.datetime(1, 4, 1, 1, 1, 1))
+            datetime.datetime(1, 4, 1, 1, 1, 1),
+            project_id='p1')
         self.assertEqual(len(snapshots), 3)
         self.assertEqual(snapshots[0].id, u'2')
         self.assertEqual(snapshots[0].volume.id, u'1')

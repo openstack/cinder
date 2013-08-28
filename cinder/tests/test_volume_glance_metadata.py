@@ -28,10 +28,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
     def setUp(self):
         super(VolumeGlanceMetadataTestCase, self).setUp()
-        self.context = context.get_admin_context()
-
-    def tearDown(self):
-        super(VolumeGlanceMetadataTestCase, self).tearDown()
+        self.ctxt = context.get_admin_context()
 
     def test_vol_glance_metadata_bad_vol_id(self):
         ctxt = context.get_admin_context()
@@ -111,7 +108,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
             for (key, value) in expected_meta.items():
                 self.assertEqual(meta[key], value)
 
-    def test_vol_glance_metadata_copy_to_volume(self):
+    def test_vol_glance_metadata_copy_from_volume_to_volume(self):
         ctxt = context.get_admin_context()
         db.volume_create(ctxt, {'id': 1})
         db.volume_create(ctxt, {'id': 100, 'source_volid': 1})
@@ -125,3 +122,23 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         for meta in db.volume_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():
                 self.assertEqual(meta[key], value)
+
+    def test_volume_glance_metadata_copy_to_volume(self):
+        vol1 = db.volume_create(self.ctxt, {})
+        vol2 = db.volume_create(self.ctxt, {})
+        db.volume_glance_metadata_create(self.ctxt, vol1['id'], 'm1', 'v1')
+        snapshot = db.snapshot_create(self.ctxt, {'volume_id': vol1['id']})
+        db.volume_glance_metadata_copy_to_snapshot(self.ctxt, snapshot['id'],
+                                                   vol1['id'])
+        db.volume_glance_metadata_copy_to_volume(self.ctxt, vol2['id'],
+                                                 snapshot['id'])
+        metadata = db.volume_glance_metadata_get(self.ctxt, vol2['id'])
+        metadata = dict([(m['key'], m['value']) for m in metadata])
+        self.assertEqual(metadata, {'m1': 'v1'})
+
+    def test_volume_snapshot_glance_metadata_get_nonexistent(self):
+        vol = db.volume_create(self.ctxt, {})
+        snapshot = db.snapshot_create(self.ctxt, {'volume_id': vol['id']})
+        self.assertRaises(exception.GlanceMetadataNotFound,
+                          db.volume_snapshot_glance_metadata_get,
+                          self.ctxt, snapshot['id'])
