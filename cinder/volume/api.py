@@ -410,12 +410,26 @@ class API(base.Base):
             self.update(context, volume, {"status": "in-use"})
 
     @wrap_check_policy
-    def attach(self, context, volume, instance_uuid, host_name, mountpoint):
+    def attach(self, context, volume, instance_uuid, host_name,
+               mountpoint, mode):
+        volume_metadata = self.get_volume_admin_metadata(context.elevated(),
+                                                         volume)
+        if 'readonly' not in volume_metadata:
+            # NOTE(zhiyan): set a default value for read-only flag to metadata.
+            self.update_volume_admin_metadata(context.elevated(), volume,
+                                              {'readonly': 'False'})
+            volume_metadata['readonly'] = 'False'
+
+        if volume_metadata['readonly'] == 'True' and mode != 'ro':
+            raise exception.InvalidVolumeAttachMode(mode=mode,
+                                                    volume_id=volume['id'])
+
         return self.volume_rpcapi.attach_volume(context,
                                                 volume,
                                                 instance_uuid,
                                                 host_name,
-                                                mountpoint)
+                                                mountpoint,
+                                                mode)
 
     @wrap_check_policy
     def detach(self, context, volume):
@@ -592,7 +606,8 @@ class API(base.Base):
 
         self._check_metadata_properties(context, _metadata)
 
-        self.db.volume_metadata_update(context, volume['id'], _metadata, True)
+        self.db.volume_metadata_update(context, volume['id'],
+                                       _metadata, delete)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
@@ -606,6 +621,42 @@ class API(base.Base):
                 if i['key'] == key:
                     return i['value']
         return None
+
+    @wrap_check_policy
+    def get_volume_admin_metadata(self, context, volume):
+        """Get all administration metadata associated with a volume."""
+        rv = self.db.volume_admin_metadata_get(context, volume['id'])
+        return dict(rv.iteritems())
+
+    @wrap_check_policy
+    def delete_volume_admin_metadata(self, context, volume, key):
+        """Delete the given administration metadata item from a volume."""
+        self.db.volume_admin_metadata_delete(context, volume['id'], key)
+
+    @wrap_check_policy
+    def update_volume_admin_metadata(self, context, volume, metadata,
+                                     delete=False):
+        """Updates or creates volume administration metadata.
+
+        If delete is True, metadata items that are not specified in the
+        `metadata` argument will be deleted.
+
+        """
+        orig_meta = self.get_volume_admin_metadata(context, volume)
+        if delete:
+            _metadata = metadata
+        else:
+            _metadata = orig_meta.copy()
+            _metadata.update(metadata)
+
+        self._check_metadata_properties(context, _metadata)
+
+        self.db.volume_admin_metadata_update(context, volume['id'],
+                                             _metadata, delete)
+
+        # TODO(jdg): Implement an RPC call for drivers that may use this info
+
+        return _metadata
 
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
@@ -785,6 +836,14 @@ class API(base.Base):
 
         return self.volume_rpcapi.migrate_volume_completion(context, volume,
                                                             new_volume, error)
+
+    @wrap_check_policy
+    def update_readonly_flag(self, context, volume, flag):
+        if volume['status'] != 'available':
+            msg = _('Volume status must be available to update readonly flag.')
+            raise exception.InvalidVolume(reason=msg)
+        self.update_volume_admin_metadata(context.elevated(), volume,
+                                          {'readonly': str(flag)})
 
 
 class HostAPI(base.Base):

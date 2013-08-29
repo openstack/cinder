@@ -1,6 +1,6 @@
 BEGIN TRANSACTION;
 
-CREATE TABLE volumes_v12 (
+CREATE TABLE volumes_v13 (
     created_at DATETIME,
     updated_at DATETIME,
     deleted_at DATETIME,
@@ -29,10 +29,11 @@ CREATE TABLE volumes_v12 (
     volume_type_id VARCHAR(36),
     source_volid VARCHAR(36),
     bootable BOOLEAN,
+    provider_geometry VARCHAR(255),
     PRIMARY KEY (id)
 );
 
-INSERT INTO volumes_v12
+INSERT INTO volumes_v13
     SELECT created_at,
         updated_at,
         deleted_at,
@@ -60,9 +61,10 @@ INSERT INTO volumes_v12
         provider_auth,
         volume_type_id,
         source_volid,
-        bootable
+        bootable,
+        provider_geometry
     FROM volumes;
 
 DROP TABLE volumes;
-ALTER TABLE volumes_v12 RENAME TO volumes;
+ALTER TABLE volumes_v13 RENAME TO volumes;
 COMMIT;

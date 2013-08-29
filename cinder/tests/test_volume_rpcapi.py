@@ -155,7 +155,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               instance_uuid='fake_uuid',
                               host_name=None,
                               mountpoint='fake_mountpoint',
-                              version='1.7')
+                              mode='ro',
+                              version='1.11')
 
     def test_attach_volume_to_host(self):
         self._test_volume_api('attach_volume',
@@ -164,7 +165,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               instance_uuid=None,
                               host_name='fake_host',
                               mountpoint='fake_mountpoint',
-                              version='1.7')
+                              mode='rw',
+                              version='1.11')
 
     def test_detach_volume(self):
         self._test_volume_api('detach_volume',

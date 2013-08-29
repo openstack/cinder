@@ -85,6 +85,10 @@ class VolumeActionsController(wsgi.Controller):
         if 'host_name' in body['os-attach']:
             host_name = body['os-attach']['host_name']
         mountpoint = body['os-attach']['mountpoint']
+        if 'mode' in body['os-attach']:
+            mode = body['os-attach']['mode']
+        else:
+            mode = 'rw'
 
         if instance_uuid and host_name:
             msg = _("Invalid request to attach volume to an "
@@ -98,8 +102,13 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Invalid request to attach volume to an invalid target")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+        if mode not in ('rw', 'ro'):
+            msg = _("Invalid request to attach volume with an invalid mode. "
+                    "Attaching mode should be 'rw' or 'ro'")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         self.volume_api.attach(context, volume,
-                               instance_uuid, host_name, mountpoint)
+                               instance_uuid, host_name, mountpoint, mode)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-detach')
@@ -210,13 +219,34 @@ class VolumeActionsController(wsgi.Controller):
         context = req.environ['cinder.context']
         volume = self.volume_api.get(context, id)
         try:
-            val = int(body['os-extend']['new_size'])
-        except ValueError:
+            _val = int(body['os-extend']['new_size'])
+        except (KeyError, ValueError):
             msg = _("New volume size must be specified as an integer.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         size = body['os-extend']['new_size']
         self.volume_api.extend(context, volume, size)
+        return webob.Response(status_int=202)
+
+    @wsgi.action('os-update_readonly_flag')
+    def _volume_readonly_update(self, req, id, body):
+        """Update volume readonly flag."""
+        context = req.environ['cinder.context']
+        volume = self.volume_api.get(context, id)
+
+        if not self.is_valid_body(body, 'os-update_readonly_flag'):
+            msg = _("No 'os-update_readonly_flag' was specified "
+                    "in request.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        readonly_flag = body['os-update_readonly_flag'].get('readonly')
+
+        if not isinstance(readonly_flag, bool):
+            msg = _("Volume 'readonly' flag must be specified "
+                    "in request as a boolean.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        self.volume_api.update_readonly_flag(context, volume, readonly_flag)
         return webob.Response(status_int=202)
 
 

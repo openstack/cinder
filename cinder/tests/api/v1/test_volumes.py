@@ -65,6 +65,7 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stubs.stub_service_get_all_by_topic)
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
 
@@ -91,7 +92,8 @@ class VolumeApiTest(test.TestCase):
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {},
+                               'metadata': {'attached_mode': 'rw',
+                                            'readonly': 'False'},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
@@ -162,7 +164,8 @@ class VolumeApiTest(test.TestCase):
                                'image_id': test_id,
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {},
+                               'metadata': {'attached_mode': 'rw',
+                                            'readonly': 'False'},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
@@ -220,17 +223,17 @@ class VolumeApiTest(test.TestCase):
                 'volume_id': '1',
                 'server_id': 'fakeuuid',
                 'host_name': None,
-                'device': '/',
+                'device': '/'
             }],
             'bootable': False,
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
             'source_volid': None,
-            'metadata': {},
+            'metadata': {'attached_mode': 'rw',
+                         'readonly': 'False'},
             'id': '1',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-            'size': 1,
-        }}
+            'size': 1}}
         self.assertEquals(res_dict, expected)
 
     def test_volume_update_metadata(self):
@@ -251,16 +254,18 @@ class VolumeApiTest(test.TestCase):
                 'volume_id': '1',
                 'server_id': 'fakeuuid',
                 'host_name': None,
-                'device': '/',
+                'device': '/'
             }],
             'bootable': False,
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
             'source_volid': None,
-            'metadata': {"qos_max_iops": 2000},
+            'metadata': {"qos_max_iops": 2000,
+                         "readonly": "False",
+                         "attached_mode": "rw"},
             'id': '1',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-            'size': 1,
+            'size': 1
         }}
         self.assertEquals(res_dict, expected)
 
@@ -308,7 +313,8 @@ class VolumeApiTest(test.TestCase):
                                  'volume_type': 'vol_type_name',
                                  'snapshot_id': None,
                                  'source_volid': None,
-                                 'metadata': {},
+                                 'metadata': {'attached_mode': 'rw',
+                                              'readonly': 'False'},
                                  'id': '1',
                                  'created_at': datetime.datetime(1, 1, 1,
                                                                  1, 1, 1),
@@ -333,7 +339,8 @@ class VolumeApiTest(test.TestCase):
                                  'volume_type': 'vol_type_name',
                                  'snapshot_id': None,
                                  'source_volid': None,
-                                 'metadata': {},
+                                 'metadata': {'attached_mode': 'rw',
+                                              'readonly': 'False'},
                                  'id': '1',
                                  'created_at': datetime.datetime(1, 1, 1,
                                                                  1, 1, 1),
@@ -477,7 +484,8 @@ class VolumeApiTest(test.TestCase):
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {},
+                               'metadata': {'attached_mode': 'rw',
+                                            'readonly': 'False'},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
@@ -501,7 +509,7 @@ class VolumeApiTest(test.TestCase):
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {},
+                               'metadata': {'readonly': 'False'},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
@@ -530,7 +538,8 @@ class VolumeApiTest(test.TestCase):
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {},
+                               'metadata': {'attached_mode': 'rw',
+                                            'readonly': 'False'},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),

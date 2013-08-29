@@ -146,6 +146,20 @@ class VolumeMetadata(BASE, CinderBase):
                           'VolumeMetadata.deleted == False)')
 
 
+class VolumeAdminMetadata(BASE, CinderBase):
+    """Represents a administrator metadata key/value pair for a volume."""
+    __tablename__ = 'volume_admin_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=False)
+    volume = relationship(Volume, backref="volume_admin_metadata",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'VolumeAdminMetadata.volume_id == Volume.id,'
+                          'VolumeAdminMetadata.deleted == False)')
+
+
 class VolumeTypes(BASE, CinderBase):
     """Represent possible volume_types of volumes offered."""
     __tablename__ = "volume_types"
@@ -477,6 +491,7 @@ def register_models():
               Service,
               Volume,
               VolumeMetadata,
+              VolumeAdminMetadata,
               SnapshotMetadata,
               Transfer,
               VolumeTypeExtraSpecs,

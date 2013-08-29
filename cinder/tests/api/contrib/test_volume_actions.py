@@ -95,7 +95,8 @@ class VolumeActionsTest(test.TestCase):
 
     def test_attach_to_instance(self):
         body = {'os-attach': {'instance_uuid': 'fake',
-                              'mountpoint': '/dev/vdc'}}
+                              'mountpoint': '/dev/vdc',
+                              'mode': 'rw'}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = "POST"
         req.body = jsonutils.dumps(body)
@@ -105,6 +106,7 @@ class VolumeActionsTest(test.TestCase):
         self.assertEqual(res.status_int, 202)
 
     def test_attach_to_host(self):
+        # using 'read-write' mode attach volume by default
         body = {'os-attach': {'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc'}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
@@ -129,6 +131,26 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-attach': {'instance_uuid': 'fake',
                               'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.headers["content-type"] = "application/json"
+        req.body = jsonutils.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+
+        # Invalid request to attach volume with an invalid mode
+        body = {'os-attach': {'instance_uuid': 'fake',
+                              'mountpoint': '/dev/vdc',
+                              'mode': 'rr'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.headers["content-type"] = "application/json"
+        req.body = jsonutils.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+        body = {'os-attach': {'host_name': 'fake_host',
+                              'mountpoint': '/dev/vdc',
+                              'mode': 'ww'}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = "POST"
         req.headers["content-type"] = "application/json"
@@ -173,6 +195,21 @@ class VolumeActionsTest(test.TestCase):
                        fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 202)
+
+    def test_update_readonly_flag(self):
+        def fake_update_readonly_flag(*args, **kwargs):
+            return {}
+        self.stubs.Set(volume.API, 'update_readonly_flag',
+                       fake_update_readonly_flag)
+
+        body = {'os-update_readonly_flag': {'readonly': True}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = "POST"
         req.body = jsonutils.dumps(body)

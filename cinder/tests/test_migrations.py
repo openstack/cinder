@@ -960,3 +960,45 @@ class TestMigrations(test.TestCase):
                                        metadata,
                                        autoload=True)
             self.assertTrue('migration_status' not in volumes.c)
+
+    def test_migration_020(self):
+        """Test adding volume_admin_metadata table works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.INIT_VERSION)
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 19)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 20)
+
+            self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                     "volume_admin_metadata"))
+            volume_admin_metadata = sqlalchemy.Table('volume_admin_metadata',
+                                                     metadata,
+                                                     autoload=True)
+
+            self.assertTrue(isinstance(volume_admin_metadata.c.created_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(volume_admin_metadata.c.updated_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(volume_admin_metadata.c.deleted_at.type,
+                                       sqlalchemy.types.DATETIME))
+            self.assertTrue(isinstance(volume_admin_metadata.c.deleted.type,
+                                       sqlalchemy.types.BOOLEAN))
+            self.assertTrue(isinstance(volume_admin_metadata.c.deleted.type,
+                                       sqlalchemy.types.BOOLEAN))
+            self.assertTrue(isinstance(volume_admin_metadata.c.id.type,
+                                       sqlalchemy.types.INTEGER))
+            self.assertTrue(isinstance(volume_admin_metadata.c.volume_id.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(volume_admin_metadata.c.key.type,
+                                       sqlalchemy.types.VARCHAR))
+            self.assertTrue(isinstance(volume_admin_metadata.c.value.type,
+                                       sqlalchemy.types.VARCHAR))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 19)
+
+            self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                      "volume_admin_metadata"))

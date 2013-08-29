@@ -8,9 +8,13 @@
     "volume:create": [],
     "volume:get_all": [],
     "volume:get_volume_metadata": [],
+    "volume:get_volume_admin_metadata": [["rule:admin_api"]],
+    "volume:delete_volume_admin_metadata": [["rule:admin_api"]],
+    "volume:update_volume_admin_metadata": [["rule:admin_api"]],
     "volume:get_snapshot": [],
     "volume:get_all_snapshots": [],
     "volume:extend": [],
+    "volume:update_readonly_flag": [],
 
     "volume_extension:types_manage": [["rule:admin_api"]],
     "volume_extension:types_extra_specs": [["rule:admin_api"]],
@@ -47,5 +51,4 @@
     "backup:get": [],
     "backup:get_all": [],
     "backup:restore": []
-
 }

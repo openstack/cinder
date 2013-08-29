@@ -20,7 +20,6 @@
 """Implementation of SQLAlchemy backend."""
 
 
-import datetime
 import sys
 import uuid
 import warnings
@@ -1043,6 +1042,11 @@ def volume_attached(context, volume_id, instance_uuid, host_name, mountpoint):
 def volume_create(context, values):
     values['volume_metadata'] = _metadata_refs(values.get('metadata'),
                                                models.VolumeMetadata)
+    if is_admin_context(context):
+        values['volume_admin_metadata'] = \
+            _metadata_refs(values.get('admin_metadata'),
+                           models.VolumeAdminMetadata)
+
     volume_ref = models.Volume()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
@@ -1121,12 +1125,13 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
 @require_admin_context
 def volume_destroy(context, volume_id):
     session = get_session()
+    now = timeutils.utcnow()
     with session.begin():
         session.query(models.Volume).\
             filter_by(id=volume_id).\
             update({'status': 'deleted',
                     'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
+                    'deleted_at': now,
                     'updated_at': literal_column('updated_at')})
         session.query(models.IscsiTarget).\
             filter_by(volume_id=volume_id).\
@@ -1134,7 +1139,12 @@ def volume_destroy(context, volume_id):
         session.query(models.VolumeMetadata).\
             filter_by(volume_id=volume_id).\
             update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
+                    'deleted_at': now,
+                    'updated_at': literal_column('updated_at')})
+        session.query(models.VolumeAdminMetadata).\
+            filter_by(volume_id=volume_id).\
+            update({'deleted': True,
+                    'deleted_at': now,
                     'updated_at': literal_column('updated_at')})
 
 
@@ -1156,10 +1166,17 @@ def volume_detached(context, volume_id):
 
 @require_context
 def _volume_get_query(context, session=None, project_only=False):
-    return model_query(context, models.Volume, session=session,
-                       project_only=project_only).\
-        options(joinedload('volume_metadata')).\
-        options(joinedload('volume_type'))
+    if is_admin_context(context):
+        return model_query(context, models.Volume, session=session,
+                           project_only=project_only).\
+            options(joinedload('volume_metadata')).\
+            options(joinedload('volume_admin_metadata')).\
+            options(joinedload('volume_type'))
+    else:
+        return model_query(context, models.Volume, session=session,
+                           project_only=project_only).\
+            options(joinedload('volume_metadata')).\
+            options(joinedload('volume_type'))
 
 
 @require_context
@@ -1206,6 +1223,7 @@ def volume_get_all_by_host(context, host):
 def volume_get_all_by_instance_uuid(context, instance_uuid):
     result = model_query(context, models.Volume, read_deleted="no").\
         options(joinedload('volume_metadata')).\
+        options(joinedload('volume_admin_metadata')).\
         options(joinedload('volume_type')).\
         filter_by(instance_uuid=instance_uuid).\
         all()
@@ -1255,11 +1273,19 @@ def volume_update(context, volume_id, values):
     with session.begin():
         metadata = values.get('metadata')
         if metadata is not None:
-            _volume_metadata_update(context,
-                                    volume_id,
-                                    values.pop('metadata'),
-                                    delete=True,
-                                    session=session)
+            _volume_user_metadata_update(context,
+                                         volume_id,
+                                         values.pop('metadata'),
+                                         delete=True,
+                                         session=session)
+
+        admin_metadata = values.get('admin_metadata')
+        if is_admin_context(context) and admin_metadata is not None:
+            _volume_admin_metadata_update(context,
+                                          volume_id,
+                                          values.pop('admin_metadata'),
+                                          delete=True,
+                                          session=session)
 
         volume_ref = _volume_get(context, volume_id, session=session)
         volume_ref.update(values)
@@ -1269,16 +1295,14 @@ def volume_update(context, volume_id, values):
 
 ####################
 
-def _volume_metadata_get_query(context, volume_id, session=None):
-    return model_query(context, models.VolumeMetadata,
-                       session=session, read_deleted="no").\
+def _volume_x_metadata_get_query(context, volume_id, model, session=None):
+    return model_query(context, model, session=session, read_deleted="no").\
         filter_by(volume_id=volume_id)
 
 
-@require_context
-@require_volume_exists
-def _volume_metadata_get(context, volume_id, session=None):
-    rows = _volume_metadata_get_query(context, volume_id, session).all()
+def _volume_x_metadata_get(context, volume_id, model, session=None):
+    rows = _volume_x_metadata_get_query(context, volume_id, model,
+                                        session=session).all()
     result = {}
     for row in rows:
         result[row['key']] = row['value']
@@ -1286,56 +1310,34 @@ def _volume_metadata_get(context, volume_id, session=None):
     return result
 
 
-@require_context
-@require_volume_exists
-def volume_metadata_get(context, volume_id):
-    return _volume_metadata_get(context, volume_id)
-
-
-@require_context
-@require_volume_exists
-def volume_metadata_delete(context, volume_id, key):
-    _volume_metadata_get_query(context, volume_id).\
-        filter_by(key=key).\
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
-
-
-@require_context
-def _volume_metadata_get_item(context, volume_id, key, session=None):
-    result = _volume_metadata_get_query(context, volume_id, session=session).\
+def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec,
+                                session=None):
+    result = _volume_x_metadata_get_query(context, volume_id,
+                                          model, session=session).\
         filter_by(key=key).\
         first()
 
     if not result:
-        raise exception.VolumeMetadataNotFound(metadata_key=key,
-                                               volume_id=volume_id)
+        raise notfound_exec(metadata_key=key, volume_id=volume_id)
     return result
 
 
-@require_context
-@require_volume_exists
-def volume_metadata_get_item(context, volume_id, key):
-    return _volume_metadata_get_item(context, volume_id, key)
-
-
-@require_context
-@require_volume_exists
-def _volume_metadata_update(context, volume_id, metadata, delete,
-                            session=None):
+def _volume_x_metadata_update(context, volume_id, metadata, delete,
+                              model, notfound_exec, session=None):
     if not session:
         session = get_session()
 
     with session.begin(subtransactions=True):
         # Set existing metadata to deleted if delete argument is True
         if delete:
-            original_metadata = _volume_metadata_get(context, volume_id,
-                                                     session)
+            original_metadata = _volume_x_metadata_get(context, volume_id,
+                                                       model, session=session)
             for meta_key, meta_value in original_metadata.iteritems():
                 if meta_key not in metadata:
-                    meta_ref = _volume_metadata_get_item(context, volume_id,
-                                                         meta_key, session)
+                    meta_ref = _volume_x_metadata_get_item(context, volume_id,
+                                                           meta_key, model,
+                                                           notfound_exec,
+                                                           session=session)
                     meta_ref.update({'deleted': True})
                     meta_ref.save(session=session)
 
@@ -1349,10 +1351,12 @@ def _volume_metadata_update(context, volume_id, metadata, delete,
             item = {"value": meta_value}
 
             try:
-                meta_ref = _volume_metadata_get_item(context, volume_id,
-                                                     meta_key, session)
-            except exception.VolumeMetadataNotFound as e:
-                meta_ref = models.VolumeMetadata()
+                meta_ref = _volume_x_metadata_get_item(context, volume_id,
+                                                       meta_key, model,
+                                                       notfound_exec,
+                                                       session=session)
+            except notfound_exec:
+                meta_ref = model()
                 item.update({"key": meta_key, "volume_id": volume_id})
 
             meta_ref.update(item)
@@ -1361,10 +1365,110 @@ def _volume_metadata_update(context, volume_id, metadata, delete,
         return metadata
 
 
+def _volume_user_metadata_get_query(context, volume_id, session=None):
+    return _volume_x_metadata_get_query(context, volume_id,
+                                        models.VolumeMetadata, session=session)
+
+
+@require_context
+@require_volume_exists
+def _volume_user_metadata_get(context, volume_id, session=None):
+    return _volume_x_metadata_get(context, volume_id,
+                                  models.VolumeMetadata, session=session)
+
+
+@require_context
+def _volume_user_metadata_get_item(context, volume_id, key, session=None):
+    return _volume_x_metadata_get_item(context, volume_id, key,
+                                       models.VolumeMetadata,
+                                       exception.VolumeMetadataNotFound,
+                                       session=session)
+
+
+@require_context
+@require_volume_exists
+def _volume_user_metadata_update(context, volume_id, metadata, delete,
+                                 session=None):
+    return _volume_x_metadata_update(context, volume_id, metadata, delete,
+                                     models.VolumeMetadata,
+                                     exception.VolumeMetadataNotFound,
+                                     session=session)
+
+
+@require_context
+@require_volume_exists
+def volume_metadata_get_item(context, volume_id, key):
+    return _volume_user_metadata_get_item(context, volume_id, key)
+
+
+@require_context
+@require_volume_exists
+def volume_metadata_get(context, volume_id):
+    return _volume_user_metadata_get(context, volume_id)
+
+
+@require_context
+@require_volume_exists
+def volume_metadata_delete(context, volume_id, key):
+    _volume_user_metadata_get_query(context, volume_id).\
+        filter_by(key=key).\
+        update({'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
+
+
 @require_context
 @require_volume_exists
 def volume_metadata_update(context, volume_id, metadata, delete):
-    return _volume_metadata_update(context, volume_id, metadata, delete)
+    return _volume_user_metadata_update(context, volume_id, metadata, delete)
+
+
+###################
+
+
+def _volume_admin_metadata_get_query(context, volume_id, session=None):
+    return _volume_x_metadata_get_query(context, volume_id,
+                                        models.VolumeAdminMetadata,
+                                        session=session)
+
+
+@require_admin_context
+@require_volume_exists
+def _volume_admin_metadata_get(context, volume_id, session=None):
+    return _volume_x_metadata_get(context, volume_id,
+                                  models.VolumeAdminMetadata, session=session)
+
+
+@require_admin_context
+@require_volume_exists
+def _volume_admin_metadata_update(context, volume_id, metadata, delete,
+                                  session=None):
+    return _volume_x_metadata_update(context, volume_id, metadata, delete,
+                                     models.VolumeAdminMetadata,
+                                     exception.VolumeAdminMetadataNotFound,
+                                     session=session)
+
+
+@require_admin_context
+@require_volume_exists
+def volume_admin_metadata_get(context, volume_id):
+    return _volume_admin_metadata_get(context, volume_id)
+
+
+@require_admin_context
+@require_volume_exists
+def volume_admin_metadata_delete(context, volume_id, key):
+    _volume_admin_metadata_get_query(context, volume_id).\
+        filter_by(key=key).\
+        update({'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
+
+
+@require_admin_context
+@require_volume_exists
+def volume_admin_metadata_update(context, volume_id, metadata, delete):
+    return _volume_admin_metadata_update(context, volume_id, metadata, delete)
 
 
 ###################

@@ -45,13 +45,16 @@ def stub_volume(id, **kwargs):
         'snapshot_id': None,
         'source_volid': None,
         'volume_type_id': '3e196c20-3c06-11e2-81c1-0800200c9a66',
-        'volume_metadata': [],
+        'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
+                                  {'key': 'readonly', 'value': 'False'}],
         'bootable': False,
         'volume_type': {'name': 'vol_type_name'}}
 
     volume.update(kwargs)
     if kwargs.get('volume_glance_metadata', None):
         volume['bootable'] = True
+    if kwargs.get('attach_status') == 'detached':
+        del volume['volume_admin_metadata'][0]
     return volume
 
 
@@ -98,6 +101,10 @@ def stub_volume_get(self, context, volume_id):
 
 def stub_volume_get_notfound(self, context, volume_id):
     raise exc.NotFound
+
+
+def stub_volume_get_db(context, volume_id):
+    return stub_volume(volume_id)
 
 
 def stub_volume_get_all(context, search_opts=None, marker=None, limit=None,

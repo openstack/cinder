@@ -345,6 +345,24 @@ def volume_metadata_update(context, volume_id, metadata, delete):
 ##################
 
 
+def volume_admin_metadata_get(context, volume_id):
+    """Get all administration metadata for a volume."""
+    return IMPL.volume_admin_metadata_get(context, volume_id)
+
+
+def volume_admin_metadata_delete(context, volume_id, key):
+    """Delete the given metadata item."""
+    IMPL.volume_admin_metadata_delete(context, volume_id, key)
+
+
+def volume_admin_metadata_update(context, volume_id, metadata, delete):
+    """Update metadata if it exists, otherwise create it."""
+    IMPL.volume_admin_metadata_update(context, volume_id, metadata, delete)
+
+
+##################
+
+
 def volume_type_create(context, values):
     """Create a new volume type."""
     return IMPL.volume_type_create(context, values)

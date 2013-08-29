@@ -139,6 +139,11 @@ class InvalidSourceVolume(Invalid):
     message = _("Invalid source volume %(reason)s.")
 
 
+class InvalidVolumeAttachMode(Invalid):
+    message = _("Invalid attaching mode '%(mode)s' for "
+                "volume %(volume_id)s.")
+
+
 class VolumeAttached(Invalid):
     message = _("Volume %(volume_id)s is still attached, detach volume first.")
 
@@ -226,6 +231,11 @@ class VolumeNotFoundForInstance(VolumeNotFound):
 
 class VolumeMetadataNotFound(NotFound):
     message = _("Volume %(volume_id)s has no metadata with "
+                "key %(metadata_key)s.")
+
+
+class VolumeAdminMetadataNotFound(NotFound):
+    message = _("Volume %(volume_id)s has no administration metadata with "
                 "key %(metadata_key)s.")
 
 
