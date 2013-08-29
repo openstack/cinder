@@ -103,6 +103,6 @@ if __name__ == '__main__':
                                                             'exists',
                                                             extra_info)
         except Exception as e:
-            print(traceback.fromat_exc(e))
+            print(traceback.format_exc(e))
 
     print(_("Volume usage audit completed"))
