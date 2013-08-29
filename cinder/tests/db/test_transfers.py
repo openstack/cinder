@@ -20,6 +20,7 @@ from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.tests import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -36,22 +37,6 @@ class TransfersTableTestCase(test.TestCase):
     def tearDown(self):
         super(TransfersTableTestCase, self).tearDown()
 
-    def _create_volume(self,
-                       display_name='test_volume',
-                       display_description='this is a test volume',
-                       status='available',
-                       size=1):
-        """Create a volume object."""
-        vol = {}
-        vol['size'] = size
-        vol['user_id'] = self.ctxt.user_id
-        vol['project_id'] = self.ctxt.project_id
-        vol['status'] = status
-        vol['display_name'] = display_name
-        vol['display_description'] = display_description
-        vol['attach_status'] = 'detached'
-        return db.volume_create(self.ctxt, vol)['id']
-
     def _create_transfer(self, volume_id=None):
         """Create a transfer object."""
         transfer = {'display_name': 'display_name',
@@ -66,11 +51,11 @@ class TransfersTableTestCase(test.TestCase):
         self.assertRaises(KeyError,
                           self._create_transfer)
 
-        volume_id = self._create_volume(size=1)
+        volume_id = utils.create_volume(self.ctxt)['id']
         self._create_transfer(volume_id)
 
     def test_transfer_get(self):
-        volume_id1 = self._create_volume(size=1)
+        volume_id1 = utils.create_volume(self.ctxt)['id']
         xfer_id1 = self._create_transfer(volume_id1)
 
         xfer = db.transfer_get(self.ctxt, xfer_id1)
@@ -85,8 +70,8 @@ class TransfersTableTestCase(test.TestCase):
         self.assertEquals(xfer.volume_id, volume_id1, "Unexpected volume_id")
 
     def test_transfer_get_all(self):
-        volume_id1 = self._create_volume(size=1)
-        volume_id2 = self._create_volume(size=1)
+        volume_id1 = utils.create_volume(self.ctxt)['id']
+        volume_id2 = utils.create_volume(self.ctxt)['id']
         self._create_transfer(volume_id1)
         self._create_transfer(volume_id2)
 
@@ -112,8 +97,8 @@ class TransfersTableTestCase(test.TestCase):
                           "Unexpected number of transfer records")
 
     def test_transfer_destroy(self):
-        volume_id = self._create_volume(size=1)
-        volume_id2 = self._create_volume(size=1)
+        volume_id = utils.create_volume(self.ctxt)['id']
+        volume_id2 = utils.create_volume(self.ctxt)['id']
         xfer_id1 = self._create_transfer(volume_id)
         xfer_id2 = self._create_transfer(volume_id2)
 

@@ -22,6 +22,7 @@ from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.tests import utils
 from cinder.transfer import api as transfer_api
 
 
@@ -34,27 +35,12 @@ class VolumeTransferTestCase(test.TestCase):
         super(VolumeTransferTestCase, self).setUp()
         self.ctxt = context.RequestContext(user_id='user_id',
                                            project_id='project_id')
-
-    def _create_volume(self, volume_id, status='available',
-                       user_id=None, project_id=None):
-        if user_id is None:
-            user_id = self.ctxt.user_id
-        if project_id is None:
-            project_id = self.ctxt.project_id
-        vol = {'id': volume_id,
-               'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-               'user_id': user_id,
-               'project_id': project_id,
-               'display_name': 'Display Name',
-               'display_description': 'Display Description',
-               'size': 1,
-               'status': status}
-        volume = db.volume_create(self.ctxt, vol)
-        return volume
+        self.updated_at = datetime.datetime(1, 1, 1, 1, 1, 1)
 
     def test_transfer_volume_create_delete(self):
         tx_api = transfer_api.API()
-        volume = self._create_volume('1')
+        volume = utils.create_volume(self.ctxt, id='1',
+                                     updated_at=self.updated_at)
         response = tx_api.create(self.ctxt, '1', 'Description')
         volume = db.volume_get(self.ctxt, '1')
         self.assertEquals('awaiting-transfer', volume['status'],
@@ -67,7 +53,8 @@ class VolumeTransferTestCase(test.TestCase):
 
     def test_transfer_invalid_volume(self):
         tx_api = transfer_api.API()
-        volume = self._create_volume('1', status='in-use')
+        volume = utils.create_volume(self.ctxt, id='1', status='in-use',
+                                     updated_at=self.updated_at)
         self.assertRaises(exception.InvalidVolume,
                           tx_api.create,
                           self.ctxt, '1', 'Description')
@@ -77,7 +64,8 @@ class VolumeTransferTestCase(test.TestCase):
 
     def test_transfer_accept(self):
         tx_api = transfer_api.API()
-        volume = self._create_volume('1')
+        volume = utils.create_volume(self.ctxt, id='1',
+                                     updated_at=self.updated_at)
         transfer = tx_api.create(self.ctxt, '1', 'Description')
         volume = db.volume_get(self.ctxt, '1')
         self.assertEquals('awaiting-transfer', volume['status'],
@@ -115,7 +103,8 @@ class VolumeTransferTestCase(test.TestCase):
 
     def test_transfer_get(self):
         tx_api = transfer_api.API()
-        volume = self._create_volume('1')
+        volume = utils.create_volume(self.ctxt, id='1',
+                                     updated_at=self.updated_at)
         transfer = tx_api.create(self.ctxt, volume['id'], 'Description')
         t = tx_api.get(self.ctxt, transfer['id'])
         self.assertEquals(t['id'], transfer['id'], 'Unexpected transfer id')
