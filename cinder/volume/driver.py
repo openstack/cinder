@@ -271,9 +271,10 @@ class VolumeDriver(object):
                                                force=True)
 
         try:
+            size_in_mb = int(src_vol['size']) * 1024    # vol size is in GB
             volume_utils.copy_volume(src_attach_info['device']['path'],
                                      dest_attach_info['device']['path'],
-                                     src_vol['size'])
+                                     size_in_mb)
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():
