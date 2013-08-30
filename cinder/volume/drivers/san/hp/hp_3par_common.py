@@ -113,6 +113,14 @@ CONF.register_opts(hp3par_opts)
 
 
 class HP3PARCommon(object):
+    """Class that contains common code for the 3PAR drivers.
+
+    Version history:
+        1.2.0 - Updated hp3parclient API use to 2.0.x
+
+    """
+
+    VERSION = "1.2.0"
 
     stats = {}
 
@@ -141,6 +149,9 @@ class HP3PARCommon(object):
                              "is no longer used. The domain is automatically "
                              "looked up based on the CPG."))
 
+    def get_version(self):
+        return self.VERSION
+
     def check_flags(self, options, required_flags):
         for flag in required_flags:
             if not getattr(options, flag, None):
@@ -154,8 +165,6 @@ class HP3PARCommon(object):
             ex_msg = (_('Invalid hp3parclient version. Version %s or greater '
                         'required.') % MIN_CLIENT_VERSION)
             raise hpexceptions.UnsupportedVersion(ex_msg)
-        else:
-            LOG.debug(('Using hp3parclient %s.') % client_version)
 
         return cl
 
@@ -176,6 +185,9 @@ class HP3PARCommon(object):
 
     def do_setup(self, context):
         self.client = self._create_client()
+        LOG.info(_("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s")
+                 % {"common_ver": self.VERSION,
+                     "rest_ver": hp3parclient.get_version_string()})
         if self.config.hp3par_debug:
             self.client.debug_rest(True)
 
