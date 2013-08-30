@@ -68,7 +68,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
 
         specs_id = self._create_qos_specs('NewName')
         query_id = db.qos_specs_get_by_name(
-            self.ctxt, 'NewName')['NewName']['id']
+            self.ctxt, 'NewName')['id']
         self.assertEquals(specs_id, query_id)
 
     def test_qos_specs_get(self):
@@ -81,8 +81,9 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                           db.qos_specs_get, self.ctxt, fake_id)
 
         specs = db.qos_specs_get(self.ctxt, specs_id)
-        value.update(dict(id=specs_id))
-        expected = dict(Name1=value)
+        expected = dict(name='Name1', id=specs_id, consumer='front-end')
+        del value['consumer']
+        expected.update(dict(specs=value))
         self.assertDictMatch(specs, expected)
 
     def test_qos_specs_get_all(self):
@@ -101,12 +102,18 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         self.assertEquals(len(specs), 3,
                           "Unexpected number of qos specs records")
 
-        value1.update({'id': spec_id1})
-        value2.update({'id': spec_id2})
-        value3.update({'id': spec_id3})
-        self.assertDictMatch(specs['Name1'], value1)
-        self.assertDictMatch(specs['Name2'], value2)
-        self.assertDictMatch(specs['Name3'], value3)
+        expected1 = dict(name='Name1', id=spec_id1, consumer='front-end')
+        expected2 = dict(name='Name2', id=spec_id2, consumer='back-end')
+        expected3 = dict(name='Name3', id=spec_id3, consumer='back-end')
+        del value1['consumer']
+        del value2['consumer']
+        del value3['consumer']
+        expected1.update(dict(specs=value1))
+        expected2.update(dict(specs=value2))
+        expected3.update(dict(specs=value3))
+        self.assertIn(expected1, specs)
+        self.assertIn(expected2, specs)
+        self.assertIn(expected3, specs)
 
     def test_qos_specs_get_by_name(self):
         name = str(int(time.time()))
@@ -114,8 +121,11 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                      foo='Foo', bar='Bar')
         specs_id = self._create_qos_specs(name, value)
         specs = db.qos_specs_get_by_name(self.ctxt, name)
-        value.update(dict(id=specs_id))
-        expected = {name: value}
+        del value['consumer']
+        expected = {'name': name,
+                    'id': specs_id,
+                    'consumer': 'front-end',
+                    'specs': value}
         self.assertDictMatch(specs, expected)
 
     def test_qos_specs_delete(self):
@@ -200,5 +210,5 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                           self.ctxt, 'Fake-UUID', value)
         db.qos_specs_update(self.ctxt, specs_id, value)
         specs = db.qos_specs_get(self.ctxt, specs_id)
-        self.assertEqual(specs[name]['key2'], 'new_value2')
-        self.assertEqual(specs[name]['key3'], 'value3')
+        self.assertEqual(specs['specs']['key2'], 'new_value2')
+        self.assertEqual(specs['specs']['key3'], 'value3')

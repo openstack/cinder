@@ -147,11 +147,14 @@ def get_associations(context, specs_id):
         LOG.warn(msg)
         raise exception.CinderException(message=msg)
 
-    result = {}
+    result = []
     for vol_type in associates:
-        result[vol_type['name']] = vol_type['id']
+        member = dict(association_type='volume_type')
+        member.update(dict(name=vol_type['name']))
+        member.update(dict(id=vol_type['id']))
+        result.append(member)
 
-    return {specs_id: result}
+    return result
 
 
 def associate_qos_with_type(context, specs_id, type_id):

@@ -26,32 +26,37 @@ from cinder.volume import qos_specs
 
 
 def stub_qos_specs(id):
+    res = dict(name='qos_specs_' + str(id))
+    res.update(dict(consumer='back-end'))
+    res.update(dict(id=str(id)))
     specs = {"key1": "value1",
              "key2": "value2",
              "key3": "value3",
              "key4": "value4",
              "key5": "value5"}
-    specs.update(dict(id=str(id)))
-    return specs
+    res.update(dict(specs=specs))
+    return res
 
 
 def stub_qos_associates(id):
-    return {str(id): {'FakeVolTypeName': 'FakeVolTypeID'}}
+    return [{
+            'association_type': 'volume_type',
+            'name': 'FakeVolTypeName',
+            'id': 'FakeVolTypeID'}]
 
 
 def return_qos_specs_get_all(context):
-    return dict(
-        qos_specs_1=stub_qos_specs(1),
-        qos_specs_2=stub_qos_specs(2),
-        qos_specs_3=stub_qos_specs(3)
-    )
+    return [
+        stub_qos_specs(1),
+        stub_qos_specs(2),
+        stub_qos_specs(3),
+    ]
 
 
 def return_qos_specs_get_qos_specs(context, id):
     if id == "777":
         raise exception.QoSSpecsNotFound(specs_id=id)
-    name = 'qos_specs_%s' % id
-    return {name: stub_qos_specs(int(id))}
+    return stub_qos_specs(int(id))
 
 
 def return_qos_specs_delete(context, id, force):
@@ -142,14 +147,16 @@ class QoSSpecManageApiTest(test.TestCase):
                        return_qos_specs_get_all)
 
         req = fakes.HTTPRequest.blank('/v2/fake/qos-specs')
-        res_dict = self.controller.index(req)
+        res = self.controller.index(req)
 
-        self.assertEqual(3, len(res_dict.keys()))
+        self.assertEqual(3, len(res['qos_specs']))
 
+        names = set()
+        for item in res['qos_specs']:
+            self.assertEqual('value1', item['specs']['key1'])
+            names.add(item['name'])
         expected_names = ['qos_specs_1', 'qos_specs_2', 'qos_specs_3']
-        self.assertEqual(set(res_dict.keys()), set(expected_names))
-        for key in res_dict.keys():
-            self.assertEqual('value1', res_dict[key]['key1'])
+        self.assertEqual(names, set(expected_names))
 
     def test_qos_specs_delete(self):
         self.stubs.Set(qos_specs, 'get_qos_specs',
@@ -212,7 +219,6 @@ class QoSSpecManageApiTest(test.TestCase):
         res_dict = self.controller.create(req, body)
 
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
-        self.assertEqual(1, len(res_dict))
         self.assertEqual('qos_specs_1', res_dict['qos_specs']['name'])
 
     def test_create_conflict(self):
@@ -318,8 +324,8 @@ class QoSSpecManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/1')
         res_dict = self.controller.show(req, '1')
 
-        self.assertEqual(1, len(res_dict))
-        self.assertEqual('1', res_dict['qos_specs_1']['id'])
+        self.assertEqual('1', res_dict['qos_specs']['id'])
+        self.assertEqual('qos_specs_1', res_dict['qos_specs']['name'])
 
     def test_get_associations(self):
         self.stubs.Set(qos_specs, 'get_associations',
@@ -329,10 +335,10 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/fake/qos-specs/1/associations')
         res = self.controller.associations(req, '1')
 
-        self.assertEqual('1', res.keys()[0])
-        self.assertEqual('FakeVolTypeName', res['1'].keys()[0])
+        self.assertEqual('FakeVolTypeName',
+                         res['qos_associations'][0]['name'])
         self.assertEqual('FakeVolTypeID',
-                         res['1']['FakeVolTypeName'])
+                         res['qos_associations'][0]['id'])
 
     def test_get_associations_not_found(self):
         self.stubs.Set(qos_specs, 'get_associations',
