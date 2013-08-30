@@ -43,6 +43,7 @@ class HpSanISCSITestCase(test.TestCase):
 
         self.driver = HpSanISCSIDriver(configuration=configuration)
         self.volume_name = "fakevolume"
+        self.snapshot_name = "fakeshapshot"
         self.connector = {'ip': '10.0.0.2',
                           'initiator': 'iqn.1993-08.org.debian:01:222',
                           'host': 'fakehost'}
@@ -63,7 +64,8 @@ class HpSanISCSITestCase(test.TestCase):
         """Return fake results for the various methods."""
 
         def create_volume(cliq_args):
-            """
+            """Create volume CLIQ input for test.
+
             input = "createVolume description="fake description"
                                   clusterName=Cluster01 volumeName=fakevolume
                                   thinProvision=0 output=XML size=1GB"
@@ -78,7 +80,8 @@ class HpSanISCSITestCase(test.TestCase):
             return output, None
 
         def delete_volume(cliq_args):
-            """
+            """Delete volume CLIQ input for test.
+
             input = "deleteVolume volumeName=fakevolume prompt=false
                                   output=XML"
             """
@@ -90,8 +93,24 @@ class HpSanISCSITestCase(test.TestCase):
             self.assertEqual(cliq_args['prompt'], 'false')
             return output, None
 
-        def assign_volume(cliq_args):
+        def extend_volume(cliq_args):
+            """Extend volume CLIQ input for test.
+
+            input = "modifyVolume description="fake description"
+                                  volumeName=fakevolume
+                                  output=XML size=2GB"
             """
+            output = """<gauche version="1.0">
+                <response description="Operation succeeded."
+                          name="CliqSuccess" processingTime="181" result="0"/>
+                </gauche>"""
+            self.assertEqual(cliq_args['volumeName'], self.volume_name)
+            self.assertEqual(cliq_args['size'], '2GB')
+            return output, None
+
+        def assign_volume(cliq_args):
+            """Assign volume CLIQ input for test.
+
             input = "assignVolumeToServer volumeName=fakevolume
                                           serverName=fakehost
                                           output=XML"
@@ -105,7 +124,8 @@ class HpSanISCSITestCase(test.TestCase):
             return output, None
 
         def unassign_volume(cliq_args):
-            """
+            """Unassign volume CLIQ input for test.
+
             input = "unassignVolumeToServer volumeName=fakevolume
                                             serverName=fakehost output=XML
             """
@@ -117,8 +137,55 @@ class HpSanISCSITestCase(test.TestCase):
             self.assertEqual(cliq_args['serverName'], self.connector['host'])
             return output, None
 
-        def get_cluster_info(cliq_args):
+        def create_snapshot(cliq_args):
+            """Create snapshot CLIQ input for test.
+
+            input = "createSnapshot description="fake description"
+                                    snapshotName=fakesnapshot
+                                    volumeName=fakevolume
+                                    output=XML"
             """
+            output = """<gauche version="1.0">
+                <response description="Operation succeeded."
+                          name="CliqSuccess" processingTime="181" result="0"/>
+                </gauche>"""
+            self.assertEqual(cliq_args['snapshotName'], self.snapshot_name)
+            self.assertEqual(cliq_args['volumeName'], self.volume_name)
+            return output, None
+
+        def delete_snapshot(cliq_args):
+            """Delete shapshot CLIQ input for test.
+
+            input = "deleteSnapshot snapshotName=fakesnapshot prompt=false
+                                    output=XML"
+            """
+            output = """<gauche version="1.0">
+                <response description="Operation succeeded."
+                          name="CliqSuccess" processingTime="164" result="0"/>
+                </gauche>"""
+            self.assertEqual(cliq_args['snapshotName'], self.snapshot_name)
+            self.assertEqual(cliq_args['prompt'], 'false')
+            return output, None
+
+        def create_volume_from_snapshot(cliq_args):
+            """Create volume from snapshot CLIQ input for test.
+
+            input = "cloneSnapshot description="fake description"
+                                   snapshotName=fakesnapshot
+                                   volumeName=fakevolume
+                                   output=XML"
+            """
+            output = """<gauche version="1.0">
+                <response description="Operation succeeded."
+                          name="CliqSuccess" processingTime="181" result="0"/>
+                </gauche>"""
+            self.assertEqual(cliq_args['snapshotName'], self.snapshot_name)
+            self.assertEqual(cliq_args['volumeName'], self.volume_name)
+            return output, None
+
+        def get_cluster_info(cliq_args):
+            """Get cluster info CLIQ input for test.
+
             input = "getClusterInfo clusterName=Cluster01 searchDepth=1
                                     verbose=0 output=XML"
             """
@@ -139,7 +206,8 @@ class HpSanISCSITestCase(test.TestCase):
             return output, None
 
         def get_volume_info(cliq_args):
-            """
+            """Get volume info CLIQ input for test.
+
             input = "getVolumeInfo volumeName=fakevolume output=XML"
             """
             output = """<gauche version="1.0">
@@ -165,8 +233,39 @@ class HpSanISCSITestCase(test.TestCase):
                 </volume></response></gauche>"""
             return output, None
 
-        def get_server_info(cliq_args):
+        def get_snapshot_info(cliq_args):
+            """Get snapshot info CLIQ input for test.
+
+            input = "getSnapshotInfo snapshotName=fakesnapshot output=XML"
             """
+            output = """<gauche version="1.0">
+                <response description="Operation succeeded." name="CliqSuccess"
+                          processingTime="87" result="0">
+                <snapshot applicationManaged="false" autogrowPages="32768"
+                    automatic="false" availability="online" bytesWritten="0"
+                    clusterName="CloudCluster1" created="2013-08-26T07:03:44Z"
+                    deleting="false" description="" groupName="CloudGroup1"
+                    id="730" initialQuota="536870912" isPrimary="true"
+                    iscsiIqn="iqn.2003-10.com.lefthandnetworks:cloudgroup1:73"
+                    md5="a64b4f850539c07fb5ce3cee5db1fcce" minReplication="1"
+                    name="snapshot-7849288e-e5e8-42cb-9687-9af5355d674b"
+                    replication="2" reserveQuota="536870912" scheduleId="0"
+                    scratchQuota="4194304" scratchWritten="0"
+                    serialNumber="a64b4f850539c07fb5ce3cee5db1fcce"
+                    size="2147483648" stridePages="32"
+                    volumeSerial="a64b4f850539c07fb5ce3cee5db1fcce">
+               <status description="OK" value="2"/>
+               <permission access="rw"
+                     authGroup="api-34281B815713B78-(trimmed)51ADD4B7030853AA7"
+                     chapName="chapusername" chapRequired="true" id="25369"
+                     initiatorSecret="" iqn="" iscsiEnabled="true"
+                     loadBalance="true" targetSecret="supersecret"/>
+               </snapshot></response></gauche>"""
+            return output, None
+
+        def get_server_info(cliq_args):
+            """Get server info CLIQ input for test.
+
             input = "getServerInfo serverName=fakeName"
             """
             output = """<gauche version="1.0"><response result="0"/>
@@ -174,7 +273,8 @@ class HpSanISCSITestCase(test.TestCase):
             return output, None
 
         def create_server(cliq_args):
-            """
+            """Create server CLIQ input for test.
+
             input = "createServer serverName=fakeName initiator=something"
             """
             output = """<gauche version="1.0"><response result="0"/>
@@ -193,10 +293,15 @@ class HpSanISCSITestCase(test.TestCase):
         try:
             verbs = {'createVolume': create_volume,
                      'deleteVolume': delete_volume,
+                     'modifyVolume': extend_volume,
                      'assignVolumeToServer': assign_volume,
                      'unassignVolumeToServer': unassign_volume,
+                     'createSnapshot': create_snapshot,
+                     'deleteSnapshot': delete_snapshot,
+                     'cloneSnapshot': create_volume_from_snapshot,
                      'getClusterInfo': get_cluster_info,
                      'getVolumeInfo': get_volume_info,
+                     'getSnapshotInfo': get_snapshot_info,
                      'getServerInfo': get_server_info,
                      'createServer': create_server,
                      'testError': test_error}
@@ -216,6 +321,10 @@ class HpSanISCSITestCase(test.TestCase):
         volume = {'name': self.volume_name}
         self.driver.delete_volume(volume)
 
+    def test_extend_volume(self):
+        volume = {'name': self.volume_name}
+        self.driver.extend_volume(volume, 2)
+
     def test_initialize_connection(self):
         volume = {'name': self.volume_name}
         result = self.driver.initialize_connection(volume, self.connector)
@@ -227,16 +336,22 @@ class HpSanISCSITestCase(test.TestCase):
         self.driver.terminate_connection(volume, self.connector)
 
     def test_create_snapshot(self):
-        try:
-            self.driver.create_snapshot("")
-        except NotImplementedError:
-            pass
+        snapshot = {'name': self.snapshot_name,
+                    'volume_name': self.volume_name}
+        self.driver.create_snapshot(snapshot)
+
+    def test_delete_snapshot(self):
+        snapshot = {'name': self.snapshot_name}
+        self.driver.delete_snapshot(snapshot)
 
     def test_create_volume_from_snapshot(self):
-        try:
-            self.driver.create_volume_from_snapshot("", "")
-        except NotImplementedError:
-            pass
+        volume = {'name': self.volume_name}
+        snapshot = {'name': self.snapshot_name}
+        model_update = self.driver.create_volume_from_snapshot(volume,
+                                                               snapshot)
+        expected_iqn = "iqn.2003-10.com.lefthandnetworks:group01:25366:fakev 0"
+        expected_location = "10.0.1.6:3260,1 %s" % expected_iqn
+        self.assertEqual(model_update['provider_location'], expected_location)
 
     def test_cliq_error(self):
         try:
