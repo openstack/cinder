@@ -796,7 +796,7 @@ class ResponseObjectTest(test.TestCase):
         robj = wsgi.ResponseObject({})
         robj['Header'] = 'foo'
         del robj['hEADER']
-        self.assertFalse('header' in robj.headers)
+        self.assertNotIn('header', robj.headers)
 
     def test_header_isolation(self):
         robj = wsgi.ResponseObject({})

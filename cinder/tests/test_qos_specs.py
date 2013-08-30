@@ -179,8 +179,8 @@ class QoSSpecsTestCase(test.TestCase):
                                           type_ref['id'])
         res = qos_specs.get_associations(self.ctxt, specs_id)
         self.assertEquals(len(res[specs_id].keys()), 1)
-        self.assertTrue('TypeName' in res[specs_id].keys())
-        self.assertTrue(type_ref['id'] in res[specs_id].values())
+        self.assertIn('TypeName', res[specs_id].keys())
+        self.assertIn(type_ref['id'], res[specs_id].values())
 
         self.stubs.Set(db, 'qos_specs_associate',
                        fake_db_associate)

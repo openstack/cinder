@@ -85,7 +85,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volume']
-        self.assertFalse('os-vol-host-attr:host' in vol)
+        self.assertNotIn('os-vol-host-attr:host', vol)
 
     def test_list_detail_volumes_allowed(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -103,7 +103,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertFalse('os-vol-host-attr:host' in vol[0])
+        self.assertNotIn('os-vol-host-attr:host', vol[0])
 
     def test_list_simple_volumes_no_host(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -112,7 +112,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertFalse('os-vol-host-attr:host' in vol[0])
+        self.assertNotIn('os-vol-host-attr:host', vol[0])
 
     def test_get_volume_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)

@@ -807,7 +807,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             admin_context = context.get_admin_context()
             iscsi_target = db.volume_get_iscsi_target_num(admin_context,
                                                           volume_id)
-            self.assert_(iscsi_target not in targets)
+            self.assertNotIn(iscsi_target, targets)
             targets.append(iscsi_target)
 
         total_slots = CONF.iscsi_num_targets
@@ -1418,7 +1418,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         def fake_reschedule_or_error(self, context, *args, **kwargs):
             self.assertFalse(context.is_admin)
-            self.assertFalse('admin' in context.roles)
+            self.assertNotIn('admin', context.roles)
             #compare context passed in with the context we saved
             self.assertDictMatch(self.saved_ctxt.__dict__,
                                  context.__dict__)

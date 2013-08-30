@@ -276,8 +276,8 @@ class HUSiSCSIDriverTest(test.TestCase):
         vol = self.test_create_volume()
         self.mox.StubOutWithMock(self.driver, '_update_vol_location')
         conn = self.driver.initialize_connection(vol, connector)
-        self.assertTrue('hitachi' in conn['data']['target_iqn'])
-        self.assertTrue('3260' in conn['data']['target_portal'])
+        self.assertIn('hitachi', conn['data']['target_iqn'])
+        self.assertIn('3260', conn['data']['target_portal'])
         vol['provider_location'] = conn['data']['provider_location']
         return (vol, connector)
 

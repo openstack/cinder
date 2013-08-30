@@ -224,7 +224,7 @@ class VolumeTypeExtraSpecsSerializerTest(test.TestCase):
         self.assertEqual(len(extra_specs), len(tree))
         seen = set(extra_specs.keys())
         for child in tree:
-            self.assertTrue(child.tag in seen)
+            self.assertIn(child.tag, seen)
             self.assertEqual(extra_specs[child.tag], child.text)
             seen.remove(child.tag)
         self.assertEqual(len(seen), 0)

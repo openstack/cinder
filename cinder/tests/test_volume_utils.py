@@ -93,8 +93,7 @@ class UsageInfoTestCase(test.TestCase):
         for attr in ('display_name', 'created_at', 'launched_at',
                      'status', 'audit_period_beginning',
                      'audit_period_ending'):
-            self.assertTrue(attr in payload,
-                            msg="Key %s not in payload" % attr)
+            self.assertIn(attr, payload)
         db.volume_destroy(context.get_admin_context(), volume['id'])
 
     def test_get_host_from_queue_simple(self):

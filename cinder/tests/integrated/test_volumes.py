@@ -98,7 +98,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         # It should also be in the all-volume list
         volumes = self.api.get_volumes()
         volume_names = [volume['id'] for volume in volumes]
-        self.assertTrue(created_volume_id in volume_names)
+        self.assertIn(created_volume_id, volume_names)
 
         # Wait (briefly) for creation. Delay is due to the 'message queue'
         found_volume = self._poll_while(created_volume_id, ['creating'])

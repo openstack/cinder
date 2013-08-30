@@ -251,11 +251,11 @@ class VolumeTransferAPITestCase(test.TestCase):
         LOG.info(res_dict)
 
         self.assertEqual(res.status_int, 202)
-        self.assertTrue('id' in res_dict['transfer'])
-        self.assertTrue('auth_key' in res_dict['transfer'])
-        self.assertTrue('created_at' in res_dict['transfer'])
-        self.assertTrue('name' in res_dict['transfer'])
-        self.assertTrue('volume_id' in res_dict['transfer'])
+        self.assertIn('id', res_dict['transfer'])
+        self.assertIn('auth_key', res_dict['transfer'])
+        self.assertIn('created_at', res_dict['transfer'])
+        self.assertIn('name', res_dict['transfer'])
+        self.assertIn('volume_id', res_dict['transfer'])
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
