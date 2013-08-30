@@ -688,11 +688,6 @@ class VolumeCastTask(base.CinderTask):
                               'volume_properties'])
 
     def _cast_create_volume(self, context, request_spec, filter_properties):
-        # NOTE(Rongze Zhu): A simple solution for bug 1008866.
-        #
-        # If snapshot_id is set, make the call create volume directly to
-        # the volume host where the snapshot resides instead of passing it
-        # through the scheduler. So snapshot can be copy to new volume.
         source_volid = request_spec['source_volid']
         volume_id = request_spec['volume_id']
         snapshot_id = request_spec['snapshot_id']
@@ -700,6 +695,11 @@ class VolumeCastTask(base.CinderTask):
         host = None
 
         if snapshot_id and CONF.snapshot_same_host:
+            # NOTE(Rongze Zhu): A simple solution for bug 1008866.
+            #
+            # If snapshot_id is set, make the call create volume directly to
+            # the volume host where the snapshot resides instead of passing it
+            # through the scheduler. So snapshot can be copy to new volume.
             snapshot_ref = self.db.snapshot_get(context, snapshot_id)
             source_volume_ref = self.db.volume_get(context,
                                                    snapshot_ref['volume_id'])
