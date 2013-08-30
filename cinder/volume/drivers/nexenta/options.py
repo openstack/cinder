@@ -25,16 +25,30 @@
 
 from oslo.config import cfg
 
+
 NEXENTA_CONNECTION_OPTIONS = [
+    cfg.StrOpt('nexenta_host',
+               default='',
+               help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
                default=2000,
                help='HTTP port to connect to Nexenta REST API server'),
     cfg.StrOpt('nexenta_rest_protocol',
                default='auto',
                help='Use http or https for REST connection (default auto)'),
+    cfg.StrOpt('nexenta_user',
+               default='admin',
+               help='User name to connect to Nexenta SA'),
+    cfg.StrOpt('nexenta_password',
+               default='nexenta',
+               help='Password to connect to Nexenta SA',
+               secret=True),
 ]
 
 NEXENTA_ISCSI_OPTIONS = [
+    cfg.IntOpt('nexenta_iscsi_target_portal_port',
+               default=3260,
+               help='Nexenta target portal port'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
                help='pool on SA that will hold all volumes'),
