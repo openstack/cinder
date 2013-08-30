@@ -255,11 +255,6 @@ def cinderdir():
     return os.path.abspath(cinder.__file__).split('cinder/__init__.py')[0]
 
 
-def debug(arg):
-    LOG.debug(_('debug in callback: %s'), arg)
-    return arg
-
-
 # Default symbols to use for passwords. Avoids visually confusing characters.
 # ~6 bits per symbol
 DEFAULT_PASSWORD_SYMBOLS = ('23456789',  # Removed: 0,1
@@ -535,20 +530,6 @@ def xhtml_escape(value):
     return saxutils.escape(value, {'"': '&quot;', "'": '&apos;'})
 
 
-def utf8(value):
-    """Try to turn a string into utf-8 if possible.
-
-    """
-    if isinstance(value, unicode):
-        return value.encode('utf-8')
-    elif isinstance(value, gettextutils.Message):
-        return unicode(value).encode('utf-8')
-    elif isinstance(value, str):
-        return value
-    else:
-        raise ValueError("%s is not a string" % value)
-
-
 def get_from_path(items, path):
     """Returns a list of items matching the specified path.
 
@@ -598,24 +579,6 @@ def get_from_path(items, path):
         return results
     else:
         return get_from_path(results, remainder)
-
-
-def map_dict_keys(dict_, key_map):
-    """Return a dict in which the dictionaries keys are mapped to new keys."""
-    mapped = {}
-    for key, value in dict_.iteritems():
-        mapped_key = key_map[key] if key in key_map else key
-        mapped[mapped_key] = value
-    return mapped
-
-
-def check_isinstance(obj, cls):
-    """Checks that obj is of type cls, and lets PyLint infer types."""
-    if isinstance(obj, cls):
-        return obj
-    raise Exception(_('Expected object of type: %s') % (str(cls)))
-    # TODO(justinsb): Can we make this better??
-    return cls()  # Ugly PyLint hack
 
 
 def is_valid_boolstr(val):
@@ -670,38 +633,11 @@ def monkey_patch():
                         decorator("%s.%s" % (module, key), func))
 
 
-def timefunc(func):
-    """Decorator that logs how long a particular function took to execute"""
-    @functools.wraps(func)
-    def inner(*args, **kwargs):
-        start_time = time.time()
-        try:
-            return func(*args, **kwargs)
-        finally:
-            total_time = time.time() - start_time
-            LOG.debug(_("timefunc: '%(name)s' took %(total_time).2f secs") %
-                      dict(name=func.__name__, total_time=total_time))
-    return inner
-
-
 def generate_glance_url():
     """Generate the URL to glance."""
     # TODO(jk0): This will eventually need to take SSL into consideration
     # when supported in glance.
     return "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
-
-
-@contextlib.contextmanager
-def logging_error(message):
-    """Catches exception, write message to the log, re-raise.
-    This is a common refinement of save_and_reraise that writes a specific
-    message to the log.
-    """
-    try:
-        yield
-    except Exception as error:
-        with excutils.save_and_reraise_exception():
-            LOG.exception(message)
 
 
 def make_dev_path(dev, partition=None, base='/dev'):
@@ -768,55 +704,12 @@ def hash_file(file_like_object):
     return checksum.hexdigest()
 
 
-@contextlib.contextmanager
-def temporary_mutation(obj, **kwargs):
-    """Temporarily set the attr on a particular object to a given value then
-    revert when finished.
-
-    One use of this is to temporarily set the read_deleted flag on a context
-    object:
-
-        with temporary_mutation(context, read_deleted="yes"):
-            do_something_that_needed_deleted_objects()
-    """
-    NOT_PRESENT = object()
-
-    old_values = {}
-    for attr, new_value in kwargs.items():
-        old_values[attr] = getattr(obj, attr, NOT_PRESENT)
-        setattr(obj, attr, new_value)
-
-    try:
-        yield
-    finally:
-        for attr, old_value in old_values.items():
-            if old_value is NOT_PRESENT:
-                del obj[attr]
-            else:
-                setattr(obj, attr, old_value)
-
-
 def service_is_up(service):
     """Check whether a service is up based on last heartbeat."""
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
     elapsed = total_seconds(timeutils.utcnow() - last_heartbeat)
     return abs(elapsed) <= CONF.service_down_time
-
-
-def generate_mac_address():
-    """Generate an Ethernet MAC address."""
-    # NOTE(vish): We would prefer to use 0xfe here to ensure that linux
-    #             bridge mac addresses don't change, but it appears to
-    #             conflict with libvirt, so we use the next highest octet
-    #             that has the unicast and locally administered bits set
-    #             properly: 0xfa.
-    #             Discussion: https://bugs.launchpad.net/cinder/+bug/921838
-    mac = [0xfa, 0x16, 0x3e,
-           random.randint(0x00, 0x7f),
-           random.randint(0x00, 0xff),
-           random.randint(0x00, 0xff)]
-    return ':'.join(map(lambda x: "%02x" % x, mac))
 
 
 def read_file_as_root(file_path):
@@ -871,33 +764,6 @@ def walk_class_hierarchy(clazz, encountered=None):
             for subsubclass in walk_class_hierarchy(subclass, encountered):
                 yield subsubclass
             yield subclass
-
-
-class UndoManager(object):
-    """Provides a mechanism to facilitate rolling back a series of actions
-    when an exception is raised.
-    """
-    def __init__(self):
-        self.undo_stack = []
-
-    def undo_with(self, undo_func):
-        self.undo_stack.append(undo_func)
-
-    def _rollback(self):
-        for undo_func in reversed(self.undo_stack):
-            undo_func()
-
-    def rollback_and_reraise(self, msg=None, **kwargs):
-        """Rollback a series of actions then re-raise the exception.
-
-        .. note:: (sirp) This should only be called within an
-                  exception handler.
-        """
-        with excutils.save_and_reraise_exception():
-            if msg:
-                LOG.exception(msg, **kwargs)
-
-            self._rollback()
 
 
 def get_root_helper():
