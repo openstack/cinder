@@ -795,6 +795,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                  'd_quota': quotas['gigabytes']})
             return
 
+        self._notify_about_volume_usage(context, volume, "resize.start")
         try:
             LOG.info(_("volume %s: extending"), volume['id'])
             self.driver.extend_volume(volume, new_size)
@@ -812,3 +813,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         QUOTAS.commit(context, reservations)
         self.db.volume_update(context, volume['id'], {'size': int(new_size),
                                                       'status': 'available'})
+        self._notify_about_volume_usage(
+            context, volume, "resize.end",
+            extra_usage_info={'size': int(new_size)})
