@@ -349,6 +349,7 @@ class SolidFireDriver(SanISCSIDriver):
 
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
+                  'newSize': int(v_ref['size'] * self.GB),
                   'newAccountID': sfaccount['accountID']}
         data = self._issue_api_request('CloneVolume', params)
 
