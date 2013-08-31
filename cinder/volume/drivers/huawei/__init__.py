@@ -48,7 +48,7 @@ class HuaweiVolumeDriver(object):
     def __init__(self, *args, **kwargs):
         super(HuaweiVolumeDriver, self).__init__()
         self._product = {'T': huawei_t, 'Dorado': huawei_dorado}
-        self._protocol = {'iSCSI': 'ISCSIDriver'}
+        self._protocol = {'iSCSI': 'ISCSIDriver', 'FC': 'FCDriver'}
 
         self.driver = self._instantiate_driver(*args, **kwargs)
 
@@ -85,7 +85,7 @@ class HuaweiVolumeDriver(object):
         else:
             msg = (_('"Product" or "Protocol" is illegal. "Product" should '
                      'be set to either T or Dorado. "Protocol" should be set '
-                     'to iSCSI. Product: %(product)s '
+                     'to either iSCSI or FC. Product: %(product)s '
                      'Protocol: %(protocol)s')
                    % {'product': str(product),
                       'protocol': str(protocol)})

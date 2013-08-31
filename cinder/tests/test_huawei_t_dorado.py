@@ -125,7 +125,8 @@ INITIATOR_SETTING = {'TargetIQN': 'iqn.2006-08.com.huawei:oceanspace:2103037:',
                      'TargetIQN-form': 'iqn.2006-08.com.huawei:oceanspace:'
                      '2103037::1020001:192.168.100.2',
                      'Initiator Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
-                     'Initiator TargetIP': '192.168.100.2'}
+                     'Initiator TargetIP': '192.168.100.2',
+                     'WWN': ['2011666666666565']}
 
 FAKE_VOLUME = {'name': 'Volume-lele34fe-223f-dd33-4423-asdfghjklqwe',
                'id': 'lele34fe-223f-dd33-4423-asdfghjklqwe',
@@ -147,6 +148,8 @@ FAKE_SNAPSHOT = {'name': 'keke34fe-223f-dd33-4423-asdfghjklqwf',
                  'provider_location': None}
 
 FAKE_CONNECTOR = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                  'wwpns': ['1000000164s45126'],
+                  'wwnns': ['2000666666666565'],
                   'host': 'fakehost'}
 
 RESPOOL_A_SIM = {'Size': '10240', 'Valid Size': '5120'}
@@ -248,8 +251,14 @@ class FakeChannel():
             out = self.simu.cli_addhostmap(params)
         elif cmd == 'delhostmap':
             out = self.simu.cli_delhostmap(params)
+        elif cmd == 'showfreeport':
+            out = self.simu.cli_showfreeport(params)
+        elif cmd == 'showhostpath':
+            out = self.simu.cli_showhostpath(params)
         elif cmd == 'chglun':
             out = self.simu.cli_chglun(params)
+        elif cmd == 'showfcmode':
+            out = self.simu.cli_showfcmode(params)
         out = self.command[:-1] + out + '\nadmin:/>'
         return out.replace('\n', '\r\n')
 
@@ -825,6 +834,51 @@ Multipath Type
             out = 'command operates successfully'
         return out
 
+    def cli_showfreeport(self, params):
+        out = """/>showfreeport
+=======================================================================
+                      Host Free Port Information
+-----------------------------------------------------------------------
+  WWN Or MAC          Type    Location              Connection Status
+-----------------------------------------------------------------------
+  1000000164s45126    FC      Primary Controller    Connected
+=======================================================================
+"""
+        HOST_PORT_INFO['ID'] = '2'
+        HOST_PORT_INFO['Name'] = 'FCInitiator001'
+        HOST_PORT_INFO['Info'] = '1000000164s45126'
+        HOST_PORT_INFO['Type'] = 'FC'
+        return out
+
+    def cli_showhostpath(self, params):
+        host = params[params.index('-host') + 1]
+        out = """/>showhostpath -host 1
+=======================================
+        Multi Path Information
+---------------------------------------
+  Host ID           | %s
+  Controller ID     | B
+  Port Type         | FC
+  Initiator WWN     | 1000000164s45126
+  Target WWN        | %s
+  Host Port ID      | 0
+  Link Status       | Normal
+=======================================
+""" % (host, INITIATOR_SETTING['WWN'][0])
+        return out
+
+    def cli_showfcmode(self, params):
+        out = """/>showfcport
+=========================================================================
+                      FC Port Topology Mode
+-------------------------------------------------------------------------
+  Controller ID   Interface Module ID   Port ID   WWN    Current Mode
+-------------------------------------------------------------------------
+  B               1                     P0        %s     --
+=========================================================================
+-""" % INITIATOR_SETTING['WWN'][0]
+        return out
+
     def cli_chglun(self, params):
         if params[params.index('-lun') + 1] == VOLUME_SNAP_ID['vol']:
             LUN_INFO['Owner Controller'] = 'B'
@@ -1391,6 +1445,155 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         free_capacity = float(POOL_SETTING['Free Capacity']) / 1024
         self.assertEqual(stats['free_capacity_gb'], free_capacity)
         self.assertEqual(stats['storage_protocol'], 'iSCSI')
+
+
+class HuaweiTFCDriverTestCase(test.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(HuaweiTFCDriverTestCase, self).__init__(*args, **kwargs)
+
+    def setUp(self):
+        super(HuaweiTFCDriverTestCase, self).setUp()
+
+        self.tmp_dir = tempfile.mkdtemp()
+        self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        create_fake_conf_file(self.fake_conf_file)
+        modify_conf(self.fake_conf_file, 'Storage/Protocol', 'FC')
+        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration.cinder_huawei_conf_file = self.fake_conf_file
+        self.configuration.append_config_values(mox.IgnoreArg())
+
+        self.stubs.Set(time, 'sleep', Fake_sleep)
+        self.stubs.Set(utils, 'SSHPool', FakeSSHPool)
+        self.stubs.Set(ssh_common.TseriesCommon, '_change_file_mode',
+                       Fake_change_file_mode)
+        self._init_driver()
+
+    def _init_driver(self):
+        Curr_test[0] = 'T'
+        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver.do_setup(None)
+
+    def tearDown(self):
+        if os.path.exists(self.fake_conf_file):
+            os.remove(self.fake_conf_file)
+        shutil.rmtree(self.tmp_dir)
+        super(HuaweiTFCDriverTestCase, self).tearDown()
+
+    def test_validate_connector_failed(self):
+        invalid_connector = {'host': 'testhost'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.validate_connector,
+                          invalid_connector)
+
+    def test_create_delete_volume(self):
+        self.driver.create_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['ID'], VOLUME_SNAP_ID['vol'])
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['ID'], None)
+
+    def test_create_delete_snapshot(self):
+        self.driver.create_volume(FAKE_VOLUME)
+        self.driver.create_snapshot(FAKE_SNAPSHOT)
+        self.assertEqual(SNAPSHOT_INFO['ID'], VOLUME_SNAP_ID['snap'])
+        self.driver.delete_snapshot(FAKE_SNAPSHOT)
+        self.assertEqual(SNAPSHOT_INFO['ID'], None)
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['ID'], None)
+
+    def test_create_cloned_volume(self):
+        self.driver.create_volume(FAKE_VOLUME)
+        ret = self.driver.create_cloned_volume(FAKE_CLONED_VOLUME, FAKE_VOLUME)
+        self.assertEqual(CLONED_LUN_INFO['ID'], VOLUME_SNAP_ID['vol_copy'])
+        self.assertEqual(ret['provider_location'], CLONED_LUN_INFO['ID'])
+        self.driver.delete_volume(FAKE_CLONED_VOLUME)
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(CLONED_LUN_INFO['ID'], None)
+        self.assertEqual(LUN_INFO['ID'], None)
+
+    def test_create_snapshot_volume(self):
+        self.driver.create_volume(FAKE_VOLUME)
+        self.driver.create_snapshot(FAKE_SNAPSHOT)
+        ret = self.driver.create_volume_from_snapshot(FAKE_CLONED_VOLUME,
+                                                      FAKE_SNAPSHOT)
+        self.assertEqual(CLONED_LUN_INFO['ID'], VOLUME_SNAP_ID['vol_copy'])
+        self.assertEqual(ret['provider_location'], CLONED_LUN_INFO['ID'])
+        self.driver.delete_volume(FAKE_CLONED_VOLUME)
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(CLONED_LUN_INFO['ID'], None)
+        self.assertEqual(LUN_INFO['ID'], None)
+
+    def test_initialize_terminitat_connection(self):
+        self.driver.create_volume(FAKE_VOLUME)
+        ret = self.driver.initialize_connection(FAKE_VOLUME, FAKE_CONNECTOR)
+        fc_properties = ret['data']
+        self.assertEquals(fc_properties['target_wwn'],
+                          INITIATOR_SETTING['WWN'])
+        self.assertEqual(MAP_INFO["DEV LUN ID"], LUN_INFO['ID'])
+
+        self.driver.terminate_connection(FAKE_VOLUME, FAKE_CONNECTOR)
+        self.assertEqual(MAP_INFO["DEV LUN ID"], None)
+        self.assertEqual(MAP_INFO["Host LUN ID"], None)
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['ID'], None)
+
+    def _test_get_volume_stats(self):
+        stats = self.driver.get_volume_stats(True)
+        fakecapacity = float(POOL_SETTING['Free Capacity']) / 1024
+        self.assertEqual(stats['free_capacity_gb'], fakecapacity)
+        self.assertEqual(stats['storage_protocol'], 'FC')
+
+
+class HuaweiDorado5100FCDriverTestCase(HuaweiTFCDriverTestCase):
+    def __init__(self, *args, **kwargs):
+        super(HuaweiDorado5100FCDriverTestCase, self).__init__(*args, **kwargs)
+
+    def setUp(self):
+        super(HuaweiDorado5100FCDriverTestCase, self).setUp()
+
+    def _init_driver(self):
+        Curr_test[0] = 'Dorado5100'
+        modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
+        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver.do_setup(None)
+
+    def test_create_cloned_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          FAKE_CLONED_VOLUME, FAKE_VOLUME)
+
+    def test_create_snapshot_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          FAKE_CLONED_VOLUME, FAKE_SNAPSHOT)
+
+
+class HuaweiDorado2100G2FCDriverTestCase(HuaweiTFCDriverTestCase):
+    def __init__(self, *args, **kwargs):
+        super(HuaweiDorado2100G2FCDriverTestCase, self).__init__(*args,
+                                                                 **kwargs)
+
+    def setUp(self):
+        super(HuaweiDorado2100G2FCDriverTestCase, self).setUp()
+
+    def _init_driver(self):
+        Curr_test[0] = 'Dorado2100G2'
+        modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
+        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver.do_setup(None)
+
+    def test_create_cloned_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          FAKE_CLONED_VOLUME, FAKE_VOLUME)
+
+    def test_create_delete_snapshot(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_snapshot, FAKE_SNAPSHOT)
+
+    def test_create_snapshot_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          FAKE_CLONED_VOLUME, FAKE_SNAPSHOT)
 
 
 class HuaweiDorado5100ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):

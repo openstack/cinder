@@ -359,3 +359,225 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
         self._stats['volume_backend_name'] = (backend_name or
                                               self.__class__.__name__)
         return self._stats
+
+
+class HuaweiTFCDriver(driver.FibreChannelDriver):
+    """FC driver for Huawei OceanStor T series storage arrays."""
+
+    VERSION = '1.0.0'
+
+    def __init__(self, *args, **kwargs):
+        super(HuaweiTFCDriver, self).__init__(*args, **kwargs)
+
+    def do_setup(self, context):
+        """Instantiate common class."""
+        self.common = ssh_common.TseriesCommon(configuration=
+                                               self.configuration)
+        self.common.do_setup(context)
+        self._assert_cli_out = self.common._assert_cli_out
+        self._assert_cli_operate_out = self.common._assert_cli_operate_out
+
+    def check_for_setup_error(self):
+        """Check something while starting."""
+        self.common.check_for_setup_error()
+
+    def create_volume(self, volume):
+        """Create a new volume."""
+        volume_id = self.common.create_volume(volume)
+        return {'provider_location': volume_id}
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Create a volume from a snapshot."""
+        volume_id = self.common.create_volume_from_snapshot(volume, snapshot)
+        return {'provider_location': volume_id}
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Create a clone of the specified volume."""
+        volume_id = self.common.create_cloned_volume(volume, src_vref)
+        return {'provider_location': volume_id}
+
+    def delete_volume(self, volume):
+        """Delete a volume."""
+        self.common.delete_volume(volume)
+
+    def create_export(self, context, volume):
+        """Export the volume."""
+        pass
+
+    def ensure_export(self, context, volume):
+        """Synchronously recreate an export for a volume."""
+        pass
+
+    def remove_export(self, context, volume):
+        """Remove an export for a volume."""
+        pass
+
+    def create_snapshot(self, snapshot):
+        """Create a snapshot."""
+        snapshot_id = self.common.create_snapshot(snapshot)
+        return {'provider_location': snapshot_id}
+
+    def delete_snapshot(self, snapshot):
+        """Delete a snapshot."""
+        self.common.delete_snapshot(snapshot)
+
+    def validate_connector(self, connector):
+        """Check for wwpns in connector."""
+        if 'wwpns' not in connector:
+            err_msg = (_('validate_connector: The FC driver requires the'
+                         'wwpns in the connector.'))
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def initialize_connection(self, volume, connector):
+        """Create FC connection between a volume and a host."""
+        LOG.debug(_('initialize_connection: volume name: %(vol)s '
+                    'host: %(host)s initiator: %(wwn)s')
+                  % {'vol': volume['name'],
+                     'host': connector['host'],
+                     'wwn': connector['wwpns']})
+
+        self.common._update_login_info()
+        # First, add a host if it is not added before.
+        host_id = self.common.add_host(connector['host'])
+        # Then, add free FC ports to the host.
+        ini_wwns = connector['wwpns']
+        free_wwns = self._get_connected_free_wwns()
+        for wwn in free_wwns:
+            if wwn in ini_wwns:
+                self._add_fc_port_to_host(host_id, wwn)
+        fc_port_details = self._get_host_port_details(host_id)
+        tgt_wwns = self._get_tgt_fc_port_wwns(fc_port_details)
+
+        LOG.debug(_('initialize_connection: Target FC ports WWNS: %s')
+                  % tgt_wwns)
+
+        # Finally, map the volume to the host.
+        volume_id = volume['provider_location']
+        hostlun_id = self.common.map_volume(host_id, volume_id)
+
+        # Change LUN ctr for better performance, just for single path.
+        if len(tgt_wwns) == 1:
+            lun_details = self.common.get_lun_details(volume_id)
+            port_ctr = self._get_fc_port_ctr(fc_port_details[0])
+            if (lun_details['LunType'] == 'THICK' and
+                    lun_details['OwningController'] != port_ctr):
+                self.common.change_lun_ctr(volume_id, port_ctr)
+
+        properties = {}
+        properties['target_discovered'] = False
+        properties['target_wwn'] = tgt_wwns
+        properties['target_lun'] = int(hostlun_id)
+        properties['volume_id'] = volume['id']
+
+        return {'driver_volume_type': 'fibre_channel',
+                'data': properties}
+
+    def _get_connected_free_wwns(self):
+        """Get free connected FC port WWNs.
+
+        If no new ports connected, return an empty list.
+
+        """
+
+        cli_cmd = 'showfreeport'
+        out = self.common._execute_cli(cli_cmd)
+        wwns = []
+        if re.search('Host Free Port Information', out):
+            for line in out.split('\r\n')[6:-2]:
+                tmp_line = line.split()
+                if (tmp_line[1] == 'FC') and (tmp_line[4] == 'Connected'):
+                    wwns.append(tmp_line[0])
+
+        return wwns
+
+    def _add_fc_port_to_host(self, hostid, wwn, multipathtype=0):
+        """Add a FC port to host."""
+        portname = HOST_PORT_PREFIX + wwn
+        cli_cmd = ('addhostport -host %(id)s -type 1 '
+                   '-wwn %(wwn)s -n %(name)s -mtype %(multype)s'
+                   % {'id': hostid,
+                      'wwn': wwn,
+                      'name': portname,
+                      'multype': multipathtype})
+        out = self.common._execute_cli(cli_cmd)
+
+        msg = ('Failed to add FC port %(port)s to host %(host)s.'
+               % {'port': portname, 'host': hostid})
+        self._assert_cli_operate_out('_add_fc_port_to_host', msg, cli_cmd, out)
+
+    def _get_host_port_details(self, host_id):
+        cli_cmd = 'showhostpath -host %s' % host_id
+        out = self.common._execute_cli(cli_cmd)
+
+        self._assert_cli_out(re.search('Multi Path Information', out),
+                             '_get_host_port_details',
+                             'Failed to get host port details.',
+                             cli_cmd, out)
+
+        port_details = []
+        tmp_details = {}
+        for line in out.split('\r\n')[4:-2]:
+            line = line.split('|')
+            # Cut-point of multipal details, usually is "-------".
+            if len(line) == 1:
+                port_details.append(tmp_details)
+                continue
+            key = ''.join(line[0].strip().split())
+            val = line[1].strip()
+            tmp_details[key] = val
+        port_details.append(tmp_details)
+        return port_details
+
+    def _get_tgt_fc_port_wwns(self, port_details):
+        wwns = []
+        for port in port_details:
+            wwns.append(port['TargetWWN'])
+        return wwns
+
+    def _get_fc_port_ctr(self, port_details):
+        return port_details['ControllerID']
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Terminate the map."""
+        LOG.debug(_('terminate_connection: volume: %(vol)s host: %(host)s '
+                    'connector: %(initiator)s')
+                  % {'vol': volume['name'],
+                     'host': connector['host'],
+                     'initiator': connector['initiator']})
+
+        self.common._update_login_info()
+        host_id = self.common.remove_map(volume['provider_location'],
+                                         connector['host'])
+        # Remove all FC ports and delete the host if
+        # no volume mapping to it.
+        if not self.common._get_host_map_info(host_id):
+            self._remove_fc_ports(host_id, connector)
+
+    def _remove_fc_ports(self, hostid, connector):
+        """Remove FC ports and delete host."""
+        wwns = connector['wwpns']
+        port_num = 0
+        port_info = self.common._get_host_port_info(hostid)
+        if port_info:
+            port_num = len(port_info)
+            for port in port_info:
+                if port[2] in wwns:
+                    self.common._delete_hostport(port[0])
+                    port_num -= 1
+        else:
+            LOG.warn(_('_remove_fc_ports: FC port was not found '
+                       'on host %(hostid)s.') % {'hostid': hostid})
+
+        if port_num == 0:
+            self.common._delete_host(hostid)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats."""
+        self._stats = self.common.get_volume_stats(refresh)
+        self._stats['storage_protocol'] = 'FC'
+        self._stats['driver_version'] = self.VERSION
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        self._stats['volume_backend_name'] = (backend_name or
+                                              self.__class__.__name__)
+        return self._stats
