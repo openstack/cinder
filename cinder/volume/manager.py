@@ -58,6 +58,7 @@ from cinder.volume.flows.manager import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.zonemanager.fc_zone_manager import ZoneManager
 
 from eventlet.greenpool import GreenPool
 
@@ -77,6 +78,9 @@ volume_manager_opts = [
                 default=False,
                 help='Offload pending volume delete during '
                      'volume service startup'),
+    cfg.StrOpt('zoning_mode',
+               default='none',
+               help='FC Zoning mode configured'),
 ]
 
 CONF = cfg.CONF
@@ -821,6 +825,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                                if volume_metadata.get('readonly') == 'True'
                                else 'rw')
             conn_info['data']['access_mode'] = access_mode
+        # NOTE(skolathur): If volume_type is fibre_channel, invoke
+        # FCZoneManager to add access control via FC zoning.
+        vol_type = conn_info.get('driver_volume_type', None)
+        mode = self.configuration.zoning_mode
+        LOG.debug(_("Zoning Mode: %s"), mode)
+        if vol_type == 'fibre_channel' and mode == 'fabric':
+            self._add_or_delete_fc_connection(conn_info, 1)
         return conn_info
 
     def terminate_connection(self, context, volume_id, connector, force=False):
@@ -835,8 +846,17 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         volume_ref = self.db.volume_get(context, volume_id)
         try:
-            self.driver.terminate_connection(volume_ref,
-                                             connector, force=force)
+            conn_info = self.driver.terminate_connection(volume_ref,
+                                                         connector,
+                                                         force=force)
+            # NOTE(skolathur): If volume_type is fibre_channel, invoke
+            # FCZoneManager to remove access control via FC zoning.
+            if conn_info:
+                vol_type = conn_info.get('driver_volume_type', None)
+                mode = self.configuration.zoning_mode
+                LOG.debug(_("Zoning Mode: %s"), mode)
+                if vol_type == 'fibre_channel' and mode == 'fabric':
+                    self._add_or_delete_fc_connection(conn_info, 0)
         except Exception as err:
             err_msg = (_('Unable to terminate volume connection: %(err)s')
                        % {'err': str(err)})
@@ -1246,3 +1266,37 @@ class VolumeManager(manager.SchedulerDependentManager):
         if new_reservations:
             QUOTAS.commit(context, new_reservations, project_id=project_id)
         self.publish_service_capabilities(context)
+
+    def _add_or_delete_fc_connection(self, conn_info, zone_op):
+        """Add or delete connection control to fibre channel network.
+
+        In case of fibre channel, when zoning mode is set as fabric
+        ZoneManager is invoked to apply FC zoning configuration to the network
+        using initiator and target WWNs used for attach/detach.
+
+        params conn_info: connector passed by volume driver after
+        initialize_connection or terminate_connection.
+        params zone_op: Indicates if it is a zone add or delete operation
+        zone_op=0 for delete connection and 1 for add connection
+        """
+        _initiator_target_map = None
+        if 'initiator_target_map' in conn_info['data']:
+            _initiator_target_map = conn_info['data']['initiator_target_map']
+        LOG.debug(_("Initiator Target map:%s"), _initiator_target_map)
+        # NOTE(skolathur): Invoke Zonemanager to handle automated FC zone
+        # management when vol_type is fibre_channel and zoning_mode is fabric
+        # Initiator_target map associating each initiator WWN to one or more
+        # target WWN is passed to ZoneManager to add or update zone config.
+        LOG.debug(_("Zoning op: %s"), zone_op)
+        if _initiator_target_map is not None:
+            kwargs = {'driver_volume_type': 'fibre_channel',
+                      'configuration': self.configuration}
+            zonemanager = ZoneManager(**kwargs)
+            try:
+                if zone_op == 1:
+                    zonemanager.add_connection(_initiator_target_map)
+                elif zone_op == 0:
+                    zonemanager.delete_connection(_initiator_target_map)
+            except exception.ZoneManagerException as e:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(str(e))

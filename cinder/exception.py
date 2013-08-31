@@ -689,3 +689,20 @@ class HPMSAConnectionError(HPMSAVolumeDriverException):
 
 class HPMSANotEnoughSpace(HPMSAVolumeDriverException):
     message = _("Not enough space on VDisk (%(vdisk)s)")
+
+
+# Fibre Channel Zone Manager
+class ZoneManagerException(CinderException):
+    message = _("Fibre Channel connection control failure: %(reason)s")
+
+
+class FCZoneDriverException(CinderException):
+    message = _("Fibre Channel Zone operation failed: %(reason)s")
+
+
+class FCSanLookupServiceException(CinderException):
+    message = _("Fibre Channel SAN Lookup failure: %(reason)s")
+
+
+class BrocadeZoningCliException(CinderException):
+    message = _("Fibre Channel Zoning CLI error: %(reason)s")
