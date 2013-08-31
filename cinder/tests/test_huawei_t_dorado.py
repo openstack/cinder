@@ -161,6 +161,10 @@ class FakeChannel():
     def __init__(self):
         if Curr_test[0] == 'T':
             self.simu = HuaweiTCLIResSimulator()
+        elif Curr_test[0] == 'Dorado5100':
+            self.simu = HuaweiDorado5100CLIResSimulator()
+        else:
+            self.simu = HuaweiDorado2100G2CLIResSimulator()
 
     def resize_pty(self, width=80, height=24):
         pass
@@ -830,6 +834,196 @@ Multipath Type
         return out
 
 
+class HuaweiDorado5100CLIResSimulator(HuaweiTCLIResSimulator):
+    def cli_showsys(self, params):
+        out = """/>showsys
+=============================================================
+                                System Information
+-------------------------------------------------------------
+  System Name           | SN_Dorado5100
+  Device Type           | Oceanstor Dorado5100
+  Current System Mode   | Double Controllers Normal
+  Mirroring Link Status | Link Up
+  Location              |
+  Time                  | 2013-01-01 01:01:01
+  Product Version       | V100R001C00
+=============================================================
+"""
+        return out
+
+    def cli_showlun(self, params):
+        if '-lun' not in params:
+            if LUN_INFO['ID'] is None:
+                out = 'command operates successfully, but no information.'
+            elif CLONED_LUN_INFO['ID'] is None:
+                out = """/>showlun
+===========================================================================
+                           LUN Information
+---------------------------------------------------------------------------
+  ID   RAIDgroup ID  Status   Controller  Visible Capacity(MB)   LUN Name..\
+  Strip Unit Size(KB)   Lun Type
+---------------------------------------------------------------------------
+  %s      %s       Normal       %s      %s       %s       64       THICK
+===========================================================================
+""" % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'],
+       LUN_INFO['Owner Controller'], str(int(LUN_INFO['Size']) * 1024),
+       LUN_INFO['Name'])
+            else:
+                out = """/>showlun
+===========================================================================
+                           LUN Information
+---------------------------------------------------------------------------
+  ID   RAIDgroup ID   Status   Controller   Visible Capacity(MB)   LUN Name \
+  Strip Unit Size(KB)   Lun Type
+---------------------------------------------------------------------------
+  %s      %s       Normal      %s      %s       %s        64       THICK
+  %s      %s       Norma       %s      %s       %s        64       THICK
+===========================================================================
+""" % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
+       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'],
+       CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['RAID Group ID'],
+       CLONED_LUN_INFO['Owner Controller'],
+       str(int(CLONED_LUN_INFO['Size']) * 1024),
+       CLONED_LUN_INFO['Name'])
+        elif params[params.index('-lun') + 1] in VOLUME_SNAP_ID.values():
+            out = """/>showlun
+================================================
+                 LUN Information
+------------------------------------------------
+  ID                     |  %s
+  Name                   |  %s
+  LUN WWN                |  --
+  Visible Capacity       |  %s
+  RAID GROUP ID          |  %s
+  Owning Controller      |  %s
+  Workong Controller     |  %s
+  Lun Type               |  %s
+  SnapShot ID            |  %s
+  LunCopy ID             |  %s
+================================================
+""" % ((LUN_INFO['ID'], LUN_INFO['Name'], LUN_INFO['Visible Capacity'],
+        LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
+        LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
+        LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
+       if params[params.index('-lun')] == VOLUME_SNAP_ID['vol'] else
+       (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
+        CLONED_LUN_INFO['Visible Capacity'], CLONED_LUN_INFO['RAID Group ID'],
+        CLONED_LUN_INFO['Owner Controller'],
+        CLONED_LUN_INFO['Worker Controller'],
+        CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
+        CLONED_LUN_INFO['LunCopy ID']))
+        else:
+            out = 'ERROR: The object does not exist.'
+        return out
+
+
+class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
+    def cli_showsys(self, params):
+        out = """/>showsys
+==========================================================================
+                                System Information
+--------------------------------------------------------------------------
+  System Name           | SN_Dorado2100_G2
+  Device Type           | Oceanstor Dorado2100 G2
+  Current System Mode   | Double Controllers Normal
+  Mirroring Link Status | Link Up
+  Location              |
+  Time                  | 2013-01-01 01:01:01
+  Product Version       | V100R001C00
+===========================================================================
+"""
+        return out
+
+    def cli_createlun(self, params):
+        lun_type = ('THIN' if params[params.index('-type') + 1] == '2' else
+                    'THICK')
+        if LUN_INFO['ID'] is None:
+            LUN_INFO['Name'] = self._name_translate(FAKE_VOLUME['name'])
+            LUN_INFO['ID'] = VOLUME_SNAP_ID['vol']
+            LUN_INFO['Size'] = FAKE_VOLUME['size']
+            LUN_INFO['Lun Type'] = lun_type
+            LUN_INFO['Owner Controller'] = 'A'
+            LUN_INFO['Worker Controller'] = 'A'
+            LUN_INFO['RAID Group ID'] = POOL_SETTING['ID']
+            FAKE_VOLUME['provider_location'] = LUN_INFO['ID']
+        else:
+            CLONED_LUN_INFO['Name'] = \
+                self._name_translate(FAKE_CLONED_VOLUME['name'])
+            CLONED_LUN_INFO['ID'] = VOLUME_SNAP_ID['vol_copy']
+            CLONED_LUN_INFO['Size'] = FAKE_CLONED_VOLUME['size']
+            CLONED_LUN_INFO['Lun Type'] = lun_type
+            CLONED_LUN_INFO['Owner Controller'] = 'A'
+            CLONED_LUN_INFO['Worker Controller'] = 'A'
+            CLONED_LUN_INFO['RAID Group ID'] = POOL_SETTING['ID']
+            CLONED_LUN_INFO['provider_location'] = CLONED_LUN_INFO['ID']
+            FAKE_CLONED_VOLUME['provider_location'] = CLONED_LUN_INFO['ID']
+        out = 'command operates successfully'
+        return out
+
+    def cli_showlun(self, params):
+        if '-lun' not in params:
+            if LUN_INFO['ID'] is None:
+                out = 'command operates successfully, but no information.'
+            elif CLONED_LUN_INFO['ID'] is None:
+                out = """/>showlun
+===========================================================================
+                           LUN Information
+---------------------------------------------------------------------------
+  ID   Status   Controller  Visible Capacity(MB)   LUN Name  Lun Type
+---------------------------------------------------------------------------
+  %s   Normal   %s          %s                     %s        THICK
+===========================================================================
+""" % (LUN_INFO['ID'], LUN_INFO['Owner Controller'],
+       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'])
+            else:
+                out = """/>showlun
+===========================================================================
+                           LUN Information
+---------------------------------------------------------------------------
+  ID   Status   Controller  Visible Capacity(MB)   LUN Name  Lun Type
+---------------------------------------------------------------------------
+  %s   Normal   %s          %s                     %s         THICK
+  %s   Normal   %s          %s                     %s         THICK
+===========================================================================
+""" % (LUN_INFO['ID'], LUN_INFO['Owner Controller'],
+       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'],
+       CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Owner Controller'],
+       str(int(CLONED_LUN_INFO['Size']) * 1024), CLONED_LUN_INFO['Name'])
+
+        elif params[params.index('-lun') + 1] in VOLUME_SNAP_ID.values():
+            out = """/>showlun
+================================================
+                 LUN Information
+------------------------------------------------
+  ID                     |  %s
+  Name                   |  %s
+  LUN WWN                |  --
+  Visible Capacity       |  %s
+  RAID GROUP ID          |  %s
+  Owning Controller      |  %s
+  Workong Controller     |  %s
+  Lun Type               |  %s
+  SnapShot ID            |  %s
+  LunCopy ID             |  %s
+================================================
+""" % ((LUN_INFO['ID'], LUN_INFO['Name'], LUN_INFO['Visible Capacity'],
+        LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
+        LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
+        LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
+       if params[params.index('-lun')] == VOLUME_SNAP_ID['vol'] else
+       (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
+        CLONED_LUN_INFO['Visible Capacity'], CLONED_LUN_INFO['RAID Group ID'],
+        CLONED_LUN_INFO['Owner Controller'],
+        CLONED_LUN_INFO['Worker Controller'],
+        CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
+        CLONED_LUN_INFO['LunCopy ID']))
+
+        else:
+            out = 'ERROR: The object does not exist.'
+
+        return out
+
+
 class HuaweiTISCSIDriverTestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
         super(HuaweiTISCSIDriverTestCase, self).__init__(*args, **kwargs)
@@ -1197,6 +1391,81 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         free_capacity = float(POOL_SETTING['Free Capacity']) / 1024
         self.assertEqual(stats['free_capacity_gb'], free_capacity)
         self.assertEqual(stats['storage_protocol'], 'iSCSI')
+
+
+class HuaweiDorado5100ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
+    def __init__(self, *args, **kwargs):
+        super(HuaweiDorado5100ISCSIDriverTestCase, self).__init__(*args,
+                                                                  **kwargs)
+
+    def setUp(self):
+        super(HuaweiDorado5100ISCSIDriverTestCase, self).setUp()
+
+    def _init_driver(self):
+        Curr_test[0] = 'Dorado5100'
+        modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
+        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver.do_setup(None)
+
+    def test_create_delete_cloned_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          FAKE_CLONED_VOLUME, FAKE_VOLUME)
+
+    def test_create_delete_snapshot_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          FAKE_CLONED_VOLUME, FAKE_SNAPSHOT)
+
+    def test_volume_type(self):
+        pass
+
+
+class HuaweiDorado2100G2ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
+    def __init__(self, *args, **kwargs):
+        super(HuaweiDorado2100G2ISCSIDriverTestCase, self).__init__(*args,
+                                                                    **kwargs)
+
+    def setUp(self):
+        super(HuaweiDorado2100G2ISCSIDriverTestCase, self).setUp()
+
+    def _init_driver(self):
+        Curr_test[0] = 'Dorado2100G2'
+        modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
+        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver.do_setup(None)
+
+    def test_conf_invalid(self):
+        pass
+
+    def test_create_delete_cloned_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          FAKE_CLONED_VOLUME, FAKE_VOLUME)
+
+    def test_create_delete_snapshot(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_snapshot, FAKE_SNAPSHOT)
+
+    def test_create_delete_snapshot_volume(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          FAKE_CLONED_VOLUME, FAKE_SNAPSHOT)
+
+    def test_initialize_connection(self):
+        self.driver.create_volume(FAKE_VOLUME)
+        ret = self.driver.initialize_connection(FAKE_VOLUME, FAKE_CONNECTOR)
+        iscsi_propers = ret['data']
+        self.assertEquals(iscsi_propers['target_iqn'],
+                          INITIATOR_SETTING['TargetIQN-form'])
+        self.assertEquals(iscsi_propers['target_portal'],
+                          INITIATOR_SETTING['Initiator TargetIP'] + ':3260')
+        self.assertEqual(MAP_INFO["DEV LUN ID"], LUN_INFO['ID'])
+        self.assertEqual(MAP_INFO["INI Port Info"],
+                         FAKE_CONNECTOR['initiator'])
+        self.driver.terminate_connection(FAKE_VOLUME, FAKE_CONNECTOR)
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['ID'], None)
 
 
 class SSHMethodTestCase(test.TestCase):
