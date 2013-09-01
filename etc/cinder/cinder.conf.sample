@@ -1541,7 +1541,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.windows
+# Options defined in cinder.volume.drivers.windows.windows
 #
 
 # Path to store VHD backed volumes (string value)

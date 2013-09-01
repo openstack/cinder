@@ -19,18 +19,32 @@ Stubouts, mocks and fixtures for windows volume test suite
 """
 
 
-def get_fake_volume_info(name):
-    return {'name': name,
+def get_fake_volume_info():
+    return {'name': 'volume_name',
             'size': 1,
-            'provider_location': 'iqn.2010-10.org.openstack:' + name,
+            'provider_location': 'iqn.2010-10.org.openstack:' + 'volume_name',
             'id': 1,
             'provider_auth': None}
 
 
-def get_fake_snapshot_info(volume_name, snapshot_name):
-    return {'name': snapshot_name,
-            'volume_name': volume_name, }
+def get_fake_volume_info_cloned():
+    return {'name': 'volume_name_cloned',
+            'size': 1,
+            'provider_location': 'iqn.2010-10.org.openstack:' +
+                                 'volume_name_cloned',
+            'id': 1,
+            'provider_auth': None}
 
 
-def get_fake_connector_info(initiator):
-    return {'initiator': initiator, }
+def get_fake_image_meta():
+    return {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'
+            }
+
+
+def get_fake_snapshot_info():
+    return {'name': 'snapshot_name',
+            'volume_name': 'volume_name', }
+
+
+def get_fake_connector_info():
+    return {'initiator': 'iqn.2010-10.org.openstack:' + 'volume_name', }

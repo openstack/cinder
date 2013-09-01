@@ -183,9 +183,10 @@ class QemuImgInfo(object):
 
 def qemu_img_info(path):
     """Return a object containing the parsed output from qemu-img info."""
-    out, err = utils.execute('env', 'LC_ALL=C', 'LANG=C',
-                             'qemu-img', 'info', path,
-                             run_as_root=True)
+    cmd = ('env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info', path)
+    if os.name == 'nt':
+        cmd = cmd[3:]
+    out, err = utils.execute(*cmd, run_as_root=True)
     return QemuImgInfo(out)
 
 
@@ -232,9 +233,23 @@ def fetch_verify_image(context, image_service, image_id, dest,
                         {'fmt': fmt, 'backing_file': backing_file}))
 
 
+def fetch_to_vhd(context, image_service,
+                 image_id, dest,
+                 user_id=None, project_id=None):
+    fetch_to_volume_format(context, image_service, image_id, dest, 'vpc',
+                           user_id, project_id)
+
+
 def fetch_to_raw(context, image_service,
                  image_id, dest,
                  user_id=None, project_id=None):
+    fetch_to_volume_format(context, image_service, image_id, dest, 'raw',
+                           user_id, project_id)
+
+
+def fetch_to_volume_format(context, image_service,
+                           image_id, dest, volume_format,
+                           user_id=None, project_id=None):
     if (CONF.image_conversion_dir and not
             os.path.exists(CONF.image_conversion_dir)):
         os.makedirs(CONF.image_conversion_dir)
@@ -273,22 +288,29 @@ def fetch_to_raw(context, image_service,
         # check via 'qemu-img info' that what we copied was in fact a raw
         # image and not a different format with a backing file, which may be
         # malicious.
-        LOG.debug("%s was %s, converting to raw" % (image_id, fmt))
-        convert_image(tmp, dest, 'raw')
+        LOG.debug("%s was %s, converting to %s " % (image_id, fmt,
+                                                    volume_format))
+        convert_image(tmp, dest, volume_format)
 
         data = qemu_img_info(dest)
-        if data.file_format != "raw":
+        if data.file_format != volume_format:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
-                reason=_("Converted to raw, but format is now %s") %
-                data.file_format)
+                reason=_("Converted to %(vol_format)s, but format is "
+                         "now %(file_format)s") % {'vol_format': volume_format,
+                                                   'file_format': data.
+                                                   file_format})
 
 
-def upload_volume(context, image_service, image_meta, volume_path):
+def upload_volume(context, image_service, image_meta, volume_path,
+                  volume_format='raw'):
     image_id = image_meta['id']
-    if (image_meta['disk_format'] == 'raw'):
-        LOG.debug("%s was raw, no need to convert to %s" %
-                  (image_id, image_meta['disk_format']))
+    if (image_meta['disk_format'] == volume_format):
+        LOG.debug("%s was %s, no need to convert to %s" %
+                  (image_id, volume_format, image_meta['disk_format']))
+        if os.name == 'nt':
+            with fileutils.file_open(volume_path) as image_file:
+                image_service.update(context, image_id, {}, image_file)
         with utils.temporary_chown(volume_path):
             with fileutils.file_open(volume_path) as image_file:
                 image_service.update(context, image_id, {}, image_file)
@@ -301,8 +323,8 @@ def upload_volume(context, image_service, image_meta, volume_path):
     fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
     os.close(fd)
     with fileutils.remove_path_on_error(tmp):
-        LOG.debug("%s was raw, converting to %s" %
-                  (image_id, image_meta['disk_format']))
+        LOG.debug("%s was %s, converting to %s" %
+                  (image_id, volume_format, image_meta['disk_format']))
         convert_image(volume_path, tmp, image_meta['disk_format'])
 
         data = qemu_img_info(tmp)
