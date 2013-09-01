@@ -312,6 +312,46 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
         self.assertIsNotNone(volume['encryption_key_id'])
 
+    def test_create_delete_volume_with_encrypted_volume_type(self):
+        self.stubs.Set(keymgr, "API", fake_keymgr.fake_api)
+
+        ctxt = context.get_admin_context()
+
+        db.volume_type_create(ctxt,
+                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
+                               'name': 'LUKS'})
+        db.volume_type_encryption_update_or_create(
+            ctxt,
+            '61298380-0c12-11e3-bfd6-4b48424183be',
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+
+        volume_api = cinder.volume.api.API()
+
+        db_vol_type = db.volume_type_get_by_name(ctxt, 'LUKS')
+
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description',
+                                   volume_type=db_vol_type)
+
+        self.assertIsNotNone(volume.get('encryption_key_id', None))
+        self.assertEquals(volume['volume_type_id'], db_vol_type.get('id'))
+        self.assertIsNotNone(volume['encryption_key_id'])
+
+        volume['host'] = 'fake_host'
+        volume['status'] = 'available'
+        volume_api.delete(self.context, volume)
+
+        volume = db.volume_get(self.context, volume['id'])
+        self.assertEquals('deleting', volume['status'])
+
+        db.volume_destroy(self.context, volume['id'])
+        self.assertRaises(exception.NotFound,
+                          db.volume_get,
+                          self.context,
+                          volume['id'])
+
     def test_delete_busy_volume(self):
         """Test volume survives deletion if driver reports it as busy."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
