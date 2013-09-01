@@ -132,9 +132,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 self.delete_backup(ctxt, backup['id'])
 
     def create_backup(self, context, backup_id):
-        """
-        Create volume backups using configured backup service.
-        """
+        """Create volume backups using configured backup service."""
         backup = self.db.backup_get(context, backup_id)
         volume_id = backup['volume_id']
         volume = self.db.volume_get(context, volume_id)
@@ -189,9 +187,7 @@ class BackupManager(manager.SchedulerDependentManager):
         LOG.info(_('create_backup finished. backup: %s'), backup_id)
 
     def restore_backup(self, context, backup_id, volume_id):
-        """
-        Restore volume backups from configured backup service.
-        """
+        """Restore volume backups from configured backup service."""
         LOG.info(_('restore_backup started, restoring backup: %(backup_id)s'
                    ' to volume: %(volume_id)s') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
@@ -261,9 +257,7 @@ class BackupManager(manager.SchedulerDependentManager):
                  {'backup_id': backup_id, 'volume_id': volume_id})
 
     def delete_backup(self, context, backup_id):
-        """
-        Delete volume backup from configured backup service.
-        """
+        """Delete volume backup from configured backup service."""
         backup = self.db.backup_get(context, backup_id)
         LOG.info(_('delete_backup started, backup: %s'), backup_id)
         self.db.backup_update(context, backup_id, {'host': self.host})
