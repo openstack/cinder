@@ -18,14 +18,37 @@
 
 import contextlib
 import mox
+import tempfile
 import textwrap
 
+from cinder import context
+from cinder import exception
 from cinder.image import image_utils
 from cinder import test
 from cinder import utils
 
 
+class FakeImageService:
+    def __init__(self):
+        self._imagedata = {}
+
+    def download(self, context, image_id, data):
+        self.show(context, image_id)
+        data.write(self._imagedata.get(image_id, ''))
+
+    def show(self, context, image_id):
+        return {'size': 2 * 1024 * 1024 * 1024,
+                'disk_format': 'qcow2',
+                'container_format': 'bare'}
+
+    def update(self, context, image_id, metadata, path):
+        pass
+
+
 class TestUtils(test.TestCase):
+    TEST_IMAGE_ID = 321
+    TEST_DEV_PATH = "/dev/ether/fake_dev"
+
     def setUp(self):
         super(TestUtils, self).setUp()
         self._mox = mox.Mox()
@@ -46,6 +69,343 @@ class TestUtils(test.TestCase):
         image_utils.resize_image(TEST_IMG_SOURCE, TEST_IMG_SIZE_IN_GB)
 
         mox.VerifyAll()
+
+    def test_convert_image(self):
+        mox = self._mox
+        mox.StubOutWithMock(utils, 'execute')
+
+        TEST_OUT_FORMAT = 'vmdk'
+        TEST_SOURCE = 'img/qemu.img'
+        TEST_DEST = '/img/vmware.vmdk'
+
+        utils.execute('qemu-img', 'convert', '-O', TEST_OUT_FORMAT,
+                      TEST_SOURCE, TEST_DEST, run_as_root=True)
+
+        mox.ReplayAll()
+
+        image_utils.convert_image(TEST_SOURCE, TEST_DEST, TEST_OUT_FORMAT)
+
+        mox.VerifyAll()
+
+    def test_qemu_img_info(self):
+        TEST_PATH = "img/qemu.qcow2"
+        TEST_RETURN = "image: qemu.qcow2\n"\
+                      "backing_file: qemu.qcow2 (actual path: qemu.qcow2)\n"\
+                      "file_format: qcow2\n"\
+                      "virtual_size: 50M (52428800 bytes)\n"\
+                      "cluster_size: 65536\n"\
+                      "disk_size: 196K (200704 bytes)\n"\
+                      "Snapshot list:\n"\
+                      "ID TAG  VM SIZE DATE VM CLOCK\n"\
+                      "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
+        TEST_STR = "image: qemu.qcow2\n"\
+                   "file_format: qcow2\n"\
+                   "virtual_size: 52428800\n"\
+                   "disk_size: 200704\n"\
+                   "cluster_size: 65536\n"\
+                   "backing_file: qemu.qcow2\n"\
+                   "snapshots: [{'date': '2011-10-04', "\
+                   "'vm_clock': '19:04:00 32:06:34.974', "\
+                   "'vm_size': '1.7G', 'tag': 'snap1', 'id': '1'}]"
+
+        mox = self._mox
+        mox.StubOutWithMock(utils, 'execute')
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            TEST_PATH, run_as_root=True).AndReturn(
+                (TEST_RETURN, 'ignored')
+            )
+
+        mox.ReplayAll()
+
+        inf = image_utils.qemu_img_info(TEST_PATH)
+
+        self.assertEquals(inf.image, 'qemu.qcow2')
+        self.assertEquals(inf.backing_file, 'qemu.qcow2')
+        self.assertEquals(inf.file_format, 'qcow2')
+        self.assertEquals(inf.virtual_size, 52428800)
+        self.assertEquals(inf.cluster_size, 65536)
+        self.assertEquals(inf.disk_size, 200704)
+
+        self.assertEquals(inf.snapshots[0]['id'], '1')
+        self.assertEquals(inf.snapshots[0]['tag'], 'snap1')
+        self.assertEquals(inf.snapshots[0]['vm_size'], '1.7G')
+        self.assertEquals(inf.snapshots[0]['date'], '2011-10-04')
+        self.assertEquals(inf.snapshots[0]['vm_clock'],
+                          '19:04:00 32:06:34.974')
+
+        self.assertEquals(str(inf), TEST_STR)
+
+    def test_fetch_to_raw(self):
+        TEST_RET = "image: qemu.qcow2\n"\
+                   "file_format: qcow2 \n"\
+                   "virtual_size: 50M (52428800 bytes)\n"\
+                   "cluster_size: 65536\n"\
+                   "disk_size: 196K (200704 bytes)"
+        TEST_RETURN_RAW = "image: qemu.raw\n"\
+                          "file_format: raw\n"\
+                          "virtual_size: 50M (52428800 bytes)\n"\
+                          "cluster_size: 65536\n"\
+                          "disk_size: 196K (200704 bytes)\n"\
+
+        fake_image_service = FakeImageService()
+        mox = self._mox
+
+        mox.StubOutWithMock(image_utils, 'create_temporary_file')
+        mox.StubOutWithMock(utils, 'execute')
+        mox.StubOutWithMock(image_utils, 'fetch')
+
+        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
+        image_utils.fetch(context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        utils.execute('qemu-img', 'convert', '-O', 'raw',
+                      self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RETURN_RAW, 'ignored')
+            )
+
+        mox.ReplayAll()
+
+        image_utils.fetch_to_raw(context, fake_image_service,
+                                 self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+        mox.VerifyAll()
+
+    def test_fetch_to_raw_on_error_parsing_failed(self):
+        TEST_RET = "image: qemu.qcow2\n"\
+                   "virtual_size: 50M (52428800 bytes)\n"\
+                   "cluster_size: 65536\n"\
+                   "disk_size: 196K (200704 bytes)"
+
+        fake_image_service = FakeImageService()
+        mox = self._mox
+
+        mox.StubOutWithMock(image_utils, 'create_temporary_file')
+        mox.StubOutWithMock(utils, 'execute')
+        mox.StubOutWithMock(image_utils, 'fetch')
+
+        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
+        image_utils.fetch(context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        mox.ReplayAll()
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_to_raw, context,
+                          fake_image_service, self.TEST_IMAGE_ID,
+                          self.TEST_DEV_PATH)
+
+    def test_fetch_to_raw_on_error_backing_file(self):
+        TEST_RET = "image: qemu.qcow2\n"\
+                   "backing_file: qemu.qcow2 (actual path: qemu.qcow2)\n"\
+                   "file_format: qcow2 \n"\
+                   "virtual_size: 50M (52428800 bytes)\n"\
+                   "cluster_size: 65536\n"\
+                   "disk_size: 196K (200704 bytes)"
+
+        fake_image_service = FakeImageService()
+        mox = self._mox
+
+        mox.StubOutWithMock(image_utils, 'create_temporary_file')
+        mox.StubOutWithMock(utils, 'execute')
+        mox.StubOutWithMock(image_utils, 'fetch')
+
+        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
+        image_utils.fetch(context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        mox.ReplayAll()
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_to_raw,
+                          context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+
+    def test_fetch_to_raw_on_error_not_convert_to_raw(self):
+        TEST_RET = "image: qemu.qcow2\n"\
+                   "file_format: qcow2 \n"\
+                   "virtual_size: 50M (52428800 bytes)\n"\
+                   "cluster_size: 65536\n"\
+                   "disk_size: 196K (200704 bytes)"
+
+        fake_image_service = FakeImageService()
+        mox = self._mox
+
+        mox.StubOutWithMock(image_utils, 'create_temporary_file')
+        mox.StubOutWithMock(utils, 'execute')
+        mox.StubOutWithMock(image_utils, 'fetch')
+
+        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
+        image_utils.fetch(context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        utils.execute('qemu-img', 'convert', '-O', 'raw',
+                      self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        mox.ReplayAll()
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_to_raw,
+                          context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+
+    def test_fetch_verify_image_with_backing_file(self):
+        TEST_RETURN = "image: qemu.qcow2\n"\
+                      "backing_file: qemu.qcow2 (actual path: qemu.qcow2)\n"\
+                      "file_format: qcow2\n"\
+                      "virtual_size: 50M (52428800 bytes)\n"\
+                      "cluster_size: 65536\n"\
+                      "disk_size: 196K (200704 bytes)\n"\
+                      "Snapshot list:\n"\
+                      "ID TAG  VM SIZE DATE VM CLOCK\n"\
+                      "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
+
+        fake_image_service = FakeImageService()
+        mox = self._mox
+        mox.StubOutWithMock(image_utils, 'fetch')
+        mox.StubOutWithMock(utils, 'execute')
+        image_utils.fetch(context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RETURN, 'ignored')
+            )
+
+        mox.ReplayAll()
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_verify_image,
+                          context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+
+    def test_fetch_verify_image_without_file_format(self):
+        TEST_RETURN = "image: qemu.qcow2\n"\
+                      "virtual_size: 50M (52428800 bytes)\n"\
+                      "cluster_size: 65536\n"\
+                      "disk_size: 196K (200704 bytes)\n"\
+                      "Snapshot list:\n"\
+                      "ID TAG  VM SIZE DATE VM CLOCK\n"\
+                      "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
+
+        fake_image_service = FakeImageService()
+        mox = self._mox
+        mox.StubOutWithMock(image_utils, 'fetch')
+        mox.StubOutWithMock(utils, 'execute')
+        image_utils.fetch(context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                (TEST_RETURN, 'ignored')
+            )
+
+        mox.ReplayAll()
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_verify_image,
+                          context, fake_image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+
+    def test_upload_volume(self):
+        image_meta = {'id': 1, 'disk_format': 'qcow2'}
+        TEST_RET = "image: qemu.qcow2\n"\
+                   "file_format: qcow2 \n"\
+                   "virtual_size: 50M (52428800 bytes)\n"\
+                   "cluster_size: 65536\n"\
+                   "disk_size: 196K (200704 bytes)"
+
+        m = self._mox
+        m.StubOutWithMock(utils, 'execute')
+
+        utils.execute('qemu-img', 'convert', '-O', 'qcow2',
+                      mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        m.ReplayAll()
+
+        image_utils.upload_volume(context, FakeImageService(),
+                                  image_meta, '/dev/loop1')
+        m.VerifyAll()
+
+    def test_upload_volume_with_raw_image(self):
+        image_meta = {'id': 1, 'disk_format': 'raw'}
+        mox = self._mox
+
+        mox.StubOutWithMock(image_utils, 'convert_image')
+
+        mox.ReplayAll()
+
+        with tempfile.NamedTemporaryFile() as f:
+            image_utils.upload_volume(context, FakeImageService(),
+                                      image_meta, f.name)
+        mox.VerifyAll()
+
+    def test_upload_volume_on_error(self):
+        image_meta = {'id': 1, 'disk_format': 'qcow2'}
+        TEST_RET = "image: qemu.vhd\n"\
+                   "file_format: vhd \n"\
+                   "virtual_size: 50M (52428800 bytes)\n"\
+                   "cluster_size: 65536\n"\
+                   "disk_size: 196K (200704 bytes)"
+
+        m = self._mox
+        m.StubOutWithMock(utils, 'execute')
+
+        utils.execute('qemu-img', 'convert', '-O', 'qcow2',
+                      mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
+        utils.execute(
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored')
+            )
+
+        m.ReplayAll()
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.upload_volume,
+                          context, FakeImageService(),
+                          image_meta, '/dev/loop1')
+        m.VerifyAll()
 
 
 class TestExtractTo(test.TestCase):
