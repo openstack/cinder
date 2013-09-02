@@ -129,7 +129,7 @@ class VolumeTypesApiTest(test.TestCase):
         request = fakes.HTTPRequest.blank("/v2")
         output = view_builder.show(request, raw_volume_type)
 
-        self.assertTrue('volume_type' in output)
+        self.assertIn('volume_type', output)
         expected_volume_type = dict(
             name='new_type',
             extra_specs={},
@@ -158,7 +158,7 @@ class VolumeTypesApiTest(test.TestCase):
         request = fakes.HTTPRequest.blank("/v2")
         output = view_builder.index(request, raw_volume_types)
 
-        self.assertTrue('volume_types' in output)
+        self.assertIn('volume_types', output)
         for i in range(0, 10):
             expected_volume_type = dict(
                 name='new_type',
@@ -179,7 +179,7 @@ class VolumeTypesSerializerTest(test.TestCase):
         self.assertEqual('extra_specs', extra_specs.tag)
         seen = set(vtype['extra_specs'].keys())
         for child in extra_specs:
-            self.assertTrue(child.tag in seen)
+            self.assertIn(child.tag, seen)
             self.assertEqual(vtype['extra_specs'][child.tag], child.text)
             seen.remove(child.tag)
         self.assertEqual(len(seen), 0)
@@ -197,7 +197,7 @@ class VolumeTypesSerializerTest(test.TestCase):
         self.assertEqual(len(vtypes), len(tree))
         for child in tree:
             name = child.get('name')
-            self.assertTrue(name in vtypes)
+            self.assertIn(name, vtypes)
             self._verify_volume_type(vtypes[name], child)
 
     def test_voltype_serializer(self):

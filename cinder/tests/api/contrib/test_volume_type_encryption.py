@@ -215,7 +215,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
 
         # check response
-        self.assertTrue('encryption' in res_dict)
+        self.assertIn('encryption', res_dict)
         self.assertEqual(cipher, res_dict['encryption']['cipher'])
         self.assertEqual(control_location,
                          res_dict['encryption']['control_location'])

@@ -470,7 +470,7 @@ class DriverTestCase(test.TestCase):
         ]
 
         for metric in required_metrics:
-            self.assertTrue(metric in stats)
+            self.assertIn(metric, stats)
 
     def test_get_volume_stats_reports_unknown_cap(self):
         drv = get_configured_driver()

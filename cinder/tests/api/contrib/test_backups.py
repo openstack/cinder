@@ -363,7 +363,7 @@ class BackupsAPITestCase(test.TestCase):
         LOG.info(res_dict)
 
         self.assertEqual(res.status_int, 202)
-        self.assertTrue('id' in res_dict['backup'])
+        self.assertIn('id', res_dict['backup'])
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 

@@ -514,7 +514,7 @@ class TestMigrations(test.TestCase):
         for metadata in self.metadatas_downgraded_from(6):
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
 
-            self.assertTrue('provider_location' not in snapshots.c)
+            self.assertNotIn('provider_location', snapshots.c)
 
     def test_upgrade_007_adds_fk(self):
         for metadata in self.metadatas_upgraded_to(7):
@@ -716,7 +716,7 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue('bootable' not in volumes.c)
+            self.assertNotIn('bootable', volumes.c)
 
             # Make sure we put all the columns back
             for column in volumes_v10.c:
@@ -746,7 +746,7 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue('attached_host' not in volumes.c)
+            self.assertNotIn('attached_host', volumes.c)
 
     def test_migration_013(self):
         """Test that adding provider_geometry column works correctly."""
@@ -772,7 +772,7 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue('provider_geometry' not in volumes.c)
+            self.assertNotIn('provider_geometry', volumes.c)
 
     def test_migration_014(self):
         """Test that adding _name_id column works correctly."""
@@ -798,7 +798,7 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue('_name_id' not in volumes.c)
+            self.assertNotIn('_name_id', volumes.c)
 
     def test_migration_015(self):
         """Test removing migrations table works correctly."""
@@ -858,15 +858,15 @@ class TestMigrations(test.TestCase):
 
             # encryption key UUID
             volumes = sqlalchemy.Table('volumes', metadata, autoload=True)
-            self.assertTrue('encryption_key_id' in volumes.c)
+            self.assertIn('encryption_key_id', volumes.c)
             self.assertTrue(isinstance(volumes.c.encryption_key_id.type,
                                        sqlalchemy.types.VARCHAR))
 
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
-            self.assertTrue('encryption_key_id' in snapshots.c)
+            self.assertIn('encryption_key_id', snapshots.c)
             self.assertTrue(isinstance(snapshots.c.encryption_key_id.type,
                                        sqlalchemy.types.VARCHAR))
-            self.assertTrue('volume_type_id' in snapshots.c)
+            self.assertIn('volume_type_id', snapshots.c)
             self.assertTrue(isinstance(snapshots.c.volume_type_id.type,
                                        sqlalchemy.types.VARCHAR))
 
@@ -889,10 +889,10 @@ class TestMigrations(test.TestCase):
             metadata.bind = engine
 
             volumes = sqlalchemy.Table('volumes', metadata, autoload=True)
-            self.assertTrue('encryption_key_id' not in volumes.c)
+            self.assertNotIn('encryption_key_id', volumes.c)
 
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
-            self.assertTrue('encryption_key_id' not in snapshots.c)
+            self.assertNotIn('encryption_key_id', snapshots.c)
 
             self.assertFalse(engine.dialect.has_table(engine.connect(),
                                                       'encryption'))
@@ -959,7 +959,7 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue('migration_status' not in volumes.c)
+            self.assertNotIn('migration_status', volumes.c)
 
     def test_migration_020(self):
         """Test adding volume_admin_metadata table works correctly."""

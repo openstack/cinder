@@ -56,7 +56,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
 
     def test_serialized_volume_has_id(self):
-        self.assertTrue('id' in self.fake_volume)
+        self.assertIn('id', self.fake_volume)
 
     def _test_volume_api(self, method, rpc_method, **kwargs):
         ctxt = context.RequestContext('fake_user', 'fake_project')

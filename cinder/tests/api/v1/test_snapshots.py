@@ -94,7 +94,7 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/snapshots')
         resp_dict = self.controller.create(req, body)
 
-        self.assertTrue('snapshot' in resp_dict)
+        self.assertIn('snapshot', resp_dict)
         self.assertEqual(resp_dict['snapshot']['display_name'],
                          snapshot['display_name'])
         self.assertEqual(resp_dict['snapshot']['display_description'],
@@ -113,7 +113,7 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/snapshots')
         resp_dict = self.controller.create(req, body)
 
-        self.assertTrue('snapshot' in resp_dict)
+        self.assertIn('snapshot', resp_dict)
         self.assertEqual(resp_dict['snapshot']['display_name'],
                          snapshot['display_name'])
         self.assertEqual(resp_dict['snapshot']['display_description'],
@@ -195,7 +195,7 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % UUID)
         resp_dict = self.controller.show(req, UUID)
 
-        self.assertTrue('snapshot' in resp_dict)
+        self.assertIn('snapshot', resp_dict)
         self.assertEqual(resp_dict['snapshot']['id'], UUID)
 
     def test_snapshot_show_invalid_id(self):
@@ -213,7 +213,7 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/snapshots/detail')
         resp_dict = self.controller.detail(req)
 
-        self.assertTrue('snapshots' in resp_dict)
+        self.assertIn('snapshots', resp_dict)
         resp_snapshots = resp_dict['snapshots']
         self.assertEqual(len(resp_snapshots), 1)
 
@@ -311,7 +311,7 @@ class SnapshotApiTest(test.TestCase):
                                       use_admin_context=True)
         res = self.controller.index(req)
 
-        self.assertTrue('snapshots' in res)
+        self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
     def test_list_snapshots_with_limit_and_offset(self):
@@ -331,7 +331,7 @@ class SnapshotApiTest(test.TestCase):
                                           use_admin_context=is_admin)
             res = self.controller.index(req)
 
-            self.assertTrue('snapshots' in res)
+            self.assertIn('snapshots', res)
             self.assertEqual(1, len(res['snapshots']))
             self.assertEqual(2, res['snapshots'][0]['id'])
 
@@ -344,19 +344,19 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/fake/snapshots?all_tenants=1',
                                       use_admin_context=True)
         res = self.controller.index(req)
-        self.assertTrue('snapshots' in res)
+        self.assertIn('snapshots', res)
         self.assertEqual(3, len(res['snapshots']))
 
     def test_all_tenants_non_admin_gets_all_tenants(self):
         req = fakes.HTTPRequest.blank('/v1/fake/snapshots?all_tenants=1')
         res = self.controller.index(req)
-        self.assertTrue('snapshots' in res)
+        self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
     def test_non_admin_get_by_project(self):
         req = fakes.HTTPRequest.blank('/v1/fake/snapshots')
         res = self.controller.index(req)
-        self.assertTrue('snapshots' in res)
+        self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
 

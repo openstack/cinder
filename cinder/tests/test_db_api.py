@@ -722,7 +722,7 @@ class DBAPIQuotaTestCase(BaseTest):
         res_names = ['gigabytes', 'volumes']
         for uuid in reservations:
             reservation = db.reservation_get(self.ctxt, uuid)
-            self.assertTrue(reservation.resource in res_names)
+            self.assertIn(reservation.resource, res_names)
             res_names.remove(reservation.resource)
 
     def test_quota_destroy_all_by_project(self):

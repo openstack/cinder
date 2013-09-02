@@ -598,26 +598,26 @@ class VolumeApiTest(test.TestCase):
                                       use_admin_context=True)
         res = self.controller.index(req)
 
-        self.assertTrue('volumes' in res)
+        self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
 
     def test_admin_list_volumes_all_tenants(self):
         req = fakes.HTTPRequest.blank('/v1/fake/volumes?all_tenants=1',
                                       use_admin_context=True)
         res = self.controller.index(req)
-        self.assertTrue('volumes' in res)
+        self.assertIn('volumes', res)
         self.assertEqual(3, len(res['volumes']))
 
     def test_all_tenants_non_admin_gets_all_tenants(self):
         req = fakes.HTTPRequest.blank('/v1/fake/volumes?all_tenants=1')
         res = self.controller.index(req)
-        self.assertTrue('volumes' in res)
+        self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
 
     def test_non_admin_get_by_project(self):
         req = fakes.HTTPRequest.blank('/v1/fake/volumes')
         res = self.controller.index(req)
-        self.assertTrue('volumes' in res)
+        self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
 
 
@@ -635,7 +635,7 @@ class VolumeSerializerTest(test.TestCase):
             self.assertEqual(str(vol[attr]), tree.get(attr))
 
         for child in tree:
-            self.assertTrue(child.tag in (NS + 'attachments', NS + 'metadata'))
+            self.assertIn(child.tag, (NS + 'attachments', NS + 'metadata'))
             if child.tag == 'attachments':
                 self.assertEqual(1, len(child))
                 self.assertEqual('attachment', child[0].tag)
@@ -643,7 +643,7 @@ class VolumeSerializerTest(test.TestCase):
             elif child.tag == 'metadata':
                 not_seen = set(vol['metadata'].keys())
                 for gr_child in child:
-                    self.assertTrue(gr_child.get("key") in not_seen)
+                    self.assertIn(gr_child.get("key"), not_seen)
                     self.assertEqual(str(vol['metadata'][gr_child.get("key")]),
                                      gr_child.text)
                     not_seen.remove(gr_child.get('key'))

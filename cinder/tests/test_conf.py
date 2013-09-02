@@ -35,9 +35,9 @@ class ConfigTestCase(test.TestCase):
         super(ConfigTestCase, self).setUp()
 
     def test_declare(self):
-        self.assert_('answer' not in CONF)
+        self.assertNotIn('answer', CONF)
         CONF.import_opt('answer', 'cinder.tests.declare_conf')
-        self.assert_('answer' in CONF)
+        self.assertIn('answer', CONF)
         self.assertEqual(CONF.answer, 42)
 
         # Make sure we don't overwrite anything
@@ -47,9 +47,9 @@ class ConfigTestCase(test.TestCase):
         self.assertEqual(CONF.answer, 256)
 
     def test_runtime_and_unknown_conf(self):
-        self.assert_('runtime_answer' not in CONF)
+        self.assertNotIn('runtime_answer', CONF)
         import cinder.tests.runtime_conf
-        self.assert_('runtime_answer' in CONF)
+        self.assertIn('runtime_answer', CONF)
         self.assertEqual(CONF.runtime_answer, 54)
 
     def test_long_vs_short_conf(self):
