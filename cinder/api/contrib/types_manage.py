@@ -97,6 +97,13 @@ class VolumeTypesManageController(wsgi.Controller):
             notifier_api.notify(context, 'volumeType',
                                 'volume_type.delete',
                                 notifier_api.INFO, notifier_info)
+        except exception.VolumeTypeInUse as err:
+            notifier_err = dict(id=id, error_message=str(err))
+            self._notify_voloume_type_error(context,
+                                            'volume_type.delete',
+                                            notifier_err)
+            msg = 'Target volume type is still in use.'
+            raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_voloume_type_error(context,

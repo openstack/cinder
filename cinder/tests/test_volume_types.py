@@ -18,9 +18,11 @@ Unit Tests for volume types code
 """
 
 
+import datetime
 import time
 
 from cinder import context
+from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -103,6 +105,19 @@ class VolumeTypeTestCase(test.TestCase):
         """Ensures that volume type creation fails with invalid args."""
         self.assertRaises(exception.VolumeTypeNotFound,
                           volume_types.destroy, self.ctxt, "sfsfsdfdfs")
+
+    def test_volume_type_with_volumes_shouldnt_delete(self):
+        """Ensures volume type deletion with associated volumes fail."""
+        type_ref = volume_types.create(self.ctxt, self.vol_type1_name)
+        db.volume_create(self.ctxt,
+                         {'id': '1',
+                          'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                          'display_description': 'Test Desc',
+                          'size': 20,
+                          'status': 'available',
+                          'volume_type_id': type_ref['id']})
+        self.assertRaises(exception.VolumeTypeInUse,
+                          volume_types.destroy, self.ctxt, type_ref['id'])
 
     def test_repeated_vol_types_shouldnt_raise(self):
         """Ensures that volume duplicates don't raise."""

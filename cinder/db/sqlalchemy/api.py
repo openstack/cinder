@@ -1884,7 +1884,12 @@ def volume_type_destroy(context, id):
     session = get_session()
     with session.begin():
         _volume_type_get(context, id, session)
-
+        results = model_query(context, models.Volume, session=session). \
+            filter_by(volume_type_id=id).all()
+        if results:
+            msg = _('VolumeType %s deletion failed, VolumeType in use.') % id
+            LOG.error(msg)
+            raise exception.VolumeTypeInUse(volume_type_id=id)
         session.query(models.VolumeTypes).\
             filter_by(id=id).\
             update({'deleted': True,
