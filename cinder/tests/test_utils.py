@@ -454,6 +454,34 @@ class GenericUtilsTestCase(test.TestCase):
         h2 = hashlib.sha1(data).hexdigest()
         self.assertEquals(h1, h2)
 
+    def test_check_ssh_injection(self):
+        cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']
+        self.assertEqual(utils.check_ssh_injection(cmd_list), None)
+
+    def test_check_ssh_injection_on_error(self):
+        with_space = ['shh', 'my_name@      name_of_remote_computer']
+        with_danger_char = ['||', 'my_name@name_of_remote_computer']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          with_space)
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          with_danger_char)
+
+    def test_create_channel(self):
+        client = paramiko.SSHClient()
+        channel = paramiko.Channel(123)
+        self.mox.StubOutWithMock(client, 'invoke_shell')
+        self.mox.StubOutWithMock(channel, 'resize_pty')
+
+        client.invoke_shell().AndReturn(channel)
+        channel.resize_pty(600, 800)
+
+        self.mox.ReplayAll()
+        utils.create_channel(client, 600, 800)
+
+        self.mox.VerifyAll()
+
 
 class MonkeyPatchTestCase(test.TestCase):
     """Unit test for utils.monkey_patch()."""
