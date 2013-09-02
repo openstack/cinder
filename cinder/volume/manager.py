@@ -137,6 +137,9 @@ class VolumeManager(manager.SchedulerDependentManager):
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
+        # update_service_capabilities needs service_name to be volume
+        super(VolumeManager, self).__init__(service_name='volume',
+                                            *args, **kwargs)
         self.configuration = Configuration(volume_manager_opts,
                                            config_group=service_name)
         if not volume_driver:
@@ -149,13 +152,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             volume_driver = MAPPING[volume_driver]
         self.driver = importutils.import_object(
             volume_driver,
-            configuration=self.configuration)
-        # update_service_capabilities needs service_name to be volume
-        super(VolumeManager, self).__init__(service_name='volume',
-                                            *args, **kwargs)
-        # NOTE(vish): Implementation specific db handling is done
-        #             by the driver.
-        self.driver.db = self.db
+            configuration=self.configuration,
+            db=self.db)
 
     def init_host(self):
         """Do any initialization that needs to be run if this is a
