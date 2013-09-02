@@ -1119,9 +1119,6 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
         session.query(models.Volume).\
             filter_by(id=src_vol_id).\
             update(updates)
-        session.query(models.Volume).\
-            filter_by(id=dest_vol_id).\
-            delete()
 
 
 @require_admin_context
