@@ -126,7 +126,9 @@ MAPPING = {
     'cinder.volume.drivers.netapp.nfs.NetAppNFSDriver':
     'cinder.volume.drivers.netapp.common.Deprecated',
     'cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated'}
+    'cinder.volume.drivers.netapp.common.Deprecated',
+    'cinder.volume.drivers.huawei.HuaweiISCSIDriver':
+    'cinder.volume.drivers.huawei.HuaweiVolumeDriver'}
 
 
 class VolumeManager(manager.SchedulerDependentManager):

@@ -1186,7 +1186,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.huawei.huawei_iscsi
+# Options defined in cinder.volume.drivers.huawei
 #
 
 # config data for cinder huawei plugin (string value)
