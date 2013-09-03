@@ -27,7 +27,6 @@ from oslo.config import cfg
 
 from cinder.brick.initiator import connector as initiator
 from cinder.brick.iscsi import iscsi
-from cinder.brick.iser import iser
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
@@ -691,8 +690,10 @@ class ISCSIDriver(VolumeDriver):
 
     def get_target_admin(self):
         root_helper = utils.get_root_helper()
-
-        if CONF.iscsi_helper == 'tgtadm':
+        if CONF.iscsi_helper == 'iseradm':
+            return iscsi.ISERTgtAdm(root_helper, CONF.volumes_dir,
+                                    CONF.iscsi_target_prefix)
+        elif CONF.iscsi_helper == 'tgtadm':
             return iscsi.TgtAdm(root_helper,
                                 CONF.volumes_dir,
                                 CONF.iscsi_target_prefix)
@@ -994,10 +995,10 @@ class ISERDriver(ISCSIDriver):
         root_helper = utils.get_root_helper()
 
         if CONF.iser_helper == 'fake':
-            return iser.FakeIserHelper()
+            return iscsi.FakeIscsiHelper()
         else:
-            return iser.TgtAdm(root_helper,
-                               CONF.volumes_dir)
+            return iscsi.ISERTgtAdm(root_helper,
+                                    CONF.volumes_dir)
 
 
 class FakeISERDriver(FakeISCSIDriver):

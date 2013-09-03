@@ -95,14 +95,6 @@ class VolumeDeviceNotFound(BrickException):
     message = _("Volume device not found at %(device)s.")
 
 
-class ISERTargetCreateFailed(BrickException):
-    message = _("Failed to create iser target for volume %(volume_id)s.")
-
-
-class ISERTargetRemoveFailed(BrickException):
-    message = _("Failed to remove iser target for volume %(volume_id)s.")
-
-
 class VolumeGroupNotFound(BrickException):
     message = _('Unable to find Volume Group: %(vg_name)s')
 
