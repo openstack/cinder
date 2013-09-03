@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.volume.configuration import Configuration
 from cinder.volume import driver
+from cinder.volume.drivers.huawei import huawei_dorado
 from cinder.volume.drivers.huawei import huawei_t
 from cinder.volume.drivers.huawei import ssh_common
 
@@ -46,7 +47,7 @@ class HuaweiVolumeDriver(object):
 
     def __init__(self, *args, **kwargs):
         super(HuaweiVolumeDriver, self).__init__()
-        self._product = {'T': huawei_t}
+        self._product = {'T': huawei_t, 'Dorado': huawei_dorado}
         self._protocol = {'iSCSI': 'ISCSIDriver'}
 
         self.driver = self._instantiate_driver(*args, **kwargs)
@@ -83,7 +84,7 @@ class HuaweiVolumeDriver(object):
             return (product, protocol)
         else:
             msg = (_('"Product" or "Protocol" is illegal. "Product" should '
-                     'be set to T. "Protocol" should be set '
+                     'be set to either T or Dorado. "Protocol" should be set '
                      'to iSCSI. Product: %(product)s '
                      'Protocol: %(protocol)s')
                    % {'product': str(product),

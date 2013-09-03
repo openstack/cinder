@@ -1127,3 +1127,235 @@ class TseriesCommon():
 
         pool = out.split('\r\n')[6:-2]
         return [line.split() for line in pool]
+
+
+class DoradoCommon(TseriesCommon):
+    """Common class for Huawei Dorado2100 G2 and Dorado5100 storage arrays.
+
+    Dorados share a lot of common codes with T series storage systems,
+    so this class inherited from class TseriesCommon and just rewrite some
+    methods.
+
+    """
+
+    def __init__(self, configuration=None):
+        TseriesCommon.__init__(self, configuration)
+        self.device_type = None
+
+    def do_setup(self, context):
+        """Check config file."""
+        LOG.debug(_('do_setup.'))
+
+        self._check_conf_file()
+        self.lun_distribution = self._get_lun_ctr_info()
+
+    def _check_conf_file(self):
+        """Check the config file, make sure the key elements are set."""
+        root = parse_xml_file(self.xml_conf)
+        # Check login infomation
+        IP1 = root.findtext('Storage/ControllerIP0')
+        IP2 = root.findtext('Storage/ControllerIP1')
+        username = root.findtext('Storage/UserName')
+        pwd = root.findtext('Storage/UserPassword')
+        if (not IP1 and not IP2) or (not username) or (not pwd):
+            err_msg = (_('Config file invalid. Controler IP, UserName, '
+                         'UserPassword must be specified.'))
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
+
+        # Check storage pool
+        # No need for Dorado2100 G2
+        self.login_info = self._get_login_info()
+        self.device_type = self._get_device_type()
+        if self.device_type == 'Dorado5100':
+            pool_node = root.findall('LUN/StoragePool')
+            if not pool_node:
+                err_msg = (_('_check_conf_file: Config file invalid. '
+                             'StoragePool must be specified.'))
+                LOG.error(err_msg)
+                raise exception.InvalidInput(reason=err_msg)
+
+    def _get_device_type(self):
+        """Run CLI command to get system type."""
+        cli_cmd = 'showsys'
+        out = self._execute_cli(cli_cmd)
+
+        self._assert_cli_out(re.search('System Information', out),
+                             '_get_device_type',
+                             'Failed to get system information',
+                             cli_cmd, out)
+
+        for line in out.split('\r\n')[4:-2]:
+            if re.search('Device Type', line):
+                if re.search('Dorado2100 G2$', line):
+                    return 'Dorado2100 G2'
+                elif re.search('Dorado5100$', line):
+                    return 'Dorado5100'
+                else:
+                    LOG.error(_('_get_device_type: The drivers only support'
+                                'Dorado5100 and Dorado 2100 G2 now.'))
+                    raise exception.InvalidResults()
+
+    def _get_lun_ctr_info(self):
+        luns = self._get_all_luns_info()
+        ctr_info = [0, 0]
+        (c, n) = ((2, 4) if self.device_type == 'Dorado2100 G2' else (3, 5))
+        for lun in luns:
+            if lun[n].startswith('OpenStack'):
+                if lun[c] == 'A':
+                    ctr_info[0] += 1
+                else:
+                    ctr_info[1] += 1
+        return ctr_info
+
+    def _create_volume(self, name, size, params):
+        """Create a new volume with the given name and size."""
+        cli_cmd = ('createlun -n %(name)s -lunsize %(size)s '
+                   '-wrtype %(wrtype)s '
+                   % {'name': name,
+                      'size': size,
+                      'wrtype': params['WriteType']})
+
+        # If write type is "write through", no need to set mirror switch.
+        if params['WriteType'] != '2':
+            cli_cmd = cli_cmd + ('-mirrorsw %(mirrorsw)s '
+                                 % {'mirrorsw': params['MirrorSwitch']})
+
+        ctr = self._calculate_lun_ctr()
+        # Dorado5100 does not support thin LUN.
+        if self.device_type == 'Dorado5100':
+            cli_cmd = cli_cmd + ('-rg %(raidgroup)s -susize %(susize)s '
+                                 '-c %(ctr)s'
+                                 % {'raidgroup': params['StoragePool'],
+                                    'susize': params['StripUnitSize'],
+                                    'ctr': ctr})
+        else:
+            if params['LUNType'] == 'Thin':
+                # Not allowed to specify ctr for thin LUN.
+                ctr_str = ''
+                luntype_str = '-type 2'
+            else:
+                ctr_str = ' -c %s' % ctr
+                luntype_str = '-type 3'
+
+            cli_cmd = cli_cmd + luntype_str + ctr_str
+
+        out = self._execute_cli(cli_cmd)
+
+        self._assert_cli_operate_out('_create_volume',
+                                     'Failed to create volume %s' % name,
+                                     cli_cmd, out)
+
+        self._update_lun_distribution(ctr)
+
+        return self._get_lun_id(name)
+
+    def _get_lun_id(self, name):
+        luns = self._get_all_luns_info()
+        if luns:
+            n_index = (4 if 'Dorado2100 G2' == self.device_type else 5)
+            for lun in luns:
+                if lun[n_index] == name:
+                    return lun[0]
+        return None
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        err_msg = (_('create_volume_from_snapshot: %(device)s does '
+                     'not support create volume from snapshot.')
+                   % {'device': self.device_type})
+        LOG.error(err_msg)
+        raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def create_cloned_volume(self, volume, src_vref):
+        err_msg = (_('create_cloned_volume: %(device)s does '
+                     'not support clone volume.')
+                   % {'device': self.device_type})
+        LOG.error(err_msg)
+        raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def create_snapshot(self, snapshot):
+        if self.device_type == 'Dorado2100 G2':
+            err_msg = (_('create_snapshot: %(device)s does not support '
+                         'snapshot.') % {'device': self.device_type})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        else:
+            return TseriesCommon.create_snapshot(self, snapshot)
+
+    def delete_snapshot(self, snapshot):
+        if self.device_type == 'Dorado2100 G2':
+            return
+        else:
+            TseriesCommon.delete_snapshot(self, snapshot)
+
+    def _get_lun_params(self):
+        params_conf = self._parse_conf_lun_params()
+        # Select a pool with maximum capacity.
+        if self.device_type == 'Dorado5100':
+            pools_dev = self._get_dev_pool_info('Thick')
+            params_conf['StoragePool'] = \
+                self._get_maximum_capacity_pool_id(params_conf['StoragePool'],
+                                                   pools_dev, 'Thick')
+        return params_conf
+
+    def _parse_conf_lun_params(self):
+        """Get parameters from config file for creating LUN."""
+        # Default LUN parameters.
+        conf_params = {'LUNType': 'Thin',
+                       'StripUnitSize': '64',
+                       'WriteType': '1',
+                       'MirrorSwitch': '1'}
+
+        root = parse_xml_file(self.xml_conf)
+
+        luntype = root.findtext('LUN/LUNType')
+        if luntype:
+            if luntype.strip() in ['Thick', 'Thin']:
+                conf_params['LUNType'] = luntype.strip()
+            else:
+                err_msg = (_('LUNType must be "Thin" or "Thick". '
+                             'LUNType:%(type)s') % {'type': luntype})
+                raise exception.InvalidInput(reason=err_msg)
+
+        # Here we do not judge whether the parameters are set correct.
+        # CLI will return error responses if the parameters are invalid.
+        stripunitsize = root.findtext('LUN/StripUnitSize')
+        if stripunitsize:
+            conf_params['StripUnitSize'] = stripunitsize.strip()
+        writetype = root.findtext('LUN/WriteType')
+        if writetype:
+            conf_params['WriteType'] = writetype.strip()
+        mirrorswitch = root.findtext('LUN/MirrorSwitch')
+        if mirrorswitch:
+            conf_params['MirrorSwitch'] = mirrorswitch.strip()
+
+        # No need to set StoragePool for Dorado2100 G2.
+        if self.device_type == 'Dorado2100 G2':
+            return conf_params
+
+        pools_conf = root.findall('LUN/StoragePool')
+        conf_params['StoragePool'] = []
+        for pool in pools_conf:
+            conf_params['StoragePool'].append(pool.attrib['Name'].strip())
+
+        return conf_params
+
+    def _get_free_capacity(self):
+        """Get total free capacity of pools."""
+        self._update_login_info()
+        lun_type = ('Thin' if self.device_type == 'Dorado2100 G2' else 'Thick')
+        pools_dev = self._get_dev_pool_info(lun_type)
+        total_free_capacity = 0.0
+        for pool_dev in pools_dev:
+            if self.device_type == 'Dorado2100 G2':
+                total_free_capacity += float(pool_dev[2])
+                continue
+            else:
+                params_conf = self._parse_conf_lun_params()
+                pools_conf = params_conf['StoragePool']
+                for pool_conf in pools_conf:
+                    if pool_dev[5] == pool_conf:
+                        total_free_capacity += float(pool_dev[3])
+                        break
+
+        return total_free_capacity / 1024
