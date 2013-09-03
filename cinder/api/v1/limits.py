@@ -36,6 +36,7 @@ from cinder import quota
 from cinder import wsgi as base_wsgi
 
 QUOTAS = quota.QUOTAS
+LIMITS_PREFIX = "limits."
 
 
 # Convenience constants for the limits dictionary passed to Limiter().
@@ -292,8 +293,8 @@ class Limiter(object):
 
         # Pick up any per-user limit information
         for key, value in kwargs.items():
-            if key.startswith('limits.'):
-                username = key[7:]
+            if key.startswith(LIMITS_PREFIX):
+                username = key[len(LIMITS_PREFIX):]
                 self.levels[username] = self.parse_limits(value)
 
     def get_limits(self, username=None):
