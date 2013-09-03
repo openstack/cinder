@@ -33,6 +33,7 @@
     "volume:migrate_volume": [["rule:admin_api"]],
     "volume:migrate_volume_completion": [["rule:admin_api"]],
     "volume:update_readonly_flag": [],
+    "volume:retype": [],
 
     "volume_extension:volume_admin_actions:reset_status": [["rule:admin_api"]],
     "volume_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],

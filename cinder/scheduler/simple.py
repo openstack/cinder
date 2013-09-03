@@ -24,7 +24,6 @@ from oslo.config import cfg
 from cinder import db
 from cinder import exception
 from cinder.scheduler import chance
-from cinder.scheduler import driver
 from cinder import utils
 
 
@@ -40,7 +39,7 @@ CONF.register_opts(simple_scheduler_opts)
 class SimpleScheduler(chance.ChanceScheduler):
     """Implements Naive Scheduler that tries to find least loaded host."""
 
-    def schedule_create_volume(self, context, request_spec, filter_properties):
+    def _get_weighted_candidates(self, context, topic, request_spec, **kwargs):
         """Picks a host that is up and has the fewest volumes."""
         elevated = context.elevated()
 
@@ -50,39 +49,35 @@ class SimpleScheduler(chance.ChanceScheduler):
         volume_properties = request_spec.get('volume_properties')
         volume_size = volume_properties.get('size')
         availability_zone = volume_properties.get('availability_zone')
+        filter_properties = kwargs.get('filter_properties', {})
 
         zone, host = None, None
         if availability_zone:
             zone, _x, host = availability_zone.partition(':')
         if host and context.is_admin:
-            topic = CONF.volume_topic
             service = db.service_get_by_args(elevated, host, topic)
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
-            updated_volume = driver.volume_update_db(context, volume_id, host)
-            self.volume_rpcapi.create_volume(context, updated_volume, host,
-                                             request_spec, filter_properties,
-                                             snapshot_id=snapshot_id,
-                                             image_id=image_id)
-            return None
+            return [host]
 
+        candidates = []
         results = db.service_get_all_volume_sorted(elevated)
         if zone:
             results = [(s, gigs) for (s, gigs) in results
                        if s['availability_zone'] == zone]
         for result in results:
             (service, volume_gigabytes) = result
-            if volume_gigabytes + volume_size > CONF.max_gigabytes:
-                msg = _("Not enough allocatable volume gigabytes remaining")
-                raise exception.NoValidHost(reason=msg)
+            no_skip = service['host'] != filter_properties.get('vol_exists_on')
+            if no_skip and volume_gigabytes + volume_size > CONF.max_gigabytes:
+                continue
             if utils.service_is_up(service) and not service['disabled']:
-                updated_volume = driver.volume_update_db(context, volume_id,
-                                                         service['host'])
-                self.volume_rpcapi.create_volume(context, updated_volume,
-                                                 service['host'], request_spec,
-                                                 filter_properties,
-                                                 snapshot_id=snapshot_id,
-                                                 image_id=image_id)
-                return None
-        msg = _("Is the appropriate service running?")
-        raise exception.NoValidHost(reason=msg)
+                candidates.append(service['host'])
+
+        if candidates:
+            return candidates
+        else:
+            msg = _("No service with adequate space or no service running")
+            raise exception.NoValidHost(reason=msg)
+
+    def _choose_host_from_list(self, hosts):
+        return hosts[0]

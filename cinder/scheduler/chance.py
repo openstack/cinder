@@ -54,6 +54,9 @@ class ChanceScheduler(driver.Scheduler):
 
         return self._filter_hosts(request_spec, hosts, **kwargs)
 
+    def _choose_host_from_list(self, hosts):
+        return hosts[int(random.random() * len(hosts))]
+
     def _schedule(self, context, topic, request_spec, **kwargs):
         """Picks a host that is up at random."""
         hosts = self._get_weighted_candidates(context, topic,
@@ -61,7 +64,7 @@ class ChanceScheduler(driver.Scheduler):
         if not hosts:
             msg = _("Could not find another host")
             raise exception.NoValidHost(reason=msg)
-        return hosts[int(random.random() * len(hosts))]
+        return self._choose_host_from_list(hosts)
 
     def schedule_create_volume(self, context, request_spec, filter_properties):
         """Picks a host that is up at random."""
@@ -97,4 +100,49 @@ class ChanceScheduler(driver.Scheduler):
 
         msg = (_('cannot place volume %(id)s on %(host)s')
                % {'id': request_spec['volume_id'], 'host': host})
+        raise exception.NoValidHost(reason=msg)
+
+    def find_retype_host(self, context, request_spec, filter_properties,
+                         migration_policy='never'):
+        """Find a host that can accept the volume with its new type."""
+        current_host = request_spec['volume_properties']['host']
+
+        # The volume already exists on this host, and so we shouldn't check if
+        # it can accept the volume again.
+        filter_properties['vol_exists_on'] = current_host
+
+        weighed_hosts = self._get_weighted_candidates(
+            context,
+            CONF.volume_topic,
+            request_spec,
+            filter_properties=filter_properties)
+        if not weighed_hosts:
+            msg = (_('No valid hosts for volume %(id)s with type %(type)s')
+                   % {'id': request_spec['volume_id'],
+                      'type': request_spec['volume_type']})
+            raise exception.NoValidHost(reason=msg)
+
+        target_host = None
+        for weighed_host in weighed_hosts:
+            if weighed_host == current_host:
+                target_host = current_host
+
+        if migration_policy == 'never' and target_host is None:
+            msg = (_('Current host not valid for volume %(id)s with type '
+                     '%(type)s, migration not allowed')
+                   % {'id': request_spec['volume_id'],
+                      'type': request_spec['volume_type']})
+            raise exception.NoValidHost(reason=msg)
+
+        if not target_host:
+            target_host = self._choose_host_from_list(weighed_hosts)
+
+        elevated = context.elevated()
+        host_states = self.host_manager.get_all_host_states(elevated)
+        for host_state in host_states:
+            if host_state.host == target_host:
+                return (host_state, migration_policy)
+
+        # NOTE(avishay):We should never get here, but raise just in case
+        msg = (_('No host_state for selected host %s') % target_host)
         raise exception.NoValidHost(reason=msg)

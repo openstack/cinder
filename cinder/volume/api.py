@@ -32,11 +32,14 @@ from cinder import keymgr
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import uuidutils
 import cinder.policy
 from cinder import quota
+from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows import create_volume
+from cinder.volume import qos_specs
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -851,6 +854,96 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
         self.update_volume_admin_metadata(context.elevated(), volume,
                                           {'readonly': str(flag)})
+
+    @wrap_check_policy
+    def retype(self, context, volume, new_type, migration_policy=None):
+        """Attempt to modify the type associated with an existing volume."""
+        if volume['status'] not in ['available', 'in-use']:
+            msg = _('Unable to update type due to incorrect status '
+                    'on volume: %s') % volume['id']
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        if volume['migration_status'] is not None:
+            msg = (_("Volume %s is already part of an active migration.")
+                   % volume['id'])
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        if migration_policy and migration_policy not in ['on-demand', 'never']:
+            msg = _('migration_policy must be \'on-demand\' or \'never\', '
+                    'passed: %s') % str(new_type)
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        # Support specifying volume type by ID or name
+        try:
+            if uuidutils.is_uuid_like(new_type):
+                vol_type = volume_types.get_volume_type(context, new_type)
+            else:
+                vol_type = volume_types.get_volume_type_by_name(context,
+                                                                new_type)
+        except exception.InvalidVolumeType:
+            msg = _('Invalid volume_type passed: %s') % str(new_type)
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        vol_type_id = vol_type['id']
+        vol_type_qos_id = vol_type['qos_specs_id']
+
+        old_vol_type = None
+        old_vol_type_id = volume['volume_type_id']
+        old_vol_type_qos_id = None
+
+        # Error if the original and new type are the same
+        if volume['volume_type_id'] == vol_type_id:
+            msg = _('New volume_type same as original: %s') % str(new_type)
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        if volume['volume_type_id']:
+            old_vol_type = volume_types.get_volume_type(
+                context, old_vol_type_id)
+            old_vol_type_qos_id = old_vol_type['qos_specs_id']
+
+        # We don't support changing encryption requirements yet
+        old_enc = volume_types.get_volume_type_encryption(context,
+                                                          old_vol_type_id)
+        new_enc = volume_types.get_volume_type_encryption(context,
+                                                          vol_type_id)
+        if old_enc != new_enc:
+            msg = _('Retype cannot change encryption requirements')
+            raise exception.InvalidInput(reason=msg)
+
+        # We don't support changing QoS at the front-end yet for in-use volumes
+        # TODO(avishay): Call Nova to change QoS setting (libvirt has support
+        # - virDomainSetBlockIoTune() - Nova does not have support yet).
+        if (volume['status'] != 'available' and
+                old_vol_type_qos_id != vol_type_qos_id):
+            for qos_id in [old_vol_type_qos_id, vol_type_qos_id]:
+                if qos_id:
+                    specs = qos_specs.get_qos_specs(context.elevated(), qos_id)
+                    if specs['qos_specs']['consumer'] != 'back-end':
+                        msg = _('Retype cannot change front-end qos specs for '
+                                'in-use volumes')
+                        raise exception.InvalidInput(reason=msg)
+
+        self.update(context, volume, {'status': 'retyping'})
+
+        # We're checking here in so that we can report any quota issues as
+        # early as possible, but won't commit until we change the type. We
+        # pass the reservations onward in case we need to roll back.
+        reservations = quota_utils.get_volume_type_reservation(context, volume,
+                                                               vol_type_id)
+        request_spec = {'volume_properties': volume,
+                        'volume_id': volume['id'],
+                        'volume_type': vol_type,
+                        'migration_policy': migration_policy,
+                        'quota_reservations': reservations}
+
+        self.scheduler_rpcapi.retype(context, CONF.volume_topic, volume['id'],
+                                     request_spec=request_spec,
+                                     filter_properties={})
 
 
 class HostAPI(base.Base):

@@ -30,6 +30,12 @@ class CapacityFilter(filters.BaseHostFilter):
 
     def host_passes(self, host_state, filter_properties):
         """Return True if host has sufficient capacity."""
+
+        # If the volume already exists on this host, don't fail it for
+        # insufficient capacity (e.g., if we are retyping)
+        if host_state.host == filter_properties.get('vol_exists_on'):
+            return True
+
         volume_size = filter_properties.get('size')
 
         if host_state.free_capacity_gb is None:

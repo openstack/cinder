@@ -314,6 +314,21 @@ class VolumeActionsController(wsgi.Controller):
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
         return webob.Response(status_int=202)
 
+    @wsgi.action('os-retype')
+    def _retype(self, req, id, body):
+        """Change type of existing volume."""
+        context = req.environ['cinder.context']
+        volume = self.volume_api.get(context, id)
+        try:
+            new_type = body['os-retype']['new_type']
+        except KeyError:
+            msg = _("New volume type must be specified.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        policy = body['os-retype'].get('migration_policy')
+
+        self.volume_api.retype(context, volume, new_type, policy)
+        return webob.Response(status_int=202)
+
 
 class Volume_actions(extensions.ExtensionDescriptor):
     """Enable volume actions

@@ -561,6 +561,10 @@ class KeyManagerError(CinderException):
     msg_fmt = _("key manager error: %(reason)s")
 
 
+class VolumeRetypeFailed(CinderException):
+    message = _("Volume retype failed: %(reason)s")
+
+
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):

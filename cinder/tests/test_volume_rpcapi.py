@@ -251,3 +251,18 @@ class VolumeRpcAPITestCase(test.TestCase):
                               new_volume=self.fake_volume,
                               error=False,
                               version='1.10')
+
+    def test_retype(self):
+        class FakeHost(object):
+            def __init__(self):
+                self.host = 'host'
+                self.capabilities = {}
+        dest_host = FakeHost()
+        self._test_volume_api('retype',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              new_type_id='fake',
+                              dest_host=dest_host,
+                              migration_policy='never',
+                              reservations=None,
+                              version='1.12')
