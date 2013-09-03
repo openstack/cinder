@@ -23,11 +23,14 @@ import base64
 import urllib2
 
 import mox as mox_lib
+from mox import stubout
 
 from cinder import test
+from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
+from cinder.volume.drivers.nexenta import nfs
 from cinder.volume.drivers.nexenta import volume
 
 
@@ -351,3 +354,228 @@ class TestNexentaJSONRPC(test.TestCase):
         self.mox.ReplayAll()
         self.assertRaises(jsonrpc.NexentaJSONException,
                           self.proxy, 'arg1', 'arg2')
+
+
+class TestNexentaNfsDriver(test.TestCase):
+    TEST_EXPORT1 = 'host1:/volumes/stack/share'
+    TEST_NMS1 = 'http://admin:nexenta@host1:2000'
+
+    TEST_EXPORT2 = 'host2:/volumes/stack/share'
+    TEST_NMS2 = 'http://admin:nexenta@host2:2000'
+
+    TEST_EXPORT2_OPTIONS = '-o intr'
+
+    TEST_FILE_NAME = 'test.txt'
+    TEST_SHARES_CONFIG_FILE = '/etc/cinder/nexenta-shares.conf'
+
+    TEST_SHARE_SVC = 'svc:/network/nfs/server:default'
+
+    TEST_SHARE_OPTS = {
+        'read_only': '',
+        'read_write': '*',
+        'recursive': 'true',
+        'anonymous_rw': 'true',
+        'extra_options': 'anon=0',
+        'root': 'nobody'
+    }
+
+    def setUp(self):
+        super(TestNexentaNfsDriver, self).setUp()
+        self.stubs = stubout.StubOutForTesting()
+        self.configuration = mox_lib.MockObject(conf.Configuration)
+        self.configuration.nexenta_shares_config = None
+        self.configuration.nexenta_mount_point_base = '$state_path/mnt'
+        self.configuration.nexenta_sparsed_volumes = True
+        self.configuration.nexenta_volume_compression = 'on'
+        self.nms_mock = self.mox.CreateMockAnything()
+        for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc'):
+            setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
+        self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
+                       lambda *_, **__: self.nms_mock)
+        self.drv = nfs.NexentaNfsDriver(configuration=self.configuration)
+        self.drv.shares = {}
+        self.drv.share2nms = {}
+
+    def test_check_for_setup_error(self):
+        self.drv.share2nms = {
+            'host1:/volumes/stack/share': self.nms_mock
+        }
+
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.volume.object_exists('stack').AndReturn(True)
+        self.nms_mock.folder.object_exists('stack/share').AndReturn(True)
+
+        self.mox.ReplayAll()
+
+        self.drv.check_for_setup_error()
+
+        self.mox.ResetAll()
+
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.volume.object_exists('stack').AndReturn(False)
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(LookupError, self.drv.check_for_setup_error)
+
+        self.mox.ResetAll()
+
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.volume.object_exists('stack').AndReturn(True)
+        self.nms_mock.folder.object_exists('stack/share').AndReturn(False)
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(LookupError, self.drv.check_for_setup_error)
+
+    def test_initialize_connection(self):
+        self.drv.shares = {
+            self.TEST_EXPORT1: None
+        }
+        volume = {
+            'provider_location': self.TEST_EXPORT1,
+            'name': 'volume'
+        }
+        result = self.drv.initialize_connection(volume, None)
+        self.assertEqual(result['data']['export'],
+                         '%s/volume' % self.TEST_EXPORT1)
+
+    def test_do_create_volume(self):
+        volume = {
+            'provider_location': self.TEST_EXPORT1,
+            'size': 1,
+            'name': 'volume-1'
+        }
+        self.drv.shares = {self.TEST_EXPORT1: None}
+        self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
+
+        compression = self.configuration.nexenta_volume_compression
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.folder.create('stack', 'share/volume-1',
+                                    '-o compression=%s' % compression)
+        self.nms_mock.netstorsvc.share_folder(self.TEST_SHARE_SVC,
+                                              'stack/share/volume-1',
+                                              self.TEST_SHARE_OPTS)
+        self.nms_mock.appliance.execute(
+            'dd if=/dev/zero of=/volumes/stack/share/volume-1/volume bs=1M '
+            'count=0 seek=1024'
+        )
+        self.nms_mock.appliance.execute('chmod ugo+rw '
+                                        '/volumes/stack/share/volume-1/volume')
+
+        self.mox.ReplayAll()
+
+        self.drv._do_create_volume(volume)
+
+        self.mox.ResetAll()
+
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.folder.create('stack', 'share/volume-1',
+                                    '-o compression=%s' % compression)
+        self.nms_mock.netstorsvc.share_folder(
+            self.TEST_SHARE_SVC, 'stack/share/volume-1',
+            self.TEST_SHARE_OPTS).AndRaise(nexenta.NexentaException('-'))
+        self.nms_mock.folder.destroy('stack/share/volume-1')
+
+        self.mox.ReplayAll()
+
+        self.assertRaises(nexenta.NexentaException, self.drv._do_create_volume,
+                          volume)
+
+    def test_create_sparsed_file(self):
+        self.nms_mock.appliance.execute('dd if=/dev/zero of=/tmp/path bs=1M '
+                                        'count=0 seek=1024')
+        self.mox.ReplayAll()
+
+        self.drv._create_sparsed_file(self.nms_mock, '/tmp/path', 1)
+
+    def test_create_regular_file(self):
+        self.nms_mock.appliance.execute('dd if=/dev/zero of=/tmp/path bs=1M '
+                                        'count=1024')
+        self.mox.ReplayAll()
+
+        self.drv._create_regular_file(self.nms_mock, '/tmp/path', 1)
+
+    def test_set_rw_permissions_for_all(self):
+        path = '/tmp/path'
+        self.nms_mock.appliance.execute('chmod ugo+rw %s' % path)
+        self.mox.ReplayAll()
+
+        self.drv._set_rw_permissions_for_all(self.nms_mock, path)
+
+    def test_local_path(self):
+        volume = {'provider_location': self.TEST_EXPORT1, 'name': 'volume-1'}
+        path = self.drv.local_path(volume)
+        self.assertEqual(
+            path,
+            '$state_path/mnt/b3f660847a52b29ac330d8555e4ad669/volume-1/volume'
+        )
+
+    def test_remote_path(self):
+        volume = {'provider_location': self.TEST_EXPORT1, 'name': 'volume-1'}
+        path = self.drv.remote_path(volume)
+        self.assertEqual(path, '/volumes/stack/share/volume-1/volume')
+
+    def test_share_folder(self):
+        path = 'stack/share/folder'
+        self.nms_mock.netstorsvc.share_folder(self.TEST_SHARE_SVC, path,
+                                              self.TEST_SHARE_OPTS)
+        self.mox.ReplayAll()
+
+        self.drv._share_folder(self.nms_mock, 'stack', 'share/folder')
+
+    def test_load_shares_config(self):
+        self.drv.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+
+        self.mox.StubOutWithMock(self.drv, '_read_config_file')
+        config_data = [
+            '%s %s' % (self.TEST_EXPORT1, self.TEST_NMS1),
+            '# %s %s' % (self.TEST_EXPORT2, self.TEST_NMS2),
+            '',
+            '%s %s %s' % (self.TEST_EXPORT2, self.TEST_NMS2,
+                          self.TEST_EXPORT2_OPTIONS)
+        ]
+
+        self.drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
+            AndReturn(config_data)
+        self.mox.ReplayAll()
+
+        self.drv._load_shares_config(self.drv.configuration.nfs_shares_config)
+
+        self.assertIn(self.TEST_EXPORT1, self.drv.shares)
+        self.assertIn(self.TEST_EXPORT2, self.drv.shares)
+        self.assertEqual(len(self.drv.shares), 2)
+
+        self.assertIn(self.TEST_EXPORT1, self.drv.share2nms)
+        self.assertIn(self.TEST_EXPORT2, self.drv.share2nms)
+        self.assertEqual(len(self.drv.share2nms.keys()), 2)
+
+        self.assertEqual(self.drv.shares[self.TEST_EXPORT2],
+                         self.TEST_EXPORT2_OPTIONS)
+
+        self.mox.VerifyAll()
+
+    def test_get_capacity_info(self):
+        self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.folder.get_child_props('stack/share', '').AndReturn({
+            'available': '1G',
+            'used': '2G'
+        })
+        self.mox.ReplayAll()
+        total, free, allocated = self.drv._get_capacity_info(self.TEST_EXPORT1)
+
+        self.assertEqual(total, 3 * units.GiB)
+        self.assertEqual(free, units.GiB)
+        self.assertEqual(allocated, 2 * units.GiB)
+
+    def test_get_share_datasets(self):
+        self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.mox.ReplayAll()
+
+        volume_name, folder_name = \
+            self.drv._get_share_datasets(self.TEST_EXPORT1)
+
+        self.assertEqual(volume_name, 'stack')
+        self.assertEqual(folder_name, 'share')

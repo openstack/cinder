@@ -60,6 +60,37 @@ NEXENTA_ISCSI_OPTIONS = [
                help='prefix for iSCSI target groups on SA'),
 ]
 
+NEXENTA_NFS_OPTIONS = [
+    cfg.StrOpt('nexenta_shares_config',
+               default='/etc/cinder/nfs_shares',
+               help='File with the list of available nfs shares'),
+    cfg.StrOpt('nexenta_mount_point_base',
+               default='$state_path/mnt',
+               help='Base dir containing mount points for nfs shares'),
+    cfg.BoolOpt('nexenta_sparsed_volumes',
+                default=True,
+                help=('Create volumes as sparsed files which take no space.'
+                      'If set to False volume is created as regular file.'
+                      'In such case volume creation takes a lot of time.')),
+    cfg.StrOpt('nexenta_volume_compression',
+               default='on',
+               help='Default compression value for new ZFS folders.'),
+    cfg.StrOpt('nexenta_mount_options',
+               default=None,
+               help='Mount options passed to the nfs client. See section '
+                    'of the nfs man page for details'),
+    cfg.FloatOpt('nexenta_used_ratio',
+                 default=0.95,
+                 help=('Percent of ACTUAL usage of the underlying volume '
+                       'before no new volumes can be allocated to the volume '
+                       'destination.')),
+    cfg.FloatOpt('nexenta_oversub_ratio',
+                 default=1.0,
+                 help=('This will compare the allocated to available space on '
+                       'the volume destination.  If the ratio exceeds this '
+                       'number, the destination will no longer be valid.'))
+]
+
 NEXENTA_VOLUME_OPTIONS = [
     cfg.StrOpt('nexenta_blocksize',
                default='',
