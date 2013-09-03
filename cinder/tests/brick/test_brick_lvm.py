@@ -144,6 +144,25 @@ class BrickLvmTestCase(test.TestCase):
         self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
         self.assertFalse(self.vg.supports_thin_provisioning('sudo'))
 
+    def test_volume_create_after_thin_creation(self):
+        """Test self.vg.vg_thin_pool is set to pool_name
+
+        See bug #1220286 for more info.
+        """
+
+        vg_name = "vg-name"
+        pool_name = vg_name + "-pool"
+        pool_path = "%s/%s" % (vg_name, pool_name)
+
+        def executor(obj, *cmd, **kwargs):
+            self.assertEqual(pool_path, cmd[-1])
+
+        self.vg._executor = executor
+        self.vg.create_thin_pool(pool_name, "1G")
+        self.vg.create_volume("test", "1G", lv_type='thin')
+
+        self.assertEqual(self.vg.vg_thin_pool, pool_name)
+
     def test_lv_has_snapshot(self):
         self.assertTrue(self.vg.lv_has_snapshot('fake-volumes'))
         self.assertFalse(self.vg.lv_has_snapshot('test-volumes'))

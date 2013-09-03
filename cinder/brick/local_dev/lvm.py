@@ -337,7 +337,7 @@ class LVM(executor.Executor):
         self._execute(*cmd,
                       root_helper=self._root_helper,
                       run_as_root=True)
-        self.vg_thin_pool = pool_path
+        self.vg_thin_pool = name
 
     def create_volume(self, name, size_str, lv_type='default', mirror_count=0):
         """Creates a logical volume on the object's VG.
