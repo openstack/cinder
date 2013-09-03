@@ -1046,6 +1046,8 @@ def volume_create(context, values):
         values['volume_admin_metadata'] = \
             _metadata_refs(values.get('admin_metadata'),
                            models.VolumeAdminMetadata)
+    elif values.get('volume_admin_metadata'):
+        del values['volume_admin_metadata']
 
     volume_ref = models.Volume()
     if not values.get('id'):
