@@ -1584,6 +1584,7 @@ def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
     query = model_query(context, models.Snapshot, read_deleted="yes")
     query = query.filter(or_(models.Snapshot.deleted_at == None,
                              models.Snapshot.deleted_at > begin))
+    query = query.options(joinedload(models.Snapshot.volume))
     if end:
         query = query.filter(models.Snapshot.created_at < end)
     if project_id:

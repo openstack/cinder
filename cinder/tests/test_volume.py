@@ -1869,8 +1869,11 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             datetime.datetime(1, 4, 1, 1, 1, 1))
         self.assertEqual(len(snapshots), 3)
         self.assertEqual(snapshots[0].id, u'2')
+        self.assertEqual(snapshots[0].volume.id, u'1')
         self.assertEqual(snapshots[1].id, u'3')
+        self.assertEqual(snapshots[1].volume.id, u'1')
         self.assertEqual(snapshots[2].id, u'4')
+        self.assertEqual(snapshots[2].volume.id, u'1')
 
 
 class DriverTestCase(test.TestCase):

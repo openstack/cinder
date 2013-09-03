@@ -375,9 +375,7 @@ class Snapshot(BASE, CinderBase):
 
     volume = relationship(Volume, backref="snapshots",
                           foreign_keys=volume_id,
-                          primaryjoin='and_('
-                          'Snapshot.volume_id == Volume.id,'
-                          'Snapshot.deleted == False)')
+                          primaryjoin='Snapshot.volume_id == Volume.id')
 
 
 class SnapshotMetadata(BASE, CinderBase):
