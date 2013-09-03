@@ -21,6 +21,8 @@ Unit tests for Windows Server 2012 OpenStack Cinder volume driver
 
 
 import os
+import shutil
+import tempfile
 
 from oslo.config import cfg
 
@@ -47,11 +49,12 @@ class TestWindowsDriver(test.TestCase):
         super(TestWindowsDriver, self).__init__(method)
 
     def setUp(self):
+        self.lun_path_tempdir = tempfile.mkdtemp()
         super(TestWindowsDriver, self).setUp()
         self._mox = mox_lib.Mox()
         self.stubs = stubout.StubOutForTesting()
         self.flags(
-            windows_iscsi_lun_path='C:\iSCSIVirtualDisks',
+            windows_iscsi_lun_path=self.lun_path_tempdir,
         )
         self._setup_stubs()
         configuration = conf.Configuration(None)
@@ -63,6 +66,7 @@ class TestWindowsDriver(test.TestCase):
     def tearDown(self):
         self._mox.UnsetStubs()
         self.stubs.UnsetAll()
+        shutil.rmtree(self.lun_path_tempdir)
         super(TestWindowsDriver, self).tearDown()
 
     def _setup_stubs(self):
