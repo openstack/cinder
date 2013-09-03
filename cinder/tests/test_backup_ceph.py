@@ -186,7 +186,7 @@ class BackupCephTestCase(test.TestCase):
 
         self.stubs.Set(self.service.rbd.Image, 'list_snaps', list_snaps)
         snaps = self.service.get_backup_snaps(self.service.rbd.Image())
-        self.assertTrue(len(snaps) == 3)
+        self.assertEqual(len(snaps), 3)
 
     def test_transfer_data_from_rbd_to_file(self):
         self._set_common_backup_stubs(self.service)
@@ -409,12 +409,12 @@ class BackupCephTestCase(test.TestCase):
         self.stubs.Set(self.service.rbd.Image, 'discard', _setter)
 
         self.service._discard_bytes(mock_rbd(), 123456, 0)
-        self.assertTrue(len(calls) == 0)
+        self.assertEqual(len(calls), 0)
 
         image = mock_rbd().Image()
         wrapped_rbd = self._get_wrapped_rbd_io(image)
         self.service._discard_bytes(wrapped_rbd, 123456, 1234)
-        self.assertTrue(len(calls) == 1)
+        self.assertEqual(len(calls), 1)
 
         self.stubs.Set(image, 'write', _setter)
         wrapped_rbd = self._get_wrapped_rbd_io(image)
@@ -422,7 +422,7 @@ class BackupCephTestCase(test.TestCase):
                        lambda *args: False)
         self.service._discard_bytes(wrapped_rbd, 0,
                                     self.service.chunk_size * 2)
-        self.assertTrue(len(calls) == 3)
+        self.assertEqual(len(calls), 3)
 
     def test_delete_backup_snapshot(self):
         snap_name = 'backup.%s.snap.3824923.1412' % (uuid.uuid4())

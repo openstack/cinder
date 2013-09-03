@@ -193,7 +193,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.volume.create_volume(self.context, volume_src['id'])
         snapCount = len(db.snapshot_get_all_for_volume(self.context,
                                                        volume_src['id']))
-        self.assertTrue(snapCount == 0)
+        self.assertEqual(snapCount, 0)
         snapshot = self._create_snapshot(volume_src['id'])
         snapshot_id = snapshot['id']
         self.volume.create_snapshot(self.context, volume_src['id'],
@@ -202,14 +202,14 @@ class GPFSDriverTestCase(test.TestCase):
                                                     snapshot['name'])))
         snapCount = len(db.snapshot_get_all_for_volume(self.context,
                                                        volume_src['id']))
-        self.assertTrue(snapCount == 1)
+        self.assertEqual(snapCount, 1)
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_src['id'])
         self.assertFalse(os.path.exists(os.path.join(self.volumes_path,
                                                      snapshot['name'])))
         snapCount = len(db.snapshot_get_all_for_volume(self.context,
                                                        volume_src['id']))
-        self.assertTrue(snapCount == 0)
+        self.assertEqual(snapCount, 0)
 
     def test_create_volume_from_snapshot(self):
         volume_src = test_utils.create_volume(self.context, host=CONF.host)

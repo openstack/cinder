@@ -1079,7 +1079,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.mox.ReplayAll()
 
         ports = self.driver.common.get_ports()['members']
-        self.assertTrue(len(ports) == 3)
+        self.assertEqual(len(ports), 3)
 
     def test_get_iscsi_ip_active(self):
         self.flags(lock_path=self.tempdir)

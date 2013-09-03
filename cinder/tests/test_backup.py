@@ -358,7 +358,7 @@ class BackupTestCase(test.TestCase):
         ctxt_read_deleted = context.get_admin_context('yes')
         backup = db.backup_get(ctxt_read_deleted, backup_id)
         self.assertEqual(backup.deleted, True)
-        self.assertTrue(timeutils.utcnow() > backup.deleted_at)
+        self.assertGreater(timeutils.utcnow(), backup.deleted_at)
         self.assertEqual(backup.status, 'deleted')
 
     def test_list_backup(self):

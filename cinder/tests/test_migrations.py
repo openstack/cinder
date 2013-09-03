@@ -265,7 +265,8 @@ class TestMigrations(test.TestCase):
         total = connection.execute("SELECT count(*) "
                                    "from information_schema.TABLES "
                                    "where TABLE_SCHEMA='openstack_citest'")
-        self.assertTrue(total.scalar() > 0, "No tables found. Wrong schema?")
+        self.assertGreater(total.scalar(), 0,
+                           msg="No tables found. Wrong schema?")
 
         noninnodb = connection.execute("SELECT count(*) "
                                        "from information_schema.TABLES "

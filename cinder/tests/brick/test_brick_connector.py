@@ -605,8 +605,8 @@ class LocalConnectorTestCase(test.TestCase):
         self.connector = connector.LocalConnector(None)
         cprops = self.connection_properties
         dev_info = self.connector.connect_volume(cprops)
-        self.assertTrue(dev_info['type'] == 'local')
-        self.assertTrue(dev_info['path'] == cprops['device_path'])
+        self.assertEqual(dev_info['type'], 'local')
+        self.assertEqual(dev_info['path'], cprops['device_path'])
 
     def test_connect_volume_with_invalid_connection_data(self):
         self.connector = connector.LocalConnector(None)
