@@ -16,7 +16,7 @@ Paste
 PasteDeploy>=1.5.0
 python-glanceclient>=0.9.0
 python-keystoneclient>=0.3.0
-python-novaclient>=2.12.0
+python-novaclient>=2.15.0
 python-swiftclient>=1.5
 Routes>=1.12.3
 six
