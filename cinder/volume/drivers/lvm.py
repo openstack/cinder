@@ -131,13 +131,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         # zero out old volumes to prevent data leaking between users
         # TODO(ja): reclaiming space should be done lazy and low priority
-        dev_path = self.local_path(volume)
-
-        # TODO(jdg): Maybe we could optimize this for snaps by looking at
-        # the cow table and only overwriting what's necessary?
-        # for now we're still skipping on snaps due to hang issue
-        if os.path.exists(dev_path) and not is_snapshot:
-            self.clear_volume(volume)
+        self.clear_volume(volume, is_snapshot)
         name = volume['name']
         if is_snapshot:
             name = self._escape_snapshot(volume['name'])
@@ -191,13 +185,27 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         self._delete_volume(volume)
 
-    def clear_volume(self, volume):
+    def clear_volume(self, volume, is_snapshot=False):
         """unprovision old volumes to prevent data leaking between users."""
 
         if self.configuration.volume_clear == 'none':
             return
 
-        vol_path = self.local_path(volume)
+        if is_snapshot and not self.configuration.lvm_type == 'thin':
+            # if the volume to be cleared is a snapshot of another volume
+            # we need to clear out the volume using the -cow instead of the
+            # directly volume path.  We need to skip this if we are using
+            # thin provisioned LVs.
+            # bug# lp1191812
+            dev_path = self.local_path(volume) + "-cow"
+        else:
+            dev_path = self.local_path(volume)
+
+        if not os.path.exists(dev_path):
+            msg = (_('Volume device file path %s does not exist.') % dev_path)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
         size_in_g = volume.get('size', volume.get('volume_size', None))
         if size_in_g is None:
             LOG.warning(_("Size for volume: %s not found, "
@@ -210,7 +218,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if self.configuration.volume_clear == 'zero':
             if size_in_m == 0:
                 return volutils.copy_volume('/dev/zero',
-                                            vol_path, size_in_g * 1024,
+                                            dev_path, size_in_g * 1024,
                                             sync=True,
                                             execute=self._execute)
             else:
@@ -224,7 +232,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                       self.configuration.volume_clear)
             return
 
-        clear_cmd.append(vol_path)
+        clear_cmd.append(dev_path)
         self._execute(*clear_cmd, run_as_root=True)
 
     def create_snapshot(self, snapshot):
