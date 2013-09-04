@@ -20,10 +20,15 @@
 """Starter script for Cinder Volume."""
 
 import eventlet
-
-eventlet.monkey_patch()
-
 import os
+
+if os.name == 'nt':
+    # eventlet monkey patching the os module causes subprocess.Popen to fail
+    # on Windows when using pipes due to missing non-blocking IO support.
+    eventlet.monkey_patch(os=False)
+else:
+    eventlet.monkey_patch()
+
 import sys
 
 from oslo.config import cfg
@@ -54,7 +59,11 @@ if __name__ == '__main__':
          version=version.version_string())
     logging.setup("cinder")
     utils.monkey_patch()
-    launcher = service.ProcessLauncher()
+    if os.name == 'nt':
+        launcher = service
+        launcher.launch_server = service.serve
+    else:
+        launcher = service.ProcessLauncher()
     if CONF.enabled_backends:
         for backend in CONF.enabled_backends:
             host = "%s@%s" % (CONF.host, backend)
