@@ -18,7 +18,7 @@
 """
 Volume driver for Zadara Virtual Private Storage Array (VPSA).
 
-This driver requires VPSA with API ver.12.06 or higher.
+This driver requires VPSA with API ver.13.07 or higher.
 """
 
 
@@ -31,8 +31,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
-
-LOG = logging.getLogger("cinder.volume.driver")
+LOG = logging.getLogger(__name__)
 
 zadara_opts = [
     cfg.StrOpt('zadara_vpsa_ip',
@@ -56,12 +55,12 @@ zadara_opts = [
                default=None,
                help='Name of VPSA storage pool for volumes'),
 
-    cfg.StrOpt('zadara_default_cache_policy',
-               default='write-through',
-               help='Default cache policy for volumes'),
-    cfg.StrOpt('zadara_default_encryption',
-               default='NO',
-               help='Default encryption policy for volumes'),
+    cfg.BoolOpt('zadara_vol_thin',
+                default=True,
+                help='Default thin provisioning policy for volumes'),
+    cfg.BoolOpt('zadara_vol_encrypt',
+                default=False,
+                help='Default encryption policy for volumes'),
     cfg.StrOpt('zadara_default_striping_mode',
                default='simple',
                help='Default striping mode for volumes'),
@@ -85,12 +84,8 @@ CONF.register_opts(zadara_opts)
 class ZadaraVPSAConnection(object):
     """Executes volume driver commands on VPSA."""
 
-    def __init__(self, host, port, ssl, user, password):
-        self.host = host
-        self.port = port
-        self.use_ssl = ssl
-        self.user = user
-        self.password = password
+    def __init__(self, conf):
+        self.conf = conf
         self.access_key = None
 
         self.ensure_connection()
@@ -109,24 +104,48 @@ class ZadaraVPSAConnection(object):
         vpsa_commands = {
             'login': ('POST',
                       '/api/users/login.xml',
-                      {'user': self.user,
-                       'password': self.password}),
+                      {'user': self.conf.zadara_user,
+                       'password': self.conf.zadara_password}),
 
             # Volume operations
             'create_volume': ('POST',
                               '/api/volumes.xml',
-                              {'display_name': kwargs.get('name'),
-                               'virtual_capacity': kwargs.get('size'),
-                               'raid_group_name[]': CONF.zadara_vpsa_poolname,
-                               'quantity': 1,
-                               'cache': CONF.zadara_default_cache_policy,
-                               'crypt': CONF.zadara_default_encryption,
-                               'mode': CONF.zadara_default_striping_mode,
-                               'stripesize': CONF.zadara_default_stripesize,
-                               'force': 'NO'}),
+                              {'name': kwargs.get('name'),
+                               'capacity': kwargs.get('size'),
+                               'pool': self.conf.zadara_vpsa_poolname,
+                               'thin': 'YES'
+                               if self.conf.zadara_vol_thin else 'NO',
+                               'crypt': 'YES'
+                               if self.conf.zadara_vol_encrypt else 'NO'}),
             'delete_volume': ('DELETE',
                               '/api/volumes/%s.xml' % kwargs.get('vpsa_vol'),
                               {}),
+
+            'expand_volume': ('POST',
+                              '/api/volumes/%s/expand.xml'
+                              % kwargs.get('vpsa_vol'),
+                              {'capacity': kwargs.get('size')}),
+
+            # Snapshot operations
+            'create_snapshot': ('POST',
+                                '/api/consistency_groups/%s/snapshots.xml'
+                                % kwargs.get('cg_name'),
+                                {'display_name': kwargs.get('snap_name')}),
+            'delete_snapshot': ('DELETE',
+                                '/api/snapshots/%s.xml'
+                                % kwargs.get('snap_id'),
+                                {}),
+
+            'create_clone_from_snap': ('POST',
+                                       '/api/consistency_groups/%s/clone.xml'
+                                       % kwargs.get('cg_name'),
+                                       {'name': kwargs.get('name'),
+                                        'snapshot': kwargs.get('snap_id')}),
+
+            'create_clone': ('POST',
+                             '/api/consistency_groups/%s/clone.xml'
+                             % kwargs.get('cg_name'),
+                             {'name': kwargs.get('name')}),
 
             # Server operations
             'create_server': ('POST',
@@ -150,6 +169,9 @@ class ZadaraVPSAConnection(object):
             'list_volumes': ('GET',
                              '/api/volumes.xml',
                              {}),
+            'list_pools': ('GET',
+                           '/api/pools.xml',
+                           {}),
             'list_controllers': ('GET',
                                  '/api/vcontrollers.xml',
                                  {}),
@@ -159,7 +181,11 @@ class ZadaraVPSAConnection(object):
             'list_vol_attachments': ('GET',
                                      '/api/volumes/%s/servers.xml'
                                      % kwargs.get('vpsa_vol'),
-                                     {}), }
+                                     {}),
+            'list_vol_snapshots': ('GET',
+                                   '/api/consistency_groups/%s/snapshots.xml'
+                                   % kwargs.get('cg_name'),
+                                   {})}
 
         if cmd not in vpsa_commands.keys():
             raise exception.UnknownCmd(cmd=cmd)
@@ -218,10 +244,12 @@ class ZadaraVPSAConnection(object):
         LOG.debug(_('Sending %(method)s to %(url)s. Body "%(body)s"'),
                   {'method': method, 'url': url, 'body': body})
 
-        if self.use_ssl:
-            connection = httplib.HTTPSConnection(self.host, self.port)
+        if self.conf.zadara_vpsa_use_ssl:
+            connection = httplib.HTTPSConnection(self.conf.zadara_vpsa_ip,
+                                                 self.conf.zadara_vpsa_port)
         else:
-            connection = httplib.HTTPConnection(self.host, self.port)
+            connection = httplib.HTTPConnection(self.conf.zadara_vpsa_ip,
+                                                self.conf.zadara_vpsa_port)
         connection.request(method, url, body)
         response = connection.getresponse()
 
@@ -244,19 +272,18 @@ class ZadaraVPSAConnection(object):
 class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     """Zadara VPSA iSCSI volume driver."""
 
+    VERSION = '13.07'
+
     def __init__(self, *args, **kwargs):
         super(ZadaraVPSAISCSIDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(zadara_opts)
 
     def do_setup(self, context):
         """
         Any initialization the volume driver does while starting.
         Establishes initial connection with VPSA and retrieves access_key.
         """
-        self.vpsa = ZadaraVPSAConnection(CONF.zadara_vpsa_ip,
-                                         CONF.zadara_vpsa_port,
-                                         CONF.zadara_vpsa_use_ssl,
-                                         CONF.zadara_user,
-                                         CONF.zadara_password)
+        self.vpsa = ZadaraVPSAConnection(self.configuration)
 
     def check_for_setup_error(self):
         """Returns an error (exception) if prerequisites aren't met."""
@@ -291,15 +318,56 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                     result_list.append(object)
         return result_list if result_list else None
 
-    def _get_vpsa_volume_name(self, name):
-        """Return VPSA's name for the volume."""
+    def _get_vpsa_volume_name_and_size(self, name):
+        """Return VPSA's name & size for the volume."""
         xml_tree = self.vpsa.send_cmd('list_volumes')
         volume = self._xml_parse_helper(xml_tree, 'volumes',
                                         ('display-name', name))
         if volume is not None:
-            return volume.findtext('name')
+            return (volume.findtext('name'),
+                    int(volume.findtext('virtual-capacity')))
+
+        return (None, None)
+
+    def _get_vpsa_volume_name(self, name):
+        """Return VPSA's name for the volume."""
+        (vol_name, size) = self._get_vpsa_volume_name_and_size(name)
+        return vol_name
+
+    def _get_volume_cg_name(self, name):
+        """Return name of the consistency group for the volume."""
+        xml_tree = self.vpsa.send_cmd('list_volumes')
+        volume = self._xml_parse_helper(xml_tree, 'volumes',
+                                        ('display-name', name))
+        if volume is not None:
+            return volume.findtext('cg-name')
 
         return None
+
+    def _get_snap_id(self, cg_name, snap_name):
+        """Return snapshot ID for particular volume."""
+        xml_tree = self.vpsa.send_cmd('list_vol_snapshots',
+                                      cg_name=cg_name)
+        snap = self._xml_parse_helper(xml_tree, 'snapshots',
+                                      ('display-name', snap_name))
+        if snap is not None:
+            return snap.findtext('name')
+
+        return None
+
+    def _get_pool_capacity(self, pool_name):
+        """Return pool's total and available capacities."""
+        xml_tree = self.vpsa.send_cmd('list_pools')
+        pool = self._xml_parse_helper(xml_tree, 'pools',
+                                      ('name', pool_name))
+        if pool is not None:
+            total = int(pool.findtext('capacity'))
+            free = int(float(pool.findtext('available-capacity')))
+            LOG.debug(_('Pool %(name)s: %(total)sGB total, %(free)sGB free'),
+                      {'name': pool_name, 'total': total, 'free': free})
+            return (total, free)
+
+        return ('infinite', 'infinite')
 
     def _get_active_controller_details(self):
         """Return details of VPSA's active controller."""
@@ -334,7 +402,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         """Create volume."""
         self.vpsa.send_cmd(
             'create_volume',
-            name=CONF.zadara_vol_name_template % volume['name'],
+            name=self.configuration.zadara_vol_name_template % volume['name'],
             size=volume['size'])
 
     def delete_volume(self, volume):
@@ -344,13 +412,13 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         Return ok if doesn't exist. Auto detach from all servers.
         """
         # Get volume name
-        name = CONF.zadara_vol_name_template % volume['name']
+        name = self.configuration.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             msg = _('Volume %(name)s could not be found. '
                     'It might be already deleted') % {'name': name}
             LOG.warning(msg)
-            if CONF.zadara_vpsa_allow_nonexistent_delete:
+            if self.configuration.zadara_vpsa_allow_nonexistent_delete:
                 return
             else:
                 raise exception.VolumeNotFound(volume_id=name)
@@ -361,7 +429,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         servers = self._xml_parse_helper(xml_tree, 'servers',
                                          ('iqn', None), first=False)
         if servers:
-            if not CONF.zadara_vpsa_auto_detach_on_delete:
+            if not self.configuration.zadara_vpsa_auto_detach_on_delete:
                 raise exception.VolumeAttached(volume_id=name)
 
             for server in servers:
@@ -373,6 +441,116 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
         # Delete volume
         self.vpsa.send_cmd('delete_volume', vpsa_vol=vpsa_vol)
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot."""
+
+        LOG.debug(_('Create snapshot: %s'), snapshot['name'])
+
+        # Retrieve the CG name for the base volume
+        volume_name = self.configuration.zadara_vol_name_template\
+            % snapshot['volume_name']
+        cg_name = self._get_volume_cg_name(volume_name)
+        if not cg_name:
+            msg = _('Volume %(name)s not found') % {'name': volume_name}
+            LOG.error(msg)
+            raise exception.VolumeNotFound(volume_id=volume_name)
+
+        self.vpsa.send_cmd('create_snapshot',
+                           cg_name=cg_name,
+                           snap_name=snapshot['name'])
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
+
+        LOG.debug(_('Delete snapshot: %s'), snapshot['name'])
+
+        # Retrieve the CG name for the base volume
+        volume_name = self.configuration.zadara_vol_name_template\
+            % snapshot['volume_name']
+        cg_name = self._get_volume_cg_name(volume_name)
+        if not cg_name:
+            # If the volume isn't present, then don't attempt to delete
+            LOG.warning(_("snapshot: original volume %s not found, "
+                        "skipping delete operation")
+                        % snapshot['volume_name'])
+            return True
+
+        snap_id = self._get_snap_id(cg_name, snapshot['name'])
+        if not snap_id:
+            # If the snapshot isn't present, then don't attempt to delete
+            LOG.warning(_("snapshot: snapshot %s not found, "
+                        "skipping delete operation")
+                        % snapshot['name'])
+            return True
+
+        self.vpsa.send_cmd('delete_snapshot',
+                           snap_id=snap_id)
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot."""
+
+        LOG.debug(_('Creating volume from snapshot: %s') % snapshot['name'])
+
+        # Retrieve the CG name for the base volume
+        volume_name = self.configuration.zadara_vol_name_template\
+            % snapshot['volume_name']
+        cg_name = self._get_volume_cg_name(volume_name)
+        if not cg_name:
+            msg = _('Volume %(name)s not found') % {'name': volume_name}
+            LOG.error(msg)
+            raise exception.VolumeNotFound(volume_id=volume_name)
+
+        snap_id = self._get_snap_id(cg_name, snapshot['name'])
+        if not snap_id:
+            msg = _('Snapshot %(name)s not found') % {'name': snapshot['name']}
+            LOG.error(msg)
+            raise exception.VolumeNotFound(volume_id=snapshot['name'])
+
+        self.vpsa.send_cmd('create_clone_from_snap',
+                           cg_name=cg_name,
+                           name=self.configuration.zadara_vol_name_template
+                           % volume['name'],
+                           snap_id=snap_id)
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+
+        LOG.debug(_('Creating clone of volume: %s') % src_vref['name'])
+
+        # Retrieve the CG name for the base volume
+        volume_name = self.configuration.zadara_vol_name_template\
+            % src_vref['name']
+        cg_name = self._get_volume_cg_name(volume_name)
+        if not cg_name:
+            msg = _('Volume %(name)s not found') % {'name': volume_name}
+            LOG.error(msg)
+            raise exception.VolumeNotFound(volume_id=volume_name)
+
+        self.vpsa.send_cmd('create_clone',
+                           cg_name=cg_name,
+                           name=self.configuration.zadara_vol_name_template
+                           % volume['name'])
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        # Get volume name
+        name = self.configuration.zadara_vol_name_template % volume['name']
+        (vpsa_vol, size) = self._get_vpsa_volume_name_and_size(name)
+        if not vpsa_vol:
+            msg = _('Volume %(name)s could not be found. '
+                    'It might be already deleted') % {'name': name}
+            LOG.error(msg)
+            raise exception.VolumeNotFound(volume_id=name)
+
+        if new_size < size:
+            raise exception.InvalidInput(
+                reason='%s < current size %s' % (new_size, size))
+
+        expand_size = new_size - size
+        self.vpsa.send_cmd('expand_volume',
+                           vpsa_vol=vpsa_vol,
+                           size=expand_size)
 
     def create_export(self, context, volume):
         """Irrelevant for VPSA volumes. Export created during attachment."""
@@ -404,7 +582,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             raise exception.ZadaraServerCreateFailure(name=initiator_name)
 
         # Get volume name
-        name = CONF.zadara_vol_name_template % volume['name']
+        name = self.configuration.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             raise exception.VolumeNotFound(volume_id=name)
@@ -460,7 +638,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             raise exception.ZadaraServerNotFound(name=initiator_name)
 
         # Get volume name
-        name = CONF.zadara_vol_name_template % volume['name']
+        name = self.configuration.zadara_vol_name_template % volume['name']
         vpsa_vol = self._get_vpsa_volume_name(name)
         if not vpsa_vol:
             raise exception.VolumeNotFound(volume_id=name)
@@ -469,3 +647,33 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         self.vpsa.send_cmd('detach_volume',
                            vpsa_srv=vpsa_srv,
                            vpsa_vol=vpsa_vol)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+        If 'refresh' is True, run update the stats first.
+        """
+        if refresh:
+            self._update_volume_stats()
+
+        return self._stats
+
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+
+        LOG.debug(_("Updating volume stats"))
+        data = {}
+
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or self.__class__.__name__
+        data["vendor_name"] = 'Zadara Storage'
+        data["driver_version"] = self.VERSION
+        data["storage_protocol"] = 'iSCSI'
+        data['reserved_percentage'] = self.configuration.reserved_percentage
+        data['QoS_support'] = False
+
+        (total, free) = self._get_pool_capacity(self.configuration.
+                                                zadara_vpsa_poolname)
+        data['total_capacity_gb'] = total
+        data['free_capacity_gb'] = free
+
+        self._stats = data
