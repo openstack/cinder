@@ -22,7 +22,7 @@ LVM class for performing LVM operations.
 import math
 import re
 
-from itertools import izip
+import itertools
 
 from cinder.brick import exception
 from cinder.brick import executor
@@ -169,7 +169,7 @@ class LVM(executor.Executor):
         lv_list = []
         if out is not None:
             volumes = out.split()
-            for vg, name, size in izip(*[iter(volumes)] * 3):
+            for vg, name, size in itertools.izip(*[iter(volumes)] * 3):
                 lv_list.append({"vg": vg, "name": name, "size": size})
 
         return lv_list
