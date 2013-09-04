@@ -2022,7 +2022,7 @@ def qos_specs_create(context, values):
             # the name of QoS specs
             root['key'] = 'QoS_Specs_Name'
             root['value'] = values['name']
-            LOG.debug("qos_specs_create(): root %s", root)
+            LOG.debug("DB qos_specs_create(): root %s", root)
             specs_root.update(root)
             specs_root.save(session=session)
 
@@ -2036,7 +2036,7 @@ def qos_specs_create(context, values):
         except Exception as e:
             raise db_exc.DBError(e)
 
-        return specs_root
+        return dict(id=specs_root.id, name=specs_root.value)
 
 
 @require_admin_context
@@ -2078,21 +2078,25 @@ def _dict_with_children_specs(specs):
 
 
 def _dict_with_qos_specs(rows):
-    """Convert qos specs query results to dict with name as key.
+    """Convert qos specs query results to list.
 
     Qos specs query results are a list of quality_of_service_specs refs,
     some are root entry of a qos specs (key == 'QoS_Specs_Name') and the
     rest are children entry, a.k.a detailed specs for a qos specs. This
-    funtion converts query results to a dict using spec name as key.
+    function converts query results to a dict using spec name as key.
     """
-    result = {}
+    result = []
     for row in rows:
         if row['key'] == 'QoS_Specs_Name':
-            result[row['value']] = dict(id=row['id'])
+            member = {}
+            member['name'] = row['value']
+            member.update(dict(id=row['id']))
             if row.specs:
                 spec_dict = _dict_with_children_specs(row.specs)
-                result[row['value']].update(spec_dict)
-
+                member.update(dict(consumer=spec_dict['consumer']))
+                del spec_dict['consumer']
+                member.update(dict(specs=spec_dict))
+            result.append(member)
     return result
 
 
@@ -2100,25 +2104,35 @@ def _dict_with_qos_specs(rows):
 def qos_specs_get(context, qos_specs_id, inactive=False):
     rows = _qos_specs_get_ref(context, qos_specs_id, None, inactive)
 
-    return _dict_with_qos_specs(rows)
+    return _dict_with_qos_specs(rows)[0]
 
 
 @require_admin_context
 def qos_specs_get_all(context, inactive=False, filters=None):
-    """Returns dicts describing all qos_specs.
+    """Returns a list of all qos_specs.
 
     Results is like:
-        {'qos-spec-1': {'id': SPECS-UUID,
-                        'key1': 'value1',
-                        'key2': 'value2',
-                        ...
-                        'consumer': 'back-end'}
-         'qos-spec-2': {'id': SPECS-UUID,
-                        'key1': 'value1',
-                        'key2': 'value2',
-                        ...
-                        'consumer': 'back-end'}
-        }
+        [{
+            'id': SPECS-UUID,
+            'name': 'qos_spec-1',
+            'consumer': 'back-end',
+            'specs': {
+                'key1': 'value1',
+                'key2': 'value2',
+                ...
+            }
+         },
+         {
+            'id': SPECS-UUID,
+            'name': 'qos_spec-2',
+            'consumer': 'front-end',
+            'specs': {
+                'key1': 'value1',
+                'key2': 'value2',
+                ...
+            }
+         },
+        ]
     """
     filters = filters or {}
     #TODO(zhiteng) Add filters for 'consumer'
@@ -2135,7 +2149,7 @@ def qos_specs_get_all(context, inactive=False, filters=None):
 def qos_specs_get_by_name(context, name, inactive=False):
     rows = _qos_specs_get_by_name(context, name, None, inactive)
 
-    return _dict_with_qos_specs(rows)
+    return _dict_with_qos_specs(rows)[0]
 
 
 @require_admin_context
@@ -2148,9 +2162,7 @@ def qos_specs_associations_get(context, qos_specs_id):
     extend qos specs association to other entities, such as volumes,
     sometime in future.
     """
-    rows = _qos_specs_get_ref(context, qos_specs_id, None)
-    if not rows:
-        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
+    _qos_specs_get_ref(context, qos_specs_id, None)
 
     return volume_type_qos_associations_get(context, qos_specs_id)
 

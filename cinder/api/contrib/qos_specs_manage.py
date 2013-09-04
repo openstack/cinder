@@ -21,13 +21,12 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.views import qos_specs as view_qos_specs
 from cinder.api import xmlutil
-from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.volume import qos_specs
-from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
@@ -66,6 +65,8 @@ def _check_specs(context, specs_id):
 class QoSSpecsController(wsgi.Controller):
     """The volume type extra specs API controller for the OpenStack API."""
 
+    _view_builder_class = view_qos_specs.ViewBuilder
+
     @staticmethod
     def _notify_qos_specs_error(context, method, payload):
         notifier_api.notify(context,
@@ -80,7 +81,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
         specs = qos_specs.get_all_specs(context)
-        return specs
+        return self._view_builder.summary_list(req, specs)
 
     @wsgi.serializers(xml=QoSSpecsTemplate)
     def create(self, req, body=None):
@@ -97,8 +98,8 @@ class QoSSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
-            specs_ref = qos_specs.create(context, name, specs)
-            qos_specs.get_qos_specs_by_name(context, name)
+            qos_specs.create(context, name, specs)
+            spec = qos_specs.get_qos_specs_by_name(context, name)
             notifier_info = dict(name=name, specs=specs)
             notifier_api.notify(context, 'QoSSpecs',
                                 'QoSSpecs.create',
@@ -122,7 +123,7 @@ class QoSSpecsController(wsgi.Controller):
                                          notifier_err)
             raise webob.exc.HTTPInternalServerError(explanation=str(err))
 
-        return body
+        return self._view_builder.detail(req, spec)
 
     @wsgi.serializers(xml=QoSSpecsTemplate)
     def update(self, req, id, body=None):
@@ -166,10 +167,10 @@ class QoSSpecsController(wsgi.Controller):
 
         try:
             spec = qos_specs.get_qos_specs(context, id)
-        except exception.NotFound:
-            raise webob.exc.HTTPNotFound()
+        except exception.QoSSpecsNotFound as err:
+            raise webob.exc.HTTPNotFound(explanation=str(err))
 
-        return spec
+        return self._view_builder.detail(req, spec)
 
     def delete(self, req, id):
         """Deletes an existing qos specs."""
@@ -178,7 +179,8 @@ class QoSSpecsController(wsgi.Controller):
 
         force = req.params.get('force', None)
 
-        LOG.debug("qos_specs_manage.delete(): id: %s, force: %s" % (id, force))
+        LOG.debug("Delete qos_spec: %(id)s, force: %(force)s" %
+                  {'id': id, 'force': force})
 
         try:
             qos_specs.get_qos_specs(context, id)
@@ -187,12 +189,12 @@ class QoSSpecsController(wsgi.Controller):
             notifier_api.notify(context, 'QoSSpecs',
                                 'qos_specs.delete',
                                 notifier_api.INFO, notifier_info)
-        except exception.NotFound as err:
+        except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.delete',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound()
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.QoSSpecsInUse as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
@@ -212,7 +214,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.debug("assocications(): id: %s" % id)
+        LOG.debug("Get associations for qos_spec id: %s" % id)
 
         try:
             associates = qos_specs.get_associations(context, id)
@@ -225,15 +227,15 @@ class QoSSpecsController(wsgi.Controller):
             self._notify_qos_specs_error(context,
                                          'qos_specs.associations',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound(explanation=err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.CinderException as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.associations',
                                          notifier_err)
-            raise webob.exc.HTTPInternalServerError(explanation=err)
+            raise webob.exc.HTTPInternalServerError(explanation=str(err))
 
-        return associates
+        return self._view_builder.associations(req, associates)
 
     def associate(self, req, id):
         """Associate a qos specs with a volume type."""
@@ -249,7 +251,8 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.delete',
                                          notifier_err)
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug("associcate(): id: %s, type_id: %s" % (id, type_id))
+        LOG.debug("Associate qos_spec: %(id)s with type: %(type_id)s" %
+                  {'id': id, 'type_id': type_id})
 
         try:
             qos_specs.get_qos_specs(context, id)
@@ -263,19 +266,19 @@ class QoSSpecsController(wsgi.Controller):
             self._notify_qos_specs_error(context,
                                          'qos_specs.associate',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound(explanation=err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.associate',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound(explanation=err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.QoSSpecsAssociateFailed as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.associate',
                                          notifier_err)
-            raise webob.exc.HTTPInternalServerError(explanation=err)
+            raise webob.exc.HTTPInternalServerError(explanation=str(err))
 
         return webob.Response(status_int=202)
 
@@ -293,7 +296,8 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.delete',
                                          notifier_err)
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug("disassocicate(): id: %s, type_id: %s" % (id, type_id))
+        LOG.debug("Disassociate qos_spec: %(id)s from type: %(type_id)s" %
+                  {'id': id, 'type_id': type_id})
 
         try:
             qos_specs.get_qos_specs(context, id)
@@ -307,19 +311,19 @@ class QoSSpecsController(wsgi.Controller):
             self._notify_qos_specs_error(context,
                                          'qos_specs.disassociate',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound(explanation=err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.disassociate',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound(explanation=err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.QoSSpecsDisassociateFailed as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.disassociate',
                                          notifier_err)
-            raise webob.exc.HTTPInternalServerError(explanation=err)
+            raise webob.exc.HTTPInternalServerError(explanation=str(err))
 
         return webob.Response(status_int=202)
 
@@ -328,7 +332,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.debug("disassocicate_all(): id: %s" % id)
+        LOG.debug("Disassociate qos_spec: %s from all." % id)
 
         try:
             qos_specs.get_qos_specs(context, id)
@@ -342,13 +346,13 @@ class QoSSpecsController(wsgi.Controller):
             self._notify_qos_specs_error(context,
                                          'qos_specs.disassociate_all',
                                          notifier_err)
-            raise webob.exc.HTTPNotFound(explanation=err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.QoSSpecsDisassociateFailed as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
                                          'qos_specs.disassociate_all',
                                          notifier_err)
-            raise webob.exc.HTTPInternalServerError(explanation=err)
+            raise webob.exc.HTTPInternalServerError(explanation=str(err))
 
         return webob.Response(status_int=202)
 
