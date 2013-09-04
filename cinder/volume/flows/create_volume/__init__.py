@@ -829,13 +829,21 @@ class OnFailureRescheduleTask(base.CinderTask):
         ]
 
     def _is_reschedulable(self, cause):
-        exc_type, value = cause.exc_info()[:2]
-        if not exc_type and cause.exc:
-            exc_type = type(cause.exc)
-        if not exc_type:
-            return True
-        if exc_type in self.no_reschedule_types:
+        # Figure out the type of the causes exception and compare it against
+        # our black-list of exception types that will not cause rescheduling.
+        exc_type, value = cause.exc_info[:2]
+        # If we don't have a type from exc_info but we do have a exception in
+        # the cause, try to get the type from that instead.
+        if not value:
+            value = cause.exc
+        if not exc_type and value:
+            exc_type = type(value)
+        if exc_type and exc_type in self.no_reschedule_types:
             return False
+        # Couldn't figure it out, by default assume whatever the cause was can
+        # be fixed by rescheduling.
+        #
+        # NOTE(harlowja): Crosses fingers.
         return True
 
     def __call__(self, context, *args, **kwargs):
