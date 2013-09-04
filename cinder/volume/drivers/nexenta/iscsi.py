@@ -42,19 +42,20 @@ CONF.register_opts(options.NEXENTA_ISCSI_OPTIONS)
 CONF.register_opts(options.NEXENTA_VOLUME_OPTIONS)
 
 
-class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
+class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
         1.0.0 - Initial driver version.
         1.0.1 - Fixed bug #1236626: catch "does not exist" exception of
                 lu_exists.
+        1.1.0 - Changed class name to NexentaISCSIDriver.
     """
 
-    VERSION = '1.0.1'
+    VERSION = '1.1.0'
 
     def __init__(self, *args, **kwargs):
-        super(NexentaDriver, self).__init__(*args, **kwargs)
+        super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
         self.nms = None
         if self.configuration:
             self.configuration.append_config_values(

@@ -92,7 +92,9 @@ MAPPING = {
     'cinder.volume.driver.SheepdogDriver':
     'cinder.volume.drivers.sheepdog.SheepdogDriver',
     'cinder.volume.nexenta.volume.NexentaDriver':
-    'cinder.volume.drivers.nexenta.volume.NexentaDriver',
+    'cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver',
+    'cinder.volume.drivers.nexenta.volume.NexentaDriver':
+    'cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver',
     'cinder.volume.san.SanISCSIDriver':
     'cinder.volume.drivers.san.san.SanISCSIDriver',
     'cinder.volume.san.SolarisISCSIDriver':

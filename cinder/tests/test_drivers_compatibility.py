@@ -25,7 +25,7 @@ CONF = cfg.CONF
 
 RBD_MODULE = "cinder.volume.drivers.rbd.RBDDriver"
 SHEEPDOG_MODULE = "cinder.volume.drivers.sheepdog.SheepdogDriver"
-NEXENTA_MODULE = "cinder.volume.drivers.nexenta.volume.NexentaDriver"
+NEXENTA_MODULE = "cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver"
 SAN_MODULE = "cinder.volume.drivers.san.san.SanISCSIDriver"
 SOLARIS_MODULE = "cinder.volume.drivers.san.solaris.SolarisISCSIDriver"
 LEFTHAND_MODULE = "cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver"

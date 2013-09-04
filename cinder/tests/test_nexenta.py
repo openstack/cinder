@@ -28,12 +28,12 @@ from cinder import test
 from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
+from cinder.volume.drivers.nexenta import iscsi
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import nfs
-from cinder.volume.drivers.nexenta import volume
 
 
-class TestNexentaDriver(test.TestCase):
+class TestNexentaISCSIDriver(test.TestCase):
     TEST_VOLUME_NAME = 'volume1'
     TEST_VOLUME_NAME2 = 'volume2'
     TEST_SNAPSHOT_NAME = 'snapshot1'
@@ -53,10 +53,10 @@ class TestNexentaDriver(test.TestCase):
     }
 
     def __init__(self, method):
-        super(TestNexentaDriver, self).__init__(method)
+        super(TestNexentaISCSIDriver, self).__init__(method)
 
     def setUp(self):
-        super(TestNexentaDriver, self).setUp()
+        super(TestNexentaISCSIDriver, self).setUp()
         self.configuration = mox_lib.MockObject(conf.Configuration)
         self.configuration.nexenta_host = '1.1.1.1'
         self.configuration.nexenta_user = 'admin'
@@ -75,7 +75,7 @@ class TestNexentaDriver(test.TestCase):
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
                        lambda *_, **__: self.nms_mock)
-        self.drv = volume.NexentaDriver(configuration=self.configuration)
+        self.drv = iscsi.NexentaISCSIDriver(configuration=self.configuration)
         self.drv.do_setup({})
 
     def test_setup_error(self):
