@@ -221,7 +221,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def extend_volume(self, volume, new_size):
         """Extend an Existing Volume."""
         old_size = volume['size']
-        LOG.debug(_("Extended volume from %(old_size) to %(new_size)"),
+        LOG.debug(_("Extended volume from %(old_size)s to %(new_size)s"),
                   {'old_size': old_size, 'new_size': new_size})
         additional_size = (new_size - old_size) * 1024
         self.utils.extend(volume['name'], additional_size)
