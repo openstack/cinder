@@ -299,6 +299,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def create_snapshot(self, context, volume_id, snapshot_id):
         """Creates and exports the snapshot."""
+        caller_context = context
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         LOG.info(_("snapshot %s: creating"), snapshot_ref['id'])
@@ -308,6 +309,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             LOG.debug(_("snapshot %(snap_id)s: creating"),
                       {'snap_id': snapshot_ref['id']})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            snapshot_ref['context'] = caller_context
+
             model_update = self.driver.create_snapshot(snapshot_ref)
             if model_update:
                 self.db.snapshot_update(context, snapshot_ref['id'],
@@ -341,6 +347,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def delete_snapshot(self, context, snapshot_id):
         """Deletes and unexports snapshot."""
+        caller_context = context
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         project_id = snapshot_ref['project_id']
@@ -350,6 +357,11 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         try:
             LOG.debug(_("snapshot %s: deleting"), snapshot_ref['id'])
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            snapshot_ref['context'] = caller_context
+
             self.driver.delete_snapshot(snapshot_ref)
         except exception.SnapshotIsBusy:
             LOG.error(_("Cannot delete snapshot %s: snapshot is busy"),
