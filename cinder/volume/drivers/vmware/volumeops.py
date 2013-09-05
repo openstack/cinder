@@ -30,6 +30,34 @@ ALREADY_EXISTS = 'AlreadyExists'
 FILE_ALREADY_EXISTS = 'FileAlreadyExists'
 
 
+def split_datastore_path(datastore_path):
+    """Split the datastore path to components.
+
+    return the datastore name, relative folder path and the file name
+
+    E.g. datastore_path = [datastore1] my_volume/my_volume.vmdk, returns
+    (datastore1, my_volume/, my_volume.vmdk)
+
+    :param datastore_path: Datastore path of a file
+    :return: Parsed datastore name, relative folder path and file name
+    """
+    splits = datastore_path.split('[', 1)[1].split(']', 1)
+    datastore_name = None
+    folder_path = None
+    file_name = None
+    if len(splits) == 1:
+        datastore_name = splits[0]
+    else:
+        datastore_name, path = splits
+        # Path will be of form my_volume/my_volume.vmdk
+        # we need into my_volumes/ and my_volume.vmdk
+        splits = path.split('/')
+        file_name = splits[len(splits) - 1]
+        folder_path = path[:-len(file_name)]
+
+    return (datastore_name.strip(), folder_path.strip(), file_name.strip())
+
+
 class VMwareVolumeOps(object):
     """Manages volume operations."""
 
@@ -174,11 +202,7 @@ class VMwareVolumeOps(object):
         for child_entity in child_entities:
             if child_entity._type != 'Folder':
                 continue
-            child_entity_name = self._session.invoke_api(vim_util,
-                                                         'get_object_property',
-                                                         self._session.vim,
-                                                         child_entity,
-                                                         'name')
+            child_entity_name = self.get_entity_name(child_entity)
             if child_entity_name == child_folder_name:
                 LOG.debug(_("Child folder already present: %s.") %
                           child_entity)
@@ -210,7 +234,7 @@ class VMwareVolumeOps(object):
         controller_spec.device = controller_device
 
         disk_device = cf.create('ns0:VirtualDisk')
-        disk_device.capacityInKB = size_kb
+        disk_device.capacityInKB = int(size_kb)
         disk_device.key = -101
         disk_device.unitNumber = 0
         disk_device.controllerKey = -100
@@ -358,12 +382,13 @@ class VMwareVolumeOps(object):
         LOG.info(_("Successfully moved volume backing: %(backing)s into the "
                    "folder: %(fol)s.") % {'backing': backing, 'fol': folder})
 
-    def create_snapshot(self, backing, name, description):
+    def create_snapshot(self, backing, name, description, quiesce=False):
         """Create snapshot of the backing with given name and description.
 
         :param backing: Reference to the backing entity
         :param name: Snapshot name
         :param description: Snapshot description
+        :param quiesce: Whether to quiesce the backing when taking snapshot
         :return: Created snapshot entity reference
         """
         LOG.debug(_("Snapshoting backing: %(backing)s with name: %(name)s.") %
@@ -372,7 +397,7 @@ class VMwareVolumeOps(object):
                                         'CreateSnapshot_Task',
                                         backing, name=name,
                                         description=description,
-                                        memory=False, quiesce=False)
+                                        memory=False, quiesce=quiesce)
         LOG.debug(_("Initiated snapshot of volume backing: %(backing)s "
                     "named: %(name)s.") % {'backing': backing, 'name': name})
         task_info = self._session.wait_for_task(task)
@@ -505,7 +530,7 @@ class VMwareVolumeOps(object):
         LOG.info(_("Successfully created clone: %s.") % new_backing)
         return new_backing
 
-    def _delete_file(self, file_path, datacenter=None):
+    def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.
 
         :param file_path: Datastore path of the file or folder
@@ -549,7 +574,7 @@ class VMwareVolumeOps(object):
                 raise excep
             # There might be files on datastore due to previous failed attempt
             # We clean the folder up and retry the copy
-            self._delete_file(dest_folder_path)
+            self.delete_file(dest_folder_path)
             self.copy_backing(src_folder_path, dest_folder_path)
 
     def get_path_name(self, backing):
@@ -604,3 +629,76 @@ class VMwareVolumeOps(object):
         LOG.debug(_("Initiated reverting snapshot via task: %s.") % task)
         self._session.wait_for_task(task)
         LOG.info(_("Successfully reverted to snapshot: %s.") % snapshot)
+
+    def get_entity_name(self, entity):
+        """Get name of the managed entity.
+
+        :param entity: Reference to the entity
+        :return: Name of the managed entity
+        """
+        return self._session.invoke_api(vim_util, 'get_object_property',
+                                        self._session.vim, entity, 'name')
+
+    def get_vmdk_path(self, backing):
+        """Get the vmdk file name of the backing.
+
+        The vmdk file path of the backing returned is of the form:
+        "[datastore1] my_folder/my_vm.vmdk"
+
+        :param backing: Reference to the backing
+        :return: VMDK file path of the backing
+        """
+        hardware_devices = self._session.invoke_api(vim_util,
+                                                    'get_object_property',
+                                                    self._session.vim,
+                                                    backing,
+                                                    'config.hardware.device')
+        if hardware_devices.__class__.__name__ == "ArrayOfVirtualDevice":
+            hardware_devices = hardware_devices.VirtualDevice
+        for device in hardware_devices:
+            if device.__class__.__name__ == "VirtualDisk":
+                bkng = device.backing
+                if bkng.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo":
+                    return bkng.fileName
+
+    def copy_vmdk_file(self, dc_ref, src_vmdk_file_path, dest_vmdk_file_path):
+        """Copy contents of the src vmdk file to dest vmdk file.
+
+        During the copy also coalesce snapshots of src if present.
+        dest_vmdk_file_path will be created if not already present.
+
+        :param dc_ref: Reference to datacenter containing src and dest
+        :param src_vmdk_file_path: Source vmdk file path
+        :param dest_vmdk_file_path: Destination vmdk file path
+        """
+        LOG.debug(_('Copying disk data before snapshot of the VM'))
+        diskMgr = self._session.vim.service_content.virtualDiskManager
+        task = self._session.invoke_api(self._session.vim,
+                                        'CopyVirtualDisk_Task',
+                                        diskMgr,
+                                        sourceName=src_vmdk_file_path,
+                                        sourceDatacenter=dc_ref,
+                                        destName=dest_vmdk_file_path,
+                                        destDatacenter=dc_ref,
+                                        force=True)
+        LOG.debug(_("Initiated copying disk data via task: %s.") % task)
+        self._session.wait_for_task(task)
+        LOG.info(_("Successfully copied disk data to: %s.") %
+                 dest_vmdk_file_path)
+
+    def delete_vmdk_file(self, vmdk_file_path, dc_ref):
+        """Delete given vmdk files.
+
+        :param vmdk_file_path: VMDK file path to be deleted
+        :param dc_ref: Reference to datacenter that contains this VMDK file
+        """
+        LOG.debug(_("Deleting vmdk file: %s.") % vmdk_file_path)
+        diskMgr = self._session.vim.service_content.virtualDiskManager
+        task = self._session.invoke_api(self._session.vim,
+                                        'DeleteVirtualDisk_Task',
+                                        diskMgr,
+                                        name=vmdk_file_path,
+                                        datacenter=dc_ref)
+        LOG.debug(_("Initiated deleting vmdk file via task: %s.") % task)
+        self._session.wait_for_task(task)
+        LOG.info(_("Deleted vmdk file: %s.") % vmdk_file_path)

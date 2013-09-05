@@ -524,6 +524,16 @@
 
 
 #
+# Options defined in cinder.image.glance
+#
+
+# A list of url schemes that can be downloaded directly via
+# the direct_url.  Currently supported schemes: [file]. (list
+# value)
+#allowed_direct_url_schemes=
+
+
+#
 # Options defined in cinder.image.image_utils
 #
 
@@ -1588,6 +1598,10 @@
 # cinder volumes. (string value)
 #vmware_volume_folder=cinder-volumes
 
+# Timeout in seconds for VMDK volume transfer between Cinder
+# and Glance. (integer value)
+#vmware_image_transfer_timeout_secs=7200
+
 
 #
 # Options defined in cinder.volume.drivers.windows.windows
@@ -1700,4 +1714,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 364
+# Total option count: 366
