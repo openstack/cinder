@@ -84,7 +84,7 @@ class API(base.Base):
 
         return backups
 
-    def _check_backup_service(self, volume):
+    def _is_backup_service_enabled(self, volume):
         """Check if there is an backup service available"""
         topic = CONF.backup_topic
         ctxt = context.get_admin_context()
@@ -104,6 +104,9 @@ class API(base.Base):
         if volume['status'] != "available":
             msg = _('Volume to be backed up must be available')
             raise exception.InvalidVolume(reason=msg)
+        if not self._is_backup_service_enabled(volume):
+            raise exception.ServiceNotFound(service_id='cinder-backup')
+
         self.db.volume_update(context, volume_id, {'status': 'backing-up'})
 
         options = {'user_id': context.user_id,
@@ -119,8 +122,6 @@ class API(base.Base):
                    'host': volume['host'], }
 
         backup = self.db.backup_create(context, options)
-        if not self._check_backup_service(volume):
-            raise exception.ServiceNotFound(service_id='cinder-backup')
 
         #TODO(DuncanT): In future, when we have a generic local attach,
         #               this can go via the scheduler, which enables
