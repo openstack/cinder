@@ -79,40 +79,38 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def __init__(self, *args, **kwargs):
         super(NexentaDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(nexenta_opts)
 
     def do_setup(self, context):
-        protocol = FLAGS.nexenta_rest_protocol
+        protocol = self.configuration.nexenta_rest_protocol
         auto = protocol == 'auto'
         if auto:
             protocol = 'http'
         self.nms = jsonrpc.NexentaJSONProxy(
-            '%s://%s:%s/rest/nms/' % (protocol, FLAGS.nexenta_host,
-                                      FLAGS.nexenta_rest_port),
-            FLAGS.nexenta_user, FLAGS.nexenta_password, auto=auto)
+            '%s://%s:%s/rest/nms/' % (protocol, self.configuration.nexenta_host,
+                                      self.configuration.nexenta_rest_port),
+            self.configuration.nexenta_user, self.configuration.nexenta_password, auto=auto)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
 
         :raise: :py:exc:`LookupError`
         """
-        if not self.nms.volume.object_exists(FLAGS.nexenta_volume):
+        if not self.nms.volume.object_exists(self.configuration.nexenta_volume):
             raise LookupError(_("Volume %s does not exist in Nexenta SA"),
-                              FLAGS.nexenta_volume)
+                              self.configuration.nexenta_volume)
 
-    @staticmethod
-    def _get_zvol_name(volume_name):
+    def _get_zvol_name(self, volume_name):
         """Return zvol name that corresponds given volume name."""
-        return '%s/%s' % (FLAGS.nexenta_volume, volume_name)
+        return '%s/%s' % (self.configuration.nexenta_volume, volume_name)
 
-    @staticmethod
-    def _get_target_name(volume_name):
+    def _get_target_name(self, volume_name):
         """Return iSCSI target name to access volume."""
-        return '%s%s' % (FLAGS.nexenta_target_prefix, volume_name)
+        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
 
-    @staticmethod
-    def _get_target_group_name(volume_name):
+    def _get_target_group_name(self, volume_name):
         """Return Nexenta iSCSI target group name for volume."""
-        return '%s%s' % (FLAGS.nexenta_target_group_prefix, volume_name)
+        return '%s%s' % (self.configuration.nexenta_target_group_prefix, volume_name)
 
     def create_volume(self, volume):
         """Create a zvol on appliance.
@@ -122,7 +120,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nms.zvol.create(
             self._get_zvol_name(volume['name']),
             '%sG' % (volume['size'],),
-            FLAGS.nexenta_blocksize, FLAGS.nexenta_sparse)
+            self.configuration.nexenta_blocksize, self.configuration.nexenta_sparse)
 
     def delete_volume(self, volume):
         """Destroy a zvol on appliance.
@@ -237,8 +235,8 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             else:
                 LOG.info(_('Ignored LUN mapping entry addition error "%s"'
                            ' while ensuring export'), exc)
-        return '%s:%s,1 %s 0' % (FLAGS.nexenta_host,
-                                 FLAGS.nexenta_iscsi_target_portal_port,
+        return '%s:%s,1 %s 0' % (self.configuration.nexenta_host,
+                                 self.configuration.nexenta_iscsi_target_portal_port,
                                  target_name)
 
     def create_export(self, _ctx, volume):
@@ -324,7 +322,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data["driver_version"] = VERSION
         data["storage_protocol"] = 'iSCSI'
 
-        stats = self.nms.volume.get_child_props(FLAGS.nexenta_volume,
+        stats = self.nms.volume.get_child_props(self.configuration.nexenta_volume,
                                                 'health|size|used|available')
         total_unit = stats['size'][-1]
         total_amount = float(stats['size'][:-1])
