@@ -54,9 +54,10 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 copy volume <--> Image.
         1.2.0 - Updated the use of the hp3parclient to 2.0.0 and refactored
                 the drivers to use the new APIs.
+        1.2.1 - Synchronized extend_volume method.
     """
 
-    VERSION = "1.2.0"
+    VERSION = "1.2.1"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -267,5 +268,6 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     def remove_export(self, context, volume):
         pass
 
+    @utils.synchronized('3par', external=True)
     def extend_volume(self, volume, new_size):
         self.common.extend_volume(volume, new_size)
