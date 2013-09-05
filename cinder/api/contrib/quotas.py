@@ -50,12 +50,9 @@ class QuotaSetsController(object):
     def _format_quota_set(self, project_id, quota_set):
         """Convert the quota object to a result dict"""
 
-        result = dict(id=str(project_id))
+        quota_set['id'] = str(project_id)
 
-        for resource in QUOTAS.resources:
-            result[resource] = quota_set[resource]
-
-        return dict(quota_set=result)
+        return dict(quota_set=quota_set)
 
     def _validate_quota_limit(self, limit):
         if not isinstance(limit, int):

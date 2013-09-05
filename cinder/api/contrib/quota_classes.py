@@ -47,12 +47,9 @@ class QuotaClassSetsController(object):
     def _format_quota_set(self, quota_class, quota_set):
         """Convert the quota object to a result dict"""
 
-        result = dict(id=str(quota_class))
+        quota_set['id'] = str(quota_class)
 
-        for resource in QUOTAS.resources:
-            result[resource] = quota_set[resource]
-
-        return dict(quota_class_set=result)
+        return dict(quota_class_set=quota_set)
 
     @wsgi.serializers(xml=QuotaClassTemplate)
     def show(self, req, id):
