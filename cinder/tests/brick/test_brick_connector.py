@@ -57,24 +57,19 @@ class ConnectorTestCase(test.TestCase):
 
     def test_factory(self):
         obj = connector.InitiatorConnector.factory('iscsi', None)
-        self.assertTrue(obj.__class__.__name__,
-                        "ISCSIConnector")
+        self.assertEqual(obj.__class__.__name__, "ISCSIConnector")
 
         obj = connector.InitiatorConnector.factory('fibre_channel', None)
-        self.assertTrue(obj.__class__.__name__,
-                        "FibreChannelConnector")
+        self.assertEqual(obj.__class__.__name__, "FibreChannelConnector")
 
         obj = connector.InitiatorConnector.factory('aoe', None)
-        self.assertTrue(obj.__class__.__name__,
-                        "AoEConnector")
+        self.assertEqual(obj.__class__.__name__, "AoEConnector")
 
         obj = connector.InitiatorConnector.factory('nfs', None)
-        self.assertTrue(obj.__class__.__name__,
-                        "RemoteFsConnector")
+        self.assertEqual(obj.__class__.__name__, "RemoteFsConnector")
 
         obj = connector.InitiatorConnector.factory('glusterfs', None)
-        self.assertTrue(obj.__class__.__name__,
-                        "RemoteFsConnector")
+        self.assertEqual(obj.__class__.__name__, "RemoteFsConnector")
 
         self.assertRaises(ValueError,
                           connector.InitiatorConnector.factory,
