@@ -15,11 +15,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`nexenta.volume` -- Driver to store volumes on Nexenta Appliance
+:mod:`nexenta.nfsvolume` -- Driver to store NFS volumes on Nexenta Appliance
 =====================================================================
 
-.. automodule:: nexenta.volume
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
+.. automodule:: nexenta.nfsvolume
+.. moduleauthor:: Blake Lai <blackxwhite@gmail.com>
 """
 
 from oslo.config import cfg
@@ -52,33 +52,27 @@ nexenta_opts = [
                default='nexenta',
                help='Password to connect to Nexenta SA',
                secret=True),
-    cfg.IntOpt('nexenta_iscsi_target_portal_port',
-               default=3260,
-               help='Nexenta target portal port'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
                help='pool on SA that will hold all volumes'),
-    cfg.StrOpt('nexenta_target_prefix',
-               default='iqn.1986-03.com.sun:02:cinder-',
-               help='IQN prefix for iSCSI targets'),
-    cfg.StrOpt('nexenta_target_group_prefix',
-               default='cinder/',
-               help='prefix for iSCSI target groups on SA'),
-    cfg.StrOpt('nexenta_blocksize',
-               default='',
-               help='block size for volumes (blank=default,8KB)'),
-    cfg.BoolOpt('nexenta_sparse',
+    cfg.StrOpt('nexenta_reserve',
+               default=False,
+               help='flag to create volumes with size reserved'),
+    cfg.StrOpt('nexenta_compress',
+               default=True,
+               help='flag to create volumes with compression feature'),
+    cfg.BoolOpt('nexenta_dedup',
                 default=False,
-                help='flag to create sparse volumes'),
+                help='flag to create volumes with deduplication feature'),
 ]
 FLAGS.register_opts(nexenta_opts)
 
 
-class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
+class NexentaNFSDriver(driver.VolumeDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance."""
 
     def __init__(self, *args, **kwargs):
-        super(NexentaDriver, self).__init__(*args, **kwargs)
+        super(NexentaNFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(nexenta_opts)
 
     def do_setup(self, context):
@@ -100,49 +94,57 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise LookupError(_("Volume %s does not exist in Nexenta SA"),
                               self.configuration.nexenta_volume)
 
-    def _get_zvol_name(self, volume_name):
-        """Return zvol name that corresponds given volume name."""
+    def _get_folder_name(self, volume_name):
+        """Return folder name that corresponds given volume name."""
         return '%s/%s' % (self.configuration.nexenta_volume, volume_name)
 
-    def _get_target_name(self, volume_name):
-        """Return iSCSI target name to access volume."""
-        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
-
-    def _get_target_group_name(self, volume_name):
-        """Return Nexenta iSCSI target group name for volume."""
-        return '%s%s' % (self.configuration.nexenta_target_group_prefix, volume_name)
-
     def create_volume(self, volume):
-        """Create a zvol on appliance.
+        """Create a folder on appliance.
 
         :param volume: volume reference
         """
-        self.nms.zvol.create(
-            self._get_zvol_name(volume['name']),
-            '%sG' % (volume['size'],),
-            self.configuration.nexenta_blocksize, self.configuration.nexenta_sparse)
+        quota = '%sG' % (volume['size'])
+        reservation = ('%sG' % (volume['size']) if self.configuration.nexenta_reserve else 'none')
+        compression = ('on' if self.configuration.nexenta_compress else 'off')
+        dedup = ('on' if self.configuration.nexenta_dedup else 'off')
+        
+        try:
+            self.nms.folder.create_with_props(
+                self.configuration.nexenta_volume,
+                volume['name'],
+                { "quota": quota, "reservation": reservation, "compression": compression, "dedup": dedup })
+        except nexenta.NexentaException as exc:
+            if "out of space" in exc.args[1]:
+                raise exception.VolumeSizeExceedsAvailableQuota()
+            else:
+                raise
 
     def delete_volume(self, volume):
-        """Destroy a zvol on appliance.
+        """Destroy a folder on appliance.
 
         :param volume: volume reference
         """
         try:
-            self.nms.zvol.destroy(self._get_zvol_name(volume['name']), '')
+            self.nms.folder.destroy(self._get_folder_name(volume['name']), '')
         except nexenta.NexentaException as exc:
-            if "zvol has children" in exc.args[1]:
+            if "folder has children" in exc.args[1]:
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
+            elif "does not exist" in exc.args[1]:
+                LOG.warn(_('Got error trying to delete volume'
+                       ' %(folder_name)s, assuming it is '
+                       'already deleted: %(exc)s'),
+                      {'folder_name': self._get_folder_name(volume['name']), 'exc': exc})
             else:
                 raise
 
     def create_snapshot(self, snapshot):
-        """Create snapshot of existing zvol on appliance.
+        """Create snapshot of existing folder on appliance.
 
         :param snapshot: shapshot reference
         """
-        self.nms.zvol.create_snapshot(
-            self._get_zvol_name(snapshot['volume_name']),
-            snapshot['name'], '')
+        self.nms.folder.create_snapshot(
+            self._get_folder_name(snapshot['volume_name']),
+            snapshot['name'], '-r')
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -150,10 +152,27 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be created
         :param snapshot: reference of source snapshot
         """
-        self.nms.zvol.clone(
-            '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
+        quota = '%sG' % (volume['size'])
+        reservation = ('%sG' % (volume['size']) if self.configuration.nexenta_reserve else 'none')
+        compression = ('on' if self.configuration.nexenta_compress else 'off')
+        dedup = ('on' if self.configuration.nexenta_dedup else 'off')
+
+        self.nms.folder.clone(
+            '%s@%s' % (self._get_folder_name(snapshot['volume_name']),
                        snapshot['name']),
-            self._get_zvol_name(volume['name']))
+            self._get_folder_name(volume['name']))
+
+        try:
+            self.nms.folder.set_child_prop(self._get_folder_name(volume['name']), 'quota', quota)
+            self.nms.folder.set_child_prop(self._get_folder_name(volume['name']), 'reservation', reservation)
+            self.nms.folder.set_child_prop(self._get_folder_name(volume['name']), 'compression', compression)
+            self.nms.folder.set_child_prop(self._get_folder_name(volume['name']), 'dedup', dedup)
+        except nexenta.NexentaException as exc:
+            if "size is greater than available space" in exc.args[1]:
+                self.delete_volume(volume)
+                raise exception.VolumeSizeExceedsAvailableQuota()
+            else:
+                raise
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
@@ -162,7 +181,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         try:
             self.nms.snapshot.destroy(
-                '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
+                '%s@%s' % (self._get_folder_name(snapshot['volume_name']),
                            snapshot['name']),
                 '')
         except nexenta.NexentaException as exc:
@@ -181,69 +200,35 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         raise NotImplementedError
 
     def _do_export(self, _ctx, volume, ensure=False):
-        """Do all steps to get zvol exported as LUN 0 at separate target.
+        """Do all steps to get folder exported as NFS volume.
 
         :param volume: reference of volume to be exported
         :param ensure: if True, ignore errors caused by already existing
             resources
-        :return: iscsiadm-formatted provider location string
+        :return: nfs-formatted provider location string
         """
-        zvol_name = self._get_zvol_name(volume['name'])
-        target_name = self._get_target_name(volume['name'])
-        target_group_name = self._get_target_group_name(volume['name'])
+        folder_name = self._get_folder_name(volume['name'])
 
         try:
-            self.nms.iscsitarget.create_target({'target_name': target_name})
+            self.nms.netstorsvc.share_folder(
+                'svc:/network/nfs/server:default',
+                folder_name,
+                { "read_write": "*", "extra_options": "anon=0" })
         except nexenta.NexentaException as exc:
-            if not ensure or 'already configured' not in exc.args[1]:
+            if not ensure:
                 raise
             else:
-                LOG.info(_('Ignored target creation error "%s"'
+                LOG.info(_('Ignored NFS share folder creation error "%s"'
                            ' while ensuring export'), exc)
-        try:
-            self.nms.stmf.create_targetgroup(target_group_name)
-        except nexenta.NexentaException as exc:
-            if not ensure or 'already exists' not in exc.args[1]:
-                raise
-            else:
-                LOG.info(_('Ignored target group creation error "%s"'
-                           ' while ensuring export'), exc)
-        try:
-            self.nms.stmf.add_targetgroup_member(target_group_name,
-                                                 target_name)
-        except nexenta.NexentaException as exc:
-            if not ensure or 'already exists' not in exc.args[1]:
-                raise
-            else:
-                LOG.info(_('Ignored target group member addition error "%s"'
-                           ' while ensuring export'), exc)
-        try:
-            self.nms.scsidisk.create_lu(zvol_name, {})
-        except nexenta.NexentaException as exc:
-            if not ensure or 'in use' not in exc.args[1]:
-                raise
-            else:
-                LOG.info(_('Ignored LU creation error "%s"'
-                           ' while ensuring export'), exc)
-        try:
-            self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
-                'target_group': target_group_name,
-                'lun': '0'})
-        except nexenta.NexentaException as exc:
-            if not ensure or 'view entry exists' not in exc.args[1]:
-                raise
-            else:
-                LOG.info(_('Ignored LUN mapping entry addition error "%s"'
-                           ' while ensuring export'), exc)
-        return '%s:%s,1 %s 0' % (self.configuration.nexenta_host,
-                                 self.configuration.nexenta_iscsi_target_portal_port,
-                                 target_name)
+
+        return '%s:/volumes/%s' % (self.configuration.nexenta_host,
+                            folder_name)
 
     def create_export(self, _ctx, volume):
-        """Create new export for zvol.
+        """Create new export for folder.
 
         :param volume: reference of volume to be exported
-        :return: iscsiadm-formatted provider location string
+        :return: nfs-formatted provider location string
         """
         loc = self._do_export(_ctx, volume, ensure=False)
         return {'provider_location': loc}
@@ -256,30 +241,35 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self._do_export(_ctx, volume, ensure=True)
 
     def remove_export(self, _ctx, volume):
-        """Destroy all resources created to export zvol.
+        """Destroy all resources created to export folder.
 
         :param volume: reference of volume to be unexported
         """
-        zvol_name = self._get_zvol_name(volume['name'])
-        target_name = self._get_target_name(volume['name'])
-        target_group_name = self._get_target_group_name(volume['name'])
-        self.nms.scsidisk.delete_lu(zvol_name)
+        folder_name = self._get_folder_name(volume['name'])
 
         try:
-            self.nms.stmf.destroy_targetgroup(target_group_name)
+            self.nms.netstorsvc.unshare_folder(
+                'svc:/network/nfs/server:default',
+                folder_name,
+                '0')
         except nexenta.NexentaException as exc:
-            # We assume that target group is already gone
-            LOG.warn(_('Got error trying to destroy target group'
-                       ' %(target_group)s, assuming it is '
+            LOG.warn(_('Got error trying to unshare folder'
+                       ' %(folder_name)s, assuming it is '
                        'already gone: %(exc)s'),
-                     {'target_group': target_group_name, 'exc': exc})
-        try:
-            self.nms.iscsitarget.delete_target(target_name)
-        except nexenta.NexentaException as exc:
-            # We assume that target is gone as well
-            LOG.warn(_('Got error trying to delete target %(target)s,'
-                       ' assuming it is already gone: %(exc)s'),
-                     {'target': target_name, 'exc': exc})
+                     {'folder_name': folder_name, 'exc': exc})
+
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+        data = {'export': volume['provider_location'],
+                'name': volume['name']}
+        return {
+            'driver_volume_type': 'nfs',
+            'data': data
+        }
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Disallow connection from connector"""
+        pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
@@ -320,7 +310,7 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'Nexenta'
         data["driver_version"] = VERSION
-        data["storage_protocol"] = 'iSCSI'
+        data["storage_protocol"] = 'NFS'
 
         stats = self.nms.volume.get_child_props(self.configuration.nexenta_volume,
                                                 'health|size|used|available')
