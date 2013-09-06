@@ -250,10 +250,8 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with VG info
 
         """
-        cmd = ['vgs', '--noheadings',
-               '--unit=g', '-o',
-               'name,size,free,lv_count,uuid',
-               '--separator', ':']
+        cmd = ['env', 'LC_ALL=C', 'LANG=C', 'vgs', '--noheadings', '--unit=g',
+               '-o', 'name,size,free,lv_count,uuid', '--separator', ':']
 
         if no_suffix:
             cmd.append('--nosuffix')

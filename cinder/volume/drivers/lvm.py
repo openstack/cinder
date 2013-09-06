@@ -341,9 +341,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'local'
 
-        data['total_capacity_gb'] = float(self.vg.vg_size.replace(',', '.'))
-        data['free_capacity_gb'] =\
-            float(self.vg.vg_free_space.replace(',', '.'))
+        data['total_capacity_gb'] = float(self.vg.vg_size)
+        data['free_capacity_gb'] = float(self.vg.vg_free_space)
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
         data['location_info'] =\
@@ -686,7 +685,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
-        data['total_capacity_gb'] = float(self.vg.vg_size.replace(',', '.'))
+        data['total_capacity_gb'] = float(self.vg.vg_size)
         data['free_capacity_gb'] = float(self.vg.vg_free_space)
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
@@ -871,9 +870,8 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSER'
-        data['total_capacity_gb'] = float(self.vg.vg_size.replace(',', '.'))
-        data['free_capacity_gb'] =\
-            float(self.vg.vg_free_space.replace(',', '.'))
+        data['total_capacity_gb'] = float(self.vg.vg_size)
+        data['free_capacity_gb'] = float(self.vg.vg_free_space)
 
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
