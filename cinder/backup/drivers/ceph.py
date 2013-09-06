@@ -258,16 +258,18 @@ class CephBackupDriver(BackupDriver):
                               stripe_unit=self.rbd_stripe_unit,
                               stripe_count=self.rbd_stripe_count)
 
-    def _delete_backup_snapshots(self, rados_client, base_name, backup_id):
-        """Delete any snapshots associated with this backup.
+    def _delete_backup_snapshot(self, rados_client, base_name, backup_id):
+        """Delete snapshot associated with this backup if one exists.
 
-        A backup should have at most *one* associated snapshot.
+        A backup should have at most ONE associated snapshot.
 
         This is required before attempting to delete the base image. The
-        snapshots on the original volume can be left as they will be purged
-        when the volume is deleted.
+        snapshot on the original volume can be left as it will be purged when
+        the volume is deleted.
+
+        Returns tuple(deleted_snap_name, num_of_remaining_snaps).
         """
-        backup_snaps = None
+        remaining_snaps = 0
         base_rbd = self.rbd.Image(rados_client.ioctx, base_name)
         try:
             snap_name = self._get_backup_snap_name(base_rbd, base_name,
@@ -280,13 +282,12 @@ class CephBackupDriver(BackupDriver):
 
             # Now check whether any snapshots remain on the base image
             backup_snaps = self.get_backup_snaps(base_rbd)
+            if backup_snaps:
+                remaining_snaps = len(backup_snaps)
         finally:
             base_rbd.close()
 
-        if backup_snaps:
-            return len(backup_snaps)
-        else:
-            return 0
+        return snap_name, remaining_snaps
 
     def _try_delete_base_image(self, backup_id, volume_id, base_name=None):
         """Try to delete backup RBD image.
@@ -325,12 +326,12 @@ class CephBackupDriver(BackupDriver):
                                              (base_name))
 
             while retries >= 0:
-                # First delete associated snapshot (if exists)
-                rem = self._delete_backup_snapshots(client, base_name,
-                                                    backup_id)
+                # First delete associated snapshot from base image (if exists)
+                snap, rem = self._delete_backup_snapshot(client, base_name,
+                                                         backup_id)
                 if rem:
-                    msg = (_("base image still has %s snapshots so not "
-                             "deleting base image") % (rem))
+                    msg = (_("base image still has %s snapshots so skipping "
+                             "base image delete") % (rem))
                     LOG.info(msg)
                     return
 
@@ -354,6 +355,17 @@ class CephBackupDriver(BackupDriver):
                     retries = 0
                 finally:
                     retries -= 1
+
+            # Since we have deleted the base image we can delete the source
+            # volume backup snapshot.
+            src_name = self._utf8(volume_id)
+            if src_name in self.rbd.RBD().list(client.ioctx):
+                LOG.debug(_("deleting source snap '%s'") % snap)
+                src_rbd = self.rbd.Image(client.ioctx, src_name)
+                try:
+                    src_rbd.remove_snap(snap)
+                finally:
+                    src_rbd.close()
 
     def _rbd_diff_transfer(self, src_name, src_pool, dest_name, dest_pool,
                            src_user, src_conf, dest_user, dest_conf,
@@ -446,38 +458,39 @@ class CephBackupDriver(BackupDriver):
         from_snap = self._get_most_recent_snap(source_rbd_image)
         LOG.debug(_("using --from-snap '%s'") % from_snap)
 
-        backup_name = self._get_backup_base_name(volume_id, diff_format=True)
+        base_name = self._get_backup_base_name(volume_id, diff_format=True)
         image_created = False
-        force_full_backup = False
         with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
-            # If from_snap does not exist in the destination, this implies a
-            # previous backup has failed. In this case we will force a full
-            # backup.
+            # If from_snap does not exist at the destination (and the
+            # destination exists), this implies a previous backup has failed.
+            # In this case we will force a full backup.
             #
             # TODO(dosaboy): find a way to repair the broken backup
             #
-            if backup_name not in self.rbd.RBD().list(ioctx=client.ioctx):
-                # If a from_snap is defined then we cannot proceed (see above)
-                if from_snap is not None:
-                    force_full_backup = True
+            if base_name not in self.rbd.RBD().list(ioctx=client.ioctx):
+                # If a from_snap is defined but the base does not exist, we
+                # ignore it since it is stale and waiting to be cleaned up.
+                if from_snap:
+                    LOG.debug("source snap '%s' is stale so deleting" %
+                              (from_snap))
+                    source_rbd_image.remove_snap(from_snap)
+                    from_snap = None
 
                 # Create new base image
-                self._create_base_image(backup_name, length, client)
+                self._create_base_image(base_name, length, client)
                 image_created = True
             else:
                 # If a from_snap is defined but does not exist in the back base
                 # then we cannot proceed (see above)
-                if not self._snap_exists(backup_name, from_snap, client):
-                    force_full_backup = True
-
-        if force_full_backup:
-            errmsg = (_("snap='%(snap)s' does not exist in base "
-                        "image='%(base)s' - aborting incremental backup") %
-                      {'snap': from_snap, 'base': backup_name})
-            LOG.info(errmsg)
-            # Raise this exception so that caller can try another
-            # approach
-            raise exception.BackupRBDOperationFailed(errmsg)
+                if not self._snap_exists(base_name, from_snap, client):
+                    errmsg = (_("snap='%(snap)s' does not exist in base "
+                                "image='%(base)s' - aborting incremental "
+                                "backup") %
+                              {'snap': from_snap, 'base': base_name})
+                    LOG.info(errmsg)
+                    # Raise this exception so that caller can try another
+                    # approach
+                    raise exception.BackupRBDOperationFailed(errmsg)
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
@@ -492,7 +505,7 @@ class CephBackupDriver(BackupDriver):
         #                rather than brute force approach.
         try:
             before = time.time()
-            self._rbd_diff_transfer(volume_name, rbd_pool, backup_name,
+            self._rbd_diff_transfer(volume_name, rbd_pool, base_name,
                                     self._ceph_backup_pool,
                                     src_user=rbd_user,
                                     src_conf=rbd_conf,
@@ -515,7 +528,7 @@ class CephBackupDriver(BackupDriver):
             # Clean up if image was created as part of this operation
             if image_created:
                 self._try_delete_base_image(backup_id, volume_id,
-                                            base_name=backup_name)
+                                            base_name=base_name)
 
             # Delete snapshot
             LOG.debug(_("deleting backup snapshot='%s'") % (new_snap))
@@ -604,8 +617,8 @@ class CephBackupDriver(BackupDriver):
         The rbd image provided must be the base image used for an incremental
         backup.
 
-        A back is only allowed to have one associated snapshot. If more than
-        one is found, exception.BackupOperationError is raised.
+        A backup is only allowed ONE associated snapshot. If more are found,
+        exception.BackupOperationError is raised.
         """
         snaps = self.get_backup_snaps(rbd_image)
 
@@ -635,7 +648,7 @@ class CephBackupDriver(BackupDriver):
         """Get the most recent backup snapshot of the provided image.
 
         Returns name of most recent backup snapshot or None if there are no
-        backup snapshot.
+        backup snapshots.
         """
         backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
         if not backup_snaps:
