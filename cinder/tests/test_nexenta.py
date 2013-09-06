@@ -407,6 +407,16 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
         self.nms_mock.volume.object_exists('stack').AndReturn(True)
         self.nms_mock.folder.object_exists('stack/share').AndReturn(True)
+        share_opts = {
+            'read_write': '*',
+            'read_only': '',
+            'root': 'nobody',
+            'extra_options': 'anon=0',
+            'recursive': 'true',
+            'anonymous_rw': 'true',
+        }
+        self.nms_mock.netstorsvc.share_folder(
+            'svc:/network/nfs/server:default', 'stack/share', share_opts)
 
         self.mox.ReplayAll()
 
