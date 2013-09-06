@@ -16,12 +16,29 @@
 
 class mock_rados(object):
 
+    class ObjectNotFound(Exception):
+        pass
+
     class ioctx(object):
         def __init__(self, *args, **kwargs):
             pass
 
         def close(self, *args, **kwargs):
             pass
+
+    class Object(object):
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def read(self, *args):
+            raise NotImplementedError()
+
+        def write(self, *args):
+            raise NotImplementedError()
+
+        def seek(self, *args):
+            raise NotImplementedError()
 
     class Rados(object):
 
@@ -63,6 +80,12 @@ class mock_rbd(object):
         def remove_snap(self, *args, **kwargs):
             pass
 
+        def protect_snap(self, *args, **kwargs):
+            pass
+
+        def unprotect_snap(self, *args, **kwargs):
+            pass
+
         def read(self, *args, **kwargs):
             raise NotImplementedError()
 
@@ -76,6 +99,9 @@ class mock_rbd(object):
             pass
 
         def list_snaps(self):
+            raise NotImplementedError()
+
+        def parent_info(self):
             raise NotImplementedError()
 
         def size(self):
@@ -93,4 +119,7 @@ class mock_rbd(object):
             pass
 
         def list(self, *args, **kwargs):
+            raise NotImplementedError()
+
+        def clone(self, *args, **kwargs):
             raise NotImplementedError()
