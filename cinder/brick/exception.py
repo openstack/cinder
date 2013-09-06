@@ -126,3 +126,7 @@ class ISCSITargetRemoveFailed(BrickException):
 
 class ISCSITargetAttachFailed(BrickException):
     message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
+
+
+class ProtocolNotSupported(BrickException):
+    message = _("Connect to volume via protocol %(protocol)s not supported.")
