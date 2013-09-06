@@ -17,11 +17,14 @@
 
 from xml.dom import minidom
 
+import gettext
+import mock
 import webob.dec
 import webob.exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
+from cinder import exception
 from cinder.openstack.common import gettextutils
 from cinder.openstack.common import jsonutils
 from cinder import test
@@ -109,7 +112,7 @@ class TestFaults(test.TestCase):
         self.assertNotIn('resizeNotAllowed', resp.body)
         self.assertIn('forbidden', resp.body)
 
-    def test_raise_localized_explanation(self):
+    def test_raise_http_with_localized_explanation(self):
         params = ('blah', )
         expl = gettextutils.Message("String with params: %s" % params, 'test')
 
@@ -129,6 +132,41 @@ class TestFaults(test.TestCase):
         self.assertEqual(resp.status_int, 404)
         self.assertIn(("Mensaje traducido"), resp.body)
         self.stubs.UnsetAll()
+
+    @mock.patch('cinder.openstack.common.gettextutils.gettext.translation')
+    def test_raise_invalid_with_localized_explanation(self, mock_translation):
+        msg_template = gettextutils.Message("Invalid input: %(reason)s", "")
+        reason = gettextutils.Message("Value is invalid", "")
+
+        class MockESTranslations(gettext.GNUTranslations):
+            def ugettext(self, msgid):
+                if "Invalid input" in msgid:
+                    return "Entrada invalida: %(reason)s"
+                elif "Value is invalid" in msgid:
+                    return "El valor es invalido"
+                return msgid
+
+        def translation(domain, localedir=None, languages=None, fallback=None):
+            return MockESTranslations()
+
+        mock_translation.side_effect = translation
+
+        @webob.dec.wsgify
+        def raiser(req):
+            class MyInvalidInput(exception.InvalidInput):
+                message = msg_template
+
+            ex = MyInvalidInput(reason=reason)
+            raise wsgi.Fault(exception.ConvertedException(code=ex.code,
+                                                          explanation=ex.msg))
+
+        req = webob.Request.blank("/.json")
+        resp = req.get_response(raiser)
+        self.assertEqual(resp.content_type, "application/json")
+        self.assertEqual(resp.status_int, 400)
+        # This response was comprised of Message objects from two different
+        # exceptions, here we are testing that both got translated
+        self.assertIn("Entrada invalida: El valor es invalido", resp.body)
 
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults"""
