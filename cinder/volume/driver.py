@@ -62,25 +62,6 @@ volume_opts = [
                default=3,
                help='The maximum number of times to rescan targets'
                     ' to find volume'),
-    cfg.IntOpt('num_iser_scan_tries',
-               default=3,
-               help='The maximum number of times to rescan iSER target '
-                    'to find volume'),
-    cfg.IntOpt('iser_num_targets',
-               default=100,
-               help='The maximum number of iser target ids per host'),
-    cfg.StrOpt('iser_target_prefix',
-               default='iqn.2010-10.org.iser.openstack:',
-               help='prefix for iser volumes'),
-    cfg.StrOpt('iser_ip_address',
-               default='$my_ip',
-               help='The IP address that the iSER daemon is listening on'),
-    cfg.IntOpt('iser_port',
-               default=3260,
-               help='The port that the iSER daemon is listening on'),
-    cfg.StrOpt('iser_helper',
-               default='tgtadm',
-               help='iser target user-land tool to use'),
     cfg.StrOpt('volume_backend_name',
                default=None,
                help='The backend name for a given driver implementation'),
@@ -117,9 +98,33 @@ volume_opts = [
                      'optionally, auto can be set and Cinder '
                      'will autodetect type of backing device'))]
 
+# for backward compatibility
+iser_opts = [
+    cfg.IntOpt('num_iser_scan_tries',
+               default=3,
+               help='The maximum number of times to rescan iSER target'
+                    'to find volume'),
+    cfg.IntOpt('iser_num_targets',
+               default=100,
+               help='The maximum number of iser target ids per host'),
+    cfg.StrOpt('iser_target_prefix',
+               default='iqn.2010-10.org.iser.openstack:',
+               help='prefix for iser volumes'),
+    cfg.StrOpt('iser_ip_address',
+               default='$my_ip',
+               help='The IP address that the iSER daemon is listening on'),
+    cfg.IntOpt('iser_port',
+               default=3260,
+               help='The port that the iSER daemon is listening on'),
+    cfg.StrOpt('iser_helper',
+               default='tgtadm',
+               help='iser target user-land tool to use'),
+]
+
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
+CONF.register_opts(iser_opts)
 
 
 class VolumeDriver(object):
@@ -750,91 +755,18 @@ class ISERDriver(ISCSIDriver):
       '<auth method> <auth username> <auth password>'.
       `CHAP` is the only auth_method in use at the moment.
     """
-
     def __init__(self, *args, **kwargs):
         super(ISERDriver, self).__init__(*args, **kwargs)
-
-    def _do_iser_discovery(self, volume):
-        LOG.warn(_("ISER provider_location not stored, using discovery"))
-
-        volume_name = volume['name']
-
-        (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
-                                    '-t', 'sendtargets', '-p', volume['host'],
-                                    run_as_root=True)
-        for target in out.splitlines():
-            if (self.configuration.iser_ip_address in target
-                    and volume_name in target):
-                return target
-        return None
-
-    def _get_iser_properties(self, volume):
-        """Gets iser configuration
-
-        We ideally get saved information in the volume entity, but fall back
-        to discovery if need be. Discovery may be completely removed in future
-        The properties are:
-
-        :target_discovered:    boolean indicating whether discovery was used
-
-        :target_iqn:    the IQN of the iSER target
-
-        :target_portal:    the portal of the iSER target
-
-        :target_lun:    the lun of the iSER target
-
-        :volume_id:    the id of the volume (currently used by xen)
-
-        :auth_method:, :auth_username:, :auth_password:
-
-            the authentication details. Right now, either auth_method is not
-            present meaning no authentication, or auth_method == `CHAP`
-            meaning use CHAP with the specified credentials.
-        """
-
-        properties = {}
-
-        location = volume['provider_location']
-
-        if location:
-            # provider_location is the same format as iSER discovery output
-            properties['target_discovered'] = False
-        else:
-            location = self._do_iser_discovery(volume)
-
-            if not location:
-                msg = (_("Could not find iSER export for volume %s") %
-                        (volume['name']))
-                raise exception.InvalidVolume(reason=msg)
-
-            LOG.debug(_("ISER Discovery: Found %s") % (location))
-            properties['target_discovered'] = True
-
-        results = location.split(" ")
-        properties['target_portal'] = results[0].split(",")[0]
-        properties['target_iqn'] = results[1]
-        try:
-            properties['target_lun'] = int(results[2])
-        except (IndexError, ValueError):
-            if (self.configuration.volume_driver in
-                    ['cinder.volume.drivers.lvm.LVMISERDriver',
-                     'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'] and
-                    self.configuration.iser_helper == 'tgtadm'):
-                properties['target_lun'] = 1
-            else:
-                properties['target_lun'] = 0
-
-        properties['volume_id'] = volume['id']
-
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-
-        return properties
+        # for backward compatibility
+        self.configuration.num_iscsi_scan_tries = \
+            self.configuration.num_iser_scan_tries
+        self.configuration.iscsi_num_targets = \
+            self.configuration.iser_num_targets
+        self.configuration.iscsi_target_prefix = \
+            self.configuration.iser_target_prefix
+        self.configuration.iscsi_ip_address = \
+            self.configuration.iser_ip_address
+        self.configuration.iser_port = self.configuration.iser_port
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -856,122 +788,11 @@ class ISERDriver(ISCSIDriver):
 
         """
 
-        iser_properties = self._get_iser_properties(volume)
+        iser_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iser',
             'data': iser_properties
         }
-
-    def _check_valid_device(self, path):
-        cmd = ('dd', 'if=%(path)s' % {"path": path},
-               'of=/dev/null', 'count=1')
-        out, info = None, None
-        try:
-            out, info = self._execute(*cmd, run_as_root=True)
-        except processutils.ProcessExecutionError as e:
-            LOG.error(_("Failed to access the device on the path "
-                        "%(path)s: %(error)s.") %
-                      {"path": path, "error": e.stderr})
-            return False
-        # If the info is none, the path does not exist.
-        if info is None:
-            return False
-        return True
-
-    def _attach_volume(self, context, volume, connector):
-        """Attach the volume."""
-        iser_properties = None
-        host_device = None
-        init_conn = self.initialize_connection(volume, connector)
-        iser_properties = init_conn['data']
-
-        # code "inspired by" nova/virt/libvirt/volume.py
-        try:
-            self._run_iscsiadm(iser_properties, ())
-        except processutils.ProcessExecutionError as exc:
-            # iscsiadm returns 21 for "No records found" after version 2.0-871
-            if exc.exit_code in [21, 255]:
-                self._run_iscsiadm(iser_properties, ('--op', 'new'))
-            else:
-                raise
-
-        if iser_properties.get('auth_method'):
-            self._iscsiadm_update(iser_properties,
-                                  "node.session.auth.authmethod",
-                                  iser_properties['auth_method'])
-            self._iscsiadm_update(iser_properties,
-                                  "node.session.auth.username",
-                                  iser_properties['auth_username'])
-            self._iscsiadm_update(iser_properties,
-                                  "node.session.auth.password",
-                                  iser_properties['auth_password'])
-
-        host_device = ("/dev/disk/by-path/ip-%s-iser-%s-lun-%s" %
-                       (iser_properties['target_portal'],
-                        iser_properties['target_iqn'],
-                        iser_properties.get('target_lun', 0)))
-
-        out = self._run_iscsiadm_bare(["-m", "session"],
-                                      run_as_root=True,
-                                      check_exit_code=[0, 1, 21])[0] or ""
-
-        portals = [{'portal': p.split(" ")[2], 'iqn': p.split(" ")[3]}
-                   for p in out.splitlines() if p.startswith("iser:")]
-
-        stripped_portal = iser_properties['target_portal'].split(",")[0]
-        length_iqn = [s for s in portals
-                      if stripped_portal ==
-                      s['portal'].split(",")[0] and
-                      s['iqn'] == iser_properties['target_iqn']]
-        if len(portals) == 0 or len(length_iqn) == 0:
-            try:
-                self._run_iscsiadm(iser_properties, ("--login",),
-                                   check_exit_code=[0, 255])
-            except processutils.ProcessExecutionError as err:
-                if err.exit_code in [15]:
-                    self._iscsiadm_update(iser_properties,
-                                          "node.startup",
-                                          "automatic")
-                    return iser_properties, host_device
-                else:
-                    raise
-
-            self._iscsiadm_update(iser_properties,
-                                  "node.startup", "automatic")
-
-            tries = 0
-            while not os.path.exists(host_device):
-                if tries >= self.configuration.num_iser_scan_tries:
-                    raise exception.CinderException(_("iSER device "
-                                                      "not found "
-                                                      "at %s") % (host_device))
-
-                LOG.warn(_("ISER volume not yet found at: %(host_device)s. "
-                           "Will rescan & retry.  Try number: %(tries)s.") %
-                         {'host_device': host_device, 'tries': tries})
-
-                # The rescan isn't documented as being necessary(?),
-                # but it helps
-                self._run_iscsiadm(iser_properties, ("--rescan",))
-
-                tries = tries + 1
-                if not os.path.exists(host_device):
-                    time.sleep(tries ** 2)
-
-            if tries != 0:
-                LOG.debug(_("Found iSER node %(host_device)s "
-                            "(after %(tries)s rescans).") %
-                          {'host_device': host_device,
-                           'tries': tries})
-
-        if not self._check_valid_device(host_device):
-            raise exception.DeviceUnavailable(path=host_device,
-                                              reason=(_("Unable to access "
-                                                        "the backend storage "
-                                                        "via the path "
-                                                        "%(path)s.") %
-                                                      {'path': host_device}))
-        return iser_properties, host_device
 
     def _update_volume_status(self):
         """Retrieve status info from volume group."""

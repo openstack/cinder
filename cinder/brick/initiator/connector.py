@@ -91,6 +91,13 @@ class InitiatorConnector(executor.Executor):
                                   use_multipath=use_multipath,
                                   device_scan_attempts=device_scan_attempts,
                                   *args, **kwargs)
+        elif protocol == "ISER":
+            return ISERConnector(root_helper=root_helper,
+                                 driver=driver,
+                                 execute=execute,
+                                 use_multipath=use_multipath,
+                                 device_scan_attempts=device_scan_attempts,
+                                 *args, **kwargs)
         elif protocol == "FIBRE_CHANNEL":
             return FibreChannelConnector(root_helper=root_helper,
                                          driver=driver,
@@ -499,6 +506,15 @@ class ISCSIConnector(InitiatorConnector):
 
     def _rescan_multipath(self):
         self._run_multipath('-r', check_exit_code=[0, 1, 21])
+
+
+class ISERConnector(ISCSIConnector):
+
+    def _get_device_path(self, iser_properties):
+        return ("/dev/disk/by-path/ip-%s-iser-%s-lun-%s" %
+                (iser_properties['target_portal'],
+                 iser_properties['target_iqn'],
+                 iser_properties.get('target_lun', 0)))
 
 
 class FibreChannelConnector(InitiatorConnector):
