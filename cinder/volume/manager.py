@@ -166,8 +166,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_("Starting volume driver %(driver_name)s (%(version)s)") %
                  {'driver_name': self.driver.__class__.__name__,
                   'version': self.driver.get_version()})
-        self.driver.do_setup(ctxt)
-        self.driver.check_for_setup_error()
+        try:
+            self.driver.do_setup(ctxt)
+            self.driver.check_for_setup_error()
+        except Exception:
+            LOG.error(_("Error encountered during "
+                        "initialization of driver: %s"),
+                      self.driver.__class__.__name__)
 
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         LOG.debug(_("Re-exporting %s volumes"), len(volumes))
@@ -187,6 +192,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             if volume['status'] == 'deleting':
                 LOG.info(_('Resuming delete on volume: %s') % volume['id'])
                 self.delete_volume(ctxt, volume['id'])
+
+        self.driver.set_initialized()
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
@@ -745,11 +752,15 @@ class VolumeManager(manager.SchedulerDependentManager):
     @periodic_task.periodic_task
     def _report_driver_status(self, context):
         LOG.info(_("Updating volume status"))
-        volume_stats = self.driver.get_volume_stats(refresh=True)
-        if volume_stats:
-            # This will grab info about the host and queue it
-            # to be sent to the Schedulers.
-            self.update_service_capabilities(volume_stats)
+        if not self.driver.initialized:
+            LOG.warning(_('Unabled to update stats, driver is '
+                          'uninitialized'))
+        else:
+            volume_stats = self.driver.get_volume_stats(refresh=True)
+            if volume_stats:
+                # This will grab info about the host and queue it
+                # to be sent to the Schedulers.
+                self.update_service_capabilities(volume_stats)
 
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish."""

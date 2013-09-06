@@ -109,8 +109,18 @@ class VolumeDriver(object):
         self.set_execute(execute)
         self._stats = {}
 
+        # set True by manager after succesful check_for_setup
+        self._initialized = False
+
     def set_execute(self, execute):
         self._execute = execute
+
+    def set_initialized(self):
+        self._initialized = True
+
+    @property
+    def initialized(self):
+        return self._initialized
 
     def get_version(self):
         """Get the current version of this driver."""
