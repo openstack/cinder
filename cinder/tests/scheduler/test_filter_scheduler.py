@@ -94,7 +94,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1}}
         self.mox.ReplayAll()
         weighed_host = sched._schedule(fake_context, request_spec, {})
-        self.assertTrue(weighed_host.obj is not None)
+        self.assertIsNotNone(weighed_host.obj)
 
     def test_max_attempts(self):
         self.flags(scheduler_max_attempts=4)

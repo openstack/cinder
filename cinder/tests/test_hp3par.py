@@ -566,7 +566,7 @@ class HP3PARBaseDriver():
                   'source_volid': HP3PARBaseDriver.VOLUME_ID}
         src_vref = {}
         model_update = self.driver.create_cloned_volume(volume, src_vref)
-        self.assertTrue(model_update is not None)
+        self.assertIsNotNone(model_update)
 
     def test_create_snapshot(self):
         self.flags(lock_path=self.tempdir)
