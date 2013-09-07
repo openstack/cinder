@@ -204,7 +204,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         ctx = context.RequestContext('fake', 'fake', roles=['johnny-admin'])
         self.assertFalse(ctx.is_admin)
         ctx = context.RequestContext('fake', 'fake', roles=['admin'])
-        self.assert_(ctx.is_admin)
+        self.assertTrue(ctx.is_admin)
 
     def test_custom_admin_role_is_admin(self):
         # define explict rules for context_is_admin
@@ -214,9 +214,9 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         brain = common_policy.Brain(rules, CONF.policy_default_rule)
         common_policy.set_brain(brain)
         ctx = context.RequestContext('fake', 'fake', roles=['johnny-admin'])
-        self.assert_(ctx.is_admin)
+        self.assertTrue(ctx.is_admin)
         ctx = context.RequestContext('fake', 'fake', roles=['administrator'])
-        self.assert_(ctx.is_admin)
+        self.assertTrue(ctx.is_admin)
         # default rule no longer applies
         ctx = context.RequestContext('fake', 'fake', roles=['admin'])
         self.assertFalse(ctx.is_admin)
@@ -231,4 +231,4 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         ctx = context.RequestContext('fake', 'fake')
         self.assertFalse(ctx.is_admin)
         ctx = context.RequestContext('fake', 'fake', roles=['admin'])
-        self.assert_(ctx.is_admin)
+        self.assertTrue(ctx.is_admin)
