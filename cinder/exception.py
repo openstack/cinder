@@ -106,7 +106,7 @@ class CinderException(Exception):
 
 
 class GlanceConnectionFailed(CinderException):
-    message = _("Connection to glance failed") + ": %(reason)s"
+    message = _("Connection to glance failed: %(reason)s")
 
 
 class NotAuthorized(CinderException):
@@ -132,7 +132,7 @@ class Invalid(CinderException):
 
 
 class InvalidSnapshot(Invalid):
-    message = _("Invalid snapshot") + ": %(reason)s"
+    message = _("Invalid snapshot: %(reason)s")
 
 
 class InvalidSourceVolume(Invalid):
@@ -161,15 +161,15 @@ class InvalidResults(Invalid):
 
 
 class InvalidInput(Invalid):
-    message = _("Invalid input received") + ": %(reason)s"
+    message = _("Invalid input received: %(reason)s")
 
 
 class InvalidVolumeType(Invalid):
-    message = _("Invalid volume type") + ": %(reason)s"
+    message = _("Invalid volume type: %(reason)s")
 
 
 class InvalidVolume(Invalid):
-    message = _("Invalid volume") + ": %(reason)s"
+    message = _("Invalid volume: %(reason)s")
 
 
 class InvalidContentType(Invalid):
@@ -177,7 +177,7 @@ class InvalidContentType(Invalid):
 
 
 class InvalidHost(Invalid):
-    message = _("Invalid host") + ": %(reason)s"
+    message = _("Invalid host: %(reason)s")
 
 
 # Cannot be templated as the error syntax varies.
@@ -187,7 +187,7 @@ class InvalidParameterValue(Invalid):
 
 
 class InvalidAuthKey(Invalid):
-    message = _("Invalid auth key") + ": %(reason)s"
+    message = _("Invalid auth key: %(reason)s")
 
 
 class ServiceUnavailable(Invalid):
@@ -240,11 +240,11 @@ class VolumeAdminMetadataNotFound(NotFound):
 
 
 class InvalidVolumeMetadata(Invalid):
-    message = _("Invalid metadata") + ": %(reason)s"
+    message = _("Invalid metadata: %(reason)s")
 
 
 class InvalidVolumeMetadataSize(Invalid):
-    message = _("Invalid metadata size") + ": %(reason)s"
+    message = _("Invalid metadata size: %(reason)s")
 
 
 class SnapshotMetadataNotFound(NotFound):
@@ -253,11 +253,11 @@ class SnapshotMetadataNotFound(NotFound):
 
 
 class InvalidSnapshotMetadata(Invalid):
-    message = _("Invalid metadata") + ": %(reason)s"
+    message = _("Invalid metadata: %(reason)s")
 
 
 class InvalidSnapshotMetadataSize(Invalid):
-    message = _("Invalid metadata size") + ": %(reason)s"
+    message = _("Invalid metadata size: %(reason)s")
 
 
 class VolumeTypeNotFound(NotFound):
@@ -399,7 +399,7 @@ class VolumeTypeEncryptionExists(Invalid):
 
 
 class MigrationError(CinderException):
-    message = _("Migration error") + ": %(reason)s"
+    message = _("Migration error: %(reason)s")
 
 
 class MalformedRequestBody(CinderException):
@@ -427,7 +427,7 @@ class WillNotSchedule(CinderException):
 
 
 class QuotaError(CinderException):
-    message = _("Quota exceeded") + ": code=%(code)s"
+    message = _("Quota exceeded: code=%(code)s")
     code = 413
     headers = {'Retry-After': 0}
     safe = True
@@ -598,7 +598,7 @@ class InvalidBackup(Invalid):
 
 
 class SwiftConnectionFailed(CinderException):
-    message = _("Connection to swift failed") + ": %(reason)s"
+    message = _("Connection to swift failed: %(reason)s")
 
 
 class TransferNotFound(NotFound):
@@ -606,11 +606,11 @@ class TransferNotFound(NotFound):
 
 
 class VolumeMigrationFailed(CinderException):
-    message = _("Volume migration failed") + ": %(reason)s"
+    message = _("Volume migration failed: %(reason)s")
 
 
 class SSHInjectionThreat(CinderException):
-    message = _("SSH command injection detected") + ": %(command)s"
+    message = _("SSH command injection detected: %(command)s")
 
 
 class CoraidException(CinderException):
@@ -675,7 +675,7 @@ class QoSSpecsKeyNotFound(NotFound):
 
 
 class InvalidQoSSpecs(Invalid):
-    message = _("Invalid qos specs") + ": %(reason)s"
+    message = _("Invalid qos specs: %(reason)s")
 
 
 class QoSSpecsInUse(CinderException):
