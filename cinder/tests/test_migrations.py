@@ -478,8 +478,8 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue(isinstance(volumes.c.source_volid.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volumes.c.source_volid.type,
+                                  sqlalchemy.types.VARCHAR)
 
     def _metadatas(self, upgrade_to, downgrade_to=None):
         for (key, engine) in self.engines.items():
@@ -507,8 +507,8 @@ class TestMigrations(test.TestCase):
     def test_upgrade_006_adds_provider_location(self):
         for metadata in self.metadatas_upgraded_to(6):
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
-            self.assertTrue(isinstance(snapshots.c.provider_location.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(snapshots.c.provider_location.type,
+                                  sqlalchemy.types.VARCHAR)
 
     def test_downgrade_006_removes_provider_location(self):
         for metadata in self.metadatas_downgraded_from(6):
@@ -549,44 +549,44 @@ class TestMigrations(test.TestCase):
                                        metadata,
                                        autoload=True)
 
-            self.assertTrue(isinstance(backups.c.created_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(backups.c.updated_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(backups.c.deleted_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(backups.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(backups.c.id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.volume_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.user_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.project_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.host.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.availability_zone.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.display_name.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.display_description.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.container.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.status.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.fail_reason.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.service_metadata.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.service.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(backups.c.size.type,
-                                       sqlalchemy.types.INTEGER))
-            self.assertTrue(isinstance(backups.c.object_count.type,
-                                       sqlalchemy.types.INTEGER))
+            self.assertIsInstance(backups.c.created_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(backups.c.updated_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(backups.c.deleted_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(backups.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(backups.c.id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.volume_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.user_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.project_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.host.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.availability_zone.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.display_name.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.display_description.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.container.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.status.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.fail_reason.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.service_metadata.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.service.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(backups.c.size.type,
+                                  sqlalchemy.types.INTEGER)
+            self.assertIsInstance(backups.c.object_count.type,
+                                  sqlalchemy.types.INTEGER)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 7)
 
@@ -611,24 +611,24 @@ class TestMigrations(test.TestCase):
                                                  metadata,
                                                  autoload=True)
 
-            self.assertTrue(isinstance(snapshot_metadata.c.created_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(snapshot_metadata.c.updated_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(snapshot_metadata.c.deleted_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(snapshot_metadata.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(snapshot_metadata.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(snapshot_metadata.c.id.type,
-                                       sqlalchemy.types.INTEGER))
-            self.assertTrue(isinstance(snapshot_metadata.c.snapshot_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(snapshot_metadata.c.key.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(snapshot_metadata.c.value.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(snapshot_metadata.c.created_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(snapshot_metadata.c.updated_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(snapshot_metadata.c.deleted_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(snapshot_metadata.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(snapshot_metadata.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(snapshot_metadata.c.id.type,
+                                  sqlalchemy.types.INTEGER)
+            self.assertIsInstance(snapshot_metadata.c.snapshot_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(snapshot_metadata.c.key.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(snapshot_metadata.c.value.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 8)
 
@@ -652,26 +652,26 @@ class TestMigrations(test.TestCase):
                                          metadata,
                                          autoload=True)
 
-            self.assertTrue(isinstance(transfers.c.created_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(transfers.c.updated_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(transfers.c.deleted_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(transfers.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(transfers.c.id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(transfers.c.volume_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(transfers.c.display_name.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(transfers.c.salt.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(transfers.c.crypt_hash.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(transfers.c.expires_at.type,
-                                       sqlalchemy.types.DATETIME))
+            self.assertIsInstance(transfers.c.created_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(transfers.c.updated_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(transfers.c.deleted_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(transfers.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(transfers.c.id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(transfers.c.volume_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(transfers.c.display_name.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(transfers.c.salt.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(transfers.c.crypt_hash.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(transfers.c.expires_at.type,
+                                  sqlalchemy.types.DATETIME)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 9)
 
@@ -706,8 +706,8 @@ class TestMigrations(test.TestCase):
             for column in volumes_v10.c:
                 self.assertTrue(volumes.c.__contains__(column.name))
 
-            self.assertTrue(isinstance(volumes.c.bootable.type,
-                                       sqlalchemy.types.BOOLEAN))
+            self.assertIsInstance(volumes.c.bootable.type,
+                                  sqlalchemy.types.BOOLEAN)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 10)
             metadata = sqlalchemy.schema.MetaData()
@@ -736,8 +736,8 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue(isinstance(volumes.c.attached_host.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volumes.c.attached_host.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 11)
             metadata = sqlalchemy.schema.MetaData()
@@ -762,8 +762,8 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue(isinstance(volumes.c.provider_geometry.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volumes.c.provider_geometry.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 12)
             metadata = sqlalchemy.schema.MetaData()
@@ -788,8 +788,8 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue(isinstance(volumes.c._name_id.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volumes.c._name_id.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 13)
             metadata = sqlalchemy.schema.MetaData()
@@ -859,29 +859,29 @@ class TestMigrations(test.TestCase):
             # encryption key UUID
             volumes = sqlalchemy.Table('volumes', metadata, autoload=True)
             self.assertIn('encryption_key_id', volumes.c)
-            self.assertTrue(isinstance(volumes.c.encryption_key_id.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volumes.c.encryption_key_id.type,
+                                  sqlalchemy.types.VARCHAR)
 
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
             self.assertIn('encryption_key_id', snapshots.c)
-            self.assertTrue(isinstance(snapshots.c.encryption_key_id.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(snapshots.c.encryption_key_id.type,
+                                  sqlalchemy.types.VARCHAR)
             self.assertIn('volume_type_id', snapshots.c)
-            self.assertTrue(isinstance(snapshots.c.volume_type_id.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(snapshots.c.volume_type_id.type,
+                                  sqlalchemy.types.VARCHAR)
 
             # encryption types table
             encryption = sqlalchemy.Table('encryption',
                                           metadata,
                                           autoload=True)
-            self.assertTrue(isinstance(encryption.c.volume_type_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(encryption.c.cipher.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(encryption.c.key_size.type,
-                                       sqlalchemy.types.INTEGER))
-            self.assertTrue(isinstance(encryption.c.provider.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(encryption.c.volume_type_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(encryption.c.cipher.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(encryption.c.key_size.type,
+                                  sqlalchemy.types.INTEGER)
+            self.assertIsInstance(encryption.c.provider.type,
+                                  sqlalchemy.types.VARCHAR)
 
             # downgrade schema
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 16)
@@ -913,22 +913,22 @@ class TestMigrations(test.TestCase):
             qos_specs = sqlalchemy.Table('quality_of_service_specs',
                                          metadata,
                                          autoload=True)
-            self.assertTrue(isinstance(qos_specs.c.created_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(qos_specs.c.updated_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(qos_specs.c.deleted_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(qos_specs.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(qos_specs.c.id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(qos_specs.c.specs_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(qos_specs.c.key.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(qos_specs.c.value.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(qos_specs.c.created_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(qos_specs.c.updated_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(qos_specs.c.deleted_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(qos_specs.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(qos_specs.c.id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(qos_specs.c.specs_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(qos_specs.c.key.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(qos_specs.c.value.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 17)
 
@@ -949,8 +949,8 @@ class TestMigrations(test.TestCase):
             volumes = sqlalchemy.Table('volumes',
                                        metadata,
                                        autoload=True)
-            self.assertTrue(isinstance(volumes.c.migration_status.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volumes.c.migration_status.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 18)
             metadata = sqlalchemy.schema.MetaData()
@@ -979,24 +979,24 @@ class TestMigrations(test.TestCase):
                                                      metadata,
                                                      autoload=True)
 
-            self.assertTrue(isinstance(volume_admin_metadata.c.created_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(volume_admin_metadata.c.updated_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(volume_admin_metadata.c.deleted_at.type,
-                                       sqlalchemy.types.DATETIME))
-            self.assertTrue(isinstance(volume_admin_metadata.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(volume_admin_metadata.c.deleted.type,
-                                       sqlalchemy.types.BOOLEAN))
-            self.assertTrue(isinstance(volume_admin_metadata.c.id.type,
-                                       sqlalchemy.types.INTEGER))
-            self.assertTrue(isinstance(volume_admin_metadata.c.volume_id.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(volume_admin_metadata.c.key.type,
-                                       sqlalchemy.types.VARCHAR))
-            self.assertTrue(isinstance(volume_admin_metadata.c.value.type,
-                                       sqlalchemy.types.VARCHAR))
+            self.assertIsInstance(volume_admin_metadata.c.created_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(volume_admin_metadata.c.updated_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(volume_admin_metadata.c.deleted_at.type,
+                                  sqlalchemy.types.DATETIME)
+            self.assertIsInstance(volume_admin_metadata.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(volume_admin_metadata.c.deleted.type,
+                                  sqlalchemy.types.BOOLEAN)
+            self.assertIsInstance(volume_admin_metadata.c.id.type,
+                                  sqlalchemy.types.INTEGER)
+            self.assertIsInstance(volume_admin_metadata.c.volume_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(volume_admin_metadata.c.key.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(volume_admin_metadata.c.value.type,
+                                  sqlalchemy.types.VARCHAR)
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 19)
 

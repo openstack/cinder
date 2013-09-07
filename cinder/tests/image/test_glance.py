@@ -622,7 +622,7 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
-        self.assertTrue(isinstance(client, MyGlanceStubClient))
+        self.assertIsInstance(client, MyGlanceStubClient)
 
     def test_create_glance_client_auth_strategy_is_not_keystone(self):
         self.flags(auth_strategy='noauth')
@@ -638,7 +638,7 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
-        self.assertTrue(isinstance(client, MyGlanceStubClient))
+        self.assertIsInstance(client, MyGlanceStubClient)
 
     def test_create_glance_client_glance_request_default_timeout(self):
         self.flags(auth_strategy='keystone')
@@ -654,7 +654,7 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
-        self.assertTrue(isinstance(client, MyGlanceStubClient))
+        self.assertIsInstance(client, MyGlanceStubClient)
 
     def tearDown(self):
         self.stubs.UnsetAll()
