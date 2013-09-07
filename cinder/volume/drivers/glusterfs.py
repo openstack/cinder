@@ -603,7 +603,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             #  exist, not   |                | exist, being   |needs ptr update
             #  used here)   |                | committed down)|     if so)
 
-            backing_chain = self._get_backing_chain_for_path(active_file_path)
+            backing_chain = self._get_backing_chain_for_path(
+                snapshot['volume'], active_file_path)
             # This file is guaranteed to exist since we aren't operating on
             # the active file.
             higher_file = next((os.path.basename(f['filename'])
@@ -781,19 +782,43 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                                    run_as_root=True)
         return self._get_file_format(out)
 
-    def _get_backing_chain_for_path(self, path):
-        """Returns dict containing backing-chain information."""
+    def _get_backing_chain_for_path(self, volume, path):
+        """Returns list of dicts containing backing-chain information.
 
-        # TODO(eharney): these args aren't available on el6.4's qemu-img
-        #  Need to rewrite
-        #  --backing-chain added in qemu 1.3.0
-        #  --output=json added in qemu 1.5.0
+        Includes 'filename', and 'backing-filename' for each
+        applicable entry.
 
-        (out, err) = self._execute('qemu-img', 'info',
-                                   '--backing-chain',
-                                   '--output=json',
-                                   path)
-        return json.loads(out)
+        Consider converting this to use --backing-chain and --output=json
+        when environment supports qemu-img 1.5.0.
+
+        :param volume: volume reference
+        :param path: path to image file at top of chain
+
+        """
+
+        output = []
+
+        (out, _err) = self._execute('qemu-img', 'info', path)
+        new_info = {}
+        new_info['filename'] = os.path.basename(path)
+        new_info['backing-filename'] = self._get_backing_file(out)
+
+        output.append(new_info)
+
+        while True:
+            filename = new_info['backing-filename']
+            path = os.path.join(self._local_volume_dir(volume), filename)
+            (out, _err) = self._execute('qemu-img', 'info', path)
+            backing_filename = self._get_backing_file(out)
+            if backing_filename is None:
+                break
+            new_info = {}
+            new_info['filename'] = filename
+            new_info['backing-filename'] = backing_filename
+
+            output.append(new_info)
+
+        return output
 
     def _get_file_format(self, output):
         for line in output.split('\n'):

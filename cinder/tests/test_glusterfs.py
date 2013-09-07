@@ -808,7 +808,6 @@ class GlusterFsDriverTestCase(test.TestCase):
         """
         (mox, drv) = self._mox, self._driver
 
-        #volume = DumbVolume()
         volume = self._simple_volume()
 
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
@@ -873,7 +872,8 @@ class GlusterFsDriverTestCase(test.TestCase):
                             'backing-filename': volume_file}]
 
         drv.get_active_image_from_info(volume).AndReturn(snap_file_2)
-        drv._get_backing_chain_for_path(snap_path_2).AndReturn(snap_path_chain)
+        drv._get_backing_chain_for_path(volume, snap_path_2).\
+            AndReturn(snap_path_chain)
 
         drv._read_info_file(info_path).AndReturn(info_file_dict)
 
@@ -1375,3 +1375,46 @@ class GlusterFsDriverTestCase(test.TestCase):
         self.assertRaises(exception.GlusterfsException,
                           drv.delete_snapshot,
                           snap_ref)
+
+    def test_get_backing_chain_for_path(self):
+        (mox, drv) = self._mox, self._driver
+
+        glusterfs.CONF.glusterfs_mount_point_base = self.TEST_MNT_POINT_BASE
+
+        volume = self._simple_volume()
+        vol_filename = volume['name']
+        vol_filename_2 = volume['name'] + '.asdfjkl'
+        vol_filename_3 = volume['name'] + 'qwertyuiop'
+        hashed = drv._get_hash_str(self.TEST_EXPORT1)
+        vol_dir = '%s/%s' % (self.TEST_MNT_POINT_BASE, hashed)
+        vol_path = '%s/%s' % (vol_dir, vol_filename)
+        vol_path_2 = '%s/%s' % (vol_dir, vol_filename_2)
+        vol_path_3 = '%s/%s' % (vol_dir, vol_filename_3)
+
+        mox.StubOutWithMock(drv, '_execute')
+        mox.StubOutWithMock(drv, '_local_volume_dir')
+
+        qemu_img_output_base = """image: %s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        """
+        qemu_img_output = qemu_img_output_base + 'backing file: %s\n'
+
+        qemu_img_output_1 = qemu_img_output % (vol_filename, vol_filename_2)
+        qemu_img_output_2 = qemu_img_output % (vol_filename_2, vol_filename_3)
+        qemu_img_output_3 = qemu_img_output_base % (vol_filename_3)
+
+        drv._local_volume_dir(volume).AndReturn(vol_dir)
+        drv._execute('qemu-img', 'info', vol_path).\
+            AndReturn((qemu_img_output_1, None))
+        drv._local_volume_dir(volume).AndReturn(vol_dir)
+        drv._execute('qemu-img', 'info', vol_path_2).\
+            AndReturn((qemu_img_output_2, None))
+        drv._local_volume_dir(volume).AndReturn(vol_dir)
+        drv._execute('qemu-img', 'info', vol_path_3).\
+            AndReturn((qemu_img_output_3, None))
+
+        mox.ReplayAll()
+
+        drv._get_backing_chain_for_path(volume, vol_path)
