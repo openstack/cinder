@@ -2130,7 +2130,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         stats = self.driver.get_volume_stats()
         self.assertLessEqual(stats['free_capacity_gb'],
                              stats['total_capacity_gb'])
-        self.assertEquals(stats['reserved_percentage'], 25)
+        self.assertEqual(stats['reserved_percentage'], 25)
         pool = self.driver.configuration.local_conf.storwize_svc_volpool_name
         if self.USESIM:
             expected = 'storwize-svc-sim_' + pool

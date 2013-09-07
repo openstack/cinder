@@ -182,9 +182,9 @@ class QoSSpecsTestCase(test.TestCase):
         qos_specs.associate_qos_with_type(self.ctxt, specs_id,
                                           type_ref['id'])
         res = qos_specs.get_associations(self.ctxt, specs_id)
-        self.assertEquals(len(res), 1)
-        self.assertEquals('TypeName', res[0]['name'])
-        self.assertEquals(type_ref['id'], res[0]['id'])
+        self.assertEqual(len(res), 1)
+        self.assertEqual('TypeName', res[0]['name'])
+        self.assertEqual(type_ref['id'], res[0]['id'])
 
         self.stubs.Set(db, 'qos_specs_associate',
                        fake_db_associate)
@@ -209,11 +209,11 @@ class QoSSpecsTestCase(test.TestCase):
         qos_specs.associate_qos_with_type(self.ctxt, specs_id,
                                           type_ref['id'])
         res = qos_specs.get_associations(self.ctxt, specs_id)
-        self.assertEquals(len(res), 1)
+        self.assertEqual(len(res), 1)
 
         qos_specs.disassociate_qos_specs(self.ctxt, specs_id, type_ref['id'])
         res = qos_specs.get_associations(self.ctxt, specs_id)
-        self.assertEquals(len(res), 0)
+        self.assertEqual(len(res), 0)
 
         self.stubs.Set(db, 'qos_specs_disassociate',
                        fake_db_disassociate)
@@ -239,11 +239,11 @@ class QoSSpecsTestCase(test.TestCase):
         qos_specs.associate_qos_with_type(self.ctxt, specs_id,
                                           type2_ref['id'])
         res = qos_specs.get_associations(self.ctxt, specs_id)
-        self.assertEquals(len(res), 2)
+        self.assertEqual(len(res), 2)
 
         qos_specs.disassociate_all(self.ctxt, specs_id)
         res = qos_specs.get_associations(self.ctxt, specs_id)
-        self.assertEquals(len(res), 0)
+        self.assertEqual(len(res), 0)
 
         self.stubs.Set(db, 'qos_specs_disassociate_all',
                        fake_db_disassociate_all)
@@ -288,7 +288,7 @@ class QoSSpecsTestCase(test.TestCase):
                  'consumer': 'both'}
         id = self._create_qos_specs('Specs1', input)
         specs = qos_specs.get_qos_specs(self.ctxt, id)
-        self.assertEquals(specs['specs']['key1'], one_time_value)
+        self.assertEqual(specs['specs']['key1'], one_time_value)
 
         self.assertRaises(exception.InvalidQoSSpecs,
                           qos_specs.get_qos_specs, self.ctxt, None)
@@ -302,7 +302,7 @@ class QoSSpecsTestCase(test.TestCase):
         id = self._create_qos_specs(one_time_value, input)
         specs = qos_specs.get_qos_specs_by_name(self.ctxt,
                                                 one_time_value)
-        self.assertEquals(specs['specs']['key1'], one_time_value)
+        self.assertEqual(specs['specs']['key1'], one_time_value)
 
         self.assertRaises(exception.InvalidQoSSpecs,
                           qos_specs.get_qos_specs_by_name, self.ctxt, None)

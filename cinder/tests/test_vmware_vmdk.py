@@ -146,7 +146,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         test_obj = TestClass()
         self.assertRaises(exception.CinderException, test_obj.fail)
-        self.assertEquals(test_obj.counter1, 3)
+        self.assertEqual(test_obj.counter1, 3)
 
     def test_create_session(self):
         """Test create_session."""
@@ -175,12 +175,12 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     def test_get_volume_stats(self):
         """Test get_volume_stats."""
         stats = self._driver.get_volume_stats()
-        self.assertEquals(stats['vendor_name'], 'VMware')
-        self.assertEquals(stats['driver_version'], '1.0')
-        self.assertEquals(stats['storage_protocol'], 'LSI Logic SCSI')
-        self.assertEquals(stats['reserved_percentage'], 0)
-        self.assertEquals(stats['total_capacity_gb'], 'unknown')
-        self.assertEquals(stats['free_capacity_gb'], 'unknown')
+        self.assertEqual(stats['vendor_name'], 'VMware')
+        self.assertEqual(stats['driver_version'], '1.0')
+        self.assertEqual(stats['storage_protocol'], 'LSI Logic SCSI')
+        self.assertEqual(stats['reserved_percentage'], 0)
+        self.assertEqual(stats['total_capacity_gb'], 'unknown')
+        self.assertEqual(stats['free_capacity_gb'], 'unknown')
 
     def test_create_volume(self):
         """Test create_volume."""
@@ -200,7 +200,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         ret = self._session.wait_for_task(mox.IgnoreArg())
-        self.assertEquals(ret.result, result)
+        self.assertEqual(ret.result, result)
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -358,7 +358,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         # Not recursive
         child = FakeMor('Parent', 'my_parent')
         parent = self._volumeops._get_parent(child, 'Parent')
-        self.assertEquals(parent, child)
+        self.assertEqual(parent, child)
 
         # Recursive
         m = mox.Mox()
@@ -372,7 +372,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         ret = self._volumeops._get_parent(child, 'Parent')
-        self.assertEquals(ret, parent)
+        self.assertEqual(ret, parent)
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -445,7 +445,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         result = self._volumeops.get_datastore(backing)
-        self.assertEquals(result, datastore)
+        self.assertEqual(result, datastore)
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -483,9 +483,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         conn_info = self._driver.initialize_connection(volume, connector)
-        self.assertEquals(conn_info['driver_volume_type'], 'vmdk')
-        self.assertEquals(conn_info['data']['volume'], 'my_back')
-        self.assertEquals(conn_info['data']['volume_id'], 'volume_id')
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -529,11 +529,11 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         summary = self._driver._select_datastore_summary(1, datastores)
-        self.assertEquals(summary, summary1)
+        self.assertEqual(summary, summary1)
         summary = self._driver._select_datastore_summary(10, datastores)
-        self.assertEquals(summary, summary3)
+        self.assertEqual(summary, summary3)
         summary = self._driver._select_datastore_summary(50, datastores)
-        self.assertEquals(summary, summary4)
+        self.assertEqual(summary, summary4)
         self.assertRaises(error_util.VimException,
                           self._driver._select_datastore_summary,
                           100, datastores)
@@ -606,9 +606,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         conn_info = self._driver.initialize_connection(volume, connector)
-        self.assertEquals(conn_info['driver_volume_type'], 'vmdk')
-        self.assertEquals(conn_info['data']['volume'], 'my_back')
-        self.assertEquals(conn_info['data']['volume_id'], 'volume_id')
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -627,9 +627,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         conn_info = self._driver.initialize_connection(volume, connector)
-        self.assertEquals(conn_info['driver_volume_type'], 'vmdk')
-        self.assertEquals(conn_info['data']['volume'], 'my_back')
-        self.assertEquals(conn_info['data']['volume_id'], 'volume_id')
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -696,17 +696,17 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test _get_snapshot_from_tree."""
         volops = volumeops.VMwareVolumeOps
         ret = volops._get_snapshot_from_tree(mox.IgnoreArg(), None)
-        self.assertEquals(ret, None)
+        self.assertEqual(ret, None)
         name = 'snapshot_name'
         snapshot = FakeMor('VirtualMachineSnapshot', 'my_snap')
         root = FakeSnapshotTree(name='snapshot_name', snapshot=snapshot)
         ret = volops._get_snapshot_from_tree(name, root)
-        self.assertEquals(ret, snapshot)
+        self.assertEqual(ret, snapshot)
         snapshot1 = FakeMor('VirtualMachineSnapshot', 'my_snap_1')
         root = FakeSnapshotTree(name='snapshot_name_1', snapshot=snapshot1,
                                 childSnapshotList=[root])
         ret = volops._get_snapshot_from_tree(name, root)
-        self.assertEquals(ret, snapshot)
+        self.assertEqual(ret, snapshot)
 
     def test_get_snapshot(self):
         """Test get_snapshot."""
@@ -1091,8 +1091,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         actual_vmdk_path = self._volumeops.get_vmdk_path(backing)
         self.assertEquals(backingInfo.__class__.__name__,
                           'VirtualDiskFlatVer2BackingInfo')
-        self.assertEquals(virtualDisk.__class__.__name__, 'VirtualDisk')
-        self.assertEquals(actual_vmdk_path, vmdk_path)
+        self.assertEqual(virtualDisk.__class__.__name__, 'VirtualDisk')
+        self.assertEqual(actual_vmdk_path, vmdk_path)
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -1145,16 +1145,16 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         (datastore,
          folder,
          file_name) = volumeops.split_datastore_path(test1)
-        self.assertEquals(datastore, 'datastore1')
-        self.assertEquals(folder, 'myfolder/mysubfolder/')
-        self.assertEquals(file_name, 'myvm.vmx')
+        self.assertEqual(datastore, 'datastore1')
+        self.assertEqual(folder, 'myfolder/mysubfolder/')
+        self.assertEqual(file_name, 'myvm.vmx')
         test2 = '[datastore2 ]   myfolder/myvm.vmdk'
         (datastore,
          folder,
          file_name) = volumeops.split_datastore_path(test2)
-        self.assertEquals(datastore, 'datastore2')
-        self.assertEquals(folder, 'myfolder/')
-        self.assertEquals(file_name, 'myvm.vmdk')
+        self.assertEqual(datastore, 'datastore2')
+        self.assertEqual(folder, 'myfolder/')
+        self.assertEqual(file_name, 'myvm.vmdk')
         test3 = 'myfolder/myvm.vmdk'
         self.assertRaises(IndexError, volumeops.split_datastore_path, test3)
 
@@ -1382,7 +1382,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         m.ReplayAll()
         fol = self._volumeops.create_folder(parent_folder, 'child_folder_name')
-        self.assertEquals(fol, child_folder)
+        self.assertEqual(fol, child_folder)
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -1457,9 +1457,9 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         m.ReplayAll()
         conn_info = self._driver.initialize_connection(volume, connector)
-        self.assertEquals(conn_info['driver_volume_type'], 'vmdk')
-        self.assertEquals(conn_info['data']['volume'], 'my_back')
-        self.assertEquals(conn_info['data']['volume_id'], 'volume_id')
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -1519,9 +1519,9 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         m.ReplayAll()
         conn_info = self._driver.initialize_connection(volume, connector)
-        self.assertEquals(conn_info['driver_volume_type'], 'vmdk')
-        self.assertEquals(conn_info['data']['volume'], 'my_back')
-        self.assertEquals(conn_info['data']['volume_id'], 'volume_id')
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -1563,7 +1563,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         m.ReplayAll()
         ret = self._volumeops.clone_backing(name, backing, snapshot,
                                             mox.IgnoreArg(), datastore)
-        self.assertEquals(ret, clone)
+        self.assertEqual(ret, clone)
         m.UnsetStubs()
         m.VerifyAll()
 

@@ -115,7 +115,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
 
         loc = drv.create_volume_from_snapshot(volume, snapshot)
 
-        self.assertEquals(loc, expected_result)
+        self.assertEqual(loc, expected_result)
 
         mox.VerifyAll()
 

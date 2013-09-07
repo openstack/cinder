@@ -559,7 +559,7 @@ class ManagedRBDTestCase(DriverTestCase):
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: False)
         actual = self.volume.driver.clone_image(object(), object(), object())
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
         self.assertEquals(expected,
@@ -574,7 +574,7 @@ class ManagedRBDTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, '_clone', lambda *args: None)
         self.stubs.Set(self.volume.driver, '_resize', lambda *args: None)
         actual = self.volume.driver.clone_image(object(), object(), object())
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
 
     def test_clone_success(self):
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)

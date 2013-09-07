@@ -347,8 +347,8 @@ class GPFSDriverTestCase(test.TestCase):
 
     def test_get_volume_stats(self):
         stats = self.driver.get_volume_stats()
-        self.assertEquals(stats['volume_backend_name'], 'GPFS')
-        self.assertEquals(stats['storage_protocol'], 'file')
+        self.assertEqual(stats['volume_backend_name'], 'GPFS')
+        self.assertEqual(stats['storage_protocol'], 'file')
 
     def test_check_for_setup_error_ok(self):
         self.stubs.Set(GPFSDriver, '_get_gpfs_state',

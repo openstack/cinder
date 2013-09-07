@@ -205,7 +205,7 @@ class TestWSGIService(test.TestCase):
 
     def test_service_random_port(self):
         test_service = service.WSGIService("test_service")
-        self.assertEquals(0, test_service.port)
+        self.assertEqual(0, test_service.port)
         test_service.start()
         self.assertNotEqual(0, test_service.port)
         test_service.stop()
@@ -219,8 +219,8 @@ class TestLauncher(test.TestCase):
         self.service = service.WSGIService("test_service")
 
     def test_launch_app(self):
-        self.assertEquals(0, self.service.port)
+        self.assertEqual(0, self.service.port)
         launcher = service.Launcher()
         launcher.launch_server(self.service)
-        self.assertEquals(0, self.service.port)
+        self.assertEqual(0, self.service.port)
         launcher.stop()

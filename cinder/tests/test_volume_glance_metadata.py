@@ -109,7 +109,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
         for meta in db.volume_snapshot_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():
-                self.assertEquals(meta[key], value)
+                self.assertEqual(meta[key], value)
 
     def test_vol_glance_metadata_copy_to_volume(self):
         ctxt = context.get_admin_context()
@@ -124,4 +124,4 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
         for meta in db.volume_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():
-                self.assertEquals(meta[key], value)
+                self.assertEqual(meta[key], value)

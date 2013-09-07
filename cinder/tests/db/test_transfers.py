@@ -59,7 +59,7 @@ class TransfersTableTestCase(test.TestCase):
         xfer_id1 = self._create_transfer(volume_id1)
 
         xfer = db.transfer_get(self.ctxt, xfer_id1)
-        self.assertEquals(xfer.volume_id, volume_id1, "Unexpected volume_id")
+        self.assertEqual(xfer.volume_id, volume_id1, "Unexpected volume_id")
 
         nctxt = context.RequestContext(user_id='new_user_id',
                                        project_id='new_project_id')
@@ -67,7 +67,7 @@ class TransfersTableTestCase(test.TestCase):
                           db.transfer_get, nctxt, xfer_id1)
 
         xfer = db.transfer_get(nctxt.elevated(), xfer_id1)
-        self.assertEquals(xfer.volume_id, volume_id1, "Unexpected volume_id")
+        self.assertEqual(xfer.volume_id, volume_id1, "Unexpected volume_id")
 
     def test_transfer_get_all(self):
         volume_id1 = utils.create_volume(self.ctxt)['id']

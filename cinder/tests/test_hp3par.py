@@ -721,12 +721,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         # we should have a host and a vlun now.
         host = self.fake_get_3par_host(self.FAKE_HOST)
-        self.assertEquals(self.FAKE_HOST, host['name'])
-        self.assertEquals(HP3PAR_DOMAIN, host['domain'])
+        self.assertEqual(self.FAKE_HOST, host['name'])
+        self.assertEqual(HP3PAR_DOMAIN, host['domain'])
         vlun = self.driver.common.client.getVLUN(self.VOLUME_3PAR_NAME)
 
-        self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
-        self.assertEquals(self.FAKE_HOST, vlun['hostname'])
+        self.assertEqual(self.VOLUME_3PAR_NAME, vlun['volumeName'])
+        self.assertEqual(self.FAKE_HOST, vlun['hostname'])
 
     def test_get_volume_stats(self):
         self.flags(lock_path=self.tempdir)
@@ -736,9 +736,9 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         self.stubs.Set(self.driver.configuration, 'safe_get', fake_safe_get)
         stats = self.driver.get_volume_stats(True)
-        self.assertEquals(stats['storage_protocol'], 'FC')
-        self.assertEquals(stats['total_capacity_gb'], 'infinite')
-        self.assertEquals(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(stats['storage_protocol'], 'FC')
+        self.assertEqual(stats['total_capacity_gb'], 'infinite')
+        self.assertEqual(stats['free_capacity_gb'], 'infinite')
 
         #modify the CPG to have a limit
         old_cpg = self.driver.common.client.getCPG(HP3PAR_CPG)
@@ -748,11 +748,11 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         const = 0.0009765625
         stats = self.driver.get_volume_stats(True)
-        self.assertEquals(stats['storage_protocol'], 'FC')
+        self.assertEqual(stats['storage_protocol'], 'FC')
         total_capacity_gb = 8192 * const
-        self.assertEquals(stats['total_capacity_gb'], total_capacity_gb)
+        self.assertEqual(stats['total_capacity_gb'], total_capacity_gb)
         free_capacity_gb = int((8192 - old_cpg['UsrUsage']['usedMiB']) * const)
-        self.assertEquals(stats['free_capacity_gb'], free_capacity_gb)
+        self.assertEqual(stats['free_capacity_gb'], free_capacity_gb)
         self.driver.common.client.deleteCPG(HP3PAR_CPG)
         self.driver.common.client.createCPG(HP3PAR_CPG, {})
 
@@ -815,7 +815,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         host = self.driver._create_host(self.volume, self.connector)
 
-        self.assertEquals(host['name'], 'fakehost.foo')
+        self.assertEqual(host['name'], 'fakehost.foo')
 
     def test_create_modify_host(self):
         self.flags(lock_path=self.tempdir)
@@ -929,12 +929,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         # we should have a host and a vlun now.
         host = self.fake_get_3par_host(self.FAKE_HOST)
-        self.assertEquals(self.FAKE_HOST, host['name'])
-        self.assertEquals(HP3PAR_DOMAIN, host['domain'])
+        self.assertEqual(self.FAKE_HOST, host['name'])
+        self.assertEqual(HP3PAR_DOMAIN, host['domain'])
         vlun = self.driver.common.client.getVLUN(self.VOLUME_3PAR_NAME)
 
-        self.assertEquals(self.VOLUME_3PAR_NAME, vlun['volumeName'])
-        self.assertEquals(self.FAKE_HOST, vlun['hostname'])
+        self.assertEqual(self.VOLUME_3PAR_NAME, vlun['volumeName'])
+        self.assertEqual(self.FAKE_HOST, vlun['hostname'])
 
     def test_get_volume_stats(self):
         self.flags(lock_path=self.tempdir)
@@ -944,9 +944,9 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         self.stubs.Set(self.driver.configuration, 'safe_get', fake_safe_get)
         stats = self.driver.get_volume_stats(True)
-        self.assertEquals(stats['storage_protocol'], 'iSCSI')
-        self.assertEquals(stats['total_capacity_gb'], 'infinite')
-        self.assertEquals(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(stats['storage_protocol'], 'iSCSI')
+        self.assertEqual(stats['total_capacity_gb'], 'infinite')
+        self.assertEqual(stats['free_capacity_gb'], 'infinite')
 
         #modify the CPG to have a limit
         old_cpg = self.driver.common.client.getCPG(HP3PAR_CPG)
@@ -956,11 +956,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         const = 0.0009765625
         stats = self.driver.get_volume_stats(True)
-        self.assertEquals(stats['storage_protocol'], 'iSCSI')
+        self.assertEqual(stats['storage_protocol'], 'iSCSI')
         total_capacity_gb = 8192 * const
-        self.assertEquals(stats['total_capacity_gb'], total_capacity_gb)
+        self.assertEqual(stats['total_capacity_gb'], total_capacity_gb)
         free_capacity_gb = int((8192 - old_cpg['UsrUsage']['usedMiB']) * const)
-        self.assertEquals(stats['free_capacity_gb'], free_capacity_gb)
+        self.assertEqual(stats['free_capacity_gb'], free_capacity_gb)
         self.driver.common.client.deleteCPG(HP3PAR_CPG)
         self.driver.common.client.createCPG(HP3PAR_CPG, {})
 
@@ -1022,7 +1022,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         host = self.driver._create_host(self.volume, self.connector)
 
-        self.assertEquals(host['name'], 'fakehost.foo')
+        self.assertEqual(host['name'], 'fakehost.foo')
 
     def test_create_modify_host(self):
         self.flags(lock_path=self.tempdir)

@@ -42,7 +42,7 @@ class LinuxFCTestCase(test.TestCase):
         self.lfc.rescan_hosts(hbas)
         expected_commands = ['tee -a /sys/class/scsi_host/foo/scan',
                              'tee -a /sys/class/scsi_host/bar/scan']
-        self.assertEquals(expected_commands, self.cmds)
+        self.assertEqual(expected_commands, self.cmds)
 
     def test_get_fc_hbas_fail(self):
         def fake_exec1(a, b, c, d, run_as_root=True, root_helper='sudo'):
@@ -53,21 +53,21 @@ class LinuxFCTestCase(test.TestCase):
 
         self.stubs.Set(self.lfc, "_execute", fake_exec1)
         hbas = self.lfc.get_fc_hbas()
-        self.assertEquals(0, len(hbas))
+        self.assertEqual(0, len(hbas))
         self.stubs.Set(self.lfc, "_execute", fake_exec2)
         hbas = self.lfc.get_fc_hbas()
-        self.assertEquals(0, len(hbas))
+        self.assertEqual(0, len(hbas))
 
     def test_get_fc_hbas(self):
         def fake_exec(a, b, c, d, run_as_root=True, root_helper='sudo'):
             return SYSTOOL_FC, None
         self.stubs.Set(self.lfc, "_execute", fake_exec)
         hbas = self.lfc.get_fc_hbas()
-        self.assertEquals(2, len(hbas))
+        self.assertEqual(2, len(hbas))
         hba1 = hbas[0]
-        self.assertEquals(hba1["ClassDevice"], "host0")
+        self.assertEqual(hba1["ClassDevice"], "host0")
         hba2 = hbas[1]
-        self.assertEquals(hba2["ClassDevice"], "host2")
+        self.assertEqual(hba2["ClassDevice"], "host2")
 
     def test_get_fc_hbas_info(self):
         def fake_exec(a, b, c, d, run_as_root=True, root_helper='sudo'):
@@ -86,7 +86,7 @@ class LinuxFCTestCase(test.TestCase):
                           'host_device': 'host2',
                           'node_name': '50014380242b9753',
                           'port_name': '50014380242b9752'}, ]
-        self.assertEquals(expected_info, hbas_info)
+        self.assertEqual(expected_info, hbas_info)
 
     def test_get_fc_wwpns(self):
         def fake_exec(a, b, c, d, run_as_root=True, root_helper='sudo'):
@@ -94,7 +94,7 @@ class LinuxFCTestCase(test.TestCase):
         self.stubs.Set(self.lfc, "_execute", fake_exec)
         wwpns = self.lfc.get_fc_wwpns()
         expected_wwpns = ['50014380242b9750', '50014380242b9752']
-        self.assertEquals(expected_wwpns, wwpns)
+        self.assertEqual(expected_wwpns, wwpns)
 
     def test_get_fc_wwnns(self):
         def fake_exec(a, b, c, d, run_as_root=True, root_helper='sudo'):
@@ -102,7 +102,7 @@ class LinuxFCTestCase(test.TestCase):
         self.stubs.Set(self.lfc, "_execute", fake_exec)
         wwnns = self.lfc.get_fc_wwpns()
         expected_wwnns = ['50014380242b9750', '50014380242b9752']
-        self.assertEquals(expected_wwnns, wwnns)
+        self.assertEqual(expected_wwnns, wwnns)
 
 SYSTOOL_FC = """
 Class = "fc_host"

@@ -523,13 +523,13 @@ class TestMigrations(test.TestCase):
 
             fkey, = snapshots.c.volume_id.foreign_keys
 
-            self.assertEquals(volumes.c.id, fkey.column)
+            self.assertEqual(volumes.c.id, fkey.column)
 
     def test_downgrade_007_removes_fk(self):
         for metadata in self.metadatas_downgraded_from(7):
             snapshots = sqlalchemy.Table('snapshots', metadata, autoload=True)
 
-            self.assertEquals(0, len(snapshots.c.volume_id.foreign_keys))
+            self.assertEqual(0, len(snapshots.c.volume_id.foreign_keys))
 
     def test_migration_008(self):
         """Test that adding and removing the backups table works correctly"""

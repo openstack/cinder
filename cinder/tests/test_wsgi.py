@@ -73,7 +73,7 @@ document_root = /tmp
         self.addCleanup(self.config.close)
 
     def test_config_found(self):
-        self.assertEquals(self.config.name, self.loader.config_path)
+        self.assertEqual(self.config.name, self.loader.config_path)
 
     def test_app_not_found(self):
         self.assertRaises(
@@ -84,7 +84,7 @@ document_root = /tmp
 
     def test_app_found(self):
         url_parser = self.loader.load_app("test_app")
-        self.assertEquals("/tmp", url_parser.directory)
+        self.assertEqual("/tmp", url_parser.directory)
 
 
 class TestWSGIServer(test.TestCase):
@@ -98,7 +98,7 @@ class TestWSGIServer(test.TestCase):
 
     def test_no_app(self):
         server = cinder.wsgi.Server("test_app", None)
-        self.assertEquals("test_app", server.name)
+        self.assertEqual("test_app", server.name)
 
     def test_start_random_port(self):
         server = cinder.wsgi.Server("test_random_port", None, host="127.0.0.1")
@@ -135,7 +135,7 @@ class TestWSGIServer(test.TestCase):
         server.start()
 
         response = urllib2.urlopen('http://127.0.0.1:%d/' % server.port)
-        self.assertEquals(greetings, response.read())
+        self.assertEqual(greetings, response.read())
 
         server.stop()
 
@@ -155,7 +155,7 @@ class TestWSGIServer(test.TestCase):
         server.start()
 
         response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
-        self.assertEquals(greetings, response.read())
+        self.assertEqual(greetings, response.read())
 
         server.stop()
 
@@ -180,7 +180,7 @@ class TestWSGIServer(test.TestCase):
         server.start()
 
         response = urllib2.urlopen('https://[::1]:%d/' % server.port)
-        self.assertEquals(greetings, response.read())
+        self.assertEqual(greetings, response.read())
 
         server.stop()
 
@@ -226,7 +226,7 @@ class ExceptionTest(test.TestCase):
         if hasattr(exception_type, 'headers'):
             for (key, value) in exception_type.headers.iteritems():
                 self.assertIn(key, resp.headers)
-                self.assertEquals(resp.headers[key], value)
+                self.assertEqual(resp.headers[key], value)
 
     def test_quota_error_mapping(self):
         self._do_test_exception_mapping(exception.QuotaError, 'too many used')

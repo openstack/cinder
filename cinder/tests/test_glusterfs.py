@@ -946,7 +946,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals(drv._get_file_format(qemu_img_info_output), 'qcow2')
+        self.assertEqual(drv._get_file_format(qemu_img_info_output), 'qcow2')
 
         mox.VerifyAll()
 

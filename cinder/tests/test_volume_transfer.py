@@ -107,10 +107,10 @@ class VolumeTransferTestCase(test.TestCase):
                                      updated_at=self.updated_at)
         transfer = tx_api.create(self.ctxt, volume['id'], 'Description')
         t = tx_api.get(self.ctxt, transfer['id'])
-        self.assertEquals(t['id'], transfer['id'], 'Unexpected transfer id')
+        self.assertEqual(t['id'], transfer['id'], 'Unexpected transfer id')
 
         ts = tx_api.get_all(self.ctxt)
-        self.assertEquals(len(ts), 1, 'Unexpected number of transfers.')
+        self.assertEqual(len(ts), 1, 'Unexpected number of transfers.')
 
         nctxt = context.RequestContext(user_id='new_user_id',
                                        project_id='new_project_id')
@@ -120,4 +120,4 @@ class VolumeTransferTestCase(test.TestCase):
                           transfer['id'])
 
         ts = tx_api.get_all(nctxt)
-        self.assertEquals(len(ts), 0, 'Unexpected transfers listed.')
+        self.assertEqual(len(ts), 0, 'Unexpected transfers listed.')

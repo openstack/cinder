@@ -148,7 +148,7 @@ class SnapshotApiTest(test.TestCase):
             'display_description': 'Default description',
             'metadata': {},
         }}
-        self.assertEquals(expected, res_dict)
+        self.assertEqual(expected, res_dict)
 
     def test_snapshot_update_missing_body(self):
         body = {}
@@ -247,7 +247,7 @@ class SnapshotApiTest(test.TestCase):
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 2)
         for snapshot in resp['snapshots']:
-            self.assertEquals(snapshot['status'], 'available')
+            self.assertEqual(snapshot['status'], 'available')
         # no match
         req = fakes.HTTPRequest.blank('/v1/snapshots?status=error')
         resp = self.controller.index(req)
@@ -300,7 +300,7 @@ class SnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/snapshots?display_name=backup2')
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 1)
-        self.assertEquals(resp['snapshots'][0]['display_name'], 'backup2')
+        self.assertEqual(resp['snapshots'][0]['display_name'], 'backup2')
         # filter no match
         req = fakes.HTTPRequest.blank('/v1/snapshots?display_name=backup4')
         resp = self.controller.index(req)

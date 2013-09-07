@@ -39,7 +39,7 @@ class LinuxSCSITestCase(test.TestCase):
     def test_echo_scsi_command(self):
         self.linuxscsi.echo_scsi_command("/some/path", "1")
         expected_commands = ['tee -a /some/path']
-        self.assertEquals(expected_commands, self.cmds)
+        self.assertEqual(expected_commands, self.cmds)
 
     def test_get_name_from_path(self):
         device_name = "/dev/sdc"
