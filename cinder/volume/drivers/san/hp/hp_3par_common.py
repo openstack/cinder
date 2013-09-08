@@ -79,7 +79,7 @@ hp3par_opts = [
                default='',
                help="3PAR Super user password",
                secret=True),
-    #TODO(kmartin): Remove hp3par_domain during I release.
+    # TODO(kmartin): Remove hp3par_domain during I release.
     cfg.StrOpt('hp3par_domain',
                default=None,
                help="This option is DEPRECATED and no longer used. "
@@ -117,10 +117,11 @@ class HP3PARCommon(object):
 
     Version history:
         1.2.0 - Updated hp3parclient API use to 2.0.x
+        1.2.1 - Check that the VVS exists
 
     """
 
-    VERSION = "1.2.0"
+    VERSION = "1.2.1"
 
     stats = {}
 
@@ -299,7 +300,6 @@ class HP3PARCommon(object):
         LOG.debug("SSH CMD = %s " % cmd)
 
         (stdout, stderr) = self._run_ssh(cmd, False)
-
         # we have to strip out the input and exit lines
         tmp = stdout.split("\r\n")
         out = tmp[5:len(tmp) - 2]
@@ -560,7 +560,12 @@ exit
                                   cpg, vvs_name, qos):
         if vvs_name is not None:
             # Admin has set a volume set name to add the volume to
-            self._cli_run(['createvvset', '-add', vvs_name, volume_name])
+            out = self._cli_run(['createvvset', '-add', vvs_name, volume_name])
+            if out and len(out) == 1:
+                if 'does not exist' in out[0]:
+                    raise exception.InvalidInput(reason=_('VV Set %s does '
+                                                          'not exist.')
+                                                 % vvs_name)
         else:
             vvs_name = self._get_3par_vvs_name(volume['id'])
             domain = self.get_domain(cpg)
@@ -716,11 +721,10 @@ exit
                 try:
                     self._add_volume_to_volume_set(volume, volume_name,
                                                    cpg, vvs_name, qos)
-                except Exception as ex:
+                except exception.InvalidInput as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
-                    LOG.error(str(ex))
-                    raise exception.CinderException(ex.get_description())
+                    raise exception.CinderException(str(ex))
         except hpexceptions.HTTPConflict:
             raise exception.Duplicate(_("Volume (%s) already exists on array")
                                       % volume_name)
@@ -728,6 +732,9 @@ exit
             LOG.error(str(ex))
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
+            LOG.error(str(ex))
+            raise ex
+        except exception.CinderException as ex:
             LOG.error(str(ex))
             raise ex
         except Exception as ex:
