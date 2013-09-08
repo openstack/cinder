@@ -55,10 +55,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 session changes, faster clone, requires 3.1.2 MU2 firmware.
         1.2.0 - Updated the use of the hp3parclient to 2.0.0 and refactored
                 the drivers to use the new APIs.
-
+        1.2.1 - Synchronized extend_volume method.
     """
 
-    VERSION = "1.2.0"
+    VERSION = "1.2.1"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -393,5 +393,6 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         return current_least_used_nsp
 
+    @utils.synchronized('3par', external=True)
     def extend_volume(self, volume, new_size):
         self.common.extend_volume(volume, new_size)
