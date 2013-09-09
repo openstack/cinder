@@ -231,6 +231,34 @@ class VolumeTestCase(BaseVolumeTestCase):
                           None,
                           test_meta)
 
+    def test_create_volume_uses_default_availability_zone(self):
+        """Test setting availability_zone correctly during volume create."""
+        volume_api = cinder.volume.api.API()
+
+        def fake_list_availability_zones():
+            return ({'name': 'az1', 'available': True},
+                    {'name': 'az2', 'available': True},
+                    {'name': 'default-az', 'available': True})
+
+        self.stubs.Set(volume_api,
+                       'list_availability_zones',
+                       fake_list_availability_zones)
+
+        # Test backwards compatibility, default_availability_zone not set
+        CONF.set_override('storage_availability_zone', 'az2')
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description')
+        self.assertEqual(volume['availability_zone'], 'az2')
+
+        CONF.set_override('default_availability_zone', 'default-az')
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description')
+        self.assertEqual(volume['availability_zone'], 'default-az')
+
     def test_create_volume_with_volume_type(self):
         """Test volume creation with default volume type."""
         def fake_reserve(context, expire=None, project_id=None, **deltas):

@@ -360,7 +360,11 @@ class ExtractVolumeRequestTask(base.CinderTask):
                     pass
 
         if availability_zone is None:
-            availability_zone = CONF.storage_availability_zone
+            if CONF.default_availability_zone:
+                availability_zone = CONF.default_availability_zone
+            else:
+                # For backwards compatibility use the storge_availability_zone
+                availability_zone = CONF.storage_availability_zone
         if not self.az_check_functor(availability_zone):
             msg = _("Availability zone '%s' is invalid") % (availability_zone)
             LOG.warn(msg)

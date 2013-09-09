@@ -161,6 +161,12 @@ global_opts = [
     cfg.StrOpt('storage_availability_zone',
                default='nova',
                help='availability zone of this node'),
+    cfg.StrOpt('default_availability_zone',
+               default=None,
+               help='default availability zone to use when creating a new volume. '
+                    'If this is not set then we use the value from the '
+                    'storage_availability_zone option as the default '
+                    'availability_zone for new volumes.'),
     cfg.ListOpt('memcached_servers',
                 default=None,
                 help='Memcached servers or None for in process cache.'),
