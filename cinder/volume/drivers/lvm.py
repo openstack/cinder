@@ -73,6 +73,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self.configuration.append_config_values(volume_opts)
         self.hostname = socket.gethostname()
         self.vg = vg_obj
+        self.backend_name =\
+            self.configuration.safe_get('volume_backend_name') or 'LVM'
+        self.protocol = 'local'
 
     def set_execute(self, execute):
         self._execute = execute
@@ -322,24 +325,29 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """
 
         if refresh:
-            self._update_volume_status()
-        self._update_volume_status()
+            self._update_volume_stats()
 
         return self._stats
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        # FIXME(jdg): Fix up the duplicate code between
-        # LVM, LVMISCSI and ISER starting with this section
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
+        if self.vg is None:
+            LOG.warning(_('Unable to update stats on non-intialized '
+                          'Volume Group: %s'), self.configuration.volume_group)
+            return
+
+        self.vg.update_volume_group_info()
         data = {}
 
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = backend_name or 'LVM'
+        # Note(zhiteng): These information are driver/backend specific,
+        # each driver may define these values in its own config options
+        # or fetch from driver specific configuration file.
+        data["volume_backend_name"] = self.backend_name
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'local'
+        data["storage_protocol"] = self.protocol
 
         data['total_capacity_gb'] = float(self.vg.vg_size)
         data['free_capacity_gb'] = float(self.vg.vg_free_space)
@@ -376,6 +384,9 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
         self.tgtadm = iscsi.get_target_admin(root_helper)
         super(LVMISCSIDriver, self).__init__(*args, **kwargs)
+        self.backend_name =\
+            self.configuration.safe_get('volume_backend_name') or 'LVM_iSCSI'
+        self.protocol = 'iSCSI'
 
     def set_execute(self, execute):
         super(LVMISCSIDriver, self).set_execute(execute)
@@ -659,46 +670,6 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
         return (True, model_update)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
-    def _update_volume_stats(self):
-        """Retrieve stats info from volume group."""
-
-        LOG.debug(_("Updating volume stats"))
-        self.vg.update_volume_group_info()
-        data = {}
-
-        # Note(zhiteng): These information are driver/backend specific,
-        # each driver may define these values in its own config options
-        # or fetch from driver specific configuration file.
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = backend_name or 'LVM_iSCSI'
-        data["vendor_name"] = 'Open Source'
-        data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'iSCSI'
-
-        data['total_capacity_gb'] = float(self.vg.vg_size)
-        data['free_capacity_gb'] = float(self.vg.vg_free_space)
-        data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = False
-        data['location_info'] =\
-            ('LVMVolumeDriver:%(hostname)s:%(vg)s'
-             ':%(lvm_type)s:%(lvm_mirrors)s' %
-             {'hostname': self.hostname,
-              'vg': self.configuration.volume_group,
-              'lvm_type': self.configuration.lvm_type,
-              'lvm_mirrors': self.configuration.lvm_mirrors})
-
-        self._stats = data
-
     def _iscsi_location(self, ip, target, iqn, lun=None):
         return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
                                    target, iqn, lun)
@@ -727,6 +698,9 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
         root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
         self.tgtadm = iser.get_target_admin(root_helper)
         LVMVolumeDriver.__init__(self, *args, **kwargs)
+        self.backend_name =\
+            self.configuration.safe_get('volume_backend_name') or 'LVM_iSER'
+        self.protocol = 'iSER'
 
     def set_execute(self, execute):
         LVMVolumeDriver.set_execute(self, execute)
@@ -854,29 +828,6 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
 
         self.tgtadm.remove_iser_target(iser_target, 0, volume['id'],
                                        volume['name'])
-
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
-
-        LOG.debug(_("Updating volume status"))
-        self.vg.update_volume_group_info()
-        data = {}
-
-        # Note(zhiteng): These information are driver/backend specific,
-        # each driver may define these values in its own config options
-        # or fetch from driver specific configuration file.
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = backend_name or 'LVM_iSER'
-        data["vendor_name"] = 'Open Source'
-        data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'iSER'
-        data['total_capacity_gb'] = float(self.vg.vg_size)
-        data['free_capacity_gb'] = float(self.vg.vg_free_space)
-
-        data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = False
-
-        self._stats = data
 
     def _iser_location(self, ip, target, iqn, lun=None):
         return "%s:%s,%s %s %s" % (ip, self.configuration.iser_port,
