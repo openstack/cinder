@@ -496,7 +496,10 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['computeFault']['message'],
                          'Service cinder-backup could not be found.')
 
-    def test_check_backup_service(self):
+        volume = self.volume_api.get(context.get_admin_context(), volume_id)
+        self.assertEqual(volume['status'], 'available')
+
+    def test_is_backup_service_enabled(self):
         def empty_service(ctxt, topic):
             return []
 
@@ -532,27 +535,33 @@ class BackupsAPITestCase(test.TestCase):
 
         #test empty service
         self.stubs.Set(cinder.db, 'service_get_all_by_topic', empty_service)
-        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+        self.assertEqual(self.backup_api._is_backup_service_enabled(volume),
+                         False)
 
         #test host not match service
         self.stubs.Set(cinder.db, 'service_get_all_by_topic', host_not_match)
-        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+        self.assertEqual(self.backup_api._is_backup_service_enabled(volume),
+                         False)
 
         #test az not match service
         self.stubs.Set(cinder.db, 'service_get_all_by_topic', az_not_match)
-        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+        self.assertEqual(self.backup_api._is_backup_service_enabled(volume),
+                         False)
 
         #test disabled service
         self.stubs.Set(cinder.db, 'service_get_all_by_topic', disabled_service)
-        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+        self.assertEqual(self.backup_api._is_backup_service_enabled(volume),
+                         False)
 
         #test dead service
         self.stubs.Set(cinder.db, 'service_get_all_by_topic', dead_service)
-        self.assertEqual(self.backup_api._check_backup_service(volume), False)
+        self.assertEqual(self.backup_api._is_backup_service_enabled(volume),
+                         False)
 
         #test multi services and the last service matches
         self.stubs.Set(cinder.db, 'service_get_all_by_topic', multi_services)
-        self.assertEqual(self.backup_api._check_backup_service(volume), True)
+        self.assertEqual(self.backup_api._is_backup_service_enabled(volume),
+                         True)
 
     def test_delete_backup_available(self):
         backup_id = self._create_backup(status='available')
