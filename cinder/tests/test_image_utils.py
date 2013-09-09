@@ -132,8 +132,7 @@ class TestUtils(test.TestCase):
         self.assertEqual(inf.snapshots[0]['tag'], 'snap1')
         self.assertEqual(inf.snapshots[0]['vm_size'], '1.7G')
         self.assertEqual(inf.snapshots[0]['date'], '2011-10-04')
-        self.assertEquals(inf.snapshots[0]['vm_clock'],
-                          '19:04:00 32:06:34.974')
+        self.assertEqual(inf.snapshots[0]['vm_clock'], '19:04:00 32:06:34.974')
 
         self.assertEqual(str(inf), TEST_STR)
 
@@ -594,7 +593,7 @@ class TestDiscoverChain(test.TestCase):
         result = image_utils.discover_vhd_chain('some/path')
         mox.VerifyAll()
 
-        self.assertEquals(
+        self.assertEqual(
             ['some/path/0.vhd', 'some/path/1.vhd'], result)
 
 

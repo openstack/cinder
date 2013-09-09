@@ -79,12 +79,10 @@ class TransfersTableTestCase(test.TestCase):
                           db.transfer_get_all,
                           self.ctxt)
         xfer = db.transfer_get_all(context.get_admin_context())
-        self.assertEquals(len(xfer), 2,
-                          "Unexpected number of transfer records")
+        self.assertEqual(len(xfer), 2, "Unexpected number of transfer records")
 
         xfer = db.transfer_get_all_by_project(self.ctxt, self.ctxt.project_id)
-        self.assertEquals(len(xfer), 2,
-                          "Unexpected number of transfer records")
+        self.assertEqual(len(xfer), 2, "Unexpected number of transfer records")
 
         nctxt = context.RequestContext(user_id='new_user_id',
                                        project_id='new_project_id')
@@ -93,8 +91,7 @@ class TransfersTableTestCase(test.TestCase):
                           nctxt, self.ctxt.project_id)
         xfer = db.transfer_get_all_by_project(nctxt.elevated(),
                                               self.ctxt.project_id)
-        self.assertEquals(len(xfer), 2,
-                          "Unexpected number of transfer records")
+        self.assertEqual(len(xfer), 2, "Unexpected number of transfer records")
 
     def test_transfer_destroy(self):
         volume_id = utils.create_volume(self.ctxt)['id']
@@ -103,16 +100,14 @@ class TransfersTableTestCase(test.TestCase):
         xfer_id2 = self._create_transfer(volume_id2)
 
         xfer = db.transfer_get_all(context.get_admin_context())
-        self.assertEquals(len(xfer), 2,
-                          "Unexpected number of transfer records")
+        self.assertEqual(len(xfer), 2, "Unexpected number of transfer records")
         self.assertFalse(xfer[0]['deleted'], "Deleted flag is set")
 
         db.transfer_destroy(self.ctxt, xfer_id1)
         xfer = db.transfer_get_all(context.get_admin_context())
-        self.assertEquals(len(xfer), 1,
-                          "Unexpected number of transfer records")
-        self.assertEquals(xfer[0]['id'], xfer_id2,
-                          "Unexpected value for Transfer id")
+        self.assertEqual(len(xfer), 1, "Unexpected number of transfer records")
+        self.assertEqual(xfer[0]['id'], xfer_id2,
+                         "Unexpected value for Transfer id")
 
         nctxt = context.RequestContext(user_id='new_user_id',
                                        project_id='new_project_id')
@@ -121,5 +116,4 @@ class TransfersTableTestCase(test.TestCase):
 
         db.transfer_destroy(nctxt.elevated(), xfer_id2)
         xfer = db.transfer_get_all(context.get_admin_context())
-        self.assertEquals(len(xfer), 0,
-                          "Unexpected number of transfer records")
+        self.assertEqual(len(xfer), 0, "Unexpected number of transfer records")

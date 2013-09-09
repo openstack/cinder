@@ -200,8 +200,8 @@ class TestGlanceImageService(test.TestCase):
         image_id = self.service.create(self.context, fixture)['id']
 
         self.assertNotEquals(None, image_id)
-        self.assertEquals(num_images + 1,
-                          len(self.service.detail(self.context)))
+        self.assertEqual(num_images + 1,
+                         len(self.service.detail(self.context)))
 
     def test_create_and_show_non_existing_image(self):
         fixture = self._make_fixture(name='test image')
@@ -536,8 +536,7 @@ class TestGlanceImageService(test.TestCase):
         (service, same_id) = glance.get_remote_image_service(self.context,
                                                              image_url)
         self.assertEqual(same_id, image_id)
-        self.assertEquals(service._client.netloc,
-                          'something-less-likely')
+        self.assertEqual(service._client.netloc, 'something-less-likely')
         for ipv6_url in ('[::1]', '::1', '[::1]:444'):
             image_url = 'http://%s/%s' % (ipv6_url, image_id)
             (service, same_id) = glance.get_remote_image_service(self.context,
@@ -568,25 +567,25 @@ class TestGlanceClientVersion(test.TestCase):
         """Test glance version set by flag is honoured."""
         client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292)
-        self.assertEquals(client_wrapper_v1.client.__module__,
-                          'glanceclient.v1.client')
+        self.assertEqual(client_wrapper_v1.client.__module__,
+                         'glanceclient.v1.client')
         self.flags(glance_api_version=2)
         client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292)
-        self.assertEquals(client_wrapper_v2.client.__module__,
-                          'glanceclient.v2.client')
+        self.assertEqual(client_wrapper_v2.client.__module__,
+                         'glanceclient.v2.client')
         CONF.reset()
 
     def test_glance_version_by_arg(self):
         """Test glance version set by arg to GlanceClientWrapper"""
         client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292, version=1)
-        self.assertEquals(client_wrapper_v1.client.__module__,
-                          'glanceclient.v1.client')
+        self.assertEqual(client_wrapper_v1.client.__module__,
+                         'glanceclient.v1.client')
         client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292, version=2)
-        self.assertEquals(client_wrapper_v2.client.__module__,
-                          'glanceclient.v2.client')
+        self.assertEqual(client_wrapper_v2.client.__module__,
+                         'glanceclient.v2.client')
 
 
 def _create_failing_glance_client(info):

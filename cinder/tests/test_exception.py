@@ -59,8 +59,7 @@ class CinderExceptionTestCase(test.TestCase):
         self.assertEqual(unicode(exc), 'default message')
 
     def test_error_msg(self):
-        self.assertEquals(unicode(exception.CinderException('test')),
-                          'test')
+        self.assertEqual(unicode(exception.CinderException('test')), 'test')
 
     def test_default_error_msg_with_kwargs(self):
         class FakeCinderException(exception.CinderException):

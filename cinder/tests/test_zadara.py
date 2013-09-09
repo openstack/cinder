@@ -784,14 +784,14 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.assertEqual(data['total_capacity_gb'], 'infinite')
         self.assertEqual(data['free_capacity_gb'], 'infinite')
 
-        self.assertEquals(data,
-                          {'total_capacity_gb': 'infinite',
-                           'free_capacity_gb': 'infinite',
-                           'reserved_percentage':
-                           self.configuration.reserved_percentage,
-                           'QoS_support': False,
-                           'vendor_name': 'Zadara Storage',
-                           'driver_version': self.driver.VERSION,
-                           'storage_protocol': 'iSCSI',
-                           'volume_backend_name': 'ZadaraVPSAISCSIDriver',
-                           })
+        self.assertEqual(data,
+                         {'total_capacity_gb': 'infinite',
+                          'free_capacity_gb': 'infinite',
+                          'reserved_percentage':
+                          self.configuration.reserved_percentage,
+                          'QoS_support': False,
+                          'vendor_name': 'Zadara Storage',
+                          'driver_version': self.driver.VERSION,
+                          'storage_protocol': 'iSCSI',
+                          'volume_backend_name': 'ZadaraVPSAISCSIDriver',
+                          })

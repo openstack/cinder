@@ -151,7 +151,7 @@ class DriverTestCase(test.TestCase):
         )
         mock.VerifyAll()
 
-        self.assertEquals(
+        self.assertEqual(
             dict(
                 driver_volume_type='xensm',
                 data=dict(
@@ -183,7 +183,7 @@ class DriverTestCase(test.TestCase):
         )
         mock.VerifyAll()
 
-        self.assertEquals(
+        self.assertEqual(
             dict(
                 driver_volume_type='xensm',
                 data=dict(
@@ -233,7 +233,7 @@ class DriverTestCase(test.TestCase):
         mock.ReplayAll()
         result = drv.create_snapshot(snapshot)
         mock.VerifyAll()
-        self.assertEquals(
+        self.assertEqual(
             dict(provider_location="copied-sr/copied-vdi"),
             result)
 
@@ -254,7 +254,7 @@ class DriverTestCase(test.TestCase):
         result = drv.create_volume_from_snapshot(volume, snapshot)
         mock.VerifyAll()
 
-        self.assertEquals(
+        self.assertEqual(
             dict(provider_location='copied-sr/copied-vdi'), result)
 
     def test_delete_snapshot(self):
@@ -502,7 +502,7 @@ class ToolsTest(test.TestCase):
         mock_open = mock.Mock(return_value=mock_context_manager)
 
         with mock.patch('__builtin__.open', mock_open):
-            self.assertEquals(
+            self.assertEqual(
                 'blah', tools._stripped_first_line_of('/somefile'))
 
         mock_open.assert_called_once_with('/somefile', 'rb')

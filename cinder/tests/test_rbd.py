@@ -562,8 +562,8 @@ class ManagedRBDTestCase(DriverTestCase):
         self.assertEqual(expected, actual)
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
-        self.assertEquals(expected,
-                          self.volume.driver.clone_image(object(), None, None))
+        self.assertEqual(expected,
+                         self.volume.driver.clone_image(object(), None, None))
 
         # Test Success Case(s)
         expected = ({'provider_location': None}, True)

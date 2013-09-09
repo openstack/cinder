@@ -115,8 +115,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         res_dict = self.controller.create(req, body)
-        self.assertEquals(res_dict['volume']['volume_type'],
-                          db_vol_type['name'])
+        self.assertEqual(res_dict['volume']['volume_type'],
+                         db_vol_type['name'])
 
     def test_volume_creation_fails_with_bad_size(self):
         vol = {"size": '',

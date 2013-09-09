@@ -98,8 +98,7 @@ class VolumeTypeExtraSpecsTestCase(test.TestCase):
         volume_type = db.volume_type_get(
             context.get_admin_context(),
             self.volume_type1_id)
-        self.assertEquals(volume_type['extra_specs'],
-                          self.vol_type1_specs)
+        self.assertEqual(volume_type['extra_specs'], self.vol_type1_specs)
 
         volume_type = db.volume_type_get(
             context.get_admin_context(),
@@ -110,8 +109,7 @@ class VolumeTypeExtraSpecsTestCase(test.TestCase):
         volume_type = db.volume_type_get_by_name(
             context.get_admin_context(),
             self.vol_type1['name'])
-        self.assertEquals(volume_type['extra_specs'],
-                          self.vol_type1_specs)
+        self.assertEqual(volume_type['extra_specs'], self.vol_type1_specs)
 
         volume_type = db.volume_type_get_by_name(
             context.get_admin_context(),
@@ -123,8 +121,8 @@ class VolumeTypeExtraSpecsTestCase(test.TestCase):
 
         types = db.volume_type_get_all(context.get_admin_context())
 
-        self.assertEquals(
+        self.assertEqual(
             types[self.vol_type1['name']]['extra_specs'], expected_specs)
 
-        self.assertEquals(
+        self.assertEqual(
             types[self.vol_type2_noextra['name']]['extra_specs'], {})

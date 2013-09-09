@@ -567,8 +567,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test _get_disk_type."""
         volume = FakeObject()
         volume['volume_type_id'] = None
-        self.assertEquals(vmdk.VMwareEsxVmdkDriver._get_disk_type(volume),
-                          'thin')
+        self.assertEqual(vmdk.VMwareEsxVmdkDriver._get_disk_type(volume),
+                         'thin')
 
     def test_init_conn_with_instance_no_backing(self):
         """Test initialize_connection with instance and without backing."""
@@ -1089,8 +1089,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         m.ReplayAll()
         actual_vmdk_path = self._volumeops.get_vmdk_path(backing)
-        self.assertEquals(backingInfo.__class__.__name__,
-                          'VirtualDiskFlatVer2BackingInfo')
+        self.assertEqual(backingInfo.__class__.__name__,
+                         'VirtualDiskFlatVer2BackingInfo')
         self.assertEqual(virtualDisk.__class__.__name__, 'VirtualDisk')
         self.assertEqual(actual_vmdk_path, vmdk_path)
         m.UnsetStubs()

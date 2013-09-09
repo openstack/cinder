@@ -225,9 +225,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals((df_avail, df_total_size),
-                          drv._get_available_capacity(
-                              self.TEST_EXPORT1))
+        self.assertEqual((df_avail, df_total_size),
+                         drv._get_available_capacity(self.TEST_EXPORT1))
 
         mox.VerifyAll()
 
@@ -270,9 +269,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertEquals((df_total_size - du_used, df_total_size),
-                          drv._get_available_capacity(
-                              self.TEST_EXPORT1))
+        self.assertEqual((df_total_size - du_used, df_total_size),
+                         drv._get_available_capacity(self.TEST_EXPORT1))
 
         mox.VerifyAll()
 
@@ -907,8 +905,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox.ReplayAll()
 
         expected_file = 'volume-%s.%s' % (self.VOLUME_UUID, self.SNAP_UUID)
-        self.assertEquals(drv._get_backing_file(qemu_img_info_output),
-                          expected_file)
+        self.assertEqual(drv._get_backing_file(qemu_img_info_output),
+                         expected_file)
 
         mox.VerifyAll()
 
@@ -971,8 +969,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         info = drv._read_info_file(info_path)
 
-        self.assertEquals(info[self.VOLUME_UUID],
-                          'volume-%s' % self.VOLUME_UUID)
+        self.assertEqual(info[self.VOLUME_UUID],
+                         'volume-%s' % self.VOLUME_UUID)
 
         mox.VerifyAll()
 

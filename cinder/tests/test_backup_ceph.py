@@ -308,8 +308,8 @@ class BackupCephTestCase(test.TestCase):
                           self.volume_id)
 
         name = self.service._get_backup_base_name(self.volume_id, '1234')
-        self.assertEquals(name, "volume-%s.backup.%s" %
-                          (self.volume_id, '1234'))
+        self.assertEqual(name,
+                         "volume-%s.backup.%s" % (self.volume_id, '1234'))
 
     def test_backup_volume_from_rbd(self):
         self._create_volume_db_entry(self.volume_id, 1)
