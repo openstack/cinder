@@ -86,7 +86,7 @@ class TargetAdmin(executor.Executor):
         raise NotImplementedError()
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-        """Remove a iSCSI target and logical unit"""
+        """Remove a iSCSI target and logical unit."""
         raise NotImplementedError()
 
     def _new_target(self, name, tid, **kwargs):
