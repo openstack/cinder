@@ -1853,9 +1853,11 @@ def volume_type_qos_specs_get(context, type_id):
                         'id': 'qos-specs-id',
                         'name': 'qos_specs_name',
                         'consumer': 'Consumer',
-                        'key1': 'value1',
-                        'key2': 'value2',
-                        'key3': 'value3'
+                        'specs': {
+                            'key1': 'value1',
+                            'key2': 'value2',
+                            'key3': 'value3'
+                        }
                      }
         }
 
@@ -1870,11 +1872,13 @@ def volume_type_qos_specs_get(context, type_id):
             first()
 
         # row.qos_specs is a list of QualityOfServiceSpecs ref
-        specs = {}
-        for item in row.qos_specs:
-            if item.key == 'QoS_Specs_Name':
-                if item.specs:
-                    specs = _dict_with_children_specs(item.specs)
+        specs = _dict_with_qos_specs(row.qos_specs)
+
+        if not specs:
+            # turn empty list to None
+            specs = None
+        else:
+            specs = specs[0]
 
         return {'qos_specs': specs}
 

@@ -225,14 +225,17 @@ class VolumeTypeTestCase(test.TestCase):
         type_ref = volume_types.create(self.ctxt, "type1", {"key2": "val2",
                                                   "key3": "val3"})
         res = volume_types.get_volume_type_qos_specs(type_ref['id'])
-        self.assertEqual(res['qos_specs'], {})
+        self.assertEqual(res['qos_specs'], None)
         qos_specs.associate_qos_with_type(self.ctxt,
                                           qos_ref['id'],
                                           type_ref['id'])
 
-        expected = {'qos_specs': {'consumer': 'back-end',
-                                  'k1': 'v1',
-                                  'k2': 'v2',
-                                  'k3': 'v3'}}
+        expected = {'qos_specs': {'id': qos_ref['id'],
+                                  'name': 'qos-specs-1',
+                                  'consumer': 'back-end',
+                                  'specs': {
+                                      'k1': 'v1',
+                                      'k2': 'v2',
+                                      'k3': 'v3'}}}
         res = volume_types.get_volume_type_qos_specs(type_ref['id'])
         self.assertDictMatch(expected, res)
