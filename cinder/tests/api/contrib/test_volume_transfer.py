@@ -100,7 +100,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         dom = minidom.parseString(res.body)
         transfer_xml = dom.getElementsByTagName('transfer')
         name = transfer_xml.item(0).getAttribute('name')
-        self.assertEquals(name.strip(), "test_transfer")
+        self.assertEqual(name.strip(), "test_transfer")
 
         db.transfer_destroy(context.get_admin_context(), transfer['id'])
         db.volume_destroy(context.get_admin_context(), volume_id)

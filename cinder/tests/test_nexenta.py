@@ -205,7 +205,7 @@ class TestNexentaDriver(test.TestCase):
             'prefix': self.configuration.nexenta_target_prefix,
             'volume': self.TEST_VOLUME_NAME
         }
-        self.assertEquals(retval, {'provider_location': location})
+        self.assertEqual(retval, {'provider_location': location})
 
     def __get_test(i):
         def _test_create_export_fail(self):
@@ -262,11 +262,11 @@ class TestNexentaDriver(test.TestCase):
             'health|size|used|available').AndReturn(stats)
         self.mox.ReplayAll()
         stats = self.drv.get_volume_stats(True)
-        self.assertEquals(stats['storage_protocol'], 'iSCSI')
-        self.assertEquals(stats['total_capacity_gb'], 5368709120.0)
-        self.assertEquals(stats['free_capacity_gb'], 5368709120.0)
-        self.assertEquals(stats['reserved_percentage'], 0)
-        self.assertEquals(stats['QoS_support'], False)
+        self.assertEqual(stats['storage_protocol'], 'iSCSI')
+        self.assertEqual(stats['total_capacity_gb'], 5368709120.0)
+        self.assertEqual(stats['free_capacity_gb'], 5368709120.0)
+        self.assertEqual(stats['reserved_percentage'], 0)
+        self.assertEqual(stats['QoS_support'], False)
 
 
 class TestNexentaJSONRPC(test.TestCase):
@@ -300,7 +300,7 @@ class TestNexentaJSONRPC(test.TestCase):
             '{"error": null, "result": "the result"}')
         self.mox.ReplayAll()
         result = self.proxy('arg1', 'arg2')
-        self.assertEquals("the result", result)
+        self.assertEqual("the result", result)
 
     def test_call_deep(self):
         urllib2.Request(
@@ -313,7 +313,7 @@ class TestNexentaJSONRPC(test.TestCase):
             '{"error": null, "result": "the result"}')
         self.mox.ReplayAll()
         result = self.proxy.obj1.subobj.meth('arg1', 'arg2')
-        self.assertEquals("the result", result)
+        self.assertEqual("the result", result)
 
     def test_call_auto(self):
         urllib2.Request(
@@ -330,7 +330,7 @@ class TestNexentaJSONRPC(test.TestCase):
         urllib2.urlopen(self.REQUEST).AndReturn(self.resp_mock)
         self.mox.ReplayAll()
         result = self.proxy('arg1', 'arg2')
-        self.assertEquals("the result", result)
+        self.assertEqual("the result", result)
 
     def test_call_error(self):
         urllib2.Request(

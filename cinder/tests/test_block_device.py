@@ -60,7 +60,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                           TEST_CONNECTOR).AndReturn('data')
         self.mox.ReplayAll()
         data = self.drv.initialize_connection(TEST_VOLUME2, TEST_CONNECTOR)
-        self.assertEquals(data, 'data')
+        self.assertEqual(data, 'data')
 
     def test_delete_not_volume_provider_location(self):
         TEST_VOLUME2 = {'provider_location': None}
@@ -185,7 +185,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         path1 = self.drv.local_path(TEST_VOLUME1).AndReturn('/dev/loop1')
         path2 = self.drv.local_path(TEST_VOLUME2).AndReturn('/dev/loop2')
         self.mox.ReplayAll()
-        self.assertEquals(self.drv._get_used_devices(), set([path1, path2]))
+        self.assertEqual(self.drv._get_used_devices(), set([path1, path2]))
 
     def test_get_device_size(self):
         dev_path = '/dev/loop1'
@@ -194,7 +194,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.drv._execute('blockdev', '--getsz', dev_path,
                           run_as_root=True).AndReturn((out, None))
         self.mox.ReplayAll()
-        self.assertEquals(self.drv._get_device_size(dev_path), 1)
+        self.assertEqual(self.drv._get_device_size(dev_path), 1)
 
     def test_devices_sizes(self):
         self.mox.StubOutWithMock(self.drv, '_get_device_size')

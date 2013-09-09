@@ -24,22 +24,22 @@ class ContextTestCase(test.TestCase):
         ctxt = context.RequestContext('111',
                                       '222',
                                       roles=['admin', 'weasel'])
-        self.assertEquals(ctxt.is_admin, True)
+        self.assertEqual(ctxt.is_admin, True)
 
     def test_request_context_sets_is_admin_upcase(self):
         ctxt = context.RequestContext('111',
                                       '222',
                                       roles=['Admin', 'weasel'])
-        self.assertEquals(ctxt.is_admin, True)
+        self.assertEqual(ctxt.is_admin, True)
 
     def test_request_context_read_deleted(self):
         ctxt = context.RequestContext('111',
                                       '222',
                                       read_deleted='yes')
-        self.assertEquals(ctxt.read_deleted, 'yes')
+        self.assertEqual(ctxt.read_deleted, 'yes')
 
         ctxt.read_deleted = 'no'
-        self.assertEquals(ctxt.read_deleted, 'no')
+        self.assertEqual(ctxt.read_deleted, 'no')
 
     def test_request_context_read_deleted_invalid(self):
         self.assertRaises(ValueError,

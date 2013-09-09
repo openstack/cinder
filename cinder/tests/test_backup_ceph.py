@@ -106,19 +106,19 @@ class BackupCephTestCase(test.TestCase):
 
         oldformat, features = self.service._get_rbd_support()
         self.assertTrue(oldformat)
-        self.assertEquals(features, 0)
+        self.assertEqual(features, 0)
 
         self.service.rbd.RBD_FEATURE_LAYERING = 1
 
         oldformat, features = self.service._get_rbd_support()
         self.assertFalse(oldformat)
-        self.assertEquals(features, 1)
+        self.assertEqual(features, 1)
 
         self.service.rbd.RBD_FEATURE_STRIPINGV2 = 2
 
         oldformat, features = self.service._get_rbd_support()
         self.assertFalse(oldformat)
-        self.assertEquals(features, 1 | 2)
+        self.assertEqual(features, 1 | 2)
 
     def _set_common_backup_stubs(self, service):
         self.stubs.Set(self.service, '_get_rbd_support', lambda: (True, 3))
@@ -151,7 +151,7 @@ class BackupCephTestCase(test.TestCase):
 
         snap = self.service._get_most_recent_snap(self.service.rbd.Image())
 
-        self.assertEquals(last, snap)
+        self.assertEqual(last, snap)
 
     def test_get_backup_snap_name(self):
         snap_name = 'backup.%s.snap.3824923.1412' % (uuid.uuid4())
@@ -172,7 +172,7 @@ class BackupCephTestCase(test.TestCase):
         name = self.service._get_backup_snap_name(self.service.rbd.Image(),
                                                   'base_foo',
                                                   self.backup_id)
-        self.assertEquals(name, snap_name)
+        self.assertEqual(name, snap_name)
 
     def test_get_backup_snaps(self):
 
@@ -208,7 +208,7 @@ class BackupCephTestCase(test.TestCase):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_transfer_data_from_rbd_to_rbd(self):
         def rbd_size(inst):
@@ -238,7 +238,7 @@ class BackupCephTestCase(test.TestCase):
                                         'dest_foo', self.length)
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_transfer_data_from_file_to_rbd(self):
         self._set_common_backup_stubs(self.service)
@@ -258,7 +258,7 @@ class BackupCephTestCase(test.TestCase):
                                         rbd_io, 'dest_foo', self.length)
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_transfer_data_from_file_to_file(self):
         self._set_common_backup_stubs(self.service)
@@ -276,7 +276,7 @@ class BackupCephTestCase(test.TestCase):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_backup_volume_from_file(self):
         self._create_volume_db_entry(self.volume_id, 1)
@@ -296,12 +296,12 @@ class BackupCephTestCase(test.TestCase):
             self.service.backup(backup, self.volume_file)
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_get_backup_base_name(self):
         name = self.service._get_backup_base_name(self.volume_id,
                                                   diff_format=True)
-        self.assertEquals(name, "volume-%s.backup.base" % (self.volume_id))
+        self.assertEqual(name, "volume-%s.backup.base" % (self.volume_id))
 
         self.assertRaises(exception.InvalidParameterValue,
                           self.service._get_backup_base_name,
@@ -348,7 +348,7 @@ class BackupCephTestCase(test.TestCase):
             self.service.backup(backup, rbd_io)
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_backup_vol_length_0(self):
         self._set_common_backup_stubs(self.service)
@@ -388,7 +388,7 @@ class BackupCephTestCase(test.TestCase):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
-            self.assertEquals(checksum.digest(), self.checksum.digest())
+            self.assertEqual(checksum.digest(), self.checksum.digest())
 
     def test_create_base_image_if_not_exists(self):
         pass
@@ -407,7 +407,7 @@ class BackupCephTestCase(test.TestCase):
         rem = self.service._delete_backup_snapshots(mock_rados(), base_name,
                                                     self.backup_id)
 
-        self.assertEquals(rem, 0)
+        self.assertEqual(rem, 0)
 
     def test_try_delete_base_image_diff_format(self):
         # don't create volume db entry since it should not be required
@@ -541,7 +541,7 @@ class BackupCephTestCase(test.TestCase):
 
         resp = self.service._diff_restore_allowed('foo', backup, alt_volume,
                                                   rbd_io, mock_rados())
-        self.assertEquals(resp, is_allowed)
+        self.assertEqual(resp, is_allowed)
 
     def test_diff_restore_allowed_false(self):
         not_allowed = (False, None)
@@ -564,7 +564,7 @@ class BackupCephTestCase(test.TestCase):
         resp = self.service._diff_restore_allowed('foo', backup,
                                                   original_volume, rbd_io,
                                                   mock_rados())
-        self.assertEquals(resp, not_allowed)
+        self.assertEqual(resp, not_allowed)
 
     def tearDown(self):
         self.volume_file.close()

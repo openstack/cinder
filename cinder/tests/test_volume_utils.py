@@ -80,16 +80,16 @@ class UsageInfoTestCase(test.TestCase):
         volume = db.volume_get(self.context, volume_id)
         volume_utils.notify_usage_exists(self.context, volume)
         LOG.info("%r" % test_notifier.NOTIFICATIONS)
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
         msg = test_notifier.NOTIFICATIONS[0]
-        self.assertEquals(msg['priority'], 'INFO')
-        self.assertEquals(msg['event_type'], 'volume.exists')
+        self.assertEqual(msg['priority'], 'INFO')
+        self.assertEqual(msg['event_type'], 'volume.exists')
         payload = msg['payload']
-        self.assertEquals(payload['tenant_id'], self.project_id)
-        self.assertEquals(payload['user_id'], self.user_id)
-        self.assertEquals(payload['snapshot_id'], self.snapshot_id)
-        self.assertEquals(payload['volume_id'], volume.id)
-        self.assertEquals(payload['size'], self.volume_size)
+        self.assertEqual(payload['tenant_id'], self.project_id)
+        self.assertEqual(payload['user_id'], self.user_id)
+        self.assertEqual(payload['snapshot_id'], self.snapshot_id)
+        self.assertEqual(payload['volume_id'], volume.id)
+        self.assertEqual(payload['size'], self.volume_size)
         for attr in ('display_name', 'created_at', 'launched_at',
                      'status', 'audit_period_beginning',
                      'audit_period_ending'):
@@ -124,34 +124,34 @@ class LVMVolumeDriverTestCase(test.TestCase):
         # Test valid volume_dd_blocksize
         CONF.set_override('volume_dd_blocksize', '10M')
         bs, count = volume_utils._calculate_count(1024)
-        self.assertEquals(bs, '10M')
-        self.assertEquals(count, 103)
+        self.assertEqual(bs, '10M')
+        self.assertEqual(count, 103)
 
         CONF.set_override('volume_dd_blocksize', '1xBBB')
         bs, count = volume_utils._calculate_count(1024)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
+        self.assertEqual(bs, '1M')
+        self.assertEqual(count, 1024)
 
         # Test 'volume_dd_blocksize' with fraction
         CONF.set_override('volume_dd_blocksize', '1.3M')
         bs, count = volume_utils._calculate_count(1024)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
+        self.assertEqual(bs, '1M')
+        self.assertEqual(count, 1024)
 
         # Test zero-size 'volume_dd_blocksize'
         CONF.set_override('volume_dd_blocksize', '0M')
         bs, count = volume_utils._calculate_count(1024)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
+        self.assertEqual(bs, '1M')
+        self.assertEqual(count, 1024)
 
         # Test negative 'volume_dd_blocksize'
         CONF.set_override('volume_dd_blocksize', '-1M')
         bs, count = volume_utils._calculate_count(1024)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
+        self.assertEqual(bs, '1M')
+        self.assertEqual(count, 1024)
 
         # Test non-digital 'volume_dd_blocksize'
         CONF.set_override('volume_dd_blocksize', 'ABM')
         bs, count = volume_utils._calculate_count(1024)
-        self.assertEquals(bs, '1M')
-        self.assertEquals(count, 1024)
+        self.assertEqual(bs, '1M')
+        self.assertEqual(count, 1024)

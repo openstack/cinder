@@ -127,8 +127,8 @@ class BackupsAPITestCase(test.TestCase):
         backup = dom.getElementsByTagName('backup')
         name = backup.item(0).getAttribute('name')
         container_name = backup.item(0).getAttribute('container')
-        self.assertEquals(container_name.strip(), "volumebackups")
-        self.assertEquals(name.strip(), "test_backup")
+        self.assertEqual(container_name.strip(), "volumebackups")
+        self.assertEqual(name.strip(), "test_backup")
         db.backup_destroy(context.get_admin_context(), backup_id)
         db.volume_destroy(context.get_admin_context(), volume_id)
 

@@ -110,7 +110,7 @@ class HostDriverTestCase(test.TestCase):
         expected = ['/dev/disk/by-path/' + dev for dev in self.devlist]
         driver = host_driver.HostDriver()
         actual = driver.get_all_block_devices()
-        self.assertEquals(expected, actual)
+        self.assertEqual(expected, actual)
 
 
 class ISCSIConnectorTestCase(ConnectorTestCase):
@@ -155,10 +155,10 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
 
         self.stubs.Set(self.connector, '_execute', initiator_no_file)
         initiator = self.connector.get_initiator()
-        self.assertEquals(initiator, None)
+        self.assertEqual(initiator, None)
         self.stubs.Set(self.connector, '_execute', initiator_get_text)
         initiator = self.connector.get_initiator()
-        self.assertEquals(initiator, 'iqn.1234-56.foo.bar:01:23456789abc')
+        self.assertEqual(initiator, 'iqn.1234-56.foo.bar:01:23456789abc')
 
     @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
                                'Test requires /dev/disk/by-path')
@@ -171,8 +171,8 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         connection_info = self.iscsi_connection(vol, location, iqn)
         device = self.connector.connect_volume(connection_info['data'])
         dev_str = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location, iqn)
-        self.assertEquals(device['type'], 'block')
-        self.assertEquals(device['path'], dev_str)
+        self.assertEqual(device['type'], 'block')
+        self.assertEqual(device['path'], dev_str)
 
         self.connector.disconnect_volume(connection_info['data'], device)
         expected_commands = [('iscsiadm -m node -T %s -p %s' %
@@ -406,8 +406,8 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
             exp_wwn = wwn[0] if isinstance(wwn, list) else wwn
             dev_str = ('/dev/disk/by-path/pci-0000:05:00.2-fc-0x%s-lun-1' %
                        exp_wwn)
-            self.assertEquals(dev_info['type'], 'block')
-            self.assertEquals(dev_info['path'], dev_str)
+            self.assertEqual(dev_info['type'], 'block')
+            self.assertEqual(dev_info['path'], dev_str)
 
             self.connector.disconnect_volume(connection_info['data'], dev_info)
             expected_commands = []

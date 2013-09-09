@@ -113,14 +113,14 @@ class BackupTestCase(test.TestCase):
 
         self.backup_mgr.init_host()
         vol1 = db.volume_get(self.ctxt, vol1_id)
-        self.assertEquals(vol1['status'], 'available')
+        self.assertEqual(vol1['status'], 'available')
         vol2 = db.volume_get(self.ctxt, vol2_id)
-        self.assertEquals(vol2['status'], 'error_restoring')
+        self.assertEqual(vol2['status'], 'error_restoring')
 
         backup1 = db.backup_get(self.ctxt, backup1_id)
-        self.assertEquals(backup1['status'], 'error')
+        self.assertEqual(backup1['status'], 'error')
         backup2 = db.backup_get(self.ctxt, backup2_id)
-        self.assertEquals(backup2['status'], 'available')
+        self.assertEqual(backup2['status'], 'available')
         self.assertRaises(exception.BackupNotFound,
                           db.backup_get,
                           self.ctxt,
@@ -165,9 +165,9 @@ class BackupTestCase(test.TestCase):
                           self.ctxt,
                           backup_id)
         vol = db.volume_get(self.ctxt, vol_id)
-        self.assertEquals(vol['status'], 'available')
+        self.assertEqual(vol['status'], 'available')
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'error')
+        self.assertEqual(backup['status'], 'error')
 
     def test_create_backup(self):
         """Test normal backup creation"""
@@ -183,9 +183,9 @@ class BackupTestCase(test.TestCase):
 
         self.backup_mgr.create_backup(self.ctxt, backup_id)
         vol = db.volume_get(self.ctxt, vol_id)
-        self.assertEquals(vol['status'], 'available')
+        self.assertEqual(vol['status'], 'available')
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'available')
+        self.assertEqual(backup['status'], 'available')
         self.assertEqual(backup['size'], vol_size)
 
     def test_restore_backup_with_bad_volume_status(self):
@@ -200,7 +200,7 @@ class BackupTestCase(test.TestCase):
                           backup_id,
                           vol_id)
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'available')
+        self.assertEqual(backup['status'], 'available')
 
     def test_restore_backup_with_bad_backup_status(self):
         """Test error handling when restoring a backup with a backup
@@ -216,9 +216,9 @@ class BackupTestCase(test.TestCase):
                           backup_id,
                           vol_id)
         vol = db.volume_get(self.ctxt, vol_id)
-        self.assertEquals(vol['status'], 'error')
+        self.assertEqual(vol['status'], 'error')
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'error')
+        self.assertEqual(backup['status'], 'error')
 
     def test_restore_backup_with_driver_error(self):
         """Test error handling when an error occurs during backup restore"""
@@ -239,9 +239,9 @@ class BackupTestCase(test.TestCase):
                           backup_id,
                           vol_id)
         vol = db.volume_get(self.ctxt, vol_id)
-        self.assertEquals(vol['status'], 'error_restoring')
+        self.assertEqual(vol['status'], 'error_restoring')
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'available')
+        self.assertEqual(backup['status'], 'available')
 
     def test_restore_backup_with_bad_service(self):
         """Test error handling when attempting a restore of a backup
@@ -266,9 +266,9 @@ class BackupTestCase(test.TestCase):
                           backup_id,
                           vol_id)
         vol = db.volume_get(self.ctxt, vol_id)
-        self.assertEquals(vol['status'], 'error')
+        self.assertEqual(vol['status'], 'error')
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'available')
+        self.assertEqual(backup['status'], 'available')
 
     def test_restore_backup(self):
         """Test normal backup restoration"""
@@ -286,9 +286,9 @@ class BackupTestCase(test.TestCase):
 
         self.backup_mgr.restore_backup(self.ctxt, backup_id, vol_id)
         vol = db.volume_get(self.ctxt, vol_id)
-        self.assertEquals(vol['status'], 'available')
+        self.assertEqual(vol['status'], 'available')
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'available')
+        self.assertEqual(backup['status'], 'available')
 
     def test_delete_backup_with_bad_backup_status(self):
         """Test error handling when deleting a backup with a backup
@@ -302,7 +302,7 @@ class BackupTestCase(test.TestCase):
                           self.ctxt,
                           backup_id)
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'error')
+        self.assertEqual(backup['status'], 'error')
 
     def test_delete_backup_with_error(self):
         """Test error handling when an error occurs during backup deletion."""
@@ -315,7 +315,7 @@ class BackupTestCase(test.TestCase):
                           self.ctxt,
                           backup_id)
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'error')
+        self.assertEqual(backup['status'], 'error')
 
     def test_delete_backup_with_bad_service(self):
         """Test error handling when attempting a delete of a backup
@@ -331,7 +331,7 @@ class BackupTestCase(test.TestCase):
                           self.ctxt,
                           backup_id)
         backup = db.backup_get(self.ctxt, backup_id)
-        self.assertEquals(backup['status'], 'error')
+        self.assertEqual(backup['status'], 'error')
 
     def test_delete_backup_with_no_service(self):
         """Test error handling when attempting a delete of a backup

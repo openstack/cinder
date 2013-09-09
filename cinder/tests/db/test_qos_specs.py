@@ -69,7 +69,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         specs_id = self._create_qos_specs('NewName')
         query_id = db.qos_specs_get_by_name(
             self.ctxt, 'NewName')['id']
-        self.assertEquals(specs_id, query_id)
+        self.assertEqual(specs_id, query_id)
 
     def test_qos_specs_get(self):
         value = dict(consumer='front-end',
@@ -144,9 +144,9 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         specs_id = self._create_qos_specs('FakeQos')
         db.volume_type_qos_associate(self.ctxt, type_id, specs_id)
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 1)
-        self.assertEquals(res[0]['id'], type_id)
-        self.assertEquals(res[0]['qos_specs_id'], specs_id)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]['id'], type_id)
+        self.assertEqual(res[0]['qos_specs_id'], specs_id)
 
     def test_qos_associations_get(self):
         self.assertRaises(exception.QoSSpecsNotFound,
@@ -156,34 +156,34 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         type_id = volume_types.create(self.ctxt, 'TypeName')['id']
         specs_id = self._create_qos_specs('FakeQos')
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 0)
+        self.assertEqual(len(res), 0)
 
         db.volume_type_qos_associate(self.ctxt, type_id, specs_id)
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 1)
-        self.assertEquals(res[0]['id'], type_id)
-        self.assertEquals(res[0]['qos_specs_id'], specs_id)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]['id'], type_id)
+        self.assertEqual(res[0]['qos_specs_id'], specs_id)
 
         type0_id = volume_types.create(self.ctxt, 'Type0Name')['id']
         db.volume_type_qos_associate(self.ctxt, type0_id, specs_id)
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 2)
-        self.assertEquals(res[0]['qos_specs_id'], specs_id)
-        self.assertEquals(res[1]['qos_specs_id'], specs_id)
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0]['qos_specs_id'], specs_id)
+        self.assertEqual(res[1]['qos_specs_id'], specs_id)
 
     def test_qos_specs_disassociate(self):
         type_id = volume_types.create(self.ctxt, 'TypeName')['id']
         specs_id = self._create_qos_specs('FakeQos')
         db.volume_type_qos_associate(self.ctxt, type_id, specs_id)
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(res[0]['id'], type_id)
-        self.assertEquals(res[0]['qos_specs_id'], specs_id)
+        self.assertEqual(res[0]['id'], type_id)
+        self.assertEqual(res[0]['qos_specs_id'], specs_id)
 
         db.qos_specs_disassociate(self.ctxt, specs_id, type_id)
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 0)
+        self.assertEqual(len(res), 0)
         res = db.volume_type_get(self.ctxt, type_id)
-        self.assertEquals(res['qos_specs_id'], None)
+        self.assertEqual(res['qos_specs_id'], None)
 
     def test_qos_specs_disassociate_all(self):
         specs_id = self._create_qos_specs('FakeQos')
@@ -195,11 +195,11 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         db.volume_type_qos_associate(self.ctxt, type3_id, specs_id)
 
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 3)
+        self.assertEqual(len(res), 3)
 
         db.qos_specs_disassociate_all(self.ctxt, specs_id)
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
-        self.assertEquals(len(res), 0)
+        self.assertEqual(len(res), 0)
 
     def test_qos_specs_update(self):
         name = 'FakeName'

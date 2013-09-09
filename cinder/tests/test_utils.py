@@ -128,104 +128,104 @@ class GetFromPathTestCase(test.TestCase):
         f = utils.get_from_path
 
         input = []
-        self.assertEquals([], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [None]
-        self.assertEquals([], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': None}]
-        self.assertEquals([], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': None}}]
-        self.assertEquals([{'b': None}], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': None}], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': None}}}]
-        self.assertEquals([{'b': {'c': None}}], f(input, "a"))
-        self.assertEquals([{'c': None}], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': None}}], f(input, "a"))
+        self.assertEqual([{'c': None}], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': None}}}, {'a': None}]
-        self.assertEquals([{'b': {'c': None}}], f(input, "a"))
-        self.assertEquals([{'c': None}], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': None}}], f(input, "a"))
+        self.assertEqual([{'c': None}], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': None}}}, {'a': {'b': None}}]
-        self.assertEquals([{'b': {'c': None}}, {'b': None}], f(input, "a"))
-        self.assertEquals([{'c': None}], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': None}}, {'b': None}], f(input, "a"))
+        self.assertEqual([{'c': None}], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
     def test_does_select(self):
         f = utils.get_from_path
 
         input = [{'a': 'a_1'}]
-        self.assertEquals(['a_1'], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual(['a_1'], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': 'b_1'}}]
-        self.assertEquals([{'b': 'b_1'}], f(input, "a"))
-        self.assertEquals(['b_1'], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': 'b_1'}], f(input, "a"))
+        self.assertEqual(['b_1'], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}}]
-        self.assertEquals([{'b': {'c': 'c_1'}}], f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}], f(input, "a/b"))
-        self.assertEquals(['c_1'], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': 'c_1'}}], f(input, "a"))
+        self.assertEqual([{'c': 'c_1'}], f(input, "a/b"))
+        self.assertEqual(['c_1'], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}}, {'a': None}]
-        self.assertEquals([{'b': {'c': 'c_1'}}], f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}], f(input, "a/b"))
-        self.assertEquals(['c_1'], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': 'c_1'}}], f(input, "a"))
+        self.assertEqual([{'c': 'c_1'}], f(input, "a/b"))
+        self.assertEqual(['c_1'], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}},
                  {'a': {'b': None}}]
-        self.assertEquals([{'b': {'c': 'c_1'}}, {'b': None}], f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}], f(input, "a/b"))
-        self.assertEquals(['c_1'], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': 'c_1'}}, {'b': None}], f(input, "a"))
+        self.assertEqual([{'c': 'c_1'}], f(input, "a/b"))
+        self.assertEqual(['c_1'], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}},
                  {'a': {'b': {'c': 'c_2'}}}]
         self.assertEquals([{'b': {'c': 'c_1'}}, {'b': {'c': 'c_2'}}],
                           f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}, {'c': 'c_2'}], f(input, "a/b"))
-        self.assertEquals(['c_1', 'c_2'], f(input, "a/b/c"))
+        self.assertEqual([{'c': 'c_1'}, {'c': 'c_2'}], f(input, "a/b"))
+        self.assertEqual(['c_1', 'c_2'], f(input, "a/b/c"))
 
-        self.assertEquals([], f(input, "a/b/c/d"))
-        self.assertEquals([], f(input, "c/a/b/d"))
-        self.assertEquals([], f(input, "i/r/t"))
+        self.assertEqual([], f(input, "a/b/c/d"))
+        self.assertEqual([], f(input, "c/a/b/d"))
+        self.assertEqual([], f(input, "i/r/t"))
 
     def test_flattens_lists(self):
         f = utils.get_from_path
 
         input = [{'a': [1, 2, 3]}]
-        self.assertEquals([1, 2, 3], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': [1, 2, 3]}}]
-        self.assertEquals([{'b': [1, 2, 3]}], f(input, "a"))
-        self.assertEquals([1, 2, 3], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': [1, 2, 3]}], f(input, "a"))
+        self.assertEqual([1, 2, 3], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': [1, 2, 3]}}, {'a': {'b': [4, 5, 6]}}]
-        self.assertEquals([1, 2, 3, 4, 5, 6], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3, 4, 5, 6], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': [{'b': [1, 2, 3]}, {'b': [4, 5, 6]}]}]
-        self.assertEquals([1, 2, 3, 4, 5, 6], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3, 4, 5, 6], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': [1, 2, {'b': 'b_1'}]}]
-        self.assertEquals([1, 2, {'b': 'b_1'}], f(input, "a"))
-        self.assertEquals(['b_1'], f(input, "a/b"))
+        self.assertEqual([1, 2, {'b': 'b_1'}], f(input, "a"))
+        self.assertEqual(['b_1'], f(input, "a/b"))
 
     def test_bad_xpath(self):
         f = utils.get_from_path
@@ -253,29 +253,29 @@ class GetFromPathTestCase(test.TestCase):
 
         private_ips = f(inst, 'fixed_ip/address')
         public_ips = f(inst, 'fixed_ip/floating_ips/address')
-        self.assertEquals(['192.168.0.3'], private_ips)
-        self.assertEquals(['1.2.3.4'], public_ips)
+        self.assertEqual(['192.168.0.3'], private_ips)
+        self.assertEqual(['1.2.3.4'], public_ips)
 
     def test_accepts_dictionaries(self):
         f = utils.get_from_path
 
         input = {'a': [1, 2, 3]}
-        self.assertEquals([1, 2, 3], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = {'a': {'b': [1, 2, 3]}}
-        self.assertEquals([{'b': [1, 2, 3]}], f(input, "a"))
-        self.assertEquals([1, 2, 3], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': [1, 2, 3]}], f(input, "a"))
+        self.assertEqual([1, 2, 3], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = {'a': [{'b': [1, 2, 3]}, {'b': [4, 5, 6]}]}
-        self.assertEquals([1, 2, 3, 4, 5, 6], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3, 4, 5, 6], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = {'a': [1, 2, {'b': 'b_1'}]}
-        self.assertEquals([1, 2, {'b': 'b_1'}], f(input, "a"))
-        self.assertEquals(['b_1'], f(input, "a/b"))
+        self.assertEqual([1, 2, {'b': 'b_1'}], f(input, "a"))
+        self.assertEqual(['b_1'], f(input, "a/b"))
 
 
 class GenericUtilsTestCase(test.TestCase):
@@ -452,7 +452,7 @@ class GenericUtilsTestCase(test.TestCase):
         flo = StringIO.StringIO(data)
         h1 = utils.hash_file(flo)
         h2 = hashlib.sha1(data).hexdigest()
-        self.assertEquals(h1, h2)
+        self.assertEqual(h1, h2)
 
     def test_check_ssh_injection(self):
         cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']

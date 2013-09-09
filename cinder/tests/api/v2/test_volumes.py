@@ -122,7 +122,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
         volume_id = res_dict['volume']['id']
-        self.assertEquals(len(res_dict), 1)
+        self.assertEqual(len(res_dict), 1)
 
         self.stubs.Set(volume_api.API, 'get_all',
                        lambda *args, **kwargs:
@@ -260,7 +260,7 @@ class VolumeApiTest(test.TestCase):
                 ],
             }
         }
-        self.assertEquals(res_dict, expected)
+        self.assertEqual(res_dict, expected)
 
     def test_volume_update_metadata(self):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -303,7 +303,7 @@ class VolumeApiTest(test.TestCase):
                 }
             ],
         }}
-        self.assertEquals(res_dict, expected)
+        self.assertEqual(res_dict, expected)
 
     def test_update_empty_body(self):
         body = {}
@@ -413,15 +413,15 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?marker=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 2)
-        self.assertEquals(volumes[0]['id'], 1)
-        self.assertEquals(volumes[1]['id'], 2)
+        self.assertEqual(len(volumes), 2)
+        self.assertEqual(volumes[0]['id'], 1)
+        self.assertEqual(volumes[1]['id'], 2)
 
     def test_volume_index_limit(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
+        self.assertEqual(len(volumes), 1)
 
     def test_volume_index_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
@@ -439,8 +439,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?marker=1&limit=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
-        self.assertEquals(volumes[0]['id'], '1')
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['id'], '1')
 
     def test_volume_index_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
@@ -454,8 +454,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=2&offset=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
-        self.assertEquals(volumes[0]['id'], 2)
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['id'], 2)
 
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1&offset=1')
         self.assertRaises(exception.InvalidInput,
@@ -479,15 +479,15 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 2)
-        self.assertEquals(volumes[0]['id'], 1)
-        self.assertEquals(volumes[1]['id'], 2)
+        self.assertEqual(len(volumes), 2)
+        self.assertEqual(volumes[0]['id'], 1)
+        self.assertEqual(volumes[1]['id'], 2)
 
     def test_volume_detail_limit(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
+        self.assertEqual(len(volumes), 1)
 
     def test_volume_detail_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1')
@@ -505,8 +505,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1&limit=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
-        self.assertEquals(volumes[0]['id'], '1')
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['id'], '1')
 
     def test_volume_detail_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
@@ -520,15 +520,15 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
-        self.assertEquals(volumes[0]['id'], 2)
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['id'], 2)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1',
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEquals(len(volumes), 1)
-        self.assertEquals(volumes[0]['id'], 2)
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['id'], 2)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1&offset=1')
         self.assertRaises(exception.InvalidInput,
@@ -944,7 +944,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "size": "1",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_name(self):
         self_request = """
@@ -958,7 +958,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "name": "Volume-xml",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_description(self):
         self_request = """
@@ -974,7 +974,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "description": "description",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_volume_type(self):
         self_request = """
@@ -993,7 +993,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_availability_zone(self):
         self_request = """
@@ -1013,7 +1013,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "availability_zone": "us-east1",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_metadata(self):
         self_request = """
@@ -1031,7 +1031,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 },
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_full_volume(self):
         self_request = """
@@ -1055,7 +1055,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 },
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_imageref(self):
         self_request = """
@@ -1073,7 +1073,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "imageRef": "4a90189d-d702-4c7c-87fc-6608c554d737",
             },
         }
-        self.assertEquals(expected, request['body'])
+        self.assertEqual(expected, request['body'])
 
     def test_snapshot_id(self):
         self_request = """
@@ -1091,7 +1091,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "snapshot_id": "4a90189d-d702-4c7c-87fc-6608c554d737",
             },
         }
-        self.assertEquals(expected, request['body'])
+        self.assertEqual(expected, request['body'])
 
     def test_source_volid(self):
         self_request = """
@@ -1109,4 +1109,4 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "source_volid": "4a90189d-d702-4c7c-87fc-6608c554d737",
             },
         }
-        self.assertEquals(expected, request['body'])
+        self.assertEqual(expected, request['body'])

@@ -109,7 +109,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = db.backup_get(self.ctxt, 123)
-        self.assertEquals(backup['container'], 'volumebackups')
+        self.assertEqual(backup['container'], 'volumebackups')
 
     def test_backup_custom_container(self):
         container_name = 'fake99'
@@ -119,7 +119,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = db.backup_get(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = db.backup_get(self.ctxt, 123)
-        self.assertEquals(backup['container'], container_name)
+        self.assertEqual(backup['container'], container_name)
 
     def test_create_backup_container_check_wraps_socket_error(self):
         container_name = 'socket_error_on_head'
@@ -189,19 +189,19 @@ class BackupSwiftTestCase(test.TestCase):
     def test_get_compressor(self):
         service = SwiftBackupDriver(self.ctxt)
         compressor = service._get_compressor('None')
-        self.assertEquals(compressor, None)
+        self.assertEqual(compressor, None)
         compressor = service._get_compressor('zlib')
-        self.assertEquals(compressor, zlib)
+        self.assertEqual(compressor, zlib)
         compressor = service._get_compressor('bz2')
-        self.assertEquals(compressor, bz2)
+        self.assertEqual(compressor, bz2)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
     def test_check_container_exists(self):
         service = SwiftBackupDriver(self.ctxt)
         exists = service._check_container_exists('fake_container')
-        self.assertEquals(exists, True)
+        self.assertEqual(exists, True)
         exists = service._check_container_exists('missing_container')
-        self.assertEquals(exists, False)
+        self.assertEqual(exists, False)
         self.assertRaises(swift.ClientException,
                           service._check_container_exists,
                           'unauthorized_container')

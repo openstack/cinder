@@ -119,4 +119,4 @@ class QuotaSerializerTest(test.TestCase):
         body = make_body(root=False, tenant_id=None)
         for node in tree:
             self.assertIn(node.tag, body)
-            self.assertEquals(str(body[node.tag]), node.text)
+            self.assertEqual(str(body[node.tag]), node.text)

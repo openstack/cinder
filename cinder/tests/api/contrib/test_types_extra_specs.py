@@ -120,10 +120,10 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.stubs.Set(cinder.db, 'volume_type_extra_specs_delete',
                        delete_volume_type_extra_specs)
 
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
         self.controller.delete(req, 1, 'key5')
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
 
     def test_delete_not_found(self):
         self.stubs.Set(cinder.db, 'volume_type_extra_specs_delete',
@@ -139,10 +139,10 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                        return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
 
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
 
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
@@ -152,10 +152,10 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                        return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
         res_dict = self.controller.update(req, 1, 'key1', body)
-        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
 
         self.assertEqual('value1', res_dict['key1'])
 

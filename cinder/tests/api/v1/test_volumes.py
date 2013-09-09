@@ -234,7 +234,7 @@ class VolumeApiTest(test.TestCase):
             'id': '1',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'size': 1}}
-        self.assertEquals(res_dict, expected)
+        self.assertEqual(res_dict, expected)
 
     def test_volume_update_metadata(self):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -267,7 +267,7 @@ class VolumeApiTest(test.TestCase):
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'size': 1
         }}
-        self.assertEquals(res_dict, expected)
+        self.assertEqual(res_dict, expected)
 
     def test_update_empty_body(self):
         body = {}
@@ -571,8 +571,8 @@ class VolumeApiTest(test.TestCase):
                                           use_admin_context=is_admin)
             res_dict = self.controller.index(req)
             volumes = res_dict['volumes']
-            self.assertEquals(len(volumes), 1)
-            self.assertEquals(volumes[0]['id'], 2)
+            self.assertEqual(len(volumes), 1)
+            self.assertEqual(volumes[0]['id'], 2)
 
         #admin case
         volume_detail_limit_offset(is_admin=True)
@@ -733,7 +733,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         size="1"></volume>"""
         request = self.deserializer.deserialize(self_request)
         expected = {"volume": {"size": "1", }, }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_display_name(self):
         self_request = """
@@ -747,7 +747,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "display_name": "Volume-xml",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_display_description(self):
         self_request = """
@@ -763,7 +763,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "display_description": "description",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_volume_type(self):
         self_request = """
@@ -782,7 +782,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_availability_zone(self):
         self_request = """
@@ -802,7 +802,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "availability_zone": "us-east1",
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_metadata(self):
         self_request = """
@@ -820,7 +820,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 },
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_full_volume(self):
         self_request = """
@@ -844,7 +844,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 },
             },
         }
-        self.assertEquals(request['body'], expected)
+        self.assertEqual(request['body'], expected)
 
     def test_imageref(self):
         self_request = """
@@ -862,7 +862,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "imageRef": "4a90189d-d702-4c7c-87fc-6608c554d737",
             },
         }
-        self.assertEquals(expected, request['body'])
+        self.assertEqual(expected, request['body'])
 
     def test_snapshot_id(self):
         self_request = """
@@ -880,7 +880,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "snapshot_id": "4a90189d-d702-4c7c-87fc-6608c554d737",
             },
         }
-        self.assertEquals(expected, request['body'])
+        self.assertEqual(expected, request['body'])
 
     def test_source_volid(self):
         self_request = """
@@ -898,7 +898,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "source_volid": "4a90189d-d702-4c7c-87fc-6608c554d737",
             },
         }
-        self.assertEquals(expected, request['body'])
+        self.assertEqual(expected, request['body'])
 
 
 class VolumesUnprocessableEntityTestCase(test.TestCase):

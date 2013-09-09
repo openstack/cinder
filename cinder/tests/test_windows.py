@@ -207,7 +207,7 @@ class TestWindowsDriver(test.TestCase):
 
         mox.VerifyAll()
 
-        self.assertEquals(export_info['provider_location'], initiator_name)
+        self.assertEqual(export_info['provider_location'], initiator_name)
 
     def test_initialize_connection(self):
         mox = self._mox
