@@ -233,18 +233,29 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                      'vol': volume['id'],
                      'size': volume_size})
 
-        path_to_disk = self._local_path_volume(snapshot['volume'])
+        info_path = self._local_path_volume_info(snapshot['volume'])
+        snap_info = self._read_info_file(info_path)
+        vol_path = self._local_volume_dir(snapshot['volume'])
+        forward_file = snap_info[snapshot['id']]
+        forward_path = os.path.join(vol_path, forward_file)
+
+        # Find the file which backs this file, which represents the point
+        # when this snapshot was created.
+        img_info = self._qemu_img_info(forward_path)
+        path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
 
         path_to_new_vol = self._local_path_volume(volume)
 
-        LOG.debug(_("will copy from snapshot at %s") % path_to_disk)
+        LOG.debug(_("will copy from snapshot at %s") % path_to_snap_img)
 
         if self.configuration.glusterfs_qcow2_volumes:
             out_format = 'qcow2'
         else:
             out_format = 'raw'
 
-        image_utils.convert_image(path_to_disk, path_to_new_vol, out_format)
+        image_utils.convert_image(path_to_snap_img,
+                                  path_to_new_vol,
+                                  out_format)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
@@ -286,6 +297,10 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             attach the volume to a VM at volume-attach time.
             If the volume is attached, the VM will switch to this file as
             part of the snapshot process.
+
+            Note that volume-1234.aaaa represents changes after snapshot
+            'aaaa' was created.  So the data for snapshot 'aaaa' is actually
+            in the backing file(s) of volume-1234.aaaa.
 
             This file has a qcow2 header recording the fact that volume-1234 is
             its backing file.  Delta changes since the snapshot was created are
