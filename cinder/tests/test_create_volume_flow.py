@@ -14,15 +14,16 @@
 #    under the License.
 """ Tests for create_volume TaskFlow """
 
-import mock
 import time
+
+import mock
 
 from cinder import context
 from cinder import test
 from cinder.volume.flows import create_volume
 
 
-class fake_sheduler_rpc_api(object):
+class fake_scheduler_rpc_api(object):
     def __init__(self, expected_spec, test_inst):
         self.expected_spec = expected_spec
         self.test_inst = test_inst
@@ -87,7 +88,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'snapshot_id': None,
                 'image_id': None}
 
-        task = create_volume.VolumeCastTask(fake_sheduler_rpc_api(spec, self),
+        task = create_volume.VolumeCastTask(fake_scheduler_rpc_api(spec, self),
                                             fake_volume_api(spec, self),
                                             fake_db())
 
@@ -98,7 +99,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'snapshot_id': 3,
                 'image_id': 4}
 
-        task = create_volume.VolumeCastTask(fake_sheduler_rpc_api(spec, self),
+        task = create_volume.VolumeCastTask(fake_scheduler_rpc_api(spec, self),
                                             fake_volume_api(spec, self),
                                             fake_db())
 
