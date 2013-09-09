@@ -274,6 +274,11 @@ class VolumeTypeExtraSpecsNotFound(NotFound):
                 "key %(extra_specs_key)s.")
 
 
+class VolumeTypeInUse(CinderException):
+    message = _("Volume Type %(volume_type_id)s deletion is not allowed with "
+                "volumes present with the type.")
+
+
 class SnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 

@@ -45,6 +45,12 @@ def return_volume_types_destroy(context, name):
     pass
 
 
+def return_volume_types_with_volumes_destroy(context, id):
+    if id == "1":
+        raise exception.VolumeTypeInUse(volume_type_id=id)
+    pass
+
+
 def return_volume_types_create(context, name, specs):
     pass
 
@@ -92,6 +98,16 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
                           req, '777')
         self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+
+    def test_volume_types_with_volumes_destroy(self):
+        self.stubs.Set(volume_types, 'get_volume_type',
+                       return_volume_types_get_volume_type)
+        self.stubs.Set(volume_types, 'destroy',
+                       return_volume_types_with_volumes_destroy)
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 0)
+        self.controller._delete(req, 1)
+        self.assertEquals(len(test_notifier.NOTIFICATIONS), 1)
 
     def test_create(self):
         self.stubs.Set(volume_types, 'create',
