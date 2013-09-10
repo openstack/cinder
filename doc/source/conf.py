@@ -67,7 +67,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'cinder'
-copyright = u'2010-present, OpenStack, LLC'
+copyright = u'2010-present, OpenStack Foundation'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
