@@ -20,6 +20,7 @@ Client side of the volume RPC API.
 
 from oslo.config import cfg
 
+from cinder.openstack.common import jsonutils
 from cinder.openstack.common import rpc
 import cinder.openstack.common.rpc.proxy
 
@@ -61,10 +62,12 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                       allow_reschedule=True,
                       snapshot_id=None, image_id=None,
                       source_volid=None):
+
+        request_spec_p = jsonutils.to_primitive(request_spec)
         self.cast(ctxt,
                   self.make_msg('create_volume',
                                 volume_id=volume['id'],
-                                request_spec=request_spec,
+                                request_spec=request_spec_p,
                                 filter_properties=filter_properties,
                                 allow_reschedule=allow_reschedule,
                                 snapshot_id=snapshot_id,

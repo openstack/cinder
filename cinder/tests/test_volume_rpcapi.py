@@ -42,6 +42,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         vol['availability_zone'] = CONF.storage_availability_zone
         vol['status'] = "available"
         vol['attach_status'] = "detached"
+        vol['metadata'] = {"test_key": "test_val"}
         volume = db.volume_create(self.context, vol)
 
         snpshot = {
@@ -53,6 +54,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             'display_description': 'fake_description'}
         snapshot = db.snapshot_create(self.context, snpshot)
         self.fake_volume = jsonutils.to_primitive(volume)
+        self.fake_volume_metadata = volume["volume_metadata"]
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
 
     def test_serialized_volume_has_id(self):
@@ -70,6 +72,11 @@ class VolumeRpcAPITestCase(test.TestCase):
         expected_retval = 'foo' if method == 'call' else None
 
         expected_version = kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+
+        if 'request_spec' in kwargs:
+            spec = jsonutils.to_primitive(kwargs['request_spec'])
+            kwargs['request_spec'] = spec
+
         expected_msg = rpcapi.make_msg(method, **kwargs)
         if 'volume' in expected_msg['args']:
             volume = expected_msg['args']['volume']
@@ -124,6 +131,20 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               host='fake_host1',
                               request_spec='fake_request_spec',
+                              filter_properties='fake_properties',
+                              allow_reschedule=True,
+                              snapshot_id='fake_snapshot_id',
+                              image_id='fake_image_id',
+                              source_volid='fake_src_id',
+                              version='1.4')
+
+    def test_create_volume_serialization(self):
+        request_spec = {"metadata": self.fake_volume_metadata}
+        self._test_volume_api('create_volume',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              host='fake_host1',
+                              request_spec=request_spec,
                               filter_properties='fake_properties',
                               allow_reschedule=True,
                               snapshot_id='fake_snapshot_id',
