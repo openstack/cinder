@@ -124,16 +124,28 @@ def delete(context, qos_specs_id, force=False):
     if qos_specs_id is None:
         msg = _("id cannot be None")
         raise exception.InvalidQoSSpecs(reason=msg)
-    else:
-        # check if there is any entity associated with this
-        # qos specs.
-        res = db.qos_specs_associations_get(context, qos_specs_id)
-        if res and not force:
-            raise exception.QoSSpecsInUse(specs_id=qos_specs_id)
-        elif force:
-            # remove all association
-            disassociate_all(context, qos_specs_id)
-        db.qos_specs_delete(context, qos_specs_id)
+
+    # check if there is any entity associated with this qos specs
+    res = db.qos_specs_associations_get(context, qos_specs_id)
+    if res and not force:
+        raise exception.QoSSpecsInUse(specs_id=qos_specs_id)
+    elif res and force:
+        # remove all association
+        db.qos_specs_disassociate_all(context, qos_specs_id)
+
+    db.qos_specs_delete(context, qos_specs_id)
+
+
+def delete_keys(context, qos_specs_id, keys):
+    """Marks specified key of target qos specs as deleted."""
+    if qos_specs_id is None:
+        msg = _("id cannot be None")
+        raise exception.InvalidQoSSpecs(reason=msg)
+
+    # make sure qos_specs_id is valid
+    get_qos_specs(context, qos_specs_id)
+    for key in keys:
+        db.qos_specs_item_delete(context, qos_specs_id, key)
 
 
 def get_associations(context, specs_id):
@@ -209,6 +221,7 @@ def disassociate_qos_specs(context, specs_id, type_id):
 def disassociate_all(context, specs_id):
     """Disassociate qos_specs from all entities."""
     try:
+        get_qos_specs(context, specs_id)
         db.qos_specs_disassociate_all(context, specs_id)
     except db_exc.DBError as e:
         LOG.exception(_('DB error: %s') % e)

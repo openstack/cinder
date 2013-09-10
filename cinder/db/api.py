@@ -524,6 +524,11 @@ def qos_specs_delete(context, qos_specs_id):
     IMPL.qos_specs_delete(context, qos_specs_id)
 
 
+def qos_specs_item_delete(context, qos_specs_id, key):
+    """Delete specified key in the qos_specs."""
+    IMPL.qos_specs_item_delete(context, qos_specs_id, key)
+
+
 def qos_specs_update(context, qos_specs_id, specs):
     """Update qos specs.
 
