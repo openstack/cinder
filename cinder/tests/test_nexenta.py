@@ -451,8 +451,8 @@ class TestNexentaNfsDriver(test.TestCase):
 
         compression = self.configuration.nexenta_volume_compression
         self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
-        self.nms_mock.folder.create('stack', 'share/volume-1',
-                                    '-o compression=%s' % compression)
+        self.nms_mock.folder.create_with_opts(
+            'stack', 'share/volume-1', {'compression': compression})
         self.nms_mock.netstorsvc.share_folder(self.TEST_SHARE_SVC,
                                               'stack/share/volume-1',
                                               self.TEST_SHARE_OPTS)
@@ -470,8 +470,8 @@ class TestNexentaNfsDriver(test.TestCase):
         self.mox.ResetAll()
 
         self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
-        self.nms_mock.folder.create('stack', 'share/volume-1',
-                                    '-o compression=%s' % compression)
+        self.nms_mock.folder.create_with_opts(
+            'stack', 'share/volume-1', {'compression': compression})
         self.nms_mock.netstorsvc.share_folder(
             self.TEST_SHARE_SVC, 'stack/share/volume-1',
             self.TEST_SHARE_OPTS).AndRaise(nexenta.NexentaException('-'))

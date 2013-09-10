@@ -102,9 +102,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         vol, dataset = self._get_share_datasets(nfs_share)
         folder = '%s/%s' % (dataset, volume['name'])
         LOG.debug(_('Creating folder on Nexenta Store %s'), folder)
-        nms.folder.create(
+        nms.folder.create_with_opts(
             vol, folder,
-            '-o compression=%s' % self.configuration.nexenta_volume_compression
+            {'compression': self.configuration.nexenta_volume_compression}
         )
 
         volume_path = self.remote_path(volume)
