@@ -85,6 +85,16 @@ class VolumeTypeEncryptionController(wsgi.Controller):
                 msg = _("Valid control location are: %s") % CONTROL_LOCATION
                 raise exception.InvalidInput(reason=msg)
 
+    def _encrypted_type_in_use(self, context, volume_type_id):
+        volume_list = db.volume_type_encryption_volume_get(context,
+                                                           volume_type_id)
+        # If there is at least one volume in the list
+        # returned, this type is in use by a volume.
+        if len(volume_list) > 0:
+            return True
+        else:
+            return False
+
     @wsgi.serializers(xml=VolumeTypeEncryptionTemplate)
     def index(self, req, type_id):
         """Returns the encryption specs for a given volume type."""
@@ -135,6 +145,19 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             raise webob.exc.HTTPNotFound()
 
         return {id: encryption_specs[id]}
+
+    def delete(self, req, type_id, id):
+        """Delete encryption specs for a given volume type."""
+        context = req.environ['cinder.context']
+        authorize(context)
+
+        if self._encrypted_type_in_use(context, type_id):
+            expl = _('Cannot delete encryption specs. Volume type in use.')
+            raise webob.exc.HTTPBadRequest(explanation=expl)
+        else:
+            db.volume_type_encryption_delete(context, type_id)
+
+        return webob.Response(status_int=202)
 
 
 class Volume_type_encryption(extensions.ExtensionDescriptor):
