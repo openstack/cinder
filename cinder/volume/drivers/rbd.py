@@ -810,5 +810,5 @@ class RBDDriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug(_("Extend volume from %(old_size)s to %(new_size)s"),
+        LOG.debug(_("Extend volume from %(old_size)s GB to %(new_size)s GB."),
                   {'old_size': old_size, 'new_size': new_size})

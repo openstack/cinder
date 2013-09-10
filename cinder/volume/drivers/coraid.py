@@ -314,7 +314,7 @@ class CoraidAppliance(object):
         return esm_result
 
     def resize_volume(self, volume_name, new_volume_size_in_gb):
-        LOG.debug(_('Resize volume "%(name)s" to %(size)s') %
+        LOG.debug(_('Resize volume "%(name)s" to %(size)s GB.') %
                   {'name': volume_name,
                    'size': new_volume_size_in_gb})
         repository = self.get_volume_repository(volume_name)
@@ -332,7 +332,7 @@ class CoraidAppliance(object):
                    'args': 'resize'}
         esm_result = self.esm_command(request)
 
-        LOG.debug(_('Volume "%(name)s" resized. New size is %(size)s') %
+        LOG.debug(_('Volume "%(name)s" resized. New size is %(size)s GB.') %
                   {'name': volume_name,
                    'size': new_volume_size_in_gb})
         return esm_result
