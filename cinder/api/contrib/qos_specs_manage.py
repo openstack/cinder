@@ -255,7 +255,6 @@ class QoSSpecsController(wsgi.Controller):
                   {'id': id, 'type_id': type_id})
 
         try:
-            qos_specs.get_qos_specs(context, id)
             qos_specs.associate_qos_with_type(context, id, type_id)
             notifier_info = dict(id=id, type_id=type_id)
             notifier_api.notify(context, 'QoSSpecs',
@@ -273,6 +272,15 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.associate',
                                          notifier_err)
             raise webob.exc.HTTPNotFound(explanation=str(err))
+        except exception.InvalidVolumeType as err:
+            notifier_err = dict(id=id, error_message=str(err))
+            self._notify_qos_specs_error(context,
+                                         'qos_specs.associate',
+                                         notifier_err)
+            self._notify_qos_specs_error(context,
+                                         'qos_specs.associate',
+                                         notifier_err)
+            raise webob.exc.HTTPBadRequest(explanation=str(err))
         except exception.QoSSpecsAssociateFailed as err:
             notifier_err = dict(id=id, error_message=str(err))
             self._notify_qos_specs_error(context,
@@ -300,7 +308,6 @@ class QoSSpecsController(wsgi.Controller):
                   {'id': id, 'type_id': type_id})
 
         try:
-            qos_specs.get_qos_specs(context, id)
             qos_specs.disassociate_qos_specs(context, id, type_id)
             notifier_info = dict(id=id, type_id=type_id)
             notifier_api.notify(context, 'QoSSpecs',

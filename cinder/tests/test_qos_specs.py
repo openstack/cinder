@@ -169,12 +169,24 @@ class QoSSpecsTestCase(test.TestCase):
                           'Trouble')
 
     def test_associate_qos_with_type(self):
+        def fake_qos_specs_get(context, id):
+            if id == 'NotFound':
+                raise exception.QoSSpecsNotFound(specs_id=id)
+            else:
+                pass
+
         def fake_db_associate(context, id, type_id):
             if id == 'Trouble':
                 raise db_exc.DBError()
             elif type_id == 'NotFound':
                 raise exception.VolumeTypeNotFound(volume_type_id=type_id)
             pass
+
+        def fake_vol_type_qos_get(type_id):
+            if type_id == 'Invalid':
+                return {'qos_specs': {'id': 'Invalid'}}
+            else:
+                return {'qos_specs': None}
 
         type_ref = volume_types.create(self.ctxt, 'TypeName')
         specs_id = self._create_qos_specs('QoSName')
@@ -188,14 +200,29 @@ class QoSSpecsTestCase(test.TestCase):
 
         self.stubs.Set(db, 'qos_specs_associate',
                        fake_db_associate)
+        self.stubs.Set(qos_specs, 'get_qos_specs', fake_qos_specs_get)
+        self.stubs.Set(volume_types, 'get_volume_type_qos_specs',
+                       fake_vol_type_qos_get)
         self.assertRaises(exception.VolumeTypeNotFound,
                           qos_specs.associate_qos_with_type,
                           self.ctxt, 'specs-id', 'NotFound')
         self.assertRaises(exception.QoSSpecsAssociateFailed,
                           qos_specs.associate_qos_with_type,
                           self.ctxt, 'Trouble', 'id')
+        self.assertRaises(exception.QoSSpecsNotFound,
+                          qos_specs.associate_qos_with_type,
+                          self.ctxt, 'NotFound', 'id')
+        self.assertRaises(exception.InvalidVolumeType,
+                          qos_specs.associate_qos_with_type,
+                          self.ctxt, 'specs-id', 'Invalid')
 
     def test_disassociate_qos_specs(self):
+        def fake_qos_specs_get(context, id):
+            if id == 'NotFound':
+                raise exception.QoSSpecsNotFound(specs_id=id)
+            else:
+                pass
+
         def fake_db_disassociate(context, id, type_id):
             if id == 'Trouble':
                 raise db_exc.DBError()
@@ -217,6 +244,8 @@ class QoSSpecsTestCase(test.TestCase):
 
         self.stubs.Set(db, 'qos_specs_disassociate',
                        fake_db_disassociate)
+        self.stubs.Set(qos_specs, 'get_qos_specs',
+                       fake_qos_specs_get)
         self.assertRaises(exception.VolumeTypeNotFound,
                           qos_specs.disassociate_qos_specs,
                           self.ctxt, 'specs-id', 'NotFound')
