@@ -1142,6 +1142,33 @@
 
 
 #
+# Options defined in cinder.volume.drivers.eqlx
+#
+
+# Group name to use for creating volumes (string value)
+#eqlx_group_name=group-0
+
+# Timeout for the Group Manager cli command execution (integer
+# value)
+#eqlx_cli_timeout=30
+
+# Maximum retry count for reconnection (integer value)
+#eqlx_cli_max_retries=5
+
+# Use CHAP authentificaion for targets? (boolean value)
+#eqlx_use_chap=false
+
+# Existing CHAP account name (string value)
+#eqlx_chap_login=admin
+
+# Password for specified CHAP account name (string value)
+#eqlx_chap_password=password
+
+# Pool in which volumes will be created (string value)
+#eqlx_pool=default
+
+
+#
 # Options defined in cinder.volume.drivers.glusterfs
 #
 
@@ -1731,4 +1758,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 370
+# Total option count: 377
