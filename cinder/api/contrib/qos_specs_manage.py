@@ -26,6 +26,7 @@ from cinder.api import xmlutil
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
+from cinder.openstack.common import strutils
 from cinder.volume import qos_specs
 
 
@@ -157,6 +158,7 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.update',
                                          notifier_err)
             raise webob.exc.HTTPInternalServerError(explanation=str(err))
+
         return body
 
     @wsgi.serializers(xml=QoSSpecsTemplate)
@@ -179,11 +181,12 @@ class QoSSpecsController(wsgi.Controller):
 
         force = req.params.get('force', None)
 
+        #convert string to bool type in strict manner
+        force = strutils.bool_from_string(force)
         LOG.debug("Delete qos_spec: %(id)s, force: %(force)s" %
                   {'id': id, 'force': force})
 
         try:
-            qos_specs.get_qos_specs(context, id)
             qos_specs.delete(context, id, force)
             notifier_info = dict(id=id)
             notifier_api.notify(context, 'QoSSpecs',
@@ -205,6 +208,40 @@ class QoSSpecsController(wsgi.Controller):
                 raise webob.exc.HTTPInternalServerError(explanation=msg)
             msg = _('Qos specs still in use.')
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        return webob.Response(status_int=202)
+
+    def delete_keys(self, req, id, body):
+        """Deletes specified keys in qos specs."""
+        context = req.environ['cinder.context']
+        authorize(context)
+
+        if not (body and 'keys' in body
+                and isinstance(body.get('keys'), list)):
+            raise webob.exc.HTTPBadRequest()
+
+        keys = body['keys']
+        LOG.debug("Delete_key spec: %(id)s, keys: %(keys)s" %
+                  {'id': id, 'keys': keys})
+
+        try:
+            qos_specs.delete_keys(context, id, keys)
+            notifier_info = dict(id=id)
+            notifier_api.notify(context, 'QoSSpecs',
+                                'qos_specs.delete_keys',
+                                notifier_api.INFO, notifier_info)
+        except exception.QoSSpecsNotFound as err:
+            notifier_err = dict(id=id, error_message=str(err))
+            self._notify_qos_specs_error(context,
+                                         'qos_specs.delete_keys',
+                                         notifier_err)
+            raise webob.exc.HTTPNotFound(explanation=str(err))
+        except exception.QoSSpecsKeyNotFound as err:
+            notifier_err = dict(id=id, error_message=str(err))
+            self._notify_qos_specs_error(context,
+                                         'qos_specs.delete_keys',
+                                         notifier_err)
+            raise webob.exc.HTTPBadRequest(explanation=str(err))
 
         return webob.Response(status_int=202)
 
@@ -342,7 +379,6 @@ class QoSSpecsController(wsgi.Controller):
         LOG.debug("Disassociate qos_spec: %s from all." % id)
 
         try:
-            qos_specs.get_qos_specs(context, id)
             qos_specs.disassociate_all(context, id)
             notifier_info = dict(id=id)
             notifier_api.notify(context, 'QoSSpecs',
@@ -380,7 +416,8 @@ class Qos_specs_manage(extensions.ExtensionDescriptor):
             member_actions={"associations": "GET",
                             "associate": "GET",
                             "disassociate": "GET",
-                            "disassociate_all": "GET"})
+                            "disassociate_all": "GET",
+                            "delete_keys": "PUT"})
 
         resources.append(res)
 

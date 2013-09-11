@@ -2081,7 +2081,9 @@ def _dict_with_children_specs(specs):
     """Convert specs list to a dict."""
     result = {}
     for spec in specs:
-        result.update({spec['key']: spec['value']})
+        # Skip deleted keys
+        if not spec['deleted']:
+            result.update({spec['key']: spec['value']})
 
     return result
 
@@ -2203,12 +2205,15 @@ def qos_specs_disassociate_all(context, qos_specs_id):
 
 @require_admin_context
 def qos_specs_item_delete(context, qos_specs_id, key):
-    _qos_specs_get_item(context, qos_specs_id, key)
-    _qos_specs_get_ref(context, qos_specs_id, None). \
-        filter_by(key=key). \
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+    session = get_session()
+    with session.begin():
+        _qos_specs_get_item(context, qos_specs_id, key)
+        session.query(models.QualityOfServiceSpecs). \
+            filter(models.QualityOfServiceSpecs.key == key). \
+            filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id). \
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
 
 
 @require_admin_context

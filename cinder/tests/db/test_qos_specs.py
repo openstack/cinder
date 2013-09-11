@@ -136,6 +136,22 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         self.assertRaises(exception.QoSSpecsNotFound, db.qos_specs_get,
                           self.ctxt, specs_id)
 
+    def test_qos_specs_item_delete(self):
+        name = str(int(time.time()))
+        value = dict(consumer='front-end',
+                     foo='Foo', bar='Bar')
+        specs_id = self._create_qos_specs(name, value)
+
+        del value['consumer']
+        del value['foo']
+        expected = {'name': name,
+                    'id': specs_id,
+                    'consumer': 'front-end',
+                    'specs': value}
+        db.qos_specs_item_delete(self.ctxt, specs_id, 'foo')
+        specs = db.qos_specs_get_by_name(self.ctxt, name)
+        self.assertDictMatch(specs, expected)
+
     def test_associate_type_with_qos(self):
         self.assertRaises(exception.VolumeTypeNotFound,
                           db.volume_type_qos_associate,

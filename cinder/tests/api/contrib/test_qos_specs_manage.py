@@ -67,6 +67,15 @@ def return_qos_specs_delete(context, id, force):
     pass
 
 
+def return_qos_specs_delete_keys(context, id, keys):
+    if id == "777":
+        raise exception.QoSSpecsNotFound(specs_id=id)
+
+    if 'foo' in keys:
+        raise exception.QoSSpecsKeyNotFound(specs_id=id,
+                                            specs_key='foo')
+
+
 def return_qos_specs_update(context, id, specs):
     if id == "777":
         raise exception.QoSSpecsNotFound(specs_id=id)
@@ -134,7 +143,7 @@ class QoSSpecManageApiTest(test.TestCase):
                    host='fake',
                    notification_driver=[test_notifier.__name__])
         self.controller = qos_specs_manage.QoSSpecsController()
-        """to reset notifier drivers left over from other api/contrib tests"""
+        #reset notifier drivers left over from other api/contrib tests
         notifier_api._reset_drivers()
         test_notifier.NOTIFICATIONS = []
 
@@ -203,6 +212,37 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPInternalServerError,
                           self.controller.delete,
                           req, '666')
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+
+    def test_qos_specs_delete_keys(self):
+        self.stubs.Set(qos_specs, 'delete_keys',
+                       return_qos_specs_delete_keys)
+        body = {"keys": ['bar', 'zoo']}
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/666/delete_keys')
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.controller.delete_keys(req, '666', body)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+
+    def test_qos_specs_delete_keys_qos_notfound(self):
+        self.stubs.Set(qos_specs, 'delete_keys',
+                       return_qos_specs_delete_keys)
+        body = {"keys": ['bar', 'zoo']}
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/777/delete_keys')
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.delete_keys,
+                          req, '777', body)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+
+    def test_qos_specs_delete_keys_badkey(self):
+        self.stubs.Set(qos_specs, 'delete_keys',
+                       return_qos_specs_delete_keys)
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/666/delete_keys')
+        body = {"keys": ['foo', 'zoo']}
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete_keys,
+                          req, '666', body)
         self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
 
     def test_create(self):

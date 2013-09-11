@@ -145,6 +145,47 @@ class QoSSpecsTestCase(test.TestCase):
         # able to delete in-use qos specs if force=True
         qos_specs.delete(self.ctxt, 'InUse', force=True)
 
+    def test_delete_keys(self):
+        def fake_db_qos_delete_key(context, id, key):
+            if key == 'NotFound':
+                raise exception.QoSSpecsKeyNotFound(specs_id=id,
+                                                    specs_key=key)
+            else:
+                pass
+
+        def fake_qos_specs_get(context, id):
+            if id == 'NotFound':
+                raise exception.QoSSpecsNotFound(specs_id=id)
+            else:
+                pass
+
+        value = dict(consumer='front-end',
+                     foo='Foo', bar='Bar', zoo='tiger')
+        specs_id = self._create_qos_specs('QoSName', value)
+        qos_specs.delete_keys(self.ctxt, specs_id, ['foo', 'bar'])
+        del value['consumer']
+        del value['foo']
+        del value['bar']
+        expected = {'name': 'QoSName',
+                    'id': specs_id,
+                    'consumer': 'front-end',
+                    'specs': value}
+        specs = qos_specs.get_qos_specs(self.ctxt, specs_id)
+        self.assertDictMatch(expected, specs)
+
+        self.stubs.Set(qos_specs, 'get_qos_specs', fake_qos_specs_get)
+        self.stubs.Set(db, 'qos_specs_item_delete', fake_db_qos_delete_key)
+        self.assertRaises(exception.InvalidQoSSpecs,
+                          qos_specs.delete_keys, self.ctxt, None, [])
+        self.assertRaises(exception.QoSSpecsNotFound,
+                          qos_specs.delete_keys, self.ctxt, 'NotFound', [])
+        self.assertRaises(exception.QoSSpecsKeyNotFound,
+                          qos_specs.delete_keys, self.ctxt,
+                          'Found', ['NotFound'])
+        self.assertRaises(exception.QoSSpecsKeyNotFound,
+                          qos_specs.delete_keys, self.ctxt, 'Found',
+                          ['foo', 'bar', 'NotFound'])
+
     def test_get_associations(self):
         def fake_db_associate_get(context, id):
             if id == 'Trouble':
@@ -259,6 +300,12 @@ class QoSSpecsTestCase(test.TestCase):
                 raise db_exc.DBError()
             pass
 
+        def fake_qos_specs_get(context, id):
+            if id == 'NotFound':
+                raise exception.QoSSpecsNotFound(specs_id=id)
+            else:
+                pass
+
         type1_ref = volume_types.create(self.ctxt, 'TypeName1')
         type2_ref = volume_types.create(self.ctxt, 'TypeName2')
         specs_id = self._create_qos_specs('QoSName')
@@ -276,6 +323,8 @@ class QoSSpecsTestCase(test.TestCase):
 
         self.stubs.Set(db, 'qos_specs_disassociate_all',
                        fake_db_disassociate_all)
+        self.stubs.Set(qos_specs, 'get_qos_specs',
+                       fake_qos_specs_get)
         self.assertRaises(exception.QoSSpecsDisassociateFailed,
                           qos_specs.disassociate_all,
                           self.ctxt, 'Trouble')
