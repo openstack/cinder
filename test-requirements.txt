@@ -13,4 +13,3 @@ python-subunit
 testtools>=0.9.32
 testrepository>=0.0.17
 oslo.sphinx
-python-novaclient>=2.12.0
