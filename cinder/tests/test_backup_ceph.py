@@ -393,7 +393,7 @@ class BackupCephTestCase(test.TestCase):
     def test_create_base_image_if_not_exists(self):
         pass
 
-    def test_delete_backup_snapshots(self):
+    def test_delete_backup_snapshot(self):
         snap_name = 'backup.%s.snap.3824923.1412' % (uuid.uuid4())
         base_name = self.service._get_backup_base_name(self.volume_id,
                                                        diff_format=True)
@@ -404,10 +404,10 @@ class BackupCephTestCase(test.TestCase):
         self.stubs.Set(self.service, 'get_backup_snaps',
                        lambda *args: None)
 
-        rem = self.service._delete_backup_snapshots(mock_rados(), base_name,
-                                                    self.backup_id)
+        rem = self.service._delete_backup_snapshot(mock_rados(), base_name,
+                                                   self.backup_id)
 
-        self.assertEqual(rem, 0)
+        self.assertEquals(rem, (snap_name, 0))
 
     def test_try_delete_base_image_diff_format(self):
         # don't create volume db entry since it should not be required
