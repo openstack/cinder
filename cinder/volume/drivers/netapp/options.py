@@ -75,3 +75,15 @@ netapp_7mode_opts = [
     cfg.StrOpt('netapp_vfiler',
                default=None,
                help='Vfiler to use for provisioning'), ]
+
+netapp_img_cache_opts = [
+    cfg.IntOpt('thres_avl_size_perc_start',
+               default=20,
+               help='Threshold available percent to start cache cleaning.'),
+    cfg.IntOpt('thres_avl_size_perc_stop',
+               default=60,
+               help='Threshold available percent to stop cache cleaning.'),
+    cfg.IntOpt('expiry_thres_minutes',
+               default=720,
+               help='Threshold minutes after which '
+               'cache file can be cleaned.'), ]

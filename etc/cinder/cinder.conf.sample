@@ -1255,6 +1255,18 @@
 # Port number for the storage controller (integer value)
 #netapp_server_port=80
 
+# Threshold available percent to start cache cleaning.
+# (integer value)
+#thres_avl_size_perc_start=20
+
+# Threshold available percent to stop cache cleaning. (integer
+# value)
+#thres_avl_size_perc_stop=60
+
+# Threshold minutes after which cache file can be cleaned.
+# (integer value)
+#expiry_thres_minutes=720
+
 # Volume size multiplier to ensure while creation (floating
 # point value)
 #netapp_size_multiplier=1.2
@@ -1719,4 +1731,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 367
+# Total option count: 370
