@@ -64,23 +64,26 @@ def ssh_read(user, channel, cmd, timeout):
             result = result + channel.recv(8192)
         except socket.timeout:
             raise exception.CinderException(_('ssh_read: Read '
-                                              'SSH timeout'))
+                                              'SSH timeout.'))
         else:
-            # Complete CLI response starts with CLI cmd and
-            # ends with "username:/>".
-            if result.startswith(cmd) and result.endswith(user + ':/>'):
-                if not re.search('Welcome', result):
+            # CLI returns welcome information when first log in. So need to
+            # deal differently.
+            if not re.search('Welcome', result):
+                # Complete CLI response starts with CLI cmd and
+                # ends with "username:/>".
+                if result.startswith(cmd) and result.endswith(user + ':/>'):
                     break
-                # CLI returns welcome information when first log in.
-                elif re.search(user + ':/>' + cmd, result):
+                # Some commands need to send 'y'.
+                elif re.search('(y/n)', result):
                     break
-            # Some commands need to send 'y'.
-            elif re.search('(y/n)', result):
+                # Reach maximum limit of SSH connection.
+                elif re.search('No response message', result):
+                    msg = _('No response message. Please check system status.')
+                    raise exception.CinderException(msg)
+            elif (re.search(user + ':/>' + cmd, result) and
+                  result.endswith(user + ':/>')):
                 break
-            # Reach maximum limit of SSH connection.
-            elif re.search('No response message', result):
-                msg = _('No response message. Please check system status.')
-                raise exception.CinderException(msg)
+
     # Filter the last line: username:/> .
     result = '\r\n'.join(result.split('\r\n')[:-1])
     # Filter welcome information.
@@ -104,7 +107,7 @@ class TseriesCommon():
 
     def do_setup(self, context):
         """Check config file."""
-        LOG.debug(_('do_setup.'))
+        LOG.debug(_('do_setup'))
 
         self._check_conf_file()
         self.login_info = self._get_login_info()
@@ -208,7 +211,7 @@ class TseriesCommon():
         """Create a new volume."""
         volume_name = self._name_translate(volume['name'])
 
-        LOG.debug(_('create_volume: volume name: %s.') % volume_name)
+        LOG.debug(_('create_volume: volume name: %s') % volume_name)
 
         self._update_login_info()
         if int(volume['size']) == 0:
@@ -379,7 +382,7 @@ class TseriesCommon():
                 conf_params['PrefetchTimes'] = prefetch.attrib['Value'].strip()
         else:
             LOG.debug(_('_parse_conf_lun_params: Use default prefetch type. '
-                        'Prefetch type: Intelligent.'))
+                        'Prefetch type: Intelligent'))
 
         pools_conf = root.findall('LUN/StoragePool')
         for pool in pools_conf:
@@ -492,7 +495,7 @@ class TseriesCommon():
     def delete_volume(self, volume):
         volume_name = self._name_translate(volume['name'])
 
-        LOG.debug(_('delete_volume: volume name: %s.') % volume_name)
+        LOG.debug(_('delete_volume: volume name: %s') % volume_name)
 
         self._update_login_info()
         volume_id = volume.get('provider_location', None)
@@ -530,7 +533,7 @@ class TseriesCommon():
         volume_name = self._name_translate(volume['name'])
 
         LOG.debug(_('create_volume_from_snapshot: snapshot '
-                    'name: %(snapshot)s, volume name: %(volume)s.')
+                    'name: %(snapshot)s, volume name: %(volume)s')
                   % {'snapshot': snapshot_name,
                      'volume': volume_name})
 
@@ -647,7 +650,7 @@ class TseriesCommon():
         src_vol_name = self._name_translate(src_volume['name'])
         tgt_vol_name = self._name_translate(tgt_volume['name'])
 
-        LOG.debug(_('create_cloned_volume: src volume: %(src)s '
+        LOG.debug(_('create_cloned_volume: src volume: %(src)s, '
                     'tgt volume: %(tgt)s') % {'src': src_vol_name,
                                               'tgt': tgt_vol_name})
 
@@ -694,7 +697,7 @@ class TseriesCommon():
         snapshot_name = self._name_translate(snapshot['name'])
         volume_name = self._name_translate(snapshot['volume_name'])
 
-        LOG.debug(_('create_snapshot: snapshot name: %(snapshot)s '
+        LOG.debug(_('create_snapshot: snapshot name: %(snapshot)s, '
                     'volume name: %(volume)s')
                   % {'snapshot': snapshot_name,
                      'volume': volume_name})
@@ -770,7 +773,7 @@ class TseriesCommon():
         snapshot_name = self._name_translate(snapshot['name'])
         volume_name = self._name_translate(snapshot['volume_name'])
 
-        LOG.debug(_('delete_snapshot: snapshot name: %(snapshot)s '
+        LOG.debug(_('delete_snapshot: snapshot name: %(snapshot)s, '
                     'volume name: %(volume)s') % {'snapshot': snapshot_name,
                                                   'volume': volume_name})
 
@@ -873,7 +876,7 @@ class TseriesCommon():
                           'hostlunid': new_hostlun_id})
             out = self._execute_cli(cli_cmd)
 
-            msg = ('Failed to map lun %s to host %s. host lun ID: %s'
+            msg = ('Failed to map LUN %s to host %s. host LUN ID: %s'
                    % (volume_id, host_id, new_hostlun_id))
             self._assert_cli_operate_out('map_volume', msg, cli_cmd, out)
 
@@ -981,7 +984,7 @@ class TseriesCommon():
         return lun_details
 
     def change_lun_ctr(self, lun_id, ctr):
-        LOG.debug(_('change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s')
+        LOG.debug(_('change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s.')
                   % {'lun': lun_id, 'ctr': ctr})
 
         cli_cmd = 'chglun -lun %s -c %s' % (lun_id, ctr)
@@ -1080,7 +1083,7 @@ class TseriesCommon():
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("_update_volume_stats: Updating volume stats"))
+        LOG.debug(_("_update_volume_stats: Updating volume stats."))
         data = {}
         data['vendor_name'] = 'Huawei'
         data['total_capacity_gb'] = 'infinite'
@@ -1144,7 +1147,7 @@ class DoradoCommon(TseriesCommon):
 
     def do_setup(self, context):
         """Check config file."""
-        LOG.debug(_('do_setup.'))
+        LOG.debug(_('do_setup'))
 
         self._check_conf_file()
         self.lun_distribution = self._get_lun_ctr_info()
@@ -1192,7 +1195,7 @@ class DoradoCommon(TseriesCommon):
                 elif re.search('Dorado5100$', line):
                     return 'Dorado5100'
                 else:
-                    LOG.error(_('_get_device_type: The drivers only support'
+                    LOG.error(_('_get_device_type: The driver only supports '
                                 'Dorado5100 and Dorado 2100 G2 now.'))
                     raise exception.InvalidResults()
 
@@ -1201,7 +1204,7 @@ class DoradoCommon(TseriesCommon):
         ctr_info = [0, 0]
         (c, n) = ((2, 4) if self.device_type == 'Dorado2100 G2' else (3, 5))
         for lun in luns:
-            if lun[n].startswith('OpenStack'):
+            if lun[n].startswith(VOL_AND_SNAP_NAME_PREFIX):
                 if lun[c] == 'A':
                     ctr_info[0] += 1
                 else:
