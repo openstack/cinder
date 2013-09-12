@@ -1318,12 +1318,15 @@ class CreateVolumeFromSpecTask(base.CinderTask):
                         "error: %(error)s") % {'volume_id': volume_id,
                                                'error': ex})
             raise exception.ImageUnacceptable(ex)
-        except exception.CinderException as ex:
+        except Exception as ex:
             LOG.error(_("Failed to copy image %(image_id)s to "
                         "volume: %(volume_id)s, error: %(error)s") %
                       {'volume_id': volume_id, 'error': ex,
                        'image_id': image_id})
-            raise exception.ImageCopyFailure(reason=ex)
+            if not isinstance(ex, exception.ImageCopyFailure):
+                raise exception.ImageCopyFailure(reason=ex)
+            else:
+                raise
 
         LOG.debug(_("Downloaded image %(image_id)s (%(image_location)s)"
                     " to volume %(volume_id)s successfully") %
