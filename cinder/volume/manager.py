@@ -605,7 +605,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                         "error: %(error)s") % {'volume_id': volume_id,
                                                'error': ex.stderr})
             raise exception.ImageCopyFailure(reason=ex.stderr)
-        except exception.ImageUnacceptable as ex:
+        except Exception as ex:
             LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
                         "error: %(error)s") % {'volume_id': volume_id,
                                                'error': ex})
