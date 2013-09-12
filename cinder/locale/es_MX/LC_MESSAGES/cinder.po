@@ -1,4 +1,4 @@
-# Polish (Poland) translations for cinder.
+# Spanish (Mexico) translations for cinder.
 # Copyright (C) 2013 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
 #
@@ -8,12 +8,11 @@ msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2013-09-12 06:06+0000\n"
-"PO-Revision-Date: 2013-07-01 16:14+0000\n"
+"PO-Revision-Date: 2013-08-30 09:12+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
-"Language-Team: Polish (Poland) "
-"(http://www.transifex.com/projects/p/openstack/language/pl_PL/)\n"
-"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && "
-"(n%100<10 || n%100>=20) ? 1 : 2)\n"
+"Language-Team: Spanish (Mexico) "
+"(http://www.transifex.com/projects/p/openstack/language/es_MX/)\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -8924,264 +8923,6 @@ msgstr ""
 msgid "Retry info not present, will not reschedule"
 msgstr ""
 
-#~ msgid "Error retrieving volume status: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get storage pool data"
-#~ msgstr ""
-
-#~ msgid "Cannot find any Fibre Channel HBAs"
-#~ msgstr ""
-
-#~ msgid "Volume status must be available or error"
-#~ msgstr ""
-
-#~ msgid "No backend config with id %s"
-#~ msgstr ""
-
-#~ msgid "No sm_flavor called %s"
-#~ msgstr ""
-
-#~ msgid "No sm_volume with id %s"
-#~ msgstr ""
-
-#~ msgid "Error: %s"
-#~ msgstr ""
-
-#~ msgid "Unexpected state while cloning %s"
-#~ msgstr ""
-
-#~ msgid "iSCSI device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Fibre Channel device not found."
-#~ msgstr ""
-
-#~ msgid "Uncaught exception"
-#~ msgstr ""
-
-#~ msgid "Out reactor registered"
-#~ msgstr ""
-
-#~ msgid "CONSUMER GOT %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT SUCCEEDED %(data)s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT QUEUED %(data)s"
-#~ msgstr ""
-
-#~ msgid "Could not create IPC directory %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT %(data)s"
-#~ msgstr ""
-
-#~ msgid "May specify only one of snapshot, imageRef or source volume"
-#~ msgstr ""
-
-#~ msgid "Volume size cannot be lesser than the Snapshot size"
-#~ msgstr ""
-
-#~ msgid "Unable to clone volumes that are in an error state"
-#~ msgstr ""
-
-#~ msgid "Clones currently must be >= original volume size."
-#~ msgstr ""
-
-#~ msgid "Volume size '%s' must be an integer and greater than 0"
-#~ msgstr ""
-
-#~ msgid "Size of specified image is larger than volume size."
-#~ msgstr ""
-
-#~ msgid "Image minDisk size is larger than the volume size."
-#~ msgstr ""
-
-#~ msgid ""
-#~ msgstr ""
-
-#~ msgid "Availability zone is invalid"
-#~ msgstr ""
-
-#~ msgid "volume %(vol_name)s: creating lv of size %(vol_size)sG"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from snapshot"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from existing volume"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from image"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating"
-#~ msgstr ""
-
-#~ msgid "Setting volume: %s status to error after failed image copy."
-#~ msgstr ""
-
-#~ msgid "Unexpected Error: "
-#~ msgstr ""
-
-#~ msgid "volume %s: creating export"
-#~ msgstr ""
-
-#~ msgid "volume %s: create failed"
-#~ msgstr ""
-
-#~ msgid "volume %s: created successfully"
-#~ msgstr ""
-
-#~ msgid "volume %s: Error trying to reschedule create"
-#~ msgstr ""
-
-#~ msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
-#~ msgstr ""
-
-#~ msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
-#~ msgstr ""
-
-#~ msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
-#~ msgstr ""
-
-#~ msgid "Array Mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "LUN %(lun)s of size %(size)s MB is created."
-#~ msgstr ""
-
-#~ msgid "Array mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "Failed to attach iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "Fetching %s"
-#~ msgstr ""
-
-#~ msgid "Link Local address is not found.:%s"
-#~ msgstr ""
-
-#~ msgid "Couldn't get Link Local IP of %(interface)s :%(ex)s"
-#~ msgstr ""
-
-#~ msgid "Started %(name)s on %(_host)s:%(_port)s"
-#~ msgstr ""
-
-#~ msgid "Unable to find a Fibre Channel volume device"
-#~ msgstr ""
-
-#~ msgid "Volume device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Unable to find Volume Group: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to create Volume Group: %s"
-#~ msgstr ""
-
-#~ msgid "snapshot %(snap_name)s: creating"
-#~ msgstr ""
-
-#~ msgid "Running with CoraidDriver for ESM EtherCLoud"
-#~ msgstr ""
-
-#~ msgid "Update session cookie %(session)s"
-#~ msgstr ""
-
-#~ msgid "Message : %(message)s"
-#~ msgstr ""
-
-#~ msgid "Error while trying to set group: %(message)s"
-#~ msgstr ""
-
-#~ msgid "Unable to find group: %(group)s"
-#~ msgstr ""
-
-#~ msgid "ESM urlOpen error"
-#~ msgstr ""
-
-#~ msgid "JSON Error"
-#~ msgstr ""
-
-#~ msgid "Request without URL"
-#~ msgstr ""
-
-#~ msgid "Configure data : %s"
-#~ msgstr ""
-
-#~ msgid "Configure response : %s"
-#~ msgstr ""
-
-#~ msgid "Unable to retrive volume infos for volume %(volname)s"
-#~ msgstr ""
-
-#~ msgid "Cannot login on Coraid ESM"
-#~ msgstr ""
-
-#~ msgid "Fail to create volume %(volname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to delete volume %(volname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Create Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Delete Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Create Volume from Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "fmt = %(fmt)s backed by: %(backing_file)s"
-#~ msgstr ""
-
-#~ msgid "Expected image to be in raw format, but is %s"
-#~ msgstr ""
-
-#~ msgid "volume group %s doesn't exist"
-#~ msgstr ""
-
-#~ msgid "Error retrieving volume stats: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "CPG (%s) must be in a domain"
-#~ msgstr ""
-
-#~ msgid "Error populating default encryption types!"
-#~ msgstr ""
-
-#~ msgid "Unexpected error while running command."
-#~ msgstr ""
-
-#~ msgid "Nexenta SA returned the error"
-#~ msgstr ""
-
-#~ msgid "Ignored target group creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Copying metadata from snapshot %(snap_volume_id)s to %(volume_id)s"
-#~ msgstr ""
-
 #~ msgid "Connection to glance failed"
 #~ msgstr ""
 
@@ -9227,19 +8968,7 @@ msgstr ""
 #~ msgid "Invalid qos specs"
 #~ msgstr ""
 
-#~ msgid "debug in callback: %s"
-#~ msgstr ""
-
-#~ msgid "Expected object of type: %s"
-#~ msgstr ""
-
-#~ msgid "timefunc: '%(name)s' took %(total_time).2f secs"
-#~ msgstr ""
-
 #~ msgid "base image still has %s snapshots so not deleting base image"
-#~ msgstr ""
-
-#~ msgid "Failed to rename migration destination volume %(vol)s to %(name)s"
 #~ msgstr ""
 
 #~ msgid "Resize volume \"%(name)s\" to %(size)s"
@@ -9252,12 +8981,6 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Extend volume from %(old_size) to %(new_size)"
-#~ msgstr ""
-
-#~ msgid "pool %s doesn't exist"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Could not get system name."
 #~ msgstr ""
 
 #~ msgid "Disk not found: %s"
@@ -9541,20 +9264,5 @@ msgstr ""
 #~ msgid ""
 #~ "Cloning with params volume %(volume)s,src %(src_path)s,\n"
 #~ "                    dest %(dest_path)s, vserver %(vserver)s"
-#~ msgstr ""
-
-#~ msgid "Ignored target creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error while ensuring export"
 #~ msgstr ""
 
