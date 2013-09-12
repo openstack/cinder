@@ -55,9 +55,10 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         1.2.0 - Updated the use of the hp3parclient to 2.0.0 and refactored
                 the drivers to use the new APIs.
         1.2.1 - Synchronized extend_volume method.
+        1.2.2 - Added try/finally around client login/logout.
     """
 
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -78,13 +79,16 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     @utils.synchronized('3par', external=True)
     def get_volume_stats(self, refresh):
         self.common.client_login()
-        stats = self.common.get_volume_stats(refresh)
-        stats['storage_protocol'] = 'FC'
-        stats['driver_version'] = self.VERSION
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        stats['volume_backend_name'] = backend_name or self.__class__.__name__
-        self.common.client_logout()
-        return stats
+        try:
+            stats = self.common.get_volume_stats(refresh)
+            stats['storage_protocol'] = 'FC'
+            stats['driver_version'] = self.VERSION
+            backend_name = self.configuration.safe_get('volume_backend_name')
+            stats['volume_backend_name'] = (backend_name or
+                                            self.__class__.__name__)
+            return stats
+        finally:
+            self.common.client_logout()
 
     def do_setup(self, context):
         self.common = self._init_common()
@@ -98,22 +102,28 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     @utils.synchronized('3par', external=True)
     def create_volume(self, volume):
         self.common.client_login()
-        metadata = self.common.create_volume(volume)
-        self.common.client_logout()
-        return {'metadata': metadata}
+        try:
+            metadata = self.common.create_volume(volume)
+            return {'metadata': metadata}
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def create_cloned_volume(self, volume, src_vref):
         self.common.client_login()
-        new_vol = self.common.create_cloned_volume(volume, src_vref)
-        self.common.client_logout()
-        return {'metadata': new_vol}
+        try:
+            new_vol = self.common.create_cloned_volume(volume, src_vref)
+            return {'metadata': new_vol}
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def delete_volume(self, volume):
         self.common.client_login()
-        self.common.delete_volume(volume)
-        self.common.client_logout()
+        try:
+            self.common.delete_volume(volume)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -123,21 +133,28 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         TODO: support using the size from the user.
         """
         self.common.client_login()
-        metadata = self.common.create_volume_from_snapshot(volume, snapshot)
-        self.common.client_logout()
-        return {'metadata': metadata}
+        try:
+            metadata = self.common.create_volume_from_snapshot(volume,
+                                                               snapshot)
+            return {'metadata': metadata}
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def create_snapshot(self, snapshot):
         self.common.client_login()
-        self.common.create_snapshot(snapshot)
-        self.common.client_logout()
+        try:
+            self.common.create_snapshot(snapshot)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def delete_snapshot(self, snapshot):
         self.common.client_login()
-        self.common.delete_snapshot(snapshot)
-        self.common.client_logout()
+        try:
+            self.common.delete_snapshot(snapshot)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def initialize_connection(self, volume, connector):
@@ -178,33 +195,37 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
 
         """
         self.common.client_login()
-        # we have to make sure we have a host
-        host = self._create_host(volume, connector)
+        try:
+            # we have to make sure we have a host
+            host = self._create_host(volume, connector)
 
-        # now that we have a host, create the VLUN
-        vlun = self.common.create_vlun(volume, host)
+            # now that we have a host, create the VLUN
+            vlun = self.common.create_vlun(volume, host)
 
-        fc_ports = self.common.get_active_fc_target_ports()
-        wwns = []
+            fc_ports = self.common.get_active_fc_target_ports()
+            wwns = []
 
-        for port in fc_ports:
-            wwns.append(port['portWWN'])
+            for port in fc_ports:
+                wwns.append(port['portWWN'])
 
-        self.common.client_logout()
-        info = {'driver_volume_type': 'fibre_channel',
-                'data': {'target_lun': vlun['lun'],
-                         'target_discovered': True,
-                         'target_wwn': wwns}}
-        return info
+            info = {'driver_volume_type': 'fibre_channel',
+                    'data': {'target_lun': vlun['lun'],
+                             'target_discovered': True,
+                             'target_wwn': wwns}}
+            return info
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         self.common.client_login()
-        hostname = self.common._safe_hostname(connector['host'])
-        self.common.terminate_connection(volume, hostname,
-                                         wwn=connector['wwpns'])
-        self.common.client_logout()
+        try:
+            hostname = self.common._safe_hostname(connector['host'])
+            self.common.terminate_connection(volume, hostname,
+                                             wwn=connector['wwpns'])
+        finally:
+            self.common.client_logout()
 
     def _create_3par_fibrechan_host(self, hostname, wwns, domain, persona_id):
         """Create a 3PAR host.
