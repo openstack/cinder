@@ -30,6 +30,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
 from cinder.openstack.common import processutils
+from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
 from cinder import policy
 from cinder import quota
@@ -145,6 +146,18 @@ def _error_out_volume(context, db, volume_id, reason=None):
         LOG.exception(_("Failed updating volume %(volume_id)s with"
                         " %(update)s") % {'volume_id': volume_id,
                                           'update': update})
+
+
+def _exception_to_unicode(exc):
+    try:
+        return unicode(exc)
+    except UnicodeError:
+        try:
+            return strutils.safe_decode(str(exc), errors='ignore')
+        except UnicodeError:
+            msg = (_("Caught '%(exception)s' exception.") %
+                   {"exception": exc.__class__.__name__})
+            return strutils.safe_decode(msg, errors='ignore')
 
 
 class ExtractVolumeRequestTask(base.CinderTask):
@@ -868,7 +881,8 @@ class OnFailureRescheduleTask(base.CinderTask):
                     "attempt %(num)d due to %(reason)s") %
                   {'volume_id': volume_id,
                    'method': _make_pretty_name(create_volume),
-                   'num': num_attempts, 'reason': unicode(cause.exc)})
+                   'num': num_attempts,
+                   'reason': _exception_to_unicode(cause.exc)})
 
         if all(cause.exc_info):
             # Stringify to avoid circular ref problem in json serialization
