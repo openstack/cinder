@@ -394,6 +394,12 @@
 # availability zone of this node (string value)
 #storage_availability_zone=nova
 
+# default availability zone to use when creating a new volume.
+# If this is not set then we use the value from the
+# storage_availability_zone option as the default
+# availability_zone for new volumes. (string value)
+#default_availability_zone=<None>
+
 # Memcached servers or None for in process cache. (list value)
 #memcached_servers=<None>
 
@@ -1758,4 +1764,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 377
+# Total option count: 378
