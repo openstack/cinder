@@ -135,10 +135,6 @@ class InvalidSnapshot(Invalid):
     message = _("Invalid snapshot: %(reason)s")
 
 
-class InvalidSourceVolume(Invalid):
-    message = _("Invalid source volume %(reason)s.")
-
-
 class InvalidVolumeAttachMode(Invalid):
     message = _("Invalid attaching mode '%(mode)s' for "
                 "volume %(volume_id)s.")
@@ -150,10 +146,6 @@ class VolumeAttached(Invalid):
 
 class SfJsonEncodeFailure(CinderException):
     message = _("Failed to load data into json format")
-
-
-class InvalidRequest(Invalid):
-    message = _("The request is invalid.")
 
 
 class InvalidResults(Invalid):
@@ -212,10 +204,6 @@ class NotFound(CinderException):
     safe = True
 
 
-class PersistentVolumeFileNotFound(NotFound):
-    message = _("Volume %(volume_id)s persistence file could not be found.")
-
-
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 
@@ -252,14 +240,6 @@ class SnapshotMetadataNotFound(NotFound):
                 "key %(metadata_key)s.")
 
 
-class InvalidSnapshotMetadata(Invalid):
-    message = _("Invalid metadata: %(reason)s")
-
-
-class InvalidSnapshotMetadataSize(Invalid):
-    message = _("Invalid metadata size: %(reason)s")
-
-
 class VolumeTypeNotFound(NotFound):
     message = _("Volume type %(volume_type_id)s could not be found.")
 
@@ -294,10 +274,6 @@ class SnapshotIsBusy(CinderException):
 
 class ISCSITargetNotFoundForVolume(NotFound):
     message = _("No target id found for volume %(volume_id)s.")
-
-
-class DiskNotFound(NotFound):
-    message = _("No disk at %(location)s")
 
 
 class InvalidImageRef(Invalid):
@@ -369,30 +345,13 @@ class MigrationNotFound(NotFound):
     message = _("Migration %(migration_id)s could not be found.")
 
 
-class MigrationNotFoundByStatus(MigrationNotFound):
-    message = _("Migration not found for instance %(instance_id)s "
-                "with status %(status)s.")
-
-
 class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
-
-
-class ClassNotFound(NotFound):
-    message = _("Class %(class_name)s could not be found: %(exception)s")
-
-
-class NotAllowed(CinderException):
-    message = _("Action not allowed.")
 
 
 #TODO(bcwaldon): EOL this exception!
 class Duplicate(CinderException):
     pass
-
-
-class KeyPairExists(Duplicate):
-    message = _("Key pair %(key_name)s already exists.")
 
 
 class VolumeTypeExists(Duplicate):
@@ -401,10 +360,6 @@ class VolumeTypeExists(Duplicate):
 
 class VolumeTypeEncryptionExists(Invalid):
     message = _("Volume type encryption for type %(type_id)s already exists.")
-
-
-class MigrationError(CinderException):
-    message = _("Migration error: %(reason)s")
 
 
 class MalformedRequestBody(CinderException):
@@ -443,10 +398,6 @@ class VolumeSizeExceedsAvailableQuota(QuotaError):
                 "allowed Gigabytes quota")
 
 
-class VolumeSizeExceedsQuota(QuotaError):
-    message = _("Maximum volume/snapshot size exceeded")
-
-
 class VolumeLimitExceeded(QuotaError):
     message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
 
@@ -457,10 +408,6 @@ class SnapshotLimitExceeded(QuotaError):
 
 class DuplicateSfVolumeNames(Duplicate):
     message = _("Detected more than one volume with name %(vol_name)s")
-
-
-class Duplicate3PARHost(CinderException):
-    message = _("3PAR Host already exists: %(err)s.  %(info)s")
 
 
 class Invalid3PARDomain(CinderException):
@@ -588,10 +535,6 @@ class BackupOperationError(Invalid):
 
 class BackupRBDOperationFailed(Invalid):
     message = _("Backup RBD operation failed")
-
-
-class BackupVolumeInvalidType(Invalid):
-    message = _("Backup volume %(volume_id)s type not recognised.")
 
 
 class BackupNotFound(NotFound):
