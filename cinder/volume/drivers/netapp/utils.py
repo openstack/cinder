@@ -146,7 +146,7 @@ def invoke_api(na_server, api_name, api_family='cm', query=None,
     record_step = 50
     if not (na_server or isinstance(na_server, NaServer)):
         msg = _("Requires an NaServer instance.")
-        raise exception.InvalidInput(data=msg)
+        raise exception.InvalidInput(reason=msg)
     server = copy.copy(na_server)
     if api_family == 'cm':
         server.set_vserver(tunnel)

@@ -129,7 +129,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         for flag in required_flags:
             if not getattr(self.configuration, flag, None):
                 msg = _('%s is not set') % flag
-                raise exception.InvalidInput(data=msg)
+                raise exception.InvalidInput(reason=msg)
 
     def do_setup(self, context):
         """Setup the NetApp Volume driver.
