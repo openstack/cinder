@@ -95,6 +95,9 @@ class mock_rbd(object):
         def resize(self, *args, **kwargs):
             raise NotImplementedError()
 
+        def discard(self, offset, length):
+            raise NotImplementedError()
+
         def close(self):
             pass
 
