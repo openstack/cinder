@@ -165,8 +165,14 @@ class VolumeController(wsgi.Controller):
 
         visible_admin_meta = {}
 
-        volume_tmp = (volume if context.is_admin else
-                      self.volume_api.get(context.elevated(), volume['id']))
+        if context.is_admin:
+            volume_tmp = volume
+        else:
+            try:
+                volume_tmp = self.volume_api.get(context.elevated(),
+                                                 volume['id'])
+            except Exception:
+                return
 
         if volume_tmp.get('volume_admin_metadata'):
             for item in volume_tmp['volume_admin_metadata']:
@@ -185,12 +191,13 @@ class VolumeController(wsgi.Controller):
         # NOTE(zhiyan): update visible administration metadata to
         # volume metadata, administration metadata will rewrite existing key.
         if volume.get('volume_metadata'):
-            orig_meta = volume.get('volume_metadata')
+            orig_meta = list(volume.get('volume_metadata'))
             for item in orig_meta:
                 if item['key'] in visible_admin_meta.keys():
                     item['value'] = visible_admin_meta.pop(item['key'])
             for key, value in visible_admin_meta.iteritems():
                 orig_meta.append({'key': key, 'value': value})
+            volume['volume_metadata'] = orig_meta
         # avoid circular ref when vol is a Volume instance
         elif (volume.get('metadata') and
                 isinstance(volume.get('metadata'), dict)):
@@ -266,6 +273,8 @@ class VolumeController(wsgi.Controller):
 
         volumes = self.volume_api.get_all(context, marker, limit, sort_key,
                                           sort_dir, filters)
+
+        volumes = [dict(vol.iteritems()) for vol in volumes]
 
         for volume in volumes:
             self._add_visible_admin_metadata(context, volume)
