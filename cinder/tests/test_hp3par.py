@@ -66,6 +66,8 @@ class FakeHP3ParClient(object):
     api_url = None
     debug = False
 
+    connection_count = 0
+
     volumes = []
     hosts = []
     vluns = []
@@ -108,9 +110,13 @@ class FakeHP3ParClient(object):
         self.debug = flag
 
     def login(self, username, password, optional=None):
+        self.connection_count += 1
         return None
 
     def logout(self):
+        if self.connection_count < 1:
+            raise hpexceptions.CommandError('No connection to log out.')
+        self.connection_count -= 1
         return None
 
     def getVolumes(self):
@@ -672,6 +678,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        self.assertEqual(0, self.driver.common.client.connection_count,
+                         'Leaked hp3parclient connection.')
         super(TestHP3PARFCDriver, self).tearDown()
 
     def setup_driver(self, configuration):
@@ -880,6 +888,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        self.assertEqual(0, self.driver.common.client.connection_count,
+                         'Leaked hp3parclient connection.')
         self._hosts = {}
         super(TestHP3PARISCSIDriver, self).tearDown()
 

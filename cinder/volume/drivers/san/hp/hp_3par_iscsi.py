@@ -56,9 +56,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.2.0 - Updated the use of the hp3parclient to 2.0.0 and refactored
                 the drivers to use the new APIs.
         1.2.1 - Synchronized extend_volume method.
+        1.2.2 - Added try/finally around client login/logout.
     """
 
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -79,19 +80,29 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @utils.synchronized('3par', external=True)
     def get_volume_stats(self, refresh):
         self.common.client_login()
-        stats = self.common.get_volume_stats(refresh)
-        stats['storage_protocol'] = 'iSCSI'
-        stats['driver_version'] = self.VERSION
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        stats['volume_backend_name'] = backend_name or self.__class__.__name__
-        self.common.client_logout()
-        return stats
+        try:
+            stats = self.common.get_volume_stats(refresh)
+            stats['storage_protocol'] = 'iSCSI'
+            stats['driver_version'] = self.VERSION
+            backend_name = self.configuration.safe_get('volume_backend_name')
+            stats['volume_backend_name'] = (backend_name or
+                                            self.__class__.__name__)
+            return stats
+        finally:
+            self.common.client_logout()
 
     def do_setup(self, context):
         self.common = self._init_common()
         self._check_flags()
         self.common.do_setup(context)
 
+        self.common.client_login()
+        try:
+            self.initialize_iscsi_ports()
+        finally:
+            self.common.client_logout()
+
+    def initialize_iscsi_ports(self):
         # map iscsi_ip-> ip_port
         #             -> iqn
         #             -> nsp
@@ -142,9 +153,9 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         # lets see if there are invalid iSCSI IPs left in the temp dict
         if len(temp_iscsi_ip) > 0:
-            msg = _("Found invalid iSCSI IP address(s) in configuration "
-                    "option(s) hp3par_iscsi_ips or iscsi_ip_address '%s.'") % \
-                   (", ".join(temp_iscsi_ip))
+            msg = (_("Found invalid iSCSI IP address(s) in configuration "
+                     "option(s) hp3par_iscsi_ips or iscsi_ip_address '%s.'") %
+                   (", ".join(temp_iscsi_ip)))
             LOG.warn(msg)
 
         if not len(self.iscsi_ips) > 0:
@@ -158,25 +169,29 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @utils.synchronized('3par', external=True)
     def create_volume(self, volume):
         self.common.client_login()
-        metadata = self.common.create_volume(volume)
-        self.common.client_logout()
-
-        return {'metadata': metadata}
+        try:
+            metadata = self.common.create_volume(volume)
+            return {'metadata': metadata}
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def create_cloned_volume(self, volume, src_vref):
         """Clone an existing volume."""
         self.common.client_login()
-        new_vol = self.common.create_cloned_volume(volume, src_vref)
-        self.common.client_logout()
-
-        return {'metadata': new_vol}
+        try:
+            new_vol = self.common.create_cloned_volume(volume, src_vref)
+            return {'metadata': new_vol}
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def delete_volume(self, volume):
         self.common.client_login()
-        self.common.delete_volume(volume)
-        self.common.client_logout()
+        try:
+            self.common.delete_volume(volume)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -186,21 +201,28 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         TODO: support using the size from the user.
         """
         self.common.client_login()
-        metadata = self.common.create_volume_from_snapshot(volume, snapshot)
-        self.common.client_logout()
-        return {'metadata': metadata}
+        try:
+            metadata = self.common.create_volume_from_snapshot(volume,
+                                                               snapshot)
+            return {'metadata': metadata}
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def create_snapshot(self, snapshot):
         self.common.client_login()
-        self.common.create_snapshot(snapshot)
-        self.common.client_logout()
+        try:
+            self.common.create_snapshot(snapshot)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def delete_snapshot(self, snapshot):
         self.common.client_login()
-        self.common.delete_snapshot(snapshot)
-        self.common.client_logout()
+        try:
+            self.common.delete_snapshot(snapshot)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def initialize_connection(self, volume, connector):
@@ -229,37 +251,40 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
           * create vlun on the 3par
         """
         self.common.client_login()
+        try:
 
-        # we have to make sure we have a host
-        host = self._create_host(volume, connector)
+            # we have to make sure we have a host
+            host = self._create_host(volume, connector)
 
-        # now that we have a host, create the VLUN
-        vlun = self.common.create_vlun(volume, host)
+            # now that we have a host, create the VLUN
+            vlun = self.common.create_vlun(volume, host)
 
-        iscsi_ip = self._get_iscsi_ip(host['name'])
+            iscsi_ip = self._get_iscsi_ip(host['name'])
 
-        self.common.client_logout()
-
-        iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
-        iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
-        info = {'driver_volume_type': 'iscsi',
-                'data': {'target_portal': "%s:%s" %
-                         (iscsi_ip, iscsi_ip_port),
-                         'target_iqn': iscsi_target_iqn,
-                         'target_lun': vlun['lun'],
-                         'target_discovered': True
-                         }
-                }
-        return info
+            iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
+            iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
+            info = {'driver_volume_type': 'iscsi',
+                    'data': {'target_portal': "%s:%s" %
+                             (iscsi_ip, iscsi_ip_port),
+                             'target_iqn': iscsi_target_iqn,
+                             'target_lun': vlun['lun'],
+                             'target_discovered': True
+                             }
+                    }
+            return info
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         self.common.client_login()
-        hostname = self.common._safe_hostname(connector['host'])
-        self.common.terminate_connection(volume, hostname,
-                                         iqn=connector['initiator'])
-        self.common.client_logout()
+        try:
+            hostname = self.common._safe_hostname(connector['host'])
+            self.common.terminate_connection(volume, hostname,
+                                             iqn=connector['initiator'])
+        finally:
+            self.common.client_logout()
 
     def _create_3par_iscsi_host(self, hostname, iscsi_iqn, domain, persona_id):
         """Create a 3PAR host.
