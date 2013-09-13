@@ -186,6 +186,11 @@ class InvalidAuthKey(Invalid):
     message = _("Invalid auth key: %(reason)s")
 
 
+class InvalidConfigurationValue(Invalid):
+    message = _('Value "%(value)s" is not valid for '
+                'configuration option "%(option)s"')
+
+
 class ServiceUnavailable(Invalid):
     message = _("Service is unavailable at this time.")
 

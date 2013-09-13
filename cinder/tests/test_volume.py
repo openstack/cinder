@@ -2163,25 +2163,61 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-        self.stubs.Set(volutils, 'copy_volume',
-                       lambda x, y, z, sync=False, execute='foo': True)
-        self.stubs.Set(os.path, 'exists', lambda x: True)
+        self.mox.StubOutWithMock(volutils, 'copy_volume')
+        self.mox.StubOutWithMock(os.path, 'exists')
+        self.mox.StubOutWithMock(utils, 'execute')
 
         fake_volume = {'name': 'test1',
                        'volume_name': 'test1',
                        'id': 'test1'}
 
+        os.path.exists(mox.IgnoreArg()).AndReturn(True)
+        volutils.copy_volume('/dev/zero', mox.IgnoreArg(), 123 * 1024,
+                             execute=lvm_driver._execute, sync=True)
+
+        os.path.exists(mox.IgnoreArg()).AndReturn(True)
+        volutils.copy_volume('/dev/zero', mox.IgnoreArg(), 123 * 1024,
+                             execute=lvm_driver._execute, sync=True)
+
+        os.path.exists(mox.IgnoreArg()).AndReturn(True)
+
+        self.mox.ReplayAll()
+
         # Test volume has 'size' field
-        volume = dict(fake_volume, size='123')
-        self.assertEqual(True, lvm_driver.clear_volume(volume))
+        volume = dict(fake_volume, size=123)
+        lvm_driver.clear_volume(volume)
 
         # Test volume has 'volume_size' field
-        volume = dict(fake_volume, volume_size='123')
-        self.assertEqual(True, lvm_driver.clear_volume(volume))
+        volume = dict(fake_volume, volume_size=123)
+        lvm_driver.clear_volume(volume)
 
         # Test volume without 'size' field and 'volume_size' field
         volume = dict(fake_volume)
-        self.assertEqual(None, lvm_driver.clear_volume(volume))
+        self.assertRaises(exception.InvalidParameterValue,
+                          lvm_driver.clear_volume,
+                          volume)
+
+    def test_clear_volume_badopt(self):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.volume_clear = 'non_existent_volume_clearer'
+        configuration.volume_clear_size = 0
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
+        self.mox.StubOutWithMock(volutils, 'copy_volume')
+        self.mox.StubOutWithMock(os.path, 'exists')
+
+        fake_volume = {'name': 'test1',
+                       'volume_name': 'test1',
+                       'id': 'test1',
+                       'size': 123}
+
+        os.path.exists(mox.IgnoreArg()).AndReturn(True)
+
+        self.mox.ReplayAll()
+
+        volume = dict(fake_volume)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          lvm_driver.clear_volume,
+                          volume)
 
 
 class ISCSITestCase(DriverTestCase):
