@@ -155,7 +155,7 @@ class RBDImageIOWrapper(io.RawIOBase):
         elif whence == 1:
             new_offset = self._offset + offset
         elif whence == 2:
-            new_offset = self.volume.size() - 1
+            new_offset = self._rbd_meta.image.size()
             new_offset += offset
         else:
             raise IOError(_("Invalid argument - whence=%s not supported") %
@@ -774,9 +774,8 @@ class RBDDriver(driver.VolumeDriver):
         """Create a new backup from an existing volume."""
         volume = self.db.volume_get(context, backup['volume_id'])
         pool = self.configuration.rbd_pool
-        volname = volume['name']
 
-        with RBDVolumeProxy(self, volname, pool) as rbd_image:
+        with RBDVolumeProxy(self, volume['name'], pool) as rbd_image:
             rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
                                         self.configuration.rbd_user,
                                         self.configuration.rbd_ceph_conf)

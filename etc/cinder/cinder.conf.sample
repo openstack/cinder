@@ -172,6 +172,10 @@
 # (integer value)
 #backup_ceph_stripe_count=0
 
+# If True, always discard excess bytes when restoring volumes.
+# (boolean value)
+#restore_discard_excess_bytes=true
+
 
 #
 # Options defined in cinder.backup.drivers.swift
@@ -1764,4 +1768,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 378
+# Total option count: 379

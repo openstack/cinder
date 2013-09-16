@@ -78,7 +78,10 @@ service_opts = [
     cfg.IntOpt('backup_ceph_stripe_unit', default=0,
                help='RBD stripe unit to use when creating a backup image'),
     cfg.IntOpt('backup_ceph_stripe_count', default=0,
-               help='RBD stripe count to use when creating a backup image')
+               help='RBD stripe count to use when creating a backup image'),
+    cfg.BoolOpt('restore_discard_excess_bytes', default=True,
+                help='If True, always discard excess bytes when restoring '
+                     'volumes.')
 ]
 
 CONF = cfg.CONF
@@ -210,6 +213,24 @@ class CephBackupDriver(BackupDriver):
                 raise exception.InvalidParameterValue(msg)
             return self._utf8("volume-%s.backup.%s" % (volume_id, backup_id))
 
+    def _discard_bytes(self, volume, offset, length):
+        """Trim length bytes from offset.
+
+        If the volume is an rbd do a discard() otherwise assume it is a file
+        and pad with zeroes.
+        """
+        if length:
+            LOG.info("discarding %s bytes from offset %s" %
+                     (length, offset))
+            if self._file_is_rbd(volume):
+                volume.rbd_image.discard(offset, length)
+            else:
+                zeroes = '\0' * length
+                chunks = int(length / self.chunk_size)
+                for chunk in xrange(0, chunks):
+                    LOG.debug("writing zeroes chunk %d" % (chunk))
+                    volume.write(zeroes)
+
     def _transfer_data(self, src, src_name, dest, dest_name, length):
         """Transfer data between files (Python IO objects)."""
         LOG.debug(_("transferring data between '%(src)s' and '%(dest)s'") %
@@ -222,13 +243,22 @@ class CephBackupDriver(BackupDriver):
         for chunk in xrange(0, chunks):
             before = time.time()
             data = src.read(self.chunk_size)
+            # If we have reach end of source, discard any extraneous bytes from
+            # destination volume if trim is enabled and stop writing.
+            if data == '':
+                if CONF.restore_discard_excess_bytes:
+                    self._discard_bytes(dest, dest.tell(),
+                                        length - dest.tell())
+
+                return
+
             dest.write(data)
             dest.flush()
             delta = (time.time() - before)
             rate = (self.chunk_size / delta) / 1024
             LOG.debug((_("transferred chunk %(chunk)s of %(chunks)s "
                          "(%(rate)dK/s)") %
-                       {'chunk': chunk, 'chunks': chunks,
+                       {'chunk': chunk + 1, 'chunks': chunks,
                         'rate': rate}))
 
             # yield to any other pending backups
@@ -238,10 +268,14 @@ class CephBackupDriver(BackupDriver):
         if rem:
             LOG.debug(_("transferring remaining %s bytes") % (rem))
             data = src.read(rem)
-            dest.write(data)
-            dest.flush()
-            # yield to any other pending backups
-            eventlet.sleep(0)
+            if data == '':
+                if CONF.restore_discard_excess_bytes:
+                    self._discard_bytes(dest, dest.tell(), rem)
+            else:
+                dest.write(data)
+                dest.flush()
+                # yield to any other pending backups
+                eventlet.sleep(0)
 
     def _create_base_image(self, name, size, rados_client):
         """Create a base backup image.
@@ -370,7 +404,7 @@ class CephBackupDriver(BackupDriver):
     def _rbd_diff_transfer(self, src_name, src_pool, dest_name, dest_pool,
                            src_user, src_conf, dest_user, dest_conf,
                            src_snap=None, from_snap=None):
-        """Backup only extents changed between two points.
+        """Copy only extents changed between two points.
 
         If no snapshot is provided, the diff extents will be all those changed
         since the rbd volume/base was created, otherwise it will be those
@@ -431,7 +465,7 @@ class CephBackupDriver(BackupDriver):
 
     def _snap_exists(self, base_name, snap_name, client):
         """Return True if snapshot exists in base image."""
-        base_rbd = self.rbd.Image(client.ioctx, base_name)
+        base_rbd = self.rbd.Image(client.ioctx, base_name, read_only=True)
         try:
             snaps = base_rbd.list_snaps()
         finally:
@@ -707,23 +741,26 @@ class CephBackupDriver(BackupDriver):
 
     def _full_restore(self, backup_id, volume_id, dest_file, dest_name,
                       length, src_snap=None):
-        """Restore the given volume file from backup RBD.
+        """Restore volume using full copy i.e. all extents.
 
-        This will result in all extents being copied from source to destination
+        This will result in all extents being copied from source to
+        destination.
         """
         with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
-
+            # If a source snapshot is provided we assume the base is diff
+            # format.
             if src_snap:
-                # If a source snapshot is provided we assume the base is diff
-                # format.
-                backup_name = self._get_backup_base_name(volume_id,
-                                                         diff_format=True)
+                diff_format = True
             else:
-                backup_name = self._get_backup_base_name(volume_id, backup_id)
+                diff_format = False
+
+            backup_name = self._get_backup_base_name(volume_id,
+                                                     backup_id=backup_id,
+                                                     diff_format=diff_format)
 
             # Retrieve backup volume
             src_rbd = self.rbd.Image(client.ioctx, backup_name,
-                                     snapshot=src_snap)
+                                     snapshot=src_snap, read_only=True)
             try:
                 rbd_meta = drivers.rbd.RBDImageMetadata(src_rbd,
                                                         self._ceph_backup_pool,
@@ -735,11 +772,40 @@ class CephBackupDriver(BackupDriver):
             finally:
                 src_rbd.close()
 
-    def _restore_rbd(self, base_name, volume_file, volume_name, restore_point):
-        """Restore RBD volume from RBD image."""
-        rbd_user = volume_file.rbd_user
-        rbd_pool = volume_file.rbd_pool
-        rbd_conf = volume_file.rbd_conf
+    def _check_restore_vol_size(self, backup_base, restore_vol, restore_length,
+                                src_pool):
+        """Ensure that the restore volume is the correct size.
+
+        If the restore volume was bigger than the backup, the diff restore will
+        shrink it to the size of the original backup so we need to
+        post-process and resize it back to its expected size.
+        """
+        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+            adjust_size = 0
+            base_image = self.rbd.Image(client.ioctx, self._utf8(backup_base),
+                                        read_only=True)
+            try:
+                if restore_length != base_image.size():
+                    adjust_size = restore_length
+            finally:
+                base_image.close()
+
+        if adjust_size:
+            with drivers.rbd.RADOSClient(self, src_pool) as client:
+                dest_image = self.rbd.Image(client.ioctx,
+                                            self._utf8(restore_vol))
+                try:
+                    LOG.debug("adjusting restore vol size")
+                    dest_image.resize(adjust_size)
+                finally:
+                    dest_image.close()
+
+    def _diff_restore_rbd(self, base_name, restore_file, restore_name,
+                          restore_point, restore_length):
+        """Attempt restore rbd volume from backup using diff transfer."""
+        rbd_user = restore_file.rbd_user
+        rbd_pool = restore_file.rbd_pool
+        rbd_conf = restore_file.rbd_conf
 
         LOG.debug(_("trying incremental restore from base='%(base)s' "
                     "snap='%(snap)s'") %
@@ -747,7 +813,7 @@ class CephBackupDriver(BackupDriver):
         before = time.time()
         try:
             self._rbd_diff_transfer(base_name, self._ceph_backup_pool,
-                                    volume_name, rbd_pool,
+                                    restore_name, rbd_pool,
                                     src_user=self._ceph_backup_user,
                                     src_conf=self._ceph_backup_conf,
                                     dest_user=rbd_user, dest_conf=rbd_conf,
@@ -757,13 +823,21 @@ class CephBackupDriver(BackupDriver):
                             "restore"))
             raise
 
+        # If the volume we are restoring to is larger than the backup volume,
+        # we will need to resize it after the diff import since import-diff
+        # appears to shrink the target rbd volume to the size of the original
+        # backup volume.
+        self._check_restore_vol_size(base_name, restore_name, restore_length,
+                                     rbd_pool)
+
         LOG.debug(_("restore transfer completed in %.4fs") %
                   (time.time() - before))
 
     def _num_backup_snaps(self, backup_base_name):
         """Return the number of snapshots that exist on the base image."""
         with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
-            base_rbd = self.rbd.Image(client.ioctx, backup_base_name)
+            base_rbd = self.rbd.Image(client.ioctx, backup_base_name,
+                                      read_only=True)
             try:
                 snaps = self.get_backup_snaps(base_rbd)
             finally:
@@ -780,7 +854,7 @@ class CephBackupDriver(BackupDriver):
         If the backup was not incremental None is returned.
         """
         with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
-            base_rbd = self.rbd.Image(client.ioctx, base_name)
+            base_rbd = self.rbd.Image(client.ioctx, base_name, read_only=True)
             try:
                 restore_point = self._get_backup_snap_name(base_rbd, base_name,
                                                            backup_id)
@@ -856,8 +930,11 @@ class CephBackupDriver(BackupDriver):
 
         return not_allowed
 
-    def _try_restore(self, backup, volume, volume_file):
-        """Attempt to restore volume from backup."""
+    def _restore_volume(self, backup, volume, volume_file):
+        """Restore volume from backup using diff transfer if possible.
+
+        Attempts a differential restore and reverts to full copy if diff fails.
+        """
         volume_name = volume['name']
         backup_id = backup['id']
         backup_volume_id = backup['volume_id']
@@ -867,20 +944,19 @@ class CephBackupDriver(BackupDriver):
                                                diff_format=True)
 
         with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
-            diff_restore, restore_point = \
+            diff_allowed, restore_point = \
                 self._diff_restore_allowed(base_name, backup, volume,
                                            volume_file, client)
 
-        if diff_restore:
+        do_full_restore = True
+        if diff_allowed:
+            # Attempt diff
             try:
+                self._diff_restore_rbd(base_name, volume_file, volume_name,
+                                       restore_point, length)
                 do_full_restore = False
-                self._restore_rbd(base_name, volume_file, volume_name,
-                                  restore_point)
             except exception.BackupRBDOperationFailed:
                 LOG.debug(_("forcing full restore"))
-                do_full_restore = True
-        else:
-            do_full_restore = True
 
         if do_full_restore:
             # Otherwise full copy
@@ -894,13 +970,10 @@ class CephBackupDriver(BackupDriver):
                     'volume=%(dest)s') %
                   {'src': backup['id'], 'dest': target_volume['name']})
 
-        # Ensure we are at the beginning of the volume
-        volume_file.seek(0)
-
         try:
-            self._try_restore(backup, target_volume, volume_file)
+            self._restore_volume(backup, target_volume, volume_file)
 
-            # Be tolerant to IO implementations that do not support fileno()
+            # Be tolerant of IO implementations that do not support fileno()
             try:
                 fileno = volume_file.fileno()
             except IOError:
@@ -909,7 +982,7 @@ class CephBackupDriver(BackupDriver):
             else:
                 os.fsync(fileno)
 
-            LOG.debug(_('restore finished.'))
+            LOG.debug(_('restore finished successfully.'))
         except exception.BackupOperationError as e:
             LOG.error(_('restore finished with error - %s') % (e))
             raise
@@ -926,8 +999,8 @@ class CephBackupDriver(BackupDriver):
                     "that db entry can be removed")
             LOG.warning(msg)
             LOG.info(_("delete '%s' finished with warning") % (backup_id))
-
-        LOG.debug(_("delete '%s' finished") % (backup_id))
+        else:
+            LOG.debug(_("delete '%s' finished") % (backup_id))
 
 
 def get_backup_driver(context):
