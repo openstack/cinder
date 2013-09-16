@@ -771,7 +771,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
         self.driver.terminate_connection(fake_volume, mox.IgnoreArg())\
             .AndReturn(None)
 
-        root_helper = 'sudo cinder-rootwrap None'
+        root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
 
         self.mox.StubOutWithMock(connector, 'get_connector_properties')
         connector.get_connector_properties(root_helper).\

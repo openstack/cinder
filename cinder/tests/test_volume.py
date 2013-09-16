@@ -1955,7 +1955,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
         backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
-        root_helper = 'sudo cinder-rootwrap None'
+        root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
         self.mox.StubOutWithMock(self.volume.driver.db, 'volume_get')
         self.mox.StubOutWithMock(cinder.brick.initiator.connector,
                                  'get_connector_properties')
@@ -1989,7 +1989,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                   'id': 'backup-for-%s' % vol['id']}
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
-        root_helper = 'sudo cinder-rootwrap None'
+        root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
         backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
         self.mox.StubOutWithMock(cinder.brick.initiator.connector,
                                  'get_connector_properties')
