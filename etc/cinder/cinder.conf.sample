@@ -1660,6 +1660,12 @@
 # and Glance. (integer value)
 #vmware_image_transfer_timeout_secs=7200
 
+# Max number of objects to be retrieved per batch. Query
+# results will be obtained in batches from the server and not
+# in one shot. Server may still limit the count to something
+# less than the configured value. (integer value)
+#vmware_max_objects_retrieval=100
+
 
 #
 # Options defined in cinder.volume.drivers.windows.windows
@@ -1772,4 +1778,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 380
+# Total option count: 381

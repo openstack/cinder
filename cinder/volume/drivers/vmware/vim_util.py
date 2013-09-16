@@ -176,17 +176,23 @@ def build_property_filter_spec(client_factory, property_specs, object_specs):
     return property_filter_spec
 
 
-def get_objects(vim, type, props_to_collect=None, all_properties=False):
+def get_objects(vim, type, max_objects, props_to_collect=None,
+                all_properties=False):
     """Gets all managed object references of a specified type.
+
+    It is caller's responsibility to continue or cancel retrieval.
 
     :param vim: Vim object
     :param type: Type of the managed object reference
+    :param max_objects: Maximum number of objects that should be returned in
+                        a single call
     :param props_to_collect: Properties of the managed object reference
                              to be collected
     :param all_properties: Whether all properties of the managed object
                            reference are to be collected
     :return: All managed object references of a specified type
     """
+
     if not props_to_collect:
         props_to_collect = ['name']
 
@@ -201,8 +207,11 @@ def get_objects(vim, type, props_to_collect=None, all_properties=False):
     property_filter_spec = build_property_filter_spec(client_factory,
                                                       [property_spec],
                                                       [object_spec])
-    return vim.RetrieveProperties(vim.service_content.propertyCollector,
-                                  specSet=[property_filter_spec])
+    options = client_factory.create('ns0:RetrieveOptions')
+    options.maxObjects = max_objects
+    return vim.RetrievePropertiesEx(vim.service_content.propertyCollector,
+                                    specSet=[property_filter_spec],
+                                    options=options)
 
 
 def get_object_properties(vim, mobj, properties):
@@ -214,6 +223,7 @@ def get_object_properties(vim, mobj, properties):
                        to be retrieved
     :return: Properties of the managed object specified
     """
+
     client_factory = vim.client.factory
     if mobj is None:
         return None
@@ -228,7 +238,48 @@ def get_object_properties(vim, mobj, properties):
     object_spec.skip = False
     property_filter_spec.propSet = [property_spec]
     property_filter_spec.objectSet = [object_spec]
-    return vim.RetrieveProperties(collector, specSet=[property_filter_spec])
+    options = client_factory.create('ns0:RetrieveOptions')
+    options.maxObjects = 1
+    retrieve_result = vim.RetrievePropertiesEx(collector,
+                                               specSet=[property_filter_spec],
+                                               options=options)
+    cancel_retrieval(vim, retrieve_result)
+    return retrieve_result.objects
+
+
+def _get_token(retrieve_result):
+    """Get token from results to obtain next set of results.
+
+    :retrieve_result: Result from the RetrievePropertiesEx API
+    :return: Token to obtain next set of results. None if no more results.
+    """
+    return getattr(retrieve_result, 'token', None)
+
+
+def cancel_retrieval(vim, retrieve_result):
+    """Cancels the retrive operation if necessary.
+
+    :param vim: Vim object
+    :param retrieve_result: Result from the RetrievePropertiesEx API
+    """
+
+    token = _get_token(retrieve_result)
+    if token:
+        collector = vim.service_content.propertyCollector
+        vim.CancelRetrievePropertiesEx(collector, token=token)
+
+
+def continue_retrieval(vim, retrieve_result):
+    """Continue retrieving results, if present.
+
+    :param vim: Vim object
+    :param retrieve_result: Result from the RetrievePropertiesEx API
+    """
+
+    token = _get_token(retrieve_result)
+    if token:
+        collector = vim.service_content.propertyCollector
+        return vim.ContinueRetrievePropertiesEx(collector, token=token)
 
 
 def get_object_property(vim, mobj, property_name):
