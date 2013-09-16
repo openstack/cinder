@@ -543,9 +543,9 @@
 # Options defined in cinder.image.image_utils
 #
 
-# parent dir for tempdir used for image conversion (string
-# value)
-#image_conversion_dir=/tmp
+# Directory used for temporary storage during image conversion
+# (string value)
+#image_conversion_dir=$state_path/conversion
 
 
 #
