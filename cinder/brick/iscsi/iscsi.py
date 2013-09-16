@@ -256,12 +256,14 @@ class IetAdm(TargetAdmin):
         orig_uid = os.stat(path).st_uid
 
         if orig_uid != owner_uid:
-            putils.execute('chown', owner_uid, path, run_as_root=True)
+            putils.execute('chown', owner_uid, path,
+                           root_helper=self._root_helper, run_as_root=True)
         try:
             yield
         finally:
             if orig_uid != owner_uid:
-                putils.execute('chown', orig_uid, path, run_as_root=True)
+                putils.execute('chown', orig_uid, path,
+                               root_helper=self._root_helper, run_as_root=True)
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
