@@ -74,7 +74,7 @@ def get_connector_properties(root_helper):
 class InitiatorConnector(executor.Executor):
     def __init__(self, root_helper, driver=None,
                  execute=putils.execute, *args, **kwargs):
-        super(InitiatorConnector, self).__init__(root_helper, execute,
+        super(InitiatorConnector, self).__init__(root_helper, execute=execute,
                                                  *args, **kwargs)
         if not driver:
             driver = host_driver.HostDriver()
@@ -92,29 +92,29 @@ class InitiatorConnector(executor.Executor):
         LOG.debug("Factory for %s" % protocol)
         protocol = protocol.upper()
         if protocol == "ISCSI":
-            return ISCSIConnector(execute=execute,
+            return ISCSIConnector(root_helper=root_helper,
                                   driver=driver,
-                                  root_helper=root_helper,
+                                  execute=execute,
                                   use_multipath=use_multipath)
         elif protocol == "FIBRE_CHANNEL":
-            return FibreChannelConnector(execute=execute,
+            return FibreChannelConnector(root_helper=root_helper,
                                          driver=driver,
-                                         root_helper=root_helper,
+                                         execute=execute,
                                          use_multipath=use_multipath)
         elif protocol == "AOE":
-            return AoEConnector(execute=execute,
+            return AoEConnector(root_helper=root_helper,
                                 driver=driver,
-                                root_helper=root_helper)
+                                execute=execute)
         elif protocol == "NFS" or protocol == "GLUSTERFS":
             return RemoteFsConnector(mount_type=protocol.lower(),
-                                     execute=execute,
+                                     root_helper=root_helper,
                                      driver=driver,
-                                     root_helper=root_helper)
+                                     execute=execute)
 
         elif protocol == "LOCAL":
-            return LocalConnector(execute=execute,
+            return LocalConnector(root_helper=root_helper,
                                   driver=driver,
-                                  root_helper=root_helper)
+                                  execute=execute)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -163,8 +163,8 @@ class ISCSIConnector(InitiatorConnector):
                  execute=putils.execute, use_multipath=False,
                  *args, **kwargs):
         self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
-        super(ISCSIConnector, self).__init__(root_helper, driver, execute,
-                                             *args, **kwargs)
+        super(ISCSIConnector, self).__init__(root_helper, driver=driver,
+                                             execute=execute, *args, **kwargs)
         self.use_multipath = use_multipath
 
     def set_execute(self, execute):
@@ -502,8 +502,9 @@ class FibreChannelConnector(InitiatorConnector):
                  *args, **kwargs):
         self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
         self._linuxfc = linuxfc.LinuxFibreChannel(root_helper, execute)
-        super(FibreChannelConnector, self).__init__(root_helper, driver,
-                                                    execute, *args, **kwargs)
+        super(FibreChannelConnector, self).__init__(root_helper, driver=driver,
+                                                    execute=execute, *args,
+                                                    **kwargs)
         self.use_multipath = use_multipath
 
     def set_execute(self, execute):
@@ -670,8 +671,8 @@ class AoEConnector(InitiatorConnector):
     """Connector class to attach/detach AoE volumes."""
     def __init__(self, root_helper, driver=None,
                  execute=putils.execute, *args, **kwargs):
-        super(AoEConnector, self).__init__(root_helper, driver, execute,
-                                           *args, **kwargs)
+        super(AoEConnector, self).__init__(root_helper, driver=driver,
+                                           execute=execute, *args, **kwargs)
 
     def _get_aoe_info(self, connection_properties):
         shelf = connection_properties['target_shelf']
@@ -781,8 +782,9 @@ class RemoteFsConnector(InitiatorConnector):
                  execute=putils.execute, *args, **kwargs):
         self._remotefsclient = remotefs.RemoteFsClient(mount_type,
                                                        execute, root_helper)
-        super(RemoteFsConnector, self).__init__(driver, execute, root_helper,
-                                                *args, **kwargs)
+        super(RemoteFsConnector, self).__init__(root_helper, driver=driver,
+                                                execute=execute, *args,
+                                                **kwargs)
 
     def set_execute(self, execute):
         super(RemoteFsConnector, self).set_execute(execute)
@@ -820,11 +822,8 @@ class LocalConnector(InitiatorConnector):
 
     def __init__(self, root_helper, driver=None, execute=putils.execute,
                  *args, **kwargs):
-        super(LocalConnector, self).__init__(root_helper,
-                                             driver,
-                                             execute,
-                                             *args,
-                                             **kwargs)
+        super(LocalConnector, self).__init__(root_helper, driver=driver,
+                                             execute=execute, *args, **kwargs)
 
     def connect_volume(self, connection_properties):
         """Connect to a volume.
