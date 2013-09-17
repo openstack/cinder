@@ -41,6 +41,7 @@ from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -95,8 +96,22 @@ class BackupManager(manager.SchedulerDependentManager):
         """
 
         ctxt = context.get_admin_context()
-        self.driver.do_setup(ctxt)
-        self.driver.check_for_setup_error()
+        LOG.info(_("Starting volume driver %(driver_name)s (%(version)s)") %
+                 {'driver_name': self.driver.__class__.__name__,
+                  'version': self.driver.get_version()})
+        try:
+            self.driver.do_setup(ctxt)
+            self.driver.check_for_setup_error()
+        except Exception as ex:
+            LOG.error(_("Error encountered during "
+                        "initialization of driver: %(name)s") %
+                      {'name': self.driver.__class__.__name__})
+            LOG.exception(ex)
+            # we don't want to continue since we failed
+            # to initialize the driver correctly.
+            return
+
+        self.driver.set_initialized()
 
         LOG.info(_("Cleaning up incomplete backup operations"))
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
@@ -131,6 +146,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 LOG.info(_('Resuming delete on backup: %s') % backup['id'])
                 self.delete_backup(ctxt, backup['id'])
 
+    @utils.require_driver_initialized
     def create_backup(self, context, backup_id):
         """Create volume backups using configured backup service."""
         backup = self.db.backup_get(context, backup_id)
@@ -186,11 +202,13 @@ class BackupManager(manager.SchedulerDependentManager):
                                                    self.az})
         LOG.info(_('create_backup finished. backup: %s'), backup_id)
 
+    @utils.require_driver_initialized
     def restore_backup(self, context, backup_id, volume_id):
         """Restore volume backups from configured backup service."""
         LOG.info(_('restore_backup started, restoring backup: %(backup_id)s'
                    ' to volume: %(volume_id)s') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
+
         backup = self.db.backup_get(context, backup_id)
         volume = self.db.volume_get(context, volume_id)
         self.db.backup_update(context, backup_id, {'host': self.host})
@@ -256,10 +274,11 @@ class BackupManager(manager.SchedulerDependentManager):
                    ' to volume: %(volume_id)s') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
 
+    @utils.require_driver_initialized
     def delete_backup(self, context, backup_id):
         """Delete volume backup from configured backup service."""
-        backup = self.db.backup_get(context, backup_id)
         LOG.info(_('delete_backup started, backup: %s'), backup_id)
+        backup = self.db.backup_get(context, backup_id)
         self.db.backup_update(context, backup_id, {'host': self.host})
 
         expected_status = 'deleting'

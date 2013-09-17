@@ -792,3 +792,14 @@ def brick_get_connector(protocol, driver=None,
                                                 driver=driver,
                                                 execute=execute,
                                                 use_multipath=use_multipath)
+
+
+def require_driver_initialized(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        # we can't do anything if the driver didn't init
+        if not self.driver.initialized:
+            driver_name = self.driver.__class__.__name__
+            raise exception.DriverNotInitialized(driver=driver_name)
+        return func(self, *args, **kwargs)
+    return wrapper

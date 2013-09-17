@@ -169,10 +169,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             self.driver.do_setup(ctxt)
             self.driver.check_for_setup_error()
-        except Exception:
+        except Exception as ex:
             LOG.error(_("Error encountered during "
-                        "initialization of driver: %s"),
-                      self.driver.__class__.__name__)
+                        "initialization of driver: %(name)s") %
+                      {'name': self.driver.__class__.__name__})
+            LOG.exception(ex)
+            # we don't want to continue since we failed
+            # to initialize the driver correctly.
+            return
 
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         LOG.debug(_("Re-exporting %s volumes"), len(volumes))
@@ -198,6 +202,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
 
+    @utils.require_driver_initialized
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None):
@@ -227,6 +232,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._reset_stats()
         return volume_id
 
+    @utils.require_driver_initialized
     def delete_volume(self, context, volume_id):
         """Deletes and unexports volume."""
         context = context.elevated()
@@ -304,12 +310,14 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return True
 
+    @utils.require_driver_initialized
     def create_snapshot(self, context, volume_id, snapshot_id):
         """Creates and exports the snapshot."""
         caller_context = context
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         LOG.info(_("snapshot %s: creating"), snapshot_ref['id'])
+
         self._notify_about_snapshot_usage(
             context, snapshot_ref, "create.start")
 
@@ -352,12 +360,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_snapshot_usage(context, snapshot_ref, "create.end")
         return snapshot_id
 
+    @utils.require_driver_initialized
     def delete_snapshot(self, context, snapshot_id):
         """Deletes and unexports snapshot."""
         caller_context = context
         context = context.elevated()
         snapshot_ref = self.db.snapshot_get(context, snapshot_id)
         project_id = snapshot_ref['project_id']
+
         LOG.info(_("snapshot %s: deleting"), snapshot_ref['id'])
         self._notify_about_snapshot_usage(
             context, snapshot_ref, "delete.start")
@@ -412,6 +422,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, reservations, project_id=project_id)
         return True
 
+    @utils.require_driver_initialized
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
                       mountpoint, mode):
         """Updates db to show volume is attached"""
@@ -484,6 +495,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                     mountpoint)
         return do_attach()
 
+    @utils.require_driver_initialized
     def detach_volume(self, context, volume_id):
         """Updates db to show volume is detached"""
         # TODO(vish): refactor this into a more general "unreserve"
@@ -508,6 +520,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume['name'] not in volume['provider_location']):
             self.driver.ensure_export(context, volume)
 
+    @utils.require_driver_initialized
     def copy_volume_to_image(self, context, volume_id, image_meta):
         """Uploads the specified volume to Glance.
 
@@ -538,6 +551,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.db.volume_update(context, volume_id,
                                       {'status': 'in-use'})
 
+    @utils.require_driver_initialized
     def initialize_connection(self, context, volume_id, connector):
         """Prepare volume for connection from host represented by connector.
 
@@ -604,6 +618,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             conn_info['data']['access_mode'] = access_mode
         return conn_info
 
+    @utils.require_driver_initialized
     def terminate_connection(self, context, volume_id, connector, force=False):
         """Cleanup connection from host represented by connector.
 
@@ -612,6 +627,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context, volume_id)
         self.driver.terminate_connection(volume_ref, connector, force=force)
 
+    @utils.require_driver_initialized
     def accept_transfer(self, context, volume_id, new_user, new_project):
         # NOTE(jdg): need elevated context as we haven't "given" the vol
         # yet
@@ -708,6 +724,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_update(ctxt, volume_id, {'migration_status': None})
         return volume['id']
 
+    @utils.require_driver_initialized
     def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False):
         """Migrate the volume to the specified host (called on source host)."""
         volume_ref = self.db.volume_get(ctxt, volume_id)
@@ -753,7 +770,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     def _report_driver_status(self, context):
         LOG.info(_("Updating volume status"))
         if not self.driver.initialized:
-            LOG.warning(_('Unabled to update stats, driver is '
+            LOG.warning(_('Unable to update stats, driver is '
                           'uninitialized'))
         else:
             volume_stats = self.driver.get_volume_stats(refresh=True)
@@ -793,6 +810,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
+    @utils.require_driver_initialized
     def extend_volume(self, context, volume_id, new_size):
         volume = self.db.volume_get(context, volume_id)
         size_increase = (int(new_size)) - volume['size']

@@ -51,6 +51,7 @@ class BackupTestCase(test.TestCase):
             importutils.import_object(CONF.backup_manager)
         self.backup_mgr.host = 'testhost'
         self.ctxt = context.get_admin_context()
+        self.backup_mgr.driver.set_initialized()
 
     def tearDown(self):
         super(BackupTestCase, self).tearDown()

@@ -102,6 +102,7 @@ class RBDTestCase(test.TestCase):
                                        configuration=self.configuration,
                                        rados=self.rados,
                                        rbd=self.rbd)
+        self.driver.set_initialized()
 
     def test_create_volume(self):
         name = u'volume-00000001'
@@ -498,6 +499,7 @@ class ManagedRBDTestCase(DriverTestCase):
     def setUp(self):
         super(ManagedRBDTestCase, self).setUp()
         fake_image.stub_out_image_service(self.stubs)
+        self.volume.driver.set_initialized()
 
     def _clone_volume_from_image(self, expected_status,
                                  clone_works=True):

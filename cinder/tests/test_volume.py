@@ -105,6 +105,7 @@ class BaseVolumeTestCase(test.TestCase):
         test_notifier.NOTIFICATIONS = []
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
         self.stubs.Set(os.path, 'exists', lambda x: True)
+        self.volume.driver.set_initialized()
 
     def tearDown(self):
         try:
@@ -1959,6 +1960,7 @@ class DriverTestCase(test.TestCase):
             """Fake _execute."""
             return self.output, None
         self.volume.driver.set_execute(_fake_execute)
+        self.volume.driver.set_initialized()
 
     def tearDown(self):
         try:
