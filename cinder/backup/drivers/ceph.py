@@ -220,16 +220,25 @@ class CephBackupDriver(BackupDriver):
         and pad with zeroes.
         """
         if length:
-            LOG.info("discarding %s bytes from offset %s" %
-                     (length, offset))
+            LOG.debug(_("discarding %(length)s bytes from offset %(offset)s") %
+                      {'length': length, 'offset': offset})
             if self._file_is_rbd(volume):
                 volume.rbd_image.discard(offset, length)
             else:
                 zeroes = '\0' * length
                 chunks = int(length / self.chunk_size)
                 for chunk in xrange(0, chunks):
-                    LOG.debug("writing zeroes chunk %d" % (chunk))
+                    LOG.debug(_("writing zeroes chunk %d") % (chunk))
                     volume.write(zeroes)
+                    volume.flush()
+                    # yield to any other pending backups
+                    eventlet.sleep(0)
+
+                rem = int(length % self.chunk_size)
+                if rem:
+                    zeroes = '\0' * rem
+                    volume.write(zeroes)
+                    volume.flush()
 
     def _transfer_data(self, src, src_name, dest, dest_name, length):
         """Transfer data between files (Python IO objects)."""
@@ -433,8 +442,9 @@ class CephBackupDriver(BackupDriver):
             out, err = self._execute(*cmd)
         except (processutils.ProcessExecutionError,
                 processutils.UnknownArgumentError) as exc:
-            LOG.info(_("rbd export-diff failed - %s") % (str(exc)))
-            raise exception.BackupRBDOperationFailed("rbd export-diff failed")
+            msg = _("rbd export-diff failed - %s") % (str(exc))
+            LOG.info(msg)
+            raise exception.BackupRBDOperationFailed(msg)
 
         cmd = ['rbd', 'import-diff'] + dest_ceph_args
         cmd.extend(['-', self._utf8("%s/%s" % (dest_pool, dest_name))])
@@ -442,8 +452,9 @@ class CephBackupDriver(BackupDriver):
             out, err = self._execute(*cmd, process_input=out)
         except (processutils.ProcessExecutionError,
                 processutils.UnknownArgumentError) as exc:
-            LOG.info(_("rbd import-diff failed - %s") % (str(exc)))
-            raise exception.BackupRBDOperationFailed("rbd import-diff failed")
+            msg = _("rbd import-diff failed - %s") % (str(exc))
+            LOG.info(msg)
+            raise exception.BackupRBDOperationFailed(msg)
 
     def _rbd_image_exists(self, name, volume_id, client,
                           try_diff_format=False):
@@ -505,7 +516,7 @@ class CephBackupDriver(BackupDriver):
                 # If a from_snap is defined but the base does not exist, we
                 # ignore it since it is stale and waiting to be cleaned up.
                 if from_snap:
-                    LOG.debug("source snap '%s' is stale so deleting" %
+                    LOG.debug(_("source snap '%s' is stale so deleting") %
                               (from_snap))
                     source_rbd_image.remove_snap(from_snap)
                     from_snap = None
@@ -696,7 +707,8 @@ class CephBackupDriver(BackupDriver):
         Raises exception.InvalidParameterValue if voluem size is 0.
         """
         if int(volume['size']) == 0:
-            raise exception.InvalidParameterValue("need non-zero volume size")
+            errmsg = _("need non-zero volume size")
+            raise exception.InvalidParameterValue(errmsg)
 
         return int(volume['size']) * units.GiB
 
@@ -795,7 +807,7 @@ class CephBackupDriver(BackupDriver):
                 dest_image = self.rbd.Image(client.ioctx,
                                             self._utf8(restore_vol))
                 try:
-                    LOG.debug("adjusting restore vol size")
+                    LOG.debug(_("adjusting restore vol size"))
                     dest_image.resize(adjust_size)
                 finally:
                     dest_image.close()
@@ -877,7 +889,7 @@ class CephBackupDriver(BackupDriver):
         rbd_volume.diff_iterate(0, rbd_volume.size(), None, iter_cb)
 
         if extents:
-            LOG.debug("rbd has %s extents" % (sum(extents)))
+            LOG.debug(_("rbd has %s extents") % (sum(extents)))
             return True
 
         return False
@@ -899,7 +911,7 @@ class CephBackupDriver(BackupDriver):
         # If the volume we are restoring to is the volume the backup was made
         # from, force a full restore since a diff will not work in this case.
         if volume['id'] == backup['volume_id']:
-            LOG.debug("dest volume is original volume - forcing full copy")
+            LOG.debug(_("dest volume is original volume - forcing full copy"))
             return not_allowed
 
         if self._file_is_rbd(volume_file):
@@ -920,7 +932,7 @@ class CephBackupDriver(BackupDriver):
                 if self._rbd_has_extents(volume_file.rbd_image):
                     # We return the restore point so that a full copy is done
                     # from snapshot.
-                    LOG.debug("destination has extents - forcing full copy")
+                    LOG.debug(_("destination has extents - forcing full copy"))
                     return False, restore_point
 
                 return True, restore_point
