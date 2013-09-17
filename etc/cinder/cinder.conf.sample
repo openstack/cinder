@@ -420,7 +420,7 @@
 
 # Path to the rootwrap configuration file to use for running
 # commands as root (string value)
-#rootwrap_config=<None>
+#rootwrap_config=/etc/cinder/rootwrap.conf
 
 # Whether to log monkey patching (boolean value)
 #monkey_patch=false

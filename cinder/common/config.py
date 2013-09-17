@@ -181,7 +181,7 @@ global_opts = [
                default='sudo',
                help='Deprecated: command to use for running commands as root'),
     cfg.StrOpt('rootwrap_config',
-               default=None,
+               default='/etc/cinder/rootwrap.conf',
                help='Path to the rootwrap configuration file to use for '
                     'running commands as root'),
     cfg.BoolOpt('monkey_patch',
