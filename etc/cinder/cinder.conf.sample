@@ -422,7 +422,7 @@
 # commands as root (string value)
 #rootwrap_config=<None>
 
-# Whether to log monkey patching (boolean value)
+# Enable monkey patching (boolean value)
 #monkey_patch=false
 
 # List of modules/decorators to monkey patch (list value)
