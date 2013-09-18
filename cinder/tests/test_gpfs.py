@@ -202,8 +202,8 @@ class GPFSDriverTestCase(test.TestCase):
         snapCount = len(db.snapshot_get_all_for_volume(self.context,
                                                        volume_src['id']))
         self.assertTrue(snapCount == 1)
-        self.volume.delete_volume(self.context, volume_src['id'])
         self.volume.delete_snapshot(self.context, snapshot_id)
+        self.volume.delete_volume(self.context, volume_src['id'])
         self.assertFalse(os.path.exists(os.path.join(self.volumes_path,
                                                      snapshot['name'])))
         snapCount = len(db.snapshot_get_all_for_volume(self.context,
@@ -230,8 +230,8 @@ class GPFSDriverTestCase(test.TestCase):
                          volume_dst['id']).snapshot_id)
         self.volume.delete_volume(self.context, volume_dst['id'])
 
-        self.volume.delete_volume(self.context, volume_src['id'])
         self.volume.delete_snapshot(self.context, snapshot_id)
+        self.volume.delete_volume(self.context, volume_src['id'])
 
     def test_create_cloned_volume(self):
         volume_src = test_utils.create_volume(self.context, host=CONF.host)
@@ -268,9 +268,9 @@ class GPFSDriverTestCase(test.TestCase):
         volumepath = os.path.join(self.volumes_path, volume_dst['name'])
         self.assertTrue(os.path.exists(volumepath))
 
+        self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_volume(self.context, volume_src['id'])
-        self.volume.delete_snapshot(self.context, snapshot_id)
 
     def test_clone_image_to_volume_with_copy_on_write_mode(self):
         """Test the function of copy_image_to_volume
