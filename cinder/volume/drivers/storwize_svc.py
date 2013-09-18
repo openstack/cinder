@@ -1162,15 +1162,14 @@ class StorwizeSVCDriver(san.SanDriver):
         src_vdisk_attributes = self._get_vdisk_attributes(src_vdisk)
         if src_vdisk_attributes is None:
             exception_msg = (
-                _('_create_copy: Source vdisk %s does not exist')
-                % src_vdisk)
+                _('_create_copy: Source vdisk %(src_vdisk)s (%(src_id)s) '
+                  'does not exist')
+                % {'src_vdisk': src_vdisk, 'src_id': src_id})
             LOG.error(exception_msg)
             if from_vol:
-                raise exception.VolumeNotFound(exception_msg,
-                                               volume_id=src_id)
+                raise exception.VolumeNotFound(volume_id=src_id)
             else:
-                raise exception.SnapshotNotFound(exception_msg,
-                                                 snapshot_id=src_id)
+                raise exception.SnapshotNotFound(snapshot_id=src_id)
 
         self._driver_assert(
             'capacity' in src_vdisk_attributes,
