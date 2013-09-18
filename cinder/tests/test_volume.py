@@ -104,6 +104,7 @@ class BaseVolumeTestCase(test.TestCase):
         fake_image.stub_out_image_service(self.stubs)
         test_notifier.NOTIFICATIONS = []
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
 
     def tearDown(self):
         try:
@@ -1161,6 +1162,41 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_id)
 
+    def test_delete_no_dev_fails(self):
+        """Test delete snapshot with no dev file fails."""
+        self.stubs.Set(os.path, 'exists', lambda x: False)
+        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                             False,
+                                             None,
+                                             'default')
+
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        snapshot_id = self._create_snapshot(volume_id)['id']
+        self.volume.create_snapshot(self.context, volume_id, snapshot_id)
+
+        self.mox.StubOutWithMock(self.volume.driver, 'delete_snapshot')
+
+        self.volume.driver.delete_snapshot(
+            mox.IgnoreArg()).AndRaise(
+                exception.SnapshotIsBusy(snapshot_name='fake'))
+        self.mox.ReplayAll()
+        self.volume.delete_snapshot(self.context, snapshot_id)
+        snapshot_ref = db.snapshot_get(self.context, snapshot_id)
+        self.assertEqual(snapshot_id, snapshot_ref.id)
+        self.assertEqual("available", snapshot_ref.status)
+
+        self.mox.UnsetStubs()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume.delete_snapshot,
+                          self.context,
+                          snapshot_id)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume.delete_volume,
+                          self.context,
+                          volume_id)
+
     def _create_volume_from_image(self, fakeout_copy_image_to_volume=False,
                                   fakeout_clone_image=False):
         """Test function of create_volume_from_image.
@@ -2127,6 +2163,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
         self.stubs.Set(volutils, 'copy_volume',
                        lambda x, y, z, sync=False, execute='foo': True)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
 
         fake_volume = {'name': 'test1',
                        'volume_name': 'test1',

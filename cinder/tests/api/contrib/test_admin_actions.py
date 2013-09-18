@@ -11,6 +11,7 @@
 # under the License.
 
 import ast
+import os
 import shutil
 import tempfile
 import webob
@@ -258,6 +259,7 @@ class AdminActionsTest(test.TestCase):
         self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
 
     def test_force_delete_snapshot(self):
+        self.stubs.Set(os.path, 'exists', lambda x: True)
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is creating
