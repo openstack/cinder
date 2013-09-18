@@ -186,7 +186,7 @@ global_opts = [
                     'running commands as root'),
     cfg.BoolOpt('monkey_patch',
                 default=False,
-                help='Whether to log monkey patching'),
+                help='Enable monkey patching'),
     cfg.ListOpt('monkey_patch_modules',
                 default=[],
                 help='List of modules/decorators to monkey patch'),
