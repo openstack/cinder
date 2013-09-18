@@ -232,8 +232,14 @@ class SnapshotsController(wsgi.Controller):
         valid_update_keys = (
             'name',
             'description',
+            'display_name',
             'display_description',
         )
+
+        # NOTE(thingee): v2 API allows name instead of display_name
+        if 'name' in snapshot:
+            snapshot['display_name'] = snapshot['name']
+            del snapshot['name']
 
         # NOTE(thingee): v2 API allows description instead of
         # display_description
@@ -244,11 +250,6 @@ class SnapshotsController(wsgi.Controller):
         for key in valid_update_keys:
             if key in snapshot:
                 update_dict[key] = snapshot[key]
-
-        # NOTE(thingee): v2 API allows name instead of display_name
-        if 'name' in update_dict:
-            update_dict['display_name'] = update_dict['name']
-            del update_dict['name']
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
