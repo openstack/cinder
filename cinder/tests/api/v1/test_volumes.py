@@ -315,7 +315,7 @@ class VolumeApiTest(test.TestCase):
             'id': '1',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'size': 1}}
-        self.assertEquals(res_dict, expected)
+        self.assertEqual(res_dict, expected)
 
     def test_update_empty_body(self):
         body = {}

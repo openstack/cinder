@@ -363,7 +363,7 @@ class VolumeApiTest(test.TestCase):
                 }
             ],
         }}
-        self.assertEquals(res_dict, expected)
+        self.assertEqual(res_dict, expected)
 
     def test_update_empty_body(self):
         body = {}

@@ -438,7 +438,7 @@ class BackupCephTestCase(test.TestCase):
         rem = self.service._delete_backup_snapshot(mock_rados(), base_name,
                                                    self.backup_id)
 
-        self.assertEquals(rem, (snap_name, 0))
+        self.assertEqual(rem, (snap_name, 0))
 
     def test_try_delete_base_image_diff_format(self):
         # don't create volume db entry since it should not be required
