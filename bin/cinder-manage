@@ -512,7 +512,7 @@ def main():
         print(_("\nOpenStack Cinder version: %(version)s\n") %
               {'version': version.version_string()})
         print(script_name + " category action [<args>]")
-        print (_("Available categories:"))
+        print(_("Available categories:"))
         for category in CATEGORIES:
             print("\t%s" % category)
         sys.exit(2)
