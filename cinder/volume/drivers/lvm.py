@@ -125,13 +125,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
             return True
         return False
 
-    def _delete_volume(self, volume):
+    def _delete_volume(self, volume, is_snapshot=False):
         """Deletes a logical volume."""
         # zero out old volumes to prevent data leaking between users
         # TODO(ja): reclaiming space should be done lazy and low priority
-        dev_path = self.local_path(volume)
-        if os.path.exists(dev_path):
-            self.clear_volume(volume)
+        self.clear_volume(volume, is_snapshot=is_snapshot)
 
         self._try_execute('lvremove', '-f', "%s/%s" %
                           (self.configuration.volume_group,
@@ -182,19 +180,31 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         self._delete_volume(volume)
 
-    def clear_volume(self, volume):
+    def clear_volume(self, volume, is_snapshot=False):
         """unprovision old volumes to prevent data leaking between users."""
+        if self.configuration.volume_clear == 'none':
+            return
 
-        vol_path = self.local_path(volume)
+        if is_snapshot:
+            # if the volume to be cleared is a snapshot of another volume
+            # we need to clear out the volume using the -cow instead of the
+            # directly volume path.
+            # bug# lp1191812
+            vol_path = self.local_path(volume) + "-cow"
+        else:
+            vol_path = self.local_path(volume)
+
+        if not os.path.exists(vol_path):
+            msg = (_('Volume device file path %s does not exist.') % vol_path)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
         size_in_g = volume.get('size', volume.get('volume_size', None))
         if size_in_g is None:
             LOG.warning(_("Size for volume: %s not found, "
                           "skipping secure delete.") % volume['id'])
             return
         size_in_m = self.configuration.volume_clear_size
-
-        if self.configuration.volume_clear == 'none':
-            return
 
         LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
 
@@ -236,7 +246,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.
         # it's quite slow.
-        self._delete_volume(snapshot)
+        self._delete_volume(snapshot, is_snapshot=True)
 
     def local_path(self, volume):
         # NOTE(vish): stops deprecation warning

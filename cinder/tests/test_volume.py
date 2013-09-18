@@ -69,6 +69,7 @@ class VolumeTestCase(test.TestCase):
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         fake_image.stub_out_image_service(self.stubs)
         test_notifier.NOTIFICATIONS = []
+        self.stubs.Set(os.path, 'exists', lambda x: True)
 
     def tearDown(self):
         try:
@@ -909,6 +910,7 @@ class VolumeDriverTestCase(DriverTestCase):
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
 
     def test_delete_busy_volume(self):
+        self.stubs.Set(os.path, 'exists', lambda x: True)
         """Test deleting a busy volume."""
         self.stubs.Set(self.volume.driver, '_volume_not_present',
                        lambda x: False)
@@ -931,6 +933,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
 
     def test_clear_volume(self):
+        self.stubs.Set(os.path, 'exists', lambda x: True)
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0

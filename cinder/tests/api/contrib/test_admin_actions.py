@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 import webob
@@ -10,6 +11,7 @@ from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.volume import api as volume_api
+from cinder.volume.drivers import lvm
 
 
 def app():
@@ -237,6 +239,7 @@ class AdminActionsTest(test.TestCase):
         self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
 
     def test_force_delete_snapshot(self):
+        self.stubs.Set(os.path, 'exists', lambda x: True)
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is creating
@@ -252,7 +255,7 @@ class AdminActionsTest(test.TestCase):
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # start service to handle rpc.cast for 'delete snapshot'
-        self.start_service('volume', host='test')
+        svc = self.start_service('volume', host='test')
         # make request
         resp = req.get_response(app())
         # request is accepted
@@ -260,6 +263,7 @@ class AdminActionsTest(test.TestCase):
         # snapshot is deleted
         self.assertRaises(exception.NotFound, db.snapshot_get, ctx,
                           snapshot['id'])
+        self.stubs.UnsetAll()
 
     def test_force_detach_volume(self):
         # admin context
