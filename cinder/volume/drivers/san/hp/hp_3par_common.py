@@ -118,10 +118,11 @@ class HP3PARCommon(object):
     Version history:
         1.2.0 - Updated hp3parclient API use to 2.0.x
         1.2.1 - Check that the VVS exists
+        1.2.2 - log prior to raising exceptions
 
     """
 
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
 
     stats = {}
 
@@ -156,7 +157,9 @@ class HP3PARCommon(object):
     def check_flags(self, options, required_flags):
         for flag in required_flags:
             if not getattr(options, flag, None):
-                raise exception.InvalidInput(reason=_('%s is not set') % flag)
+                msg = _('%s is not set') % flag
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
 
     def _create_client(self):
         cl = client.HP3ParClient(self.config.hp3par_api_url)
@@ -165,7 +168,8 @@ class HP3PARCommon(object):
         if (client_version < MIN_CLIENT_VERSION):
             ex_msg = (_('Invalid hp3parclient version. Version %s or greater '
                         'required.') % MIN_CLIENT_VERSION)
-            raise hpexceptions.UnsupportedVersion(ex_msg)
+            LOG.error(ex_msg)
+            raise exception.InvalidInput(reason=ex_msg)
 
         return cl
 
@@ -175,9 +179,9 @@ class HP3PARCommon(object):
             self.client.login(self.config.hp3par_username,
                               self.config.hp3par_password)
         except hpexceptions.HTTPUnauthorized as ex:
-            LOG.warning("Failed to connect to 3PAR (%s) because %s" %
-                       (self.config.hp3par_api_url, str(ex)))
-            msg = _("Login to 3PAR array invalid")
+            msg = (_("Failed to Login to 3PAR (%(url)s) because %(err)s") %
+                   {'url': self.config.hp3par_api_url, 'err': str(ex)})
+            LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
     def client_logout(self):
@@ -185,7 +189,10 @@ class HP3PARCommon(object):
         LOG.debug("Disconnect from 3PAR")
 
     def do_setup(self, context):
-        self.client = self._create_client()
+        try:
+            self.client = self._create_client()
+        except hpexceptions.UnsupportedVersion as ex:
+            raise exception.InvalidInput(str(ex))
         LOG.info(_("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s")
                  % {"common_ver": self.VERSION,
                      "rest_ver": hp3parclient.get_version_string()})
@@ -340,6 +347,8 @@ exit
         if exit_status != -1:
             LOG.debug(_('Result was %s') % exit_status)
             if check_exit_code and exit_status != 0:
+                msg = _("command %s failed") % cmd
+                LOG.error(msg)
                 raise processutils.ProcessExecutionError(exit_code=exit_status,
                                                          stdout=stdout,
                                                          stderr=stderr,
@@ -377,7 +386,8 @@ exit
                 msg = (_("SSH Command failed after '%(total_attempts)r' "
                          "attempts : '%(command)s'") %
                        {'total_attempts': total_attempts, 'command': command})
-                raise paramiko.SSHException(msg)
+                LOG.error(msg)
+                raise exception.CinderException(message=msg)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error running ssh command: %s") % command)
@@ -390,6 +400,7 @@ exit
             self.client.createVLUN(volume, hostname=hostname, auto=True)
         except hpexceptions.HTTPBadRequest as e:
             if 'must be in the same domain' in e.get_description():
+                LOG.error(e.get_description())
                 raise exception.Invalid3PARDomain(err=e.get_description())
 
     def _safe_hostname(self, hostname):
@@ -563,9 +574,9 @@ exit
             out = self._cli_run(['createvvset', '-add', vvs_name, volume_name])
             if out and len(out) == 1:
                 if 'does not exist' in out[0]:
-                    raise exception.InvalidInput(reason=_('VV Set %s does '
-                                                          'not exist.')
-                                                 % vvs_name)
+                    msg = _('VV Set %s does not exist.') % vvs_name
+                    LOG.error(msg)
+                    raise exception.InvalidInput(reason=msg)
         else:
             vvs_name = self._get_3par_vvs_name(volume['id'])
             domain = self.get_domain(cpg)
@@ -614,6 +625,7 @@ exit
                     "value '%(persona)s' is invalid.") % \
                    ({'valid': self.valid_persona_values,
                      'persona': persona_value})
+            LOG.error(err)
             raise exception.InvalidInput(reason=err)
         # persona is set by the id so remove the text and return the id
         # i.e for persona '1 - Generic' returns 1
@@ -664,6 +676,7 @@ exit
                     "value '%(prov)s' is invalid.") % \
                    ({'valid': self.valid_prov_values,
                      'prov': prov_value})
+            LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
         tpvv = True
@@ -724,10 +737,12 @@ exit
                 except exception.InvalidInput as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
+                    LOG.error(str(ex))
                     raise exception.CinderException(str(ex))
         except hpexceptions.HTTPConflict:
-            raise exception.Duplicate(_("Volume (%s) already exists on array")
-                                      % volume_name)
+            msg = _("Volume (%s) already exists on array") % volume_name
+            LOG.error(msg)
+            raise exception.Duplicate(msg)
         except hpexceptions.HTTPBadRequest as ex:
             LOG.error(str(ex))
             raise exception.Invalid(ex.get_description())
@@ -838,6 +853,7 @@ exit
                                                             vvset_name)
                     self.client.deleteVolume(volume_name)
                 else:
+                    LOG.error(str(ex))
                     raise ex
 
         except hpexceptions.HTTPNotFound as ex:
@@ -908,9 +924,11 @@ exit
                     self.client.deleteVolume(volume_name)
                     LOG.error(str(ex))
                     raise exception.CinderException(ex.get_description())
-        except hpexceptions.HTTPForbidden:
+        except hpexceptions.HTTPForbidden as ex:
+            LOG.error(str(ex))
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound:
+        except hpexceptions.HTTPNotFound as ex:
+            LOG.error(str(ex))
             raise exception.NotFound()
         except Exception as ex:
             LOG.error(str(ex))
@@ -949,9 +967,11 @@ exit
                     self.config.hp3par_snapshot_retention)
 
             self.client.createSnapshot(snap_name, vol_name, optional)
-        except hpexceptions.HTTPForbidden:
+        except hpexceptions.HTTPForbidden as ex:
+            LOG.error(str(ex))
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound:
+        except hpexceptions.HTTPNotFound as ex:
+            LOG.error(str(ex))
             raise exception.NotFound()
 
     def delete_snapshot(self, snapshot):
@@ -960,10 +980,12 @@ exit
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
             self.client.deleteVolume(snap_name)
-        except hpexceptions.HTTPForbidden:
+        except hpexceptions.HTTPForbidden as ex:
+            LOG.error(str(ex))
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
             LOG.error(str(ex))
+            raise exception.NotFound()
 
     def _get_3par_hostname_from_wwn_iqn(self, wwns, iqns):
         if wwns is not None and not isinstance(wwns, list):
@@ -1002,9 +1024,11 @@ exit
                 hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
                 # no 3par host, re-throw
                 if (hostname is None):
+                    LOG.error(str(e))
                     raise
             else:
-            # not a 'host does not exist' HTTPNotFound exception, re-throw
+                # not a 'host does not exist' HTTPNotFound exception, re-throw
+                LOG.error(str(e))
                 raise
 
         # try again with name retrieved from 3par

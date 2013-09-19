@@ -57,9 +57,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 the drivers to use the new APIs.
         1.2.1 - Synchronized extend_volume method.
         1.2.2 - Added try/finally around client login/logout.
+        1.2.3 - log exceptions before raising
     """
 
-    VERSION = "1.2.2"
+    VERSION = "1.2.3"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -160,6 +161,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         if not len(self.iscsi_ips) > 0:
             msg = _('At least one valid iSCSI IP address must be set.')
+            LOG.error(msg)
             raise exception.InvalidInput(reason=(msg))
 
     def check_for_setup_error(self):
