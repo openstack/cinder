@@ -110,18 +110,47 @@ class VMwareVolumeOps(object):
         return self._session.invoke_api(vim_util, 'get_objects',
                                         self._session.vim, 'HostSystem')
 
+    def _is_valid(self, datastore, host):
+        """Check if host's datastore is accessible, mounted and writable.
+
+        :param datastore: Reference to the datastore entity
+        :param host: Reference to the host entity
+        :return: True if datastore can be used for volume creation
+        """
+
+        host_mounts = self._session.invoke_api(vim_util, 'get_object_property',
+                                               self._session.vim, datastore,
+                                               'host')
+        for host_mount in host_mounts.DatastoreHostMount:
+            if host_mount.key.value == host.value:
+                mntInfo = host_mount.mountInfo
+                writable = mntInfo.accessMode == "readWrite"
+                # If mounted attribute is not set, then default is True
+                mounted = True
+                if hasattr(mntInfo, "mounted"):
+                    mounted = mntInfo.mounted
+                if hasattr(mntInfo, "accessible"):
+                    accessible = mntInfo.accessible
+                else:
+                    # If accessible attribute is not set, we look at summary
+                    summary = self.get_summary(datastore)
+                    accessible = summary.accessible
+                return (accessible and mounted and writable)
+        return False
+
     def get_dss_rp(self, host):
-        """Get datastores and resource pool of the host.
+        """Get accessible datastores and resource pool of the host.
 
         :param host: Managed object reference of the host
-        :return: Datastores mounted to the host and resource pool to which
+        :return: Datastores accessible to the host and resource pool to which
                  the host belongs to
         """
+
         props = self._session.invoke_api(vim_util, 'get_object_properties',
                                          self._session.vim, host,
                                          ['datastore', 'parent'])
         # Get datastores and compute resource or cluster compute resource
-        datastores = None
+        datastores = []
         compute_resource = None
         for elem in props:
             for prop in elem.propSet:
@@ -129,17 +158,22 @@ class VMwareVolumeOps(object):
                     datastores = prop.val.ManagedObjectReference
                 elif prop.name == 'parent':
                     compute_resource = prop.val
+        # Filter datastores based on if it is accessible, mounted and writable
+        valid_dss = []
+        for datastore in datastores:
+            if self._is_valid(datastore, host):
+                valid_dss.append(datastore)
         # Get resource pool from compute resource or cluster compute resource
         resource_pool = self._session.invoke_api(vim_util,
                                                  'get_object_property',
                                                  self._session.vim,
                                                  compute_resource,
                                                  'resourcePool')
-        if not datastores:
-            msg = _("There are no datastores present under %s.")
+        if not valid_dss:
+            msg = _("There are no valid datastores present under %s.")
             LOG.error(msg % host)
             raise error_util.VimException(msg % host)
-        return (datastores, resource_pool)
+        return (valid_dss, resource_pool)
 
     def _get_parent(self, child, parent_type):
         """Get immediate parent of given type via 'parent' property.
@@ -149,6 +183,7 @@ class VMwareVolumeOps(object):
         :return: Immediate parent of specific type up the hierarchy via
                  'parent' property
         """
+
         if not child:
             return None
         if child._type == parent_type:

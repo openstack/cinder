@@ -150,7 +150,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_session(self):
         """Test create_session."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.ReplayAll()
@@ -160,7 +160,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_do_setup(self):
         """Test do_setup."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'session')
         self._driver.session = self._session
         m.ReplayAll()
@@ -188,7 +188,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_success_wait_for_task(self):
         """Test successful wait_for_task."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         result = FakeMor('VirtualMachine', 'my_vm')
@@ -206,7 +206,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_failed_wait_for_task(self):
         """Test failed wait_for_task."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         failed_task_info = FakeTaskInfo('failed')
@@ -224,7 +224,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_backing(self):
         """Test get_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -238,7 +238,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_backing(self):
         """Test delete_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -254,7 +254,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_volume_without_backing(self):
         """Test delete_volume without backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -269,7 +269,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_volume_with_backing(self):
         """Test delete_volume with backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
 
@@ -307,7 +307,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_host(self):
         """Test get_host."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -322,7 +322,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_hosts(self):
         """Test get_hosts."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -334,9 +334,62 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
+    def test_is_valid_with_accessible_attr(self):
+        """Test _is_valid with accessible attribute."""
+        m = self.mox
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        datastore = FakeMor('Datastore', 'my_ds')
+        mntInfo = FakeObject()
+        mntInfo.accessMode = "readWrite"
+        mntInfo.accessible = True
+        host = FakeMor('HostSystem', 'my_host')
+        host_mount = FakeObject()
+        host_mount.key = host
+        host_mount.mountInfo = mntInfo
+        host_mounts = FakeObject()
+        host_mounts.DatastoreHostMount = [host_mount]
+        self._session.invoke_api(vim_util, 'get_object_property',
+                                 self._vim, datastore,
+                                 'host').AndReturn(host_mounts)
+
+        m.ReplayAll()
+        self.assertTrue(self._volumeops._is_valid(datastore, host))
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_is_valid_without_accessible_attr(self):
+        """Test _is_valid without accessible attribute."""
+        m = self.mox
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        datastore = FakeMor('Datastore', 'my_ds')
+        mntInfo = FakeObject()
+        mntInfo.accessMode = "readWrite"
+        host = FakeMor('HostSystem', 'my_host')
+        host_mount = FakeObject()
+        host_mount.key = host
+        host_mount.mountInfo = mntInfo
+        host_mounts = FakeObject()
+        host_mounts.DatastoreHostMount = [host_mount]
+        self._session.invoke_api(vim_util, 'get_object_property',
+                                 self._vim, datastore,
+                                 'host').AndReturn(host_mounts)
+        m.StubOutWithMock(self._volumeops, 'get_summary')
+        summary = FakeObject()
+        summary.accessible = True
+        self._volumeops.get_summary(datastore).AndReturn(summary)
+
+        m.ReplayAll()
+        self.assertTrue(self._volumeops._is_valid(datastore, host))
+        m.UnsetStubs()
+        m.VerifyAll()
+
     def test_get_dss_rp(self):
         """Test get_dss_rp."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -361,7 +414,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self.assertEqual(parent, child)
 
         # Recursive
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -378,7 +431,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_dc(self):
         """Test get_dc."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._volumeops, '_get_parent')
         self._volumeops._get_parent(mox.IgnoreArg(), 'Datacenter')
 
@@ -389,7 +442,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_vmfolder(self):
         """Test get_vmfolder."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -404,7 +457,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_backing(self):
         """Test create_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -433,7 +486,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_datastore(self):
         """Test get_datastore."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -451,7 +504,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_summary(self):
         """Test get_summary."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -466,7 +519,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_init_conn_with_instance_and_backing(self):
         """Test initialize_connection with instance and backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -491,7 +544,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_volume_group_folder(self):
         """Test _get_volume_group_folder."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         datacenter = FakeMor('Datacenter', 'my_dc')
@@ -505,7 +558,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_select_datastore_summary(self):
         """Test _select_datastore_summary."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         datastore1 = FakeMor('Datastore', 'my_ds_1')
@@ -542,7 +595,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_folder_ds_summary(self):
         """Test _get_folder_ds_summary."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         size = 1
@@ -572,7 +625,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_init_conn_with_instance_no_backing(self):
         """Test initialize_connection with instance and without backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -614,7 +667,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_init_conn_without_instance(self):
         """Test initialize_connection without instance and a backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -635,7 +688,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_snapshot_operation(self):
         """Test volumeops.create_snapshot."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -658,7 +711,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_snapshot_without_backing(self):
         """Test vmdk.create_snapshot without backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -673,7 +726,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_snapshot_with_backing(self):
         """Test vmdk.create_snapshot with backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -710,7 +763,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_snapshot(self):
         """Test get_snapshot."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -732,7 +785,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_snapshot_not_present(self):
         """Test volumeops.delete_snapshot, when not present."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._volumeops, 'get_snapshot')
         name = 'snapshot_name'
         backing = FakeMor('VirtualMachine', 'my_back')
@@ -745,7 +798,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_snapshot_when_present(self):
         """Test volumeops.delete_snapshot, when it is present."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -768,7 +821,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_snapshot_without_backing(self):
         """Test delete_snapshot without backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -783,7 +836,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_snapshot_with_backing(self):
         """Test delete_snapshot with backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -803,7 +856,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_cloned_volume_without_backing(self):
         """Test create_cloned_volume without a backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -820,7 +873,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_path_name(self):
         """Test get_path_name."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -840,8 +893,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.VerifyAll()
 
     def test_delete_file(self):
-        """Test delete_file."""
-        m = mox.Mox()
+        """Test _delete_file."""
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -860,7 +913,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_copy_backing(self):
         """Test copy_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -880,7 +933,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_register_backing(self):
         """Test register_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -903,7 +956,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_clone_backing_by_copying(self):
         """Test _clone_backing_by_copying."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         volume = FakeObject()
@@ -942,7 +995,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_cloned_volume_with_backing(self):
         """Test create_cloned_volume with a backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -961,7 +1014,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot_without_backing(self):
         """Test create_volume_from_snapshot without a backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -978,7 +1031,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_volume_from_snap_without_backing_snap(self):
         """Test create_volume_from_snapshot without a backing snapshot."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         backing = FakeMor('VirtualMachine', 'my_vm')
@@ -999,7 +1052,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_revert_to_snapshot(self):
         """Test revert_to_snapshot."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1018,7 +1071,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot(self):
         """Test create_volume_from_snapshot."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         backing = FakeMor('VirtualMachine', 'my_vm')
@@ -1049,7 +1102,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_entity_name(self):
         """Test volumeops get_entity_name."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1064,7 +1117,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_get_vmdk_path(self):
         """Test volumeops get_vmdk_path."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1098,7 +1151,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_copy_vmdk_file(self):
         """Test copy_vmdk_file."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1121,7 +1174,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_delete_vmdk_file(self):
         """Test delete_vmdk_file."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1160,7 +1213,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_copy_image_to_volume_non_vmdk(self):
         """Test copy_image_to_volume for a non-vmdk disk format."""
-        m = mox.Mox()
+        m = self.mox
         image_id = 'image-123456789'
         image_meta = FakeObject()
         image_meta['disk_format'] = 'novmdk'
@@ -1177,7 +1230,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_copy_image_to_volume_vmdk(self):
         """Test copy_image_to_volume with an acceptable vmdk disk format."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'session')
         self._driver.session = self._session
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
@@ -1239,7 +1292,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_copy_volume_to_image_non_vmdk(self):
         """Test copy_volume_to_image for a non-vmdk disk format."""
-        m = mox.Mox()
+        m = self.mox
         image_meta = FakeObject()
         image_meta['disk_format'] = 'novmdk'
         volume = FakeObject()
@@ -1255,7 +1308,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_copy_volume_to_image_vmdk(self):
         """Test copy_volume_to_image for a valid vmdk disk format."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'session')
         self._driver.session = self._session
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
@@ -1347,7 +1400,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_create_folder_not_present(self):
         """Test create_folder when not present."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1366,7 +1419,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_create_folder_already_present(self):
         """Test create_folder when already present."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1388,7 +1441,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_relocate_backing(self):
         """Test relocate_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._volumeops, '_get_relocate_spec')
@@ -1414,7 +1467,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_move_backing_to_folder(self):
         """Test move_backing_to_folder."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
@@ -1433,7 +1486,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_init_conn_with_instance_and_backing(self):
         """Test initialize_connection with instance and backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -1465,7 +1518,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_get_volume_group_folder(self):
         """Test _get_volume_group_folder."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         datacenter = FakeMor('Datacenter', 'my_dc')
@@ -1482,7 +1535,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_init_conn_with_instance_and_backing_and_relocation(self):
         """Test initialize_connection with backing being relocated."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -1527,7 +1580,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_get_folder(self):
         """Test _get_folder."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._volumeops, '_get_parent')
         self._volumeops._get_parent(mox.IgnoreArg(), 'Folder')
 
@@ -1538,7 +1591,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_volumeops_clone_backing(self):
         """Test volumeops.clone_backing."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._volumeops, '_get_parent')
         backing = FakeMor('VirtualMachine', 'my_back')
         folder = FakeMor('Folder', 'my_fol')
@@ -1569,7 +1622,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_clone_backing_linked(self):
         """Test _clone_backing with clone type - linked."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'clone_backing')
@@ -1588,7 +1641,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_clone_backing_full(self):
         """Test _clone_backing with clone type - full."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_host')
@@ -1622,7 +1675,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_create_volume_from_snapshot(self):
         """Test create_volume_from_snapshot."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -1647,7 +1700,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_create_cloned_volume_with_backing(self):
         """Test create_cloned_volume with clone type - full."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -1667,7 +1720,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
     def test_create_lined_cloned_volume_with_backing(self):
         """Test create_cloned_volume with clone type - linked."""
-        m = mox.Mox()
+        m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
         m.StubOutWithMock(self._volumeops, 'get_backing')
