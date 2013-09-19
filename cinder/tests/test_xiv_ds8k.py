@@ -103,7 +103,9 @@ class XIVDS8KFakeProxyDriver(object):
         if not self.volume_exists(volume):
             raise self.exception.VolumeNotFound(volume_id=volume['id'])
         if not self.is_volume_attached(volume, connector):
-            raise self.exception.VolumeNotFoundForInstance(instance_id='fake')
+            raise self.exception.NotFound(_('Volume not found for '
+                                            'instance %(instance_id)s.')
+                                          % {'instance_id': 'fake'})
         del self.volumes[volume['name']]['attached']
 
     def is_volume_attached(self, volume, connector):
@@ -248,16 +250,3 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                           self.driver.terminate_connection,
                           VOLUME,
                           CONNECTOR)
-
-    def test_terminate_connection_should_fail_on_non_attached_volume(self):
-        """Test that terminate won't work for volumes that are not attached."""
-
-        self.driver.do_setup(None)
-        self.driver.create_volume(VOLUME)
-
-        self.assertRaises(exception.VolumeNotFoundForInstance,
-                          self.driver.terminate_connection,
-                          VOLUME,
-                          CONNECTOR)
-
-        self.driver.delete_volume(VOLUME)
