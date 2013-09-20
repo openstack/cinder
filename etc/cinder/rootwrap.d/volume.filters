@@ -43,6 +43,7 @@ dmsetup: CommandFilter, dmsetup, root
 ln: CommandFilter, ln, root
 qemu-img: CommandFilter, qemu-img, root
 env: CommandFilter, env, root
+udevadm: CommandFilter, udevadm, root
 
 # cinder/volume/driver.py: utils.read_file_as_root()
 cat: CommandFilter, cat, root
@@ -61,7 +62,7 @@ find: CommandFilter, find, root
 # cinder/volume/drivers/glusterfs.py
 mv: CommandFilter, mv, root
 
-# cinder/volumes/drivers/hds/hds.py: 
+# cinder/volumes/drivers/hds/hds.py:
 hus-cmd: CommandFilter, hus-cmd, root
 
 # cinder/brick/initiator/connector.py:

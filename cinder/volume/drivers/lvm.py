@@ -179,11 +179,18 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
+
+        # NOTE(jdg):  We don't need to explicitly call
+        # remove export here because we already did it
+        # in the manager before we got here.
+
         if self._volume_not_present(volume['name']):
             # If the volume isn't present, then don't attempt to delete
             return True
 
         if self.vg.lv_has_snapshot(volume['name']):
+            LOG.error(_('Unabled to delete due to existing snapshot '
+                        'for volume: %s') % volume['name'])
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
