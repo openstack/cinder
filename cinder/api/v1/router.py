@@ -74,7 +74,13 @@ class APIRouter(cinder.api.openstack.APIRouter):
         mapper.resource("snapshot_metadata", "metadata",
                         controller=snapshot_metadata_controller,
                         parent_resource=dict(member_name='snapshot',
-                        collection_name='snapshots'))
+                                             collection_name='snapshots'))
+
+        mapper.connect("metadata",
+                       "/{project_id}/snapshots/{snapshot_id}/metadata",
+                       controller=snapshot_metadata_controller,
+                       action='update_all',
+                       conditions={"method": ['PUT']})
 
         self.resources['limits'] = limits.create_resource()
         mapper.resource("limit", "limits",
@@ -86,7 +92,7 @@ class APIRouter(cinder.api.openstack.APIRouter):
         mapper.resource("volume_metadata", "metadata",
                         controller=volume_metadata_controller,
                         parent_resource=dict(member_name='volume',
-                        collection_name='volumes'))
+                                             collection_name='volumes'))
 
         mapper.connect("metadata",
                        "/{project_id}/volumes/{volume_id}/metadata",
