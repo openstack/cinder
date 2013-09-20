@@ -27,6 +27,9 @@ lvdisplay: CommandFilter, lvdisplay, root
 # cinder/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
 lvrename: CommandFilter, lvrename, root
 
+# cinder/volume/driver.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
+lvextend: CommandFilter, lvextend, root
+
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root
@@ -61,7 +64,7 @@ find: CommandFilter, find, root
 # cinder/volume/drivers/glusterfs.py
 mv: CommandFilter, mv, root
 
-# cinder/volumes/drivers/hds/hds.py: 
+# cinder/volumes/drivers/hds/hds.py:
 hus-cmd: CommandFilter, hus-cmd, root
 
 # cinder/brick/initiator/connector.py:
