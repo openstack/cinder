@@ -34,7 +34,7 @@ class BrickRemoteFsTestCase(test.TestCase):
     def setUp(self):
         super(BrickRemoteFsTestCase, self).setUp()
         self._mox = mox.Mox()
-        self._nfsclient = remotefs.RemoteFsClient('nfs')
+        self._nfsclient = remotefs.RemoteFsClient('nfs', 'sudo')
         self._nfsclient._mount_options = None
         self._nfsclient._mount_base = self.TEST_MNT_BASE
         self.addCleanup(self._mox.UnsetStubs)

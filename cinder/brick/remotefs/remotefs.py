@@ -48,8 +48,8 @@ CONF.register_opts(remotefs_client_opts)
 
 class RemoteFsClient(object):
 
-    def __init__(self, mount_type, execute=putils.execute,
-                 root_helper="sudo", *args, **kwargs):
+    def __init__(self, mount_type, root_helper,
+                 execute=putils.execute, *args, **kwargs):
 
         self._mount_type = mount_type
         if mount_type == "nfs":
