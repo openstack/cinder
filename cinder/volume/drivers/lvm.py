@@ -400,6 +400,39 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         super(LVMISCSIDriver, self).set_execute(execute)
         self.tgtadm.set_execute(execute)
 
+    def _create_tgtadm_target(self, iscsi_name, iscsi_target,
+                              volume_path, chap_auth, lun=0,
+                              check_exit_code=False, old_name=None):
+        # NOTE(jdg): tgt driver has an issue where with alot of activity
+        # (or sometimes just randomly) it will get *confused* and attempt
+        # to reuse a target ID, resulting in a target already exists error
+        # Typically a simple retry will address this
+
+        # For now we have this while loop, might be useful in the
+        # future to throw a retry decorator in common or utils
+        attempts = 2
+        while attempts > 0:
+            attempts -= 1
+            try:
+                # NOTE(jdg): For TgtAdm case iscsi_name is all we need
+                # should clean this all up at some point in the future
+                tid = self.tgtadm.create_iscsi_target(
+                    iscsi_name,
+                    iscsi_target,
+                    0,
+                    volume_path,
+                    chap_auth,
+                    check_exit_code=check_exit_code,
+                    old_name=old_name)
+
+            except brick_exception.ISCSITargetCreateFailed:
+                if attempts == 0:
+                    raise
+                else:
+                    LOG.warning(_('Error creating iSCSI target, retrying '
+                                  'creation for target: %s') % iscsi_name)
+        return tid
+
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
@@ -427,9 +460,9 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                                           volume['name'])
             iscsi_target = 1
 
-            self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
-                                            0, volume_path, chap_auth,
-                                            check_exit_code=False)
+            self._create_tgtadm_target(iscsi_name, iscsi_target,
+                                       volume_path, chap_auth)
+
             return
 
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
@@ -466,10 +499,13 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
 
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
-        self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
-                                        0, volume_path, chap_auth,
-                                        check_exit_code=False,
-                                        old_name=old_name)
+        self._create_tgtadm_target(iscsi_name, iscsi_target,
+                                   volume_path, chap_auth,
+                                   lun=0,
+                                   check_exit_code=False,
+                                   old_name=old_name)
+
+        return
 
     def _fix_id_migration(self, context, volume):
         """Fix provider_location and dev files to address bug 1065702.
@@ -563,13 +599,10 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         chap_password = utils.generate_password()
         chap_auth = self._iscsi_authentication('IncomingUser', chap_username,
                                                chap_password)
-        # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
-        # should clean this all up at some point in the future
-        tid = self.tgtadm.create_iscsi_target(iscsi_name,
-                                              iscsi_target,
-                                              0,
-                                              volume_path,
-                                              chap_auth)
+
+        tid = self._create_tgtadm_target(iscsi_name, iscsi_target,
+                                         volume_path, chap_auth)
+
         model_update['provider_location'] = self._iscsi_location(
             self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
         model_update['provider_auth'] = self._iscsi_authentication(
