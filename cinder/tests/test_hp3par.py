@@ -1103,7 +1103,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.mox.ReplayAll()
 
         ip = self.driver._get_iscsi_ip('fakehost')
-        self.assertEqual(ip, '10.10.220.253')
+        self.assertEqual(ip, '10.10.220.252')
 
     def test_get_iscsi_ip(self):
         self.flags(lock_path=self.tempdir)
@@ -1248,11 +1248,11 @@ VLUNS2_RET = ({'members':
                [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
                  'hostname': 'bar', 'active': True},
                 {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
-                 'hostname': 'fakehost', 'active': True},
+                 'hostname': 'bar', 'active': True},
                 {'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
                  'hostname': 'bar', 'active': True},
                 {'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
-                 'hostname': 'bar', 'active': True}]})
+                 'hostname': 'fakehost', 'active': True}]})
 
 VLUNS3_RET = ({'members':
                [{'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
