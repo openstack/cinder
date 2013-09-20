@@ -30,6 +30,7 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import units
@@ -93,16 +94,27 @@ class NetAppNFSDriver(nfs.NfsDriver):
         vol_size = volume.size
         snap_size = snapshot.volume_size
 
-        if vol_size != snap_size:
-            msg = _('Cannot create volume of size %(vol_size)s from '
-                    'snapshot of size %(snap_size)s')
-            msg_fmt = {'vol_size': vol_size, 'snap_size': snap_size}
-            raise exception.CinderException(msg % msg_fmt)
-
         self._clone_volume(snapshot.name, volume.name, snapshot.volume_id)
         share = self._get_volume_location(snapshot.volume_id)
+        volume['provider_location'] = share
+        path = self.local_path(volume)
 
-        return {'provider_location': share}
+        if self._discover_file_till_timeout(path):
+            self._set_rw_permissions_for_all(path)
+            if vol_size != snap_size:
+                try:
+                    self.extend_volume(volume, vol_size)
+                except Exception as e:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(
+                            _("Resizing %s failed. Cleaning volume."),
+                            volume.name)
+                        self._execute('rm', path, run_as_root=True)
+        else:
+            raise exception.CinderException(
+                _("NFS file %s not discovered.") % volume['name'])
+
+        return {'provider_location': volume['provider_location']}
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -190,17 +202,26 @@ class NetAppNFSDriver(nfs.NfsDriver):
         """Creates a clone of the specified volume."""
         vol_size = volume.size
         src_vol_size = src_vref.size
-
-        if vol_size != src_vol_size:
-            msg = _('Cannot create clone of size %(vol_size)s from '
-                    'volume of size %(src_vol_size)s')
-            msg_fmt = {'vol_size': vol_size, 'src_vol_size': src_vol_size}
-            raise exception.CinderException(msg % msg_fmt)
-
         self._clone_volume(src_vref.name, volume.name, src_vref.id)
         share = self._get_volume_location(src_vref.id)
+        volume['provider_location'] = share
+        path = self.local_path(volume)
 
-        return {'provider_location': share}
+        if self._discover_file_till_timeout(path):
+            self._set_rw_permissions_for_all(path)
+            if vol_size != src_vol_size:
+                try:
+                    self.extend_volume(volume, vol_size)
+                except Exception as e:
+                    LOG.error(
+                        _("Resizing %s failed. Cleaning volume."), volume.name)
+                    self._execute('rm', path, run_as_root=True)
+                    raise e
+        else:
+            raise exception.CinderException(
+                _("NFS file %s not discovered.") % volume['name'])
+
+        return {'provider_location': volume['provider_location']}
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
@@ -583,6 +604,12 @@ class NetAppNFSDriver(nfs.NfsDriver):
         rel_path = os.path.relpath(abs_path, mount_point)
         direct_url = "%s/%s" % (share_location, rel_path)
         return direct_url
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume to the new size."""
+        LOG.info(_('Extending volume %s.'), volume['name'])
+        path = self.local_path(volume)
+        self._resize_image_file(path, new_size)
 
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
