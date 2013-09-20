@@ -126,6 +126,10 @@ class ImageNotAuthorized(CinderException):
     message = _("Not authorized for image %(image_id)s.")
 
 
+class DriverNotInitialized(CinderException):
+    message = _("Volume driver '%(driver)s' not initialized.")
+
+
 class Invalid(CinderException):
     message = _("Unacceptable parameters.")
     code = 400
