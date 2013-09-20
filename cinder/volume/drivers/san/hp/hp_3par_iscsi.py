@@ -58,9 +58,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.2.1 - Synchronized extend_volume method.
         1.2.2 - Added try/finally around client login/logout.
         1.2.3 - log exceptions before raising
+        1.2.4 - Fixed iSCSI active path bug #1224594
     """
 
-    VERSION = "1.2.3"
+    VERSION = "1.2.4"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -363,7 +364,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         # see if there is already a path to the
         # host, if so use it
         for vlun in vluns['members']:
-            if vlun['active'] == 'true':
+            if vlun['active']:
                 if vlun['hostname'] == hostname:
                     # this host already has a path, so use it
                     nsp = self.common.build_nsp(vlun['portPos'])
