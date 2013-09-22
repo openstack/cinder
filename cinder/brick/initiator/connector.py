@@ -780,8 +780,8 @@ class RemoteFsConnector(InitiatorConnector):
 
     def __init__(self, mount_type, root_helper, driver=None,
                  execute=putils.execute, *args, **kwargs):
-        self._remotefsclient = remotefs.RemoteFsClient(mount_type,
-                                                       execute, root_helper)
+        self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
+                                                       execute=execute)
         super(RemoteFsConnector, self).__init__(root_helper, driver=driver,
                                                 execute=execute, *args,
                                                 **kwargs)

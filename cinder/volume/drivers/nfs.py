@@ -26,6 +26,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
 from cinder import units
+from cinder import utils
 from cinder.volume import driver
 
 VERSION = '1.1.0'
@@ -359,7 +360,9 @@ class NfsDriver(RemoteFsDriver):
         self._remotefsclient = None
         super(NfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
-        self._remotefsclient = remotefs.RemoteFsClient('nfs', execute)
+        root_helper = utils.get_root_helper()
+        self._remotefsclient = remotefs.RemoteFsClient('nfs', root_helper,
+                                                       execute=execute)
 
     def set_execute(self, execute):
         super(NfsDriver, self).set_execute(execute)
