@@ -136,6 +136,60 @@ class TestUtils(test.TestCase):
 
         self.assertEqual(str(inf), TEST_STR)
 
+    def test_qemu_img_info_alt(self):
+        """Test a slightly different variation of qemu-img output.
+
+           (Based on Fedora 19's qemu-img 1.4.2.)
+        """
+
+        TEST_PATH = "img/qemu.qcow2"
+        TEST_RETURN = "image: qemu.qcow2\n"\
+                      "backing file: qemu.qcow2 (actual path: qemu.qcow2)\n"\
+                      "file format: qcow2\n"\
+                      "virtual size: 50M (52428800 bytes)\n"\
+                      "cluster_size: 65536\n"\
+                      "disk size: 196K (200704 bytes)\n"\
+                      "Snapshot list:\n"\
+                      "ID TAG  VM SIZE DATE VM CLOCK\n"\
+                      "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
+        TEST_STR = "image: qemu.qcow2\n"\
+                   "file_format: qcow2\n"\
+                   "virtual_size: 52428800\n"\
+                   "disk_size: 200704\n"\
+                   "cluster_size: 65536\n"\
+                   "backing_file: qemu.qcow2\n"\
+                   "snapshots: [{'date': '2011-10-04', "\
+                   "'vm_clock': '19:04:00 32:06:34.974', "\
+                   "'vm_size': '1.7G', 'tag': 'snap1', 'id': '1'}]"
+
+        mox = self._mox
+        mox.StubOutWithMock(utils, 'execute')
+
+        cmd = ['env', 'LC_ALL=C', 'LANG=C',
+               'qemu-img', 'info', TEST_PATH]
+        utils.execute(*cmd, run_as_root=True).AndReturn(
+            (TEST_RETURN, 'ignored'))
+
+        mox.ReplayAll()
+
+        inf = image_utils.qemu_img_info(TEST_PATH)
+
+        self.assertEquals(inf.image, 'qemu.qcow2')
+        self.assertEquals(inf.backing_file, 'qemu.qcow2')
+        self.assertEquals(inf.file_format, 'qcow2')
+        self.assertEquals(inf.virtual_size, 52428800)
+        self.assertEquals(inf.cluster_size, 65536)
+        self.assertEquals(inf.disk_size, 200704)
+
+        self.assertEquals(inf.snapshots[0]['id'], '1')
+        self.assertEquals(inf.snapshots[0]['tag'], 'snap1')
+        self.assertEquals(inf.snapshots[0]['vm_size'], '1.7G')
+        self.assertEquals(inf.snapshots[0]['date'], '2011-10-04')
+        self.assertEquals(inf.snapshots[0]['vm_clock'],
+                          '19:04:00 32:06:34.974')
+
+        self.assertEquals(str(inf), TEST_STR)
+
     def test_fetch_to_raw(self):
         TEST_RET = "image: qemu.qcow2\n"\
                    "file_format: qcow2 \n"\
