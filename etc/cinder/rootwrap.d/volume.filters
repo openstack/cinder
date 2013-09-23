@@ -46,6 +46,7 @@ dmsetup: CommandFilter, dmsetup, root
 ln: CommandFilter, ln, root
 qemu-img: CommandFilter, qemu-img, root
 env: CommandFilter, env, root
+udevadm: CommandFilter, udevadm, root
 
 # cinder/volume/driver.py: utils.read_file_as_root()
 cat: CommandFilter, cat, root

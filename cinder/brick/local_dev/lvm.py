@@ -408,10 +408,26 @@ class LVM(executor.Executor):
         :param name: Name of LV to delete
 
         """
-        self._execute('lvremove',
-                      '-f',
-                      '%s/%s' % (self.vg_name, name),
-                      root_helper=self._root_helper, run_as_root=True)
+        try:
+            self._execute('lvremove',
+                          '-f',
+                          '%s/%s' % (self.vg_name, name),
+                          root_helper=self._root_helper, run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            mesg = (_('Error reported running lvremove: CMD: %(command)s, '
+                    'RESPONSE: %(response)s') %
+                    {'command': err.cmd, 'response': err.stderr})
+            LOG.error(mesg)
+
+            LOG.warning(_('Attempting udev settle and retry of lvremove...'))
+            self._execute('udevadm', 'settle',
+                          root_helper=self._root_helper,
+                          run_as_root=True)
+
+            self._execute('lvremove',
+                          '-f',
+                          '%s/%s' % (self.vg_name, name),
+                          root_helper=self._root_helper, run_as_root=True)
 
     def revert(self, snapshot_name):
         """Revert an LV from snapshot.
