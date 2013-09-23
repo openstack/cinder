@@ -1610,9 +1610,15 @@ def volume_glance_metadata_get(context, volume_id, session=None):
     if not session:
         session = get_session()
 
-    return session.query(models.VolumeGlanceMetadata).\
+    rows = session.query(models.VolumeGlanceMetadata).\
         filter_by(volume_id=volume_id).\
-        filter_by(deleted=False).all()
+        filter_by(deleted=False).\
+        all()
+
+    if not rows:
+        raise exception.GlanceMetadataNotFound(id=volume_id)
+
+    return rows
 
 
 @require_context
