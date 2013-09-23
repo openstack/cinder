@@ -44,8 +44,6 @@ class FinishVolumeMigrationTestCase(test.TestCase):
         db.finish_volume_migration(ctxt, src_volume['id'],
                                    dest_volume['id'])
 
-        self.assertRaises(exception.VolumeNotFound, db.volume_get, ctxt,
-                          dest_volume['id'])
         src_volume = db.volume_get(ctxt, src_volume['id'])
         expected_name = 'volume-%s' % dest_volume['id']
         self.assertEqual(src_volume['_name_id'], dest_volume['id'])

@@ -721,6 +721,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.error(msg % {'vol': volume_id, 'err': ex})
 
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
+        self.db.volume_destroy(ctxt, new_volume_id)
         self.db.volume_update(ctxt, volume_id, {'migration_status': None})
         return volume['id']
 
