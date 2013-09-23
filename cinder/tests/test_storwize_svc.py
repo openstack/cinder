@@ -483,7 +483,7 @@ port_speed!N/A
         host_infos = []
 
         for hk, hv in self._hosts_list.iteritems():
-            if not host_name or hv['host_name'] == host_name:
+            if not host_name or hv['host_name'].startswith(host_name):
                 for mk, mv in self._mappings_list.iteritems():
                     if mv['host'] == hv['host_name']:
                         if not target_wwpn or target_wwpn in hv['wwpns']:
@@ -968,7 +968,7 @@ port_speed!N/A
         for mapping_id in mapping_ids:
             if self._mappings_list[mapping_id]['host'] == host:
                 this_mapping = mapping_id
-        if this_mapping == None:
+        if this_mapping is None:
             return self._errors['CMMVC5753E']
 
         del self._mappings_list[this_mapping]
@@ -1309,6 +1309,12 @@ port_speed!N/A
         if 'wwpns' in connector:
             host_info['wwpns'] = host_info['wwpns'] + connector['wwpns']
         self._hosts_list[connector['host']] = host_info
+
+    def _host_in_list(self, host_name):
+        for k, v in self._hosts_list.iteritems():
+            if k.startswith(host_name):
+                return k
+        return None
 
     # The main function to run commands on the management simulator
     def execute_command(self, cmd, check_exit_code=True):
@@ -1934,19 +1940,35 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Check cases with no auth set for host
         if self.USESIM:
-            for case in ['no_info', 'no_auth_set']:
-                conn_na = {'initiator': 'test:init:%s' %
-                                        random.randint(10000, 99999),
-                           'ip': '11.11.11.11',
-                           'host': 'host-%s' % case}
-                self.sim._add_host_to_list(conn_na)
-                volume1['volume_type_id'] = types['iSCSI']['id']
-                if case == 'no_info':
-                    self.sim.error_injection('lsiscsiauth', 'no_info')
-                self.driver.initialize_connection(volume1, conn_na)
-                ret = self.driver._get_chap_secret_for_host(conn_na['host'])
-                self.assertNotEqual(ret, None)
-                self.driver.terminate_connection(volume1, conn_na)
+            for auth_enabled in [True, False]:
+                for host_exists in ['yes-auth', 'yes-noauth', 'no']:
+                    self._set_flag('storwize_svc_iscsi_chap_enabled',
+                                   auth_enabled)
+                    case = 'en' + str(auth_enabled) + 'ex' + str(host_exists)
+                    conn_na = {'initiator': 'test:init:%s' %
+                                            random.randint(10000, 99999),
+                               'ip': '11.11.11.11',
+                               'host': 'host-%s' % case}
+                    if host_exists.startswith('yes'):
+                        self.sim._add_host_to_list(conn_na)
+                        if host_exists == 'yes-auth':
+                            kwargs = {'chapsecret': 'foo',
+                                      'obj': conn_na['host']}
+                            self.sim._cmd_chhost(**kwargs)
+                    volume1['volume_type_id'] = types['iSCSI']['id']
+
+                    init_ret = self.driver.initialize_connection(volume1,
+                                                                 conn_na)
+                    host_name = self.sim._host_in_list(conn_na['host'])
+                    chap_ret = self.driver._get_chap_secret_for_host(host_name)
+                    if auth_enabled or host_exists == 'yes-auth':
+                        self.assertIn('auth_password', init_ret['data'])
+                        self.assertNotEqual(chap_ret, None)
+                    else:
+                        self.assertNotIn('auth_password', init_ret['data'])
+                        self.assertEqual(chap_ret, None)
+                    self.driver.terminate_connection(volume1, conn_na)
+        self._set_flag('storwize_svc_iscsi_chap_enabled', True)
 
         # Test no preferred node
         if self.USESIM:

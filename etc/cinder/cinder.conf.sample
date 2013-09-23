@@ -1611,6 +1611,10 @@
 # Connection protocol (iSCSI/FC) (string value)
 #storwize_svc_connection_protocol=iSCSI
 
+# Configure CHAP authentication for iSCSI connections
+# (Default: Enabled) (boolean value)
+#storwize_svc_iscsi_chap_enabled=true
+
 # Connect with multipath (FC only; iSCSI multipath is
 # controlled by Nova) (boolean value)
 #storwize_svc_multipath_enabled=false
@@ -1768,4 +1772,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 379
+# Total option count: 380
