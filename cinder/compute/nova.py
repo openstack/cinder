@@ -77,8 +77,8 @@ def novaclient(context, admin=False):
     nova_catalog_info = CONF.nova_catalog_info
 
     if admin:
-            nova_endpoint_template = CONF.nova_endpoint_admin_template
-            nova_catalog_info = CONF.nova_catalog_admin_info
+        nova_endpoint_template = CONF.nova_endpoint_admin_template
+        nova_catalog_info = CONF.nova_catalog_admin_info
 
     if nova_endpoint_template:
         url = nova_endpoint_template % context.to_dict()
