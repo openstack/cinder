@@ -1104,6 +1104,20 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         if self.vfiler:
             self.client.set_vfiler(self.vfiler)
 
+    def check_for_setup_error(self):
+        """Check that the driver is working and can communicate."""
+        api_version = self.client.get_api_version()
+        if api_version:
+            major, minor = api_version
+            if major == 1 and minor < 9:
+                msg = _("Unsupported ONTAP version."
+                        " ONTAP version 7.3.1 and above is supported.")
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            msg = _("Api version could not be determined.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        super(NetAppDirect7modeISCSIDriver, self).check_for_setup_error()
+
     def _create_lun_on_eligible_vol(self, name, size, metadata,
                                     extra_specs=None):
         """Creates an actual lun on filer."""
