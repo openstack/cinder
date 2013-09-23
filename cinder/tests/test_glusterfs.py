@@ -1435,6 +1435,57 @@ class GlusterFsDriverTestCase(test.TestCase):
         self.assertEqual(len(chain), 1)
         self.assertEqual(chain[0]['filename'], vol_filename)
 
+    def test_copy_volume_from_snapshot(self):
+        (mox, drv) = self._mox, self._driver
+
+        mox.StubOutWithMock(image_utils, 'convert_image')
+        mox.StubOutWithMock(drv, '_read_info_file')
+        mox.StubOutWithMock(image_utils, 'qemu_img_info')
+
+        dest_volume = self._simple_volume(
+            'c1073000-0000-0000-0000-0000000c1073')
+        src_volume = self._simple_volume()
+
+        vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
+                               drv._get_hash_str(self.TEST_EXPORT1))
+        src_vol_path = os.path.join(vol_dir, src_volume['name'])
+        dest_vol_path = os.path.join(vol_dir, dest_volume['name'])
+        info_path = os.path.join(vol_dir, src_volume['name']) + '.info'
+
+        snapshot = {'volume_name': src_volume['name'],
+                    'name': 'clone-snap-%s' % src_volume['id'],
+                    'size': src_volume['size'],
+                    'volume_size': src_volume['size'],
+                    'volume_id': src_volume['id'],
+                    'id': 'tmp-snap-%s' % src_volume['id'],
+                    'volume': src_volume}
+
+        snap_file = dest_volume['name'] + '.' + snapshot['id']
+        snap_path = os.path.join(vol_dir, snap_file)
+
+        size = dest_volume['size']
+
+        drv._read_info_file(info_path).AndReturn(
+            {'active': snap_file,
+             snapshot['id']: snap_file}
+        )
+
+        qemu_img_output = """image: %s
+        file format: raw
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        backing file: %s
+        """ % (snap_file, src_volume['name'])
+        img_info = image_utils.QemuImgInfo(qemu_img_output)
+
+        image_utils.qemu_img_info(snap_path).AndReturn(img_info)
+
+        image_utils.convert_image(src_vol_path, dest_vol_path, 'raw')
+
+        mox.ReplayAll()
+
+        drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
+
     def test_create_volume_from_snapshot(self):
         (mox, drv) = self._mox, self._driver
 
