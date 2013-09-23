@@ -434,3 +434,18 @@ class LVM(executor.Executor):
             if (out[0] == 'o') or (out[0] == 'O'):
                 return True
         return False
+
+    def extend_volume(self, lv_name, new_size):
+        """Extend the size of an existing volume."""
+
+        try:
+            self._execute('lvextend', '-L', new_size,
+                          '%s/%s' % (self.vg_name, lv_name),
+                          root_helper=self._root_helper,
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_('Error extending Volume'))
+            LOG.error(_('Cmd     :%s') % err.cmd)
+            LOG.error(_('StdOut  :%s') % err.stdout)
+            LOG.error(_('StdErr  :%s') % err.stderr)
+            raise
