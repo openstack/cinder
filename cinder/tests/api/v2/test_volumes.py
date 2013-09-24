@@ -114,10 +114,24 @@ class VolumeApiTest(test.TestCase):
             "name": "Volume Test Name",
             "description": "Volume Test Desc",
             "availability_zone": "zone1:host1",
-            "volume_type": db_vol_type['id'],
+            "volume_type": "FakeTypeName",
         }
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 404 when type name isn't valid
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+                          req, body)
+
+        # Use correct volume type name
+        vol.update(dict(volume_type=CONF.default_volume_type))
+        body.update(dict(volume=vol))
+        res_dict = self.controller.create(req, body)
+        volume_id = res_dict['volume']['id']
+        self.assertEqual(len(res_dict), 1)
+
+        # Use correct volume type id
+        vol.update(dict(volume_type=db_vol_type['id']))
+        body.update(dict(volume=vol))
         res_dict = self.controller.create(req, body)
         volume_id = res_dict['volume']['id']
         self.assertEqual(len(res_dict), 1)

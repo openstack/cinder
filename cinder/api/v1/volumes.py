@@ -357,21 +357,17 @@ class VolumeController(wsgi.Controller):
 
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
-            if not uuidutils.is_uuid_like(req_volume_type):
-                try:
+            try:
+                if not uuidutils.is_uuid_like(req_volume_type):
                     kwargs['volume_type'] = \
                         volume_types.get_volume_type_by_name(
                             context, req_volume_type)
-                except exception.VolumeTypeNotFound:
-                    explanation = 'Volume type not found.'
-                    raise exc.HTTPNotFound(explanation=explanation)
-            else:
-                try:
+                else:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, req_volume_type)
-                except exception.VolumeTypeNotFound:
-                    explanation = 'Volume type not found.'
-                    raise exc.HTTPNotFound(explanation=explanation)
+            except exception.VolumeTypeNotFound:
+                explanation = 'Volume type not found.'
+                raise exc.HTTPNotFound(explanation=explanation)
 
         kwargs['metadata'] = volume.get('metadata', None)
 
