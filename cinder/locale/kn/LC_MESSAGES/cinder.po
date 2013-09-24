@@ -1,4 +1,4 @@
-# Nepali translations for cinder.
+# Kannada translations for cinder.
 # Copyright (C) 2013 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
 #
@@ -8,11 +8,11 @@ msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2013-09-24 06:07+0000\n"
-"PO-Revision-Date: 2013-08-30 22:38+0000\n"
-"Last-Translator: daisy.ycguo <daisy.ycguo@gmail.com>\n"
-"Language-Team: Nepali "
-"(http://www.transifex.com/projects/p/openstack/language/ne/)\n"
-"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"PO-Revision-Date: 2013-09-17 14:44+0000\n"
+"Last-Translator: Tom Fifield <tom@openstack.org>\n"
+"Language-Team: Kannada "
+"(http://www.transifex.com/projects/p/openstack/language/kn/)\n"
+"Plural-Forms: nplurals=1; plural=0\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -9055,6 +9055,12 @@ msgstr ""
 #~ msgid "Invalid snapshot"
 #~ msgstr ""
 
+#~ msgid "Invalid source volume %(reason)s."
+#~ msgstr ""
+
+#~ msgid "The request is invalid."
+#~ msgstr ""
+
 #~ msgid "Invalid input received"
 #~ msgstr ""
 
@@ -9070,16 +9076,45 @@ msgstr ""
 #~ msgid "Invalid auth key"
 #~ msgstr ""
 
+#~ msgid "Volume %(volume_id)s persistence file could not be found."
+#~ msgstr ""
+
 #~ msgid "Invalid metadata"
 #~ msgstr ""
 
 #~ msgid "Invalid metadata size"
 #~ msgstr ""
 
+#~ msgid "No disk at %(location)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Migration not found for instance "
+#~ "%(instance_id)s with status %(status)s."
+#~ msgstr ""
+
+#~ msgid "Class %(class_name)s could not be found: %(exception)s"
+#~ msgstr ""
+
+#~ msgid "Action not allowed."
+#~ msgstr ""
+
+#~ msgid "Key pair %(key_name)s already exists."
+#~ msgstr ""
+
 #~ msgid "Migration error"
 #~ msgstr ""
 
 #~ msgid "Quota exceeded"
+#~ msgstr ""
+
+#~ msgid "Maximum volume/snapshot size exceeded"
+#~ msgstr ""
+
+#~ msgid "3PAR Host already exists: %(err)s.  %(info)s"
+#~ msgstr ""
+
+#~ msgid "Backup volume %(volume_id)s type not recognised."
 #~ msgstr ""
 
 #~ msgid "Connection to swift failed"
@@ -9097,10 +9132,16 @@ msgstr ""
 #~ msgid "base image still has %s snapshots so not deleting base image"
 #~ msgstr ""
 
+#~ msgid "restore finished."
+#~ msgstr ""
+
 #~ msgid "Resize volume \"%(name)s\" to %(size)s"
 #~ msgstr ""
 
 #~ msgid "Volume \"%(name)s\" resized. New size is %(size)s"
+#~ msgstr ""
+
+#~ msgid "Snapshot file at %s does not exist."
 #~ msgstr ""
 
 #~ msgid "Invalid snapshot backing file format: %s"
@@ -9109,10 +9150,16 @@ msgstr ""
 #~ msgid "Extend volume from %(old_size) to %(new_size)"
 #~ msgstr ""
 
+#~ msgid "_create_copy: Source vdisk %s does not exist"
+#~ msgstr ""
+
 #~ msgid "Disk not found: %s"
 #~ msgstr ""
 
 #~ msgid "read timed out"
+#~ msgstr ""
+
+#~ msgid "do_setup."
 #~ msgstr ""
 
 #~ msgid "check_for_setup_error."
@@ -9125,12 +9172,18 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid ""
+#~ "check_for_setup_error: Product version not "
+#~ "right. Please make sure the product "
+#~ "version is V1."
 #~ msgstr ""
 
 #~ msgid "_get_device_type: Storage Pool must be configured."
 #~ msgstr ""
 
 #~ msgid "create_volume:volume name: %s."
+#~ msgstr ""
+
+#~ msgid "delete_volume: volume name: %s."
 #~ msgstr ""
 
 #~ msgid "delete_volume:No need to delete volume. Volume %(name)s does not exist."
@@ -9142,13 +9195,45 @@ msgstr ""
 #~ msgid "create_export:Volume %(name)s does not exist."
 #~ msgstr ""
 
+#~ msgid ""
+#~ "initialize_connection: volume name: %(volume)s. "
+#~ "initiator name: %(ini)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "initialize_connection:Failed to find target ip"
+#~ " for initiator:%(initiatorname)s, please check"
+#~ " config file."
+#~ msgstr ""
+
 #~ msgid "initialize_connection:Failed to find target iSCSI iqn. Target IP:%(ip)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "initialize_connection:host name: %(host)s, initiator"
+#~ " name: %(ini)s, hostport name: %(port)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "initialize_connection:Failed to find the given"
+#~ " volume. volume name:%(volume)s."
 #~ msgstr ""
 
 #~ msgid "terminate_connection:Host does not exist. Host name:%(host)s."
 #~ msgstr ""
 
 #~ msgid "terminate_connection:volume does not exist. volume name:%(volume)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "terminate_connection:No map between host and"
+#~ " volume. Host name:%(hostname)s, volume "
+#~ "name:%(volumename)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "terminate_connection:No initiator is added to"
+#~ " the host. Host name:%(hostname)s"
 #~ msgstr ""
 
 #~ msgid "create_snapshot:Device does not support snapshot."
@@ -9172,6 +9257,27 @@ msgstr ""
 #~ msgid "delete_snapshot:Snapshot does not exist. snapshot name:%(snap)s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "create_volume_from_snapshot:snapshot name:%(snapshot)s, "
+#~ "volume name:%(volume)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "create_volume_from_snapshot:Device does not support"
+#~ " create volume from snapshot. Volume "
+#~ "name:%(volume)s, snapshot name:%(snapshot)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "create_volume_from_snapshot:Snapshot does not exist."
+#~ " Snapshot name:%(name)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Config file is wrong. Controler IP, "
+#~ "UserName and UserPassword must be set."
+#~ msgstr ""
+
 #~ msgid "_check_conf_file: %s"
 #~ msgstr ""
 
@@ -9181,10 +9287,27 @@ msgstr ""
 #~ msgid "_get_login_info error. %s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "Config file is wrong. LUNType must "
+#~ "be \"Thin\"  or \"Thick\". LUNType:%(type)s"
+#~ msgstr ""
+
 #~ msgid "_get_lun_set_info:Use default prefetch type. Prefetch type:Intelligent."
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_get_lun_set_info:No available pools! Please "
+#~ "check whether storage pool is created."
+#~ msgstr ""
+
 #~ msgid "_get_lun_set_info:%s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_get_maximum_pool:maxpoolid is None. Please "
+#~ "check config file and make sure "
+#~ "the \"Name\" in \"StoragePool\" is "
+#~ "right."
 #~ msgstr ""
 
 #~ msgid "_get_iscsi_info:%s"
@@ -9196,6 +9319,38 @@ msgstr ""
 #~ msgid "_execute_cli:%s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_name_translate:Name in cinder: %(old)s, new"
+#~ " name in storage system: %(new)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_hostgroup:Failed to Create hostgroup. "
+#~ "Hostgroup name: %(name)s. out:%(out)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_add_host:Failed to add host to "
+#~ "hostgroup. host name:%(host)s hostgroup "
+#~ "id:%(hostgroup)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_add_initiator:Failed to add initiator. "
+#~ "initiator name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_initiator:ERROE:Failed to delete initiator."
+#~ " initiator name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_add_hostport:Failed to add hostport. port "
+#~ "name:%(port)s port information:%(info)s host "
+#~ "id:%(host)s out:%(out)s"
+#~ msgstr ""
+
 #~ msgid "_delete_hostport:Failed to delete host port. port id:%(portid)s"
 #~ msgstr ""
 
@@ -9205,91 +9360,81 @@ msgstr ""
 #~ msgid "_get_tgt_iqn:iSCSI target iqn is:%s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_map_lun:Failed to add hostmap. "
+#~ "hostid:%(host)s lunid:%(lun)s hostlunid:%(hostlunid)s "
+#~ "out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_map:There are IOs accessing the "
+#~ "system. Retry to delete host map. "
+#~ "map id:%(mapid)s"
+#~ msgstr ""
+
 #~ msgid "_delete_map:Failed to delete host map. mapid:%(mapid)s out:%(out)s"
 #~ msgstr ""
 
 #~ msgid "_delete_host: Failed delete host. host id:%(hostid)s out:%(out)s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_active_snapshot:Failed to active snapshot. "
+#~ "snapshot id:%(name)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_disable_snapshot:Failed to disable snapshot. "
+#~ "snapshot id:%(id)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_snapshot:Failed to delete snapshot. "
+#~ "snapshot id:%(id)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_volume:Failed to Create volume. volume"
+#~ " name:%(name)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_volume:Failed to delete volume. Volume"
+#~ " name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_luncopy:Failed to Create LUNcopy. "
+#~ "LUNcopy name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_start_luncopy:Failed to start LUNcopy. "
+#~ "LUNcopy id:%(luncopyid)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_wait_for_luncopy:LUNcopy status is not "
+#~ "normal. LUNcopy name:%(luncopyname)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_luncopy:Failed to delete LUNcopy. "
+#~ "LUNcopy id:%(luncopyid)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_snapshot:Failed to Create snapshot. "
+#~ "Snapshot name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_change_lun_controller:Failed to change lun "
+#~ "owning controller. lun id:%(lunid)s. new "
+#~ "controller:%(controller)s. out:%(out)s"
+#~ msgstr ""
+
 #~ msgid "_is_resource_pool_enough:Resource pool for snapshot not be added."
-#~ msgstr ""
-
-#~ msgid "Invalid source volume %(reason)s."
-#~ msgstr ""
-
-#~ msgid "The request is invalid."
-#~ msgstr ""
-
-#~ msgid "Volume %(volume_id)s persistence file could not be found."
-#~ msgstr ""
-
-#~ msgid "No disk at %(location)s"
-#~ msgstr ""
-
-#~ msgid "Class %(class_name)s could not be found: %(exception)s"
-#~ msgstr ""
-
-#~ msgid "Action not allowed."
-#~ msgstr ""
-
-#~ msgid "Key pair %(key_name)s already exists."
-#~ msgstr ""
-
-#~ msgid "Migration error: %(reason)s"
-#~ msgstr ""
-
-#~ msgid "Maximum volume/snapshot size exceeded"
-#~ msgstr ""
-
-#~ msgid "3PAR Host already exists: %(err)s.  %(info)s"
-#~ msgstr ""
-
-#~ msgid "Backup volume %(volume_id)s type not recognised."
-#~ msgstr ""
-
-#~ msgid "_remove_iscsi_port: iSCSI port was not found on host %(hostid)s"
-#~ msgstr ""
-
-#~ msgid "ssh_read: Read SSH timeout"
-#~ msgstr ""
-
-#~ msgid "do_setup."
-#~ msgstr ""
-
-#~ msgid "create_volume: volume name: %s."
-#~ msgstr ""
-
-#~ msgid "delete_volume: volume name: %s."
-#~ msgstr ""
-
-#~ msgid "create_cloned_volume: src volume: %(src)s tgt volume: %(tgt)s"
-#~ msgstr ""
-
-#~ msgid "create_snapshot: snapshot name: %(snapshot)s volume name: %(volume)s"
-#~ msgstr ""
-
-#~ msgid "delete_snapshot: snapshot name: %(snapshot)s volume name: %(volume)s"
-#~ msgstr ""
-
-#~ msgid "change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Updating volume stats"
-#~ msgstr ""
-
-#~ msgid "restore finished."
-#~ msgstr ""
-
-#~ msgid "Error encountered during initialization of driver: %s"
-#~ msgstr ""
-
-#~ msgid "Unabled to update stats, driver is uninitialized"
-#~ msgstr ""
-
-#~ msgid "Snapshot file at %s does not exist."
-#~ msgstr ""
-
-#~ msgid "_create_copy: Source vdisk %s does not exist"
 #~ msgstr ""
 
 #~ msgid ""
@@ -9309,9 +9454,11 @@ msgstr ""
 #~ " from volume of size %(src_vol_size)s"
 #~ msgstr ""
 
-#~ msgid "Login to 3PAR array invalid"
+#~ msgid ""
+#~ "Cloning with params volume %(volume)s,src %(src_path)s,\n"
+#~ "                    dest %(dest_path)s, vserver %(vserver)s"
 #~ msgstr ""
 
-#~ msgid "There are no datastores present under %s."
+#~ msgid "Login to 3PAR array invalid"
 #~ msgstr ""
 
