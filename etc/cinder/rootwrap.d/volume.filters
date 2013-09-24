@@ -92,5 +92,8 @@ aoe-revalidate: CommandFilter, aoe-revalidate, root
 aoe-discover: CommandFilter, aoe-discover, root
 aoe-flush: CommandFilter, aoe-flush, root
 
+# cinder/brick/initiator/linuxscsi.py:
+sg_scan: CommandFilter, sg_scan, root
+
 #cinder/backup/services/tsm.py
 dsmc:CommandFilter,/usr/bin/dsmc,root
