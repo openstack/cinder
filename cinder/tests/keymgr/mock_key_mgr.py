@@ -15,8 +15,16 @@
 #    under the License.
 
 """
-A mock implementation of a key manager. This module should NOT be used for
-anything but integration testing.
+A mock implementation of a key manager that stores keys in a dictionary.
+
+This key manager implementation is primarily intended for testing. In
+particular, it does not store keys persistently. Lack of a centralized key
+store also makes this implementation unsuitable for use among different
+services.
+
+Note: Instantiating this class multiple times will create separate key stores.
+Keys created in one instance will not be accessible from other instances of
+this class.
 """
 
 import array
@@ -24,16 +32,11 @@ import array
 from cinder import exception
 from cinder.keymgr import key
 from cinder.keymgr import key_mgr
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
 
 
-LOG = logging.getLogger(__name__)
-
-
 class MockKeyManager(key_mgr.KeyManager):
-
     """
     This mock key manager implementation supports all the methods specified
     by the key manager interface. This implementation stores keys within a
@@ -41,12 +44,23 @@ class MockKeyManager(key_mgr.KeyManager):
     services. Side effects (e.g., raising exceptions) for each method are
     handled as specified by the key manager interface.
 
-    This class should NOT be used for anything but integration testing because
-    keys are not stored persistently.
+    This key manager is not suitable for use in production deployments.
     """
 
     def __init__(self):
         self.keys = {}
+
+    def _generate_hex_key(self, **kwargs):
+        key_length = kwargs.get('key_length', 256)
+        # hex digit => 4 bits
+        hex_encoded = utils.generate_password(length=key_length / 4,
+                                              symbolgroups='0123456789ABCDEF')
+        return hex_encoded
+
+    def _generate_key(self, **kwargs):
+        _hex = self._generate_hex_key(**kwargs)
+        return key.SymmetricKey('AES',
+                                array.array('B', _hex.decode('hex')).tolist())
 
     def create_key(self, ctxt, **kwargs):
         """Creates a key.
@@ -57,16 +71,8 @@ class MockKeyManager(key_mgr.KeyManager):
         if ctxt is None:
             raise exception.NotAuthorized()
 
-        # generate the key
-        key_length = kwargs.get('key_length', 256)
-        # hex digit => 4 bits
-        hex_string = utils.generate_password(length=key_length / 4,
-                                             symbolgroups='0123456789ABCDEF')
-
-        _bytes = array.array('B', hex_string.decode('hex')).tolist()
-        _key = key.SymmetricKey('AES', _bytes)
-
-        return self.store_key(ctxt, _key)
+        key = self._generate_key(**kwargs)
+        return self.store_key(ctxt, key)
 
     def _generate_key_id(self):
         key_id = uuidutils.generate_uuid()
@@ -76,8 +82,7 @@ class MockKeyManager(key_mgr.KeyManager):
         return key_id
 
     def store_key(self, ctxt, key, **kwargs):
-        """Stores (i.e., registers) a key with the key manager.
-        """
+        """Stores (i.e., registers) a key with the key manager."""
         if ctxt is None:
             raise exception.NotAuthorized()
 

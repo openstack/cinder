@@ -23,6 +23,8 @@ from cinder import test
 
 
 class KeyManagerTestCase(test.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(KeyManagerTestCase, self).__init__(*args, **kwargs)
 
     def _create_key_manager(self):
         raise NotImplementedError()

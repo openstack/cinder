@@ -532,7 +532,16 @@
 
 # The full class name of the key manager API class (string
 # value)
-#keymgr_api_class=cinder.keymgr.not_implemented_key_mgr.NotImplementedKeyManager
+#api_class=cinder.keymgr.conf_key_mgr.ConfKeyManager
+
+
+#
+# Options defined in cinder.keymgr.conf_key_mgr
+#
+
+# Fixed key returned by key manager, specified in hex (string
+# value)
+#fixed_key=<None>
 
 
 #
@@ -1774,4 +1783,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 381
+# Total option count: 382

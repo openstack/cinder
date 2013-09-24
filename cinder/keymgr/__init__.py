@@ -17,22 +17,17 @@
 from oslo.config import cfg
 
 from cinder.openstack.common import importutils
-from cinder.openstack.common import log as logging
 
 keymgr_opts = [
-    cfg.StrOpt('keymgr_api_class',
-               default='cinder.keymgr.'
-                       'not_implemented_key_mgr.NotImplementedKeyManager',
+    cfg.StrOpt('api_class',
+               default='cinder.keymgr.conf_key_mgr.ConfKeyManager',
                help='The full class name of the key manager API class'),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(keymgr_opts)
-
-LOG = logging.getLogger(__name__)
+CONF.register_opts(keymgr_opts, group='keymgr')
 
 
 def API():
-    keymgr_api_class = CONF.keymgr_api_class
-    cls = importutils.import_class(keymgr_api_class)
+    cls = importutils.import_class(CONF.keymgr.api_class)
     return cls()
