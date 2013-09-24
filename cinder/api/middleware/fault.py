@@ -20,6 +20,7 @@ import webob.dec
 import webob.exc
 
 from cinder.api.openstack import wsgi
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi as base_wsgi
@@ -63,8 +64,11 @@ class FaultWrapper(base_wsgi.Middleware):
         # inconsistent with the EC2 API to hide every exception,
         # including those that are safe to expose, see bug 1021373
         if safe:
-            outer.explanation = '%s: %s' % (inner.__class__.__name__,
-                                            unicode(inner))
+            msg = (inner.msg if isinstance(inner, exception.CinderException)
+                   else unicode(inner))
+            params = {'exception': inner.__class__.__name__,
+                      'explanation': msg}
+            outer.explanation = _('%(exception)s: %(explanation)s') % params
         return wsgi.Fault(outer)
 
     @webob.dec.wsgify(RequestClass=wsgi.Request)
