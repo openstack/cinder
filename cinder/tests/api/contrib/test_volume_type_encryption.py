@@ -376,3 +376,127 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                'volume_type_id': 'volume_type'}}
         msg = ("Invalid input received: provider must be defined")
         self._encryption_create_bad_body(body=body, msg=msg)
+
+    def test_delete(self):
+        volume_type = {
+            'id': 'fake_type_id',
+            'name': 'fake_type',
+        }
+        db.volume_type_create(context.get_admin_context(), volume_type)
+
+        # Test that before create, there's nothing with a get
+        res = self._get_response(volume_type, req_method='GET',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption')
+        self.assertEqual(200, res.status_code)
+        res_dict = json.loads(res.body)
+        self.assertEqual({}, res_dict)
+
+        body = {"encryption": {'cipher': 'cipher',
+                               'key_size': 128,
+                               'control_location': 'front-end',
+                               'provider': 'fake_provider',
+                               'volume_type_id': volume_type['id']}}
+
+        # Create, and test that get returns something
+        res = self._get_response(volume_type, req_method='POST',
+                                 req_body=json.dumps(body),
+                                 req_headers='application/json')
+        res_dict = json.loads(res.body)
+
+        res = self._get_response(volume_type, req_method='GET',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption')
+        self.assertEqual(200, res.status_code)
+        res_dict = json.loads(res.body)
+        self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
+
+        # Delete, and test that get returns nothing
+        res = self._get_response(volume_type, req_method='DELETE',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption/provider')
+        self.assertEqual(202, res.status_code)
+        self.assertEqual(0, len(res.body))
+        res = self._get_response(volume_type, req_method='GET',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption')
+        self.assertEqual(200, res.status_code)
+        res_dict = json.loads(res.body)
+        self.assertEqual({}, res_dict)
+
+        db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
+
+    def test_delete_with_volume_in_use(self):
+        # Create the volume type and volumes with the volume type.
+        volume_type = {
+            'id': 'fake_type_id',
+            'name': 'fake_type',
+        }
+        db.volume_type_create(context.get_admin_context(), volume_type)
+        db.volume_create(context.get_admin_context(),
+                         {'id': 'fake_id',
+                          'display_description': 'Test Desc',
+                          'size': 20,
+                          'status': 'creating',
+                          'instance_uuid': None,
+                          'host': 'dummy',
+                          'volume_type_id': volume_type['id']})
+
+        db.volume_create(context.get_admin_context(),
+                         {'id': 'fake_id2',
+                          'display_description': 'Test Desc2',
+                          'size': 2,
+                          'status': 'creating',
+                          'instance_uuid': None,
+                          'host': 'dummy',
+                          'volume_type_id': volume_type['id']})
+        body = {"encryption": {'cipher': 'cipher',
+                               'key_size': 128,
+                               'control_location': 'front-end',
+                               'provider': 'fake_provider',
+                               'volume_type_id': volume_type['id']}}
+
+        # Create encryption with volume type, and test with GET
+        res = self._get_response(volume_type, req_method='POST',
+                                 req_body=json.dumps(body),
+                                 req_headers='application/json')
+        res = self._get_response(volume_type, req_method='GET',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption')
+        self.assertEqual(200, res.status_code)
+        res_dict = json.loads(res.body)
+        self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
+
+        # Delete, and test that there is an error since volumes exist
+        res = self._get_response(volume_type, req_method='DELETE',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption/provider')
+        self.assertEqual(400, res.status_code)
+        res_dict = json.loads(res.body)
+        expected = {
+            'badRequest': {
+                'code': 400,
+                'message': 'Cannot delete encryption specs. '
+                           'Volume type in use.'
+            }
+        }
+        self.assertEqual(expected, res_dict)
+
+        # Delete the volumes
+        db.volume_destroy(context.get_admin_context(), 'fake_id')
+        db.volume_destroy(context.get_admin_context(), 'fake_id2')
+
+        # Delete, and test that get returns nothing
+        res = self._get_response(volume_type, req_method='DELETE',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption/provider')
+        self.assertEqual(202, res.status_code)
+        self.assertEqual(0, len(res.body))
+        res = self._get_response(volume_type, req_method='GET',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption')
+        self.assertEqual(200, res.status_code)
+        res_dict = json.loads(res.body)
+        self.assertEqual({}, res_dict)
+
+        db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
