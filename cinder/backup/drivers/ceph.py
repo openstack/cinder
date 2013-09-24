@@ -704,7 +704,7 @@ class CephBackupDriver(BackupDriver):
     def _get_volume_size_gb(self, volume):
         """Return the size in gigabytes of the given volume.
 
-        Raises exception.InvalidParameterValue if voluem size is 0.
+        Raises exception.InvalidParameterValue if volume size is 0.
         """
         if int(volume['size']) == 0:
             errmsg = _("need non-zero volume size")

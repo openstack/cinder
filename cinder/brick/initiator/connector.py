@@ -245,7 +245,7 @@ class ISCSIConnector(InitiatorConnector):
         """Detach the volume from instance_name.
 
         connection_properties for iSCSI must include:
-        target_portal - ip and optional port
+        target_portal - IP and optional port
         target_iqn - iSCSI Qualified Name
         target_lun - LUN id of the volume
         """

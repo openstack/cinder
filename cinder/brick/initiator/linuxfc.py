@@ -88,7 +88,7 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
     def get_fc_hbas_info(self):
         """Get Fibre Channel WWNs and device paths from the system, if any."""
 
-        # Note(walter-boring) modern linux kernels contain the FC HBA's in /sys
+        # Note(walter-boring) modern Linux kernels contain the FC HBA's in /sys
         # and are obtainable via the systool app
         hbas = self.get_fc_hbas()
         if not hbas:
@@ -109,7 +109,7 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
     def get_fc_wwpns(self):
         """Get Fibre Channel WWPNs from the system, if any."""
 
-        # Note(walter-boring) modern linux kernels contain the FC HBA's in /sys
+        # Note(walter-boring) modern Linux kernels contain the FC HBA's in /sys
         # and are obtainable via the systool app
         hbas = self.get_fc_hbas()
 
@@ -125,7 +125,7 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
     def get_fc_wwnns(self):
         """Get Fibre Channel WWNNs from the system, if any."""
 
-        # Note(walter-boring) modern linux kernels contain the FC HBA's in /sys
+        # Note(walter-boring) modern Linux kernels contain the FC HBA's in /sys
         # and are obtainable via the systool app
         hbas = self.get_fc_hbas()
         if not hbas:

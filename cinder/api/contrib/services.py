@@ -54,7 +54,7 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
         # TODO(uni): template elements of 'host', 'service' and 'disabled'
         # should be deprecated to make ServicesUpdateTemplate consistent
         # with ServicesIndexTemplate. Still keeping it here for API
-        # compability sake.
+        # compatibility sake.
         root = xmlutil.TemplateElement('host')
         root.set('host')
         root.set('service')
@@ -128,7 +128,7 @@ class ServiceController(object):
             raise webob.exc.HTTPBadRequest()
 
         # NOTE(uni): deprecating service request key, binary takes precedence
-        # Still keeping service key here for API compability sake.
+        # Still keeping service key here for API compatibility sake.
         service = body.get('service', '')
         binary = body.get('binary', '')
         binary_key = binary or service
