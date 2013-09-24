@@ -154,7 +154,8 @@ class VMwareVolumeOps(object):
         compute_resource = None
         for elem in props:
             for prop in elem.propSet:
-                if prop.name == 'datastore':
+                if prop.name == 'datastore' and prop.val:
+                    # Consider only if datastores are present under host
                     datastores = prop.val.ManagedObjectReference
                 elif prop.name == 'parent':
                     compute_resource = prop.val

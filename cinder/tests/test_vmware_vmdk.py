@@ -97,6 +97,17 @@ class FakeSnapshotTree(object):
         self.childSnapshotList = childSnapshotList
 
 
+class FakeElem(object):
+    def __init__(self, prop_set=None):
+        self.propSet = prop_set
+
+
+class FakeProp(object):
+    def __init__(self, name=None, val=None):
+        self.name = name
+        self.val = val
+
+
 class VMwareEsxVmdkDriverTestCase(test.TestCase):
     """Test class for VMwareEsxVmdkDriver."""
 
@@ -397,6 +408,26 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._session.invoke_api(vim_util, 'get_object_properties',
                                  self._vim, host,
                                  ['datastore', 'parent']).AndReturn([])
+        self._session.invoke_api(vim_util, 'get_object_property',
+                                 self._vim, mox.IgnoreArg(), 'resourcePool')
+
+        m.ReplayAll()
+        self.assertRaises(error_util.VimException, self._volumeops.get_dss_rp,
+                          host)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_get_dss_rp_without_datastores(self):
+        """Test get_dss_rp without datastores."""
+        m = self.mox
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        host = FakeObject()
+        props = [FakeElem(prop_set=[FakeProp(name='datastore')])]
+        self._session.invoke_api(vim_util, 'get_object_properties',
+                                 self._vim, host,
+                                 ['datastore', 'parent']).AndReturn(props)
         self._session.invoke_api(vim_util, 'get_object_property',
                                  self._vim, mox.IgnoreArg(), 'resourcePool')
 
