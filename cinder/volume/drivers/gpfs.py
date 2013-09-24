@@ -323,7 +323,7 @@ class GPFSDriver(driver.VolumeDriver):
         # would succeed and the snapshot is deleted.
         if not os.path.exists(fchild) and fparent:
             fpbase = os.path.basename(fparent)
-            if (fpbase.startswith('snapshot-') or fpbase.endswith('.snap')):
+            if (fpbase.endswith('.snap') or fpbase.endswith('.ts')):
                 self._delete_gpfs_file(fparent)
 
     def delete_volume(self, volume):
@@ -381,11 +381,20 @@ class GPFSDriver(driver.VolumeDriver):
         volume_path = os.path.join(self.configuration.gpfs_mount_point_base,
                                    snapshot['volume_name'])
         self._create_gpfs_snap(src=volume_path, dest=snapshot_path)
+        self._gpfs_redirect(volume_path)
 
     def delete_snapshot(self, snapshot):
         """Deletes a GPFS snapshot."""
-        # A snapshot file is deleted as a part of delete_volume when
-        # all volumes derived from it are deleted.
+        # Rename the deleted snapshot to indicate it no longer exists in
+        # cinder db. Attempt to delete the snapshot.  If the snapshot has
+        # clone children, the delete will fail silently. When volumes that
+        # are clone children are deleted in the future, the remaining ts
+        # snapshots will also be deleted.
+        snapshot_path = self.local_path(snapshot)
+        snapshot_ts_path = '%s.ts' % snapshot_path
+        os.rename(snapshot_path, snapshot_ts_path)
+        self._execute('rm', '-f', snapshot_ts_path,
+                      check_exit_code=False, run_as_root=True)
 
     def local_path(self, volume):
         return os.path.join(self.configuration.gpfs_mount_point_base,
