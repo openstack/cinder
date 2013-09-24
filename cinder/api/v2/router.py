@@ -79,6 +79,13 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         controller=snapshot_metadata_controller,
                         parent_resource=dict(member_name='snapshot',
                                              collection_name='snapshots'))
+
+        mapper.connect("metadata",
+                       "/{project_id}/snapshots/{snapshot_id}/metadata",
+                       controller=snapshot_metadata_controller,
+                       action='update_all',
+                       conditions={"method": ['PUT']})
+
         self.resources['volume_metadata'] = \
             volume_metadata.create_resource()
         volume_metadata_controller = self.resources['volume_metadata']
