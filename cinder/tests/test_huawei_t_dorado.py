@@ -1044,7 +1044,7 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         tmp_configuration = mox.MockObject(conf.Configuration)
         tmp_configuration.cinder_huawei_conf_file = tmp_fonf_file
         tmp_configuration.append_config_values(mox.IgnoreArg())
-        self.assertRaises(exception.ConfigNotFound,
+        self.assertRaises(IOError,
                           HuaweiVolumeDriver,
                           configuration=tmp_configuration)
         # Test Product and Protocol invalid
@@ -1635,7 +1635,7 @@ class SSHMethodTestCase(test.TestCase):
 
     def test_socket_timeout(self):
         self.stubs.Set(FakeChannel, 'recv', self._fake_recv2)
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(socket.timeout,
                           self.driver.create_volume, FAKE_VOLUME)
 
     def _fake_recv1(self, nbytes):

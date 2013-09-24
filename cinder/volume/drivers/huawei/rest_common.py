@@ -78,8 +78,9 @@ class HVSCommon():
 
         try:
             res_json = json.loads(res)
-        except Exception:
-            raise exception.CinderException(_('JSON transfer Error'))
+        except Exception as err:
+            LOG.error(_('JSON transfer error'))
+            raise err
 
         return res_json
 
@@ -99,6 +100,7 @@ class HVSCommon():
         if (result['error']['code'] != 0) or ("data" not in result):
             time.sleep(30)
             msg = _("Login error, reason is %s") % result
+            LOG.error(msg)
             raise exception.CinderException(msg)
 
         deviceid = result['data']['deviceid']
@@ -166,17 +168,22 @@ class HVSCommon():
             LOG.error(msg)
             raise exception.CinderException(msg)
 
+    def _assert_data_in_result(self, result, msg):
+        if "data" not in result:
+            msg = _('%s "data" was not in result.') % msg
+            LOG.error(msg)
+            raise exception.CinderException(msg)
+
     def _create_volume(self, lun_param):
         url = self.url + "/lun"
         data = json.dumps(lun_param)
         result = self.call(url, data)
-        self._assert_rest_result(result, 'create volume error')
 
-        if "data" in result:
-            return result['data']['ID']
-        else:
-            msg = _('create volume error: %(err)s') % {'err': result}
-            raise exception.CinderException(msg)
+        msg = 'Create volume error.'
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
+        return result['data']['ID']
 
     def create_volume(self, volume):
         volume_name = self._encode_name(volume['id'])
@@ -267,7 +274,7 @@ class HVSCommon():
             root = tree.getroot()
         except Exception as err:
             LOG.error(_('_read_xml:%s') % err)
-            raise exception.VolumeBackendAPIException(data=err)
+            raise err
         return root
 
     def _encode_name(self, name):
@@ -282,6 +289,7 @@ class HVSCommon():
         pool_name = root.findtext('LUN/StoragePool')
         if not pool_name:
             err_msg = _("Invalid resource pool: %s") % pool_name
+            LOG.error(err_msg)
             raise exception.InvalidInput(err_msg)
 
         url = self.url + "/storagepool"
@@ -299,6 +307,7 @@ class HVSCommon():
 
         if not poolinfo:
             msg = (_('Get pool info error, pool name is:%s') % pool_name)
+            LOG.error(msg)
             raise exception.CinderException(msg)
 
         return poolinfo
@@ -338,10 +347,10 @@ class HVSCommon():
                            "PARENTTYPE": "11",
                            "PARENTID": lun_id})
         result = self.call(url, data)
-        self._assert_rest_result(result, 'Create snapshot error.')
 
-        if 'data' not in result:
-            raise exception.CinderException(_('Create snapshot error.'))
+        msg = 'Create snapshot error.'
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
 
         return result['data']['ID']
 
@@ -439,10 +448,10 @@ class HVSCommon():
                            "TARGETLUN": ("INVALID;%s;INVALID;INVALID;INVALID"
                                          % tgtlunid)})
         result = self.call(url, data)
-        self._assert_rest_result(result, 'Create lun copy error.')
 
-        if "data" not in result:
-            raise exception.CinderException(_('Create luncopy error.'))
+        msg = 'Create lun copy error.'
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
 
         return result['data']['ID']
 
@@ -578,11 +587,10 @@ class HVSCommon():
     def _get_iscsi_tgt_port(self):
         url = self.url + "/iscsidevicename"
         result = self.call(url, None)
+
         msg = 'Get iSCSI target port error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         return result['data'][0]['CMO_ISCSI_DEVICE_NAME']
 
@@ -618,11 +626,10 @@ class HVSCommon():
         url = self.url + "/hostgroup"
         data = json.dumps({"TYPE": "14", "NAME": hostgroupname})
         result = self.call(url, data)
+
         msg = 'Create host group error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         return result['data']['ID']
 
@@ -631,11 +638,10 @@ class HVSCommon():
         data = json.dumps({"DESCRIPTION": lungroupname,
                            "NAME": lungroupname})
         result = self.call(url, data)
+
         msg = 'Create lun group error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         return result['data']['ID']
 
@@ -686,9 +692,10 @@ class HVSCommon():
                         hostassoinfo = json.loads(associate_data)
                         host_lun_id = hostassoinfo['HostLUNID']
                         break
-                    except Exception:
-                        msg = _("_find_host_lun_id transfer data error! ")
-                        raise exception.CinderException(msg)
+                    except Exception as err:
+                        msg = _("JSON transfer data error. %s") % err
+                        LOG.error(msg)
+                        raise err
         return host_lun_id
 
     def _find_host(self, hostname):
@@ -800,11 +807,10 @@ class HVSCommon():
         url = self.url + "/mappingview"
         data = json.dumps({"TYPE": "245"})
         result = self.call(url, data, "GET")
+
         msg = 'Find map view error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         viewid = None
         for item in result['data']:
@@ -937,6 +943,7 @@ class HVSCommon():
                 err_msg = (_('Config file is wrong. LUNType must be "Thin"'
                              ' or "Thick". LUNType:%(fetchtype)s')
                            % {'fetchtype': luntype})
+                LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
         stripunitsize = root.findtext('LUN/StripUnitSize')
@@ -963,6 +970,7 @@ class HVSCommon():
                 err_msg = (_('PrefetchType config is wrong. PrefetchType'
                              ' must in 1,2,3,4. fetchtype is:%(fetchtype)s')
                            % {'fetchtype': fetchtype})
+                LOG.error(err_msg)
                 raise exception.CinderException(err_msg)
         else:
             LOG.debug(_('Use default prefetch fetchtype. '
@@ -980,6 +988,7 @@ class HVSCommon():
                 err_msg = (_('_wait_for_luncopy:LUNcopy status is not normal.'
                              'LUNcopy name: %(luncopyname)s')
                            % {'luncopyname': luncopyid})
+                LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
             time.sleep(10)
 
@@ -1014,11 +1023,10 @@ class HVSCommon():
         """
         url = self.url + "/fc_initiator?ISFREE=true&range=[0-1000]"
         result = self.call(url, None, "GET")
+
         msg = 'Get connected free FC wwn error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         wwns = []
         for item in result['data']:
@@ -1039,11 +1047,10 @@ class HVSCommon():
         """Get iscsi port info in order to build the iscsi target iqn."""
         url = self.url + "/eth_port"
         result = self.call(url, None, "GET")
+
         msg = 'Get iSCSI port information error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         iscsi_port_info = None
         for item in result['data']:
@@ -1102,11 +1109,10 @@ class HVSCommon():
         url = (self.url +
                "/host_link?INITIATOR_TYPE=223&INITIATOR_PORT_WWN=" + wwn)
         result = self.call(url, None, "GET")
+
         msg = 'Get FC target wwpn error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         fc_wwpns = None
         for item in result['data']:
@@ -1174,11 +1180,10 @@ class HVSCommon():
     def _find_qos_policy_info(self, policy_name):
         url = self.url + "/ioclass"
         result = self.call(url, None, "GET")
+
         msg = 'Get qos policy error.'
         self._assert_rest_result(result, msg)
-
-        if "data" not in result:
-            raise exception.CinderException(_('%s') % msg)
+        self._assert_data_in_result(result, msg)
 
         qos_info = {}
         for item in result['data']:
@@ -1245,6 +1250,7 @@ class HVSCommon():
         if not pool_node:
             err_msg = (_('_check_conf_file: Config file invalid. '
                          'StoragePool must be set.'))
+            LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
 
     def _get_iscsi_params(self, connector):
