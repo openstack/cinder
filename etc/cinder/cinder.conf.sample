@@ -235,17 +235,6 @@
 
 
 #
-# Options defined in cinder.brick.iser.iser
-#
-
-# iser target user-land tool to use (string value)
-#iser_helper=tgtadm
-
-# Volume configuration file storage directory (string value)
-#volumes_dir=$state_path/volumes
-
-
-#
 # Options defined in cinder.common.config
 #
 
@@ -1067,6 +1056,9 @@
 # value)
 #iser_port=3260
 
+# iser target user-land tool to use (string value)
+#iser_helper=tgtadm
+
 # The backend name for a given driver implementation (string
 # value)
 #volume_backend_name=<None>
@@ -1778,4 +1770,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 382
+# Total option count: 381

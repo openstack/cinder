@@ -20,7 +20,9 @@ import string
 import tempfile
 
 from cinder.brick.iser import iser
+from cinder.openstack.common import fileutils
 from cinder import test
+from cinder.volume import driver
 from cinder.volume import utils as volume_utils
 
 
@@ -40,6 +42,8 @@ class TargetAdminTestCase(object):
         self.stubs.Set(os.path, 'isfile', lambda _: True)
         self.stubs.Set(os, 'unlink', lambda _: '')
         self.stubs.Set(iser.TgtAdm, '_get_target', self.fake_get_target)
+        self.persist_tempdir = tempfile.mkdtemp()
+        self.driver = driver.ISERDriver()
 
     def fake_init(obj):
         return
@@ -78,7 +82,7 @@ class TargetAdminTestCase(object):
         self.verify_cmds(cmds)
 
     def run_commands(self):
-        tgtadm = iser.get_target_admin(None)
+        tgtadm = self.driver.get_target_admin()
         tgtadm.set_execute(self.fake_execute)
         tgtadm.create_iser_target(self.target_name, self.tid,
                                   self.lun, self.path)

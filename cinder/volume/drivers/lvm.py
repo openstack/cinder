@@ -56,7 +56,6 @@ volume_opts = [
     cfg.StrOpt('lvm_type',
                default='default',
                help='Type of LVM volumes to deploy; (default or thin)'),
-
 ]
 
 CONF = cfg.CONF
@@ -748,12 +747,12 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        root_helper = utils.get_root_helper()
-        self.tgtadm = iser.get_target_admin(root_helper)
+        self.tgtadm = self.get_target_admin()
         LVMVolumeDriver.__init__(self, *args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'LVM_iSER'
         self.protocol = 'iSER'
+        self.tgtadm.set_execute(self._execute)
 
     def set_execute(self, execute):
         LVMVolumeDriver.set_execute(self, execute)

@@ -27,6 +27,7 @@ from oslo.config import cfg
 
 from cinder.brick.initiator import connector as initiator
 from cinder.brick.iscsi import iscsi
+from cinder.brick.iser import iser
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
@@ -79,6 +80,9 @@ volume_opts = [
     cfg.IntOpt('iser_port',
                default=3260,
                help='The port that the iSER daemon is listening on'),
+    cfg.StrOpt('iser_helper',
+               default='tgtadm',
+               help='iser target user-land tool to use'),
     cfg.StrOpt('volume_backend_name',
                default=None,
                help='The backend name for a given driver implementation'),
@@ -118,8 +122,6 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
-CONF.import_opt('iscsi_helper', 'cinder.brick.iscsi.iscsi')
-CONF.import_opt('iser_helper', 'cinder.brick.iser.iser')
 
 
 class VolumeDriver(object):
@@ -987,6 +989,15 @@ class ISERDriver(ISCSIDriver):
         data['reserved_percentage'] = 100
         data['QoS_support'] = False
         self._stats = data
+
+    def get_target_admin(self):
+        root_helper = utils.get_root_helper()
+
+        if CONF.iser_helper == 'fake':
+            return iser.FakeIserHelper()
+        else:
+            return iser.TgtAdm(root_helper,
+                               CONF.volumes_dir)
 
 
 class FakeISERDriver(FakeISCSIDriver):
