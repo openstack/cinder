@@ -43,7 +43,6 @@ from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 
-
 LOG = logging.getLogger(__name__)
 
 backup_manager_opts = [
@@ -70,12 +69,10 @@ class BackupManager(manager.SchedulerDependentManager):
     def __init__(self, service_name=None, *args, **kwargs):
         self.service = importutils.import_module(self.driver_name)
         self.az = CONF.storage_availability_zone
-        self.volume_manager = importutils.import_object(
-            CONF.volume_manager)
-        self.driver = self.volume_manager.driver
+        self.volume_managers = {}
+        self._setup_volume_drivers()
         super(BackupManager, self).__init__(service_name='backup',
                                             *args, **kwargs)
-        self.driver.db = self.db
 
     @property
     def driver_name(self):
@@ -90,40 +87,114 @@ class BackupManager(manager.SchedulerDependentManager):
             return mapper[service]
         return service
 
-    def init_host(self):
-        """Do any initialization that needs to be run if this is a
-           standalone service.
-        """
+    @property
+    def driver(self):
+        return self._get_driver()
 
-        ctxt = context.get_admin_context()
-        LOG.info(_("Starting volume driver %(driver_name)s (%(version)s)") %
-                 {'driver_name': self.driver.__class__.__name__,
-                  'version': self.driver.get_version()})
+    def _get_volume_backend(self, host=None, allow_null_host=False):
+        if host is None:
+            if not allow_null_host:
+                msg = _("NULL host not allowed for volume backend lookup.")
+                raise exception.BackupFailedToGetVolumeBackend(msg)
+        else:
+            LOG.debug(_("Checking hostname '%s' for backend info.") % (host))
+            part = host.partition('@')
+            if (part[1] == '@') and (part[2] != ''):
+                backend = part[2]
+                LOG.debug("Got backend '%s'." % (backend))
+                return backend
+
+        LOG.info(_("Backend not found in hostname (%s) so using default.") %
+                 (host))
+
+        if 'default' not in self.volume_managers:
+            # For multi-backend we just pick the top of the list.
+            return self.volume_managers.keys()[0]
+
+        return 'default'
+
+    def _get_manager(self, backend):
+        LOG.debug(_("Manager requested for volume_backend '%s'.") %
+                  (backend))
+        if backend is None:
+            LOG.debug(_("Fetching default backend."))
+            backend = self._get_volume_backend(allow_null_host=True)
+        if backend not in self.volume_managers:
+            msg = (_("Volume manager for backend '%s' does not exist.") %
+                   (backend))
+            raise exception.BackupFailedToGetVolumeBackend(msg)
+        return self.volume_managers[backend]
+
+    def _get_driver(self, backend=None):
+        LOG.debug(_("Driver requested for volume_backend '%s'.") %
+                  (backend))
+        if backend is None:
+            LOG.debug(_("Fetching default backend."))
+            backend = self._get_volume_backend(allow_null_host=True)
+        mgr = self._get_manager(backend)
+        mgr.driver.db = self.db
+        return mgr.driver
+
+    def _setup_volume_drivers(self):
+        if CONF.enabled_backends:
+            for backend in CONF.enabled_backends:
+                host = "%s@%s" % (CONF.host, backend)
+                mgr = importutils.import_object(CONF.volume_manager,
+                                                host=host,
+                                                service_name=backend)
+                config = mgr.configuration
+                backend_name = config.safe_get('volume_backend_name')
+                LOG.debug(_("Registering backend %(backend)s (host=%(host)s "
+                            "backend_name=%(backend_name)s).") %
+                          {'backend': backend, 'host': host,
+                           'backend_name': backend_name})
+                self.volume_managers[backend] = mgr
+        else:
+            default = importutils.import_object(CONF.volume_manager)
+            LOG.debug(_("Registering default backend %s.") % (default))
+            self.volume_managers['default'] = default
+
+    def _init_volume_driver(self, ctxt, driver):
+        LOG.info(_("Starting volume driver %(driver_name)s (%(version)s).") %
+                 {'driver_name': driver.__class__.__name__,
+                  'version': driver.get_version()})
         try:
-            self.driver.do_setup(ctxt)
-            self.driver.check_for_setup_error()
+            driver.do_setup(ctxt)
+            driver.check_for_setup_error()
         except Exception as ex:
-            LOG.error(_("Error encountered during "
-                        "initialization of driver: %(name)s") %
-                      {'name': self.driver.__class__.__name__})
+            LOG.error(_("Error encountered during initialization of driver: "
+                        "%(name)s.") %
+                      {'name': driver.__class__.__name__})
             LOG.exception(ex)
             # we don't want to continue since we failed
             # to initialize the driver correctly.
             return
 
-        self.driver.set_initialized()
+        driver.set_initialized()
 
-        LOG.info(_("Cleaning up incomplete backup operations"))
+    def init_host(self):
+        """Do any initialization that needs to be run if this is a
+           standalone service.
+        """
+        ctxt = context.get_admin_context()
+
+        for mgr in self.volume_managers.itervalues():
+            self._init_volume_driver(ctxt, mgr.driver)
+
+        LOG.info(_("Cleaning up incomplete backup operations."))
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         for volume in volumes:
+            backend = self._get_volume_backend(host=volume['host'])
             if volume['status'] == 'backing-up':
                 LOG.info(_('Resetting volume %s to available '
-                           '(was backing-up)') % volume['id'])
-                self.volume_manager.detach_volume(ctxt, volume['id'])
+                           '(was backing-up).') % volume['id'])
+                mgr = self._get_manager(backend)
+                mgr.detach_volume(ctxt, volume['id'])
             if volume['status'] == 'restoring-backup':
                 LOG.info(_('Resetting volume %s to error_restoring '
-                           '(was restoring-backup)') % volume['id'])
-                self.volume_manager.detach_volume(ctxt, volume['id'])
+                           '(was restoring-backup).') % volume['id'])
+                mgr = self._get_manager(backend)
+                mgr.detach_volume(ctxt, volume['id'])
                 self.db.volume_update(ctxt, volume['id'],
                                       {'status': 'error_restoring'})
 
@@ -132,18 +203,18 @@ class BackupManager(manager.SchedulerDependentManager):
         backups = self.db.backup_get_all_by_host(ctxt, self.host)
         for backup in backups:
             if backup['status'] == 'creating':
-                LOG.info(_('Resetting backup %s to error '
-                           '(was creating)') % backup['id'])
+                LOG.info(_('Resetting backup %s to error (was creating).')
+                         % backup['id'])
                 err = 'incomplete backup reset on manager restart'
                 self.db.backup_update(ctxt, backup['id'], {'status': 'error',
                                                            'fail_reason': err})
             if backup['status'] == 'restoring':
-                LOG.info(_('Resetting backup %s to available '
-                           '(was restoring)') % backup['id'])
+                LOG.info(_('Resetting backup %s to available (was restoring).')
+                         % backup['id'])
                 self.db.backup_update(ctxt, backup['id'],
                                       {'status': 'available'})
             if backup['status'] == 'deleting':
-                LOG.info(_('Resuming delete on backup: %s') % backup['id'])
+                LOG.info(_('Resuming delete on backup: %s.') % backup['id'])
                 self.delete_backup(ctxt, backup['id'])
 
     @utils.require_driver_initialized
@@ -152,9 +223,11 @@ class BackupManager(manager.SchedulerDependentManager):
         backup = self.db.backup_get(context, backup_id)
         volume_id = backup['volume_id']
         volume = self.db.volume_get(context, volume_id)
-        LOG.info(_('create_backup started, backup: %(backup_id)s for '
-                   'volume: %(volume_id)s') %
+        LOG.info(_('Create backup started, backup: %(backup_id)s '
+                   'volume: %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
+        backend = self._get_volume_backend(host=volume['host'])
+
         self.db.backup_update(context, backup_id, {'host': self.host,
                                                    'service':
                                                    self.driver_name})
@@ -162,8 +235,8 @@ class BackupManager(manager.SchedulerDependentManager):
         expected_status = 'backing-up'
         actual_status = volume['status']
         if actual_status != expected_status:
-            err = _('create_backup aborted, expected volume status '
-                    '%(expected_status)s but got %(actual_status)s') % {
+            err = _('Create backup aborted, expected volume status '
+                    '%(expected_status)s but got %(actual_status)s.') % {
                         'expected_status': expected_status,
                         'actual_status': actual_status,
                     }
@@ -174,8 +247,8 @@ class BackupManager(manager.SchedulerDependentManager):
         expected_status = 'creating'
         actual_status = backup['status']
         if actual_status != expected_status:
-            err = _('create_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s') % {
+            err = _('Create backup aborted, expected backup status '
+                    '%(expected_status)s but got %(actual_status)s.') % {
                         'expected_status': expected_status,
                         'actual_status': actual_status,
                     }
@@ -186,7 +259,8 @@ class BackupManager(manager.SchedulerDependentManager):
 
         try:
             backup_service = self.service.get_backup_driver(context)
-            self.driver.backup_volume(context, backup, backup_service)
+            self._get_driver(backend).backup_volume(context, backup,
+                                                    backup_service)
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context, volume_id,
@@ -200,24 +274,26 @@ class BackupManager(manager.SchedulerDependentManager):
                                                    'size': volume['size'],
                                                    'availability_zone':
                                                    self.az})
-        LOG.info(_('create_backup finished. backup: %s'), backup_id)
+        LOG.info(_('Create backup finished. backup: %s.'), backup_id)
 
     @utils.require_driver_initialized
     def restore_backup(self, context, backup_id, volume_id):
         """Restore volume backups from configured backup service."""
-        LOG.info(_('restore_backup started, restoring backup: %(backup_id)s'
-                   ' to volume: %(volume_id)s') %
+        LOG.info(_('Restore backup started, backup: %(backup_id)s '
+                   'volume: %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
 
         backup = self.db.backup_get(context, backup_id)
         volume = self.db.volume_get(context, volume_id)
+        backend = self._get_volume_backend(host=volume['host'])
+
         self.db.backup_update(context, backup_id, {'host': self.host})
 
         expected_status = 'restoring-backup'
         actual_status = volume['status']
         if actual_status != expected_status:
-            err = _('restore_backup aborted, expected volume status '
-                    '%(expected_status)s but got %(actual_status)s') % {
+            err = _('Restore backup aborted: expected volume status '
+                    '%(expected_status)s but got %(actual_status)s.') % {
                         'expected_status': expected_status,
                         'actual_status': actual_status
                     }
@@ -227,8 +303,8 @@ class BackupManager(manager.SchedulerDependentManager):
         expected_status = 'restoring'
         actual_status = backup['status']
         if actual_status != expected_status:
-            err = _('restore_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s') % {
+            err = _('Restore backup aborted: expected backup status '
+                    '%(expected_status)s but got %(actual_status)s.') % {
                         'expected_status': expected_status,
                         'actual_status': actual_status
                     }
@@ -238,18 +314,18 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
-            LOG.warn('volume: %s, size: %d is larger than backup: %s, '
-                     'size: %d, continuing with restore',
+            LOG.warn('Volume: %s, size: %d is larger than backup: %s, '
+                     'size: %d, continuing with restore.',
                      volume['id'], volume['size'],
                      backup['id'], backup['size'])
 
         backup_service = self._map_service_to_driver(backup['service'])
         configured_service = self.driver_name
         if backup_service != configured_service:
-            err = _('restore_backup aborted, the backup service currently'
+            err = _('Restore backup aborted, the backup service currently'
                     ' configured [%(configured_service)s] is not the'
                     ' backup service that was used to create this'
-                    ' backup [%(backup_service)s]') % {
+                    ' backup [%(backup_service)s].') % {
                         'configured_service': configured_service,
                         'backup_service': backup_service,
                     }
@@ -259,8 +335,9 @@ class BackupManager(manager.SchedulerDependentManager):
 
         try:
             backup_service = self.service.get_backup_driver(context)
-            self.driver.restore_backup(context, backup, volume,
-                                       backup_service)
+            self._get_driver(backend).restore_backup(context, backup,
+                                                     volume,
+                                                     backup_service)
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context, volume_id,
@@ -270,22 +347,22 @@ class BackupManager(manager.SchedulerDependentManager):
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
         self.db.backup_update(context, backup_id, {'status': 'available'})
-        LOG.info(_('restore_backup finished, backup: %(backup_id)s restored'
-                   ' to volume: %(volume_id)s') %
+        LOG.info(_('Restore backup finished, backup %(backup_id)s restored'
+                   ' to volume %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
 
     @utils.require_driver_initialized
     def delete_backup(self, context, backup_id):
         """Delete volume backup from configured backup service."""
-        LOG.info(_('delete_backup started, backup: %s'), backup_id)
+        LOG.info(_('Delete backup started, backup: %s.'), backup_id)
         backup = self.db.backup_get(context, backup_id)
         self.db.backup_update(context, backup_id, {'host': self.host})
 
         expected_status = 'deleting'
         actual_status = backup['status']
         if actual_status != expected_status:
-            err = _('delete_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s') % {
+            err = _('Delete_backup aborted, expected backup status '
+                    '%(expected_status)s but got %(actual_status)s.') % {
                         'expected_status': expected_status,
                         'actual_status': actual_status,
                     }
@@ -297,10 +374,10 @@ class BackupManager(manager.SchedulerDependentManager):
         if backup_service is not None:
             configured_service = self.driver_name
             if backup_service != configured_service:
-                err = _('delete_backup aborted, the backup service currently'
+                err = _('Delete backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'
                         ' backup service that was used to create this'
-                        ' backup [%(backup_service)s]') % {
+                        ' backup [%(backup_service)s].') % {
                             'configured_service': configured_service,
                             'backup_service': backup_service,
                         }
@@ -320,4 +397,4 @@ class BackupManager(manager.SchedulerDependentManager):
 
         context = context.elevated()
         self.db.backup_destroy(context, backup_id)
-        LOG.info(_('delete_backup finished, backup %s deleted'), backup_id)
+        LOG.info(_('Delete backup finished, backup %s deleted.'), backup_id)

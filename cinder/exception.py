@@ -546,6 +546,10 @@ class BackupNotFound(NotFound):
     message = _("Backup %(backup_id)s could not be found.")
 
 
+class BackupFailedToGetVolumeBackend(NotFound):
+    message = _("Failed to identify volume backend.")
+
+
 class InvalidBackup(Invalid):
     message = _("Invalid backup: %(reason)s")
 
