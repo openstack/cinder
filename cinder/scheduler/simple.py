@@ -62,11 +62,10 @@ class SimpleScheduler(chance.ChanceScheduler):
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
             updated_volume = driver.volume_update_db(context, volume_id, host)
-            self.volume_rpcapi.create_volume(context,
-                                             updated_volume,
-                                             host,
-                                             snapshot_id,
-                                             image_id)
+            self.volume_rpcapi.create_volume(context, updated_volume, host,
+                                             request_spec, filter_properties,
+                                             snapshot_id=snapshot_id,
+                                             image_id=image_id)
             return None
 
         results = db.service_get_all_volume_sorted(elevated)
@@ -81,11 +80,11 @@ class SimpleScheduler(chance.ChanceScheduler):
             if utils.service_is_up(service) and not service['disabled']:
                 updated_volume = driver.volume_update_db(context, volume_id,
                                                          service['host'])
-                self.volume_rpcapi.create_volume(context,
-                                                 updated_volume,
-                                                 service['host'],
-                                                 snapshot_id,
-                                                 image_id)
+                self.volume_rpcapi.create_volume(context, updated_volume,
+                                                 service['host'], request_spec,
+                                                 filter_properties,
+                                                 snapshot_id=snapshot_id,
+                                                 image_id=image_id)
                 return None
         msg = _("Is the appropriate service running?")
         raise exception.NoValidHost(reason=msg)
