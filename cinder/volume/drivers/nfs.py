@@ -400,13 +400,14 @@ class NfsDriver(RemoteFsDriver):
 
         self.shares = {}  # address : options
 
+        # Check if mount.nfs is installed
         try:
-            self._execute('mount.nfs', check_exit_code=False)
+            self._execute('mount.nfs', check_exit_code=False, run_as_root=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 raise exception.NfsException('mount.nfs is not installed')
             else:
-                raise
+                raise exc
 
     def _ensure_share_mounted(self, nfs_share):
         mnt_flags = []
