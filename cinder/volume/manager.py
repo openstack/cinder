@@ -652,7 +652,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_vol_values['attach_status'] = 'detached'
         new_volume = self.db.volume_create(ctxt, new_vol_values)
         rpcapi.create_volume(ctxt, new_volume, host['host'],
-                             None, None)
+                             None, None, allow_reschedule=False)
 
         # Wait for new_volume to become ready
         starttime = time.time()

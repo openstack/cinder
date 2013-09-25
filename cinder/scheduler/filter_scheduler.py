@@ -80,8 +80,7 @@ class FilterScheduler(driver.Scheduler):
         filter_properties.pop('context', None)
 
         self.volume_rpcapi.create_volume(context, updated_volume, host,
-                                         request_spec=request_spec,
-                                         filter_properties=filter_properties,
+                                         request_spec, filter_properties,
                                          allow_reschedule=True,
                                          snapshot_id=snapshot_id,
                                          image_id=image_id)
