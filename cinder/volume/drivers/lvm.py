@@ -218,9 +218,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         size_in_g = volume.get('size', volume.get('volume_size', None))
         if size_in_g is None:
-            LOG.warning(_("Size for volume: %s not found, "
-                          "skipping secure delete.") % volume['id'])
-            return
+            msg = (_("Size for volume: %s not found, "
+                     "cannot secure delete.") % volume['id'])
+            LOG.error(msg)
+            raise exception.InvalidParameterValue(msg)
         size_in_m = self.configuration.volume_clear_size
 
         LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
@@ -238,9 +239,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
             if size_in_m:
                 clear_cmd.append('-s%dMiB' % size_in_m)
         else:
-            LOG.error(_("Error unrecognized volume_clear option: %s"),
-                      self.configuration.volume_clear)
-            return
+            raise exception.InvalidConfigurationValue(
+                option='volume_clear',
+                value=self.configuration.volume_clear)
 
         clear_cmd.append(dev_path)
         self._execute(*clear_cmd, run_as_root=True)
