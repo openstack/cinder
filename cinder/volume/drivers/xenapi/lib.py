@@ -16,10 +16,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.volume.drivers.xenapi import tools
 import contextlib
 import os
 import pickle
+
+from cinder import units
+from cinder.volume.drivers.xenapi import tools
 
 
 class XenAPIException(Exception):
@@ -258,7 +260,7 @@ class CompoundOperations(object):
 
 
 def to_bytes(size_in_gigs):
-    return size_in_gigs * 1024 * 1024 * 1024
+    return size_in_gigs * units.GiB
 
 
 class NFSOperationsMixIn(CompoundOperations):

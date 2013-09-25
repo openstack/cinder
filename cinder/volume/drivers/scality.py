@@ -27,6 +27,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
+from cinder import units
 from cinder.volume import driver
 
 
@@ -107,8 +108,8 @@ class ScalityDriver(driver.VolumeDriver):
 
     def _size_bytes(self, size_in_g):
         if int(size_in_g) == 0:
-            return 100 * 1024 * 1024
-        return int(size_in_g) * 1024 * 1024 * 1024
+            return 100 * units.MiB
+        return int(size_in_g) * units.GiB
 
     def _create_file(self, path, size):
         with open(path, "ab") as f:
