@@ -22,7 +22,6 @@ import urllib
 
 from oslo.config import cfg
 
-from cinder.backup.drivers import ceph as ceph_backup
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
@@ -300,7 +299,12 @@ class RBDDriver(driver.VolumeDriver):
         There should only ever be one but accept all since they need to be
         deleted before the volume can be.
         """
-        return ceph_backup.CephBackupDriver.get_backup_snaps(rbd_image)
+        # NOTE(dosaboy): we do the import here otherwise we get import conflict
+        # issues between the rbd driver and the ceph backup driver. These
+        # issues only seem to occur when NOT using them together and are
+        # triggered when the ceph backup driver imports the rbd volume driver.
+        from cinder.backup.drivers import ceph
+        return ceph.CephBackupDriver.get_backup_snaps(rbd_image)
 
     def _get_mon_addrs(self):
         args = ['ceph', 'mon', 'dump', '--format=json']
