@@ -65,10 +65,12 @@ class ConnectorTestCase(test.TestCase):
         obj = connector.InitiatorConnector.factory('aoe', None)
         self.assertEqual(obj.__class__.__name__, "AoEConnector")
 
-        obj = connector.InitiatorConnector.factory('nfs', None)
+        obj = connector.InitiatorConnector.factory(
+            'nfs', None, nfs_mount_point_base='/mnt/test')
         self.assertEqual(obj.__class__.__name__, "RemoteFsConnector")
 
-        obj = connector.InitiatorConnector.factory('glusterfs', None)
+        obj = connector.InitiatorConnector.factory(
+            'glusterfs', None, glusterfs_mount_point_base='/mnt/test')
         self.assertEqual(obj.__class__.__name__, "RemoteFsConnector")
 
         obj = connector.InitiatorConnector.factory('local', None)
@@ -563,9 +565,8 @@ class RemoteFsConnectorTestCase(ConnectorTestCase):
         self.connection_properties = {
             'export': self.TEST_DEV,
             'name': '9c592d52-ce47-4263-8c21-4ecf3c029cdb'}
-        self.connector = connector.RemoteFsConnector('nfs', root_helper='sudo')
-        self.connector._remotefsclient._mount_options = None
-        self.connector._remotefsclient._mount_base = '/mnt/test'
+        self.connector = connector.RemoteFsConnector(
+            'nfs', root_helper='sudo', nfs_mount_point_base='/mnt/test')
 
     def tearDown(self):
         self.mox.VerifyAll()

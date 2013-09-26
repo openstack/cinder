@@ -24,7 +24,6 @@ import time
 
 from oslo.config import cfg
 
-from cinder.brick.remotefs import remotefs
 from cinder import compute
 from cinder import db
 from cinder import exception
@@ -50,6 +49,9 @@ volume_opts = [
     cfg.BoolOpt('glusterfs_qcow2_volumes',
                 default=False,
                 help=('Create volumes as QCOW2 files rather than raw files.')),
+    cfg.StrOpt('glusterfs_mount_point_base',
+               default='$state_path/mnt',
+               help='Base dir containing mount points for gluster shares.'),
 ]
 
 CONF = cfg.CONF
@@ -70,7 +72,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     def __init__(self, *args, **kwargs):
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
-        self.configuration.append_config_values(remotefs.remotefs_client_opts)
         self._nova = None
 
     def do_setup(self, context):

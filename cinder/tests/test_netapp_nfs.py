@@ -33,12 +33,17 @@ from cinder.volume.drivers.netapp import api
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
 
 
+from oslo.config import cfg
+CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
 
 
 def create_configuration():
     configuration = mox.MockObject(conf.Configuration)
     configuration.append_config_values(mox.IgnoreArg())
+    configuration.nfs_mount_point_base = '/mnt/test'
+    configuration.nfs_mount_options = None
     return configuration
 
 
@@ -169,8 +174,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         kwargs = {}
         kwargs['netapp_mode'] = 'proxy'
         kwargs['configuration'] = create_configuration()
-        self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver(
-            **kwargs)
+        self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver(**kwargs)
 
     def test_check_for_setup_error(self):
         mox = self.mox
