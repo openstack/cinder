@@ -83,7 +83,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         """Verify that requirements are in place to use LVM driver."""
         if self.vg is None:
-            root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+            root_helper = utils.get_root_helper()
             try:
                 self.vg = lvm.LVM(self.configuration.volume_group,
                                   root_helper,
@@ -401,8 +401,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        self.tgtadm = iscsi.get_target_admin(root_helper)
+        self.tgtadm = self.get_target_admin()
         super(LVMISCSIDriver, self).__init__(*args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'LVM_iSCSI'
@@ -749,7 +748,7 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+        root_helper = utils.get_root_helper()
         self.tgtadm = iser.get_target_admin(root_helper)
         LVMVolumeDriver.__init__(self, *args, **kwargs)
         self.backend_name =\

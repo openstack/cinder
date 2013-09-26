@@ -235,29 +235,6 @@
 
 
 #
-# Options defined in cinder.brick.iscsi.iscsi
-#
-
-# iscsi target user-land tool to use (string value)
-#iscsi_helper=tgtadm
-
-# Volume configuration file storage directory (string value)
-#volumes_dir=$state_path/volumes
-
-# IET configuration file (string value)
-#iet_conf=/etc/iet/ietd.conf
-
-# Comma-separatd list of initiator IQNs allowed to connect to
-# the iSCSI target. (From Nova compute nodes.) (string value)
-#lio_initiator_iqns=
-
-# Sets the behavior of the iSCSI target to either perform
-# blockio or fileio optionally, auto can be set and Cinder
-# will autodetect type of backing device (string value)
-#iscsi_iotype=fileio
-
-
-#
 # Options defined in cinder.brick.iser.iser
 #
 
@@ -1097,6 +1074,24 @@
 # Size in MiB to wipe at start of old volumes. 0 => all
 # (integer value)
 #volume_clear_size=0
+
+# iscsi target user-land tool to use (string value)
+#iscsi_helper=tgtadm
+
+# Volume configuration file storage directory (string value)
+#volumes_dir=$state_path/volumes
+
+# IET configuration file (string value)
+#iet_conf=/etc/iet/ietd.conf
+
+# Comma-separated list of initiator IQNs allowed to connect to
+# the iSCSI target. (From Nova compute nodes.) (string value)
+#lio_initiator_iqns=
+
+# Sets the behavior of the iSCSI target to either perform
+# blockio or fileio optionally, auto can be set and Cinder
+# will autodetect type of backing device (string value)
+#iscsi_iotype=fileio
 
 
 #
