@@ -23,6 +23,7 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
+from cinder.openstack.common import strutils
 from cinder import quota
 
 
@@ -76,12 +77,19 @@ class QuotaSetsController(object):
     def show(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
+
+        params = req.params
+        if not hasattr(params, '__call__') and 'usage' in params:
+            usage = strutils.bool_from_string(params['usage'])
+        else:
+            usage = False
+
         try:
             sqlalchemy_api.authorize_project_context(context, id)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
-        return self._format_quota_set(id, self._get_quotas(context, id))
+        return self._format_quota_set(id, self._get_quotas(context, id, usage))
 
     @wsgi.serializers(xml=QuotaTemplate)
     def update(self, req, id, body):
