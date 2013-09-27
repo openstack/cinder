@@ -575,7 +575,7 @@ class EntryCreateTask(base.CinderTask):
             return
         vol_id = result['volume_id']
         try:
-            self.db.volume_destroy(context, vol_id)
+            self.db.volume_destroy(context.elevated(), vol_id)
         except exception.CinderException:
             # We are already reverting, therefore we should silence this
             # exception since a second exception being active will be bad.
