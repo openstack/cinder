@@ -246,6 +246,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'description': 'displaydesc',
                 'availability_zone': 'fakeaz',
+                'bootable': 'false',
                 'name': 'Updated Test Name',
                 'attachments': [
                     {
@@ -292,6 +293,7 @@ class VolumeApiTest(test.TestCase):
             'status': 'fakestatus',
             'description': 'displaydesc',
             'availability_zone': 'fakeaz',
+            'bootable': 'false',
             'name': 'displayname',
             'attachments': [{
                 'id': '1',
@@ -349,6 +351,7 @@ class VolumeApiTest(test.TestCase):
             'status': 'fakestatus',
             'description': 'displaydesc',
             'availability_zone': 'fakeaz',
+            'bootable': 'false',
             'name': 'displayname',
             'attachments': [{
                 'id': '1',
@@ -446,6 +449,7 @@ class VolumeApiTest(test.TestCase):
                     'status': 'fakestatus',
                     'description': 'displaydesc',
                     'availability_zone': 'fakeaz',
+                    'bootable': 'false',
                     'name': 'displayname',
                     'attachments': [
                         {
@@ -501,6 +505,7 @@ class VolumeApiTest(test.TestCase):
                     'status': 'fakestatus',
                     'description': 'displaydesc',
                     'availability_zone': 'fakeaz',
+                    'bootable': 'false',
                     'name': 'displayname',
                     'attachments': [
                         {
@@ -832,6 +837,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'description': 'displaydesc',
                 'availability_zone': 'fakeaz',
+                'bootable': 'false',
                 'name': 'displayname',
                 'attachments': [
                     {
@@ -877,6 +883,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'description': 'displaydesc',
                 'availability_zone': 'fakeaz',
+                'bootable': 'false',
                 'name': 'displayname',
                 'attachments': [],
                 'user_id': 'fakeuser',
@@ -930,6 +937,7 @@ class VolumeApiTest(test.TestCase):
                 'status': 'fakestatus',
                 'description': 'displaydesc',
                 'availability_zone': 'fakeaz',
+                'bootable': 'false',
                 'name': 'displayname',
                 'attachments': [
                     {
