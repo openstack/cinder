@@ -113,6 +113,7 @@ class TseriesCommon():
         self.login_info = self._get_login_info()
         self.lun_distribution = self._get_lun_distribution_info()
         self.luncopy_list = self._get_all_luncopy_name()
+        self.hostgroup_id = self._get_hostgroup_id(HOST_GROUP_NAME)
 
     def _check_conf_file(self):
         """Check config file, make sure essential items are set."""
@@ -1151,6 +1152,7 @@ class DoradoCommon(TseriesCommon):
 
         self._check_conf_file()
         self.lun_distribution = self._get_lun_ctr_info()
+        self.hostgroup_id = self._get_hostgroup_id(HOST_GROUP_NAME)
 
     def _check_conf_file(self):
         """Check the config file, make sure the key elements are set."""
