@@ -20,6 +20,7 @@ from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import strutils
 from cinder import volume
 
 
@@ -152,6 +153,14 @@ class VolumeAdminController(AdminController):
         params = body['os-migrate_volume']
         host = params['host']
         force_host_copy = params.get('force_host_copy', False)
+        if isinstance(force_host_copy, basestring):
+            try:
+                force_host_copy = strutils.bool_from_string(force_host_copy,
+                                                            strict=True)
+            except ValueError:
+                raise exc.HTTPBadRequest("Bad value for 'force_host_copy'")
+        elif not isinstance(force_host_copy, bool):
+            raise exc.HTTPBadRequest("'force_host_copy' not string or bool")
         self.volume_api.migrate_volume(context, volume, host, force_host_copy)
         return webob.Response(status_int=202)
 

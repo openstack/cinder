@@ -552,13 +552,16 @@ class AdminActionsTest(test.TestCase):
                                    'attach_status': ''})
         return volume
 
-    def _migrate_volume_exec(self, ctx, volume, host, expected_status):
+    def _migrate_volume_exec(self, ctx, volume, host, expected_status,
+                             force_host_copy=False):
         admin_ctx = context.get_admin_context()
         # build request to migrate to host
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-migrate_volume': {'host': host}})
+        body = {'os-migrate_volume': {'host': host,
+                                      'force_host_copy': force_host_copy}}
+        req.body = jsonutils.dumps(body)
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         # verify status
@@ -611,6 +614,22 @@ class AdminActionsTest(test.TestCase):
         volume = self._migrate_volume_prep()
         db.snapshot_create(ctx, {'volume_id': volume['id']})
         self._migrate_volume_exec(ctx, volume, host, expected_status)
+
+    def test_migrate_volume_bad_force_host_copy1(self):
+        expected_status = 400
+        host = 'test2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(ctx, volume, host, expected_status,
+                                  force_host_copy='foo')
+
+    def test_migrate_volume_bad_force_host_copy2(self):
+        expected_status = 400
+        host = 'test2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        self._migrate_volume_exec(ctx, volume, host, expected_status,
+                                  force_host_copy=1)
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
                                   expected_status, expected_id):
