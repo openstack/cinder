@@ -1,17 +1,18 @@
-# Chinese (Traditional) translation for cinder
-# Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
-# This file is distributed under the same license as the cinder package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
+# Filipino translations for cinder.
+# Copyright (C) 2013 ORGANIZATION
+# This file is distributed under the same license as the cinder project.
 #
+# Translators:
 msgid ""
 msgstr ""
-"Project-Id-Version:  cinder\n"
-"Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
+"Project-Id-Version:  Cinder\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2013-09-29 06:07+0000\n"
-"PO-Revision-Date: 2012-03-07 02:00+0000\n"
-"Last-Translator: Charles Hsu <charles0126+openstack@gmail.com>\n"
-"Language-Team: Chinese (Traditional) <zh_TW@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0\n"
+"PO-Revision-Date: 2013-09-26 22:10+0000\n"
+"Last-Translator: Tom Fifield <tom@openstack.org>\n"
+"Language-Team: Filipino "
+"(http://www.transifex.com/projects/p/openstack/language/fil/)\n"
+"Plural-Forms: nplurals=2; plural=(n > 1)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -29,7 +30,7 @@ msgstr ""
 
 #: cinder/exception.py:68 cinder/brick/exception.py:39
 msgid "An unknown exception occurred."
-msgstr "發生一個未知例外"
+msgstr ""
 
 #: cinder/exception.py:90 cinder/brick/exception.py:61
 #: cinder/openstack/common/rpc/common.py:86
@@ -43,11 +44,11 @@ msgstr ""
 
 #: cinder/exception.py:113
 msgid "Not authorized."
-msgstr "未被授權"
+msgstr ""
 
 #: cinder/exception.py:118
 msgid "User does not have admin privileges"
-msgstr "使用者並沒有管理者權力"
+msgstr ""
 
 #: cinder/exception.py:122
 #, python-format
@@ -66,7 +67,7 @@ msgstr ""
 
 #: cinder/exception.py:134 cinder/brick/exception.py:81
 msgid "Unacceptable parameters."
-msgstr "不可接受的參數值"
+msgstr ""
 
 #: cinder/exception.py:139
 #, python-format
@@ -347,9 +348,9 @@ msgid "Could not find config at %(path)s"
 msgstr ""
 
 #: cinder/exception.py:379
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find parameter %(param)s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/exception.py:383
 #, python-format
@@ -430,9 +431,9 @@ msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr ""
 
 #: cinder/exception.py:452
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to create server object for initiator %(name)s"
-msgstr "無法替 instance實例 %(instance_name)s , 建立 VDI 在SR %(sr_ref)s"
+msgstr ""
 
 #: cinder/exception.py:456
 #, python-format
@@ -464,9 +465,8 @@ msgid "Bad or unexpected response from the storage volume backend API: %(data)s"
 msgstr ""
 
 #: cinder/exception.py:481
-#, fuzzy
 msgid "Unknown NFS exception"
-msgstr "發生一個未知例外"
+msgstr ""
 
 #: cinder/exception.py:485
 msgid "No mounted NFS shares found"
@@ -478,9 +478,8 @@ msgid "There is no share which can host %(volume_size)sG"
 msgstr ""
 
 #: cinder/exception.py:493
-#, fuzzy
 msgid "Unknown Gluster exception"
-msgstr "發生一個未知例外"
+msgstr ""
 
 #: cinder/exception.py:497
 msgid "No mounted Gluster shares found"
@@ -519,9 +518,9 @@ msgid "Failed to copy metadata to volume: %(reason)s"
 msgstr ""
 
 #: cinder/exception.py:530
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to copy image to volume: %(reason)s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/exception.py:534
 msgid "Invalid Ceph args provided for backup rbd operation"
@@ -831,9 +830,9 @@ msgid "Unable to find cert_file : %s"
 msgstr ""
 
 #: cinder/wsgi.py:125
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find ca_file : %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/wsgi.py:128
 #, python-format
@@ -1201,9 +1200,9 @@ msgid "Creating new volume transfer %s"
 msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:164
-#, fuzzy, python-format
+#, python-format
 msgid "Creating transfer of volume %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:185
 #, python-format
@@ -1488,19 +1487,16 @@ msgid "Removing options '%s' from query"
 msgstr ""
 
 #: cinder/backup/api.py:66
-#, fuzzy
 msgid "Backup status must be available or error"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/backup/api.py:105
-#, fuzzy
 msgid "Volume to be backed up must be available"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/backup/api.py:141
-#, fuzzy
 msgid "Backup status must be available"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/backup/api.py:146
 msgid "Backup to be restored has invalid size"
@@ -1519,9 +1515,8 @@ msgid ""
 msgstr ""
 
 #: cinder/backup/api.py:177
-#, fuzzy
 msgid "Volume to be restored to must be available"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/backup/api.py:183
 msgid "Volume to be restored to is smaller than the backup to be restored"
@@ -2011,9 +2006,9 @@ msgid "_read_metadata finished (%s)"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:233
-#, fuzzy, python-format
+#, python-format
 msgid "volume size %d is invalid."
-msgstr "無效的Keypair"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:247
 #, python-format
@@ -2426,9 +2421,9 @@ msgid "Creating iscsi_target for: %s"
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:171 cinder/brick/iscsi/iscsi.py:295
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:182
 #, python-format
@@ -2443,9 +2438,9 @@ msgid "Removing iscsi_target for: %s"
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:213
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:223 cinder/brick/iscsi/iscsi.py:466
 #: cinder/brick/iser/iser.py:202
@@ -2536,14 +2531,14 @@ msgid "StdErr  :%s"
 msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:81
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to locate Volume Group %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:291
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find VG: %s"
-msgstr "無法卸載 Volume %s"
+msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:317
 msgid ""
@@ -2556,9 +2551,9 @@ msgid "Error creating Volume"
 msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:386
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to find LV: %s"
-msgstr "無法卸載 Volume %s"
+msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:399
 msgid "Error creating snapshot"
@@ -2630,9 +2625,8 @@ msgid "No backup with id %s"
 msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:2651
-#, fuzzy
 msgid "Volume must be available"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:2675
 #, python-format
@@ -3130,9 +3124,8 @@ msgid "Sending %(event_type)s on %(topic)s"
 msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:74
-#, fuzzy
 msgid "An unknown RPC related exception occurred."
-msgstr "發生一個未知例外"
+msgstr ""
 
 #: cinder/openstack/common/rpc/common.py:104
 #, python-format
@@ -3670,9 +3663,8 @@ msgid "Volume not found for instance %(instance_id)s."
 msgstr ""
 
 #: cinder/tests/api/contrib/test_backups.py:733
-#, fuzzy
 msgid "Invalid input"
-msgstr "無效的快照(snapshot)"
+msgstr ""
 
 #: cinder/tests/integrated/test_login.py:31
 #, python-format
@@ -3738,9 +3730,9 @@ msgid "status must be available"
 msgstr ""
 
 #: cinder/transfer/api.py:121
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create transfer record for %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/transfer/api.py:138
 #, python-format
@@ -3821,9 +3813,8 @@ msgid "status must be in-use to detach"
 msgstr ""
 
 #: cinder/volume/api.py:390
-#, fuzzy
 msgid "Volume status must be available to reserve"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/volume/api.py:470
 msgid "must be available"
@@ -3844,9 +3835,8 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/api.py:552
-#, fuzzy
 msgid "Volume Snapshot status must be available or error"
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/volume/api.py:580 cinder/volume/flows/create_volume/__init__.py:336
 msgid "Metadata property key blank"
@@ -3861,9 +3851,8 @@ msgid "Metadata property value greater than 255 characters"
 msgstr ""
 
 #: cinder/volume/api.py:710 cinder/volume/api.py:762
-#, fuzzy
 msgid "Volume status must be available/in-use."
-msgstr "Volume 狀態需要可被使用"
+msgstr ""
 
 #: cinder/volume/api.py:713
 msgid "Volume status is in-use."
@@ -3968,9 +3957,9 @@ msgid "ISCSI provider_location not stored, using discovery"
 msgstr ""
 
 #: cinder/volume/driver.py:514
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find iSCSI export for volume %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/volume/driver.py:518 cinder/volume/drivers/emc/emc_smis_iscsi.py:158
 #, python-format
@@ -4443,9 +4432,9 @@ msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 
 #: cinder/volume/drivers/eqlx.py:215 cinder/volume/drivers/san/san.py:151
-#, fuzzy, python-format
+#, python-format
 msgid "Error running SSH command: %s"
-msgstr "非預期的執行錯誤"
+msgstr ""
 
 #: cinder/volume/drivers/eqlx.py:282
 #, python-format
@@ -5020,9 +5009,8 @@ msgid "Blank components"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:690
-#, fuzzy
 msgid "Not an rbd snapshot"
-msgstr "無效的快照(snapshot)"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:702
 #, python-format
@@ -5035,9 +5023,9 @@ msgid "%s is in a different ceph cluster"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:718
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to open image %(loc)s: %(err)s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:785
 msgid "volume backup complete."
@@ -5250,9 +5238,8 @@ msgid "Updating cluster status info"
 msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:654
-#, fuzzy
 msgid "Failed to get updated stats"
-msgstr "內文解碼失敗"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:684
 #: cinder/volume/drivers/solidfire.py:709
@@ -5767,18 +5754,13 @@ msgid "enter: _execute_command_and_parse_attributes:  command %s"
 msgstr ""
 
 #: cinder/volume/drivers/storwize_svc.py:1679
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "CLI Exception output:\n"
 " command: %(cmd)s\n"
 " stdout: %(out)s\n"
 " stderr: %(err)s"
 msgstr ""
-"%(description)s\n"
-"命令: %(cmd)s\n"
-"退出代碼: %(exit_code)s\n"
-"標準輸出: %(stdout)r\n"
-"標準錯誤輸出: %(stderr)r"
 
 #: cinder/volume/drivers/storwize_svc.py:1696
 #, python-format
@@ -6594,9 +6576,9 @@ msgid "Could not find iSCSI export  for volume %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:163
-#, fuzzy, python-format
+#, python-format
 msgid "Cannot find device number for volume %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:193
 #, python-format
@@ -7470,9 +7452,9 @@ msgid "Api version could not be determined."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:1145
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get vol with required size for volume: %s"
-msgstr "找不到Volume %s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:1245
 #, python-format
@@ -8057,9 +8039,9 @@ msgid "command %s failed"
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:393
-#, fuzzy, python-format
+#, python-format
 msgid "Error running ssh command: %s"
-msgstr "非預期的執行錯誤"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:577
 #, python-format
@@ -9081,269 +9063,17 @@ msgstr ""
 msgid "Retry info not present, will not reschedule"
 msgstr ""
 
-#~ msgid "Error retrieving volume status: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get storage pool data"
-#~ msgstr ""
-
-#~ msgid "Cannot find any Fibre Channel HBAs"
-#~ msgstr ""
-
-#~ msgid "Volume status must be available or error"
-#~ msgstr "Volume 狀態需要可被使用"
-
-#~ msgid "No backend config with id %s"
-#~ msgstr ""
-
-#~ msgid "No sm_flavor called %s"
-#~ msgstr ""
-
-#~ msgid "No sm_volume with id %s"
-#~ msgstr ""
-
-#~ msgid "Error: %s"
-#~ msgstr ""
-
-#~ msgid "Unexpected state while cloning %s"
-#~ msgstr "非預期的執行錯誤"
-
-#~ msgid "iSCSI device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Fibre Channel device not found."
-#~ msgstr ""
-
-#~ msgid "Uncaught exception"
-#~ msgstr ""
-
-#~ msgid "Out reactor registered"
-#~ msgstr ""
-
-#~ msgid "CONSUMER GOT %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT SUCCEEDED %(data)s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT QUEUED %(data)s"
-#~ msgstr ""
-
-#~ msgid "Could not create IPC directory %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT %(data)s"
-#~ msgstr ""
-
-#~ msgid "May specify only one of snapshot, imageRef or source volume"
-#~ msgstr ""
-
-#~ msgid "Volume size cannot be lesser than the Snapshot size"
-#~ msgstr ""
-
-#~ msgid "Unable to clone volumes that are in an error state"
-#~ msgstr ""
-
-#~ msgid "Clones currently must be >= original volume size."
-#~ msgstr ""
-
-#~ msgid "Volume size '%s' must be an integer and greater than 0"
-#~ msgstr ""
-
-#~ msgid "Size of specified image is larger than volume size."
-#~ msgstr ""
-
-#~ msgid "Image minDisk size is larger than the volume size."
-#~ msgstr ""
-
-#~ msgid ""
-#~ msgstr ""
-
-#~ msgid "Availability zone is invalid"
-#~ msgstr ""
-
-#~ msgid "volume %(vol_name)s: creating lv of size %(vol_size)sG"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from snapshot"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from existing volume"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from image"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating"
-#~ msgstr ""
-
-#~ msgid "Setting volume: %s status to error after failed image copy."
-#~ msgstr ""
-
-#~ msgid "Unexpected Error: "
-#~ msgstr ""
-
-#~ msgid "volume %s: creating export"
-#~ msgstr ""
-
-#~ msgid "volume %s: create failed"
-#~ msgstr ""
-
-#~ msgid "volume %s: created successfully"
-#~ msgstr ""
-
-#~ msgid "volume %s: Error trying to reschedule create"
-#~ msgstr ""
-
-#~ msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
-#~ msgstr ""
-
-#~ msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
-#~ msgstr ""
-
-#~ msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
-#~ msgstr ""
-
-#~ msgid "Array Mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "LUN %(lun)s of size %(size)s MB is created."
-#~ msgstr ""
-
-#~ msgid "Array mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "Failed to attach iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "Fetching %s"
-#~ msgstr ""
-
-#~ msgid "Link Local address is not found.:%s"
-#~ msgstr ""
-
-#~ msgid "Couldn't get Link Local IP of %(interface)s :%(ex)s"
-#~ msgstr ""
-
-#~ msgid "Started %(name)s on %(_host)s:%(_port)s"
-#~ msgstr ""
-
-#~ msgid "Unable to find a Fibre Channel volume device"
-#~ msgstr ""
-
-#~ msgid "Volume device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Unable to find Volume Group: %s"
-#~ msgstr "無法卸載 Volume %s"
-
-#~ msgid "Failed to create Volume Group: %s"
-#~ msgstr "找不到Volume %s"
-
-#~ msgid "snapshot %(snap_name)s: creating"
-#~ msgstr ""
-
-#~ msgid "Running with CoraidDriver for ESM EtherCLoud"
-#~ msgstr ""
-
-#~ msgid "Update session cookie %(session)s"
-#~ msgstr ""
-
-#~ msgid "Message : %(message)s"
-#~ msgstr ""
-
-#~ msgid "Error while trying to set group: %(message)s"
-#~ msgstr ""
-
-#~ msgid "Unable to find group: %(group)s"
-#~ msgstr "無法卸載 Volume %s"
-
-#~ msgid "ESM urlOpen error"
-#~ msgstr ""
-
-#~ msgid "JSON Error"
-#~ msgstr ""
-
-#~ msgid "Request without URL"
-#~ msgstr ""
-
-#~ msgid "Configure data : %s"
-#~ msgstr ""
-
-#~ msgid "Configure response : %s"
-#~ msgstr ""
-
-#~ msgid "Unable to retrive volume infos for volume %(volname)s"
-#~ msgstr ""
-
-#~ msgid "Cannot login on Coraid ESM"
-#~ msgstr ""
-
-#~ msgid "Fail to create volume %(volname)s"
-#~ msgstr "找不到Volume %s"
-
-#~ msgid "Failed to delete volume %(volname)s"
-#~ msgstr "找不到Volume %s"
-
-#~ msgid "Failed to Create Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Delete Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Create Volume from Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "fmt = %(fmt)s backed by: %(backing_file)s"
-#~ msgstr ""
-
-#~ msgid "Expected image to be in raw format, but is %s"
-#~ msgstr ""
-
-#~ msgid "volume group %s doesn't exist"
-#~ msgstr ""
-
-#~ msgid "Error retrieving volume stats: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "CPG (%s) must be in a domain"
-#~ msgstr ""
-
-#~ msgid "Error populating default encryption types!"
-#~ msgstr ""
-
-#~ msgid "Unexpected error while running command."
-#~ msgstr "非預期的執行錯誤"
-
-#~ msgid "Nexenta SA returned the error"
-#~ msgstr ""
-
-#~ msgid "Ignored target group creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Copying metadata from snapshot %(snap_volume_id)s to %(volume_id)s"
-#~ msgstr ""
-
 #~ msgid "Connection to glance failed"
-#~ msgstr "連接到glance失敗"
+#~ msgstr ""
 
 #~ msgid "Invalid snapshot"
-#~ msgstr "無效的快照(snapshot)"
+#~ msgstr ""
+
+#~ msgid "Invalid source volume %(reason)s."
+#~ msgstr ""
+
+#~ msgid "The request is invalid."
+#~ msgstr ""
 
 #~ msgid "Invalid input received"
 #~ msgstr ""
@@ -9358,12 +9088,32 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Invalid auth key"
-#~ msgstr "無效的快照(snapshot)"
+#~ msgstr ""
+
+#~ msgid "Volume %(volume_id)s persistence file could not be found."
+#~ msgstr ""
 
 #~ msgid "Invalid metadata"
 #~ msgstr ""
 
 #~ msgid "Invalid metadata size"
+#~ msgstr ""
+
+#~ msgid "No disk at %(location)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Migration not found for instance "
+#~ "%(instance_id)s with status %(status)s."
+#~ msgstr ""
+
+#~ msgid "Class %(class_name)s could not be found: %(exception)s"
+#~ msgstr ""
+
+#~ msgid "Action not allowed."
+#~ msgstr ""
+
+#~ msgid "Key pair %(key_name)s already exists."
 #~ msgstr ""
 
 #~ msgid "Migration error"
@@ -9372,8 +9122,17 @@ msgstr ""
 #~ msgid "Quota exceeded"
 #~ msgstr ""
 
+#~ msgid "Maximum volume/snapshot size exceeded"
+#~ msgstr ""
+
+#~ msgid "3PAR Host already exists: %(err)s.  %(info)s"
+#~ msgstr ""
+
+#~ msgid "Backup volume %(volume_id)s type not recognised."
+#~ msgstr ""
+
 #~ msgid "Connection to swift failed"
-#~ msgstr "連接到glance失敗"
+#~ msgstr ""
 
 #~ msgid "Volume migration failed"
 #~ msgstr ""
@@ -9384,19 +9143,10 @@ msgstr ""
 #~ msgid "Invalid qos specs"
 #~ msgstr ""
 
-#~ msgid "debug in callback: %s"
-#~ msgstr ""
-
-#~ msgid "Expected object of type: %s"
-#~ msgstr ""
-
-#~ msgid "timefunc: '%(name)s' took %(total_time).2f secs"
-#~ msgstr ""
-
 #~ msgid "base image still has %s snapshots so not deleting base image"
 #~ msgstr ""
 
-#~ msgid "Failed to rename migration destination volume %(vol)s to %(name)s"
+#~ msgid "restore finished."
 #~ msgstr ""
 
 #~ msgid "Resize volume \"%(name)s\" to %(size)s"
@@ -9405,22 +9155,28 @@ msgstr ""
 #~ msgid "Volume \"%(name)s\" resized. New size is %(size)s"
 #~ msgstr ""
 
+#~ msgid "Snapshot file at %s does not exist."
+#~ msgstr ""
+
 #~ msgid "Invalid snapshot backing file format: %s"
+#~ msgstr ""
+
+#~ msgid "Size for volume: %s not found, skipping secure delete."
 #~ msgstr ""
 
 #~ msgid "Extend volume from %(old_size) to %(new_size)"
 #~ msgstr ""
 
-#~ msgid "pool %s doesn't exist"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Could not get system name."
+#~ msgid "_create_copy: Source vdisk %s does not exist"
 #~ msgstr ""
 
 #~ msgid "Disk not found: %s"
 #~ msgstr ""
 
 #~ msgid "read timed out"
+#~ msgstr ""
+
+#~ msgid "do_setup."
 #~ msgstr ""
 
 #~ msgid "check_for_setup_error."
@@ -9432,10 +9188,19 @@ msgstr ""
 #~ msgid "check_for_setup_error: Device type is:%(type)s, version is:%(version)s."
 #~ msgstr ""
 
+#~ msgid ""
+#~ "check_for_setup_error: Product version not "
+#~ "right. Please make sure the product "
+#~ "version is V1."
+#~ msgstr ""
+
 #~ msgid "_get_device_type: Storage Pool must be configured."
 #~ msgstr ""
 
 #~ msgid "create_volume:volume name: %s."
+#~ msgstr ""
+
+#~ msgid "delete_volume: volume name: %s."
 #~ msgstr ""
 
 #~ msgid "delete_volume:No need to delete volume. Volume %(name)s does not exist."
@@ -9447,13 +9212,45 @@ msgstr ""
 #~ msgid "create_export:Volume %(name)s does not exist."
 #~ msgstr ""
 
+#~ msgid ""
+#~ "initialize_connection: volume name: %(volume)s. "
+#~ "initiator name: %(ini)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "initialize_connection:Failed to find target ip"
+#~ " for initiator:%(initiatorname)s, please check"
+#~ " config file."
+#~ msgstr ""
+
 #~ msgid "initialize_connection:Failed to find target iSCSI iqn. Target IP:%(ip)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "initialize_connection:host name: %(host)s, initiator"
+#~ " name: %(ini)s, hostport name: %(port)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "initialize_connection:Failed to find the given"
+#~ " volume. volume name:%(volume)s."
 #~ msgstr ""
 
 #~ msgid "terminate_connection:Host does not exist. Host name:%(host)s."
 #~ msgstr ""
 
 #~ msgid "terminate_connection:volume does not exist. volume name:%(volume)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "terminate_connection:No map between host and"
+#~ " volume. Host name:%(hostname)s, volume "
+#~ "name:%(volumename)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "terminate_connection:No initiator is added to"
+#~ " the host. Host name:%(hostname)s"
 #~ msgstr ""
 
 #~ msgid "create_snapshot:Device does not support snapshot."
@@ -9477,6 +9274,27 @@ msgstr ""
 #~ msgid "delete_snapshot:Snapshot does not exist. snapshot name:%(snap)s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "create_volume_from_snapshot:snapshot name:%(snapshot)s, "
+#~ "volume name:%(volume)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "create_volume_from_snapshot:Device does not support"
+#~ " create volume from snapshot. Volume "
+#~ "name:%(volume)s, snapshot name:%(snapshot)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "create_volume_from_snapshot:Snapshot does not exist."
+#~ " Snapshot name:%(name)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Config file is wrong. Controler IP, "
+#~ "UserName and UserPassword must be set."
+#~ msgstr ""
+
 #~ msgid "_check_conf_file: %s"
 #~ msgstr ""
 
@@ -9486,10 +9304,27 @@ msgstr ""
 #~ msgid "_get_login_info error. %s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "Config file is wrong. LUNType must "
+#~ "be \"Thin\"  or \"Thick\". LUNType:%(type)s"
+#~ msgstr ""
+
 #~ msgid "_get_lun_set_info:Use default prefetch type. Prefetch type:Intelligent."
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_get_lun_set_info:No available pools! Please "
+#~ "check whether storage pool is created."
+#~ msgstr ""
+
 #~ msgid "_get_lun_set_info:%s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_get_maximum_pool:maxpoolid is None. Please "
+#~ "check config file and make sure "
+#~ "the \"Name\" in \"StoragePool\" is "
+#~ "right."
 #~ msgstr ""
 
 #~ msgid "_get_iscsi_info:%s"
@@ -9501,6 +9336,38 @@ msgstr ""
 #~ msgid "_execute_cli:%s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_name_translate:Name in cinder: %(old)s, new"
+#~ " name in storage system: %(new)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_hostgroup:Failed to Create hostgroup. "
+#~ "Hostgroup name: %(name)s. out:%(out)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_add_host:Failed to add host to "
+#~ "hostgroup. host name:%(host)s hostgroup "
+#~ "id:%(hostgroup)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_add_initiator:Failed to add initiator. "
+#~ "initiator name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_initiator:ERROE:Failed to delete initiator."
+#~ " initiator name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_add_hostport:Failed to add hostport. port "
+#~ "name:%(port)s port information:%(info)s host "
+#~ "id:%(host)s out:%(out)s"
+#~ msgstr ""
+
 #~ msgid "_delete_hostport:Failed to delete host port. port id:%(portid)s"
 #~ msgstr ""
 
@@ -9510,117 +9377,108 @@ msgstr ""
 #~ msgid "_get_tgt_iqn:iSCSI target iqn is:%s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_map_lun:Failed to add hostmap. "
+#~ "hostid:%(host)s lunid:%(lun)s hostlunid:%(hostlunid)s "
+#~ "out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_map:There are IOs accessing the "
+#~ "system. Retry to delete host map. "
+#~ "map id:%(mapid)s"
+#~ msgstr ""
+
 #~ msgid "_delete_map:Failed to delete host map. mapid:%(mapid)s out:%(out)s"
 #~ msgstr ""
 
 #~ msgid "_delete_host: Failed delete host. host id:%(hostid)s out:%(out)s"
 #~ msgstr ""
 
+#~ msgid ""
+#~ "_active_snapshot:Failed to active snapshot. "
+#~ "snapshot id:%(name)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_disable_snapshot:Failed to disable snapshot. "
+#~ "snapshot id:%(id)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_snapshot:Failed to delete snapshot. "
+#~ "snapshot id:%(id)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_volume:Failed to Create volume. volume"
+#~ " name:%(name)s. out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_volume:Failed to delete volume. Volume"
+#~ " name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_luncopy:Failed to Create LUNcopy. "
+#~ "LUNcopy name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_start_luncopy:Failed to start LUNcopy. "
+#~ "LUNcopy id:%(luncopyid)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_wait_for_luncopy:LUNcopy status is not "
+#~ "normal. LUNcopy name:%(luncopyname)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_delete_luncopy:Failed to delete LUNcopy. "
+#~ "LUNcopy id:%(luncopyid)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_create_snapshot:Failed to Create snapshot. "
+#~ "Snapshot name:%(name)s out:%(out)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_change_lun_controller:Failed to change lun "
+#~ "owning controller. lun id:%(lunid)s. new "
+#~ "controller:%(controller)s. out:%(out)s"
+#~ msgstr ""
+
 #~ msgid "_is_resource_pool_enough:Resource pool for snapshot not be added."
 #~ msgstr ""
 
-#~ msgid "Ignored target creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Invalid source volume %(reason)s."
-#~ msgstr ""
-
-#~ msgid "The request is invalid."
-#~ msgstr ""
-
-#~ msgid "Volume %(volume_id)s persistence file could not be found."
-#~ msgstr ""
-
-#~ msgid "No disk at %(location)s"
-#~ msgstr ""
-
-#~ msgid "Class %(class_name)s could not be found: %(exception)s"
-#~ msgstr ""
-
-#~ msgid "Action not allowed."
-#~ msgstr ""
-
-#~ msgid "Key pair %(key_name)s already exists."
-#~ msgstr ""
-
-#~ msgid "Migration error: %(reason)s"
-#~ msgstr ""
-
-#~ msgid "Maximum volume/snapshot size exceeded"
-#~ msgstr ""
-
-#~ msgid "3PAR Host already exists: %(err)s.  %(info)s"
-#~ msgstr ""
-
-#~ msgid "Backup volume %(volume_id)s type not recognised."
-#~ msgstr ""
-
-#~ msgid "_remove_iscsi_port: iSCSI port was not found on host %(hostid)s"
-#~ msgstr ""
-
-#~ msgid "ssh_read: Read SSH timeout"
-#~ msgstr ""
-
-#~ msgid "do_setup."
-#~ msgstr ""
-
-#~ msgid "create_volume: volume name: %s."
-#~ msgstr ""
-
-#~ msgid "delete_volume: volume name: %s."
-#~ msgstr ""
-
-#~ msgid "create_cloned_volume: src volume: %(src)s tgt volume: %(tgt)s"
-#~ msgstr ""
-
-#~ msgid "create_snapshot: snapshot name: %(snapshot)s volume name: %(volume)s"
-#~ msgstr ""
-
-#~ msgid "delete_snapshot: snapshot name: %(snapshot)s volume name: %(volume)s"
-#~ msgstr ""
-
-#~ msgid "change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Updating volume stats"
-#~ msgstr ""
-
-#~ msgid "restore finished."
-#~ msgstr ""
-
-#~ msgid "Error encountered during initialization of driver: %s"
-#~ msgstr ""
-
-#~ msgid "Unabled to update stats, driver is uninitialized"
-#~ msgstr ""
-
-#~ msgid "Snapshot file at %s does not exist."
-#~ msgstr ""
-
-#~ msgid "_create_copy: Source vdisk %s does not exist"
-#~ msgstr ""
-
-#~ msgid "Login to 3PAR array invalid"
-#~ msgstr ""
-
-#~ msgid "There are no datastores present under %s."
-#~ msgstr ""
-
-#~ msgid "Size for volume: %s not found, skipping secure delete."
+#~ msgid ""
+#~ "Cannot create volume of size "
+#~ "%(vol_size)s from snapshot of size "
+#~ "%(snap_size)s"
 #~ msgstr ""
 
 #~ msgid "Could not find attribute for LUN named %s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Cannot clone volume of size %(vol_size)s"
+#~ " from src volume of size "
+#~ "%(src_vol_size)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Cannot create clone of size %(vol_size)s"
+#~ " from volume of size %(src_vol_size)s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Cloning with params volume %(volume)s,src %(src_path)s,\n"
+#~ "                    dest %(dest_path)s, vserver %(vserver)s"
+#~ msgstr ""
+
+#~ msgid "Login to 3PAR array invalid"
 #~ msgstr ""
 
