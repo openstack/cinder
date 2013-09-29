@@ -18,15 +18,11 @@
 
 import sys
 
-from oslo.config import cfg
-
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
-
-CONF = cfg.CONF
 
 
 class BrickException(Exception):
@@ -58,15 +54,14 @@ class BrickException(Exception):
                 exc_info = sys.exc_info()
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_('Exception in string format operation'))
+                msg = (_("Exception in string format operation.  msg='%s'")
+                       % self.msg_fmt)
+                LOG.exception(msg)
                 for name, value in kwargs.iteritems():
                     LOG.error("%s: %s" % (name, value))
 
-                if CONF.fatal_exception_format_errors:
-                    raise exc_info[0], exc_info[1], exc_info[2]
-                else:
-                    # at least get the core message out if something happened
-                    message = self.msg_fmt
+                # at least get the core message out if something happened
+                message = self.msg_fmt
 
         super(BrickException, self).__init__(message)
 
