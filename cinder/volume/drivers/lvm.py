@@ -436,6 +436,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                     chap_auth,
                     check_exit_code=check_exit_code,
                     old_name=old_name)
+                break
 
             except brick_exception.ISCSITargetCreateFailed:
                 if attempts == 0:
