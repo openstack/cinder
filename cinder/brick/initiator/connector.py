@@ -79,7 +79,8 @@ class InitiatorConnector(executor.Executor):
     @staticmethod
     def factory(protocol, root_helper, driver=None,
                 execute=putils.execute, use_multipath=False,
-                device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT):
+                device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
+                *args, **kwargs):
         """Build a Connector object based upon protocol."""
         LOG.debug("Factory for %s" % protocol)
         protocol = protocol.upper()
@@ -88,30 +89,35 @@ class InitiatorConnector(executor.Executor):
                                   driver=driver,
                                   execute=execute,
                                   use_multipath=use_multipath,
-                                  device_scan_attempts=device_scan_attempts)
+                                  device_scan_attempts=device_scan_attempts,
+                                  *args, **kwargs)
         elif protocol == "FIBRE_CHANNEL":
             return FibreChannelConnector(root_helper=root_helper,
                                          driver=driver,
                                          execute=execute,
                                          use_multipath=use_multipath,
                                          device_scan_attempts=
-                                         device_scan_attempts)
+                                         device_scan_attempts,
+                                         *args, **kwargs)
         elif protocol == "AOE":
             return AoEConnector(root_helper=root_helper,
                                 driver=driver,
                                 execute=execute,
-                                device_scan_attempts=device_scan_attempts)
+                                device_scan_attempts=device_scan_attempts,
+                                *args, **kwargs)
         elif protocol == "NFS" or protocol == "GLUSTERFS":
             return RemoteFsConnector(mount_type=protocol.lower(),
                                      root_helper=root_helper,
                                      driver=driver,
                                      execute=execute,
-                                     device_scan_attempts=device_scan_attempts)
+                                     device_scan_attempts=device_scan_attempts,
+                                     *args, **kwargs)
         elif protocol == "LOCAL":
             return LocalConnector(root_helper=root_helper,
                                   driver=driver,
                                   execute=execute,
-                                  device_scan_attempts=device_scan_attempts)
+                                  device_scan_attempts=device_scan_attempts,
+                                  *args, **kwargs)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -792,7 +798,8 @@ class RemoteFsConnector(InitiatorConnector):
                  device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
                  *args, **kwargs):
         self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
-                                                       execute=execute)
+                                                       execute=execute,
+                                                       *args, **kwargs)
         super(RemoteFsConnector, self).__init__(root_helper, driver=driver,
                                                 execute=execute,
                                                 device_scan_attempts=
