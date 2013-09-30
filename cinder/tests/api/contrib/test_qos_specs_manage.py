@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from xml.dom import minidom
+
 import webob
 
 from cinder.api.contrib import qos_specs_manage
@@ -164,6 +166,29 @@ class QoSSpecManageApiTest(test.TestCase):
         for item in res['qos_specs']:
             self.assertEqual('value1', item['specs']['key1'])
             names.add(item['name'])
+        expected_names = ['qos_specs_1', 'qos_specs_2', 'qos_specs_3']
+        self.assertEqual(names, set(expected_names))
+
+    def test_index_xml_response(self):
+        self.stubs.Set(qos_specs, 'get_all_specs',
+                       return_qos_specs_get_all)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs')
+        res = self.controller.index(req)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/xml'
+        req.headers['Accept'] = 'application/xml'
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(res.status_int, 200)
+        dom = minidom.parseString(res.body)
+        qos_specs_response = dom.getElementsByTagName('qos_spec')
+
+        names = set()
+        for qos_spec in qos_specs_response:
+            name = qos_spec.getAttribute('name')
+            names.add(name)
+
         expected_names = ['qos_specs_1', 'qos_specs_2', 'qos_specs_3']
         self.assertEqual(names, set(expected_names))
 
@@ -367,6 +392,30 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertEqual('1', res_dict['qos_specs']['id'])
         self.assertEqual('qos_specs_1', res_dict['qos_specs']['name'])
 
+    def test_show_xml_response(self):
+        self.stubs.Set(qos_specs, 'get_qos_specs',
+                       return_qos_specs_get_qos_specs)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/1')
+        res = self.controller.show(req, '1')
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/xml'
+        req.headers['Accept'] = 'application/xml'
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(res.status_int, 200)
+        dom = minidom.parseString(res.body)
+        qos_spec_response = dom.getElementsByTagName('qos_spec')
+        qos_spec = qos_spec_response.item(0)
+
+        id = qos_spec.getAttribute('id')
+        name = qos_spec.getAttribute('name')
+        consumer = qos_spec.getAttribute('consumer')
+
+        self.assertEqual(id, u'1')
+        self.assertEqual(name, 'qos_specs_1')
+        self.assertEqual(consumer, 'back-end')
+
     def test_get_associations(self):
         self.stubs.Set(qos_specs, 'get_associations',
                        return_get_qos_associations)
@@ -379,6 +428,30 @@ class QoSSpecManageApiTest(test.TestCase):
                          res['qos_associations'][0]['name'])
         self.assertEqual('FakeVolTypeID',
                          res['qos_associations'][0]['id'])
+
+    def test_get_associations_xml_response(self):
+        self.stubs.Set(qos_specs, 'get_associations',
+                       return_get_qos_associations)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/1/associations')
+        res = self.controller.associations(req, '1')
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/xml'
+        req.headers['Accept'] = 'application/xml'
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(res.status_int, 200)
+        dom = minidom.parseString(res.body)
+        associations_response = dom.getElementsByTagName('associations')
+        association = associations_response.item(0)
+
+        id = association.getAttribute('id')
+        name = association.getAttribute('name')
+        association_type = association.getAttribute('association_type')
+
+        self.assertEqual(id, 'FakeVolTypeID')
+        self.assertEqual(name, 'FakeVolTypeName')
+        self.assertEqual(association_type, 'volume_type')
 
     def test_get_associations_not_found(self):
         self.stubs.Set(qos_specs, 'get_associations',
