@@ -316,11 +316,8 @@ def fetch_to_volume_format(context, image_service,
         if backing_file is not None:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
-                reason=_("fmt=%(fmt)s backed by:"
-                         "%(backing_file)s") % {
-                             'fmt': fmt,
-                             'backing_file': backing_file,
-                         })
+                reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
+                % {'fmt': fmt, 'backing_file': backing_file, })
 
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
@@ -349,12 +346,13 @@ def upload_volume(context, image_service, image_meta, volume_path,
     if (image_meta['disk_format'] == volume_format):
         LOG.debug("%s was %s, no need to convert to %s" %
                   (image_id, volume_format, image_meta['disk_format']))
-        if os.name == 'nt':
+        if os.name == 'nt' or os.access(volume_path, os.R_OK):
             with fileutils.file_open(volume_path) as image_file:
                 image_service.update(context, image_id, {}, image_file)
-        with utils.temporary_chown(volume_path):
-            with fileutils.file_open(volume_path) as image_file:
-                image_service.update(context, image_id, {}, image_file)
+        else:
+            with utils.temporary_chown(volume_path):
+                with fileutils.file_open(volume_path) as image_file:
+                    image_service.update(context, image_id, {}, image_file)
         return
 
     if (CONF.image_conversion_dir and not
