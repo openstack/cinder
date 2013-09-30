@@ -152,6 +152,14 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.warn(_("Driver path %s is deprecated, update your "
                        "configuration to the new path."), volume_driver)
             volume_driver = MAPPING[volume_driver]
+        if volume_driver == 'cinder.volume.drivers.lvm.ThinLVMVolumeDriver':
+            # Deprecated in Havana
+            # Not handled in MAPPING because it requires setting a conf option
+            LOG.warn(_("ThinLVMVolumeDriver is deprecated, please configure "
+                       "LVMISCSIDriver and lvm_type=thin.  Continuing with "
+                       "those settings."))
+            volume_driver = 'cinder.volume.drivers.lvm.LVMISCSIDriver'
+            self.configuration.lvm_type = 'thin'
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
