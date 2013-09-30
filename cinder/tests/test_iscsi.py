@@ -67,8 +67,8 @@ class TargetAdminTestCase(object):
 
     def verify_cmds(self, cmds):
         self.assertEqual(len(cmds), len(self.cmds))
-        for a, b in zip(cmds, self.cmds):
-            self.assertEqual(a, b)
+        for cmd in self.cmds:
+            self.assertTrue(cmd in cmds)
 
     def verify(self):
         script = self.get_script()
@@ -105,7 +105,8 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.script_template = "\n".join([
             'tgt-admin --update iqn.2011-09.org.foo.bar:blaa',
             'tgt-admin --force '
-            '--delete iqn.2010-10.org.openstack:volume-blaa'])
+            '--delete iqn.2010-10.org.openstack:volume-blaa',
+            'tgtadm --lld iscsi --op show --mode target'])
 
     def tearDown(self):
         try:

@@ -167,6 +167,18 @@ class TgtAdm(TargetAdmin):
                                        '--update',
                                        name,
                                        run_as_root=True)
+            # Grab targets list for debug
+            # Consider adding a check for lun 0 and 1 for tgtadm
+            # before considering this as valid
+            (out, err) = self._execute('tgtadm',
+                                       '--lld',
+                                       'iscsi',
+                                       '--op',
+                                       'show',
+                                       '--mode',
+                                       'target',
+                                       run_as_root=True)
+            LOG.debug("Targets after update: %s" % out)
         except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
