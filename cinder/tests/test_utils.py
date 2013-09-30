@@ -791,23 +791,27 @@ class BrickUtils(test.TestCase):
         connector.ISCSIConnector(execute=putils.execute,
                                  driver=None,
                                  root_helper=root_helper,
-                                 use_multipath=False)
+                                 use_multipath=False,
+                                 device_scan_attempts=3)
 
         self.mox.StubOutClassWithMocks(connector, 'FibreChannelConnector')
         connector.FibreChannelConnector(execute=putils.execute,
                                         driver=None,
                                         root_helper=root_helper,
-                                        use_multipath=False)
+                                        use_multipath=False,
+                                        device_scan_attempts=3)
 
         self.mox.StubOutClassWithMocks(connector, 'AoEConnector')
         connector.AoEConnector(execute=putils.execute,
                                driver=None,
-                               root_helper=root_helper)
+                               root_helper=root_helper,
+                               device_scan_attempts=3)
 
         self.mox.StubOutClassWithMocks(connector, 'LocalConnector')
         connector.LocalConnector(execute=putils.execute,
                                  driver=None,
-                                 root_helper=root_helper)
+                                 root_helper=root_helper,
+                                 device_scan_attempts=3)
 
         self.mox.ReplayAll()
         utils.brick_get_connector('iscsi')

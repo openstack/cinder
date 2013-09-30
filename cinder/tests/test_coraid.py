@@ -18,6 +18,7 @@
 import math
 
 import mox
+from oslo.config import cfg
 
 from cinder.brick.initiator import connector
 from cinder import exception
@@ -32,6 +33,7 @@ from cinder.volume.drivers import coraid
 from cinder.volume import volume_types
 
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -242,6 +244,7 @@ class CoraidDriverTestCase(test.TestCase):
         configuration.snapshot_name_template = "snapshot-%s"
         configuration.coraid_repository_key = fake_coraid_repository_key
         configuration.use_multipath_for_image_xfer = False
+        configuration.num_volume_device_scan_tries = 3
         self.fake_rpc = FakeRpc()
 
         self.stubs.Set(coraid.CoraidRESTClient, 'rpc', self.fake_rpc)
@@ -774,7 +777,8 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
         root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
 
         self.mox.StubOutWithMock(connector, 'get_connector_properties')
-        connector.get_connector_properties(root_helper).\
+        connector.get_connector_properties(root_helper,
+                                           CONF.my_ip).\
             AndReturn({})
 
         self.mox.StubOutWithMock(utils, 'brick_get_connector')
@@ -782,6 +786,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
         aoe_initiator = self.mox.CreateMockAnything()
 
         utils.brick_get_connector('aoe',
+                                  device_scan_attempts=3,
                                   use_multipath=False).\
             AndReturn(aoe_initiator)
 

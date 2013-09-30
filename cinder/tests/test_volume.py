@@ -2008,7 +2008,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         self.volume.driver.db.volume_get(self.context, vol['id']).\
             AndReturn(vol)
         cinder.brick.initiator.connector.\
-            get_connector_properties(root_helper).AndReturn(properties)
+            get_connector_properties(root_helper, CONF.my_ip).\
+            AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
             AndReturn(attach_info)
         os.getuid()
@@ -2040,7 +2041,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         self.mox.StubOutWithMock(self.volume.driver, 'terminate_connection')
 
         cinder.brick.initiator.connector.\
-            get_connector_properties(root_helper).AndReturn(properties)
+            get_connector_properties(root_helper, CONF.my_ip).\
+            AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
             AndReturn(attach_info)
         os.getuid()
