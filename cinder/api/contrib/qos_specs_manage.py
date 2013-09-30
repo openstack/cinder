@@ -35,24 +35,39 @@ LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('volume', 'qos_specs_manage')
 
 
+def make_qos_specs(elem):
+    elem.set('id')
+    elem.set('name')
+    elem.set('consumer')
+    elem.append(SpecsTemplate())
+
+
+def make_associations(elem):
+    elem.set('association_type')
+    elem.set('name')
+    elem.set('id')
+
+
+class SpecsTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        return xmlutil.MasterTemplate(xmlutil.make_flat_dict('specs'), 1)
+
+
 class QoSSpecsTemplate(xmlutil.TemplateBuilder):
     def construct(self):
-        root = xmlutil.make_flat_dict('qos_specs', selector='qos_specs')
+        root = xmlutil.TemplateElement('qos_specs')
+        elem = xmlutil.SubTemplateElement(root, 'qos_spec',
+                                          selector='qos_specs')
+        make_qos_specs(elem)
         return xmlutil.MasterTemplate(root, 1)
 
 
-class QoSSpecTemplate(xmlutil.TemplateBuilder):
-    # FIXME(zhiteng) Need to handle consumer
+class AssociationsTemplate(xmlutil.TemplateBuilder):
     def construct(self):
-        tagname = xmlutil.Selector('key')
-
-        def qosspec_sel(obj, do_raise=False):
-            # Have to extract the key and value for later use...
-            key, value = obj.items()[0]
-            return dict(key=key, value=value)
-
-        root = xmlutil.TemplateElement(tagname, selector=qosspec_sel)
-        root.text = 'value'
+        root = xmlutil.TemplateElement('qos_associations')
+        elem = xmlutil.SubTemplateElement(root, 'associations',
+                                          selector='qos_associations')
+        make_associations(elem)
         return xmlutil.MasterTemplate(root, 1)
 
 
@@ -245,7 +260,7 @@ class QoSSpecsController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=QoSSpecsTemplate)
+    @wsgi.serializers(xml=AssociationsTemplate)
     def associations(self, req, id):
         """List all associations of given qos specs."""
         context = req.environ['cinder.context']
