@@ -52,7 +52,7 @@ def parse_xml_file(filepath):
         return root
     except IOError as err:
         LOG.error(_('parse_xml_file: %s') % err)
-        raise exception.ConfigNotFound(path=err)
+        raise err
 
 
 def ssh_read(user, channel, cmd, timeout):
@@ -62,9 +62,10 @@ def ssh_read(user, channel, cmd, timeout):
     while True:
         try:
             result = result + channel.recv(8192)
-        except socket.timeout:
-            raise exception.CinderException(_('ssh_read: Read '
-                                              'SSH timeout.'))
+        except socket.timeout as err:
+            msg = _('ssh_read: Read SSH timeout. %s') % err
+            LOG.error(msg)
+            raise err
         else:
             # CLI returns welcome information when first log in. So need to
             # deal differently.
@@ -79,6 +80,7 @@ def ssh_read(user, channel, cmd, timeout):
                 # Reach maximum limit of SSH connection.
                 elif re.search('No response message', result):
                     msg = _('No response message. Please check system status.')
+                    LOG.error(msg)
                     raise exception.CinderException(msg)
             elif (re.search(user + ':/>' + cmd, result) and
                   result.endswith(user + ':/>')):
@@ -363,6 +365,7 @@ class TseriesCommon():
             else:
                 err_msg = (_('LUNType must be "Thin" or "Thick". '
                              'LUNType:%(type)s') % {'type': luntype})
+                LOG.error(err_msg)
                 raise exception.InvalidInput(reason=err_msg)
 
         stripunitsize = root.findtext('LUN/StripUnitSize')
@@ -412,6 +415,7 @@ class TseriesCommon():
                      'id. Please check config file and make sure '
                      'the StoragePool %s is created in storage '
                      'array.') % pools_conf)
+        LOG.error(err_msg)
         raise exception.InvalidInput(reason=err_msg)
 
     def _execute_cli(self, cmd):
@@ -487,6 +491,7 @@ class TseriesCommon():
                 else:
                     if ssh_client:
                         self.ssh_pool.remove(ssh_client)
+                    LOG.error(_('_execute_cli: %s') % err)
                     raise err
 
     def _reset_transport_timeout(self, ssh, time):
@@ -840,6 +845,7 @@ class TseriesCommon():
                                                 'msg': msg,
                                                 'cmd': cmd,
                                                 'out': cliout})
+            LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def _assert_cli_operate_out(self, func, msg, cmd, cliout):
@@ -851,6 +857,7 @@ class TseriesCommon():
         """Map a volume to a host."""
         # Map a LUN to a host if not mapped.
         if not self._check_volume_created(volume_id):
+            LOG.error(_('map_volume: Volume %s was not found.') % volume_id)
             raise exception.VolumeNotFound(volume_id=volume_id)
 
         hostlun_id = None
@@ -1320,6 +1327,7 @@ class DoradoCommon(TseriesCommon):
             else:
                 err_msg = (_('LUNType must be "Thin" or "Thick". '
                              'LUNType:%(type)s') % {'type': luntype})
+                LOG.error(err_msg)
                 raise exception.InvalidInput(reason=err_msg)
 
         # Here we do not judge whether the parameters are set correct.
