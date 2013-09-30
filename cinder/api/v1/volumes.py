@@ -80,7 +80,13 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     d['size'] = vol['size']
     d['availability_zone'] = vol['availability_zone']
     d['created_at'] = vol['created_at']
-    d['bootable'] = vol['bootable']
+
+    # Need to form the string true/false explicitly here to
+    # maintain our API contract
+    if vol['bootable']:
+        d['bootable'] = 'true'
+    else:
+        d['bootable'] = 'false'
 
     d['attachments'] = []
     if vol['attach_status'] == 'attached':
