@@ -1713,7 +1713,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         def fake_delete_volume_rpc(self, ctxt, vol_id):
             raise Exception('should not be called')
 
-        def fake_create_volume(self, ctxt, volume, host, req_spec, filters):
+        def fake_create_volume(self, ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
             db.volume_update(ctxt, volume['id'],
                              {'status': 'available'})
 

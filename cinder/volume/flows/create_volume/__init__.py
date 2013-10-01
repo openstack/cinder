@@ -732,8 +732,8 @@ class VolumeCastTask(base.CinderTask):
                 context,
                 CONF.volume_topic,
                 volume_id,
-                snapshot_id,
-                image_id,
+                snapshot_id=snapshot_id,
+                image_id=image_id,
                 request_spec=request_spec,
                 filter_properties=filter_properties)
         else:
@@ -746,8 +746,8 @@ class VolumeCastTask(base.CinderTask):
                 context,
                 volume_ref,
                 volume_ref['host'],
-                request_spec=request_spec,
-                filter_properties=filter_properties,
+                request_spec,
+                filter_properties,
                 allow_reschedule=False,
                 snapshot_id=snapshot_id,
                 image_id=image_id,
@@ -893,8 +893,9 @@ class OnFailureRescheduleTask(base.CinderTask):
             retry_info['exc'] = traceback.format_exception(*cause.exc_info)
 
         return create_volume(context, CONF.volume_topic, volume_id,
-                             snapshot_id, image_id, request_spec,
-                             filter_properties)
+                             snapshot_id=snapshot_id, image_id=image_id,
+                             request_spec=request_spec,
+                             filter_properties=filter_properties)
 
     def _post_reschedule(self, context, volume_id):
         """Actions that happen after the rescheduling attempt occur here."""
