@@ -96,8 +96,21 @@ class SheepdogDriver(driver.VolumeDriver):
                           volume['name'], size)
 
     def _delete(self, volume):
-        self._try_execute('collie', 'vdi', 'delete',
-                          volume['name'])
+        # Delete a volume if it exists. If it doesn't exist, log
+        # a warning message and ignore the error.
+        not_found_msg = (
+            "Cannot get VDI info for %(name)s 0 : No VDI found\n"
+            "Failed to open VDI %(name)s\n"
+        ) % volume
+        try:
+            self._try_execute('collie', 'vdi', 'delete',
+                              volume['name'],
+                              no_retry_list=[not_found_msg])
+        except processutils.ProcessExecutionError, ex:
+            if ex.exit_code == 1 and ex.stderr == not_found_msg:
+                LOG.warning("Ignoring delete: %s" % (ex.stderr,))
+            else:
+                raise
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         # use the image_conversion_dir as a temporary place to save the image
