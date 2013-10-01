@@ -331,6 +331,9 @@ class FakeHVSCommon(rest_common.HVSCommon):
             if url == "iscsi_initiator/":
                 data = """{"error":{"code":0}}"""
 
+            if url == "iscsi_initiator":
+                data = """{"error":{"code":0}}"""
+
             if url == "mappingview":
                 self.termin_flag = True
                 if method is None:

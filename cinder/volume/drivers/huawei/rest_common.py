@@ -758,29 +758,31 @@ class HVSCommon():
 
     def _initiator_is_added_to_array(self, ininame):
         """Check whether the initiator is already added in array."""
-        url = self.url + "/iscsi_initiator/" + ininame
+        url = self.url + "/iscsi_initiator"
         data = json.dumps({"TYPE": "222", "ID": ininame})
         result = self.call(url, data, "GET")
         self._assert_rest_result(result,
                                  'Check initiator added to array error.')
 
-        if "data" in result and result['data']['ID']:
-            return True
-        else:
-            return False
+        if "data" in result:
+            for item in result['data']:
+                if item["ID"] == ininame:
+                    return True
+        return False
 
     def _is_initiator_associated_to_host(self, ininame):
         """Check whether the initiator is associated to the host."""
-        url = self.url + "/iscsi_initiator/" + ininame
+        url = self.url + "/iscsi_initiator"
         data = json.dumps({"TYPE": "222", "ID": ininame})
         result = self.call(url, data, "GET")
         self._assert_rest_result(result,
                                  'Check initiator associated to host error.')
 
-        if "data" in result and result['data']['ISFREE'] == "true":
-            return True
-        else:
-            return False
+        if "data" in result:
+            for item in result['data']:
+                if item['ID'] == ininame and item['ISFREE'] == "true":
+                    return False
+        return True
 
     def _add_initiator_to_array(self, ininame):
         """Add a new initiator to storage device."""
