@@ -186,6 +186,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             # to initialize the driver correctly.
             return
 
+        # at this point the driver is considered initailized.
+        # next re-initialize exports and clean up volumes that
+        # should be deleted.
+        self.driver.set_initialized()
+
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         LOG.debug(_("Re-exporting %s volumes"), len(volumes))
         for volume in volumes:
@@ -204,8 +209,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             if volume['status'] == 'deleting':
                 LOG.info(_('Resuming delete on volume: %s') % volume['id'])
                 self.delete_volume(ctxt, volume['id'])
-
-        self.driver.set_initialized()
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
