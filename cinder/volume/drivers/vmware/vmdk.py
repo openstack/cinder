@@ -69,6 +69,12 @@ vmdk_opts = [
                default=7200,
                help='Timeout in seconds for VMDK volume transfer between '
                     'Cinder and Glance.'),
+    cfg.IntOpt('vmware_max_objects_retrieval',
+               default=100,
+               help='Max number of objects to be retrieved per batch. '
+                    'Query results will be obtained in batches from the '
+                    'server and not in one shot. Server may still limit the '
+                    'count to something less than the configured value.'),
 ]
 
 
@@ -136,7 +142,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     @property
     def volumeops(self):
         if not self._volumeops:
-            self._volumeops = volumeops.VMwareVolumeOps(self.session)
+            max_objects = self.configuration.vmware_max_objects_retrieval
+            self._volumeops = volumeops.VMwareVolumeOps(self.session,
+                                                        max_objects)
         return self._volumeops
 
     def do_setup(self, context):
@@ -154,7 +162,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 raise exception.InvalidInput(_("%s not set.") % param)
 
         # Create the session object for the first time
-        self._volumeops = volumeops.VMwareVolumeOps(self.session)
+        max_objects = self.configuration.vmware_max_objects_retrieval
+        self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
         LOG.info(_("Successfully setup driver: %(driver)s for "
                    "server: %(ip)s.") %
                  {'driver': self.__class__.__name__,
@@ -316,30 +325,32 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :param volume: Volume object
         :return: Reference to the created backing
         """
-        # Get all hosts
-        hosts = self.volumeops.get_hosts()
-        if not hosts:
-            msg = _("There are no hosts in the inventory.")
-            LOG.error(msg)
-            raise error_util.VimException(msg)
 
-        backing = None
-        for host in hosts:
-            try:
-                host = hosts[0].obj
-                backing = self._create_backing(volume, host)
+        retrv_result = self.volumeops.get_hosts()
+        while retrv_result:
+            hosts = retrv_result.objects
+            if not hosts:
                 break
-            except error_util.VimException as excep:
-                LOG.warn(_("Unable to find suitable datastore for "
-                           "volume: %(vol)s under host: %(host)s. "
-                           "More details: %(excep)s") %
-                         {'vol': volume['name'], 'host': host, 'excep': excep})
-        if backing:
-            return backing
-        msg = _("Unable to create volume: %(vol)s on the hosts: %(hosts)s.")
-        LOG.error(msg % {'vol': volume['name'], 'hosts': hosts})
-        raise error_util.VimException(msg %
-                                      {'vol': volume['name'], 'hosts': hosts})
+            backing = None
+            for host in hosts:
+                try:
+                    backing = self._create_backing(volume, host.obj)
+                    if backing:
+                        break
+                except error_util.VimException as excep:
+                    LOG.warn(_("Unable to find suitable datastore for "
+                               "volume: %(vol)s under host: %(host)s. "
+                               "More details: %(excep)s") %
+                             {'vol': volume['name'],
+                              'host': host.obj, 'excep': excep})
+            if backing:
+                self.volumeops.cancel_retrieval(retrv_result)
+                return backing
+            retrv_result = self.volumeops.continue_retrieval(retrv_result)
+
+        msg = _("Unable to create volume: %s in the inventory.")
+        LOG.error(msg % volume['name'])
+        raise error_util.VimException(msg % volume['name'])
 
     def _initialize_connection(self, volume, connector):
         """Get information of volume's backing.

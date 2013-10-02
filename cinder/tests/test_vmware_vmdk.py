@@ -108,6 +108,17 @@ class FakeProp(object):
         self.val = val
 
 
+class FakeRetrieveResult(object):
+    def __init__(self, objects, token):
+        self.objects = objects
+        self.token = token
+
+
+class FakeObj(object):
+    def __init__(self, obj=None):
+        self.obj = obj
+
+
 class VMwareEsxVmdkDriverTestCase(test.TestCase):
     """Test class for VMwareEsxVmdkDriver."""
 
@@ -118,6 +129,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     API_RETRY_COUNT = 3
     TASK_POLL_INTERVAL = 5.0
     IMG_TX_TIMEOUT = 10
+    MAX_OBJECTS = 100
 
     def setUp(self):
         super(VMwareEsxVmdkDriverTestCase, self).setUp()
@@ -131,6 +143,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._config.vmware_api_retry_count = self.API_RETRY_COUNT
         self._config.vmware_task_poll_interval = self.TASK_POLL_INTERVAL
         self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
+        self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
         self._driver = vmdk.VMwareEsxVmdkDriver(configuration=self._config)
         api_retry_count = self._config.vmware_api_retry_count,
         task_poll_interval = self._config.vmware_task_poll_interval,
@@ -138,7 +151,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                              self.PASSWORD, api_retry_count,
                                              task_poll_interval,
                                              create_session=False)
-        self._volumeops = volumeops.VMwareVolumeOps(self._session)
+        self._volumeops = volumeops.VMwareVolumeOps(self._session,
+                                                    self.MAX_OBJECTS)
         self._vim = FakeVim()
 
     def test_retry(self):
@@ -233,6 +247,34 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
+    def test_continue_retrieval(self):
+        """Test continue_retrieval."""
+        m = self.mox
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        self._session.invoke_api(vim_util, 'continue_retrieval',
+                                 self._vim, mox.IgnoreArg())
+
+        m.ReplayAll()
+        self._volumeops.continue_retrieval(mox.IgnoreArg())
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_cancel_retrieval(self):
+        """Test cancel_retrieval."""
+        m = self.mox
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        self._session.invoke_api(vim_util, 'cancel_retrieval',
+                                 self._vim, mox.IgnoreArg())
+
+        m.ReplayAll()
+        self._volumeops.cancel_retrieval(mox.IgnoreArg())
+        m.UnsetStubs()
+        m.VerifyAll()
+
     def test_get_backing(self):
         """Test get_backing."""
         m = self.mox
@@ -240,7 +282,26 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
         self._session.invoke_api(vim_util, 'get_objects',
-                                 self._vim, 'VirtualMachine').AndReturn([])
+                                 self._vim, 'VirtualMachine',
+                                 self.MAX_OBJECTS)
+
+        m.ReplayAll()
+        self._volumeops.get_backing(mox.IgnoreArg())
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_get_backing_multiple_retrieval(self):
+        """Test get_backing with multiple retrieval."""
+        m = self.mox
+        m.StubOutWithMock(api.VMwareAPISession, 'vim')
+        self._session.vim = self._vim
+        m.StubOutWithMock(self._session, 'invoke_api')
+        retrieve_result = FakeRetrieveResult([], 'my_token')
+        self._session.invoke_api(vim_util, 'get_objects',
+                                 self._vim, 'VirtualMachine',
+                                 self.MAX_OBJECTS).AndReturn(retrieve_result)
+        m.StubOutWithMock(self._volumeops, 'cancel_retrieval')
+        self._volumeops.continue_retrieval(retrieve_result)
 
         m.ReplayAll()
         self._volumeops.get_backing(mox.IgnoreArg())
@@ -337,8 +398,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
-        self._session.invoke_api(vim_util, 'get_objects',
-                                 self._vim, 'HostSystem')
+        self._session.invoke_api(vim_util, 'get_objects', self._vim,
+                                 'HostSystem', self.MAX_OBJECTS)
 
         m.ReplayAll()
         self._volumeops.get_hosts()
@@ -512,6 +573,33 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.ReplayAll()
         self._volumeops.create_backing(name, size_kb, disk_type, folder,
                                        resource_pool, host, ds_name)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_create_backing_in_inventory_multi_hosts(self):
+        """Test _create_backing_in_inventory scanning multiple hosts."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        host1 = FakeObj(obj=FakeMor('HostSystem', 'my_host1'))
+        host2 = FakeObj(obj=FakeMor('HostSystem', 'my_host2'))
+        retrieve_result = FakeRetrieveResult([host1, host2], None)
+        m.StubOutWithMock(self._volumeops, 'get_hosts')
+        self._volumeops.get_hosts().AndReturn(retrieve_result)
+        m.StubOutWithMock(self._driver, '_create_backing')
+        volume = FakeObject()
+        backing = FakeMor('VirtualMachine', 'my_back')
+        mux = self._driver._create_backing(volume, host1.obj)
+        mux.AndRaise(error_util.VimException('Maintenance mode'))
+        mux = self._driver._create_backing(volume, host2.obj)
+        mux.AndReturn(backing)
+        m.StubOutWithMock(self._volumeops, 'cancel_retrieval')
+        self._volumeops.cancel_retrieval(retrieve_result)
+        m.StubOutWithMock(self._volumeops, 'continue_retrieval')
+
+        m.ReplayAll()
+        result = self._driver._create_backing_in_inventory(volume)
+        self.assertEqual(result, backing)
         m.UnsetStubs()
         m.VerifyAll()
 

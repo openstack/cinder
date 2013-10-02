@@ -61,8 +61,9 @@ def split_datastore_path(datastore_path):
 class VMwareVolumeOps(object):
     """Manages volume operations."""
 
-    def __init__(self, session):
+    def __init__(self, session, max_objects):
         self._session = session
+        self._max_objects = max_objects
 
     def get_backing(self, name):
         """Get the backing based on name.
@@ -70,11 +71,20 @@ class VMwareVolumeOps(object):
         :param name: Name of the backing
         :return: Managed object reference to the backing
         """
-        vms = self._session.invoke_api(vim_util, 'get_objects',
-                                       self._session.vim, 'VirtualMachine')
-        for vm in vms:
-            if vm.propSet[0].val == name:
-                return vm.obj
+
+        retrieve_result = self._session.invoke_api(vim_util, 'get_objects',
+                                                   self._session.vim,
+                                                   'VirtualMachine',
+                                                   self._max_objects)
+        while retrieve_result:
+            vms = retrieve_result.objects
+            for vm in vms:
+                if vm.propSet[0].val == name:
+                    # We got the result, so cancel further retrieval.
+                    self.cancel_retrieval(retrieve_result)
+                    return vm.obj
+            # Result not obtained, continue retrieving results.
+            retrieve_result = self.continue_retrieval(retrieve_result)
 
         LOG.debug(_("Did not find any backing with name: %s") % name)
 
@@ -108,7 +118,26 @@ class VMwareVolumeOps(object):
         :return: All the hosts from the inventory
         """
         return self._session.invoke_api(vim_util, 'get_objects',
-                                        self._session.vim, 'HostSystem')
+                                        self._session.vim,
+                                        'HostSystem', self._max_objects)
+
+    def continue_retrieval(self, retrieve_result):
+        """Continue retrieval of results if necessary.
+
+        :param retrieve_result: Result from RetrievePropertiesEx
+        """
+
+        return self._session.invoke_api(vim_util, 'continue_retrieval',
+                                        self._session.vim, retrieve_result)
+
+    def cancel_retrieval(self, retrieve_result):
+        """Cancel retrieval of results if necessary.
+
+        :param retrieve_result: Result from RetrievePropertiesEx
+        """
+
+        self._session.invoke_api(vim_util, 'cancel_retrieval',
+                                 self._session.vim, retrieve_result)
 
     def _is_valid(self, datastore, host):
         """Check if host's datastore is accessible, mounted and writable.
