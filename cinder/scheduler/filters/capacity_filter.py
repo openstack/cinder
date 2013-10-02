@@ -1,5 +1,5 @@
 # Copyright (c) 2012 Intel
-# Copyright (c) 2012 OpenStack, LLC.
+# Copyright (c) 2012 OpenStack Foundation
 #
 # All Rights Reserved.
 #

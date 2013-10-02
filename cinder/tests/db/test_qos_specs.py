@@ -1,5 +1,5 @@
 # Copyright (C) 2013 eBay Inc.
-# Copyright (C) 2013 OpenStack LLC.
+# Copyright (C) 2013 OpenStack Foundation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may

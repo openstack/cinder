@@ -1,4 +1,4 @@
-#    Copyright 2012 OpenStack LLC
+#    Copyright 2012 OpenStack Foundation
 #    Copyright (c) 2013 Zelin.io
 #    All Rights Reserved.
 #
