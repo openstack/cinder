@@ -20,30 +20,12 @@
 import hashlib
 import os
 
-from oslo.config import cfg
-
 from cinder.brick import exception
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
-
-remotefs_client_opts = [
-    cfg.StrOpt('nfs_mount_point_base',
-               default='$state_path/mnt',
-               help='Base dir containing mount points for nfs shares'),
-    cfg.StrOpt('nfs_mount_options',
-               default=None,
-               help='Mount options passed to the nfs client. See section '
-                    'of the nfs man page for details'),
-    cfg.StrOpt('glusterfs_mount_point_base',
-               default='$state_path/mnt',
-               help='Base dir containing mount points for gluster shares'),
-]
-
-CONF = cfg.CONF
-CONF.register_opts(remotefs_client_opts)
 
 
 class RemoteFsClient(object):
@@ -53,10 +35,16 @@ class RemoteFsClient(object):
 
         self._mount_type = mount_type
         if mount_type == "nfs":
-            self._mount_base = CONF.nfs_mount_point_base
-            self._mount_options = CONF.nfs_mount_options
+            self._mount_base = kwargs.get('nfs_mount_point_base', None)
+            if not self._mount_base:
+                raise exception.InvalidParameterValue(
+                    err=_('nfs_mount_point_base required'))
+            self._mount_options = kwargs.get('nfs_mount_options', None)
         elif mount_type == "glusterfs":
-            self._mount_base = CONF.glusterfs_mount_point_base
+            self._mount_base = kwargs.get('glusterfs_mount_point_base', None)
+            if not self._mount_base:
+                raise exception.InvalidParameterValue(
+                    err=_('glusterfs_mount_point_base required'))
             self._mount_options = None
         else:
             raise exception.ProtocolNotSupported(protocol=mount_type)

@@ -269,23 +269,6 @@
 
 
 #
-# Options defined in cinder.brick.remotefs.remotefs
-#
-
-# Base dir containing mount points for nfs shares (string
-# value)
-#nfs_mount_point_base=$state_path/mnt
-
-# Mount options passed to the nfs client. See section of the
-# nfs man page for details (string value)
-#nfs_mount_options=<None>
-
-# Base dir containing mount points for gluster shares (string
-# value)
-#glusterfs_mount_point_base=$state_path/mnt
-
-
-#
 # Options defined in cinder.common.config
 #
 
@@ -1193,6 +1176,10 @@
 # (boolean value)
 #glusterfs_qcow2_volumes=false
 
+# Base dir containing mount points for gluster shares. (string
+# value)
+#glusterfs_mount_point_base=$state_path/mnt
+
 
 #
 # Options defined in cinder.volume.drivers.gpfs
@@ -1408,6 +1395,14 @@
 # volume destination.  If the ratio exceeds this number, the
 # destination will no longer be valid. (floating point value)
 #nfs_oversub_ratio=1.0
+
+# Base dir containing mount points for nfs shares. (string
+# value)
+#nfs_mount_point_base=$state_path/mnt
+
+# Mount options passed to the nfs client. See section of the
+# nfs man page for details. (string value)
+#nfs_mount_options=<None>
 
 
 #

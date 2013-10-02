@@ -34,9 +34,8 @@ class BrickRemoteFsTestCase(test.TestCase):
     def setUp(self):
         super(BrickRemoteFsTestCase, self).setUp()
         self._mox = mox.Mox()
-        self._nfsclient = remotefs.RemoteFsClient('nfs', 'sudo')
-        self._nfsclient._mount_options = None
-        self._nfsclient._mount_base = self.TEST_MNT_BASE
+        self._nfsclient = remotefs.RemoteFsClient(
+            'nfs', 'sudo', nfs_mount_point_base=self.TEST_MNT_BASE)
         self.addCleanup(self._mox.UnsetStubs)
 
     def test_get_hash_str(self):
@@ -80,3 +79,22 @@ class BrickRemoteFsTestCase(test.TestCase):
         client.mount(self.TEST_EXPORT)
 
         mox.VerifyAll()
+
+    def test_nfs_mount_options(self):
+        opts = 'test_nfs_mount_options'
+        client = remotefs.RemoteFsClient(
+            'nfs', 'sudo', nfs_mount_point_base=self.TEST_MNT_BASE,
+            nfs_mount_options=opts)
+        self.assertEqual(opts, client._mount_options)
+
+    def test_nfs_mount_point_base(self):
+        base = '/mnt/test/nfs/mount/point/base'
+        client = remotefs.RemoteFsClient('nfs', 'sudo',
+                                         nfs_mount_point_base=base)
+        self.assertEqual(base, client._mount_base)
+
+    def test_glusterfs_mount_point_base(self):
+        base = '/mnt/test/glusterfs/mount/point/base'
+        client = remotefs.RemoteFsClient('glusterfs', 'sudo',
+                                         glusterfs_mount_point_base=base)
+        self.assertEqual(base, client._mount_base)

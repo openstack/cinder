@@ -135,10 +135,10 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_sparsed_volumes = True
         self.configuration.nfs_used_ratio = 0.95
         self.configuration.nfs_oversub_ratio = 1.0
+        self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        self.configuration.nfs_mount_options = None
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
-        self._driver._remotefsclient._mount_options = None
-        self._driver._remotefsclient._mount_base = self.TEST_MNT_POINT_BASE
         self.addCleanup(self.stubs.UnsetAll)
         self.addCleanup(self._mox.UnsetStubs)
 

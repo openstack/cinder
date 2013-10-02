@@ -381,12 +381,13 @@ class TestNexentaNfsDriver(test.TestCase):
 
     def setUp(self):
         super(TestNexentaNfsDriver, self).setUp()
-        self.stubs = stubout.StubOutForTesting()
         self.configuration = mox_lib.MockObject(conf.Configuration)
         self.configuration.nexenta_shares_config = None
         self.configuration.nexenta_mount_point_base = '$state_path/mnt'
         self.configuration.nexenta_sparsed_volumes = True
         self.configuration.nexenta_volume_compression = 'on'
+        self.configuration.nfs_mount_point_base = '/mnt/test'
+        self.configuration.nfs_mount_options = None
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc'):
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
