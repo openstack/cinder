@@ -425,7 +425,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             (share, file_name) = res
             LOG.debug(_('Cache share: %s'), share)
             if (share and
-                    self._is_share_eligible(share, volume['size'])):
+                    self._is_share_vol_compatible(volume, share)):
                 try:
                     self._do_clone_rel_img_cache(
                         file_name, volume['name'], share, file_name)
@@ -443,7 +443,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         cloned = False
         image_location = self._construct_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
-        if share and self._is_share_eligible(share, volume['size']):
+        if share and self._is_share_vol_compatible(volume, share):
             LOG.debug(_('Share is cloneable %s'), share)
             volume['provider_location'] = share
             (__, ___, img_file) = image_location.rpartition('/')
@@ -611,6 +611,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         path = self.local_path(volume)
         self._resize_image_file(path, new_size)
 
+    def _is_share_vol_compatible(self, volume, share):
+        """Checks if share is compatible with volume to host it."""
+        raise NotImplementedError()
+
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
     """Executes commands related to volumes on NetApp filer."""
@@ -708,7 +712,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         self.stale_vols = set()
         if self.vserver:
             self.ssc_enabled = True
-            LOG.warn(_("Shares on vserver %s will only"
+            LOG.info(_("Shares on vserver %s will only"
                        " be used for provisioning.") % (self.vserver))
             ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver)
         else:
@@ -737,19 +741,15 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
         :param volume: volume reference
         """
-
         self._ensure_shares_mounted()
         extra_specs = get_volume_extra_specs(volume)
-        eligible = self._find_containers(volume['size'], extra_specs)
+        eligible = self._find_shares(volume['size'], extra_specs)
         if not eligible:
             raise exception.NfsNoSuitableShareFound(
                 volume_size=volume['size'])
         for sh in eligible:
             try:
-                if self.ssc_enabled:
-                    volume['provider_location'] = sh.export['path']
-                else:
-                    volume['provider_location'] = sh
+                volume['provider_location'] = sh
                 LOG.info(_('casted to %s') % volume['provider_location'])
                 self._do_create_volume(volume)
                 return {'provider_location': volume['provider_location']}
@@ -761,29 +761,26 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 volume['provider_location'] = None
             finally:
                 if self.ssc_enabled:
-                    self._update_stale_vols(volume=sh)
+                    self._update_stale_vols(self._get_vol_for_share(sh))
         msg = _("Volume %s could not be created on shares.")
         raise exception.VolumeBackendAPIException(data=msg % (volume['name']))
 
-    def _find_containers(self, size, extra_specs):
-        """Finds suitable containers for given params."""
+    def _find_shares(self, size, extra_specs):
+        """Finds suitable shares for given params."""
+        shares = []
         containers = []
         if self.ssc_enabled:
-            vols =\
-                ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
-            sort_vols = sorted(vols, reverse=True)
-            for vol in sort_vols:
-                if self._is_share_eligible(vol.export['path'], size):
-                    containers.append(vol)
+            vols = ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
+            containers = [x.export['path'] for x in vols]
         else:
-            for sh in self._mounted_shares:
-                if self._is_share_eligible(sh, size):
-                    total_size, total_available, total_allocated = \
-                        self._get_capacity_info(sh)
-                    containers.append((sh, total_available))
-            containers = [a for a, b in
-                          sorted(containers, key=lambda x: x[1], reverse=True)]
-        return containers
+            containers = self._mounted_shares
+        for sh in containers:
+            if self._is_share_eligible(sh, size):
+                size, avl, alloc = self._get_capacity_info(sh)
+                shares.append((sh, avl))
+        shares = [a for a, b in sorted(
+            shares, key=lambda x: x[1], reverse=True)]
+        return shares
 
     def _clone_volume(self, volume_name, clone_name,
                       volume_id, share=None):
@@ -1010,6 +1007,31 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         except Exception:
             return None
 
+    def _get_vol_for_share(self, nfs_share):
+        """Gets the ssc vol with given share."""
+        if self.ssc_vols:
+            for vol in self.ssc_vols['all']:
+                if vol.export['path'] == nfs_share:
+                    return vol
+        return None
+
+    def _is_share_vol_compatible(self, volume, share):
+        """Checks if share is compatible with volume to host it."""
+        compatible = self._is_share_eligible(share, volume['size'])
+        if compatible and self.ssc_enabled:
+            matched = self._is_share_vol_type_match(volume, share)
+            compatible = compatible and matched
+        return compatible
+
+    def _is_share_vol_type_match(self, volume, share):
+        """Checks if share matches volume type."""
+        netapp_vol = self._get_vol_for_share(share)
+        LOG.debug(_("Found volume %(vol)s for share %(share)s.")
+                  % {'vol': netapp_vol, 'share': share})
+        extra_specs = get_volume_extra_specs(volume)
+        vols = ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
+        return netapp_vol in vols
+
 
 class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
     """Executes commands related to volumes on 7 mode."""
@@ -1220,3 +1242,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
                     return share
         LOG.debug(_('No share match found for ip %s'), ip)
         return None
+
+    def _is_share_vol_compatible(self, volume, share):
+        """Checks if share is compatible with volume to host it."""
+        return self._is_share_eligible(share, volume['size'])
