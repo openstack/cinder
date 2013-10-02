@@ -19,8 +19,6 @@ import os
 import socket
 import time
 
-from oslo.config import cfg
-
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.brick.initiator import host_driver
@@ -35,28 +33,18 @@ from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
 
-connector_opts = [
-    cfg.IntOpt('num_volume_device_scan_tries',
-               deprecated_name='num_iscsi_scan_tries',
-               default=3,
-               help='The maximum number of times to rescan targets'
-                    'to find volume'),
-]
-
-CONF = cfg.CONF
-CONF.register_opts(connector_opts)
-
 synchronized = lockutils.synchronized_with_prefix('brick-')
+DEVICE_SCAN_ATTEMPTS_DEFAULT = 3
 
 
-def get_connector_properties(root_helper):
+def get_connector_properties(root_helper, my_ip):
     """Get the connection properties for all protocols."""
 
     iscsi = ISCSIConnector(root_helper=root_helper)
     fc = linuxfc.LinuxFibreChannel(root_helper=root_helper)
 
     props = {}
-    props['ip'] = CONF.my_ip
+    props['ip'] = my_ip
     props['host'] = socket.gethostname()
     initiator = iscsi.get_initiator()
     if initiator:
@@ -73,12 +61,15 @@ def get_connector_properties(root_helper):
 
 class InitiatorConnector(executor.Executor):
     def __init__(self, root_helper, driver=None,
-                 execute=putils.execute, *args, **kwargs):
+                 execute=putils.execute,
+                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
+                 *args, **kwargs):
         super(InitiatorConnector, self).__init__(root_helper, execute=execute,
                                                  *args, **kwargs)
         if not driver:
             driver = host_driver.HostDriver()
         self.set_driver(driver)
+        self.device_scan_attempts = device_scan_attempts
 
     def set_driver(self, driver):
         """The driver is used to find used LUNs."""
@@ -87,7 +78,8 @@ class InitiatorConnector(executor.Executor):
 
     @staticmethod
     def factory(protocol, root_helper, driver=None,
-                execute=putils.execute, use_multipath=False):
+                execute=putils.execute, use_multipath=False,
+                device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT):
         """Build a Connector object based upon protocol."""
         LOG.debug("Factory for %s" % protocol)
         protocol = protocol.upper()
@@ -95,26 +87,31 @@ class InitiatorConnector(executor.Executor):
             return ISCSIConnector(root_helper=root_helper,
                                   driver=driver,
                                   execute=execute,
-                                  use_multipath=use_multipath)
+                                  use_multipath=use_multipath,
+                                  device_scan_attempts=device_scan_attempts)
         elif protocol == "FIBRE_CHANNEL":
             return FibreChannelConnector(root_helper=root_helper,
                                          driver=driver,
                                          execute=execute,
-                                         use_multipath=use_multipath)
+                                         use_multipath=use_multipath,
+                                         device_scan_attempts=
+                                         device_scan_attempts)
         elif protocol == "AOE":
             return AoEConnector(root_helper=root_helper,
                                 driver=driver,
-                                execute=execute)
+                                execute=execute,
+                                device_scan_attempts=device_scan_attempts)
         elif protocol == "NFS" or protocol == "GLUSTERFS":
             return RemoteFsConnector(mount_type=protocol.lower(),
                                      root_helper=root_helper,
                                      driver=driver,
-                                     execute=execute)
-
+                                     execute=execute,
+                                     device_scan_attempts=device_scan_attempts)
         elif protocol == "LOCAL":
             return LocalConnector(root_helper=root_helper,
                                   driver=driver,
-                                  execute=execute)
+                                  execute=execute,
+                                  device_scan_attempts=device_scan_attempts)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -161,10 +158,14 @@ class ISCSIConnector(InitiatorConnector):
 
     def __init__(self, root_helper, driver=None,
                  execute=putils.execute, use_multipath=False,
+                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
                  *args, **kwargs):
         self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
         super(ISCSIConnector, self).__init__(root_helper, driver=driver,
-                                             execute=execute, *args, **kwargs)
+                                             execute=execute,
+                                             device_scan_attempts=
+                                             device_scan_attempts,
+                                             *args, **kwargs)
         self.use_multipath = use_multipath
 
     def set_execute(self, execute):
@@ -210,7 +211,7 @@ class ISCSIConnector(InitiatorConnector):
         # TODO(justinsb): This retry-with-delay is a pattern, move to utils?
         tries = 0
         while not os.path.exists(host_device):
-            if tries >= CONF.num_volume_device_scan_tries:
+            if tries >= self.device_scan_attempts:
                 raise exception.VolumeDeviceNotFound(device=host_device)
 
             LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
@@ -499,12 +500,15 @@ class FibreChannelConnector(InitiatorConnector):
 
     def __init__(self, root_helper, driver=None,
                  execute=putils.execute, use_multipath=False,
+                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
                  *args, **kwargs):
         self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
         self._linuxfc = linuxfc.LinuxFibreChannel(root_helper, execute)
         super(FibreChannelConnector, self).__init__(root_helper, driver=driver,
-                                                    execute=execute, *args,
-                                                    **kwargs)
+                                                    execute=execute,
+                                                    device_scan_attempts=
+                                                    device_scan_attempts,
+                                                    *args, **kwargs)
         self.use_multipath = use_multipath
 
     def set_execute(self, execute):
@@ -570,7 +574,7 @@ class FibreChannelConnector(InitiatorConnector):
                     self.device_name = os.path.realpath(device)
                     raise loopingcall.LoopingCallDone()
 
-            if self.tries >= CONF.num_volume_device_scan_tries:
+            if self.tries >= self.device_scan_attempts:
                 msg = _("Fibre Channel volume device not found.")
                 LOG.error(msg)
                 raise exception.NoFibreChannelVolumeDeviceFound()
@@ -670,9 +674,14 @@ class FibreChannelConnector(InitiatorConnector):
 class AoEConnector(InitiatorConnector):
     """Connector class to attach/detach AoE volumes."""
     def __init__(self, root_helper, driver=None,
-                 execute=putils.execute, *args, **kwargs):
+                 execute=putils.execute,
+                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
+                 *args, **kwargs):
         super(AoEConnector, self).__init__(root_helper, driver=driver,
-                                           execute=execute, *args, **kwargs)
+                                           execute=execute,
+                                           device_scan_attempts=
+                                           device_scan_attempts,
+                                           *args, **kwargs)
 
     def _get_aoe_info(self, connection_properties):
         shelf = connection_properties['target_shelf']
@@ -710,7 +719,7 @@ class AoEConnector(InitiatorConnector):
             if os.path.exists(aoe_path):
                 raise loopingcall.LoopingCallDone
 
-            if waiting_status['tries'] >= CONF.num_volume_device_scan_tries:
+            if waiting_status['tries'] >= self.device_scan_attempts:
                 raise exception.VolumeDeviceNotFound(device=aoe_path)
 
             LOG.warn(_("AoE volume not yet found at: %(path)s. "
@@ -779,12 +788,16 @@ class RemoteFsConnector(InitiatorConnector):
     """Connector class to attach/detach NFS and GlusterFS volumes."""
 
     def __init__(self, mount_type, root_helper, driver=None,
-                 execute=putils.execute, *args, **kwargs):
+                 execute=putils.execute,
+                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
+                 *args, **kwargs):
         self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
                                                        execute=execute)
         super(RemoteFsConnector, self).__init__(root_helper, driver=driver,
-                                                execute=execute, *args,
-                                                **kwargs)
+                                                execute=execute,
+                                                device_scan_attempts=
+                                                device_scan_attempts,
+                                                *args, **kwargs)
 
     def set_execute(self, execute):
         super(RemoteFsConnector, self).set_execute(execute)

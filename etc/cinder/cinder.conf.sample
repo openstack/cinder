@@ -235,15 +235,6 @@
 
 
 #
-# Options defined in cinder.brick.initiator.connector
-#
-
-# The maximum number of times to rescan targetsto find volume
-# (integer value)
-#num_volume_device_scan_tries=3
-
-
-#
 # Options defined in cinder.brick.iscsi.iscsi
 #
 
@@ -1083,6 +1074,10 @@
 # The port that the iSCSI daemon is listening on (integer
 # value)
 #iscsi_port=3260
+
+# The maximum number of times to rescan targets to find volume
+# (integer value)
+#num_volume_device_scan_tries=3
 
 # The maximum number of times to rescan iSER targetto find
 # volume (integer value)

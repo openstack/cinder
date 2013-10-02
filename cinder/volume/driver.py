@@ -57,6 +57,11 @@ volume_opts = [
     cfg.IntOpt('iscsi_port',
                default=3260,
                help='The port that the iSCSI daemon is listening on'),
+    cfg.IntOpt('num_volume_device_scan_tries',
+               deprecated_name='num_iscsi_scan_tries',
+               default=3,
+               help='The maximum number of times to rescan targets'
+                    ' to find volume'),
     cfg.IntOpt('num_iser_scan_tries',
                default=3,
                help='The maximum number of times to rescan iSER target'
@@ -341,9 +346,12 @@ class VolumeDriver(object):
 
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
+        device_scan_attempts = self.configuration.num_volume_device_scan_tries
         protocol = conn['driver_volume_type']
         connector = utils.brick_get_connector(protocol,
-                                              use_multipath=use_multipath)
+                                              use_multipath=use_multipath,
+                                              device_scan_attempts=
+                                              device_scan_attempts)
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 
@@ -386,8 +394,7 @@ class VolumeDriver(object):
         LOG.debug(_('Creating a new backup for volume %s.') %
                   volume['name'])
 
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        properties = initiator.get_connector_properties(root_helper)
+        properties = utils.brick_get_connector_properties()
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -407,8 +414,7 @@ class VolumeDriver(object):
                   {'backup': backup['id'],
                    'volume': volume['name']})
 
-        root_helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-        properties = initiator.get_connector_properties(root_helper)
+        properties = utils.brick_get_connector_properties()
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
