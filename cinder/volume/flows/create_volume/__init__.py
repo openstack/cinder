@@ -573,6 +573,10 @@ class EntryCreateTask(base.CinderTask):
         # We never produced a result and therefore can't destroy anything.
         if not result:
             return
+        if context.quota_committed:
+            # Committed quota doesn't rollback as the volume has already been
+            # created at this point, and the quota has already been absorbed.
+            return
         vol_id = result['volume_id']
         try:
             self.db.volume_destroy(context.elevated(), vol_id)
@@ -651,6 +655,10 @@ class QuotaReserveTask(base.CinderTask):
         # We never produced a result and therefore can't destroy anything.
         if not result:
             return
+        if context.quota_committed:
+            # The reservations have already been commited and can not be
+            # rolled back at this point.
+            return
         # We actually produced an output that we can revert so lets attempt
         # to use said output to rollback the reservation.
         reservations = result['reservations']
@@ -684,6 +692,7 @@ class QuotaCommitTask(base.CinderTask):
 
     def __call__(self, context, reservations):
         QUOTAS.commit(context, reservations)
+        context.quota_committed = True
 
 
 class VolumeCastTask(base.CinderTask):

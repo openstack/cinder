@@ -85,6 +85,7 @@ class RequestContext(object):
         self.quota_class = quota_class
         if overwrite or not hasattr(local.store, 'context'):
             self.update_store()
+        self.quota_committed = False
 
         if service_catalog:
             # Only include required parts of service_catalog
