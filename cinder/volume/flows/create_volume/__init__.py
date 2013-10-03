@@ -688,11 +688,32 @@ class QuotaCommitTask(base.CinderTask):
 
     def __init__(self):
         super(QuotaCommitTask, self).__init__(addons=[ACTION])
-        self.requires.update(['reservations'])
+        self.requires.update(['reservations', 'volume_properties'])
 
-    def __call__(self, context, reservations):
+    def __call__(self, context, reservations, volume_properties):
         QUOTAS.commit(context, reservations)
         context.quota_committed = True
+        return {'volume_properties': volume_properties}
+
+    def revert(self, context, result, cause):
+        # We never produced a result and therefore can't destroy anything.
+        if not result:
+            return
+        volume = result['volume_properties']
+        try:
+            reserve_opts = {'volumes': -1, 'gigabytes': -volume['size']}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        volume['volume_type_id'])
+            reservations = QUOTAS.reserve(context,
+                                          project_id=context.project_id,
+                                          **reserve_opts)
+            if reservations:
+                QUOTAS.commit(context, reservations,
+                              project_id=context.project_id)
+        except Exception:
+            LOG.exception(_("Failed to update quota for deleting volume: %s"),
+                          volume['id'])
 
 
 class VolumeCastTask(base.CinderTask):
