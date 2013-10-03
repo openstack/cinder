@@ -1760,6 +1760,10 @@
 # performing volume migration (seconds) (integer value)
 #migration_create_volume_timeout_secs=300
 
+# Offload pending volume delete during volume service startup
+# (boolean value)
+#volume_service_inithost_offload=false
+
 
 #
 # Options defined in cinder.volume.utils
@@ -1770,4 +1774,4 @@
 #volume_dd_blocksize=1M
 
 
-# Total option count: 381
+# Total option count: 382
