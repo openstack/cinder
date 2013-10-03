@@ -48,3 +48,6 @@ def set_defaults(conf):
         'xiv_ds8k_proxy',
         'cinder.tests.test_xiv_ds8k.XIVDS8KFakeProxyDriver')
     conf.set_default('backup_driver', 'cinder.tests.backup.fake_service')
+    # NOTE(joel-coffman): This option for the ConfKeyManager must be set or
+    # else the ConfKeyManager cannot be instantiated.
+    conf.set_default('fixed_key', default='0' * 64, group='keymgr')

@@ -637,3 +637,7 @@ class InvalidQoSSpecs(Invalid):
 
 class QoSSpecsInUse(CinderException):
     message = _("QoS Specs %(specs_id)s is still associated with entities.")
+
+
+class KeyManagerError(CinderException):
+    msg_fmt = _("key manager error: %(reason)s")
