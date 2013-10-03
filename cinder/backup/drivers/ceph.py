@@ -54,7 +54,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import units
 from cinder import utils
-import cinder.volume.drivers as drivers
+import cinder.volume.drivers.rbd as rbd_driver
 
 try:
     import rados
@@ -360,7 +360,7 @@ class CephBackupDriver(BackupDriver):
             LOG.debug(_("trying diff format name format basename='%s'") %
                       (base_name))
 
-        with drivers.rbd.RADOSClient(self) as client:
+        with rbd_driver.RADOSClient(self) as client:
             rbd_exists, base_name = \
                 self._rbd_image_exists(base_name, volume_id, client,
                                        try_diff_format=try_diff_format)
@@ -505,7 +505,7 @@ class CephBackupDriver(BackupDriver):
 
         base_name = self._get_backup_base_name(volume_id, diff_format=True)
         image_created = False
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             # If from_snap does not exist at the destination (and the
             # destination exists), this implies a previous backup has failed.
             # In this case we will force a full backup.
@@ -595,7 +595,7 @@ class CephBackupDriver(BackupDriver):
         """
         backup_name = self._get_backup_base_name(volume_id, backup_id)
 
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             # First create base backup image
             old_format, features = self._get_rbd_support()
             LOG.debug(_("creating base image='%s'") % (backup_name))
@@ -610,11 +610,11 @@ class CephBackupDriver(BackupDriver):
             LOG.debug(_("copying data"))
             dest_rbd = self.rbd.Image(client.ioctx, backup_name)
             try:
-                rbd_meta = drivers.rbd.RBDImageMetadata(dest_rbd,
-                                                        self._ceph_backup_pool,
-                                                        self._ceph_backup_user,
-                                                        self._ceph_backup_conf)
-                rbd_fd = drivers.rbd.RBDImageIOWrapper(rbd_meta)
+                rbd_meta = rbd_driver.RBDImageMetadata(dest_rbd,
+                                                       self._ceph_backup_pool,
+                                                       self._ceph_backup_user,
+                                                       self._ceph_backup_conf)
+                rbd_fd = rbd_driver.RBDImageIOWrapper(rbd_meta)
                 self._transfer_data(src_volume, src_name, rbd_fd, backup_name,
                                     length)
             finally:
@@ -758,7 +758,7 @@ class CephBackupDriver(BackupDriver):
         This will result in all extents being copied from source to
         destination.
         """
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             # If a source snapshot is provided we assume the base is diff
             # format.
             if src_snap:
@@ -774,11 +774,11 @@ class CephBackupDriver(BackupDriver):
             src_rbd = self.rbd.Image(client.ioctx, backup_name,
                                      snapshot=src_snap, read_only=True)
             try:
-                rbd_meta = drivers.rbd.RBDImageMetadata(src_rbd,
-                                                        self._ceph_backup_pool,
-                                                        self._ceph_backup_user,
-                                                        self._ceph_backup_conf)
-                rbd_fd = drivers.rbd.RBDImageIOWrapper(rbd_meta)
+                rbd_meta = rbd_driver.RBDImageMetadata(src_rbd,
+                                                       self._ceph_backup_pool,
+                                                       self._ceph_backup_user,
+                                                       self._ceph_backup_conf)
+                rbd_fd = rbd_driver.RBDImageIOWrapper(rbd_meta)
                 self._transfer_data(rbd_fd, backup_name, dest_file, dest_name,
                                     length)
             finally:
@@ -792,7 +792,7 @@ class CephBackupDriver(BackupDriver):
         shrink it to the size of the original backup so we need to
         post-process and resize it back to its expected size.
         """
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             adjust_size = 0
             base_image = self.rbd.Image(client.ioctx, self._utf8(backup_base),
                                         read_only=True)
@@ -803,7 +803,7 @@ class CephBackupDriver(BackupDriver):
                 base_image.close()
 
         if adjust_size:
-            with drivers.rbd.RADOSClient(self, src_pool) as client:
+            with rbd_driver.RADOSClient(self, src_pool) as client:
                 dest_image = self.rbd.Image(client.ioctx,
                                             self._utf8(restore_vol))
                 try:
@@ -847,7 +847,7 @@ class CephBackupDriver(BackupDriver):
 
     def _num_backup_snaps(self, backup_base_name):
         """Return the number of snapshots that exist on the base image."""
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             base_rbd = self.rbd.Image(client.ioctx, backup_base_name,
                                       read_only=True)
             try:
@@ -865,7 +865,7 @@ class CephBackupDriver(BackupDriver):
 
         If the backup was not incremental None is returned.
         """
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             base_rbd = self.rbd.Image(client.ioctx, base_name, read_only=True)
             try:
                 restore_point = self._get_backup_snap_name(base_rbd, base_name,
@@ -955,7 +955,7 @@ class CephBackupDriver(BackupDriver):
         base_name = self._get_backup_base_name(backup['volume_id'],
                                                diff_format=True)
 
-        with drivers.rbd.RADOSClient(self, self._ceph_backup_pool) as client:
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             diff_allowed, restore_point = \
                 self._diff_restore_allowed(base_name, backup, volume,
                                            volume_file, client)
