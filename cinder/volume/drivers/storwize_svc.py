@@ -482,6 +482,11 @@ class StorwizeSVCDriver(san.SanDriver):
             raise exception.NoValidHost(reason=msg)
 
         host_name = str(host_name)
+
+        # Storwize family doesn't like hostname that starts with number.
+        if not re.match('^[A-Za-z]', host_name):
+            host_name = '_' + host_name
+
         return host_name[:55]
 
     def _find_host_from_wwpn(self, connector):
