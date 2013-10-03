@@ -26,8 +26,6 @@ import re
 import stat
 import time
 
-from oslo.config import cfg
-
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.openstack.common import fileutils
@@ -37,35 +35,6 @@ from cinder.openstack.common import processutils as putils
 
 
 LOG = logging.getLogger(__name__)
-
-iscsi_helper_opt = [cfg.StrOpt('iscsi_helper',
-                               default='tgtadm',
-                               help='iscsi target user-land tool to use'),
-                    cfg.StrOpt('volumes_dir',
-                               default='$state_path/volumes',
-                               help='Volume configuration file storage '
-                                    'directory'),
-                    cfg.StrOpt('iet_conf',
-                               default='/etc/iet/ietd.conf',
-                               help='IET configuration file'),
-                    cfg.StrOpt('lio_initiator_iqns',
-                               default='',
-                               help=('Comma-separatd list of initiator IQNs '
-                                     'allowed to connect to the '
-                                     'iSCSI target. (From Nova compute nodes.)'
-                                     )
-                               ),
-                    cfg.StrOpt('iscsi_iotype',
-                               default='fileio',
-                               help=('Sets the behavior of the iSCSI target '
-                                     'to either perform blockio or fileio '
-                                     'optionally, auto can be set and Cinder '
-                                     'will autodetect type of backing device')
-                               )
-                    ]
-
-CONF = cfg.CONF
-CONF.register_opts(iscsi_helper_opt)
 
 
 class TargetAdmin(executor.Executor):
@@ -114,8 +83,13 @@ class TargetAdmin(executor.Executor):
 class TgtAdm(TargetAdmin):
     """iSCSI target administration using tgtadm."""
 
-    def __init__(self, root_helper, execute=putils.execute):
+    def __init__(self, root_helper, volumes_dir,
+                 target_prefix='iqn.2010-10.org.openstack:',
+                 execute=putils.execute):
         super(TgtAdm, self).__init__('tgtadm', root_helper, execute)
+
+        self.iscsi_target_prefix = target_prefix
+        self.volumes_dir = volumes_dir
 
     def _get_target(self, iqn):
         (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
@@ -178,7 +152,7 @@ class TgtAdm(TargetAdmin):
         # Note(jdg) tid and lun aren't used by TgtAdm but remain for
         # compatibility
 
-        fileutils.ensure_tree(CONF.volumes_dir)
+        fileutils.ensure_tree(self.volumes_dir)
 
         vol_id = name.split(':')[1]
         if chap_auth is None:
@@ -196,7 +170,7 @@ class TgtAdm(TargetAdmin):
             """ % (name, path, chap_auth)
 
         LOG.info(_('Creating iscsi_target for: %s') % vol_id)
-        volumes_dir = CONF.volumes_dir
+        volumes_dir = self.volumes_dir
         volume_path = os.path.join(volumes_dir, vol_id)
 
         f = open(volume_path, 'w+')
@@ -238,7 +212,7 @@ class TgtAdm(TargetAdmin):
             os.unlink(volume_path)
             raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
-        iqn = '%s%s' % (CONF.iscsi_target_prefix, vol_id)
+        iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
             LOG.error(_("Failed to create iscsi target for volume "
@@ -274,9 +248,9 @@ class TgtAdm(TargetAdmin):
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_('Removing iscsi_target for: %s') % vol_id)
         vol_uuid_file = vol_name
-        volume_path = os.path.join(CONF.volumes_dir, vol_uuid_file)
+        volume_path = os.path.join(self.volumes_dir, vol_uuid_file)
         if os.path.isfile(volume_path):
-            iqn = '%s%s' % (CONF.iscsi_target_prefix,
+            iqn = '%s%s' % (self.iscsi_target_prefix,
                             vol_uuid_file)
         else:
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
@@ -309,18 +283,21 @@ class TgtAdm(TargetAdmin):
 class IetAdm(TargetAdmin):
     """iSCSI target administration using ietadm."""
 
-    def __init__(self, root_helper, execute=putils.execute):
+    def __init__(self, root_helper, iet_conf='/etc/iet/ietd.conf',
+                 iscsi_iotype='fileio', execute=putils.execute):
         super(IetAdm, self).__init__('ietadm', root_helper, execute)
+        self.iet_conf = iet_conf
+        self.iscsi_iotype = iscsi_iotype
 
     def _is_block(self, path):
         mode = os.stat(path).st_mode
         return stat.S_ISBLK(mode)
 
     def _iotype(self, path):
-        if CONF.iscsi_iotype == 'auto':
+        if self.iscsi_iotype == 'auto':
             return 'blockio' if self._is_block(path) else 'fileio'
         else:
-            return CONF.iscsi_iotype
+            return self.iscsi_iotype
 
     @contextlib.contextmanager
     def temporary_chown(self, path, owner_uid=None):
@@ -356,7 +333,7 @@ class IetAdm(TargetAdmin):
             (type, username, password) = chap_auth.split()
             self._new_auth(tid, type, username, password, **kwargs)
 
-        conf_file = CONF.iet_conf
+        conf_file = self.iet_conf
         if os.path.exists(conf_file):
             try:
                 volume_conf = """
@@ -382,7 +359,7 @@ class IetAdm(TargetAdmin):
         self._delete_logicalunit(tid, lun, **kwargs)
         self._delete_target(tid, **kwargs)
         vol_uuid_file = vol_name
-        conf_file = CONF.iet_conf
+        conf_file = self.iet_conf
         if os.path.exists(conf_file):
             with self.temporary_chown(conf_file):
                 try:
@@ -458,9 +435,16 @@ class FakeIscsiHelper(object):
 
 class LioAdm(TargetAdmin):
     """iSCSI target administration for LIO using python-rtslib."""
-    def __init__(self, root_helper, execute=putils.execute):
+    def __init__(self, root_helper, lio_initiator_iqns='',
+                 iscsi_target_prefix='iqn.2010-10.org.openstack:',
+                 execute=putils.execute):
         super(LioAdm, self).__init__('rtstool', root_helper, execute)
 
+        self.iscsi_target_prefix = iscsi_target_prefix
+        self.lio_initiator_iqns = lio_initiator_iqns
+        self._verify_rtstool()
+
+    def _verify_rtstool(self):
         try:
             self._execute('rtstool', 'verify')
         except (OSError, putils.ProcessExecutionError):
@@ -494,8 +478,8 @@ class LioAdm(TargetAdmin):
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
         extra_args = []
-        if CONF.lio_initiator_iqns:
-            extra_args.append(CONF.lio_initiator_iqns)
+        if self.lio_initiator_iqns:
+            extra_args.append(self.lio_initiator_iqns)
 
         try:
             command_args = ['rtstool',
@@ -514,7 +498,7 @@ class LioAdm(TargetAdmin):
 
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
-        iqn = '%s%s' % (CONF.iscsi_target_prefix, vol_id)
+        iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
         if tid is None:
             LOG.error(_("Failed to create iscsi target for volume "
@@ -526,7 +510,7 @@ class LioAdm(TargetAdmin):
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_('Removing iscsi_target: %s') % vol_id)
         vol_uuid_name = vol_name
-        iqn = '%s%s' % (CONF.iscsi_target_prefix, vol_uuid_name)
+        iqn = '%s%s' % (self.iscsi_target_prefix, vol_uuid_name)
 
         try:
             self._execute('rtstool',
@@ -566,14 +550,3 @@ class LioAdm(TargetAdmin):
             LOG.error(_("Failed to add initiator iqn %s to target") %
                       connector['initiator'])
             raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
-
-
-def get_target_admin(root_helper):
-    if CONF.iscsi_helper == 'tgtadm':
-        return TgtAdm(root_helper)
-    elif CONF.iscsi_helper == 'fake':
-        return FakeIscsiHelper()
-    elif CONF.iscsi_helper == 'lioadm':
-        return LioAdm(root_helper)
-    else:
-        return IetAdm(root_helper)

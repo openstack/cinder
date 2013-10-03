@@ -21,6 +21,7 @@ import tempfile
 
 from cinder.brick.iscsi import iscsi
 from cinder import test
+from cinder.volume import driver
 from cinder.volume import utils as volume_utils
 
 
@@ -41,15 +42,19 @@ class TargetAdminTestCase(object):
         self.stubs.Set(os, 'unlink', lambda _: '')
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         self.stubs.Set(iscsi.LioAdm, '_get_target', self.fake_get_target)
-        self.stubs.Set(iscsi.LioAdm, '__init__', self.fake_init)
+        self.stubs.Set(iscsi.LioAdm,
+                       '_verify_rtstool',
+                       self.fake_verify_rtstool)
+        self.driver = driver.ISCSIDriver()
         self.stubs.Set(iscsi.TgtAdm, '_verify_backing_lun',
                        self.fake_verify_backing_lun)
+        self.driver = driver.ISCSIDriver()
 
     def fake_verify_backing_lun(obj, iqn, tid):
         return True
 
-    def fake_init(obj, root_helper):
-        return
+    def fake_verify_rtstool(obj):
+        pass
 
     def fake_get_target(obj, iqn):
         return 1
@@ -85,7 +90,7 @@ class TargetAdminTestCase(object):
         self.verify_cmds(cmds)
 
     def run_commands(self):
-        tgtadm = iscsi.get_target_admin(None)
+        tgtadm = self.driver.get_target_admin()
         tgtadm.set_execute(self.fake_execute)
         tgtadm.create_iscsi_target(self.target_name, self.tid,
                                    self.lun, self.path)

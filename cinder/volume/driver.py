@@ -26,6 +26,7 @@ import time
 from oslo.config import cfg
 
 from cinder.brick.initiator import connector as initiator
+from cinder.brick.iscsi import iscsi
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
@@ -91,7 +92,28 @@ volume_opts = [
                     'none, zero, shred)'),
     cfg.IntOpt('volume_clear_size',
                default=0,
-               help='Size in MiB to wipe at start of old volumes. 0 => all'), ]
+               help='Size in MiB to wipe at start of old volumes. 0 => all'),
+    cfg.StrOpt('iscsi_helper',
+               default='tgtadm',
+               help='iscsi target user-land tool to use'),
+    cfg.StrOpt('volumes_dir',
+               default='$state_path/volumes',
+               help='Volume configuration file storage '
+               'directory'),
+    cfg.StrOpt('iet_conf',
+               default='/etc/iet/ietd.conf',
+               help='IET configuration file'),
+    cfg.StrOpt('lio_initiator_iqns',
+               default='',
+               help=('Comma-separated list of initiator IQNs '
+                     'allowed to connect to the '
+                     'iSCSI target. (From Nova compute nodes.)')),
+    cfg.StrOpt('iscsi_iotype',
+               default='fileio',
+               help=('Sets the behavior of the iSCSI target '
+                     'to either perform blockio or fileio '
+                     'optionally, auto can be set and Cinder '
+                     'will autodetect type of backing device'))]
 
 
 CONF = cfg.CONF
@@ -664,6 +686,22 @@ class ISCSIDriver(VolumeDriver):
 
     def accept_transfer(self, context, volume, new_user, new_project):
         pass
+
+    def get_target_admin(self):
+        root_helper = utils.get_root_helper()
+
+        if CONF.iscsi_helper == 'tgtadm':
+            return iscsi.TgtAdm(root_helper,
+                                CONF.volumes_dir,
+                                CONF.iscsi_target_prefix)
+        elif CONF.iscsi_helper == 'fake':
+            return iscsi.FakeIscsiHelper()
+        elif CONF.iscsi_helper == 'lioadm':
+            return iscsi.LioAdm(root_helper,
+                                CONF.lio_initiator_iqns,
+                                CONF.iscsi_target_prefix)
+        else:
+            return iscsi.IetAdm(root_helper, CONF.iet_conf, CONF.iscsi_iotype)
 
 
 class FakeISCSIDriver(ISCSIDriver):
