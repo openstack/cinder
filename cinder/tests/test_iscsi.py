@@ -42,6 +42,11 @@ class TargetAdminTestCase(object):
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         self.stubs.Set(iscsi.LioAdm, '_get_target', self.fake_get_target)
         self.stubs.Set(iscsi.LioAdm, '__init__', self.fake_init)
+        self.stubs.Set(iscsi.TgtAdm, '_verify_backing_lun',
+                       self.fake_verify_backing_lun)
+
+    def fake_verify_backing_lun(obj, iqn, tid):
+        return True
 
     def fake_init(obj, root_helper):
         return

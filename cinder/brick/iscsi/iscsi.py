@@ -24,6 +24,7 @@ import contextlib
 import os
 import re
 import stat
+import time
 
 from oslo.config import cfg
 
@@ -127,6 +128,51 @@ class TgtAdm(TargetAdmin):
 
         return None
 
+    def _verify_backing_lun(self, iqn, tid):
+        backing_lun = True
+        capture = False
+        target_info = []
+
+        (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
+        lines = out.split('\n')
+
+        for line in lines:
+            if iqn in line and "Target %s" % tid in line:
+                capture = True
+            if capture:
+                target_info.append(line)
+            if iqn not in line and 'Target ' in line:
+                capture = False
+
+        if '        LUN: 1' not in target_info:
+            backing_lun = False
+
+        return backing_lun
+
+    def _recreate_backing_lun(self, iqn, tid, name, path):
+        LOG.warning(_('Attempting recreate of backing lun...'))
+
+        # Since we think the most common case of this is a dev busy
+        # (create vol from snapshot) we're going to add a sleep here
+        # this will hopefully give things enough time to stabilize
+        # how long should we wait??  I have no idea, let's go big
+        # and error on the side of caution
+
+        time.sleep(10)
+        try:
+            (out, err) = self._execute('tgtadm', '--lld', 'iscsi',
+                                       '--op', 'new', '--mode',
+                                       'logicalunit', '--tid',
+                                       tid, '--lun', '1', '-b',
+                                       path, run_as_root=True)
+            LOG.debug('StdOut from recreate backing lun: %s' % out)
+            LOG.debug('StdErr from recreate backing lun: %s' % err)
+        except putils.ProcessExecutionError as e:
+            LOG.error(_("Failed to recover attempt to create "
+                        "iscsi backing lun for volume "
+                        "id:%(vol_id)s: %(e)s")
+                      % {'vol_id': name, 'e': str(e)})
+
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
         # Note(jdg) tid and lun aren't used by TgtAdm but remain for
@@ -167,6 +213,10 @@ class TgtAdm(TargetAdmin):
                                        '--update',
                                        name,
                                        run_as_root=True)
+
+            LOG.debug("StdOut from tgt-admin --update: %s" % out)
+            LOG.debug("StdErr from tgt-admin --update: %s" % err)
+
             # Grab targets list for debug
             # Consider adding a check for lun 0 and 1 for tgtadm
             # before considering this as valid
@@ -198,6 +248,23 @@ class TgtAdm(TargetAdmin):
                             'volumes_dir': volumes_dir,
                         })
             raise exception.NotFound()
+
+        # NOTE(jdg): Sometimes we have some issues with the backing lun
+        # not being created, believe this is due to a device busy
+        # or something related, so we're going to add some code
+        # here that verifies the backing lun (lun 1) was created
+        # and we'll try and recreate it if it's not there
+        if not self._verify_backing_lun(iqn, tid):
+            try:
+                self._recreate_backing_lun(iqn, tid, name, path)
+            except putils.ProcessExecutionError:
+                os.unlink(volume_path)
+                raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+
+        # Finally check once more and if no go, fail and punt
+        if not self._verify_backing_lun(iqn, tid):
+            os.unlink(volume_path)
+            raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         if old_persist_file is not None and os.path.exists(old_persist_file):
             os.unlink(old_persist_file)
@@ -495,7 +562,7 @@ class LioAdm(TargetAdmin):
                           auth_pass,
                           connector['initiator'],
                           run_as_root=True)
-        except putils.ProcessExecutionError as e:
+        except putils.ProcessExecutionError:
             LOG.error(_("Failed to add initiator iqn %s to target") %
                       connector['initiator'])
             raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
