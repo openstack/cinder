@@ -64,6 +64,8 @@ from cinder.volume import volume_types
 
 from cinder.taskflow import states
 
+from eventlet.greenpool import GreenPool
+
 LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
@@ -76,6 +78,10 @@ volume_manager_opts = [
                default=300,
                help='Timeout for creating the volume to migrate to '
                     'when performing volume migration (seconds)'),
+    cfg.BoolOpt('volume_service_inithost_offload',
+                default=False,
+                help='Offload pending volume delete during '
+                     'volume service startup'),
 ]
 
 CONF = cfg.CONF
@@ -144,6 +150,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                             *args, **kwargs)
         self.configuration = Configuration(volume_manager_opts,
                                            config_group=service_name)
+        self._tp = GreenPool()
+
         if not volume_driver:
             # Get from configuration, which will get the default
             # if its not using the multi backend
@@ -164,6 +172,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             volume_driver,
             configuration=self.configuration,
             db=self.db)
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
 
     def init_host(self):
         """Do any initialization that needs to be run if this is a
@@ -208,7 +219,15 @@ class VolumeManager(manager.SchedulerDependentManager):
         for volume in volumes:
             if volume['status'] == 'deleting':
                 LOG.info(_('Resuming delete on volume: %s') % volume['id'])
-                self.delete_volume(ctxt, volume['id'])
+                if CONF.volume_service_inithost_offload:
+                    # Offload all the pending volume delete operations to the
+                    # threadpool to prevent the main volume service thread
+                    # from being blocked.
+                    self._add_to_threadpool(self.delete_volume(ctxt,
+                                                               volume['id']))
+                else:
+                    # By default, delete volumes sequentially
+                    self.delete_volume(ctxt, volume['id'])
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
