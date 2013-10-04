@@ -118,19 +118,20 @@ class Vim(object):
     def __getattr__(self, attr_name):
         """Makes the API call and gets the result."""
 
-        def retrieve_properties_fault_checker(response):
-            """Checks the RetrieveProperties response for errors.
+        def retrieve_properties_ex_fault_checker(response):
+            """Checks the RetrievePropertiesEx response for errors.
 
             Certain faults are sent as part of the SOAP body as property of
             missingSet. For example NotAuthenticated fault. The method raises
             appropriate VimFaultException when an error is found.
 
-            :param response: Response from RetrieveProperties API call
+            :param response: Response from RetrievePropertiesEx API call
             """
+
             fault_list = []
             if not response:
                 # This is the case when the session has timed out. ESX SOAP
-                # server sends an empty RetrievePropertiesResponse. Normally
+                # server sends an empty RetrievePropertiesExResponse. Normally
                 # missingSet in the returnval field has the specifics about
                 # the error, but that's not the case with a timed out idle
                 # session. It is as bad as a terminated session for we cannot
@@ -150,7 +151,7 @@ class Vim(object):
                 raise error_util.VimFaultException(fault_list,
                                                    _("Error(s): %s occurred "
                                                      "in the call to "
-                                                     "RetrieveProperties.") %
+                                                     "RetrievePropertiesEx.") %
                                                    exc_msg_list)
 
         def vim_request_handler(managed_object, **kwargs):
@@ -163,15 +164,16 @@ class Vim(object):
             :param kwargs: Keyword arguments of the call
             :return: Response of the API call
             """
+
             try:
                 if isinstance(managed_object, str):
                     # For strings use string value for value and type
                     # of the managed object.
                     managed_object = get_moref(managed_object, managed_object)
-                request = getattr(self._client.service, attr_name)
+                request = getattr(self.client.service, attr_name)
                 response = request(managed_object, **kwargs)
-                if (attr_name.lower() == 'retrieveproperties'):
-                    retrieve_properties_fault_checker(response)
+                if (attr_name.lower() == 'retrievepropertiesex'):
+                    retrieve_properties_ex_fault_checker(response)
                 return response
 
             except error_util.VimFaultException as excep:
