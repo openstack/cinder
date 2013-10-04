@@ -852,7 +852,9 @@ class BackupsAPITestCase(test.TestCase):
 
         def fake_backup_api_restore_throwing_VolumeSizeExceedsAvailableQuota(
                 cls, context, backup_id, volume_id):
-            raise exception.VolumeSizeExceedsAvailableQuota()
+            raise exception.VolumeSizeExceedsAvailableQuota(requested='2',
+                                                            consumed='2',
+                                                            quota='3')
 
         self.stubs.Set(
             cinder.backup.API,
@@ -877,7 +879,8 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
                          'Requested volume or snapshot exceeds allowed '
-                         'Gigabytes quota')
+                         'Gigabytes quota. Requested 2G, quota is 3G and '
+                         '2G has been consumed.')
 
     def test_restore_backup_with_VolumeLimitExceeded(self):
 

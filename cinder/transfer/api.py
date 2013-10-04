@@ -162,7 +162,10 @@ class API(base.Base):
                                 's_size': vol_ref['size'],
                                 'd_consumed': _consumed('gigabytes'),
                                 'd_quota': quotas['gigabytes']})
-                raise exception.VolumeSizeExceedsAvailableQuota()
+                raise exception.VolumeSizeExceedsAvailableQuota(
+                    requested=vol_ref['size'],
+                    consumed=_consumed('gigabytes'),
+                    quota=quotas['gigabytes'])
             elif 'volumes' in overs:
                 msg = _("Quota exceeded for %(s_pid)s, tried to create "
                         "volume (%(d_consumed)d volumes "
