@@ -64,8 +64,6 @@ class ConfKeyManager(key_mgr.KeyManager):
     """
 
     def __init__(self):
-        LOG.warn(_('This key manager is insecure and is not recommended for '
-                   'production deployments'))
         super(ConfKeyManager, self).__init__()
 
         self.key_id = '00000000-0000-0000-0000-000000000000'
