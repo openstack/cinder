@@ -43,9 +43,15 @@ CONF.register_opts(options.NEXENTA_VOLUME_OPTIONS)
 
 
 class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
-    """Executes volume driver commands on Nexenta Appliance."""
+    """Executes volume driver commands on Nexenta Appliance.
 
-    VERSION = '1.0.0'
+    Version history:
+        1.0.0 - Initial driver version.
+        1.0.1 - Fixed bug #1236626: catch "does not exist" exception of
+                lu_exists.
+    """
+
+    VERSION = '1.0.1'
 
     def __init__(self, *args, **kwargs):
         super(NexentaDriver, self).__init__(*args, **kwargs)
@@ -264,7 +270,12 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :raises: NexentaException if zvol not exists
         :return: True if LU exists, else False
         """
-        return bool(self.nms.scsidisk.lu_exists(zvol_name))
+        try:
+            return bool(self.nms.scsidisk.lu_exists(zvol_name))
+        except nexenta.NexentaException as exc:
+            if 'does not exist' not in exc.args[0]:
+                raise
+            return False
 
     def _is_lu_shared(self, zvol_name):
         """Check if LU exists on appliance and shared.
