@@ -672,13 +672,6 @@ def quota_class_destroy_all_by_name(context, class_name):
 ###################
 
 
-def quota_usage_create(context, project_id, resource, in_use, reserved,
-                       until_refresh):
-    """Create a quota usage for the given project and resource."""
-    return IMPL.quota_usage_create(context, project_id, resource,
-                                   in_use, reserved, until_refresh)
-
-
 def quota_usage_get(context, project_id, resource):
     """Retrieve a quota usage or raise if it does not exist."""
     return IMPL.quota_usage_get(context, project_id, resource)

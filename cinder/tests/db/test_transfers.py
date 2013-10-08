@@ -54,6 +54,13 @@ class TransfersTableTestCase(test.TestCase):
         volume_id = utils.create_volume(self.ctxt)['id']
         self._create_transfer(volume_id)
 
+    def test_transfer_create_not_available(self):
+        volume_id = utils.create_volume(self.ctxt, size=1,
+                                        status='notavailable')['id']
+        self.assertRaises(exception.InvalidVolume,
+                          self._create_transfer,
+                          volume_id)
+
     def test_transfer_get(self):
         volume_id1 = utils.create_volume(self.ctxt)['id']
         xfer_id1 = self._create_transfer(volume_id1)

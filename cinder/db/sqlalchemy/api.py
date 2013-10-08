@@ -198,48 +198,6 @@ def model_query(context, *args, **kwargs):
     return query
 
 
-def exact_filter(query, model, filters, legal_keys):
-    """Applies exact match filtering to a query.
-
-    Returns the updated query.  Modifies filters argument to remove
-    filters consumed.
-
-    :param query: query to apply filters to
-    :param model: model object the query applies to, for IN-style
-                  filtering
-    :param filters: dictionary of filters; values that are lists,
-                    tuples, sets, or frozensets cause an 'IN' test to
-                    be performed, while exact matching ('==' operator)
-                    is used for other values
-    :param legal_keys: list of keys to apply exact filtering to
-    """
-
-    filter_dict = {}
-
-    # Walk through all the keys
-    for key in legal_keys:
-        # Skip ones we're not filtering on
-        if key not in filters:
-            continue
-
-        # OK, filtering on this key; what value do we search for?
-        value = filters.pop(key)
-
-        if isinstance(value, (list, tuple, set, frozenset)):
-            # Looking for values in a list; apply to query directly
-            column_attr = getattr(model, key)
-            query = query.filter(column_attr.in_(value))
-        else:
-            # OK, simple exact match; save for later
-            filter_dict[key] = value
-
-    # Apply simple exact matches
-    if filter_dict:
-        query = query.filter_by(**filter_dict)
-
-    return query
-
-
 def _sync_volumes(context, project_id, session, volume_type_id=None,
                   volume_type_name=None):
     (volumes, gigs) = _volume_data_get_for_project(
@@ -669,12 +627,6 @@ def _quota_usage_create(context, project_id, resource, in_use, reserved,
 
     return quota_usage_ref
 
-
-@require_admin_context
-def quota_usage_create(context, project_id, resource, in_use, reserved,
-                       until_refresh):
-    return _quota_usage_create(context, project_id, resource, in_use, reserved,
-                               until_refresh)
 
 ###################
 
@@ -1654,12 +1606,6 @@ def _snapshot_metadata_get_item(context, snapshot_id, key, session=None):
 
 @require_context
 @require_snapshot_exists
-def snapshot_metadata_get_item(context, snapshot_id, key):
-    return _snapshot_metadata_get_item(context, snapshot_id, key)
-
-
-@require_context
-@require_snapshot_exists
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
     session = get_session()
     with session.begin():
@@ -1975,11 +1921,6 @@ def _volume_type_extra_specs_get_item(context, volume_type_id, key,
 
 
 @require_context
-def volume_type_extra_specs_get_item(context, volume_type_id, key):
-    return _volume_type_extra_specs_get_item(context, volume_type_id, key)
-
-
-@require_context
 def volume_type_extra_specs_update_or_create(context, volume_type_id,
                                              specs):
     session = get_session()
@@ -2174,8 +2115,8 @@ def qos_specs_associations_get(context, qos_specs_id):
     extend qos specs association to other entities, such as volumes,
     sometime in future.
     """
+    # Raise QoSSpecsNotFound if no specs found
     _qos_specs_get_ref(context, qos_specs_id, None)
-
     return volume_type_qos_associations_get(context, qos_specs_id)
 
 
