@@ -20,6 +20,7 @@
 
 .. automodule:: nexenta.jsonrpc
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
+.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
 """
 
 import urllib2
@@ -36,8 +37,13 @@ class NexentaJSONException(nexenta.NexentaException):
 
 
 class NexentaJSONProxy(object):
-    def __init__(self, url, user, password, auto=False, obj=None, method=None):
-        self.url = url
+
+    def __init__(self, scheme, host, port, path, user, password, auto=False,
+                 obj=None, method=None):
+        self.scheme = scheme.lower()
+        self.host = host
+        self.port = port
+        self.path = path
         self.user = user
         self.password = password
         self.auto = auto
@@ -51,34 +57,46 @@ class NexentaJSONProxy(object):
             obj, method = self.obj, name
         else:
             obj, method = '%s.%s' % (self.obj, self.method), name
-        return NexentaJSONProxy(self.url, self.user, self.password, self.auto,
-                                obj, method)
+        return NexentaJSONProxy(self.scheme, self.host, self.port, self.path,
+                                self.user, self.password, self.auto, obj,
+                                method)
+
+    @property
+    def url(self):
+        return '%s://%s:%s%s' % (self.scheme, self.host, self.port, self.path)
+
+    def __hash__(self):
+        return self.url.__hash__()
+
+    def __repr__(self):
+        return 'NMS proxy: %s' % self.url
 
     def __call__(self, *args):
-        data = jsonutils.dumps({'object': self.obj,
-                                'method': self.method,
-                                'params': args})
+        data = jsonutils.dumps({
+            'object': self.obj,
+            'method': self.method,
+            'params': args
+        })
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
-        headers = {'Content-Type': 'application/json',
-                   'Authorization': 'Basic %s' % (auth,)}
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic %s' % auth
+        }
         LOG.debug(_('Sending JSON data: %s'), data)
         request = urllib2.Request(self.url, data, headers)
         response_obj = urllib2.urlopen(request)
         if response_obj.info().status == 'EOF in headers':
-            if self.auto and self.url.startswith('http://'):
-                LOG.info(_('Auto switching to HTTPS connection to %s'),
-                         self.url)
-                self.url = 'https' + self.url[4:]
-                request = urllib2.Request(self.url, data, headers)
-                response_obj = urllib2.urlopen(request)
-            else:
+            if not self.auto or self.scheme != 'http':
                 LOG.error(_('No headers in server response'))
                 raise NexentaJSONException(_('Bad response from server'))
+            LOG.info(_('Auto switching to HTTPS connection to %s'), self.url)
+            self.scheme = 'https'
+            request = urllib2.Request(self.url, data, headers)
+            response_obj = urllib2.urlopen(request)
 
         response_data = response_obj.read()
         LOG.debug(_('Got response: %s'), response_data)
         response = jsonutils.loads(response_data)
         if response.get('error') is not None:
             raise NexentaJSONException(response['error'].get('message', ''))
-        else:
-            return response.get('result')
+        return response.get('result')

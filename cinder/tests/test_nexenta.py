@@ -23,7 +23,6 @@ import base64
 import urllib2
 
 import mox as mox_lib
-from mox import stubout
 
 from cinder import test
 from cinder import units
@@ -270,19 +269,22 @@ class TestNexentaDriver(test.TestCase):
 
 
 class TestNexentaJSONRPC(test.TestCase):
-    URL = 'http://example.com/'
-    URL_S = 'https://example.com/'
+    HOST = 'example.com'
+    URL = 'http://%s/' % HOST
+    URL_S = 'https://%s/' % HOST
     USER = 'user'
     PASSWORD = 'password'
-    HEADERS = {'Authorization': 'Basic %s' % (
-        base64.b64encode(':'.join((USER, PASSWORD))),),
-        'Content-Type': 'application/json'}
+    HEADERS = {
+        'Authorization':
+        'Basic %s' % base64.b64encode('%s:%s' % (USER, PASSWORD)),
+        'Content-Type': 'application/json'
+    }
     REQUEST = 'the request'
 
     def setUp(self):
         super(TestNexentaJSONRPC, self).setUp()
         self.proxy = jsonrpc.NexentaJSONProxy(
-            self.URL, self.USER, self.PASSWORD, auto=True)
+            'http', self.HOST, 2000, '/', self.USER, self.PASSWORD, auto=True)
         self.mox.StubOutWithMock(urllib2, 'Request', True)
         self.mox.StubOutWithMock(urllib2, 'urlopen')
         self.resp_mock = self.mox.CreateMockAnything()
@@ -292,7 +294,7 @@ class TestNexentaJSONRPC(test.TestCase):
 
     def test_call(self):
         urllib2.Request(
-            self.URL,
+            'http://%s:2000/' % self.HOST,
             '{"object": null, "params": ["arg1", "arg2"], "method": null}',
             self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = ''
@@ -304,7 +306,7 @@ class TestNexentaJSONRPC(test.TestCase):
 
     def test_call_deep(self):
         urllib2.Request(
-            self.URL,
+            'http://%s:2000/' % self.HOST,
             '{"object": "obj1.subobj", "params": ["arg1", "arg2"],'
             ' "method": "meth"}',
             self.HEADERS).AndReturn(self.REQUEST)
@@ -317,11 +319,11 @@ class TestNexentaJSONRPC(test.TestCase):
 
     def test_call_auto(self):
         urllib2.Request(
-            self.URL,
+            'http://%s:2000/' % self.HOST,
             '{"object": null, "params": ["arg1", "arg2"], "method": null}',
             self.HEADERS).AndReturn(self.REQUEST)
         urllib2.Request(
-            self.URL_S,
+            'https://%s:2000/' % self.HOST,
             '{"object": null, "params": ["arg1", "arg2"], "method": null}',
             self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = 'EOF in headers'
@@ -334,7 +336,7 @@ class TestNexentaJSONRPC(test.TestCase):
 
     def test_call_error(self):
         urllib2.Request(
-            self.URL,
+            'http://%s:2000/' % self.HOST,
             '{"object": null, "params": ["arg1", "arg2"], "method": null}',
             self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = ''
@@ -346,7 +348,7 @@ class TestNexentaJSONRPC(test.TestCase):
 
     def test_call_fail(self):
         urllib2.Request(
-            self.URL,
+            'http://%s:2000/' % self.HOST,
             '{"object": null, "params": ["arg1", "arg2"], "method": null}',
             self.HEADERS).AndReturn(self.REQUEST)
         self.resp_info_mock.status = 'EOF in headers'

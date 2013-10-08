@@ -69,11 +69,10 @@ class NexentaDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         auto = protocol == 'auto'
         if auto:
             protocol = 'http'
-        url = '%s://%s:%s/rest/nms/' % (protocol,
-                                        self.configuration.nexenta_host,
-                                        self.configuration.nexenta_rest_port)
         self.nms = jsonrpc.NexentaJSONProxy(
-            url, self.configuration.nexenta_user,
+            protocol, self.configuration.nexenta_host,
+            self.configuration.nexenta_rest_port, '/rest/nms',
+            self.configuration.nexenta_user,
             self.configuration.nexenta_password, auto=auto)
 
     def check_for_setup_error(self):
