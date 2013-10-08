@@ -66,13 +66,14 @@ class FakeMor(object):
 
 
 class FakeObject(object):
-    fields = {}
+    def __init__(self):
+        self._fields = {}
 
     def __setitem__(self, key, value):
-        self.fields[key] = value
+        self._fields[key] = value
 
     def __getitem__(self, item):
-        return self.fields[item]
+        return self._fields[item]
 
 
 class FakeManagedObjectReference(object):
@@ -588,6 +589,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._volumeops.get_hosts().AndReturn(retrieve_result)
         m.StubOutWithMock(self._driver, '_create_backing')
         volume = FakeObject()
+        volume['name'] = 'vol_name'
         backing = FakeMor('VirtualMachine', 'my_back')
         mux = self._driver._create_backing(volume, host1.obj)
         mux.AndRaise(error_util.VimException('Maintenance mode'))
@@ -836,6 +838,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(self._volumeops, 'get_backing')
         snapshot = FakeObject()
         snapshot['volume_name'] = 'volume_name'
+        snapshot['name'] = 'snap_name'
+        snapshot['volume'] = FakeObject()
+        snapshot['volume']['status'] = 'available'
         self._volumeops.get_backing(snapshot['volume_name'])
 
         m.ReplayAll()
@@ -853,6 +858,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         snapshot['volume_name'] = 'volume_name'
         snapshot['name'] = 'snapshot_name'
         snapshot['display_description'] = 'snapshot_desc'
+        snapshot['volume'] = FakeObject()
+        snapshot['volume']['status'] = 'available'
         backing = FakeMor('VirtualMachine', 'my_back')
         self._volumeops.get_backing(snapshot['volume_name']).AndReturn(backing)
         m.StubOutWithMock(self._volumeops, 'create_snapshot')
@@ -863,6 +870,15 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._driver.create_snapshot(snapshot)
         m.UnsetStubs()
         m.VerifyAll()
+
+    def test_create_snapshot_when_attached(self):
+        """Test vmdk.create_snapshot when volume is attached."""
+        snapshot = FakeObject()
+        snapshot['volume'] = FakeObject()
+        snapshot['volume']['status'] = 'in-use'
+
+        self.assertRaises(exception.InvalidVolume,
+                          self._driver.create_snapshot, snapshot)
 
     def test_get_snapshot_from_tree(self):
         """Test _get_snapshot_from_tree."""
@@ -946,6 +962,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(self._volumeops, 'get_backing')
         snapshot = FakeObject()
         snapshot['volume_name'] = 'volume_name'
+        snapshot['name'] = 'snap_name'
+        snapshot['volume'] = FakeObject()
+        snapshot['volume']['status'] = 'available'
         self._volumeops.get_backing(snapshot['volume_name'])
 
         m.ReplayAll()
@@ -962,6 +981,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         snapshot = FakeObject()
         snapshot['name'] = 'snapshot_name'
         snapshot['volume_name'] = 'volume_name'
+        snapshot['name'] = 'snap_name'
+        snapshot['volume'] = FakeObject()
+        snapshot['volume']['status'] = 'available'
         backing = FakeMor('VirtualMachine', 'my_back')
         self._volumeops.get_backing(snapshot['volume_name']).AndReturn(backing)
         m.StubOutWithMock(self._volumeops, 'delete_snapshot')
@@ -973,6 +995,15 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
+    def test_delete_snapshot_when_attached(self):
+        """Test delete_snapshot when volume is attached."""
+        snapshot = FakeObject()
+        snapshot['volume'] = FakeObject()
+        snapshot['volume']['status'] = 'in-use'
+
+        self.assertRaises(exception.InvalidVolume,
+                          self._driver.delete_snapshot, snapshot)
+
     def test_create_cloned_volume_without_backing(self):
         """Test create_cloned_volume without a backing."""
         m = self.mox
@@ -981,6 +1012,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(self._volumeops, 'get_backing')
         volume = FakeObject()
         volume['name'] = 'volume_name'
+        volume['status'] = 'available'
         src_vref = FakeObject()
         src_vref['name'] = 'src_volume_name'
         self._volumeops.get_backing(src_vref['name'])
@@ -1090,6 +1122,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume['name'] = 'volume_name'
         snapshot = FakeObject()
         snapshot['volume_name'] = 'volume_name'
+        snapshot['name'] = 'snap_name'
         self._volumeops.get_backing(snapshot['volume_name'])
 
         m.ReplayAll()
@@ -1342,12 +1375,27 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         image_meta['disk_format'] = 'novmdk'
         volume = FakeObject()
         volume['name'] = 'vol-name'
+        volume['status'] = 'available'
 
         m.ReplayAll()
         self.assertRaises(exception.ImageUnacceptable,
                           self._driver.copy_volume_to_image,
                           mox.IgnoreArg(), volume,
                           mox.IgnoreArg(), image_meta)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_copy_volume_to_image_when_attached(self):
+        """Test copy_volume_to_image when volume is attached."""
+        m = self.mox
+        volume = FakeObject()
+        volume['status'] = 'in-use'
+
+        m.ReplayAll()
+        self.assertRaises(exception.InvalidVolume,
+                          self._driver.copy_volume_to_image,
+                          mox.IgnoreArg(), volume,
+                          mox.IgnoreArg(), mox.IgnoreArg())
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -1372,6 +1420,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume = FakeObject()
         volume['name'] = vol_name
         volume['project_id'] = project_id
+        volume['status'] = 'available'
         # volumeops.get_backing
         backing = FakeMor("VirtualMachine", "my_vm")
         m.StubOutWithMock(self._volumeops, 'get_backing')
@@ -1382,10 +1431,6 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vmdk_file_path = '[%s] %s' % (datastore_name, file_path)
         m.StubOutWithMock(self._volumeops, 'get_vmdk_path')
         self._volumeops.get_vmdk_path(backing).AndReturn(vmdk_file_path)
-        # volumeops.create_snapshot
-        snapshot_name = 'snapshot-%s' % image_id
-        m.StubOutWithMock(self._volumeops, 'create_snapshot')
-        self._volumeops.create_snapshot(backing, snapshot_name, None, True)
         tmp_vmdk = '[datastore1] %s.vmdk' % image_id
         # volumeops.get_host
         host = FakeMor('Host', 'my_host')
@@ -1752,6 +1797,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         backing = FakeMor('VirtualMachine', 'my_back')
         src_vref = FakeObject()
         src_vref['name'] = 'src_vol_name'
+        src_vref['status'] = 'available'
         self._volumeops.get_backing(src_vref['name']).AndReturn(backing)
         volume = FakeObject()
         volume['volume_type_id'] = None
@@ -1763,7 +1809,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._driver.create_cloned_volume(volume, src_vref)
         m.UnsetStubs()
 
-    def test_create_lined_cloned_volume_with_backing(self):
+    def test_create_linked_cloned_volume_with_backing(self):
         """Test create_cloned_volume with clone type - linked."""
         m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
@@ -1772,6 +1818,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         backing = FakeMor('VirtualMachine', 'my_back')
         src_vref = FakeObject()
         src_vref['name'] = 'src_vol_name'
+        src_vref['status'] = 'available'
         self._volumeops.get_backing(src_vref['name']).AndReturn(backing)
         volume = FakeObject()
         volume['id'] = 'volume_id'
@@ -1789,5 +1836,26 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         m.ReplayAll()
         self._driver.create_cloned_volume(volume, src_vref)
+        m.UnsetStubs()
+
+    def test_create_linked_cloned_volume_when_attached(self):
+        """Test create_cloned_volume linked clone when volume is attached."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        backing = FakeMor('VirtualMachine', 'my_back')
+        src_vref = FakeObject()
+        src_vref['name'] = 'src_vol_name'
+        src_vref['status'] = 'in-use'
+        volume = FakeObject()
+        self._volumeops.get_backing(src_vref['name']).AndReturn(backing)
+        m.StubOutWithMock(vmdk.VMwareVcVmdkDriver, '_get_clone_type')
+        moxed = vmdk.VMwareVcVmdkDriver._get_clone_type(volume)
+        moxed.AndReturn(volumeops.LINKED_CLONE_TYPE)
+
+        m.ReplayAll()
+        self.assertRaises(exception.InvalidVolume,
+                          self._driver.create_cloned_volume, volume, src_vref)
         m.UnsetStubs()
         m.VerifyAll()
