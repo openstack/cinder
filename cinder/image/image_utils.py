@@ -255,9 +255,13 @@ def upload_volume(context, image_service, image_meta, volume_path):
     if (image_meta['disk_format'] == 'raw'):
         LOG.debug("%s was raw, no need to convert to %s" %
                   (image_id, image_meta['disk_format']))
-        with utils.temporary_chown(volume_path):
+        if os.access(volume_path, os.R_OK):
             with utils.file_open(volume_path) as image_file:
                 image_service.update(context, image_id, {}, image_file)
+        else:
+            with utils.temporary_chown(volume_path):
+                with utils.file_open(volume_path) as image_file:
+                    image_service.update(context, image_id, {}, image_file)
         return
 
     if (FLAGS.image_conversion_dir and not
