@@ -222,6 +222,10 @@ class IetAdm(TargetAdmin):
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
+
+        # NOTE (jdg): Address bug: 1175207
+        kwargs.pop('old_name', None)
+
         self._new_target(name, tid, **kwargs)
         self._new_logicalunit(tid, lun, path, **kwargs)
         if chap_auth is not None:
