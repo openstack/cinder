@@ -496,7 +496,10 @@ class API(base.Base):
                                     's_size': volume['size'],
                                     'd_consumed': _consumed(over),
                                     'd_quota': quotas[over]})
-                    raise exception.VolumeSizeExceedsAvailableQuota()
+                    raise exception.VolumeSizeExceedsAvailableQuota(
+                        requested=volume['size'],
+                        consumed=_consumed('gigabytes'),
+                        quota=quotas['gigabytes'])
                 elif 'snapshots' in over:
                     msg = _("Quota exceeded for %(s_pid)s, tried to create "
                             "snapshot (%(d_consumed)d snapshots "

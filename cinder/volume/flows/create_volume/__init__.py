@@ -638,7 +638,10 @@ class QuotaReserveTask(base.CinderTask):
                                 's_size': size,
                                 'd_consumed': _consumed('gigabytes'),
                                 'd_quota': quotas['gigabytes']})
-                raise exception.VolumeSizeExceedsAvailableQuota()
+                raise exception.VolumeSizeExceedsAvailableQuota(
+                    requested=size,
+                    consumed=_consumed('gigabytes'),
+                    quota=quotas['gigabytes'])
             elif _is_over('volumes'):
                 msg = _("Quota exceeded for %(s_pid)s, tried to create "
                         "volume (%(d_consumed)d volumes "
