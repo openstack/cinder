@@ -1845,16 +1845,16 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                 'host': u'unicode.foo}.bar}.baz-%s' % rand_id}
         self.driver.initialize_connection(volume1, conn)
         host_name = self.driver._get_host_from_connector(conn)
-        self.assertNotEqual(host_name, None)
+        self.assertIsNotNone(host_name)
         self.driver.terminate_connection(volume1, conn)
         host_name = self.driver._get_host_from_connector(conn)
-        self.assertEqual(host_name, None)
+        self.assertIsNone(host_name)
         self.driver.delete_volume(volume1)
 
         # Clean up temporary hosts
         for tmpconn in [tmpconn1, tmpconn2]:
             host_name = self.driver._get_host_from_connector(tmpconn)
-            self.assertNotEqual(host_name, None)
+            self.assertIsNotNone(host_name)
             self.driver._delete_host(host_name)
 
     def test_storwize_svc_validate_connector(self):
@@ -1908,7 +1908,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             # Check case where no hosts exist
             if self.USESIM:
                 ret = self.driver._get_host_from_connector(self._connector)
-                self.assertEqual(ret, None)
+                self.assertIsNone(ret)
 
             # Make sure that the volumes have been created
             self._assert_vol_exists(volume1['name'], True)
@@ -1936,7 +1936,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.driver.terminate_connection(volume1, self._connector)
             if self.USESIM:
                 ret = self.driver._get_host_from_connector(self._connector)
-                self.assertEqual(ret, None)
+                self.assertIsNone(ret)
 
         # Check cases with no auth set for host
         if self.USESIM:
@@ -1963,10 +1963,10 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                     chap_ret = self.driver._get_chap_secret_for_host(host_name)
                     if auth_enabled or host_exists == 'yes-auth':
                         self.assertIn('auth_password', init_ret['data'])
-                        self.assertNotEqual(chap_ret, None)
+                        self.assertIsNotNone(chap_ret)
                     else:
                         self.assertNotIn('auth_password', init_ret['data'])
-                        self.assertEqual(chap_ret, None)
+                        self.assertIsNone(chap_ret)
                     self.driver.terminate_connection(volume1, conn_na)
         self._set_flag('storwize_svc_iscsi_chap_enabled', True)
 
@@ -2005,7 +2005,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Make sure our host still exists
         host_name = self.driver._get_host_from_connector(self._connector)
-        self.assertNotEqual(host_name, None)
+        self.assertIsNotNone(host_name)
 
         # Remove the mapping from the 2nd volume and delete it. The host should
         # be automatically removed because there are no more mappings.
@@ -2020,7 +2020,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Check if our host still exists (it should not)
         if self.USESIM:
             ret = self.driver._get_host_from_connector(self._connector)
-            self.assertEqual(ret, None)
+            self.assertIsNone(ret)
 
     def test_storwize_svc_multi_host_maps(self):
         # We can't test connecting to multiple hosts from a single host when

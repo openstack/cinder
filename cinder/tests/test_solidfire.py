@@ -158,7 +158,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
-        self.assertNotEqual(model_update, None)
+        self.assertIsNotNone(model_update)
 
     def test_create_volume(self):
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
@@ -172,8 +172,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
-        self.assertNotEqual(model_update, None)
-        self.assertEqual(model_update.get('provider_geometry', None), None)
+        self.assertIsNotNone(model_update)
+        self.assertIsNone(model_update.get('provider_geometry', None))
 
     def test_create_volume_non_512(self):
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
@@ -275,7 +275,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         sfv = SolidFireDriver(configuration=self.configuration)
         model_update = sfv.create_volume(testvol)
-        self.assertNotEqual(model_update, None)
+        self.assertIsNotNone(model_update)
 
     def test_create_volume_fails(self):
         # NOTE(JDG) This test just fakes update_cluster_status
@@ -301,28 +301,28 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request)
         account = sfv._create_sfaccount('project-id')
-        self.assertNotEqual(account, None)
+        self.assertIsNotNone(account)
 
     def test_create_sfaccount_fails(self):
         sfv = SolidFireDriver(configuration=self.configuration)
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         account = sfv._create_sfaccount('project-id')
-        self.assertEqual(account, None)
+        self.assertIsNone(account)
 
     def test_get_sfaccount_by_name(self):
         sfv = SolidFireDriver(configuration=self.configuration)
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request)
         account = sfv._get_sfaccount_by_name('some-name')
-        self.assertNotEqual(account, None)
+        self.assertIsNotNone(account)
 
     def test_get_sfaccount_by_name_fails(self):
         sfv = SolidFireDriver(configuration=self.configuration)
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request_fails)
         account = sfv._get_sfaccount_by_name('some-name')
-        self.assertEqual(account, None)
+        self.assertIsNone(account)
 
     def test_delete_volume(self):
         self.stubs.Set(SolidFireDriver, '_issue_api_request',

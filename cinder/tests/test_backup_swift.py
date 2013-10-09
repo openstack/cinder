@@ -189,7 +189,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_get_compressor(self):
         service = SwiftBackupDriver(self.ctxt)
         compressor = service._get_compressor('None')
-        self.assertEqual(compressor, None)
+        self.assertIsNone(compressor)
         compressor = service._get_compressor('zlib')
         self.assertEqual(compressor, zlib)
         compressor = service._get_compressor('bz2')

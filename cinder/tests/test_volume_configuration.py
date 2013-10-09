@@ -68,4 +68,4 @@ class VolumeConfigurationTest(test.TestCase):
 
     def test_safe_get(self):
         c = configuration.Configuration(volume_opts, config_group='foo')
-        self.assertEqual(c.safe_get('none_opt'), None)
+        self.assertIsNone(c.safe_get('none_opt'))

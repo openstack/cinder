@@ -157,7 +157,7 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
 
         self.stubs.Set(self.connector, '_execute', initiator_no_file)
         initiator = self.connector.get_initiator()
-        self.assertEqual(initiator, None)
+        self.assertIsNone(initiator)
         self.stubs.Set(self.connector, '_execute', initiator_get_text)
         initiator = self.connector.get_initiator()
         self.assertEqual(initiator, 'iqn.1234-56.foo.bar:01:23456789abc')

@@ -114,7 +114,7 @@ class PolicyTestCase(test.TestCase):
         action = "example:get_http"
         target = {}
         result = policy.enforce(self.context, action, target)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
     def test_enforce_http_false(self):
 
