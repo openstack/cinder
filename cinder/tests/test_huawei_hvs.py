@@ -516,7 +516,7 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
 
     def test_log_in_success(self):
         deviceid = self.driver.common.login()
-        self.assertNotEqual(deviceid, None)
+        self.assertIsNotNone(deviceid)
 
     def test_log_out_success(self):
         self.driver.common.login()
@@ -535,12 +535,12 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
     def test_delete_volume_success(self):
         self.driver.common.login()
         self.driver.delete_volume(test_volume)
-        self.assertEqual(self.driver.common.lun_id, None)
+        self.assertIsNone(self.driver.common.lun_id)
 
     def test_delete_snapshot_success(self):
         self.driver.common.login()
         self.driver.delete_snapshot(test_snap)
-        self.assertEqual(self.driver.common.snapshot_id, None)
+        self.assertIsNone(self.driver.common.snapshot_id)
 
     def test_colone_volume_success(self):
         self.driver.common.login()
@@ -577,7 +577,7 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
     def test_get_volume_stats(self):
         self.driver.common.login()
         status = self.driver.get_volume_stats()
-        self.assertNotEqual(status['free_capacity_gb'], None)
+        self.assertIsNotNone(status['free_capacity_gb'])
 
     def test_create_snapshot_fail(self):
         self.driver.common.login()
@@ -705,7 +705,7 @@ class HVSRESTFCDriverTestCase(test.TestCase):
 
     def test_log_in_Success(self):
         deviceid = self.driver.common.login()
-        self.assertNotEqual(deviceid, None)
+        self.assertIsNotNone(deviceid)
 
     def test_create_volume_success(self):
         self.driver.common.login()
@@ -720,12 +720,12 @@ class HVSRESTFCDriverTestCase(test.TestCase):
     def test_delete_volume_success(self):
         self.driver.common.login()
         self.driver.delete_volume(test_volume)
-        self.assertEqual(self.driver.common.lun_id, None)
+        self.assertIsNone(self.driver.common.lun_id)
 
     def test_delete_snapshot_success(self):
         self.driver.common.login()
         self.driver.delete_snapshot(test_snap)
-        self.assertEqual(self.driver.common.snapshot_id, None)
+        self.assertIsNone(self.driver.common.snapshot_id)
 
     def test_colone_volume_success(self):
         self.driver.common.login()
@@ -762,7 +762,7 @@ class HVSRESTFCDriverTestCase(test.TestCase):
     def test_get_volume_stats(self):
         self.driver.common.login()
         status = self.driver.get_volume_stats()
-        self.assertNotEqual(status['free_capacity_gb'], None)
+        self.assertIsNotNone(status['free_capacity_gb'])
 
     def test_create_snapshot_fail(self):
         self.driver.common.login()

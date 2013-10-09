@@ -303,7 +303,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual(volume['status'], 'in-use')
         self.assertEqual(volume['instance_uuid'], stubs.FAKE_UUID)
-        self.assertEqual(volume['attached_host'], None)
+        self.assertIsNone(volume['attached_host'])
         self.assertEqual(volume['mountpoint'], mountpoint)
         self.assertEqual(volume['attach_status'], 'attached')
         admin_metadata = volume['volume_admin_metadata']
@@ -330,9 +330,9 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         # status changed to 'available'
         self.assertEqual(volume['status'], 'available')
-        self.assertEqual(volume['instance_uuid'], None)
-        self.assertEqual(volume['attached_host'], None)
-        self.assertEqual(volume['mountpoint'], None)
+        self.assertIsNone(volume['instance_uuid'])
+        self.assertIsNone(volume['attached_host'])
+        self.assertIsNone(volume['mountpoint'])
         self.assertEqual(volume['attach_status'], 'detached')
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 1)
@@ -357,7 +357,7 @@ class AdminActionsTest(test.TestCase):
         # volume is attached
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual(volume['status'], 'in-use')
-        self.assertEqual(volume['instance_uuid'], None)
+        self.assertIsNone(volume['instance_uuid'])
         self.assertEqual(volume['attached_host'], host_name)
         self.assertEqual(volume['mountpoint'], mountpoint)
         self.assertEqual(volume['attach_status'], 'attached')
@@ -385,9 +385,9 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         # status changed to 'available'
         self.assertEqual(volume['status'], 'available')
-        self.assertEqual(volume['instance_uuid'], None)
-        self.assertEqual(volume['attached_host'], None)
-        self.assertEqual(volume['mountpoint'], None)
+        self.assertIsNone(volume['instance_uuid'])
+        self.assertIsNone(volume['attached_host'])
+        self.assertIsNone(volume['mountpoint'])
         self.assertEqual(volume['attach_status'], 'detached')
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 1)

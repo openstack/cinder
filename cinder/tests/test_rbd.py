@@ -74,7 +74,7 @@ class FakeImageService:
 
 class TestUtil(test.TestCase):
     def test_ascii_str(self):
-        self.assertEqual(None, driver.ascii_str(None))
+        self.assertIsNone(driver.ascii_str(None))
         self.assertEqual('foo', driver.ascii_str('foo'))
         self.assertEqual('foo', driver.ascii_str(u'foo'))
         self.assertRaises(UnicodeEncodeError,

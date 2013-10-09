@@ -869,7 +869,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test _get_snapshot_from_tree."""
         volops = volumeops.VMwareVolumeOps
         ret = volops._get_snapshot_from_tree(mox.IgnoreArg(), None)
-        self.assertEqual(ret, None)
+        self.assertIsNone(ret)
         name = 'snapshot_name'
         snapshot = FakeMor('VirtualMachineSnapshot', 'my_snap')
         root = FakeSnapshotTree(name='snapshot_name', snapshot=snapshot)

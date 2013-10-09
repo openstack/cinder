@@ -50,4 +50,4 @@ class FinishVolumeMigrationTestCase(test.TestCase):
         self.assertEqual(src_volume['name'], expected_name)
         self.assertEqual(src_volume['host'], 'dest')
         self.assertEqual(src_volume['status'], 'available')
-        self.assertEqual(src_volume['migration_status'], None)
+        self.assertIsNone(src_volume['migration_status'])

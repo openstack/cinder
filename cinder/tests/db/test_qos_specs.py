@@ -199,7 +199,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         res = db.qos_specs_associations_get(self.ctxt, specs_id)
         self.assertEqual(len(res), 0)
         res = db.volume_type_get(self.ctxt, type_id)
-        self.assertEqual(res['qos_specs_id'], None)
+        self.assertIsNone(res['qos_specs_id'])
 
     def test_qos_specs_disassociate_all(self):
         specs_id = self._create_qos_specs('FakeQos')

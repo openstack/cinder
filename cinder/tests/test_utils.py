@@ -455,7 +455,7 @@ class GenericUtilsTestCase(test.TestCase):
 
     def test_check_ssh_injection(self):
         cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']
-        self.assertEqual(utils.check_ssh_injection(cmd_list), None)
+        self.assertIsNone(utils.check_ssh_injection(cmd_list))
 
     def test_check_ssh_injection_on_error(self):
         with_space = ['shh', 'my_name@      name_of_remote_computer']

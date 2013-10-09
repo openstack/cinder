@@ -199,7 +199,7 @@ class TestGlanceImageService(test.TestCase):
         num_images = len(self.service.detail(self.context))
         image_id = self.service.create(self.context, fixture)['id']
 
-        self.assertNotEquals(None, image_id)
+        self.assertIsNotNone(image_id)
         self.assertEqual(num_images + 1,
                          len(self.service.detail(self.context)))
 
@@ -207,7 +207,7 @@ class TestGlanceImageService(test.TestCase):
         fixture = self._make_fixture(name='test image')
         image_id = self.service.create(self.context, fixture)['id']
 
-        self.assertNotEquals(None, image_id)
+        self.assertIsNotNone(image_id)
         self.assertRaises(exception.ImageNotFound,
                           self.service.show,
                           self.context,

@@ -193,10 +193,10 @@ class HUSiSCSIDriverTest(test.TestCase):
 
     def test_create_volume(self):
         loc = self.driver.create_volume(_VOLUME)
-        self.assertNotEqual(loc, None)
+        self.assertIsNotNone(loc)
         vol = _VOLUME.copy()
         vol['provider_location'] = loc['provider_location']
-        self.assertNotEqual(loc['provider_location'], None)
+        self.assertIsNotNone(loc['provider_location'])
         return vol
 
     def test_delete_volume(self):
@@ -231,7 +231,7 @@ class HUSiSCSIDriverTest(test.TestCase):
         svol = vol.copy()
         svol['volume_size'] = svol['size']
         loc = self.driver.create_snapshot(svol)
-        self.assertNotEqual(loc, None)
+        self.assertIsNotNone(loc)
         svol['provider_location'] = loc['provider_location']
         return svol
 
@@ -243,7 +243,7 @@ class HUSiSCSIDriverTest(test.TestCase):
         svol = vol.copy()
         svol['volume_size'] = svol['size']
         loc = self.driver.create_snapshot(svol)
-        self.assertNotEqual(loc, None)
+        self.assertIsNotNone(loc)
         svol['provider_location'] = loc['provider_location']
         return svol
 
@@ -266,7 +266,7 @@ class HUSiSCSIDriverTest(test.TestCase):
     def test_create_volume_from_snapshot(self):
         svol = self.test_create_snapshot()
         vol = self.driver.create_volume_from_snapshot(_VOLUME, svol)
-        self.assertNotEqual(vol, None)
+        self.assertIsNotNone(vol)
         return vol
 
     def test_initialize_connection(self):

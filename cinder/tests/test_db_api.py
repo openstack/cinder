@@ -282,7 +282,7 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual(volume['mountpoint'], '/tmp')
         self.assertEqual(volume['attach_status'], 'attached')
         self.assertEqual(volume['instance_uuid'], instance_uuid)
-        self.assertEqual(volume['attached_host'], None)
+        self.assertIsNone(volume['attached_host'])
 
     def test_volume_attached_to_host(self):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
@@ -293,7 +293,7 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual(volume['status'], 'in-use')
         self.assertEqual(volume['mountpoint'], '/tmp')
         self.assertEqual(volume['attach_status'], 'attached')
-        self.assertEqual(volume['instance_uuid'], None)
+        self.assertIsNone(volume['instance_uuid'])
         self.assertEqual(volume['attached_host'], host_name)
 
     def test_volume_data_get_for_host(self):
@@ -621,7 +621,7 @@ class DBAPIEncryptionTestCase(BaseTest):
         encryption_get = \
             db.volume_type_encryption_get(self.ctxt,
                                           encryption['volume_type_id'])
-        self.assertEqual(None, encryption_get)
+        self.assertIsNone(encryption_get)
 
 
 class DBAPIReservationTestCase(BaseTest):

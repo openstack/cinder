@@ -609,7 +609,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
         self.assertFalse(result)
         self.assertFalse(vol_dict['bootable'])
-        self.assertEqual(vol_dict['provider_location'], None)
+        self.assertIsNone(vol_dict['provider_location'])
 
     def test_clone_image_resizefails(self):
         drv = self._driver
@@ -656,7 +656,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
         self.assertFalse(result)
         self.assertFalse(vol_dict['bootable'])
-        self.assertEqual(vol_dict['provider_location'], None)
+        self.assertIsNone(vol_dict['provider_location'])
 
     def test_is_cloneable_share_badformats(self):
         drv = self._driver
