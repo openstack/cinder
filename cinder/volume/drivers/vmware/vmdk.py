@@ -682,10 +682,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         4. Delete the coalesced .vmdk and -flat.vmdk created.
         """
 
-        if volume['status'] != 'available':
-            msg = _("Upload to glance of volume not supported in state: %s.")
-            LOG.error(msg % volume['status'])
-            raise exception.InvalidVolume(msg % volume['status'])
+        if volume['instance_uuid'] or volume['attached_host']:
+            msg = _("Upload to glance of attached volume is not supported.")
+            LOG.error(msg)
+            raise exception.InvalidVolume(msg)
 
         LOG.debug(_("Copy Volume: %s to new image.") % volume['name'])
         VMwareEsxVmdkDriver._validate_disk_format(image_meta['disk_format'])
