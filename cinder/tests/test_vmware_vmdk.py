@@ -1376,7 +1376,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         image_meta['disk_format'] = 'novmdk'
         volume = FakeObject()
         volume['name'] = 'vol-name'
-        volume['status'] = 'available'
+        volume['instance_uuid'] = None
+        volume['attached_host'] = None
 
         m.ReplayAll()
         self.assertRaises(exception.ImageUnacceptable,
@@ -1390,7 +1391,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test copy_volume_to_image when volume is attached."""
         m = self.mox
         volume = FakeObject()
-        volume['status'] = 'in-use'
+        volume['instance_uuid'] = 'my_uuid'
 
         m.ReplayAll()
         self.assertRaises(exception.InvalidVolume,
@@ -1421,7 +1422,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume = FakeObject()
         volume['name'] = vol_name
         volume['project_id'] = project_id
-        volume['status'] = 'available'
+        volume['instance_uuid'] = None
+        volume['attached_host'] = None
         # volumeops.get_backing
         backing = FakeMor("VirtualMachine", "my_vm")
         m.StubOutWithMock(self._volumeops, 'get_backing')
