@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-10-08 06:15+0000\n"
+"POT-Creation-Date: 2013-10-09 06:13+0000\n"
 "PO-Revision-Date: 2013-08-30 22:38+0000\n"
 "Last-Translator: daisy.ycguo <daisy.ycguo@gmail.com>\n"
 "Language-Team: Nepali "
@@ -3562,15 +3562,15 @@ msgstr ""
 msgid "cannot place volume %(id)s on %(host)s"
 msgstr ""
 
-#: cinder/scheduler/driver.py:89
+#: cinder/scheduler/driver.py:80
 msgid "Must implement host_passes_filters"
 msgstr ""
 
-#: cinder/scheduler/driver.py:93
+#: cinder/scheduler/driver.py:84
 msgid "Must implement a fallback schedule"
 msgstr ""
 
-#: cinder/scheduler/driver.py:97
+#: cinder/scheduler/driver.py:88
 msgid "Must implement schedule_create_volume"
 msgstr ""
 
@@ -3615,16 +3615,16 @@ msgstr ""
 msgid "volume service is down or disabled. (host: %s)"
 msgstr ""
 
-#: cinder/scheduler/manager.py:92
+#: cinder/scheduler/manager.py:84
 msgid "Schedule volume flow not retrieved"
 msgstr ""
 
-#: cinder/scheduler/manager.py:96
+#: cinder/scheduler/manager.py:88
 #, python-format
 msgid "Failed to successfully complete schedule volume using flow: %s"
 msgstr ""
 
-#: cinder/scheduler/manager.py:131
+#: cinder/scheduler/manager.py:123
 #, python-format
 msgid "Failed to schedule_%(method)s: %(ex)s"
 msgstr ""
@@ -8256,32 +8256,32 @@ msgid ""
 "%s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vim.py:151
+#: cinder/volume/drivers/vmware/vim.py:152
 #, python-format
-msgid "Error(s): %s occurred in the call to RetrieveProperties."
+msgid "Error(s): %s occurred in the call to RetrievePropertiesEx."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vim.py:189
+#: cinder/volume/drivers/vmware/vim.py:191
 #, python-format
 msgid "No such SOAP method %(attr)s. Detailed error: %(excep)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vim.py:198
+#: cinder/volume/drivers/vmware/vim.py:200
 #, python-format
 msgid "httplib error in %(attr)s: %(excep)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vim.py:209
+#: cinder/volume/drivers/vmware/vim.py:211
 #, python-format
 msgid "Socket error in %(attr)s: %(excep)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vim.py:218
+#: cinder/volume/drivers/vmware/vim.py:220
 #, python-format
 msgid "Type error in %(attr)s: %(excep)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vim.py:225
+#: cinder/volume/drivers/vmware/vim.py:227
 #, python-format
 msgid "Error in %(attr)s. Detailed error: %(excep)s."
 msgstr ""
@@ -9471,9 +9471,6 @@ msgstr ""
 #~ msgid "Successfully copied disk data to: %s."
 #~ msgstr ""
 
-#~ msgid ""
-#~ "This key manager is insecure and "
-#~ "is not recommended for production "
-#~ "deployments"
+#~ msgid "Error(s): %s occurred in the call to RetrieveProperties."
 #~ msgstr ""
 
