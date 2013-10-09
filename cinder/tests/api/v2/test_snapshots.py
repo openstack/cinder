@@ -327,6 +327,32 @@ class SnapshotApiTest(test.TestCase):
         self.assertTrue('snapshots' in res)
         self.assertEqual(1, len(res['snapshots']))
 
+    def test_list_snapshots_with_limit_and_offset(self):
+        def list_snapshots_with_limit_and_offset(is_admin):
+            def stub_snapshot_get_all_by_project(context, project_id):
+                return [
+                    stubs.stub_snapshot(1, display_name='backup1'),
+                    stubs.stub_snapshot(2, display_name='backup2'),
+                    stubs.stub_snapshot(3, display_name='backup3'),
+                ]
+
+            self.stubs.Set(db, 'snapshot_get_all_by_project',
+                           stub_snapshot_get_all_by_project)
+
+            req = fakes.HTTPRequest.blank('/v2/fake/snapshots?limit=1\
+                                          &offset=1',
+                                          use_admin_context=is_admin)
+            res = self.controller.index(req)
+
+            self.assertTrue('snapshots' in res)
+            self.assertEqual(1, len(res['snapshots']))
+            self.assertEqual(2, res['snapshots'][0]['id'])
+
+        #admin case
+        list_snapshots_with_limit_and_offset(is_admin=True)
+        #non_admin case
+        list_snapshots_with_limit_and_offset(is_admin=False)
+
     def test_admin_list_snapshots_all_tenants(self):
         req = fakes.HTTPRequest.blank('/v2/fake/snapshots?all_tenants=1',
                                       use_admin_context=True)

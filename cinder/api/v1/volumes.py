@@ -255,8 +255,10 @@ class VolumeController(wsgi.Controller):
     def _items(self, req, entity_maker):
         """Returns a list of volumes, transformed through entity_maker."""
 
-        search_opts = {}
-        search_opts.update(req.GET)
+        #pop out limit and offset , they are not search_opts
+        search_opts = req.GET.copy()
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
 
         context = req.environ['cinder.context']
         remove_invalid_options(context,
