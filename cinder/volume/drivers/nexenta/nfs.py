@@ -349,28 +349,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         allocated = utils.str2size(folder_props['used'])
         return free + allocated, free, allocated
 
-    def _get_nms_for_url(self, nms_url):
-        pr = urlparse.urlparse(nms_url)
-        scheme = pr.scheme
-        auto = scheme == 'auto'
-        if auto:
-            scheme = 'http'
-        user = 'admin'
-        password = 'nexenta'
-        if '@' not in pr.netloc:
-            host_and_port = pr.netloc
-        else:
-            user_and_password, host_and_port = pr.netloc.split('@', 1)
-            if ':' in user_and_password:
-                user, password = user_and_password.split(':')
-            else:
-                user = user_and_password
-        if ':' in host_and_port:
-            host, port = host_and_port.split(':', 1)
-        else:
-            host, port = host_and_port, '2000'
-        url = '%s://%s:%s/rest/nms/' % (scheme, host, port)
-        return jsonrpc.NexentaJSONProxy(url, user, password, auto=auto)
+    def _get_nms_for_url(self, url):
+        """Returns initialized nms object for url."""
+        auto, scheme, user, password, host, port, path =\
+            utils.parse_nms_url(url)
+        return jsonrpc.NexentaJSONProxy(scheme, host, port, path, user,
+                                        password, auto=auto)
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()
