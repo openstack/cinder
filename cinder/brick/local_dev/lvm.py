@@ -136,10 +136,12 @@ class LVM(executor.Executor):
         for line in lines:
             if 'LVM version' in line:
                 version_list = line.split()
+                # NOTE(gfidente): version is formatted as follows:
+                # major.minor.patchlevel(library API version)[-customisation]
                 version = version_list[2]
-                if '(2)' in version:
-                    version = version.replace('(2)', '')
-                version_tuple = tuple(map(int, version.split('.')))
+                version_filter = "(\d+)\.(\d+)\.(\d+).*"
+                r = re.search(version_filter, version)
+                version_tuple = tuple(map(int, r.group(1, 2, 3)))
                 if version_tuple >= (2, 2, 95):
                     return True
         return False
