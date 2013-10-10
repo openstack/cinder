@@ -704,7 +704,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 LOG.error(_('%s'), message)
                 return false_ret
 
-            helper = 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
+            helper = utils.get_root_helper()
             dest_vg_ref = lvm.LVM(dest_vg, helper, lvm_type, self._execute)
             self.remove_export(ctxt, volume)
             self._create_volume(volume['name'],
