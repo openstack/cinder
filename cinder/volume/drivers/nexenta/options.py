@@ -88,7 +88,11 @@ NEXENTA_NFS_OPTIONS = [
                  default=1.0,
                  help=('This will compare the allocated to available space on '
                        'the volume destination.  If the ratio exceeds this '
-                       'number, the destination will no longer be valid.'))
+                       'number, the destination will no longer be valid.')),
+    cfg.BoolOpt('nexenta_nms_cache_volroot',
+                default=True,
+                help=('If set True cache NexentaStor appliance volroot option '
+                      'value.'))
 ]
 
 NEXENTA_VOLUME_OPTIONS = [

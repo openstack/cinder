@@ -390,9 +390,11 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nexenta_volume_compression = 'on'
         self.configuration.nfs_mount_point_base = '/mnt/test'
         self.configuration.nfs_mount_options = None
+        self.configuration.nexenta_nms_cache_volroot = False
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc'):
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
+        self.nms_mock.__hash__ = lambda *_, **__: 1
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
                        lambda *_, **__: self.nms_mock)
         self.drv = nfs.NexentaNfsDriver(configuration=self.configuration)

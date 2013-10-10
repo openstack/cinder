@@ -25,7 +25,6 @@
 
 import hashlib
 import os
-import urlparse
 
 from oslo.config import cfg
 
@@ -39,6 +38,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
+VERSION = '1.1.1'
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -51,10 +51,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     Version history:
         1.0.0 - Initial driver version.
         1.1.0 - Auto sharing for enclosing folder.
+        1.1.1 - Added caching for NexentaStor appliance 'volroot' value.
     """
 
-    VERSION = '1.1.0'
-
+    VERSION = VERSION
     driver_prefix = 'nexenta'
 
     def __init__(self, *args, **kwargs):
@@ -62,6 +62,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         if self.configuration:
             self.configuration.append_config_values(
                 options.NEXENTA_NFS_OPTIONS)
+        conf = self.configuration
+        self.nms_cache_volroot = conf.nexenta_nms_cache_volroot
+        self._nms2volroot = {}
 
     def do_setup(self, context):
         super(NexentaNfsDriver, self).do_setup(context)
@@ -386,9 +389,17 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         ctxt = context.get_admin_context()
         return self.db.volume_get(ctxt, snapshot['volume_id'])
 
+    def _get_volroot(self, nms):
+        """Returns volroot property value from NexentaStor appliance."""
+        if not self.nms_cache_volroot:
+            return nms.server.get_prop('volroot')
+        if nms not in self._nms2volroot:
+            self._nms2volroot[nms] = nms.server.get_prop('volroot')
+        return self._nms2volroot[nms]
+
     def _get_share_datasets(self, nfs_share):
         nms = self.share2nms[nfs_share]
-        volroot = nms.server.get_prop('volroot')
+        volroot = self._get_volroot(nms)
         path = nfs_share.split(':')[1][len(volroot):].strip('/')
         volume_name = path.split('/')[0]
         folder_name = '/'.join(path.split('/')[1:])
