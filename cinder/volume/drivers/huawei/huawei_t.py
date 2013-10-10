@@ -106,7 +106,8 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
             self._get_iscsi_params(connector['initiator'])
 
         # First, add a host if not added before.
-        host_id = self.common.add_host(connector['host'])
+        host_id = self.common.add_host(connector['host'],
+                                       connector['initiator'])
 
         # Then, add the iSCSI port to the host.
         self._add_iscsi_port_to_host(host_id, connector)
@@ -324,7 +325,8 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
 
         self.common._update_login_info()
         host_id = self.common.remove_map(volume['provider_location'],
-                                         connector['host'])
+                                         connector['host'],
+                                         connector['initiator'])
         if not self.common._get_host_map_info(host_id):
             self._remove_iscsi_port(host_id, connector)
 

@@ -892,7 +892,7 @@ class TseriesCommon():
 
         return hostlun_id
 
-    def add_host(self, host_name):
+    def add_host(self, host_name, initiator=None):
         """Create a host and add it to hostgroup."""
         # Create an OpenStack hostgroup if not created before.
         hostgroup_name = HOST_GROUP_NAME
@@ -902,6 +902,14 @@ class TseriesCommon():
             self.hostgroup_id = self._get_hostgroup_id(hostgroup_name)
 
         # Create a host and add it to the hostgroup.
+        # Check the old host name to support the upgrade from grizzly to
+        # higher versions.
+        if initiator:
+            old_host_name = HOST_NAME_PREFIX + str(hash(initiator))
+            old_host_id = self._get_host_id(old_host_name, self.hostgroup_id)
+            if old_host_id is not None:
+                return old_host_id
+
         host_name = HOST_NAME_PREFIX + host_name
         host_id = self._get_host_id(host_name, self.hostgroup_id)
         if host_id is None:
@@ -1003,13 +1011,20 @@ class TseriesCommon():
                                      'LUN %s' % lun_id,
                                      cli_cmd, out)
 
-    def remove_map(self, volume_id, host_name):
+    def remove_map(self, volume_id, host_name, initiator=None):
         """Remove host map."""
-        host_name = HOST_NAME_PREFIX + host_name
-        host_id = self._get_host_id(host_name, self.hostgroup_id)
+        # Check the old host name to support the upgrade from grizzly to
+        # higher versions.
+        host_id = None
+        if initiator:
+            old_host_name = HOST_NAME_PREFIX + str(hash(initiator))
+            host_id = self._get_host_id(old_host_name, self.hostgroup_id)
         if host_id is None:
-            LOG.error(_('remove_map: Host %s does not exist.') % host_name)
-            raise exception.HostNotFound(host=host_name)
+            host_name = HOST_NAME_PREFIX + host_name
+            host_id = self._get_host_id(host_name, self.hostgroup_id)
+            if host_id is None:
+                LOG.error(_('remove_map: Host %s does not exist.') % host_name)
+                raise exception.HostNotFound(host=host_name)
 
         if not self._check_volume_created(volume_id):
             LOG.error(_('remove_map: Volume %s does not exist.') % volume_id)
