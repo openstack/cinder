@@ -437,9 +437,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         If the volume does not have a backing then simply pass, else create
         a snapshot.
+        Snapshot of only available volume is supported.
 
         :param snapshot: Snapshot object
         """
+
+        volume = snapshot['volume']
+        if volume['status'] != 'available':
+            msg = _("Snapshot of volume not supported in state: %s.")
+            LOG.error(msg % volume['status'])
+            raise exception.InvalidVolume(msg % volume['status'])
         backing = self.volumeops.get_backing(snapshot['volume_name'])
         if not backing:
             LOG.info(_("There is no backing, so will not create "
@@ -461,9 +468,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         If the volume does not have a backing or the snapshot does not exist
         then simply pass, else delete the snapshot.
+        Snapshot deletion of only available volume is supported.
 
         :param snapshot: Snapshot object
         """
+
+        volume = snapshot['volume']
+        if volume['status'] != 'available':
+            msg = _("Delete snapshot of volume not supported in state: %s.")
+            LOG.error(msg % volume['status'])
+            raise exception.InvalidVolume(msg % volume['status'])
         backing = self.volumeops.get_backing(snapshot['volume_name'])
         if not backing:
             LOG.info(_("There is no backing, and so there is no "
@@ -655,19 +669,24 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Creates glance image from volume.
 
+        Upload of only available volume is supported.
         Steps followed are:
 
         1. Get the name of the vmdk file which the volume points to right now.
            Can be a chain of snapshots, so we need to know the last in the
            chain.
-        2. Create the snapshot. A new vmdk is created which the volume points
-           to now. The earlier vmdk becomes read-only.
-        3. Call CopyVirtualDisk which coalesces the disk chain to form a
+        2. Call CopyVirtualDisk which coalesces the disk chain to form a
            single vmdk, rather a .vmdk metadata file and a -flat.vmdk disk
            data file.
-        4. Now upload the -flat.vmdk file to the image store.
-        5. Delete the coalesced .vmdk and -flat.vmdk created.
+        3. Now upload the -flat.vmdk file to the image store.
+        4. Delete the coalesced .vmdk and -flat.vmdk created.
         """
+
+        if volume['status'] != 'available':
+            msg = _("Upload to glance of volume not supported in state: %s.")
+            LOG.error(msg % volume['status'])
+            raise exception.InvalidVolume(msg % volume['status'])
+
         LOG.debug(_("Copy Volume: %s to new image.") % volume['name'])
         VMwareEsxVmdkDriver._validate_disk_format(image_meta['disk_format'])
 
@@ -680,12 +699,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         vmdk_file_path = self.volumeops.get_vmdk_path(backing)
         datastore_name = volumeops.split_datastore_path(vmdk_file_path)[0]
 
-        # Create a snapshot
+        # Create a copy of the vmdk into a tmp file
         image_id = image_meta['id']
-        snapshot_name = "snapshot-%s" % image_id
-        self.volumeops.create_snapshot(backing, snapshot_name, None, True)
-
-        # Create a copy of the snapshotted vmdk into a tmp file
         tmp_vmdk_file_path = '[%s] %s.vmdk' % (datastore_name, image_id)
         host = self.volumeops.get_host(backing)
         datacenter = self.volumeops.get_dc(host)
@@ -841,10 +856,12 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         """Creates volume clone.
 
         If source volume's backing does not exist, then pass.
+        Linked clone of attached volume is not supported.
 
         :param volume: New Volume object
         :param src_vref: Source Volume object
         """
+
         backing = self.volumeops.get_backing(src_vref['name'])
         if not backing:
             LOG.info(_("There is no backing for the source volume: %(src)s. "
@@ -854,6 +871,11 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         clone_type = VMwareVcVmdkDriver._get_clone_type(volume)
         snapshot = None
         if clone_type == volumeops.LINKED_CLONE_TYPE:
+            if src_vref['status'] != 'available':
+                msg = _("Linked clone of source volume not supported "
+                        "in state: %s.")
+                LOG.error(msg % src_vref['status'])
+                raise exception.InvalidVolume(msg % src_vref['status'])
             # For performing a linked clone, we snapshot the volume and
             # then create the linked clone out of this snapshot point.
             name = 'snapshot-%s' % volume['id']
