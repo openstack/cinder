@@ -28,6 +28,7 @@ from cinder import units
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
+from cinder.volume.drivers.vmware import vim
 from cinder.volume.drivers.vmware import vim_util
 from cinder.volume.drivers.vmware import vmdk
 from cinder.volume.drivers.vmware import vmware_images
@@ -1432,6 +1433,38 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.ReplayAll()
         self._driver.copy_volume_to_image(mox.IgnoreArg(), volume,
                                           image_service, image_meta)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_retrieve_properties_ex_fault_checker(self):
+        """Test retrieve_properties_ex_fault_checker is called."""
+        m = self.mox
+
+        class FakeVim(vim.Vim):
+            def __init__(self):
+                pass
+
+            @property
+            def client(self):
+
+                class FakeRetrv(object):
+                    def RetrievePropertiesEx(self, collector):
+                        pass
+
+                    def __getattr__(self, name):
+                        if name == 'service':
+                            return FakeRetrv()
+
+                return FakeRetrv()
+
+            def RetrieveServiceContent(self, type='ServiceInstance'):
+                return mox.MockAnything()
+
+        _vim = FakeVim()
+        m.ReplayAll()
+        # retrieve_properties_ex_fault_checker throws authentication error
+        self.assertRaises(error_util.VimFaultException,
+                          _vim.RetrievePropertiesEx, mox.IgnoreArg())
         m.UnsetStubs()
         m.VerifyAll()
 
