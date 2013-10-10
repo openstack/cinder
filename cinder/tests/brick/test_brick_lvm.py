@@ -58,6 +58,9 @@ class BrickLvmTestCase(test.TestCase):
     def fake_old_lvm_version(obj, *cmd, **kwargs):
         return ("  LVM version:     2.02.65(2) (2012-03-06)\n", "")
 
+    def fake_customised_lvm_version(obj, *cmd, **kwargs):
+        return ("  LVM version:     2.02.100(2)-RHEL6 (2013-09-12)\n", "")
+
     def fake_execute(obj, *cmd, **kwargs):
         cmd_string = ', '.join(cmd)
         data = "\n"
@@ -133,7 +136,7 @@ class BrickLvmTestCase(test.TestCase):
     def test_thin_support(self):
         # lvm.supports_thin() is a static method and doesn't
         # use the self._executor fake we pass in on init
-        # so we need to stub proessutils.execute appropriately
+        # so we need to stub processutils.execute appropriately
 
         self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
@@ -143,6 +146,11 @@ class BrickLvmTestCase(test.TestCase):
 
         self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
         self.assertFalse(self.vg.supports_thin_provisioning('sudo'))
+
+        self.stubs.Set(processutils,
+                       'execute',
+                       self.fake_customised_lvm_version)
+        self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
 
     def test_volume_create_after_thin_creation(self):
         """Test self.vg.vg_thin_pool is set to pool_name
