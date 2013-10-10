@@ -39,6 +39,7 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers import storwize_svc
 from cinder.volume import volume_types
 
+from eventlet import greenthread
 
 LOG = logging.getLogger(__name__)
 
@@ -1165,7 +1166,7 @@ port_speed!N/A
                                 'no'])
 
         for d in to_delete:
-            del self._fcmappings_list[k]
+            del self._fcmappings_list[d]
 
         return self._print_info_cmd(rows=rows, **kwargs)
 
@@ -1485,6 +1486,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self.stubs.Set(storwize_svc.time, 'sleep', lambda s: None)
+        self.stubs.Set(greenthread, 'sleep', lambda *x, **y: None)
+        self.stubs.Set(storwize_svc, 'CHECK_FCMAPPING_INTERVAL', 0)
 
     def _set_flag(self, flag, value):
         group = self.driver.configuration.config_group

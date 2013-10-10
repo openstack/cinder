@@ -51,6 +51,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
 from cinder import utils
@@ -111,6 +112,8 @@ storwize_svc_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(storwize_svc_opts)
+
+CHECK_FCMAPPING_INTERVAL = 300
 
 
 class StorwizeSVCDriver(san.SanDriver):
@@ -1243,55 +1246,73 @@ class StorwizeSVCDriver(san.SanDriver):
             return True
 
     def _ensure_vdisk_no_fc_mappings(self, name, allow_snaps=True):
-        # Ensure vdisk has no FlashCopy mappings
-        mapping_ids = self._get_vdisk_fc_mappings(name)
-        while len(mapping_ids):
-            wait_for_copy = False
-            for map_id in mapping_ids:
-                attrs = self._get_flashcopy_mapping_attributes(map_id)
-                if not attrs:
-                    continue
-                source = attrs['source_vdisk_name']
-                target = attrs['target_vdisk_name']
-                copy_rate = attrs['copy_rate']
-                status = attrs['status']
+        """Ensure vdisk has no flashcopy mappings."""
+        timer = loopingcall.FixedIntervalLoopingCall(
+            self._check_vdisk_fc_mappings, name, allow_snaps)
+        # Create a timer greenthread. The default volume service heart
+        # beat is every 10 seconds. The flashcopy usually takes hours
+        # before it finishes. Don't set the sleep interval shorter
+        # than the heartbeat. Otherwise volume service heartbeat
+        # will not be serviced.
+        LOG.debug(_('Calling _ensure_vdisk_no_fc_mappings: vdisk %s')
+                  % name)
+        ret = timer.start(interval=CHECK_FCMAPPING_INTERVAL).wait()
+        timer.stop()
+        return ret
 
-                if copy_rate == '0':
-                    # Case #2: A vdisk that has snapshots
-                    if source == name:
-                        if not allow_snaps:
-                            return False
-                        ssh_cmd = ['svctask', 'chfcmap', '-copyrate', '50',
-                                   '-autodelete', 'on', map_id]
-                        out, err = self._run_ssh(ssh_cmd)
-                        wait_for_copy = True
-                    # Case #3: A snapshot
-                    else:
-                        msg = (_('Vdisk %(name)s not involved in '
-                                 'mapping %(src)s -> %(tgt)s') %
-                               {'name': name, 'src': source, 'tgt': target})
-                        self._driver_assert(target == name, msg)
-                        if status in ['copying', 'prepared']:
-                            self._run_ssh(['svctask', 'stopfcmap', map_id])
-                        elif status in ['stopping', 'preparing']:
-                            wait_for_copy = True
-                        else:
-                            self._run_ssh(['svctask', 'rmfcmap', '-force',
-                                           map_id])
-                # Case 4: Copy in progress - wait and will autodelete
+    def _check_vdisk_fc_mappings(self, name, allow_snaps=True):
+        """FlashCopy mapping check helper."""
+
+        LOG.debug(_('Loopcall: _check_vdisk_fc_mappings(), vdisk %s') % name)
+        mapping_ids = self._get_vdisk_fc_mappings(name)
+        wait_for_copy = False
+        for map_id in mapping_ids:
+            attrs = self._get_flashcopy_mapping_attributes(map_id)
+            if not attrs:
+                continue
+            source = attrs['source_vdisk_name']
+            target = attrs['target_vdisk_name']
+            copy_rate = attrs['copy_rate']
+            status = attrs['status']
+
+            if copy_rate == '0':
+                # Case #2: A vdisk that has snapshots. Return
+                #          False if snapshot is not allowed.
+                if source == name:
+                    if not allow_snaps:
+                        raise loopingcall.LoopingCallDone(retvalue=False)
+                    ssh_cmd = ['svctask', 'chfcmap', '-copyrate', '50',
+                               '-autodelete', 'on', map_id]
+                    out, err = self._run_ssh(ssh_cmd)
+                    wait_for_copy = True
+                # Case #3: A snapshot
                 else:
-                    if status == 'prepared':
+                    msg = (_('Vdisk %(name)s not involved in '
+                             'mapping %(src)s -> %(tgt)s') %
+                           {'name': name, 'src': source, 'tgt': target})
+                    self._driver_assert(target == name, msg)
+                    if status in ['copying', 'prepared']:
                         self._run_ssh(['svctask', 'stopfcmap', map_id])
-                        self._run_ssh(['svctask', 'rmfcmap', '-force', map_id])
-                    elif status == 'idle_or_copied':
-                        # Prepare failed
-                        self._run_ssh(['svctask', 'rmfcmap', '-force', map_id])
-                    else:
+                        # Need to wait for the fcmap to change to
+                        # stopped state before remove fcmap
                         wait_for_copy = True
-            if wait_for_copy:
-                time.sleep(5)
-            mapping_ids = self._get_vdisk_fc_mappings(name)
-        return True
+                    elif status in ['stopping', 'preparing']:
+                        wait_for_copy = True
+                    else:
+                        self._run_ssh(['svctask', 'rmfcmap', '-force',
+                                       map_id])
+            # Case 4: Copy in progress - wait and will autodelete
+            else:
+                if status == 'prepared':
+                    self._run_ssh(['svctask', 'stopfcmap', map_id])
+                    self._run_ssh(['svctask', 'rmfcmap', '-force', map_id])
+                elif status == 'idle_or_copied':
+                    # Prepare failed
+                    self._run_ssh(['svctask', 'rmfcmap', '-force', map_id])
+                else:
+                    wait_for_copy = True
+        if not wait_for_copy or not len(mapping_ids):
+            raise loopingcall.LoopingCallDone(retvalue=True)
 
     def _delete_vdisk(self, name, force):
         """Deletes existing vdisks.
