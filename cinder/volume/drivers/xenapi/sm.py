@@ -176,6 +176,7 @@ class XenAPINFSDriver(driver.VolumeDriver):
                                      image_service,
                                      image_id,
                                      device,
+                                     self.configuration.volume_dd_blocksize,
                                      size=volume['size'])
 
     def _use_glance_plugin_to_copy_image_to_volume(self, context, volume,

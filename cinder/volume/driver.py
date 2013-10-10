@@ -96,7 +96,12 @@ volume_opts = [
                help=('Sets the behavior of the iSCSI target '
                      'to either perform blockio or fileio '
                      'optionally, auto can be set and Cinder '
-                     'will autodetect type of backing device'))]
+                     'will autodetect type of backing device')),
+    cfg.StrOpt('volume_dd_blocksize',
+               default='1M',
+               help='The default block size used when copying/clearing '
+                    'volumes'),
+]
 
 # for backward compatibility
 iser_opts = [
@@ -314,9 +319,11 @@ class VolumeDriver(object):
 
         try:
             size_in_mb = int(src_vol['size']) * 1024    # vol size is in GB
-            volume_utils.copy_volume(src_attach_info['device']['path'],
-                                     dest_attach_info['device']['path'],
-                                     size_in_mb)
+            volume_utils.copy_volume(
+                src_attach_info['device']['path'],
+                dest_attach_info['device']['path'],
+                size_in_mb,
+                self.configuration.volume_dd_blocksize)
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -343,6 +350,7 @@ class VolumeDriver(object):
                                      image_service,
                                      image_id,
                                      attach_info['device']['path'],
+                                     self.configuration.volume_dd_blocksize,
                                      size=volume['size'])
         finally:
             self._detach_volume(attach_info)

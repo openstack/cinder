@@ -173,6 +173,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         volutils.copy_volume(self.local_path(snapshot),
                              self.local_path(volume),
                              snapshot['volume_size'] * 1024,
+                             self.configuration.volume_dd_blocksize,
                              execute=self._execute)
 
     def delete_volume(self, volume):
@@ -229,10 +230,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         if self.configuration.volume_clear == 'zero':
             if size_in_m == 0:
-                return volutils.copy_volume('/dev/zero',
-                                            dev_path, size_in_g * 1024,
-                                            sync=True,
-                                            execute=self._execute)
+                return volutils.copy_volume(
+                    '/dev/zero',
+                    dev_path, size_in_g * 1024,
+                    self.configuration.volume_dd_blocksize,
+                    sync=True,
+                    execute=self._execute)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % size_in_m]
         elif self.configuration.volume_clear == 'shred':
@@ -279,7 +282,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
-                                 self.local_path(volume), size=volume['size'])
+                                 self.local_path(volume),
+                                 self.configuration.volume_dd_blocksize,
+                                 size=volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
@@ -310,10 +315,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                             mirror_count)
 
         try:
-            volutils.copy_volume(self.local_path(temp_snapshot),
-                                 self.local_path(volume),
-                                 src_vref['size'] * 1024,
-                                 execute=self._execute)
+            volutils.copy_volume(
+                self.local_path(temp_snapshot),
+                self.local_path(volume),
+                src_vref['size'] * 1024,
+                self.configuration.volume_dd_blocksize,
+                execute=self._execute)
         finally:
             self.delete_snapshot(temp_snapshot)
 
@@ -725,6 +732,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         volutils.copy_volume(self.local_path(volume),
                              self.local_path(volume, vg=dest_vg),
                              volume['size'],
+                             self.configuration.volume_dd_blocksize,
                              execute=self._execute)
         self._delete_volume(volume)
         model_update = self._create_export(ctxt, volume, vg=dest_vg)

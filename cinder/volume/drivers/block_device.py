@@ -273,8 +273,10 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
         if self.configuration.volume_clear == 'zero':
             if clear_size == 0:
-                return volutils.copy_volume('/dev/zero', vol_path, size_in_m,
-                                            sync=True, execute=self._execute)
+                return volutils.copy_volume(
+                    '/dev/zero', vol_path, size_in_m,
+                    self.configuration.volume_dd_blocksize,
+                    sync=True, execute=self._execute)
             else:
                 clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % clear_size]
         elif self.configuration.volume_clear == 'shred':
@@ -295,6 +297,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
+                                 self.configuration.volume_dd_blocksize,
                                  size=volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -307,9 +310,11 @@ class BlockDeviceDriver(driver.ISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
         device = self.find_appropriate_size_device(src_vref['size'])
-        volutils.copy_volume(self.local_path(src_vref), device,
-                             self._get_device_size(device) * 2048,
-                             execute=self._execute)
+        volutils.copy_volume(
+            self.local_path(src_vref), device,
+            self._get_device_size(device) * 2048,
+            self.configuration.volume_dd_blocksize,
+            execute=self._execute)
         return {
             'provider_location': self._iscsi_location(None, None, None, None,
                                                       device),

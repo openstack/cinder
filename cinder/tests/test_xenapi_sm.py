@@ -47,6 +47,7 @@ def get_configured_driver(server='ignore_server', path='ignore_path'):
     configuration.xenapi_nfs_server = server
     configuration.xenapi_nfs_serverpath = path
     configuration.append_config_values(mox.IgnoreArg())
+    configuration.volume_dd_blocksize = '1M'
     return driver.XenAPINFSDriver(configuration=configuration)
 
 
@@ -402,7 +403,8 @@ class DriverTestCase(test.TestCase):
                 simple_context('device'))
 
         driver.image_utils.fetch_to_raw(
-            context, 'image_service', 'image_id', 'device', size=1)
+            context, 'image_service', 'image_id', 'device', mox.IgnoreArg(),
+            size=1)
 
         mock.ReplayAll()
         drv._use_image_utils_to_pipe_bytes_to_volume(

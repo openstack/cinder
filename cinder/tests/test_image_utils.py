@@ -252,7 +252,8 @@ class TestUtils(test.TestCase):
         self._test_fetch_to_raw(src_inf=SRC_INFO, dest_inf=DST_INFO)
 
         image_utils.fetch_to_raw(context, self._image_service,
-                                 self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+                                 self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                                 mox.IgnoreArg())
         self._mox.VerifyAll()
 
     def test_fetch_to_raw_no_qemu_img(self):
@@ -261,7 +262,8 @@ class TestUtils(test.TestCase):
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_to_raw,
                           context, self._image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                          mox.IgnoreArg())
 
         self._mox.VerifyAll()
 
@@ -276,7 +278,8 @@ class TestUtils(test.TestCase):
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_to_raw,
                           context, self._image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                          mox.IgnoreArg())
         self._mox.VerifyAll()
 
     def test_fetch_to_raw_on_error_backing_file(self):
@@ -292,7 +295,8 @@ class TestUtils(test.TestCase):
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_to_raw,
                           context, self._image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                          mox.IgnoreArg())
         self._mox.VerifyAll()
 
     def test_fetch_to_raw_on_error_not_convert_to_raw(self):
@@ -307,7 +311,8 @@ class TestUtils(test.TestCase):
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_to_raw,
                           context, self._image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                          mox.IgnoreArg())
 
     def test_fetch_to_raw_on_error_image_size(self):
         TEST_VOLUME_SIZE = 1
@@ -323,7 +328,7 @@ class TestUtils(test.TestCase):
                           image_utils.fetch_to_raw,
                           context, self._image_service,
                           self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
-                          size=TEST_VOLUME_SIZE)
+                          mox.IgnoreArg(), size=TEST_VOLUME_SIZE)
 
     def _test_fetch_verify_image(self, qemu_info, volume_size=1):
         fake_image_service = FakeImageService()

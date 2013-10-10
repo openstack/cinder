@@ -137,6 +137,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_oversub_ratio = 1.0
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         self.configuration.nfs_mount_options = None
+        self.configuration.volume_dd_blocksize = '1M'
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
         self.addCleanup(self.stubs.UnsetAll)
@@ -176,6 +177,7 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(image_utils, 'fetch_to_raw')
         image_utils.fetch_to_raw(None, None, None, TEST_IMG_SOURCE,
+                                 mox_lib.IgnoreArg(),
                                  size=self.TEST_SIZE_IN_GB)
 
         mox.StubOutWithMock(image_utils, 'resize_image')

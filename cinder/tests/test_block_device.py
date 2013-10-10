@@ -137,7 +137,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.mox.StubOutWithMock(self.drv, '_get_device_size')
         self.drv.local_path(TEST_SRC).AndReturn('/dev/loop1')
         self.drv._get_device_size('/dev/loop2').AndReturn(1)
-        volutils.copy_volume('/dev/loop1', dev, 2048,
+        volutils.copy_volume('/dev/loop1', dev, 2048, mox.IgnoreArg(),
                              execute=self.drv._execute)
         self.mox.ReplayAll()
         self.assertEqual(self.drv.create_cloned_volume(TEST_VOLUME, TEST_SRC),
@@ -152,7 +152,8 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.mox.StubOutWithMock(self.drv, 'local_path')
         self.drv.local_path(TEST_VOLUME).AndReturn('/dev/loop1')
         image_utils.fetch_to_raw(context, TEST_IMAGE_SERVICE,
-                                 TEST_IMAGE_ID, '/dev/loop1', size=1)
+                                 TEST_IMAGE_ID, '/dev/loop1', mox.IgnoreArg(),
+                                 size=1)
         self.mox.ReplayAll()
         self.drv.copy_image_to_volume(context, TEST_VOLUME, TEST_IMAGE_SERVICE,
                                       TEST_IMAGE_ID)

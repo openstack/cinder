@@ -170,7 +170,8 @@ class WindowsDriver(driver.ISCSIDriver):
         """Fetch the image from image_service and write it to the volume."""
         # Convert to VHD and file back to VHD
         image_utils.fetch_to_vhd(context, image_service, image_id,
-                                 self.local_path(volume))
+                                 self.local_path(volume),
+                                 self.configuration.volume_dd_blocksize)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""

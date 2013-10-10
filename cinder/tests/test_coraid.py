@@ -245,6 +245,7 @@ class CoraidDriverTestCase(test.TestCase):
         configuration.coraid_repository_key = fake_coraid_repository_key
         configuration.use_multipath_for_image_xfer = False
         configuration.num_volume_device_scan_tries = 3
+        configuration.volume_dd_blocksize = '1M'
         self.fake_rpc = FakeRpc()
 
         self.stubs.Set(coraid.CoraidRESTClient, 'rpc', self.fake_rpc)
@@ -829,6 +830,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
                                  fake_image_service,
                                  fake_image_id,
                                  self.fake_dev_path,
+                                 mox.IgnoreArg(),
                                  size=fake_volume_size)
 
         self.mox.ReplayAll()

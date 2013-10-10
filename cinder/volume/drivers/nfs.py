@@ -244,6 +244,7 @@ class RemoteFsDriver(driver.VolumeDriver):
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
+                                 self.configuration.volume_dd_blocksize,
                                  size=volume['size'])
 
         # NOTE (leseb): Set the virtual size of the image
