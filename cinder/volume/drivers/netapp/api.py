@@ -30,7 +30,7 @@ LOG = logging.getLogger(__name__)
 
 
 class NaServer(object):
-    """ Encapsulates server connection logic"""
+    """Encapsulates server connection logic."""
 
     TRANSPORT_TYPE_HTTP = 'http'
     TRANSPORT_TYPE_HTTPS = 'https'
@@ -60,7 +60,8 @@ class NaServer(object):
 
     def set_transport_type(self, transport_type):
         """Set the transport type protocol for api.
-           Supports http and https transport types.
+
+        Supports http and https transport types.
         """
         if transport_type.lower() not in (
                 NaServer.TRANSPORT_TYPE_HTTP,
@@ -85,8 +86,8 @@ class NaServer(object):
 
     def set_style(self, style):
         """Set the authorization style for communicating with the server.
-           Supports basic_auth for now.
-           Certificate_auth mode to be done.
+
+        Supports basic_auth for now. Certificate_auth mode to be done.
         """
         if style.lower() not in (NaServer.STYLE_LOGIN_PASSWORD,
                                  NaServer.STYLE_CERTIFICATE):
@@ -99,7 +100,8 @@ class NaServer(object):
 
     def set_server_type(self, server_type):
         """Set the target server type.
-           Supports filer and dfm server types.
+
+        Supports filer and dfm server types.
         """
         if server_type.lower() not in (NaServer.SERVER_TYPE_FILER,
                                        NaServer.SERVER_TYPE_DFM):
@@ -142,7 +144,7 @@ class NaServer(object):
         return self._port
 
     def set_timeout(self, seconds):
-        """Sets the timeout in seconds"""
+        """Sets the timeout in seconds."""
         try:
             self._timeout = int(seconds)
         except ValueError:
@@ -155,23 +157,23 @@ class NaServer(object):
         return None
 
     def get_vfiler(self):
-        """Get the vfiler tunneling."""
+        """Get the vfiler to use in tunneling."""
         return self._vfiler
 
     def set_vfiler(self, vfiler):
-        """Set the vfiler tunneling."""
+        """Set the vfiler to use if tunneling gets enabled."""
         self._vfiler = vfiler
 
     def get_vserver(self):
-        """Get the vserver for tunneling."""
+        """Get the vserver to use in tunneling."""
         return self._vserver
 
     def set_vserver(self, vserver):
-        """Set the vserver for tunneling."""
+        """Set the vserver to use if tunneling gets enabled."""
         self._vserver = vserver
 
     def set_username(self, username):
-        """Set the username for authentication."""
+        """Set the user name for authentication."""
         self._username = username
         self._refresh_conn = True
 
@@ -180,11 +182,11 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
-    def invoke_elem(self, na_element):
+    def invoke_elem(self, na_element, enable_tunneling=False):
         """Invoke the api on the server."""
         if na_element and not isinstance(na_element, NaElement):
             ValueError('NaElement must be supplied to invoke api')
-        request = self._create_request(na_element)
+        request = self._create_request(na_element, enable_tunneling)
         if not hasattr(self, '_opener') or not self._opener \
                 or self._refresh_conn:
             self._build_opener()
@@ -200,9 +202,15 @@ class NaServer(object):
         xml = response.read()
         return self._get_result(xml)
 
-    def invoke_successfully(self, na_element):
-        """Invokes api and checks execution status as success."""
-        result = self.invoke_elem(na_element)
+    def invoke_successfully(self, na_element, enable_tunneling=False):
+        """Invokes api and checks execution status as success.
+
+        Need to set enable_tunneling to True explicitly to achieve it.
+        This helps to use same connection instance to enable or disable
+        tunneling. The vserver or vfiler should be set before this call
+        otherwise tunneling remains disabled.
+        """
+        result = self.invoke_elem(na_element, enable_tunneling)
         if result.has_attr('status') and result.get_attr('status') == 'passed':
             return result
         code = result.get_attr('errno')\
@@ -213,12 +221,23 @@ class NaServer(object):
             or 'Execution status is failed due to unknown reason'
         raise NaApiError(code, msg)
 
-    def _create_request(self, na_element):
+    def _create_request(self, na_element, enable_tunneling=False):
         """Creates request in the desired format."""
         netapp_elem = NaElement('netapp')
         netapp_elem.add_attr('xmlns', self._ns)
         if hasattr(self, '_api_version'):
             netapp_elem.add_attr('version', self._api_version)
+        if enable_tunneling:
+            self._enable_tunnel_request(netapp_elem)
+        netapp_elem.add_child_elem(na_element)
+        request_d = netapp_elem.to_string()
+        request = urllib2.Request(
+            self._get_url(), data=request_d,
+            headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
+        return request
+
+    def _enable_tunnel_request(self, netapp_elem):
+        """Enables vserver or vfiler tunneling."""
         if hasattr(self, '_vfiler') and self._vfiler:
             if hasattr(self, '_api_major_version') and \
                     hasattr(self, '_api_minor_version') and \
@@ -237,12 +256,6 @@ class NaServer(object):
             else:
                 raise ValueError('ontapi version has to be atleast 1.15'
                                  ' to send request to vserver')
-        netapp_elem.add_child_elem(na_element)
-        request_d = netapp_elem.to_string()
-        request = urllib2.Request(
-            self._get_url(), data=request_d,
-            headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
-        return request
 
     def _parse_response(self, response):
         """Get the NaElement for the response."""
@@ -352,8 +365,8 @@ class NaElement(object):
 
     def add_new_child(self, name, content, convert=False):
         """Add child with tag name and context.
-           Convert replaces entity refs to chars.
-        """
+
+           Convert replaces entity refs to chars."""
         child = NaElement(name)
         if convert:
             content = NaElement._convert_entity_refs(content)
@@ -362,9 +375,7 @@ class NaElement(object):
 
     @staticmethod
     def _convert_entity_refs(text):
-        """Converts entity refs to chars
-           neccessary to handle etree auto conversions.
-        """
+        """Converts entity refs to chars to handle etree auto conversions."""
         text = text.replace("&lt;", "<")
         text = text.replace("&gt;", ">")
         return text
@@ -383,13 +394,14 @@ class NaElement(object):
         self.add_child_elem(parent)
 
     def to_string(self, pretty=False, method='xml', encoding='UTF-8'):
-        """Prints the element to string"""
+        """Prints the element to string."""
         return etree.tostring(self._element, method=method, encoding=encoding,
                               pretty_print=pretty)
 
 
 class NaApiError(Exception):
     """Base exception class for NetApp api errors."""
+
     def __init__(self, code='unknown', message='unknown'):
         self.code = code
         self.message = message
