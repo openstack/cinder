@@ -20,7 +20,7 @@
 
 .. automodule:: nexenta
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
-.. moduleauthor:: Mikhaik Khodos <mikhail.khodos@nexenta.com>
+.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
 """
 
 
