@@ -42,7 +42,6 @@ import time
 
 from oslo.config import cfg
 
-from cinder.brick.initiator import connector as initiator
 from cinder import compute
 from cinder import context
 from cinder import exception

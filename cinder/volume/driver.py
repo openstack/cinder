@@ -25,7 +25,6 @@ import time
 
 from oslo.config import cfg
 
-from cinder.brick.initiator import connector as initiator
 from cinder.brick.iscsi import iscsi
 from cinder.brick.iser import iser
 from cinder import exception
