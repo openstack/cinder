@@ -299,7 +299,8 @@ class VMwareVolumeOps(object):
         controller_spec.device = controller_device
 
         disk_device = cf.create('ns0:VirtualDisk')
-        disk_device.capacityInKB = int(size_kb)
+        # for very small disks allocate at least 1KB
+        disk_device.capacityInKB = max(1, int(size_kb))
         disk_device.key = -101
         disk_device.unitNumber = 0
         disk_device.controllerKey = -100
@@ -308,7 +309,7 @@ class VMwareVolumeOps(object):
             disk_device_bkng.eagerlyScrub = True
         elif disk_type == 'thin':
             disk_device_bkng.thinProvisioned = True
-        disk_device_bkng.fileName = '[%s]' % ds_name
+        disk_device_bkng.fileName = ''
         disk_device_bkng.diskMode = 'persistent'
         disk_device.backing = disk_device_bkng
         disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')

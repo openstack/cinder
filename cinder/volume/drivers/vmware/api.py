@@ -271,3 +271,38 @@ class VMwareAPISession(object):
             LOG.exception(_("Task: %(task)s failed with error: %(err)s.") %
                           {'task': task, 'err': excep})
             done.send_exception(excep)
+
+    def wait_for_lease_ready(self, lease):
+        done = event.Event()
+        loop = loopingcall.FixedIntervalLoopingCall(self._poll_lease,
+                                                    lease,
+                                                    done)
+        loop.start(self._task_poll_interval)
+        done.wait()
+        loop.stop()
+
+    def _poll_lease(self, lease, done):
+        try:
+            state = self.invoke_api(vim_util, 'get_object_property',
+                                    self.vim, lease, 'state')
+            if state == 'ready':
+                # done
+                LOG.debug(_("Lease is ready."))
+                done.send()
+                return
+            elif state == 'initializing':
+                LOG.debug(_("Lease initializing..."))
+                return
+            elif state == 'error':
+                error_msg = self.invoke_api(vim_util, 'get_object_property',
+                                            self.vim, lease, 'error')
+                LOG.exception(error_msg)
+                excep = error_util.VimFaultException([], error_msg)
+                done.send_exception(excep)
+            else:
+                # unknown state - complain
+                error_msg = _("Error: unknown lease state %s.") % state
+                raise error_util.VimFaultException([], error_msg)
+        except Exception as excep:
+            LOG.exception(excep)
+            done.send_exception(excep)
