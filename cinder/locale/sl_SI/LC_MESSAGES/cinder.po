@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-10-13 06:12+0000\n"
+"POT-Creation-Date: 2013-10-14 06:12+0000\n"
 "PO-Revision-Date: 2013-07-01 16:14+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Slovenian (Slovenia) "
@@ -19,12 +19,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 
-#: cinder/context.py:62
+#: cinder/context.py:63
 #, python-format
 msgid "Arguments dropped when creating context: %s"
 msgstr ""
 
-#: cinder/context.py:103
+#: cinder/context.py:104
 #, python-format
 msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr ""
@@ -664,7 +664,7 @@ msgstr ""
 msgid "Rule checked when requested rule is not found"
 msgstr ""
 
-#: cinder/quota.py:106
+#: cinder/quota.py:107
 #, python-format
 msgid ""
 "Default quota for resource: %(res)s is set by the default quota flag: "
@@ -672,26 +672,26 @@ msgid ""
 "class for default quota."
 msgstr ""
 
-#: cinder/quota.py:759
+#: cinder/quota.py:750
 #, python-format
 msgid "Created reservations %s"
 msgstr ""
 
-#: cinder/quota.py:781
+#: cinder/quota.py:772
 #, python-format
 msgid "Failed to commit reservations %s"
 msgstr ""
 
-#: cinder/quota.py:801
+#: cinder/quota.py:792
 #, python-format
 msgid "Failed to roll back reservations %s"
 msgstr ""
 
-#: cinder/quota.py:888
+#: cinder/quota.py:878
 msgid "Cannot register resource"
 msgstr ""
 
-#: cinder/quota.py:891
+#: cinder/quota.py:881
 msgid "Cannot register resources"
 msgstr ""
 
@@ -817,21 +817,21 @@ msgstr ""
 msgid "Error connecting via ssh: %s"
 msgstr ""
 
-#: cinder/utils.py:407
+#: cinder/utils.py:408
 #, python-format
 msgid "Invalid backend: %s"
 msgstr ""
 
-#: cinder/utils.py:418
+#: cinder/utils.py:419
 #, python-format
 msgid "backend %s"
 msgstr ""
 
-#: cinder/utils.py:468
+#: cinder/utils.py:469
 msgid "in looping call"
 msgstr ""
 
-#: cinder/utils.py:753
+#: cinder/utils.py:754
 #, python-format
 msgid "Could not remove tmpdir: %s"
 msgstr ""
@@ -1066,7 +1066,7 @@ msgstr ""
 msgid "Snapshot not found."
 msgstr ""
 
-#: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:171
+#: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:172
 msgid "cannot understand XML"
 msgstr ""
 
@@ -1127,7 +1127,7 @@ msgstr ""
 msgid "Malformed scheduler_hints attribute"
 msgstr ""
 
-#: cinder/api/contrib/services.py:85
+#: cinder/api/contrib/services.py:86
 msgid ""
 "Query by service parameter is deprecated. Please use binary parameter "
 "instead."
@@ -1269,7 +1269,7 @@ msgstr ""
 msgid "Caught error: %s"
 msgstr ""
 
-#: cinder/api/middleware/fault.py:55 cinder/api/openstack/wsgi.py:907
+#: cinder/api/middleware/fault.py:55 cinder/api/openstack/wsgi.py:910
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
@@ -1279,33 +1279,33 @@ msgstr ""
 msgid "%(exception)s: %(explanation)s"
 msgstr ""
 
-#: cinder/api/middleware/sizelimit.py:56 cinder/api/middleware/sizelimit.py:65
-#: cinder/api/middleware/sizelimit.py:79
+#: cinder/api/middleware/sizelimit.py:57 cinder/api/middleware/sizelimit.py:66
+#: cinder/api/middleware/sizelimit.py:80
 msgid "Request is too large."
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:73
+#: cinder/api/openstack/__init__.py:70
 msgid "Must specify an ExtensionManager class"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:84
+#: cinder/api/openstack/__init__.py:81
 #, python-format
 msgid "Extended resource: %s"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:108
+#: cinder/api/openstack/__init__.py:105
 #, python-format
 msgid ""
 "Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
 "resource"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:114
+#: cinder/api/openstack/__init__.py:111
 #, python-format
 msgid "Extension %(ext_name)s extending resource: %(collection)s"
 msgstr ""
 
-#: cinder/api/openstack/__init__.py:130
+#: cinder/api/openstack/__init__.py:127
 msgid ""
 "cinder.api.openstack:FaultWrapper is deprecated. Please use "
 "cinder.api.middleware.fault:FaultWrapper instead."
@@ -1317,47 +1317,47 @@ msgid ""
 "cinder.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:147 cinder/api/openstack/wsgi.py:559
+#: cinder/api/openstack/wsgi.py:147 cinder/api/openstack/wsgi.py:561
 msgid "cannot understand JSON"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:564
+#: cinder/api/openstack/wsgi.py:566
 msgid "too many body keys"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:602
+#: cinder/api/openstack/wsgi.py:604
 #, python-format
 msgid "Exception handling resource: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:607
+#: cinder/api/openstack/wsgi.py:609
 #, python-format
 msgid "Fault thrown: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:610
+#: cinder/api/openstack/wsgi.py:612
 #, python-format
 msgid "HTTP exception thrown: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:718
+#: cinder/api/openstack/wsgi.py:721
 msgid "Unrecognized Content-Type provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:722
+#: cinder/api/openstack/wsgi.py:725
 msgid "No Content-Type provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:726
+#: cinder/api/openstack/wsgi.py:729
 msgid "Empty body provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:837
+#: cinder/api/openstack/wsgi.py:840
 #, python-format
 msgid "There is no such action: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:840 cinder/api/openstack/wsgi.py:853
+#: cinder/api/openstack/wsgi.py:843 cinder/api/openstack/wsgi.py:856
 #: cinder/api/v1/snapshot_metadata.py:55 cinder/api/v1/snapshot_metadata.py:73
 #: cinder/api/v1/snapshot_metadata.py:98 cinder/api/v1/snapshot_metadata.py:123
 #: cinder/api/v1/volume_metadata.py:55 cinder/api/v1/volume_metadata.py:73
@@ -1369,15 +1369,15 @@ msgstr ""
 msgid "Malformed request body"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:850
+#: cinder/api/openstack/wsgi.py:853
 msgid "Unsupported Content-Type"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:862
+#: cinder/api/openstack/wsgi.py:865
 msgid "Malformed request url"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:910
+#: cinder/api/openstack/wsgi.py:913
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
 msgstr ""
@@ -1394,14 +1394,14 @@ msgid ""
 "cinder.api.versions.Versions instead."
 msgstr ""
 
-#: cinder/api/v1/limits.py:145 cinder/api/v2/limits.py:145
+#: cinder/api/v1/limits.py:138 cinder/api/v2/limits.py:138
 #, python-format
 msgid ""
 "Only %(value)s %(verb)s request(s) can be made to %(uri)s every "
 "%(unit_string)s."
 msgstr ""
 
-#: cinder/api/v1/limits.py:271 cinder/api/v2/limits.py:271
+#: cinder/api/v1/limits.py:263 cinder/api/v2/limits.py:261
 msgid "This request was rate-limited."
 msgstr ""
 
@@ -2656,7 +2656,7 @@ msgstr ""
 msgid "glusterfs_mount_point_base required"
 msgstr ""
 
-#: cinder/brick/remotefs/remotefs.py:87
+#: cinder/brick/remotefs/remotefs.py:88
 #, python-format
 msgid "Already mounted: %s"
 msgstr ""
@@ -2698,7 +2698,7 @@ msgstr ""
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1841
+#: cinder/db/sqlalchemy/api.py:1839
 #, python-format
 msgid "VolumeType %s deletion failed, VolumeType in use."
 msgstr ""
@@ -2897,17 +2897,17 @@ msgstr ""
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr ""
 
-#: cinder/keymgr/conf_key_mgr.py:71
+#: cinder/keymgr/conf_key_mgr.py:72
 msgid ""
 "config option keymgr.fixed_key has not been defined: some operations may "
 "fail unexpectedly"
 msgstr ""
 
-#: cinder/keymgr/conf_key_mgr.py:81
+#: cinder/keymgr/conf_key_mgr.py:82
 msgid "keymgr.fixed_key not defined"
 msgstr ""
 
-#: cinder/keymgr/conf_key_mgr.py:135
+#: cinder/keymgr/conf_key_mgr.py:136
 #, python-format
 msgid "Not deleting key %s"
 msgstr ""
@@ -3715,7 +3715,7 @@ msgid ""
 "\t%s"
 msgstr ""
 
-#: cinder/tests/test_netapp_nfs.py:351
+#: cinder/tests/test_netapp_nfs.py:352
 #, python-format
 msgid "Share %(share)s and file name %(file_name)s"
 msgstr ""
@@ -3756,7 +3756,7 @@ msgstr ""
 msgid "Result data: %s"
 msgstr ""
 
-#: cinder/tests/test_xiv_ds8k.py:106
+#: cinder/tests/test_xiv_ds8k.py:104
 #, python-format
 msgid "Volume not found for instance %(instance_id)s."
 msgstr ""
@@ -3819,45 +3819,45 @@ msgstr ""
 msgid "Decoding JSON: %s"
 msgstr ""
 
-#: cinder/transfer/api.py:70
+#: cinder/transfer/api.py:68
 msgid "Volume in unexpected state"
 msgstr ""
 
-#: cinder/transfer/api.py:104 cinder/volume/api.py:369
+#: cinder/transfer/api.py:102 cinder/volume/api.py:369
 #: cinder/volume/manager.py:480
 msgid "status must be available"
 msgstr ""
 
-#: cinder/transfer/api.py:121
+#: cinder/transfer/api.py:119
 #, python-format
 msgid "Failed to create transfer record for %s"
 msgstr ""
 
-#: cinder/transfer/api.py:138
+#: cinder/transfer/api.py:136
 #, python-format
 msgid "Attempt to transfer %s with invalid auth key."
 msgstr ""
 
-#: cinder/transfer/api.py:158 cinder/volume/flows/create_volume/__init__.py:634
+#: cinder/transfer/api.py:156 cinder/volume/flows/create_volume/__init__.py:634
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/transfer/api.py:170 cinder/volume/flows/create_volume/__init__.py:646
+#: cinder/transfer/api.py:168 cinder/volume/flows/create_volume/__init__.py:646
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d "
 "volumes already consumed)"
 msgstr ""
 
-#: cinder/transfer/api.py:184
+#: cinder/transfer/api.py:182
 #, python-format
 msgid "Failed to update quota donating volumetransfer id %s"
 msgstr ""
 
-#: cinder/transfer/api.py:201
+#: cinder/transfer/api.py:199
 #, python-format
 msgid "Volume %s has been transferred."
 msgstr ""
@@ -4071,7 +4071,7 @@ msgstr ""
 
 #: cinder/volume/driver.py:674 cinder/volume/drivers/lvm.py:350
 #: cinder/volume/drivers/storwize_svc.py:1539
-#: cinder/volume/drivers/zadara.py:663
+#: cinder/volume/drivers/zadara.py:658
 #: cinder/volume/drivers/emc/emc_smis_common.py:858
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:237
 #: cinder/volume/drivers/netapp/iscsi.py:1038
@@ -4432,7 +4432,7 @@ msgid "Error unrecognized volume_clear option: %s"
 msgstr ""
 
 #: cinder/volume/drivers/block_device.py:307 cinder/volume/drivers/lvm.py:295
-#: cinder/volume/drivers/zadara.py:519 cinder/volume/drivers/nexenta/nfs.py:179
+#: cinder/volume/drivers/zadara.py:517 cinder/volume/drivers/nexenta/nfs.py:179
 #, python-format
 msgid "Creating clone of volume: %s"
 msgstr ""
@@ -5928,53 +5928,53 @@ msgstr ""
 msgid "Operation completed. %(data)s"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:366
+#: cinder/volume/drivers/zadara.py:365
 #, python-format
 msgid "Pool %(name)s: %(total)sGB total, %(free)sGB free"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:418 cinder/volume/drivers/zadara.py:541
+#: cinder/volume/drivers/zadara.py:416 cinder/volume/drivers/zadara.py:539
 #, python-format
 msgid "Volume %(name)s could not be found. It might be already deleted"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:448
+#: cinder/volume/drivers/zadara.py:446
 #, python-format
 msgid "Create snapshot: %s"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:455 cinder/volume/drivers/zadara.py:500
-#: cinder/volume/drivers/zadara.py:526
+#: cinder/volume/drivers/zadara.py:453 cinder/volume/drivers/zadara.py:498
+#: cinder/volume/drivers/zadara.py:524
 #, python-format
 msgid "Volume %(name)s not found"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:466
+#: cinder/volume/drivers/zadara.py:464
 #, python-format
 msgid "Delete snapshot: %s"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:474
+#: cinder/volume/drivers/zadara.py:472
 #, python-format
 msgid "snapshot: original volume %s not found, skipping delete operation"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:482
+#: cinder/volume/drivers/zadara.py:480
 #, python-format
 msgid "snapshot: snapshot %s not found, skipping delete operation"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:493
+#: cinder/volume/drivers/zadara.py:491
 #, python-format
 msgid "Creating volume from snapshot: %s"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:506
+#: cinder/volume/drivers/zadara.py:504
 #, python-format
 msgid "Snapshot %(name)s not found"
 msgstr ""
 
-#: cinder/volume/drivers/zadara.py:625
+#: cinder/volume/drivers/zadara.py:622
 #, python-format
 msgid "Attach properties: %(properties)s"
 msgstr ""
@@ -8053,12 +8053,12 @@ msgstr ""
 msgid "Regular file: %s created."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:309
+#: cinder/volume/drivers/nexenta/nfs.py:310
 #, python-format
 msgid "Sharing folder %s on Nexenta Store"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:337
+#: cinder/volume/drivers/nexenta/nfs.py:338
 #, python-format
 msgid "Shares loaded: %s"
 msgstr ""
@@ -8207,7 +8207,7 @@ msgstr ""
 msgid "At least one valid iSCSI IP address must be set."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_iscsi.py:378
+#: cinder/volume/drivers/san/hp/hp_3par_iscsi.py:377
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""
 
