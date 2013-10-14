@@ -61,7 +61,8 @@ test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
 FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                  'wwpns': ['10000090fa0d6754'],
                  'wwnns': ['10000090fa0d6755'],
-                 'host': 'fakehost'}
+                 'host': 'fakehost',
+                 'ip': '10.10.0.1'}
 
 
 def Fake_sleep(time):

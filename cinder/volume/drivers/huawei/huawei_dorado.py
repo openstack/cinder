@@ -81,7 +81,7 @@ class HuaweiDoradoFCDriver(huawei_t.HuaweiTFCDriver):
 
         self.common._update_login_info()
         # First, add a host if it is not added before.
-        host_id = self.common.add_host(connector['host'])
+        host_id = self.common.add_host(connector['host'], connector['ip'])
         # Then, add free FC ports to the host.
         ini_wwns = connector['wwpns']
         free_wwns = self._get_connected_free_wwns()
