@@ -1054,6 +1054,13 @@ class HVSCommon():
                 iscsi_port_info = item['LOCATION']
                 break
 
+        if not iscsi_port_info:
+            msg = (_('_get_iscsi_port_info: Failed to get iscsi port info '
+                     'through config IP %(ip)s, please check config file.')
+                   % {'ip': ip})
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
         return iscsi_port_info
 
     def _get_iscsi_conf(self):
@@ -1078,28 +1085,23 @@ class HVSCommon():
         LOG.debug(_('_get_tgt_iqn: iSCSI IP is %s.') % iscsiip)
         ip_info = self._get_iscsi_port_info(iscsiip)
         iqn_prefix = self._get_iscsi_tgt_port()
-        LOG.debug(_('request ip info is %s.') % ip_info)
+
         split_list = ip_info.split(".")
         newstr = split_list[1] + split_list[2]
-        LOG.debug(_('new str info is %s.') % newstr)
-
-        if ip_info:
-            if newstr[0] == 'A':
-                ctr = "0"
-            elif newstr[0] == 'B':
-                ctr = "1"
-            interface = '0' + newstr[1]
-            port = '0' + newstr[3]
-            iqn_suffix = ctr + '02' + interface + port
-            for i in range(0, len(iqn_suffix)):
-                if iqn_suffix[i] != '0':
-                    iqn_suffix = iqn_suffix[i:]
-                    break
-            iqn = iqn_prefix + ':' + iqn_suffix + ':' + iscsiip
-            LOG.debug(_('_get_tgt_iqn: iSCSI target iqn is %s') % iqn)
-            return iqn
-        else:
-            return None
+        if newstr[0] == 'A':
+            ctr = "0"
+        elif newstr[0] == 'B':
+            ctr = "1"
+        interface = '0' + newstr[1]
+        port = '0' + newstr[3]
+        iqn_suffix = ctr + '02' + interface + port
+        for i in range(0, len(iqn_suffix)):
+            if iqn_suffix[i] != '0':
+                iqn_suffix = iqn_suffix[i:]
+                break
+        iqn = iqn_prefix + ':' + iqn_suffix + ':' + iscsiip
+        LOG.debug(_('_get_tgt_iqn: iSCSI target iqn is %s') % iqn)
+        return iqn
 
     def _get_fc_target_wwpns(self, wwn):
         url = (self.url +
