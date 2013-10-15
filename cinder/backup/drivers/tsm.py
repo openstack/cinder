@@ -59,10 +59,9 @@ class TSMBackupDriver(BackupDriver):
     DRIVER_VERSION = '1.0.0'
 
     def __init__(self, context, db_driver=None):
-        self.context = context
+        super(TSMBackupDriver, self).__init__(context, db_driver)
         self.tsm_password = CONF.backup_tsm_password
         self.volume_prefix = CONF.backup_tsm_volume_prefix
-        super(TSMBackupDriver, self).__init__(db_driver)
 
     def _make_link(self, volume_path, backup_path, vol_id):
         """Create a hard link for the volume block device.
@@ -267,7 +266,7 @@ class TSMBackupDriver(BackupDriver):
                       'err': e.stderr})
             LOG.error(err)
 
-    def backup(self, backup, volume_file):
+    def backup(self, backup, volume_file, backup_metadata=False):
         """Backup the given volume to TSM.
 
         TSM performs an image backup of a volume. The volume_file is
@@ -276,8 +275,16 @@ class TSMBackupDriver(BackupDriver):
 
         :param backup: backup information for volume
         :param volume_file: file object representing the volume
+        :param backup_metadata: whether or not to backup volume metadata
         :raises InvalidBackup
         """
+
+        # TODO(dosaboy): this needs implementing (see backup.drivers.ceph for
+        #                an example)
+        if backup_metadata:
+            msg = _("Volume metadata backup requested but this driver does "
+                    "not yet support this feature.")
+            raise exception.InvalidBackup(reason=msg)
 
         backup_id = backup['id']
         volume_id = backup['volume_id']
