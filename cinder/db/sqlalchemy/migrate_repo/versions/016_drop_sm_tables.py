@@ -59,7 +59,8 @@ def downgrade(migrate_engine):
         Column('sr_uuid', String(length=255)),
         Column('sr_type', String(length=255)),
         Column('config_params', String(length=2047)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     sm_flavors = Table(
@@ -71,7 +72,8 @@ def downgrade(migrate_engine):
         Column('id', Integer, primary_key=True, nullable=False),
         Column('label', String(length=255)),
         Column('description', String(length=255)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     sm_volume = Table(
@@ -87,7 +89,8 @@ def downgrade(migrate_engine):
         Column('backend_id', Integer, ForeignKey('sm_backend_config.id'),
                nullable=False),
         Column('vdi_uuid', String(length=255)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     tables = [sm_flavors, sm_backend_config, sm_volume]

@@ -74,7 +74,8 @@ def upgrade(migrate_engine):
         Column('volume_type_id', String(length=36),
                ForeignKey(volume_types.c.id),
                primary_key=True, nullable=False),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     try:
