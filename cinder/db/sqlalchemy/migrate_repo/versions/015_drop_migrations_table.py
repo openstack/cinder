@@ -53,7 +53,8 @@ def downgrade(migrate_engine):
         Column('new_instance_type_id', Integer),
         Column('instance_uuid', String(length=255), nullable=True),
         Column('status', String(length=255)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     try:

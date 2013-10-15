@@ -40,7 +40,8 @@ def upgrade(migrate_engine):
         Column('salt', String(length=255)),
         Column('crypt_hash', String(length=255)),
         Column('expires_at', DateTime(timezone=False)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     try:

@@ -40,7 +40,8 @@ def upgrade(migrate_engine):
                ForeignKey('quality_of_service_specs.id')),
         Column('key', String(255)),
         Column('value', String(255)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     try:

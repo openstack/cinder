@@ -38,7 +38,8 @@ def upgrade(migrate_engine):
                nullable=False),
         Column('key', String(length=255)),
         Column('value', String(length=255)),
-        mysql_engine='InnoDB'
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     try:
