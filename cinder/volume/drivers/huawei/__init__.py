@@ -30,7 +30,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.huawei import huawei_dorado
 from cinder.volume.drivers.huawei import huawei_hvs
 from cinder.volume.drivers.huawei import huawei_t
-from cinder.volume.drivers.huawei import ssh_common
+from cinder.volume.drivers.huawei import huawei_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class HuaweiVolumeDriver(object):
 
     def _get_conf_info(self, filename):
         """Get product type and connection protocol from config file."""
-        root = ssh_common.parse_xml_file(filename)
+        root = huawei_utils.parse_xml_file(filename)
         product = root.findtext('Storage/Product').strip()
         protocol = root.findtext('Storage/Protocol').strip()
         if (product in self._product.keys() and

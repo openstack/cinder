@@ -25,6 +25,7 @@ import time
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
+from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import ssh_common
 
 
@@ -106,7 +107,7 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
             self._get_iscsi_params(connector['initiator'])
 
         # First, add a host if not added before.
-        host_id = self.common.add_host(connector['host'],
+        host_id = self.common.add_host(connector['host'], connector['ip'],
                                        connector['initiator'])
 
         # Then, add the iSCSI port to the host.
@@ -175,7 +176,7 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
         """
 
         iscsiinfo = {}
-        root = ssh_common.parse_xml_file(filename)
+        root = huawei_utils.parse_xml_file(filename)
 
         default_ip = root.findtext('iSCSI/DefaultTargetIP')
         if default_ip:
@@ -441,7 +442,7 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
 
         self.common._update_login_info()
         # First, add a host if it is not added before.
-        host_id = self.common.add_host(connector['host'])
+        host_id = self.common.add_host(connector['host'], connector['ip'])
         # Then, add free FC ports to the host.
         ini_wwns = connector['wwpns']
         free_wwns = self._get_connected_free_wwns()
