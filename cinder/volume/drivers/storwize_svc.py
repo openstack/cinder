@@ -245,8 +245,7 @@ class StorwizeSVCDriver(san.SanDriver):
         for iogrp_line in iogrps:
             try:
                 iogrp_data = self._get_hdr_dic(header, iogrp_line, '!')
-                if (int(iogrp_data['node_count']) > 0 and
-                        int(iogrp_data['vdisk_count']) > 0):
+                if int(iogrp_data['node_count']) > 0:
                     self._available_iogrps.append(int(iogrp_data['id']))
             except exception.VolumeBackendAPIException:
                 with excutils.save_and_reraise_exception():
