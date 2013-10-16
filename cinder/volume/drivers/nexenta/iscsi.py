@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`nexenta.volume` -- Driver to store volumes on Nexenta Appliance
+:mod:`nexenta.iscsi` -- Driver to store volumes on Nexenta Appliance
 =====================================================================
 
 .. automodule:: nexenta.volume
@@ -50,9 +50,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.0.1 - Fixed bug #1236626: catch "does not exist" exception of
                 lu_exists.
         1.1.0 - Changed class name to NexentaISCSIDriver.
+        1.1.1 - Ignore "does not exist" exception of nms.snapshot.destroy.
     """
 
-    VERSION = '1.1.0'
+    VERSION = '1.1.1'
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
@@ -137,7 +138,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if "does not exist" in exc.args[0]:
                 LOG.info(_('Volume %s does not exist, it seems it was already '
-                           'deleted'), volume['name'])
+                           'deleted.'), volume['name'])
                 return
             if "zvol has children" in exc.args[0]:
                 raise exception.VolumeIsBusy(volume_name=volume['name'])
@@ -208,16 +209,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param snapshot: snapshot reference
         """
+        volume_name = self._get_zvol_name(snapshot['volume_name'])
+        snapshot_name = '%s@%s' % (volume_name, snapshot['name'])
         try:
-            self.nms.snapshot.destroy(
-                '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
-                           snapshot['name']),
-                '')
+            self.nms.snapshot.destroy(snapshot_name, '')
         except nexenta.NexentaException as exc:
+            if "does not exist" in exc.args[0]:
+                LOG.info(_('Snapshot %s does not exist, it seems it was '
+                           'already deleted.'), snapshot_name)
+                return
             if "snapshot has dependent clones" in exc.args[0]:
                 raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
-            else:
-                raise
+            raise
 
     def local_path(self, volume):
         """Return local path to existing local volume.

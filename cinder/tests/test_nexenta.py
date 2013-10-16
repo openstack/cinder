@@ -24,6 +24,8 @@ import urllib2
 
 import mox as mox_lib
 
+from cinder import context
+from cinder import db
 from cinder import test
 from cinder import units
 from cinder.volume import configuration as conf
@@ -148,6 +150,14 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_delete_snapshot(self):
         self.nms_mock.snapshot.destroy('cinder/volume1@snapshot1', '')
+        self.mox.ReplayAll()
+        self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
+        self.mox.ResetAll()
+
+        # Check that exception not raised if snapshot does not exist
+        mock = self.nms_mock.snapshot.destroy('cinder/volume1@snapshot1', '')
+        mock.AndRaise(nexenta.NexentaException(
+            'Snapshot cinder/volume1@snapshot1 does not exist'))
         self.mox.ReplayAll()
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
 
@@ -381,8 +391,18 @@ class TestNexentaNfsDriver(test.TestCase):
         'root': 'nobody'
     }
 
+    def _create_volume_db_entry(self):
+        vol = {
+            'id': '1',
+            'size': 1,
+            'status': 'available',
+            'provider_location': self.TEST_EXPORT1
+        }
+        return db.volume_create(self.ctxt, vol)['id']
+
     def setUp(self):
         super(TestNexentaNfsDriver, self).setUp()
+        self.ctxt = context.get_admin_context()
         self.configuration = mox_lib.MockObject(conf.Configuration)
         self.configuration.nexenta_shares_config = None
         self.configuration.nexenta_mount_point_base = '$state_path/mnt'
@@ -392,7 +412,8 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nfs_mount_options = None
         self.configuration.nexenta_nms_cache_volroot = False
         self.nms_mock = self.mox.CreateMockAnything()
-        for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc'):
+        for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',
+                    'snapshot'):
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
         self.nms_mock.__hash__ = lambda *_, **__: 1
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
@@ -594,3 +615,53 @@ class TestNexentaNfsDriver(test.TestCase):
 
         self.assertEqual(volume_name, 'stack')
         self.assertEqual(folder_name, 'share')
+
+    def test_delete_snapshot(self):
+        self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
+        self._create_volume_db_entry()
+
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.snapshot.destroy('stack/share/volume-1@snapshot1', '')
+        self.mox.ReplayAll()
+        self.drv.delete_snapshot({'volume_id': '1', 'name': 'snapshot1'})
+        self.mox.ResetAll()
+
+        # Check that exception not raised if snapshot does not exist on
+        # NexentaStor appliance.
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        mock = self.nms_mock.snapshot.destroy('stack/share/volume-1@snapshot1',
+                                              '')
+        mock.AndRaise(nexenta.NexentaException("Snapshot does not exist"))
+        self.mox.ReplayAll()
+        self.drv.delete_snapshot({'volume_id': '1', 'name': 'snapshot1'})
+        self.mox.ResetAll()
+
+    def test_delete_volume(self):
+        self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
+        self._create_volume_db_entry()
+
+        self.drv._ensure_share_mounted = lambda *_, **__: 0
+        self.drv._execute = lambda *_, **__: 0
+
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        self.nms_mock.folder.destroy('stack/share/volume-1', '')
+        self.mox.ReplayAll()
+        self.drv.delete_volume({
+            'id': '1',
+            'name': 'volume-1',
+            'provider_location': self.TEST_EXPORT1
+        })
+        self.mox.ResetAll()
+
+        # Check that exception not raised if folder does not exist on
+        # NexentaStor appliance.
+        self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
+        mock = self.nms_mock.folder.destroy('stack/share/volume-1', '')
+        mock.AndRaise(nexenta.NexentaException("Folder does not exist"))
+        self.mox.ReplayAll()
+        self.drv.delete_volume({
+            'id': '1',
+            'name': 'volume-1',
+            'provider_location': self.TEST_EXPORT1
+        })
+        self.mox.ResetAll()
