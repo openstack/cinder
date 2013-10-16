@@ -215,8 +215,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                 LOG.error(_("Error running SSH command: %s") % command)
 
     def _eql_execute(self, *args, **kwargs):
-            return self._run_ssh(
-                args, attempts=self.configuration.eqlx_cli_max_retries)
+        return self._run_ssh(
+            args, attempts=self.configuration.eqlx_cli_max_retries)
 
     def _get_volume_data(self, lines):
         prefix = 'iSCSI target name is '
