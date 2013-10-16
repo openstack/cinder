@@ -197,10 +197,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def clear_volume(self, volume, is_snapshot=False):
         """unprovision old volumes to prevent data leaking between users."""
 
-        if self.configuration.volume_clear == 'none':
+        # NOTE(jdg): Don't write the blocks of thin provisioned
+        # volumes
+        if self.configuration.volume_clear == 'none' or \
+                self.configuration.lvm_type == 'thin':
             return
 
-        if is_snapshot and not self.configuration.lvm_type == 'thin':
+        if is_snapshot:
             # if the volume to be cleared is a snapshot of another volume
             # we need to clear out the volume using the -cow instead of the
             # directly volume path.  We need to skip this if we are using
