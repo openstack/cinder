@@ -380,7 +380,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing voumes size."""
-        self.vg.extend_volume(volume['name'], new_size)
+        self.vg.extend_volume(volume['name'],
+                              self._sizestr(new_size))
 
 
 class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
