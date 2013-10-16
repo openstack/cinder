@@ -30,6 +30,7 @@ import webob.exc
 from cinder.api.openstack import wsgi
 from cinder.api.views import limits as limits_views
 from cinder.api import xmlutil
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
 from cinder import quota
