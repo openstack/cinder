@@ -742,8 +742,8 @@ port_speed!N/A
     def _cmd_lsiogrp(self, **kwargs):
         rows = [None] * 6
         rows[0] = ['id', 'name', 'node_count', 'vdisk_count', 'host_count']
-        rows[1] = ['0', 'io_grp0', '2', '22', '4']
-        rows[2] = ['1', 'io_grp1', '2', '22', '4']
+        rows[1] = ['0', 'io_grp0', '2', '0', '4']
+        rows[2] = ['1', 'io_grp1', '2', '0', '4']
         rows[3] = ['2', 'io_grp2', '0', '0', '4']
         rows[4] = ['3', 'io_grp3', '0', '0', '4']
         rows[5] = ['4', 'recovery_io_grp', '0', '0', '0']
