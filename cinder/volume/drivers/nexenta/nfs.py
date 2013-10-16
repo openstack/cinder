@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`nexenta.volume` -- Driver to store volumes on Nexenta Appliance
+:mod:`nexenta.nfs` -- Driver to store volumes on Nexenta Appliance
 =====================================================================
 
 .. automodule:: nexenta.nfs
@@ -39,7 +39,6 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.0.0'
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -47,7 +46,14 @@ CONF.register_opts(options.NEXENTA_NFS_OPTIONS)
 
 
 class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
-    """Executes volume driver commands on Nexenta Appliance."""
+    """Executes volume driver commands on Nexenta Appliance.
+
+    Version history:
+        1.0.0 - Initial driver version.
+        1.1.0 - Auto sharing for enclosing folder.
+    """
+
+    VERSION = '1.1.0'
 
     driver_prefix = 'nexenta'
 
@@ -79,6 +85,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 if not nms.folder.object_exists(folder):
                     raise LookupError(_("Folder %s does not exist in Nexenta "
                                         "Store appliance"), folder)
+                self._share_folder(nms, volume_name, dataset)
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
@@ -119,7 +126,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 compression = nms.folder.get('compression')
                 if compression != 'off':
                     # Disable compression, because otherwise will not use space
-                    # on disk
+                    # on disk.
                     nms.folder.set('compression', 'off')
                 try:
                     self._create_regular_file(nms, volume_path, volume_size)
@@ -234,7 +241,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nms.snapshot.destroy('%s@%s' % (folder, snapshot['name']), '')
 
     def _create_sparsed_file(self, nms, path, size):
-        """Creates file with 0 disk usage."""
+        """Creates file with 0 disk usage.
+
+        :param nms: nms object
+        :param path: path to new file
+        :param size: size of file
+        """
         block_size_mb = 1
         block_count = size * units.GiB / (block_size_mb * units.MiB)
 
@@ -248,8 +260,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def _create_regular_file(self, nms, path, size):
         """Creates regular file of given size.
-
         Takes a lot of time for large files.
+
+        :param nms: nms object
+        :param path: path to new file
+        :param size: size of file
         """
         block_size_mb = 1
         block_count = size * units.GiB / (block_size_mb * units.MiB)
@@ -268,7 +283,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         LOG.info(_('Regular file: %s created.') % path)
 
     def _set_rw_permissions_for_all(self, nms, path):
-        """Sets 666 permissions for the path."""
+        """Sets 666 permissions for the path.
+
+        :param nms: nms object
+        :param path: path to file
+        """
         nms.appliance.execute('chmod ugo+rw %s' % path)
 
     def local_path(self, volume):
@@ -281,7 +300,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             volume['name'], 'volume')
 
     def _get_mount_point_for_share(self, nfs_share):
-        """Get Mount point for a share.
+        """Returns path to mount point NFS share.
 
         :param nfs_share: example 172.18.194.100:/var/nfs
         """
@@ -298,6 +317,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         return '%s/%s/volume' % (share, volume['name'])
 
     def _share_folder(self, nms, volume, folder):
+        """Share NFS folder on NexentaStor Appliance.
+
+        :param nms: nms object
+        :param volume: volume name
+        :param folder: folder name
+        """
         path = '%s/%s' % (volume, folder.lstrip('/'))
         share_opts = {
             'read_write': '*',
