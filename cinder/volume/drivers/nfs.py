@@ -73,6 +73,8 @@ class RemoteFsDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(RemoteFsDriver, self).__init__(*args, **kwargs)
+        self.shares = {}
+        self._mounted_shares = []
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
