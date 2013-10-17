@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 
 from oslo.config import cfg
 
@@ -50,3 +51,5 @@ def set_defaults(conf):
     conf.set_default('fixed_key', default='0' * 64, group='keymgr')
     conf.set_default('scheduler_driver',
                      'cinder.scheduler.filter_scheduler.FilterScheduler')
+    conf.set_default('state_path', os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', '..')))
