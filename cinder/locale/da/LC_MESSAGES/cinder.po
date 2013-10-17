@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-10-14 06:12+0000\n"
+"POT-Creation-Date: 2013-10-16 06:12+0000\n"
 "PO-Revision-Date: 2011-01-15 21:46+0000\n"
 "Last-Translator: Soren Hansen <soren@linux2go.dk>\n"
 "Language-Team: Danish <da@li.org>\n"
@@ -2743,9 +2743,9 @@ msgstr ""
 #: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:106
 #: cinder/db/sqlalchemy/migrate_repo/versions/008_add_backup.py:58
 #: cinder/db/sqlalchemy/migrate_repo/versions/009_add_snapshot_metadata_table.py:47
-#: cinder/db/sqlalchemy/migrate_repo/versions/010_add_transfers_table.py:49
-#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:83
-#: cinder/db/sqlalchemy/migrate_repo/versions/020_add_volume_admin_metadata_table.py:47
+#: cinder/db/sqlalchemy/migrate_repo/versions/010_add_transfers_table.py:50
+#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:84
+#: cinder/db/sqlalchemy/migrate_repo/versions/020_add_volume_admin_metadata_table.py:48
 #, python-format
 msgid "Table |%s| not created!"
 msgstr ""
@@ -2778,7 +2778,7 @@ msgstr ""
 msgid "snapshot_metadata table not dropped"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/010_add_transfers_table.py:62
+#: cinder/db/sqlalchemy/migrate_repo/versions/010_add_transfers_table.py:63
 msgid "transfers table not dropped"
 msgstr ""
 
@@ -2786,7 +2786,7 @@ msgstr ""
 msgid "migrations table not dropped"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/015_drop_migrations_table.py:62
+#: cinder/db/sqlalchemy/migrate_repo/versions/015_drop_migrations_table.py:63
 #, python-format
 msgid "Table |%s| not created"
 msgstr ""
@@ -2796,7 +2796,7 @@ msgstr ""
 msgid "Exception while dropping table %s."
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/016_drop_sm_tables.py:99
+#: cinder/db/sqlalchemy/migrate_repo/versions/016_drop_sm_tables.py:102
 #, python-format
 msgid "Exception while creating table %s."
 msgstr ""
@@ -2808,39 +2808,39 @@ msgstr ""
 msgid "Column |%s| not created!"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:95
+#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:96
 msgid "encryption_key_id column not dropped from volumes"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:103
+#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:104
 msgid "encryption_key_id column not dropped from snapshots"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:108
+#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:109
 msgid "volume_type_id column not dropped from snapshots"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:116
+#: cinder/db/sqlalchemy/migrate_repo/versions/017_add_encryption_information.py:117
 msgid "encryption table not dropped"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:49
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:50
 msgid "Table quality_of_service_specs not created!"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:60
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:61
 msgid "Added qos_specs_id column to volume type table failed."
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:75
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:76
 msgid "Dropping quality_of_service_specs table failed."
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:83
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:84
 msgid "Dropping qos_specs_id column failed."
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/020_add_volume_admin_metadata_table.py:60
+#: cinder/db/sqlalchemy/migrate_repo/versions/020_add_volume_admin_metadata_table.py:61
 msgid "volume_admin_metadata table not dropped"
 msgstr ""
 
@@ -4396,25 +4396,25 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/block_device.py:131
-#: cinder/volume/drivers/block_device.py:143 cinder/volume/drivers/lvm.py:635
-#: cinder/volume/drivers/lvm.py:650
+#: cinder/volume/drivers/block_device.py:143 cinder/volume/drivers/lvm.py:636
+#: cinder/volume/drivers/lvm.py:651
 #, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:157 cinder/volume/drivers/lvm.py:668
+#: cinder/volume/drivers/block_device.py:157 cinder/volume/drivers/lvm.py:669
 #, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume:"
 " %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:183 cinder/volume/drivers/lvm.py:464
+#: cinder/volume/drivers/block_device.py:183 cinder/volume/drivers/lvm.py:465
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:200 cinder/volume/drivers/lvm.py:485
+#: cinder/volume/drivers/block_device.py:200 cinder/volume/drivers/lvm.py:486
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
@@ -4641,7 +4641,7 @@ msgstr ""
 msgid "Volume status must be 'available'."
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:197 cinder/volume/drivers/nfs.py:105
+#: cinder/volume/drivers/glusterfs.py:197 cinder/volume/drivers/nfs.py:107
 #: cinder/volume/drivers/netapp/nfs.py:753
 #, python-format
 msgid "casted to %s"
@@ -4661,7 +4661,7 @@ msgstr ""
 msgid "will copy from snapshot at %s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:266 cinder/volume/drivers/nfs.py:155
+#: cinder/volume/drivers/glusterfs.py:266 cinder/volume/drivers/nfs.py:157
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping"
 msgstr ""
@@ -4795,7 +4795,7 @@ msgstr ""
 msgid "file already exists at %s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:967 cinder/volume/drivers/nfs.py:142
+#: cinder/volume/drivers/glusterfs.py:967 cinder/volume/drivers/nfs.py:144
 #, python-format
 msgid "Exception during mounting %s"
 msgstr ""
@@ -4893,99 +4893,99 @@ msgstr ""
 msgid "Unable to update stats on non-intialized Volume Group: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:443
+#: cinder/volume/drivers/lvm.py:444
 #, python-format
 msgid "Error creating iSCSI target, retrying creation for target: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:463
+#: cinder/volume/drivers/lvm.py:464
 #, python-format
 msgid "volume_info:%s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:499 cinder/volume/drivers/lvm.py:784
+#: cinder/volume/drivers/lvm.py:500 cinder/volume/drivers/lvm.py:785
 msgid "Detected inconsistency in provider_location id"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:500 cinder/volume/drivers/lvm.py:704
-#: cinder/volume/drivers/huawei/rest_common.py:1231
+#: cinder/volume/drivers/lvm.py:501 cinder/volume/drivers/lvm.py:705
+#: cinder/volume/drivers/huawei/rest_common.py:1225
 #, python-format
 msgid "%s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:554
+#: cinder/volume/drivers/lvm.py:555
 #, python-format
 msgid "Symbolic link %s not found"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:770
+#: cinder/volume/drivers/lvm.py:771
 #, python-format
 msgid "Skipping ensure_export. No iser_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:861
+#: cinder/volume/drivers/lvm.py:862
 #, python-format
 msgid "Skipping remove_export. No iser_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:877
+#: cinder/volume/drivers/lvm.py:878
 #, python-format
 msgid ""
 "Skipping remove_export. No iser_target is presently exported for volume: "
 "%s"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:244
+#: cinder/volume/drivers/nfs.py:246
 #, python-format
 msgid "Expected volume size was %d"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:245
+#: cinder/volume/drivers/nfs.py:247
 #, python-format
 msgid " but size is now %d"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:337
+#: cinder/volume/drivers/nfs.py:339
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:396
+#: cinder/volume/drivers/nfs.py:398
 #, python-format
 msgid "There's no NFS config file configured (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:401
+#: cinder/volume/drivers/nfs.py:403
 #, python-format
 msgid "NFS config file at %(config)s doesn't exist"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:406
+#: cinder/volume/drivers/nfs.py:408
 #, python-format
 msgid "NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: %s"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:414
+#: cinder/volume/drivers/nfs.py:416
 #, python-format
 msgid "NFS config 'nfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:468
+#: cinder/volume/drivers/nfs.py:470
 #, python-format
 msgid "Selected %s as target nfs share."
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:501
+#: cinder/volume/drivers/nfs.py:503
 #, python-format
 msgid "%s is above nfs_used_ratio"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:504
+#: cinder/volume/drivers/nfs.py:506
 #, python-format
 msgid "%s is above nfs_oversub_ratio"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:507
+#: cinder/volume/drivers/nfs.py:509
 #, python-format
 msgid "%s reserved space is above nfs_oversub_ratio"
 msgstr ""
@@ -6812,231 +6812,236 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_dorado.py:94
-#: cinder/volume/drivers/huawei/huawei_t.py:454
+#: cinder/volume/drivers/huawei/huawei_t.py:455
 #, python-format
 msgid "initialize_connection: Target FC ports WWNS: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:98
+#: cinder/volume/drivers/huawei/huawei_t.py:99
 #, python-format
 msgid ""
 "initialize_connection: volume name: %(vol)s, host: %(host)s, initiator: "
 "%(ini)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:156
-#: cinder/volume/drivers/huawei/rest_common.py:1273
+#: cinder/volume/drivers/huawei/huawei_t.py:157
+#: cinder/volume/drivers/huawei/rest_common.py:1278
 #, python-format
 msgid ""
 "_get_iscsi_params: Failed to get target IP for initiator %(ini)s, please "
 "check config file."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:203
-#: cinder/volume/drivers/huawei/rest_common.py:1084
+#: cinder/volume/drivers/huawei/huawei_t.py:204
+#: cinder/volume/drivers/huawei/rest_common.py:1078
 #, python-format
 msgid "_get_tgt_iqn: iSCSI IP is %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:231
+#: cinder/volume/drivers/huawei/huawei_t.py:232
 #, python-format
 msgid "_get_tgt_iqn: iSCSI target iqn is %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:245
+#: cinder/volume/drivers/huawei/huawei_t.py:246
 #, python-format
 msgid ""
 "_get_iscsi_tgt_port_info: Failed to get iSCSI port info. Please make sure"
 " the iSCSI port IP %s is configured in array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:320
-#: cinder/volume/drivers/huawei/huawei_t.py:545
+#: cinder/volume/drivers/huawei/huawei_t.py:321
+#: cinder/volume/drivers/huawei/huawei_t.py:546
 #, python-format
 msgid ""
 "terminate_connection: volume: %(vol)s, host: %(host)s, connector: "
 "%(initiator)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:348
+#: cinder/volume/drivers/huawei/huawei_t.py:349
 #, python-format
 msgid "_remove_iscsi_port: iSCSI port was not found on host %(hostid)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:429
+#: cinder/volume/drivers/huawei/huawei_t.py:430
 msgid "validate_connector: The FC driver requires thewwpns in the connector."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:436
+#: cinder/volume/drivers/huawei/huawei_t.py:437
 #, python-format
 msgid ""
 "initialize_connection: volume name: %(vol)s, host: %(host)s, initiator: "
 "%(wwn)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_t.py:571
+#: cinder/volume/drivers/huawei/huawei_t.py:572
 #, python-format
 msgid "_remove_fc_ports: FC port was not found on host %(hostid)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:59
+#: cinder/volume/drivers/huawei/huawei_utils.py:43
+#, python-format
+msgid "parse_xml_file: %s"
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_utils.py:132
+#, python-format
+msgid "_get_host_os_type: Host %(ip)s OS type is %(os)s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/rest_common.py:61
 #, python-format
 msgid "HVS Request URL: %(url)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:60
+#: cinder/volume/drivers/huawei/rest_common.py:62
 #, python-format
 msgid "HVS Request Data: %(data)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:73
+#: cinder/volume/drivers/huawei/rest_common.py:75
 #, python-format
 msgid "HVS Response Data: %(res)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:75
+#: cinder/volume/drivers/huawei/rest_common.py:77
 #, python-format
 msgid "Bad reponse from server: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:82
+#: cinder/volume/drivers/huawei/rest_common.py:84
 msgid "JSON transfer error"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:102
+#: cinder/volume/drivers/huawei/rest_common.py:104
 #, python-format
 msgid "Login error, reason is %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:166
+#: cinder/volume/drivers/huawei/rest_common.py:168
 #, python-format
 msgid ""
 "%(err)s\n"
 "result: %(res)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:173
+#: cinder/volume/drivers/huawei/rest_common.py:175
 #, python-format
 msgid "%s \"data\" was not in result."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:208
+#: cinder/volume/drivers/huawei/rest_common.py:210
 msgid "Can't find the Qos policy in array"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:246
+#: cinder/volume/drivers/huawei/rest_common.py:248
 msgid "Can't find lun or lun goup in array"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:276
-#, python-format
-msgid "_read_xml:%s"
-msgstr ""
-
-#: cinder/volume/drivers/huawei/rest_common.py:291
+#: cinder/volume/drivers/huawei/rest_common.py:282
 #, python-format
 msgid "Invalid resource pool: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:309
+#: cinder/volume/drivers/huawei/rest_common.py:300
 #, python-format
 msgid "Get pool info error, pool name is:%s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:338
+#: cinder/volume/drivers/huawei/rest_common.py:329
 #, python-format
 msgid "create_snapshot:snapshot name:%(snapshot)s, volume name:%(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:365
+#: cinder/volume/drivers/huawei/rest_common.py:356
 #, python-format
 msgid "_stop_snapshot:snapshot name:%(snapshot)s, volume name:%(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:483
+#: cinder/volume/drivers/huawei/rest_common.py:476
 #, python-format
 msgid ""
 "_mapping_hostgroup_and_lungroup: lun_group: %(lun_group)sview_id: "
 "%(view_id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:521
-#: cinder/volume/drivers/huawei/rest_common.py:552
+#: cinder/volume/drivers/huawei/rest_common.py:513
+#: cinder/volume/drivers/huawei/rest_common.py:545
 #, python-format
 msgid "initiator name:%(initiator_name)s, volume name:%(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:535
+#: cinder/volume/drivers/huawei/rest_common.py:529
 #, python-format
 msgid "host lun id is %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:561
+#: cinder/volume/drivers/huawei/rest_common.py:555
 #, python-format
 msgid "the free wwns %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:582
+#: cinder/volume/drivers/huawei/rest_common.py:576
 #, python-format
 msgid "the fc server properties is:%s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:696
+#: cinder/volume/drivers/huawei/rest_common.py:690
 #, python-format
 msgid "JSON transfer data error. %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:882
+#: cinder/volume/drivers/huawei/rest_common.py:876
 #, python-format
 msgid "terminate_connection:volume name: %(volume)s, initiator name: %(ini)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:945
+#: cinder/volume/drivers/huawei/rest_common.py:939
 #, python-format
 msgid ""
 "Config file is wrong. LUNType must be \"Thin\" or \"Thick\". "
 "LUNType:%(fetchtype)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:972
+#: cinder/volume/drivers/huawei/rest_common.py:966
 #, python-format
 msgid ""
 "PrefetchType config is wrong. PrefetchType must in 1,2,3,4. fetchtype "
 "is:%(fetchtype)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:978
+#: cinder/volume/drivers/huawei/rest_common.py:972
 msgid "Use default prefetch fetchtype. Prefetch fetchtype:Intelligent."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:990
+#: cinder/volume/drivers/huawei/rest_common.py:984
 #, python-format
 msgid ""
 "_wait_for_luncopy:LUNcopy status is not normal.LUNcopy name: "
 "%(luncopyname)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1087
+#: cinder/volume/drivers/huawei/rest_common.py:1081
 #, python-format
 msgid "request ip info is %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1090
+#: cinder/volume/drivers/huawei/rest_common.py:1084
 #, python-format
 msgid "new str info is %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1105
+#: cinder/volume/drivers/huawei/rest_common.py:1099
 #, python-format
 msgid "_get_tgt_iqn: iSCSI target iqn is %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1130
+#: cinder/volume/drivers/huawei/rest_common.py:1124
 #, python-format
 msgid "_parse_volume_type: type id: %(type_id)s config parameter is: %(params)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1163
+#: cinder/volume/drivers/huawei/rest_common.py:1157
 #, python-format
 msgid ""
 "_parse_volume_type: Unacceptable paramater %(key)s. Please check this key"
@@ -7044,65 +7049,70 @@ msgid ""
 "%(conf)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1168
+#: cinder/volume/drivers/huawei/rest_common.py:1162
 #, python-format
 msgid "The config parameters are: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1247
-msgid ""
-"_check_conf_file: Config file invalid. HVSURL, UserName and UserPassword "
-"must be set."
+#: cinder/volume/drivers/huawei/rest_common.py:1239
+#: cinder/volume/drivers/huawei/ssh_common.py:117
+#: cinder/volume/drivers/huawei/ssh_common.py:1187
+#, python-format
+msgid "_check_conf_file: Config file invalid. %s must be set."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_common.py:1253
-#: cinder/volume/drivers/huawei/ssh_common.py:139
+#: cinder/volume/drivers/huawei/rest_common.py:1246
+#: cinder/volume/drivers/huawei/ssh_common.py:124
 msgid "_check_conf_file: Config file invalid. StoragePool must be set."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:54
+#: cinder/volume/drivers/huawei/rest_common.py:1256
 #, python-format
-msgid "parse_xml_file: %s"
+msgid ""
+"_check_conf_file: Config file invalid. Host OSType invalid.\n"
+"The valid values are: %(os_list)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:66
+#: cinder/volume/drivers/huawei/ssh_common.py:56
 #, python-format
 msgid "ssh_read: Read SSH timeout. %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:82
+#: cinder/volume/drivers/huawei/ssh_common.py:72
 msgid "No response message. Please check system status."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:112
+#: cinder/volume/drivers/huawei/ssh_common.py:102
 #: cinder/volume/drivers/huawei/ssh_common.py:1173
 msgid "do_setup"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:130
+#: cinder/volume/drivers/huawei/ssh_common.py:134
+#: cinder/volume/drivers/huawei/ssh_common.py:1209
+#, python-format
 msgid ""
-"_check_conf_file: Config file invalid. Controler IP, UserName and "
-"UserPassword must be set."
+"_check_conf_file: Config file invalid. Host OSType is invalid.\n"
+"The valid values are: %(os_list)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:171
+#: cinder/volume/drivers/huawei/ssh_common.py:168
 #, python-format
 msgid "_get_login_info: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:217
+#: cinder/volume/drivers/huawei/ssh_common.py:214
 #, python-format
 msgid "create_volume: volume name: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:235
+#: cinder/volume/drivers/huawei/ssh_common.py:232
 #, python-format
 msgid ""
 "_name_translate: Name in cinder: %(old)s, new name in storage system: "
 "%(new)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:272
+#: cinder/volume/drivers/huawei/ssh_common.py:269
 #, python-format
 msgid ""
 "_parse_volume_type: Unacceptable parameter %(key)s. Please check this key"
@@ -7110,111 +7120,111 @@ msgid ""
 "file %(conf)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:366
-#: cinder/volume/drivers/huawei/ssh_common.py:1343
+#: cinder/volume/drivers/huawei/ssh_common.py:363
+#: cinder/volume/drivers/huawei/ssh_common.py:1354
 #, python-format
 msgid "LUNType must be \"Thin\" or \"Thick\". LUNType:%(type)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:388
+#: cinder/volume/drivers/huawei/ssh_common.py:385
 msgid ""
 "_parse_conf_lun_params: Use default prefetch type. Prefetch type: "
 "Intelligent"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:414
+#: cinder/volume/drivers/huawei/ssh_common.py:411
 #, python-format
 msgid ""
 "_get_maximum_capacity_pool_id: Failed to get pool id. Please check config"
 " file and make sure the StoragePool %s is created in storage array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:429
+#: cinder/volume/drivers/huawei/ssh_common.py:426
 #, python-format
 msgid "CLI command: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:459
+#: cinder/volume/drivers/huawei/ssh_common.py:456
 #, python-format
 msgid ""
 "_execute_cli: Can not connect to IP %(old)s, try to connect to the other "
 "IP %(new)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:494
+#: cinder/volume/drivers/huawei/ssh_common.py:491
 #, python-format
 msgid "_execute_cli: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:504
+#: cinder/volume/drivers/huawei/ssh_common.py:501
 #, python-format
 msgid "delete_volume: volume name: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:511
+#: cinder/volume/drivers/huawei/ssh_common.py:508
 #, python-format
 msgid "delete_volume: Volume %(name)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:541
+#: cinder/volume/drivers/huawei/ssh_common.py:538
 #, python-format
 msgid ""
 "create_volume_from_snapshot: snapshot name: %(snapshot)s, volume name: "
 "%(volume)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:551
+#: cinder/volume/drivers/huawei/ssh_common.py:548
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:621
+#: cinder/volume/drivers/huawei/ssh_common.py:618
 #, python-format
 msgid "_wait_for_luncopy: LUNcopy %(luncopyname)s status is %(status)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:659
+#: cinder/volume/drivers/huawei/ssh_common.py:656
 #, python-format
 msgid "create_cloned_volume: src volume: %(src)s, tgt volume: %(tgt)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:668
+#: cinder/volume/drivers/huawei/ssh_common.py:665
 #, python-format
 msgid "Source volume %(name)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:706
+#: cinder/volume/drivers/huawei/ssh_common.py:703
 #, python-format
 msgid "create_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:712
+#: cinder/volume/drivers/huawei/ssh_common.py:709
 msgid "create_snapshot: Resource pool needs 1GB valid size at least."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:719
+#: cinder/volume/drivers/huawei/ssh_common.py:716
 #, python-format
 msgid "create_snapshot: Volume %(name)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:782
+#: cinder/volume/drivers/huawei/ssh_common.py:779
 #, python-format
 msgid "delete_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:792
+#: cinder/volume/drivers/huawei/ssh_common.py:789
 #, python-format
 msgid ""
 "delete_snapshot: Can not delete snapshot %s for it is a source LUN of "
 "LUNCopy."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:800
+#: cinder/volume/drivers/huawei/ssh_common.py:797
 #, python-format
 msgid "delete_snapshot: Snapshot %(snap)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:843
+#: cinder/volume/drivers/huawei/ssh_common.py:840
 #, python-format
 msgid ""
 "%(func)s: %(msg)s\n"
@@ -7222,7 +7232,7 @@ msgid ""
 "CLI out: %(out)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:860
+#: cinder/volume/drivers/huawei/ssh_common.py:857
 #, python-format
 msgid "map_volume: Volume %s was not found."
 msgstr ""
@@ -7265,35 +7275,29 @@ msgstr ""
 msgid "_update_volume_stats: Updating volume stats."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:1188
-msgid ""
-"Config file invalid. Controler IP, UserName, UserPassword must be "
-"specified."
-msgstr ""
-
-#: cinder/volume/drivers/huawei/ssh_common.py:1200
+#: cinder/volume/drivers/huawei/ssh_common.py:1199
 msgid "_check_conf_file: Config file invalid. StoragePool must be specified."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:1222
+#: cinder/volume/drivers/huawei/ssh_common.py:1233
 msgid ""
 "_get_device_type: The driver only supports Dorado5100 and Dorado 2100 G2 "
 "now."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:1290
+#: cinder/volume/drivers/huawei/ssh_common.py:1301
 #, python-format
 msgid ""
 "create_volume_from_snapshot: %(device)s does not support create volume "
 "from snapshot."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:1297
+#: cinder/volume/drivers/huawei/ssh_common.py:1308
 #, python-format
 msgid "create_cloned_volume: %(device)s does not support clone volume."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/ssh_common.py:1305
+#: cinder/volume/drivers/huawei/ssh_common.py:1316
 #, python-format
 msgid "create_snapshot: %(device)s does not support snapshot."
 msgstr ""
@@ -9800,5 +9804,25 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Deploy v2 of the Cinder API. "
+#~ msgstr ""
+
+#~ msgid "_read_xml:%s"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_check_conf_file: Config file invalid. HVSURL,"
+#~ " UserName and UserPassword must be "
+#~ "set."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_check_conf_file: Config file invalid. "
+#~ "Controler IP, UserName and UserPassword "
+#~ "must be set."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Config file invalid. Controler IP, "
+#~ "UserName, UserPassword must be specified."
 #~ msgstr ""
 
