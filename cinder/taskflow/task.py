@@ -18,15 +18,16 @@
 
 import abc
 
+import six
+
 from cinder.taskflow import utils
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Task(object):
     """An abstraction that defines a potential piece of work that can be
     applied and can be reverted to undo the work as a single unit.
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, name):
         self.name = name
         # An *immutable* input 'resource' name set this task depends
