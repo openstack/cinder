@@ -52,6 +52,10 @@ class HuaweiHVSISCSIDriver(driver.ISCSIDriver):
         """Create a clone of the specified volume."""
         self.common.create_cloned_volume(volume, src_vref)
 
+    def extend_volume(self, volume, new_size):
+        """Extend a volume."""
+        self.common.extend_volume(volume, new_size)
+
     def delete_volume(self, volume):
         """Delete a volume."""
         self.common.delete_volume(volume)
@@ -122,6 +126,10 @@ class HuaweiHVSFCDriver(driver.FibreChannelDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume."""
         self.common.create_cloned_volume(volume, src_vref)
+
+    def extend_volume(self, volume, new_size):
+        """Extend a volume."""
+        self.common.extend_volume(volume, new_size)
 
     def delete_volume(self, volume):
         """Delete a volume."""

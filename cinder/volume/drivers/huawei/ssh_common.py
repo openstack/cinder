@@ -65,7 +65,7 @@ def ssh_read(user, channel, cmd, timeout):
                 if result.startswith(cmd) and result.endswith(user + ':/>'):
                     break
                 # Some commands need to send 'y'.
-                elif re.search('(y/n)', result):
+                elif re.search('(y/n)|y or n', result):
                     break
                 # Reach maximum limit of SSH connection.
                 elif re.search('No response message', result):
@@ -96,6 +96,7 @@ class TseriesCommon():
         self.ssh_pool = None
         self.lock_ip = threading.Lock()
         self.luncopy_list = []  # to store LUNCopy name
+        self.extended_lun_dict = {}
 
     def do_setup(self, context):
         """Check config file."""
@@ -103,9 +104,11 @@ class TseriesCommon():
 
         self._check_conf_file()
         self.login_info = self._get_login_info()
-        self.lun_distribution = self._get_lun_distribution_info()
+        exist_luns = self._get_all_luns_info()
+        self.lun_distribution = self._get_lun_distribution_info(exist_luns)
         self.luncopy_list = self._get_all_luncopy_name()
         self.hostgroup_id = self._get_hostgroup_id(HOST_GROUP_NAME)
+        self.extended_lun_dict = self._get_extended_lun(exist_luns)
 
     def _check_conf_file(self):
         """Check config file, make sure essential items are set."""
@@ -172,7 +175,7 @@ class TseriesCommon():
     def _change_file_mode(self, filepath):
         utils.execute('chmod', '777', filepath, run_as_root=True)
 
-    def _get_lun_distribution_info(self):
+    def _get_lun_distribution_info(self, luns):
         """Get LUN distribution information.
 
         For we have two controllers for each array, we want to make all
@@ -182,7 +185,6 @@ class TseriesCommon():
 
         """
 
-        luns = self._get_all_luns_info()
         ctr_info = [0, 0]
         for lun in luns:
             if (lun[6].startswith(VOL_AND_SNAP_NAME_PREFIX) and
@@ -206,6 +208,16 @@ class TseriesCommon():
                 if tmp_line[0].startswith(VOL_AND_SNAP_NAME_PREFIX):
                     luncopy_ids.append(tmp_line[0])
         return luncopy_ids
+
+    def _get_extended_lun(self, luns):
+        extended_dict = {}
+        for lun in luns:
+            if lun[6].startswith('ext'):
+                vol_name = lun[6].split('_')[1]
+                add_ids = extended_dict.get(vol_name, [])
+                add_ids = add_ids.append(lun[0])
+                extended_dict[vol_name] = add_ids
+        return extended_dict
 
     def create_volume(self, volume):
         """Create a new volume."""
@@ -474,7 +486,7 @@ class TseriesCommon():
                 while True:
                     ssh_client.chan.send(cmd + '\n')
                     out = ssh_read(user, ssh_client.chan, cmd, 20)
-                    if out.find('(y/n)') > -1:
+                    if out.find('(y/n)') > -1 or out.find('y or n') > -1:
                         cmd = 'y'
                     else:
                         # Put SSH client back into SSH pool.
@@ -502,17 +514,39 @@ class TseriesCommon():
 
         self._update_login_info()
         volume_id = volume.get('provider_location', None)
-        if (volume_id is not None) and self._check_volume_created(volume_id):
-            self._delete_volume(volume_id)
-        else:
+        if volume_id is None or not self._check_volume_created(volume_id):
             err_msg = (_('delete_volume: Volume %(name)s does not exist.')
                        % {'name': volume['name']})
             LOG.warn(err_msg)
+            return
+        else:
+            name = volume_name[len(VOL_AND_SNAP_NAME_PREFIX):]
+            added_vol_ids = self.extended_lun_dict.get(name, None)
+            if added_vol_ids:
+                self._del_lun_from_extended_lun(volume_id, added_vol_ids)
+                self.extended_lun_dict.pop(name)
+            self._delete_volume(volume_id)
 
     def _check_volume_created(self, volume_id):
         cli_cmd = 'showlun -lun %s' % volume_id
         out = self._execute_cli(cli_cmd)
         return (True if re.search('LUN Information', out) else False)
+
+    def _del_lun_from_extended_lun(self, extended_id, added_ids):
+        cli_cmd = 'rmlunfromextlun -ext %s' % extended_id
+        out = self._execute_cli(cli_cmd)
+
+        self._assert_cli_operate_out('_del_lun_from_extended_lun',
+                                     ('Failed to remove LUN from extended '
+                                      'LUN: %s' % extended_id),
+                                     cli_cmd, out)
+        for id in added_ids:
+            cli_cmd = 'dellun -lun %s' % id
+            out = self._execute_cli(cli_cmd)
+
+            self._assert_cli_operate_out('_del_lun_from_extended_lun',
+                                         'Failed to delete LUN: %s' % id,
+                                         cli_cmd, out)
 
     def _delete_volume(self, volumeid):
         """Run CLI command to delete volume."""
@@ -695,6 +729,50 @@ class TseriesCommon():
                 if lun[6] == lun_name:
                     return lun[0]
         return None
+
+    def extend_volume(self, volume, new_size):
+        extended_vol_name = self._name_translate(volume['name'])
+        name = extended_vol_name[len(VOL_AND_SNAP_NAME_PREFIX):]
+        added_vol_ids = self.extended_lun_dict.get(name, [])
+        added_vol_name = ('ext_' + extended_vol_name.split('_')[1] + '_' +
+                          str(len(added_vol_ids)))
+        added_vol_size = str(int(new_size) - int(volume['size'])) + 'G'
+
+        LOG.debug(_('extend_volume: extended volume name: %(extended_name)s '
+                    'new added volume name: %(added_name)s '
+                    'new added volume size: %(added_size)s')
+                  % {'extended_name': extended_vol_name,
+                     'added_name': added_vol_name,
+                     'added_size': added_vol_size})
+
+        if not volume['provider_location']:
+            err_msg = (_('extend_volume: volume %s does not exist.')
+                       % extended_vol_name)
+            LOG.error(err_msg)
+            raise exception.VolumeNotFound(volume_id=extended_vol_name)
+
+        type_id = volume['volume_type_id']
+        parameters = self._parse_volume_type(type_id)
+        added_vol_id = self._create_volume(added_vol_name, added_vol_size,
+                                           parameters)
+        try:
+            self._extend_volume(volume['provider_location'], added_vol_id)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self._delete_volume(added_vol_id)
+
+        added_vol_ids.append(added_vol_id)
+        self.extended_lun_dict[name] = added_vol_ids
+
+    def _extend_volume(self, extended_vol_id, added_vol_id):
+        cli_cmd = ('addluntoextlun -extlun %(extended_vol)s '
+                   '-lun %(added_vol)s' % {'extended_vol': extended_vol_id,
+                                           'added_vol': added_vol_id})
+        out = self._execute_cli(cli_cmd)
+        self._assert_cli_operate_out('_extend_volume',
+                                     ('Failed to extend volume %s'
+                                      % extended_vol_id),
+                                     cli_cmd, out)
 
     def create_snapshot(self, snapshot):
         snapshot_name = self._name_translate(snapshot['name'])
@@ -1173,8 +1251,10 @@ class DoradoCommon(TseriesCommon):
         LOG.debug(_('do_setup'))
 
         self._check_conf_file()
-        self.lun_distribution = self._get_lun_ctr_info()
+        exist_luns = self._get_all_luns_info()
+        self.lun_distribution = self._get_lun_distribution_info(exist_luns)
         self.hostgroup_id = self._get_hostgroup_id(HOST_GROUP_NAME)
+        self.extended_lun_dict = self._get_extended_lun(exist_luns)
 
     def _check_conf_file(self):
         """Check the config file, make sure the key elements are set."""
@@ -1234,8 +1314,7 @@ class DoradoCommon(TseriesCommon):
                                 'Dorado5100 and Dorado 2100 G2 now.'))
                     raise exception.InvalidResults()
 
-    def _get_lun_ctr_info(self):
-        luns = self._get_all_luns_info()
+    def _get_lun_distribution_info(self, luns):
         ctr_info = [0, 0]
         (c, n) = ((2, 4) if self.device_type == 'Dorado2100 G2' else (3, 5))
         for lun in luns:
@@ -1245,6 +1324,17 @@ class DoradoCommon(TseriesCommon):
                 else:
                     ctr_info[1] += 1
         return ctr_info
+
+    def _get_extended_lun(self, luns):
+        extended_dict = {}
+        n = 4 if self.device_type == 'Dorado2100 G2' else 5
+        for lun in luns:
+            if lun[n].startswith('ext'):
+                vol_name = lun[n].split('_')[1]
+                add_ids = extended_dict.get(vol_name, [])
+                add_ids.append(lun[0])
+                extended_dict[vol_name] = add_ids
+        return extended_dict
 
     def _create_volume(self, name, size, params):
         """Create a new volume with the given name and size."""
@@ -1310,6 +1400,15 @@ class DoradoCommon(TseriesCommon):
                    % {'device': self.device_type})
         LOG.error(err_msg)
         raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def extend_volume(self, volume, new_size):
+        if self.device_type == 'Dorado2100 G2':
+            err_msg = (_('extend_volume: %(device)s does not support '
+                         'extend volume.') % {'device': self.device_type})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        else:
+            return TseriesCommon.extend_volume(self, volume, new_size)
 
     def create_snapshot(self, snapshot):
         if self.device_type == 'Dorado2100 G2':
