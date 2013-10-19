@@ -379,14 +379,26 @@ class SscUtilsTestCase(test.TestCase):
                          copy.deepcopy(self.vol2), copy.deepcopy(self.vol3)])
         sis = {'vola': {'dedup': False, 'compression': False},
                'volb': {'dedup': True, 'compression': False}}
+        mirrored = {'vola': [{'dest_loc': 'openstack1:vol1',
+                              'rel_type': 'data_protection',
+                              'mirr_state': 'broken'},
+                             {'dest_loc': 'openstack2:vol2',
+                              'rel_type': 'data_protection',
+                              'mirr_state': 'snapmirrored'}],
+                    'volb': [{'dest_loc': 'openstack1:vol2',
+                              'rel_type': 'data_protection',
+                              'mirr_state': 'broken'}]}
 
         self.mox.StubOutWithMock(ssc_utils, 'query_cluster_vols_for_ssc')
         self.mox.StubOutWithMock(ssc_utils, 'get_sis_vol_dict')
+        self.mox.StubOutWithMock(ssc_utils, 'get_snapmirror_vol_dict')
         self.mox.StubOutWithMock(ssc_utils, 'query_aggr_options')
         self.mox.StubOutWithMock(ssc_utils, 'query_aggr_storage_disk')
         ssc_utils.query_cluster_vols_for_ssc(
             na_server, vserver, None).AndReturn(test_vols)
         ssc_utils.get_sis_vol_dict(na_server, vserver, None).AndReturn(sis)
+        ssc_utils.get_snapmirror_vol_dict(na_server, vserver, None).AndReturn(
+            mirrored)
         raiddp = {'ha_policy': 'cfo', 'raid_type': 'raiddp'}
         ssc_utils.query_aggr_options(
             na_server, IgnoreArg()).AndReturn(raiddp)
@@ -416,15 +428,24 @@ class SscUtilsTestCase(test.TestCase):
         vserver = 'openstack'
         test_vols = set([copy.deepcopy(self.vol1)])
         sis = {'vola': {'dedup': False, 'compression': False}}
+        mirrored = {'vola': [{'dest_loc': 'openstack1:vol1',
+                              'rel_type': 'data_protection',
+                              'mirr_state': 'broken'},
+                             {'dest_loc': 'openstack2:vol2',
+                              'rel_type': 'data_protection',
+                              'mirr_state': 'snapmirrored'}]}
 
         self.mox.StubOutWithMock(ssc_utils, 'query_cluster_vols_for_ssc')
         self.mox.StubOutWithMock(ssc_utils, 'get_sis_vol_dict')
+        self.mox.StubOutWithMock(ssc_utils, 'get_snapmirror_vol_dict')
         self.mox.StubOutWithMock(ssc_utils, 'query_aggr_options')
         self.mox.StubOutWithMock(ssc_utils, 'query_aggr_storage_disk')
         ssc_utils.query_cluster_vols_for_ssc(
             na_server, vserver, 'vola').AndReturn(test_vols)
         ssc_utils.get_sis_vol_dict(
             na_server, vserver, 'vola').AndReturn(sis)
+        ssc_utils.get_snapmirror_vol_dict(
+            na_server, vserver, 'vola').AndReturn(mirrored)
         raiddp = {'ha_policy': 'cfo', 'raid_type': 'raiddp'}
         ssc_utils.query_aggr_options(
             na_server, 'aggr1').AndReturn(raiddp)
