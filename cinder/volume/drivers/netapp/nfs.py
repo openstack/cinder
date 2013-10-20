@@ -902,11 +902,15 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             data['netapp_thick_provisioned'] = 'true'\
                 if len(self.ssc_vols['all']) >\
                 len(self.ssc_vols['thin']) else 'false'
-            vol_max = max(self.ssc_vols['all'])
-            data['total_capacity_gb'] =\
-                int(vol_max.space['size_total_bytes']) / units.GiB
-            data['free_capacity_gb'] =\
-                int(vol_max.space['size_avl_bytes']) / units.GiB
+            if self.ssc_vols['all']:
+                vol_max = max(self.ssc_vols['all'])
+                data['total_capacity_gb'] =\
+                    int(vol_max.space['size_total_bytes']) / units.GiB
+                data['free_capacity_gb'] =\
+                    int(vol_max.space['size_avl_bytes']) / units.GiB
+            else:
+                data['total_capacity_gb'] = 0
+                data['free_capacity_gb'] = 0
         elif self.ssc_enabled:
             LOG.warn(_("No cluster ssc stats found."
                        " Wait for next volume stats update."))
