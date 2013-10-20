@@ -797,6 +797,21 @@ class RemoteFsConnector(InitiatorConnector):
                  execute=putils.execute,
                  device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
                  *args, **kwargs):
+        kwargs = kwargs or {}
+        conn = kwargs.get('conn')
+        if conn:
+            mount_point_base = conn.get('mount_point_base')
+            if mount_type.lower() == 'nfs':
+                kwargs['nfs_mount_point_base'] =\
+                    kwargs.get('nfs_mount_point_base') or\
+                    mount_point_base
+            elif mount_type.lower() == 'glusterfs':
+                kwargs['glusterfs_mount_point_base'] =\
+                    kwargs.get('glusterfs_mount_point_base') or\
+                    mount_point_base
+        else:
+            LOG.warn(_("Connection details not present."
+                       " RemoteFsClient may not initialize properly."))
         self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
                                                        execute=execute,
                                                        *args, **kwargs)
@@ -822,7 +837,7 @@ class RemoteFsConnector(InitiatorConnector):
         """
 
         mnt_flags = []
-        if 'options' in connection_properties:
+        if connection_properties.get('options'):
             mnt_flags = connection_properties['options'].split()
 
         nfs_share = connection_properties['export']
