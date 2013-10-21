@@ -177,8 +177,11 @@ def _print_opt(opt):
             print('#%s=%s' % (opt_name, ','.join(opt_default)))
         elif opt_type == MULTISTROPT:
             assert(isinstance(opt_default, list))
-            for default in opt_default:
-                print('#%s=%s' % (opt_name, default))
+            if opt_default:
+                for default in opt_default:
+                    print('#%s=%s' % (opt_name, default))
+            else:
+                print('#%s=' % (opt_name))
         print()
     except Exception:
         sys.stderr.write('Error in option "%s"\n' % opt_name)

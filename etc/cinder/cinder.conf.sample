@@ -676,6 +676,7 @@
 
 # Driver or drivers to handle sending notifications (multi
 # valued)
+#notification_driver=
 
 # Default notification level for outgoing notifications
 # (string value)
