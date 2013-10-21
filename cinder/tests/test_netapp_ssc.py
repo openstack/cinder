@@ -75,7 +75,7 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
 
     def do_GET(s):
         """Respond to a GET request."""
-        if '/servlets/netapp.servlets.admin.XMLrequest_filer' != s.path:
+        if '/servlets/netapp.servlets.admin.XMLrequest_filer' not in s.path:
             s.send_response(404)
             s.end_headers
             return
@@ -89,7 +89,7 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
 
     def do_POST(s):
         """Respond to a POST request."""
-        if '/servlets/netapp.servlets.admin.XMLrequest_filer' != s.path:
+        if '/servlets/netapp.servlets.admin.XMLrequest_filer' not in s.path:
             s.send_response(404)
             s.end_headers
             return
