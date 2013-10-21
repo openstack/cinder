@@ -19,6 +19,7 @@ python-keystoneclient>=0.4.1
 python-novaclient>=2.15.0
 python-swiftclient>=1.5
 Routes>=1.12.3
+rtslib-fb>=2.1.39
 six>=1.4.1
 SQLAlchemy>=0.7.8,<=0.7.99
 sqlalchemy-migrate>=0.7.2
