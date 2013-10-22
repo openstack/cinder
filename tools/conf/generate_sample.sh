@@ -49,3 +49,35 @@ PYTHONPATH=./:${PYTHONPATH} \
 
 # When we use openstack.common.config.generate we won't need this any more
 sed -i 's/^#connection=sqlite.*/#connection=sqlite:\/\/\/\/cinder\/openstack\/common\/db\/$sqlite_db/' $OUTPUTFILE
+
+cat >> $OUTPUTFILE <<-EOF_CAT
+[keystone_authtoken]
+
+#
+# Options defined in keystoneclient's authtoken middleware
+#
+
+# Host providing the admin Identity API endpoint
+auth_host = 127.0.0.1
+
+# Port of the admin Identity API endpoint
+auth_port = 35357
+
+# Protocol of the admin Identity API endpoint
+auth_protocol = http
+
+# Keystone service account tenant name to validate user tokens
+admin_tenant_name = %SERVICE_TENANT_NAME%
+
+# Keystone account username
+admin_user = %SERVICE_USER%
+
+# Keystone account password
+admin_password = %SERVICE_PASSWORD%
+
+# Directory used to cache files related to PKI tokens
+# signing_dir is configurable, but the default behavior of the authtoken
+# middleware should be sufficient.  It will create a temporary directory
+# in the home directory for the user the cinder process is running as.
+#signing_dir = /var/lib/cinder/keystone-signing
+EOF_CAT
