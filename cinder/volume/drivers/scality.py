@@ -239,7 +239,8 @@ class ScalityDriver(driver.VolumeDriver):
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
-                                 self.local_path(volume))
+                                 self.local_path(volume),
+                                 size=volume['size'])
         self.create_volume(volume)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
