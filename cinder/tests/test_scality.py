@@ -236,7 +236,8 @@ class ScalityDriverTestCase(test.TestCase):
         image_utils.fetch_to_raw(context,
                                  self.TEST_IMAGE_SERVICE,
                                  self.TEST_IMAGE_ID,
-                                 self.TEST_VOLPATH)
+                                 self.TEST_VOLPATH,
+                                 size=self.TEST_VOLSIZE)
 
         self.mox.ReplayAll()
 

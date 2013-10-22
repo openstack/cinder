@@ -225,7 +225,8 @@ class RemoteFsDriver(driver.VolumeDriver):
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
-                                 self.local_path(volume))
+                                 self.local_path(volume),
+                                 size=volume['size'])
 
         # NOTE (leseb): Set the virtual size of the image
         # the raw conversion overwrote the destination file

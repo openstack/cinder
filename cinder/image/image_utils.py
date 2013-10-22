@@ -38,6 +38,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
+from cinder import units
 from cinder import utils
 from cinder.volume import utils as volume_utils
 
@@ -215,7 +216,7 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
 
 
 def fetch_verify_image(context, image_service, image_id, dest,
-                       user_id=None, project_id=None):
+                       user_id=None, project_id=None, size=None):
     fetch(context, image_service, image_id, dest,
           None, None)
 
@@ -234,6 +235,15 @@ def fetch_verify_image(context, image_service, image_id, dest,
                 reason=(_("fmt=%(fmt)s backed by: %(backing_file)s") %
                         {'fmt': fmt, 'backing_file': backing_file}))
 
+        # NOTE(xqueralt): If the image virtual size doesn't fit in the
+        # requested volume there is no point on resizing it because it will
+        # generate an unusable image.
+        if size is not None and data.virtual_size > size:
+            params = {'image_size': data.virtual_size, 'volume_size': size}
+            reason = _("Size is %(image_size)dGB and doesn't fit in a "
+                       "volume of size %(volume_size)dGB.") % params
+            raise exception.ImageUnacceptable(image_id=image_id, reason=reason)
+
 
 def fetch_to_vhd(context, image_service,
                  image_id, dest,
@@ -244,19 +254,19 @@ def fetch_to_vhd(context, image_service,
 
 def fetch_to_raw(context, image_service,
                  image_id, dest,
-                 user_id=None, project_id=None):
+                 user_id=None, project_id=None, size=None):
     fetch_to_volume_format(context, image_service, image_id, dest, 'raw',
-                           user_id, project_id)
+                           user_id, project_id, size)
 
 
 def fetch_to_volume_format(context, image_service,
                            image_id, dest, volume_format,
-                           user_id=None, project_id=None):
+                           user_id=None, project_id=None, size=None):
     if (CONF.image_conversion_dir and not
             os.path.exists(CONF.image_conversion_dir)):
         os.makedirs(CONF.image_conversion_dir)
 
-    no_qemu_img = False
+    qemu_img = True
     image_meta = image_service.show(context, image_id)
 
     # NOTE(avishay): I'm not crazy about creating temp files which may be
@@ -274,7 +284,7 @@ def fetch_to_volume_format(context, image_service,
             # Use the empty tmp file to make sure qemu_img_info works.
             qemu_img_info(tmp)
         except processutils.ProcessExecutionError:
-            no_qemu_img = True
+            qemu_img = False
             if image_meta:
                 if image_meta['disk_format'] != 'raw':
                     raise exception.ImageUnacceptable(
@@ -295,7 +305,7 @@ def fetch_to_volume_format(context, image_service,
         if is_xenserver_image(context, image_service, image_id):
             replace_xenserver_image_with_coalesced_vhd(tmp)
 
-        if no_qemu_img:
+        if not qemu_img:
             # qemu-img is not installed but we do have a RAW image.  As a
             # result we only need to copy the image to the destination and then
             # return.
@@ -306,6 +316,17 @@ def fetch_to_volume_format(context, image_service,
             return
 
         data = qemu_img_info(tmp)
+        virt_size = data.virtual_size / units.GiB
+
+        # NOTE(xqueralt): If the image virtual size doesn't fit in the
+        # requested volume there is no point on resizing it because it will
+        # generate an unusable image.
+        if size is not None and virt_size > size:
+            params = {'image_size': virt_size, 'volume_size': size}
+            reason = _("Size is %(image_size)dGB and doesn't fit in a "
+                       "volume of size %(volume_size)dGB.") % params
+            raise exception.ImageUnacceptable(image_id=image_id, reason=reason)
+
         fmt = data.file_format
         if fmt is None:
             raise exception.ImageUnacceptable(

@@ -175,7 +175,8 @@ class NfsDriverTestCase(test.TestCase):
         self.stubs.Set(drv, 'local_path', fake_local_path)
 
         mox.StubOutWithMock(image_utils, 'fetch_to_raw')
-        image_utils.fetch_to_raw(None, None, None, TEST_IMG_SOURCE)
+        image_utils.fetch_to_raw(None, None, None, TEST_IMG_SOURCE,
+                                 size=self.TEST_SIZE_IN_GB)
 
         mox.StubOutWithMock(image_utils, 'resize_image')
         image_utils.resize_image(TEST_IMG_SOURCE, self.TEST_SIZE_IN_GB)

@@ -1213,7 +1213,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                       image_service, image_id):
             pass
 
-        def fake_fetch_to_raw(context, image_service, image_id, vol_path):
+        def fake_fetch_to_raw(ctx, image_service, image_id, path, size=None):
             pass
 
         def fake_clone_image(volume_ref, image_location, image_id):

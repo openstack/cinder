@@ -743,7 +743,7 @@ class RBDDriver(driver.VolumeDriver):
 
         with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp:
             image_utils.fetch_to_raw(context, image_service, image_id,
-                                     tmp.name)
+                                     tmp.name, size=volume['size'])
 
             self.delete_volume(volume)
 

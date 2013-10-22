@@ -293,9 +293,13 @@ class RBDTestCase(test.TestCase):
                 def __init__(self, name):
                     self.name = name
             yield FakeTmp('test')
+
+        def fake_fetch_to_raw(ctx, image_service, image_id, path, size=None):
+            pass
+
         self.stubs.Set(tempfile, 'NamedTemporaryFile', fake_temp_file)
         self.stubs.Set(os.path, 'exists', lambda x: True)
-        self.stubs.Set(image_utils, 'fetch_to_raw', lambda w, x, y, z: None)
+        self.stubs.Set(image_utils, 'fetch_to_raw', fake_fetch_to_raw)
         self.stubs.Set(self.driver, 'delete_volume', lambda x: None)
         self.stubs.Set(self.driver, '_resize', lambda x: None)
         self.driver.copy_image_to_volume(None, {'name': 'test',
