@@ -332,8 +332,9 @@ def reset_error_flg(cmd):
 
 
 class HuaweiTCLIResSimulator():
-    def _name_translate(self, name):
-        return 'OpenStack_' + str(hash(name))
+    def _paras_name(self, params):
+        index = params.index('-n')
+        return params[index + 1]
 
     def cli_showsys(self, params):
         pass
@@ -341,7 +342,7 @@ class HuaweiTCLIResSimulator():
     def cli_createlun(self, params):
         lun_type = ('THIN' if '-pool' in params else 'THICK')
         if LUN_INFO['ID'] is None:
-            LUN_INFO['Name'] = self._name_translate(FAKE_VOLUME['name'])
+            LUN_INFO['Name'] = self._paras_name(params)
             LUN_INFO['ID'] = VOLUME_SNAP_ID['vol']
             LUN_INFO['Size'] = FAKE_VOLUME['size']
             LUN_INFO['Lun Type'] = lun_type
@@ -350,8 +351,7 @@ class HuaweiTCLIResSimulator():
             LUN_INFO['RAID Group ID'] = POOL_SETTING['ID']
             FAKE_VOLUME['provider_location'] = LUN_INFO['ID']
         else:
-            CLONED_LUN_INFO['Name'] = \
-                self._name_translate(FAKE_CLONED_VOLUME['name'])
+            CLONED_LUN_INFO['Name'] = self._paras_name(params)
             CLONED_LUN_INFO['ID'] = VOLUME_SNAP_ID['vol_copy']
             CLONED_LUN_INFO['Size'] = FAKE_CLONED_VOLUME['size']
             CLONED_LUN_INFO['Lun Type'] = lun_type
@@ -525,8 +525,7 @@ class HuaweiTCLIResSimulator():
         SNAPSHOT_INFO['Source LUN ID'] = LUN_INFO['ID']
         SNAPSHOT_INFO['Source LUN Name'] = LUN_INFO['Name']
         SNAPSHOT_INFO['ID'] = VOLUME_SNAP_ID['snap']
-        SNAPSHOT_INFO['Name'] =\
-            self._name_translate(FAKE_SNAPSHOT['name'])
+        SNAPSHOT_INFO['Name'] = self._paras_name(params)
         SNAPSHOT_INFO['Status'] = 'Disable'
         out = 'command operates successfully'
         return out
@@ -823,6 +822,16 @@ Multipath Type
         out = 'command operates successfully'
         return out
 
+    def cli_addluntoextlun(self, params):
+        LUN_INFO['Size'] = int(LUN_INFO['Size']) + int(CLONED_LUN_INFO['Size'])
+        out = 'command operates successfully'
+        return out
+
+    def cli_rmlunfromextlun(self, patams):
+        LUN_INFO['Size'] = int(LUN_INFO['Size']) - int(CLONED_LUN_INFO['Size'])
+        out = 'command operates successfully'
+        return out
+
 
 class HuaweiDorado5100CLIResSimulator(HuaweiTCLIResSimulator):
     def cli_showsys(self, params):
@@ -928,7 +937,7 @@ class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
         lun_type = ('THIN' if params[params.index('-type') + 1] == '2' else
                     'THICK')
         if LUN_INFO['ID'] is None:
-            LUN_INFO['Name'] = self._name_translate(FAKE_VOLUME['name'])
+            LUN_INFO['Name'] = self._paras_name(params)
             LUN_INFO['ID'] = VOLUME_SNAP_ID['vol']
             LUN_INFO['Size'] = FAKE_VOLUME['size']
             LUN_INFO['Lun Type'] = lun_type
@@ -937,8 +946,7 @@ class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
             LUN_INFO['RAID Group ID'] = POOL_SETTING['ID']
             FAKE_VOLUME['provider_location'] = LUN_INFO['ID']
         else:
-            CLONED_LUN_INFO['Name'] = \
-                self._name_translate(FAKE_CLONED_VOLUME['name'])
+            CLONED_LUN_INFO['Name'] = self._paras_name(params)
             CLONED_LUN_INFO['ID'] = VOLUME_SNAP_ID['vol_copy']
             CLONED_LUN_INFO['Size'] = FAKE_CLONED_VOLUME['size']
             CLONED_LUN_INFO['Lun Type'] = lun_type
@@ -1207,6 +1215,25 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         self.assertIsNone(FAKE_CLONED_VOLUME['provider_location'])
         self.driver.delete_volume(FAKE_VOLUME)
         self.assertIsNone(LUN_INFO['ID'])
+
+    def test_extend_volume(self):
+        VOLUME_SIZE = 5
+        # Test no extended volume
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.extend_volume, FAKE_VOLUME, VOLUME_SIZE)
+
+        self.driver.create_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['Size'], '2')
+        # Test extend volume cli exception
+        set_error_flg('addluntoextlun')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume, FAKE_VOLUME, VOLUME_SIZE)
+        self.assertEqual(CLONED_LUN_INFO['Name'], None)
+
+        self.driver.extend_volume(FAKE_VOLUME, VOLUME_SIZE)
+        self.assertEqual(LUN_INFO['Size'], VOLUME_SIZE)
+        self.driver.delete_volume(FAKE_VOLUME)
+        self.assertEqual(LUN_INFO['Name'], None)
 
     def test_create_delete_snapshot(self):
         # Test no resource pool
@@ -1538,6 +1565,12 @@ class HuaweiDorado2100G2FCDriverTestCase(HuaweiTFCDriverTestCase):
                           self.driver.create_volume_from_snapshot,
                           FAKE_CLONED_VOLUME, FAKE_SNAPSHOT)
 
+    def test_extend_volume(self):
+        NEWSIZE = 5
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume,
+                          FAKE_VOLUME, NEWSIZE)
+
 
 class HuaweiDorado5100ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
     def __init__(self, *args, **kwargs):
@@ -1612,6 +1645,12 @@ class HuaweiDorado2100G2ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
         self.driver.terminate_connection(FAKE_VOLUME, FAKE_CONNECTOR)
         self.driver.delete_volume(FAKE_VOLUME)
         self.assertIsNone(LUN_INFO['ID'])
+
+    def test_extend_volume(self):
+        NEWSIZE = 5
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume,
+                          FAKE_VOLUME, NEWSIZE)
 
 
 class SSHMethodTestCase(test.TestCase):

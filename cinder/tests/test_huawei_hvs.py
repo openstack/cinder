@@ -64,6 +64,8 @@ FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                  'host': 'fakehost',
                  'ip': '10.10.0.1'}
 
+volume_size = 3
+
 
 def Fake_sleep(time):
     pass
@@ -466,6 +468,10 @@ class FakeHVSCommon(rest_common.HVSCommon):
             if url == "ioclass/0":
                 data = """{"error":{"code":0}}"""
 
+            if url == "lun/expand":
+                data = """{"error":{"code":0}}"""
+                self.lun_id = '0'
+
         else:
             data = """{"error":{"code":31755596}}"""
 
@@ -526,6 +532,11 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
     def test_create_volume_success(self):
         self.driver.common.login()
         self.driver.create_volume(test_volume)
+        self.assertEqual(self.driver.common.lun_id, "0")
+
+    def test_extend_volume_success(self):
+        self.driver.common.login()
+        self.driver.extend_volume(test_volume, volume_size)
         self.assertEqual(self.driver.common.lun_id, "0")
 
     def test_create_snapshot_success(self):
@@ -711,6 +722,11 @@ class HVSRESTFCDriverTestCase(test.TestCase):
     def test_create_volume_success(self):
         self.driver.common.login()
         self.driver.create_volume(test_volume)
+        self.assertEqual(self.driver.common.lun_id, "0")
+
+    def test_extend_volume_success(self):
+        self.driver.common.login()
+        self.driver.extend_volume(test_volume, volume_size)
         self.assertEqual(self.driver.common.lun_id, "0")
 
     def test_create_snapshot_success(self):

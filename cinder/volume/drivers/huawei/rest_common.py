@@ -1286,3 +1286,17 @@ class HVSCommon():
         target_iqn = self._get_tgt_iqn(target_ip)
 
         return (target_iqn, target_ip)
+
+    def extend_volume(self, volume, new_size):
+        name = self._encode_name(volume['id'])
+        lun_id = self._get_volume_by_name(name)
+        if lun_id:
+            url = self.url + "/lun/expand"
+            capacity = int(new_size) * units.GiB / 512
+            data = json.dumps({"TYPE": "11",
+                               "ID": lun_id,
+                               "CAPACITY": capacity})
+            result = self.call(url, data, "PUT")
+            self._assert_rest_result(result, 'Extend lun error.')
+        else:
+            LOG.warn(_('Can not find lun in array'))
