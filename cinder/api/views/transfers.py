@@ -23,7 +23,7 @@ LOG = logging.getLogger(__name__)
 class ViewBuilder(common.ViewBuilder):
     """Model transfer API responses as a python dictionary."""
 
-    _collection_name = "transfers"
+    _collection_name = "os-volume-transfer"
 
     def __init__(self):
         """Initialize view builder."""
