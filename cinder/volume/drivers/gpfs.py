@@ -397,7 +397,7 @@ class GPFSDriver(driver.VolumeDriver):
         # snapshots will also be deleted.
         snapshot_path = self.local_path(snapshot)
         snapshot_ts_path = '%s.ts' % snapshot_path
-        os.rename(snapshot_path, snapshot_ts_path)
+        self._execute('mv', snapshot_path, snapshot_ts_path, run_as_root=True)
         self._execute('rm', '-f', snapshot_ts_path,
                       check_exit_code=False, run_as_root=True)
 
