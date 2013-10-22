@@ -32,6 +32,8 @@ import socket
 
 from oslo.config import cfg
 
+from cinder.openstack.common.gettextutils import _
+
 
 CONF = cfg.CONF
 
