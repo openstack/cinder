@@ -1067,7 +1067,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
                 if len(self.ssc_vols['all']) > len(self.ssc_vols['dedup'])\
                 else 'false'
             data['netapp_compression'] = 'true'\
-                if self.ssc_vols['compression'] else False
+                if self.ssc_vols['compression'] else 'false'
             data['netapp_nocompression'] = 'true'\
                 if len(self.ssc_vols['all']) >\
                 len(self.ssc_vols['compression'])\
