@@ -75,7 +75,11 @@ class VolumeActionsController(wsgi.Controller):
     def _attach(self, req, id, body):
         """Add attachment metadata."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         # instance uuid is an option now
         instance_uuid = None
         if 'instance_uuid' in body['os-attach']:
@@ -115,7 +119,11 @@ class VolumeActionsController(wsgi.Controller):
     def _detach(self, req, id, body):
         """Clear attachment metadata."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         self.volume_api.detach(context, volume)
         return webob.Response(status_int=202)
 
@@ -123,7 +131,11 @@ class VolumeActionsController(wsgi.Controller):
     def _reserve(self, req, id, body):
         """Mark volume as reserved."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         self.volume_api.reserve_volume(context, volume)
         return webob.Response(status_int=202)
 
@@ -131,7 +143,11 @@ class VolumeActionsController(wsgi.Controller):
     def _unreserve(self, req, id, body):
         """Unmark volume as reserved."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         self.volume_api.unreserve_volume(context, volume)
         return webob.Response(status_int=202)
 
@@ -139,7 +155,11 @@ class VolumeActionsController(wsgi.Controller):
     def _begin_detaching(self, req, id, body):
         """Update volume status to 'detaching'."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         self.volume_api.begin_detaching(context, volume)
         return webob.Response(status_int=202)
 
@@ -147,7 +167,11 @@ class VolumeActionsController(wsgi.Controller):
     def _roll_detaching(self, req, id, body):
         """Roll back volume status to 'in-use'."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         self.volume_api.roll_detaching(context, volume)
         return webob.Response(status_int=202)
 
@@ -155,7 +179,11 @@ class VolumeActionsController(wsgi.Controller):
     def _initialize_connection(self, req, id, body):
         """Initialize volume attachment."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         connector = body['os-initialize_connection']['connector']
         info = self.volume_api.initialize_connection(context,
                                                      volume,
@@ -166,7 +194,11 @@ class VolumeActionsController(wsgi.Controller):
     def _terminate_connection(self, req, id, body):
         """Terminate volume attachment."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         connector = body['os-terminate_connection']['connector']
         self.volume_api.terminate_connection(context, volume, connector)
         return webob.Response(status_int=202)
@@ -193,6 +225,7 @@ class VolumeActionsController(wsgi.Controller):
             volume = self.volume_api.get(context, id)
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         authorize(context, "upload_image")
         image_metadata = {"container_format": params.get("container_format",
                                                          "bare"),
@@ -217,7 +250,11 @@ class VolumeActionsController(wsgi.Controller):
     def _extend(self, req, id, body):
         """Extend size of volume."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
         try:
             _val = int(body['os-extend']['new_size'])
         except (KeyError, ValueError):
@@ -232,7 +269,10 @@ class VolumeActionsController(wsgi.Controller):
     def _volume_readonly_update(self, req, id, body):
         """Update volume readonly flag."""
         context = req.environ['cinder.context']
-        volume = self.volume_api.get(context, id)
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         if not self.is_valid_body(body, 'os-update_readonly_flag'):
             msg = _("No 'os-update_readonly_flag' was specified "

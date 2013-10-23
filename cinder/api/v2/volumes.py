@@ -345,15 +345,24 @@ class VolumeController(wsgi.Controller):
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
-            kwargs['snapshot'] = self.volume_api.get_snapshot(context,
-                                                              snapshot_id)
+            try:
+                kwargs['snapshot'] = self.volume_api.get_snapshot(context,
+                                                                  snapshot_id)
+            except exception.NotFound:
+                explanation = _('snapshot id:%s not found') % snapshot_id
+                raise exc.HTTPNotFound(explanation=explanation)
         else:
             kwargs['snapshot'] = None
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
-            kwargs['source_volume'] = self.volume_api.get_volume(context,
-                                                                 source_volid)
+            try:
+                kwargs['source_volume'] = \
+                    self.volume_api.get_volume(context,
+                                               source_volid)
+            except exception.NotFound:
+                explanation = _('source volume id:%s not found') % source_volid
+                raise exc.HTTPNotFound(explanation=explanation)
         else:
             kwargs['source_volume'] = None
 
