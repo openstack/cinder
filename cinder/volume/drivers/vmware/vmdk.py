@@ -77,6 +77,9 @@ vmdk_opts = [
                     'count to something less than the configured value.'),
 ]
 
+CONF = cfg.CONF
+CONF.register_opts(vmdk_opts)
+
 
 def _get_volume_type_extra_spec(type_id, spec_key, possible_values,
                                 default_value):
