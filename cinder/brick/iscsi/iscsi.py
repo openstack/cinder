@@ -82,6 +82,17 @@ class TargetAdmin(executor.Executor):
 
 class TgtAdm(TargetAdmin):
     """iSCSI target administration using tgtadm."""
+    VOLUME_CONF = """
+                <target %s>
+                    backing-store %s
+                </target>
+                  """
+    VOLUME_CONF_WITH_CHAP_AUTH = """
+                                <target %s>
+                                    backing-store %s
+                                    %s
+                                </target>
+                                 """
 
     def __init__(self, root_helper, volumes_dir,
                  target_prefix='iqn.2010-10.org.openstack:',
@@ -156,18 +167,10 @@ class TgtAdm(TargetAdmin):
 
         vol_id = name.split(':')[1]
         if chap_auth is None:
-            volume_conf = """
-                <target %s>
-                    backing-store %s
-                </target>
-            """ % (name, path)
+            volume_conf = self.VOLUME_CONF % (name, path)
         else:
-            volume_conf = """
-                <target %s>
-                    backing-store %s
-                    %s
-                </target>
-            """ % (name, path, chap_auth)
+            volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name,
+                                                             path, chap_auth)
 
         LOG.info(_('Creating iscsi_target for: %s') % vol_id)
         volumes_dir = self.volumes_dir
@@ -550,3 +553,25 @@ class LioAdm(TargetAdmin):
             LOG.error(_("Failed to add initiator iqn %s to target") %
                       connector['initiator'])
             raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
+
+
+class ISERTgtAdm(TgtAdm):
+    VOLUME_CONF = """
+                <target %s>
+                    driver iser
+                    backing-store %s
+                </target>
+                  """
+    VOLUME_CONF_WITH_CHAP_AUTH = """
+                                <target %s>
+                                    driver iser
+                                    backing-store %s
+                                    %s
+                                </target>
+                                 """
+
+    def __init__(self, root_helper, volumes_dir,
+                 target_prefix='iqn.2010-10.org.iser.openstack:',
+                 execute=putils.execute):
+        super(ISERTgtAdm, self).__init__(root_helper, volumes_dir,
+                                         target_prefix, execute)

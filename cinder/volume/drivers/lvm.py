@@ -28,7 +28,6 @@ from oslo.config import cfg
 
 from cinder.brick import exception as brick_exception
 from cinder.brick.iscsi import iscsi
-from cinder.brick.iser import iser
 from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.image import image_utils
@@ -765,7 +764,7 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
 
-        if not isinstance(self.tgtadm, iser.TgtAdm):
+        if not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
                 iser_target = self.db.volume_get_iscsi_target_num(
                     context,
@@ -792,19 +791,19 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
                 volume_name = old_name
                 old_name = None
 
-        iser_name = "%s%s" % (self.configuration.iser_target_prefix,
+        iser_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                               volume_name)
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
                                       volume_name)
 
-        self.tgtadm.create_iser_target(iser_name, iser_target,
-                                       0, volume_path, chap_auth,
-                                       check_exit_code=False,
-                                       old_name=old_name)
+        self.tgtadm.create_iscsi_target(iser_name, iser_target,
+                                        0, volume_path, chap_auth,
+                                        check_exit_code=False,
+                                        old_name=old_name)
 
     def _ensure_iser_targets(self, context, host):
         """Ensure that target ids have been created in datastore."""
-        if not isinstance(self.tgtadm, iser.TgtAdm):
+        if not isinstance(self.tgtadm, iscsi.TgtAdm):
             host_iser_targets = self.db.iscsi_target_count_by_host(context,
                                                                    host)
             if host_iser_targets >= self.configuration.iser_num_targets:
@@ -819,7 +818,7 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     def create_export(self, context, volume):
         """Creates an export for a logical volume."""
 
-        iser_name = "%s%s" % (self.configuration.iser_target_prefix,
+        iser_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                               volume['name'])
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
                                       volume['name'])
@@ -827,7 +826,7 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
 
         # TODO(jdg): In the future move all of the dependent stuff into the
         # cooresponding target admin class
-        if not isinstance(self.tgtadm, iser.TgtAdm):
+        if not isinstance(self.tgtadm, iscsi.TgtAdm):
             lun = 0
             self._ensure_iser_targets(context, volume['host'])
             iser_target = self.db.volume_allocate_iscsi_target(context,
@@ -842,13 +841,13 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
         chap_password = utils.generate_password()
         chap_auth = self._iser_authentication('IncomingUser', chap_username,
                                               chap_password)
-        tid = self.tgtadm.create_iser_target(iser_name,
-                                             iser_target,
-                                             0,
-                                             volume_path,
-                                             chap_auth)
+        tid = self.tgtadm.create_iscsi_target(iser_name,
+                                              iser_target,
+                                              0,
+                                              volume_path,
+                                              chap_auth)
         model_update['provider_location'] = self._iser_location(
-            self.configuration.iser_ip_address, tid, iser_name, lun)
+            self.configuration.iscsi_ip_address, tid, iser_name, lun)
         model_update['provider_auth'] = self._iser_authentication(
             'CHAP', chap_username, chap_password)
         return model_update
@@ -856,7 +855,7 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     def remove_export(self, context, volume):
         """Removes an export for a logical volume."""
 
-        if not isinstance(self.tgtadm, iser.TgtAdm):
+        if not isinstance(self.tgtadm, iscsi.TgtAdm):
             try:
                 iser_target = self.db.volume_get_iscsi_target_num(
                     context,
@@ -882,11 +881,11 @@ class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
                        "is presently exported for volume: %s"), volume['id'])
             return
 
-        self.tgtadm.remove_iser_target(iser_target, 0, volume['id'],
-                                       volume['name'])
+        self.tgtadm.remove_iscsi_target(iser_target, 0, volume['id'],
+                                        volume['name'])
 
     def _iser_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, self.configuration.iser_port,
+        return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
                                    target, iqn, lun)
 
     def _iser_authentication(self, chap, name, password):
