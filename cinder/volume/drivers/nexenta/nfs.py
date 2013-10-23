@@ -15,8 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`nexenta.nfs` -- Driver to store volumes on Nexenta Appliance
-=====================================================================
+:mod:`nexenta.nfs` -- Driver to store volumes on NexentaStor Appliance.
+=======================================================================
 
 .. automodule:: nexenta.nfs
 .. moduleauthor:: Mikhail Khodos <hodosmb@gmail.com>
@@ -29,6 +29,7 @@ import os
 from oslo.config import cfg
 
 from cinder import context
+from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import units
@@ -38,7 +39,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.1.1'
+VERSION = '1.1.2'
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -52,6 +53,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         1.0.0 - Initial driver version.
         1.1.0 - Auto sharing for enclosing folder.
         1.1.1 - Added caching for NexentaStor appliance 'volroot' value.
+        1.1.2 - Ignore "folder does not exist" error in delete_volume and
+                delete_snapshot method.
     """
 
     VERSION = VERSION
@@ -217,7 +220,14 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nms = self.share2nms[nfs_share]
             vol, parent_folder = self._get_share_datasets(nfs_share)
             folder = '%s/%s/%s' % (vol, parent_folder, volume['name'])
-            nms.folder.destroy(folder, '')
+            try:
+                nms.folder.destroy(folder, '')
+            except nexenta.NexentaException as exc:
+                if 'does not exist' in exc.args[0]:
+                    LOG.info(_('Folder %s does not exist, it seems it was '
+                               'already deleted.'), folder)
+                    return
+                raise
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -241,7 +251,14 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nms = self.share2nms[nfs_share]
         vol, dataset = self._get_share_datasets(nfs_share)
         folder = '%s/%s/%s' % (vol, dataset, volume['name'])
-        nms.snapshot.destroy('%s@%s' % (folder, snapshot['name']), '')
+        try:
+            nms.snapshot.destroy('%s@%s' % (folder, snapshot['name']), '')
+        except nexenta.NexentaException as exc:
+            if 'does not exist' in exc.args[0]:
+                LOG.info(_('Snapshot %s does not exist, it seems it was '
+                           'already deleted.'), '%s@%s' % (folder, snapshot))
+                return
+            raise
 
     def _create_sparsed_file(self, nms, path, size):
         """Creates file with 0 disk usage.
@@ -387,7 +404,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()
-        return self.db.volume_get(ctxt, snapshot['volume_id'])
+        return db.volume_get(ctxt, snapshot['volume_id'])
 
     def _get_volroot(self, nms):
         """Returns volroot property value from NexentaStor appliance."""
