@@ -371,7 +371,6 @@ class VolumeDriver(object):
         device_scan_attempts = self.configuration.num_volume_device_scan_tries
         protocol = conn['driver_volume_type']
         connector = utils.brick_get_connector(protocol,
-                                              driver=self,
                                               use_multipath=use_multipath,
                                               device_scan_attempts=
                                               device_scan_attempts)

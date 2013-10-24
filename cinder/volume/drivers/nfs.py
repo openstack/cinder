@@ -373,15 +373,15 @@ class NfsDriver(RemoteFsDriver):
         super(NfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
         root_helper = utils.get_root_helper()
-        self.base = getattr(self.configuration,
-                            'nfs_mount_point_base',
-                            CONF.nfs_mount_point_base)
+        base = getattr(self.configuration,
+                       'nfs_mount_point_base',
+                       CONF.nfs_mount_point_base)
         opts = getattr(self.configuration,
                        'nfs_mount_options',
                        CONF.nfs_mount_options)
         self._remotefsclient = remotefs.RemoteFsClient(
             'nfs', root_helper, execute=execute,
-            nfs_mount_point_base=self.base,
+            nfs_mount_point_base=base,
             nfs_mount_options=opts)
 
     def set_execute(self, execute):

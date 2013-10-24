@@ -797,15 +797,6 @@ class RemoteFsConnector(InitiatorConnector):
                  execute=putils.execute,
                  device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
                  *args, **kwargs):
-        if mount_type.lower() == 'nfs':
-            if driver:
-                kwargs = kwargs or {}
-                kwargs['nfs_mount_point_base'] =\
-                    kwargs.get('nfs_mount_point_base') or\
-                    getattr(driver, 'base', None)
-            else:
-                LOG.warn(_("NFS volume driver is absent."
-                           " RemoteFsClient may not initialize properly."))
         self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
                                                        execute=execute,
                                                        *args, **kwargs)
@@ -831,8 +822,7 @@ class RemoteFsConnector(InitiatorConnector):
         """
 
         mnt_flags = []
-        if ('options' in connection_properties and
-                connection_properties['options']):
+        if 'options' in connection_properties:
             mnt_flags = connection_properties['options'].split()
 
         nfs_share = connection_properties['export']
