@@ -105,6 +105,7 @@ class HostDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(HostDriverTestCase, self).setUp()
+        self.stubs.Set(os.path, 'isdir', lambda x: True)
         self.devlist = ['device1', 'device2']
         self.stubs.Set(os, 'listdir', lambda x: self.devlist)
 
