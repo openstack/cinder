@@ -162,12 +162,12 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             msg = _("Volume status must be 'available'.")
             raise exception.InvalidVolume(msg)
 
-        volume_name = CONF.volume_name_template % src_vref['id']
+        volume_name = CONF.volume_name_template % volume['id']
 
         volume_info = {'provider_location': src_vref['provider_location'],
                        'size': src_vref['size'],
                        'id': volume['id'],
-                       'name': '%s-clone' % volume_name,
+                       'name': volume_name,
                        'status': src_vref['status']}
         temp_snapshot = {'volume_name': volume_name,
                          'size': src_vref['size'],
