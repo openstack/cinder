@@ -207,9 +207,9 @@ class TgtAdm(TargetAdmin):
                                        run_as_root=True)
             LOG.debug("Targets after update: %s" % out)
         except putils.ProcessExecutionError as e:
-            LOG.error(_("Failed to create iscsi target for volume "
+            LOG.warning(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
-                      % {'vol_id': vol_id, 'e': str(e)})
+                        % {'vol_id': vol_id, 'e': str(e)})
 
             #Don't forget to remove the persistent file we created
             os.unlink(volume_path)
