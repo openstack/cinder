@@ -6,7 +6,7 @@
 ietadm: CommandFilter, ietadm, root
 tgtadm: CommandFilter, tgtadm, root
 tgt-admin: CommandFilter, tgt-admin, root
-rtstool: CommandFilter, rtstool, root
+cinder-rtstool: CommandFilter, cinder-rtstool, root
 
 # cinder/volume/driver.py: 'vgs', '--noheadings', '-o', 'name'
 vgs: CommandFilter, vgs, root
