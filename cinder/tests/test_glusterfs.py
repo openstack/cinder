@@ -600,7 +600,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                                     volume_file)
         src_info_path = '%s.info' % volume_path
         volume_ref = {'id': volume['id'],
-                      'name': volume['name'] + '-clone',
+                      'name': volume['name'],
                       'status': volume['status'],
                       'provider_location': volume['provider_location'],
                       'size': volume['size']}
@@ -1508,7 +1508,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                       'size': volume['size'],
                       'status': volume['status'],
                       'provider_location': volume['provider_location'],
-                      'name': 'volume-' + volume['id'] + '-clone'}
+                      'name': 'volume-' + volume['id']}
 
         drv.create_snapshot(snap_ref)
         drv._copy_volume_from_snapshot(snap_ref,
