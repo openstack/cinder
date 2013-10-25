@@ -14,8 +14,10 @@
 #    under the License.
 """ Tests for Ceph backup service """
 
+import fcntl
 import hashlib
 import os
+import subprocess
 import tempfile
 import time
 import uuid
@@ -60,6 +62,31 @@ class BackupCephTestCase(test.TestCase):
                                               'user_foo', 'conf_foo')
         return rbddriver.RBDImageIOWrapper(rbd_meta)
 
+    def _setup_mock_popen(self, inst, retval=None, p1hook=None, p2hook=None):
+        class stdout(object):
+            def close(self):
+                inst.called.append('stdout_close')
+
+        class FakePopen(object):
+
+            PASS = 0
+
+            def __init__(self, cmd, *args, **kwargs):
+                inst.called.append('popen_init')
+                self.stdout = stdout()
+                self.returncode = 0
+                self.__class__.PASS += 1
+                if self.__class__.PASS == 1 and p1hook:
+                    p1hook()
+                elif self.__class__.PASS == 2 and p2hook:
+                    p2hook()
+
+            def communicate(self):
+                inst.called.append('communicate')
+                return retval
+
+        self.stubs.Set(subprocess, 'Popen', FakePopen)
+
     def setUp(self):
         super(BackupCephTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
@@ -100,6 +127,13 @@ class BackupCephTestCase(test.TestCase):
         self.counter = float(0)
         self.stubs.Set(time, 'time', self.time_inc)
         self.stubs.Set(eventlet, 'sleep', lambda *args: None)
+
+        # Used to collect info on what was called during a test
+        self.called = []
+
+        # Do this to ensure that any test ending up in a subprocess fails if
+        # not properly mocked.
+        self.stubs.Set(subprocess, 'Popen', None)
 
     def test_get_rbd_support(self):
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_LAYERING'))
@@ -327,21 +361,30 @@ class BackupCephTestCase(test.TestCase):
         self.stubs.Set(self.service, '_try_delete_base_image',
                        lambda *args, **kwargs: None)
 
+        self.stubs.Set(fcntl, 'fcntl', lambda *args, **kwargs: 0)
+
         with tempfile.NamedTemporaryFile() as test_file:
             checksum = hashlib.sha256()
 
-            def write_data(inst, data, offset):
+            def write_data():
+                self.volume_file.seek(0)
+                data = self.volume_file.read(self.length)
+                self.called.append('write')
                 checksum.update(data)
                 test_file.write(data)
 
-            def read_data(inst, offset, length):
+            def read_data():
+                self.called.append('read')
                 return self.volume_file.read(self.length)
 
             def rbd_list(inst, ioctx):
+                self.called.append('list')
                 return [backup_name]
 
-            self.stubs.Set(self.service.rbd.Image, 'read', read_data)
-            self.stubs.Set(self.service.rbd.Image, 'write', write_data)
+            self._setup_mock_popen(self, ['out', 'err'],
+                                   p1hook=read_data,
+                                   p2hook=write_data)
+
             self.stubs.Set(self.service.rbd.RBD, 'list', rbd_list)
 
             self.stubs.Set(self.service, '_discard_bytes',
@@ -353,6 +396,10 @@ class BackupCephTestCase(test.TestCase):
             rbd_io = rbddriver.RBDImageIOWrapper(meta)
 
             self.service.backup(backup, rbd_io)
+
+            self.assertEquals(self.called, ['list', 'popen_init', 'read',
+                                            'popen_init', 'write',
+                                            'stdout_close', 'communicate'])
 
             # Ensure the files are equal
             self.assertEqual(checksum.digest(), self.checksum.digest())
@@ -463,15 +510,12 @@ class BackupCephTestCase(test.TestCase):
         self.stubs.Set(self.service.rbd.Image, 'list_snaps', list_snaps)
         self.stubs.Set(self.service.rbd.RBD, 'list', rbd_list)
 
-        # Must be something mutable
-        remove_called = []
-
         def remove(inst, ioctx, name):
-            remove_called.append(True)
+            self.called.append('remove')
 
         self.stubs.Set(self.service.rbd.RBD, 'remove', remove)
         self.service.delete(backup)
-        self.assertTrue(remove_called[0])
+        self.assertEquals(self.called, ['remove'])
 
     def test_try_delete_base_image(self):
         # don't create volume db entry since it should not be required
@@ -486,18 +530,15 @@ class BackupCephTestCase(test.TestCase):
 
         self.stubs.Set(self.service.rbd.RBD, 'list', rbd_list)
 
-        # Must be something mutable
-        remove_called = []
-
         self.stubs.Set(self.service, 'get_backup_snaps',
                        lambda *args, **kwargs: None)
 
         def remove(inst, ioctx, name):
-            remove_called.append(True)
+            self.called.append('remove')
 
         self.stubs.Set(self.service.rbd.RBD, 'remove', remove)
         self.service.delete(backup)
-        self.assertTrue(remove_called[0])
+        self.assertEquals(self.called, ['remove'])
 
     def test_try_delete_base_image_busy(self):
         """This should induce retries then raise rbd.ImageBusy."""
@@ -512,9 +553,6 @@ class BackupCephTestCase(test.TestCase):
             return [backup_name]
 
         self.stubs.Set(self.service.rbd.RBD, 'list', rbd_list)
-
-        # Must be something mutable
-        remove_called = []
 
         self.stubs.Set(self.service, 'get_backup_snaps',
                        lambda *args, **kwargs: None)
@@ -615,6 +653,13 @@ class BackupCephTestCase(test.TestCase):
         resp = self.service._diff_restore_allowed(*test_args)
         self.assertEqual(resp, not_allowed)
         self._set_service_stub('_file_is_rbd', True)
+
+    def test_piped_execute(self):
+        self.stubs.Set(fcntl, 'fcntl', lambda *args, **kwargs: 0)
+        self._setup_mock_popen(self, ['out', 'err'])
+        self.service._piped_execute(['foo'], ['bar'])
+        self.assertEquals(self.called, ['popen_init', 'popen_init',
+                                        'stdout_close', 'communicate'])
 
     def tearDown(self):
         self.volume_file.close()
