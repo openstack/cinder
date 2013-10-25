@@ -1077,11 +1077,15 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             data['netapp_thick_provisioned'] = 'true'\
                 if len(self.ssc_vols['all']) >\
                 len(self.ssc_vols['thin']) else 'false'
-            vol_max = max(self.ssc_vols['all'])
-            data['total_capacity_gb'] =\
-                int(vol_max.space['size_total_bytes']) / units.GiB
-            data['free_capacity_gb'] =\
-                int(vol_max.space['size_avl_bytes']) / units.GiB
+            if self.ssc_vols['all']:
+                vol_max = max(self.ssc_vols['all'])
+                data['total_capacity_gb'] =\
+                    int(vol_max.space['size_total_bytes']) / units.GiB
+                data['free_capacity_gb'] =\
+                    int(vol_max.space['size_avl_bytes']) / units.GiB
+            else:
+                data['total_capacity_gb'] = 0
+                data['free_capacity_gb'] = 0
         else:
             LOG.warn(_("Cluster ssc is not updated. No volume stats found."))
         ssc_utils.refresh_cluster_ssc(self, self.client, self.vserver)
