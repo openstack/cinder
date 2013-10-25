@@ -41,8 +41,10 @@ was deemed the safest action to take. It is therefore recommended to always
 restore to a new volume (default).
 """
 
+import fcntl
 import os
 import re
+import subprocess
 import time
 
 import eventlet
@@ -51,7 +53,6 @@ from oslo.config import cfg
 from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import units
 from cinder import utils
 import cinder.volume.drivers.rbd as rbd_driver
@@ -410,6 +411,36 @@ class CephBackupDriver(BackupDriver):
                 finally:
                     src_rbd.close()
 
+    def _piped_execute(self, cmd1, cmd2):
+        """Pipe output of cmd1 into cmd2."""
+        LOG.debug("piping cmd1='%s' into..." % (' '.join(cmd1)))
+        LOG.debug("cmd2='%s'" % (' '.join(cmd2)))
+
+        try:
+            p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+        except OSError as e:
+            LOG.error("pipe1 failed - %s " % unicode(e))
+            raise
+
+        # NOTE(dosaboy): ensure that the pipe is blocking. This is to work
+        # around the case where evenlet.green.subprocess is used which seems to
+        # use a non-blocking pipe.
+        flags = fcntl.fcntl(p1.stdout, fcntl.F_GETFL) & (~os.O_NONBLOCK)
+        fcntl.fcntl(p1.stdout, fcntl.F_SETFL, flags)
+
+        try:
+            p2 = subprocess.Popen(cmd2, stdin=p1.stdout,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+        except OSError as e:
+            LOG.error("pipe2 failed - %s " % unicode(e))
+            raise
+
+        p1.stdout.close()
+        stdout, stderr = p2.communicate()
+        return p2.returncode, stderr
+
     def _rbd_diff_transfer(self, src_name, src_pool, dest_name, dest_pool,
                            src_user, src_conf, dest_user, dest_conf,
                            src_snap=None, from_snap=None):
@@ -430,29 +461,22 @@ class CephBackupDriver(BackupDriver):
         src_ceph_args = self._ceph_args(src_user, src_conf, pool=src_pool)
         dest_ceph_args = self._ceph_args(dest_user, dest_conf, pool=dest_pool)
 
-        cmd = ['rbd', 'export-diff'] + src_ceph_args
+        cmd1 = ['rbd', 'export-diff'] + src_ceph_args
         if from_snap is not None:
-            cmd.extend(['--from-snap', from_snap])
+            cmd1.extend(['--from-snap', from_snap])
         if src_snap:
             path = self._utf8("%s/%s@%s" % (src_pool, src_name, src_snap))
         else:
             path = self._utf8("%s/%s" % (src_pool, src_name))
-        cmd.extend([path, '-'])
-        try:
-            out, err = self._execute(*cmd)
-        except (processutils.ProcessExecutionError,
-                processutils.UnknownArgumentError) as exc:
-            msg = _("rbd export-diff failed - %s") % (str(exc))
-            LOG.info(msg)
-            raise exception.BackupRBDOperationFailed(msg)
+        cmd1.extend([path, '-'])
 
-        cmd = ['rbd', 'import-diff'] + dest_ceph_args
-        cmd.extend(['-', self._utf8("%s/%s" % (dest_pool, dest_name))])
-        try:
-            out, err = self._execute(*cmd, process_input=out)
-        except (processutils.ProcessExecutionError,
-                processutils.UnknownArgumentError) as exc:
-            msg = _("rbd import-diff failed - %s") % (str(exc))
+        cmd2 = ['rbd', 'import-diff'] + dest_ceph_args
+        cmd2.extend(['-', self._utf8("%s/%s" % (dest_pool, dest_name))])
+
+        ret, stderr = self._piped_execute(cmd1, cmd2)
+        if ret:
+            msg = (_("rbd diff op failed - (ret=%(ret)s stderr=%(stderr)s)") %
+                   ({'ret': ret, 'stderr': stderr}))
             LOG.info(msg)
             raise exception.BackupRBDOperationFailed(msg)
 
