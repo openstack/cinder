@@ -293,7 +293,7 @@ def get_sis_vol_dict(na_server, vserver, volume=None):
                 path = sis.get_child_content('path')
                 if not path:
                     continue
-                (vol, __, ___) = path.rpartition('/')
+                (___, __, vol) = path.rpartition('/')
                 if not vol:
                     continue
                 v_sis = {}
