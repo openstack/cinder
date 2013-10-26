@@ -100,6 +100,7 @@ def get_cluster_vols_with_ssc(na_server, vserver, volume=None):
     """Gets ssc vols for cluster vserver."""
     volumes = query_cluster_vols_for_ssc(na_server, vserver, volume)
     sis_vols = get_sis_vol_dict(na_server, vserver, volume)
+    mirrored_vols = get_snapmirror_vol_dict(na_server, vserver, volume)
     aggrs = {}
     for vol in volumes:
         aggr_name = vol.aggr['name']
@@ -126,6 +127,13 @@ def get_cluster_vols_with_ssc(na_server, vserver, volume=None):
             vol.space['thin_provisioned'] = False
         else:
             vol.space['thin_provisioned'] = True
+        vol.mirror['mirrored'] = False
+        if vol.id['name'] in mirrored_vols:
+            for mirr_attrs in mirrored_vols[vol.id['name']]:
+                if (mirr_attrs['rel_type'] == 'data_protection' and
+                        mirr_attrs['mirr_state'] == 'snapmirrored'):
+                    vol.mirror['mirrored'] = True
+                    break
     return volumes
 
 
@@ -138,7 +146,6 @@ def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
     query['volume-attributes'] = volume_id
     des_attr = {'volume-attributes':
                 ['volume-id-attributes',
-                 'volume-mirror-attributes',
                  'volume-space-attributes',
                  'volume-state-attributes',
                  'volume-qos-attributes']}
@@ -218,14 +225,6 @@ def create_vol_list(vol_attrs):
             vol.space['space-guarantee'] =\
                 v['volume-space-attributes'].get_child_content(
                     'space-guarantee')
-            # mirror attributes optional.
-            if v.get_child_by_name('volume-mirror-attributes'):
-                vol.mirror['mirrored'] =\
-                    na_utils.to_bool(
-                        v['volume-mirror-attributes'].get_child_content(
-                            'is-data-protection-mirror'))
-            else:
-                vol.mirror['mirrored'] = False
             # qos attributes optional.
             if v.get_child_by_name('volume-qos-attributes'):
                 vol.qos['qos_policy_group'] =\
@@ -303,6 +302,35 @@ def get_sis_vol_dict(na_server, vserver, volume=None):
                     sis.get_child_content('state'))
                 sis_vols[vol] = v_sis
     return sis_vols
+
+
+def get_snapmirror_vol_dict(na_server, vserver, volume=None):
+    """Queries snapmirror volumes."""
+    mirrored_vols = {}
+    query_attr = {'source-vserver': vserver}
+    if volume:
+        query_attr['source-volume'] = volume
+    query = {'snapmirror-info': query_attr}
+    result = na_utils.invoke_api(na_server, api_name='snapmirror-get-iter',
+                                 api_family='cm', query=query, is_iter=True)
+    for res in result:
+        attr_list = res.get_child_by_name('attributes-list')
+        if attr_list:
+            snap_info = attr_list.get_children()
+            for snap in snap_info:
+                src_volume = snap.get_child_content('source-volume')
+                v_snap = {}
+                v_snap['dest_loc'] =\
+                    snap.get_child_content('destination-location')
+                v_snap['rel_type'] =\
+                    snap.get_child_content('relationship-type')
+                v_snap['mirr_state'] =\
+                    snap.get_child_content('mirror-state')
+                if mirrored_vols.get(src_volume):
+                    mirrored_vols.get(src_volume).append(v_snap)
+                else:
+                    mirrored_vols[src_volume] = [v_snap]
+    return mirrored_vols
 
 
 def query_aggr_storage_disk(na_server, aggr):
