@@ -51,9 +51,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 lu_exists.
         1.1.0 - Changed class name to NexentaISCSIDriver.
         1.1.1 - Ignore "does not exist" exception of nms.snapshot.destroy.
+        1.1.2 - Optimized create_cloned_volume, replaced zfs send recv with zfs
+                clone.
     """
 
-    VERSION = '1.1.1'
+    VERSION = '1.1.2'
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
@@ -100,9 +102,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return '%s%s' % (self.configuration.nexenta_target_group_prefix,
                          volume_name)
 
-    def _get_clone_snap_name(self, volume):
+    def _get_clone_snapshot_name(self, volume):
         """Return name for snapshot that will be used to clone the volume."""
-        return 'cinder-clone-snap-%(id)s' % volume
+        return 'cinder-clone-snapshot-%(id)s' % volume
+
+    def _is_clone_snapshot_name(self, snapshot):
+        """Check if snapshot is created for cloning."""
+        name = snapshot.split('@')[-1]
+        return name.startswith('cinder-clone-snapshot-')
 
     def create_volume(self, volume):
         """Create a zvol on appliance.
@@ -133,16 +140,27 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
+        volume_name = self._get_zvol_name(volume['name'])
+        props = self.nms.zvol.get_child_props(volume_name, 'origin') or {}
         try:
-            self.nms.zvol.destroy(self._get_zvol_name(volume['name']), '')
+            self.nms.zvol.destroy(volume_name, '')
         except nexenta.NexentaException as exc:
-            if "does not exist" in exc.args[0]:
+            if 'does not exist' in exc.args[0]:
                 LOG.info(_('Volume %s does not exist, it seems it was already '
-                           'deleted.'), volume['name'])
+                           'deleted.'), volume_name)
                 return
-            if "zvol has children" in exc.args[0]:
-                raise exception.VolumeIsBusy(volume_name=volume['name'])
+            if 'zvol has children' in exc.args[0]:
+                raise exception.VolumeIsBusy(volume_name=volume_name)
             raise
+        origin = props.get('origin')
+        if origin and self._is_clone_snapshot_name(origin):
+            volume, snapshot = origin.split('@')
+            volume = volume.lstrip('%s/' % self.configuration.nexenta_volume)
+            try:
+                self.delete_snapshot({'volume_name': volume, 'name': snapshot})
+            except nexenta.NexentaException as exc:
+                LOG.warning(_('Cannot delete snapshot %(origin): %(exc)s'),
+                            {'origin': origin, 'exc': exc})
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
@@ -151,38 +169,25 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param src_vref: source volume reference
         """
         snapshot = {'volume_name': src_vref['name'],
-                    'name': self._get_clone_snap_name(volume)}
+                    'name': self._get_clone_snapshot_name(volume)}
         LOG.debug(_('Creating temp snapshot of the original volume: '
                     '%(volume_name)s@%(name)s'), snapshot)
+        # We don't delete this snapshot, because this snapshot will be origin
+        # of new volume. This snapshot will be automatically promoted by NMS
+        # when user will delete origin volume. But when cloned volume deleted
+        # we check its origin property and delete source snapshot if needed.
         self.create_snapshot(snapshot)
         try:
-            cmd = 'zfs send %(src_vol)s@%(src_snap)s | zfs recv %(volume)s' % {
-                'src_vol': self._get_zvol_name(src_vref['name']),
-                'src_snap': snapshot['name'],
-                'volume': self._get_zvol_name(volume['name'])
-            }
-            LOG.debug(_('Executing zfs send/recv on the appliance'))
-            self.nms.appliance.execute(cmd)
-            LOG.debug(_('zfs send/recv done, new volume %s created'),
-                      volume['name'])
-        finally:
+            self.create_volume_from_snapshot(volume, snapshot)
+        except nexenta.NexentaException:
+            LOG.error(_('Volume creation failed, deleting created snapshot '
+                        '%(volume_name)s@%(name)s'), snapshot)
             try:
-                # deleting temp snapshot of the original volume
                 self.delete_snapshot(snapshot)
             except (nexenta.NexentaException, exception.SnapshotIsBusy):
-                LOG.warning(_('Failed to delete temp snapshot '
-                              '%(volume)s@%(snapshot)s'),
-                            {'volume': src_vref['name'],
-                             'snapshot': snapshot['name']})
-        try:
-            # deleting snapshot resulting from zfs recv
-            self.delete_snapshot({'volume_name': volume['name'],
-                                  'name': snapshot['name']})
-        except (nexenta.NexentaException, exception.SnapshotIsBusy):
-            LOG.warning(_('Failed to delete zfs recv snapshot '
-                          '%(volume)s@%(snapshot)s'),
-                        {'volume': volume['name'],
-                         'snapshot': snapshot['name']})
+                LOG.warning(_('Failed to delete zfs snapshot '
+                              '%(volume_name)s@%(name)s'), snapshot)
+            raise
 
     def create_snapshot(self, snapshot):
         """Create snapshot of existing zvol on appliance.
