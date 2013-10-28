@@ -24,12 +24,12 @@ import migrate
 from migrate.versioning import util as migrate_util
 import sqlalchemy
 
-from cinder.db import migration
 from cinder.db.sqlalchemy.api import get_engine
 from cinder import exception
 from cinder.openstack.common import log as logging
 
 
+INIT_VERSION = 000
 LOG = logging.getLogger(__name__)
 
 
@@ -93,10 +93,14 @@ def db_version():
         meta.reflect(bind=engine)
         tables = meta.tables
         if len(tables) == 0:
-            db_version_control(migration.INIT_VERSION)
+            db_version_control(INIT_VERSION)
             return versioning_api.db_version(get_engine(), repository)
         else:
             raise exception.Error(_("Upgrade DB using Essex release first."))
+
+
+def db_initial_version():
+    return INIT_VERSION
 
 
 def db_version_control(version=None):
