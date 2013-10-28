@@ -64,7 +64,7 @@ volume_opts = [
                     ' to find volume'),
     cfg.IntOpt('num_iser_scan_tries',
                default=3,
-               help='The maximum number of times to rescan iSER target'
+               help='The maximum number of times to rescan iSER target '
                     'to find volume'),
     cfg.IntOpt('iser_num_targets',
                default=100,
