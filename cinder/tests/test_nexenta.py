@@ -656,7 +656,9 @@ class TestNexentaNfsDriver(test.TestCase):
         self.drv._execute = lambda *_, **__: 0
 
         self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
-        self.nms_mock.folder.destroy('stack/share/volume-1', '')
+        self.nms_mock.folder.get_child_props('stack/share/volume-1',
+                                             'origin').AndReturn(None)
+        self.nms_mock.folder.destroy('stack/share/volume-1', '-r')
         self.mox.ReplayAll()
         self.drv.delete_volume({
             'id': '1',
@@ -668,7 +670,9 @@ class TestNexentaNfsDriver(test.TestCase):
         # Check that exception not raised if folder does not exist on
         # NexentaStor appliance.
         self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
-        mock = self.nms_mock.folder.destroy('stack/share/volume-1', '')
+        self.nms_mock.folder.get_child_props('stack/share/volume-1',
+                                             'origin').AndReturn(None)
+        mock = self.nms_mock.folder.destroy('stack/share/volume-1', '-r')
         mock.AndRaise(nexenta.NexentaException("Folder does not exist"))
         self.mox.ReplayAll()
         self.drv.delete_volume({
