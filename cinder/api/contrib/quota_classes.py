@@ -70,7 +70,15 @@ class QuotaClassSetsController(object):
         quota_class = id
         for key in body['quota_class_set'].keys():
             if key in QUOTAS:
-                value = int(body['quota_class_set'][key])
+                try:
+                    value = int(body['quota_class_set'][key])
+                except ValueError:
+                    msg = _("Quota class limit must be specified as an"
+                            " integer value.")
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
+                if value < -1:
+                    msg = _("Quota class limit must be -1 or greater.")
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
                 try:
                     db.quota_class_update(context, quota_class, key, value)
                 except exception.QuotaClassNotFound:
