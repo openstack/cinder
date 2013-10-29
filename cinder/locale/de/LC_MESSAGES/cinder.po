@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-10-26 06:12+0000\n"
+"POT-Creation-Date: 2013-10-29 06:12+0000\n"
 "PO-Revision-Date: 2011-08-23 11:23+0000\n"
 "Last-Translator: Thierry Carrez <thierry.carrez+lp@gmail.com>\n"
 "Language-Team: German <de@li.org>\n"
@@ -1065,7 +1065,7 @@ msgstr ""
 msgid "Snapshot not found."
 msgstr ""
 
-#: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:172
+#: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:173
 msgid "cannot understand XML"
 msgstr ""
 
@@ -1268,7 +1268,7 @@ msgstr ""
 msgid "Caught error: %s"
 msgstr ""
 
-#: cinder/api/middleware/fault.py:55 cinder/api/openstack/wsgi.py:910
+#: cinder/api/middleware/fault.py:55 cinder/api/openstack/wsgi.py:911
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
@@ -1316,47 +1316,47 @@ msgid ""
 "cinder.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:147 cinder/api/openstack/wsgi.py:561
+#: cinder/api/openstack/wsgi.py:148 cinder/api/openstack/wsgi.py:562
 msgid "cannot understand JSON"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:566
+#: cinder/api/openstack/wsgi.py:567
 msgid "too many body keys"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:604
+#: cinder/api/openstack/wsgi.py:605
 #, python-format
 msgid "Exception handling resource: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:609
+#: cinder/api/openstack/wsgi.py:610
 #, python-format
 msgid "Fault thrown: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:612
+#: cinder/api/openstack/wsgi.py:613
 #, python-format
 msgid "HTTP exception thrown: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:721
+#: cinder/api/openstack/wsgi.py:722
 msgid "Unrecognized Content-Type provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:725
+#: cinder/api/openstack/wsgi.py:726
 msgid "No Content-Type provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:729
+#: cinder/api/openstack/wsgi.py:730
 msgid "Empty body provided in request"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:840
+#: cinder/api/openstack/wsgi.py:841
 #, python-format
 msgid "There is no such action: %s"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:843 cinder/api/openstack/wsgi.py:856
+#: cinder/api/openstack/wsgi.py:844 cinder/api/openstack/wsgi.py:857
 #: cinder/api/v1/snapshot_metadata.py:55 cinder/api/v1/snapshot_metadata.py:73
 #: cinder/api/v1/snapshot_metadata.py:98 cinder/api/v1/snapshot_metadata.py:123
 #: cinder/api/v1/volume_metadata.py:55 cinder/api/v1/volume_metadata.py:73
@@ -1368,15 +1368,15 @@ msgstr ""
 msgid "Malformed request body"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:853
+#: cinder/api/openstack/wsgi.py:854
 msgid "Unsupported Content-Type"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:865
+#: cinder/api/openstack/wsgi.py:866
 msgid "Malformed request url"
 msgstr ""
 
-#: cinder/api/openstack/wsgi.py:913
+#: cinder/api/openstack/wsgi.py:914
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
 msgstr ""
@@ -4067,7 +4067,7 @@ msgstr ""
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:237
 #: cinder/volume/drivers/netapp/iscsi.py:1040
 #: cinder/volume/drivers/netapp/iscsi.py:1414
-#: cinder/volume/drivers/nexenta/iscsi.py:443
+#: cinder/volume/drivers/nexenta/iscsi.py:448
 #: cinder/volume/drivers/windows/windows.py:206
 msgid "Updating volume stats"
 msgstr ""
@@ -7938,85 +7938,83 @@ msgstr ""
 msgid "Requires an NaServer instance."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:87
+#: cinder/volume/drivers/nexenta/iscsi.py:89
 #, python-format
 msgid "Volume %s does not exist in Nexenta SA"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:126
+#: cinder/volume/drivers/nexenta/iscsi.py:133
 #, python-format
 msgid "Extending volume: %(id)s New size: %(size)s GB"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:140
+#: cinder/volume/drivers/nexenta/iscsi.py:149
 #, python-format
 msgid "Volume %s does not exist, it seems it was already deleted."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:155
+#: cinder/volume/drivers/nexenta/iscsi.py:162
 #, python-format
-msgid "Creating temp snapshot of the original volume: %(volume_name)s@%(name)s"
-msgstr ""
-
-#: cinder/volume/drivers/nexenta/iscsi.py:164
-msgid "Executing zfs send/recv on the appliance"
-msgstr ""
-
-#: cinder/volume/drivers/nexenta/iscsi.py:166
-#, python-format
-msgid "zfs send/recv done, new volume %s created"
+msgid "Cannot delete snapshot %(origin): %(exc)s"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/iscsi.py:173
 #, python-format
-msgid "Failed to delete temp snapshot %(volume)s@%(snapshot)s"
+msgid "Creating temp snapshot of the original volume: %(volume_name)s@%(name)s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:182
+#: cinder/volume/drivers/nexenta/iscsi.py:183
+#: cinder/volume/drivers/nexenta/nfs.py:202
 #, python-format
-msgid "Failed to delete zfs recv snapshot %(volume)s@%(snapshot)s"
+msgid "Volume creation failed, deleting created snapshot %(volume_name)s@%(name)s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:218
+#: cinder/volume/drivers/nexenta/iscsi.py:188
+#: cinder/volume/drivers/nexenta/nfs.py:207
+#, python-format
+msgid "Failed to delete zfs snapshot %(volume_name)s@%(name)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:223
 #: cinder/volume/drivers/nexenta/nfs.py:258
 #, python-format
 msgid "Snapshot %s does not exist, it seems it was already deleted."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:339
+#: cinder/volume/drivers/nexenta/iscsi.py:344
 #: cinder/volume/drivers/windows/windows_utils.py:232
 #, python-format
 msgid "Ignored target creation error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:349
+#: cinder/volume/drivers/nexenta/iscsi.py:354
 #, python-format
 msgid "Ignored target group creation error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:361
+#: cinder/volume/drivers/nexenta/iscsi.py:366
 #, python-format
 msgid "Ignored target group member addition error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:371
+#: cinder/volume/drivers/nexenta/iscsi.py:376
 #, python-format
 msgid "Ignored LU creation error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:381
+#: cinder/volume/drivers/nexenta/iscsi.py:386
 #, python-format
 msgid "Ignored LUN mapping entry addition error \"%s\" while ensuring export"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:414
+#: cinder/volume/drivers/nexenta/iscsi.py:419
 #, python-format
 msgid ""
 "Got error trying to destroy target group %(target_group)s, assuming it is"
 " already gone: %(exc)s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:422
+#: cinder/volume/drivers/nexenta/iscsi.py:427
 #, python-format
 msgid ""
 "Got error trying to delete target %(target)s, assuming it is already "
@@ -8069,16 +8067,6 @@ msgstr ""
 #: cinder/volume/drivers/nexenta/nfs.py:179
 #, python-format
 msgid "Cannot destroy cloned folder: %(vol)s/%(folder)s"
-msgstr ""
-
-#: cinder/volume/drivers/nexenta/nfs.py:202
-#, python-format
-msgid "Volume creation failed, deleting created snapshot %(volume_name)s@%(name)s"
-msgstr ""
-
-#: cinder/volume/drivers/nexenta/nfs.py:207
-#, python-format
-msgid "Failed to delete zfs snapshot %(volume_name)s@%(name)s"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/nfs.py:227
@@ -9871,13 +9859,6 @@ msgstr ""
 #~ msgid "Failed to create iser target for volume id:%(vol_id)s: %(e)s"
 #~ msgstr ""
 
-#~ msgid ""
-#~ "Failed to create iser target for "
-#~ "volume id:%(vol_id)s. Please ensure your "
-#~ "tgtd config file contains 'include "
-#~ "%(volumes_dir)s/*'"
-#~ msgstr ""
-
 #~ msgid "Removing iser_target for: %s"
 #~ msgstr ""
 
@@ -9885,5 +9866,17 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Volume %s does not exist, it seems it was already deleted"
+#~ msgstr ""
+
+#~ msgid "Executing zfs send/recv on the appliance"
+#~ msgstr ""
+
+#~ msgid "zfs send/recv done, new volume %s created"
+#~ msgstr ""
+
+#~ msgid "Failed to delete temp snapshot %(volume)s@%(snapshot)s"
+#~ msgstr ""
+
+#~ msgid "Failed to delete zfs recv snapshot %(volume)s@%(snapshot)s"
 #~ msgstr ""
 
