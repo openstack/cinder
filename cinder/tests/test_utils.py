@@ -455,17 +455,49 @@ class GenericUtilsTestCase(test.TestCase):
 
     def test_check_ssh_injection(self):
         cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']
-        self.assertEqual(utils.check_ssh_injection(cmd_list), None)
+        self.assertIsNone(utils.check_ssh_injection(cmd_list))
+        cmd_list = ['echo', '"quoted arg with space"']
+        self.assertIsNone(utils.check_ssh_injection(cmd_list))
+        cmd_list = ['echo', "'quoted arg with space'"]
+        self.assertIsNone(utils.check_ssh_injection(cmd_list))
 
     def test_check_ssh_injection_on_error(self):
-        with_space = ['shh', 'my_name@      name_of_remote_computer']
+        with_unquoted_space = ['ssh', 'my_name@      name_of_remote_computer']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          with_unquoted_space)
         with_danger_char = ['||', 'my_name@name_of_remote_computer']
         self.assertRaises(exception.SSHInjectionThreat,
                           utils.check_ssh_injection,
-                          with_space)
+                          with_danger_char)
+        with_special = ['cmd', 'virus;ls']
         self.assertRaises(exception.SSHInjectionThreat,
                           utils.check_ssh_injection,
-                          with_danger_char)
+                          with_special)
+        quoted_with_unescaped = ['cmd', '"arg\"withunescaped"']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          quoted_with_unescaped)
+        bad_before_quotes = ['cmd', 'virus;"quoted argument"']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          bad_before_quotes)
+        bad_after_quotes = ['echo', '"quoted argument";rm -rf']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          bad_after_quotes)
+        bad_within_quotes = ['echo', "'quoted argument `rm -rf`'"]
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          bad_within_quotes)
+        with_multiple_quotes = ['echo', '"quoted";virus;"quoted"']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          with_multiple_quotes)
+        with_multiple_quotes = ['echo', '"quoted";virus;\'quoted\'']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          with_multiple_quotes)
 
     def test_create_channel(self):
         client = paramiko.SSHClient()
