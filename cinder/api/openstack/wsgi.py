@@ -29,6 +29,7 @@ from cinder import utils
 from cinder import wsgi
 
 from lxml import etree
+import six
 from xml.dom import minidom
 from xml.parsers import expat
 
@@ -1027,10 +1028,9 @@ class ControllerMetaclass(type):
                                                        cls_dict)
 
 
+@six.add_metaclass(ControllerMetaclass)
 class Controller(object):
     """Default controller."""
-
-    __metaclass__ = ControllerMetaclass
 
     _view_builder_class = None
 

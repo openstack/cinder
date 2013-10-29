@@ -19,6 +19,8 @@
 import abc
 import threading
 
+import six
+
 from cinder.openstack.common import uuidutils
 
 from cinder.taskflow import decorators
@@ -27,6 +29,7 @@ from cinder.taskflow import states
 from cinder.taskflow import utils
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Flow(object):
     """The base abstract class of all flow implementations.
 
@@ -44,8 +47,6 @@ class Flow(object):
     - run
     - soft_reset
     """
-
-    __metaclass__ = abc.ABCMeta
 
     # Common states that certain actions can be performed in. If the flow
     # is not in these sets of states then it is likely that the flow operation
