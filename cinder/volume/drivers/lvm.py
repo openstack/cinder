@@ -185,7 +185,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if self.configuration.volume_clear == 'none':
             return
 
-        if is_snapshot:
+        if is_snapshot and (
+                self.configuration.volume_driver !=
+                'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'):
             # if the volume to be cleared is a snapshot of another volume
             # we need to clear out the volume using the -cow instead of the
             # directly volume path.
