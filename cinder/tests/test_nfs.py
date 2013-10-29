@@ -182,7 +182,7 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
         data = mox_lib.MockAnything()
-        data.virtual_size = 1024 ** 3
+        data.virtual_size = 1 * units.GiB
         image_utils.qemu_img_info(TEST_IMG_SOURCE).AndReturn(data)
 
         mox.ReplayAll()

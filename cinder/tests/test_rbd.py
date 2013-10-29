@@ -116,7 +116,7 @@ class RBDTestCase(test.TestCase):
         self.rbd.RBD_FEATURE_LAYERING = 1
         _mock_rbd = self.mox.CreateMockAnything()
         self.rbd.RBD().AndReturn(_mock_rbd)
-        _mock_rbd.create(mox.IgnoreArg(), str(name), size * 1024 ** 3,
+        _mock_rbd.create(mox.IgnoreArg(), str(name), size * units.GiB,
                          old_format=False,
                          features=self.rbd.RBD_FEATURE_LAYERING)
         mock_client.__exit__(None, None, None).AndReturn(None)

@@ -27,6 +27,7 @@ from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder import units
 from cinder import utils
 from cinder.volume.drivers import scality
 
@@ -181,7 +182,7 @@ class ScalityDriverTestCase(test.TestCase):
                                       self.TEST_VOLNAME))
         self.assertTrue(os.path.isfile(self.TEST_VOLPATH))
         self.assertEqual(os.stat(self.TEST_VOLPATH).st_size,
-                         100 * 1024 * 1024)
+                         100 * units.MiB)
 
     def test_delete_volume(self):
         """Expected behaviour for delete_volume."""

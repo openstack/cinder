@@ -54,6 +54,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
+from cinder import units
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -1562,9 +1563,9 @@ class StorwizeSVCDriver(san.SanDriver):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         data['total_capacity_gb'] = (float(attributes['capacity']) /
-                                    (1024 ** 3))
+                                     units.GiB)
         data['free_capacity_gb'] = (float(attributes['free_capacity']) /
-                                    (1024 ** 3))
+                                    units.GiB)
         data['easytier_support'] = attributes['easy_tier'] in ['on', 'auto']
         data['compression_support'] = self._compression_enabled
         data['extent_size'] = self._extent_size

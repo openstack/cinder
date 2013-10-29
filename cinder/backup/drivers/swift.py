@@ -44,6 +44,7 @@ from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+from cinder import units
 from swiftclient import client as swift
 
 
@@ -242,7 +243,7 @@ class SwiftBackupDriver(BackupDriver):
         backup['service_metadata'] = object_prefix
         self.db.backup_update(self.context, backup_id, {'service_metadata':
                                                         object_prefix})
-        volume_size_bytes = volume['size'] * 1024 * 1024 * 1024
+        volume_size_bytes = volume['size'] * units.GiB
         availability_zone = self.az
         LOG.debug(_('starting backup of volume: %(volume_id)s to swift,'
                     ' volume size: %(volume_size_bytes)d, swift object names'

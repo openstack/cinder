@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
+from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.solidfire import SolidFireDriver
 
@@ -112,7 +113,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'name': test_name,
                              'accountID': 25,
                              'sliceCount': 1,
-                             'totalSize': 1048576 * 1024,
+                             'totalSize': 1 * units.GiB,
                              'enable512e': True,
                              'access': "readWrite",
                              'status': "active",

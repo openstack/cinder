@@ -1739,7 +1739,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Make sure volume attributes are as they should be
         attributes = self.driver._get_vdisk_attributes(volume['name'])
-        attr_size = float(attributes['capacity']) / (1024 ** 3)  # bytes to GB
+        attr_size = float(attributes['capacity']) / units.GiB  # bytes to GB
         self.assertEqual(attr_size, float(volume['size']))
         pool = self.driver.configuration.local_conf.storwize_svc_volpool_name
         self.assertEqual(attributes['mdisk_grp_name'], pool)

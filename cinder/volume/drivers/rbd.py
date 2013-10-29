@@ -339,8 +339,8 @@ class RBDDriver(driver.VolumeDriver):
         try:
             with RADOSClient(self) as client:
                 new_stats = client.cluster.get_cluster_stats()
-            stats['total_capacity_gb'] = new_stats['kb'] / 1024 ** 2
-            stats['free_capacity_gb'] = new_stats['kb_avail'] / 1024 ** 2
+            stats['total_capacity_gb'] = new_stats['kb'] / units.MiB
+            stats['free_capacity_gb'] = new_stats['kb_avail'] / units.MiB
         except self.rados.Error:
             # just log and return unknown capacities
             LOG.exception(_('error refreshing volume stats'))

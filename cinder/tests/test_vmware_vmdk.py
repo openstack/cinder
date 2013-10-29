@@ -1320,7 +1320,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         image_id = 'image-id'
         image_meta = FakeObject()
         image_meta['disk_format'] = 'vmdk'
-        image_meta['size'] = 1024 * 1024
+        image_meta['size'] = 1 * units.MiB
         image_service = m.CreateMock(glance.GlanceImageService)
         image_service.show(mox.IgnoreArg(), image_id).AndReturn(image_meta)
         volume = FakeObject()

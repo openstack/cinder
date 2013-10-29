@@ -25,6 +25,7 @@ from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder import units
 from cinder import utils
 
 
@@ -37,7 +38,7 @@ class FakeImageService:
         data.write(self._imagedata.get(image_id, ''))
 
     def show(self, context, image_id):
-        return {'size': 2 * 1024 * 1024 * 1024,
+        return {'size': 2 * units.GiB,
                 'disk_format': 'qcow2',
                 'container_format': 'bare'}
 

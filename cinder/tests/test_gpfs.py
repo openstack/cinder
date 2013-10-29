@@ -28,6 +28,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import test
 from cinder.tests import utils as test_utils
+from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.gpfs import GPFSDriver
@@ -434,7 +435,7 @@ class GPFSDriverTestCase(test.TestCase):
         return False
 
     def _fake_get_available_capacity(self, path):
-        fake_avail = 80 * 1024 * 1024 * 1024
+        fake_avail = 80 * units.GiB
         fake_size = 2 * fake_avail
         return fake_avail, fake_size
 
@@ -485,14 +486,14 @@ class GPFSDriverTestCase(test.TestCase):
         data = FakeQemuImgInfo()
         data.file_format = 'qcow2'
         data.backing_file = None
-        data.virtual_size = 1024 * 1024 * 1024
+        data.virtual_size = 1 * units.GiB
         return data
 
     def _fake_qemu_raw_image_info(self, path):
         data = FakeQemuImgInfo()
         data.file_format = 'raw'
         data.backing_file = None
-        data.virtual_size = 1024 * 1024 * 1024
+        data.virtual_size = 1 * units.GiB
         return data
 
     def _fake_qemu_image_resize(self, path, size):

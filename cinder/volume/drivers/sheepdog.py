@@ -172,8 +172,8 @@ class SheepdogDriver(driver.VolumeDriver):
             m = self.stats_pattern.match(stdout)
             total = float(m.group(1))
             used = float(m.group(2))
-            stats['total_capacity_gb'] = total / (1024 ** 3)
-            stats['free_capacity_gb'] = (total - used) / (1024 ** 3)
+            stats['total_capacity_gb'] = total / units.GiB
+            stats['free_capacity_gb'] = (total - used) / units.GiB
         except processutils.ProcessExecutionError:
             LOG.exception(_('error refreshing volume stats'))
 

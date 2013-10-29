@@ -71,8 +71,8 @@ class SheepdogTestCase(test.TestCase):
             vendor_name='Open Source',
             dirver_version=self.driver.VERSION,
             storage_protocol='sheepdog',
-            total_capacity_gb=float(107287605248) / (1024 ** 3),
-            free_capacity_gb=float(107287605248 - 3623897354) / (1024 ** 3),
+            total_capacity_gb=float(107287605248) / units.GiB,
+            free_capacity_gb=float(107287605248 - 3623897354) / units.GiB,
             reserved_percentage=0,
             QoS_support=False)
         actual = self.driver.get_volume_stats(True)
