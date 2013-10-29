@@ -25,9 +25,6 @@ IMPL = utils.LazyPluggable('db_backend',
                            sqlalchemy='cinder.db.sqlalchemy.migration')
 
 
-INIT_VERSION = 000
-
-
 def db_sync(version=None):
     """Migrate the database to `version` or the most recent version."""
     return IMPL.db_sync(version=version)
@@ -36,3 +33,8 @@ def db_sync(version=None):
 def db_version():
     """Display the current database version."""
     return IMPL.db_version()
+
+
+def db_initial_version():
+    """The starting version for the database."""
+    return IMPL.db_initial_version()
