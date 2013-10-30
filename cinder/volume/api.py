@@ -600,10 +600,10 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
-        orig_meta = self.get_volume_metadata(context, volume)
         if delete:
             _metadata = metadata
         else:
+            orig_meta = self.get_volume_metadata(context, volume)
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
@@ -645,10 +645,10 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
-        orig_meta = self.get_volume_admin_metadata(context, volume)
         if delete:
             _metadata = metadata
         else:
+            orig_meta = self.get_volume_admin_metadata(context, volume)
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
@@ -679,10 +679,10 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
-        orig_meta = self.get_snapshot_metadata(context, snapshot)
         if delete:
             _metadata = metadata
         else:
+            orig_meta = self.get_snapshot_metadata(context, snapshot)
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
