@@ -36,7 +36,7 @@ class VolumeTypesManageController(wsgi.Controller):
 
     _view_builder_class = views_types.ViewBuilder
 
-    def _notify_voloume_type_error(self, context, method, payload):
+    def _notify_volume_type_error(self, context, method, payload):
         notifier_api.notify(context,
                             'volumeType',
                             method,
@@ -70,16 +70,16 @@ class VolumeTypesManageController(wsgi.Controller):
 
         except exception.VolumeTypeExists as err:
             notifier_err = dict(volume_types=vol_type, error_message=str(err))
-            self._notify_voloume_type_error(context,
-                                            'volume_type.create',
-                                            notifier_err)
+            self._notify_volume_type_error(context,
+                                           'volume_type.create',
+                                           notifier_err)
 
             raise webob.exc.HTTPConflict(explanation=str(err))
         except exception.NotFound as err:
             notifier_err = dict(volume_types=vol_type, error_message=str(err))
-            self._notify_voloume_type_error(context,
-                                            'volume_type.create',
-                                            notifier_err)
+            self._notify_volume_type_error(context,
+                                           'volume_type.create',
+                                           notifier_err)
             raise webob.exc.HTTPNotFound()
 
         return self._view_builder.show(req, vol_type)
@@ -99,16 +99,16 @@ class VolumeTypesManageController(wsgi.Controller):
                                 notifier_api.INFO, notifier_info)
         except exception.VolumeTypeInUse as err:
             notifier_err = dict(id=id, error_message=str(err))
-            self._notify_voloume_type_error(context,
-                                            'volume_type.delete',
-                                            notifier_err)
+            self._notify_volume_type_error(context,
+                                           'volume_type.delete',
+                                           notifier_err)
             msg = 'Target volume type is still in use.'
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
             notifier_err = dict(id=id, error_message=str(err))
-            self._notify_voloume_type_error(context,
-                                            'volume_type.delete',
-                                            notifier_err)
+            self._notify_volume_type_error(context,
+                                           'volume_type.delete',
+                                           notifier_err)
 
             raise webob.exc.HTTPNotFound()
 
