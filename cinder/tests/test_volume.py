@@ -22,6 +22,7 @@ Tests for Volume Code.
 
 import datetime
 import os
+import re
 import shutil
 import socket
 import tempfile
@@ -2228,6 +2229,50 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         self.assertRaises(exception.InvalidConfigurationValue,
                           lvm_driver.clear_volume,
                           volume)
+
+    def test_clear_volume_thinlvm_snap(self):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.volume_clear = 'zero'
+        configuration.volume_clear_size = 0
+        configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMISCSIDriver(configuration=configuration)
+
+        # Ensures that copy_volume is not called for ThinLVM
+        self.mox.StubOutWithMock(volutils, 'copy_volume')
+        self.mox.StubOutWithMock(lvm_driver, '_execute')
+
+        uuid = '00000000-0000-0000-0000-c3aa7ee01536'
+
+        fake_snapshot = {'name': 'volume-' + uuid,
+                         'id': uuid,
+                         'size': 123}
+
+        lvm_driver.clear_volume(fake_snapshot, is_snapshot=True)
+
+    def test_clear_volume_lvm_snap(self):
+        self.stubs.Set(os.path, 'exists', lambda x: True)
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.volume_clear = 'zero'
+        configuration.volume_clear_size = 0
+        lvm_driver = lvm.LVMISCSIDriver(configuration=configuration)
+
+        uuid = '00000000-0000-0000-0000-90ed32cdeed3'
+        name = 'snapshot-' + uuid
+        mangle_name = '_' + re.sub(r'-', r'--', name)
+
+        def fake_copy_volume(srcstr, deststr, size, **kwargs):
+            self.assertEqual(deststr,
+                             '/dev/mapper/cinder--volumes-%s-cow' %
+                             mangle_name)
+            return True
+
+        self.stubs.Set(volutils, 'copy_volume', fake_copy_volume)
+
+        fake_snapshot = {'name': 'snapshot-' + uuid,
+                         'id': uuid,
+                         'size': 123}
+
+        lvm_driver.clear_volume(fake_snapshot, is_snapshot=True)
 
 
 class ISCSITestCase(DriverTestCase):
