@@ -44,10 +44,6 @@ volume_opts = [
     cfg.StrOpt('volume_group',
                default='cinder-volumes',
                help='Name for the VG that will contain exported volumes'),
-    cfg.StrOpt('pool_size',
-               default=None,
-               help='Size of thin provisioning pool '
-                    '(None uses entire cinder VG)'),
     cfg.IntOpt('lvm_mirrors',
                default=0,
                help='If set, create lvms with multiple mirrors. Note that '

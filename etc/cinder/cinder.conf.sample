@@ -1241,10 +1241,6 @@
 # value)
 #volume_group=cinder-volumes
 
-# Size of thin provisioning pool (None uses entire cinder VG)
-# (string value)
-#pool_size=<None>
-
 # If set, create lvms with multiple mirrors. Note that this
 # requires lvm_mirrors + 2 pvs with available space (integer
 # value)
