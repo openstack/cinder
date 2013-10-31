@@ -462,7 +462,7 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertIsNone(utils.check_ssh_injection(cmd_list))
 
     def test_check_ssh_injection_on_error(self):
-        with_unquoted_space = ['shh', 'my_name@      name_of_remote_computer']
+        with_unquoted_space = ['ssh', 'my_name@      name_of_remote_computer']
         self.assertRaises(exception.SSHInjectionThreat,
                           utils.check_ssh_injection,
                           with_unquoted_space)
