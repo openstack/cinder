@@ -213,7 +213,7 @@ Establishing declarative semantics for individual API calls will allow the cloud
 See related work within the Infrastructure 2.0 working group for more information on how the IMF Metadata specification could be utilized to manage registration of these vendors and their C&A credentials.
 
 
-Dirty Cloud – Hybrid Data Centers
+Dirty Cloud - Hybrid Data Centers
 ---------------------------------
 
 *	CloudAudit bridge interfaces
