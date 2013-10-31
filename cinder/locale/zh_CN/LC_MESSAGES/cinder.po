@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  cinder\n"
 "Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
-"POT-Creation-Date: 2013-10-29 06:12+0000\n"
+"POT-Creation-Date: 2013-10-31 06:13+0000\n"
 "PO-Revision-Date: 2012-04-03 23:36+0000\n"
 "Last-Translator: cheesecake <Unknown>\n"
 "Language-Team: Chinese (Simplified) <zh_CN@li.org>\n"
@@ -811,31 +811,31 @@ msgstr ""
 msgid "May specify only one of %s"
 msgstr ""
 
-#: cinder/utils.py:208
+#: cinder/utils.py:219
 #, fuzzy
 msgid "Specify a password or private_key"
 msgstr "指定san_password或者san_private_key"
 
-#: cinder/utils.py:224
+#: cinder/utils.py:235
 #, fuzzy, python-format
 msgid "Error connecting via ssh: %s"
 msgstr "正在连接 libvirt：%s"
 
-#: cinder/utils.py:408
+#: cinder/utils.py:419
 #, python-format
 msgid "Invalid backend: %s"
 msgstr "无效的后台：%s"
 
-#: cinder/utils.py:419
+#: cinder/utils.py:430
 #, python-format
 msgid "backend %s"
 msgstr "后台 %s"
 
-#: cinder/utils.py:469
+#: cinder/utils.py:480
 msgid "in looping call"
 msgstr "循环调用中。"
 
-#: cinder/utils.py:754
+#: cinder/utils.py:765
 #, fuzzy, python-format
 msgid "Could not remove tmpdir: %s"
 msgstr "移除容器失败：%s"
@@ -1739,337 +1739,332 @@ msgstr ""
 msgid "Delete backup finished, backup %s deleted."
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:115
+#: cinder/backup/drivers/ceph.py:116
 msgid ""
 "rbd striping not supported - ignoring configuration settings for rbd "
 "striping"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:146
+#: cinder/backup/drivers/ceph.py:147
 #, python-format
 msgid "invalid user '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:212
+#: cinder/backup/drivers/ceph.py:213
 msgid "backup_id required"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:223
+#: cinder/backup/drivers/ceph.py:224
 #, python-format
 msgid "discarding %(length)s bytes from offset %(offset)s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:231
+#: cinder/backup/drivers/ceph.py:232
 #, python-format
 msgid "writing zeroes chunk %d"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:245
+#: cinder/backup/drivers/ceph.py:246
 #, python-format
 msgid "transferring data between '%(src)s' and '%(dest)s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:249
+#: cinder/backup/drivers/ceph.py:250
 #, python-format
 msgid "%(chunks)s chunks of %(bytes)s bytes to be transferred"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:268
+#: cinder/backup/drivers/ceph.py:269
 #, python-format
 msgid "transferred chunk %(chunk)s of %(chunks)s (%(rate)dK/s)"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:278
+#: cinder/backup/drivers/ceph.py:279
 #, python-format
 msgid "transferring remaining %s bytes"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:294
+#: cinder/backup/drivers/ceph.py:295
 #, python-format
 msgid "creating base image '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:321 cinder/backup/drivers/ceph.py:579
+#: cinder/backup/drivers/ceph.py:322 cinder/backup/drivers/ceph.py:603
 #, python-format
 msgid "deleting backup snapshot='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:324
+#: cinder/backup/drivers/ceph.py:325
 msgid "no backup snapshot to delete"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:360
+#: cinder/backup/drivers/ceph.py:361
 #, python-format
 msgid "trying diff format name format basename='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:368
+#: cinder/backup/drivers/ceph.py:369
 #, python-format
 msgid "image %s not found"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:376
+#: cinder/backup/drivers/ceph.py:377
 #, python-format
 msgid "base image still has %s snapshots so skipping base image delete"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:381
+#: cinder/backup/drivers/ceph.py:382
 #, python-format
 msgid "deleting base image='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:388
+#: cinder/backup/drivers/ceph.py:389
 #, python-format
 msgid "image busy, retrying %(retries)s more time(s) in %(delay)ss"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:393
+#: cinder/backup/drivers/ceph.py:394
 msgid "max retries reached - raising error"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:396
+#: cinder/backup/drivers/ceph.py:397
 #, python-format
 msgid "base backup image='%s' deleted)"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:406
+#: cinder/backup/drivers/ceph.py:407
 #, python-format
 msgid "deleting source snap '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:422
+#: cinder/backup/drivers/ceph.py:453
 #, python-format
 msgid "performing differential transfer from '%(src)s' to '%(dest)s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:445
+#: cinder/backup/drivers/ceph.py:478
 #, python-format
-msgid "rbd export-diff failed - %s"
+msgid "rbd diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:455
-#, python-format
-msgid "rbd import-diff failed - %s"
-msgstr ""
-
-#: cinder/backup/drivers/ceph.py:464
+#: cinder/backup/drivers/ceph.py:488
 #, python-format
 msgid "image '%s' not found - trying diff format name"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:469
+#: cinder/backup/drivers/ceph.py:493
 #, python-format
 msgid "diff format image '%s' not found"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:504
+#: cinder/backup/drivers/ceph.py:528
 #, python-format
 msgid "using --from-snap '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:519
+#: cinder/backup/drivers/ceph.py:543
 #, python-format
 msgid "source snap '%s' is stale so deleting"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:531
+#: cinder/backup/drivers/ceph.py:555
 #, python-format
 msgid ""
 "snap='%(snap)s' does not exist in base image='%(base)s' - aborting "
 "incremental backup"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:542
+#: cinder/backup/drivers/ceph.py:566
 #, python-format
 msgid "creating backup snapshot='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:562
+#: cinder/backup/drivers/ceph.py:586
 #, python-format
 msgid "differential backup transfer completed in %.4fs"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:571
+#: cinder/backup/drivers/ceph.py:595
 msgid "differential backup transfer failed"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:601
+#: cinder/backup/drivers/ceph.py:625
 #, python-format
 msgid "creating base image='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:610
+#: cinder/backup/drivers/ceph.py:634
 msgid "copying data"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:670
+#: cinder/backup/drivers/ceph.py:694
 #, python-format
 msgid "looking for snapshot of backup base '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:673
+#: cinder/backup/drivers/ceph.py:697
 #, python-format
 msgid "backup base '%s' has no snapshots"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:680
+#: cinder/backup/drivers/ceph.py:704
 #, python-format
 msgid "backup '%s' has no snapshot"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:684
+#: cinder/backup/drivers/ceph.py:708
 #, python-format
 msgid "backup should only have one snapshot but instead has %s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:689
+#: cinder/backup/drivers/ceph.py:713
 #, python-format
 msgid "found snapshot '%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:710
+#: cinder/backup/drivers/ceph.py:734
 msgid "need non-zero volume size"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:727
+#: cinder/backup/drivers/ceph.py:751
 #, python-format
 msgid "Starting backup of volume='%s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:740
+#: cinder/backup/drivers/ceph.py:764
 msgid "forcing full backup"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:752
+#: cinder/backup/drivers/ceph.py:776
 #, python-format
 msgid "backup '%s' finished."
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:810
+#: cinder/backup/drivers/ceph.py:834
 msgid "adjusting restore vol size"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:822
+#: cinder/backup/drivers/ceph.py:846
 #, python-format
 msgid "trying incremental restore from base='%(base)s' snap='%(snap)s'"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:834
+#: cinder/backup/drivers/ceph.py:858
 msgid "differential restore failed, trying full restore"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:845
+#: cinder/backup/drivers/ceph.py:869
 #, python-format
 msgid "restore transfer completed in %.4fs"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:892
+#: cinder/backup/drivers/ceph.py:916
 #, python-format
 msgid "rbd has %s extents"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:914
+#: cinder/backup/drivers/ceph.py:938
 msgid "dest volume is original volume - forcing full copy"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:935
+#: cinder/backup/drivers/ceph.py:959
 msgid "destination has extents - forcing full copy"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:940
+#: cinder/backup/drivers/ceph.py:964
 #, python-format
 msgid "no restore point found for backup='%s', forcing full copy"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:971
+#: cinder/backup/drivers/ceph.py:995
 msgid "forcing full restore"
-msgstr ""
-
-#: cinder/backup/drivers/ceph.py:981
-#, python-format
-msgid "starting restore from Ceph backup=%(src)s to volume=%(dest)s"
-msgstr ""
-
-#: cinder/backup/drivers/ceph.py:992
-msgid "volume_file does not support fileno() so skipping fsync()"
-msgstr ""
-
-#: cinder/backup/drivers/ceph.py:997
-msgid "restore finished successfully."
-msgstr ""
-
-#: cinder/backup/drivers/ceph.py:999
-#, python-format
-msgid "restore finished with error - %s"
 msgstr ""
 
 #: cinder/backup/drivers/ceph.py:1005
 #, python-format
+msgid "starting restore from Ceph backup=%(src)s to volume=%(dest)s"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1016
+msgid "volume_file does not support fileno() so skipping fsync()"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1021
+msgid "restore finished successfully."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1023
+#, python-format
+msgid "restore finished with error - %s"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1029
+#, python-format
 msgid "delete started for backup=%s"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:1010
+#: cinder/backup/drivers/ceph.py:1034
 msgid "rbd image not found but continuing anyway so that db entry can be removed"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:1013
+#: cinder/backup/drivers/ceph.py:1037
 #, python-format
 msgid "delete '%s' finished with warning"
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:1015
+#: cinder/backup/drivers/ceph.py:1039
 #, python-format
 msgid "delete '%s' finished"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:105
+#: cinder/backup/drivers/swift.py:106
 #, fuzzy, python-format
 msgid "unsupported compression algorithm: %s"
 msgstr "不支持的分区：%s"
 
-#: cinder/backup/drivers/swift.py:122
+#: cinder/backup/drivers/swift.py:123
 #, python-format
 msgid "single_user auth mode enabled, but %(param)s not set"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:140
+#: cinder/backup/drivers/swift.py:141
 #, python-format
 msgid "_check_container_exists: container: %s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:145
+#: cinder/backup/drivers/swift.py:146
 #, fuzzy, python-format
 msgid "container %s does not exist"
 msgstr "实例不存在"
 
-#: cinder/backup/drivers/swift.py:150
+#: cinder/backup/drivers/swift.py:151
 #, fuzzy, python-format
 msgid "container %s exists"
 msgstr "实例不存在"
 
-#: cinder/backup/drivers/swift.py:156
+#: cinder/backup/drivers/swift.py:157
 #, python-format
 msgid "_create_container started, container: %(container)s,backup: %(backup_id)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:172
+#: cinder/backup/drivers/swift.py:173
 #, python-format
 msgid "_generate_swift_object_name_prefix: %s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:181
+#: cinder/backup/drivers/swift.py:182
 #, fuzzy, python-format
 msgid "generated object list: %s"
 msgstr "期望的对象类型：%s"
 
-#: cinder/backup/drivers/swift.py:191
+#: cinder/backup/drivers/swift.py:192
 #, python-format
 msgid ""
 "_write_metadata started, container name: %(container)s, metadata "
 "filename: %(filename)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:208
+#: cinder/backup/drivers/swift.py:209
 #, python-format
 msgid ""
 "error writing metadata file to swift, MD5 of metadata file in swift "
@@ -2077,28 +2072,28 @@ msgid ""
 "[%(md5)s]"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:213
+#: cinder/backup/drivers/swift.py:214
 msgid "_write_metadata finished"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:218
+#: cinder/backup/drivers/swift.py:219
 #, python-format
 msgid ""
 "_read_metadata started, container name: %(container)s, metadata filename:"
 " %(filename)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:223
+#: cinder/backup/drivers/swift.py:224
 #, python-format
 msgid "_read_metadata finished (%s)"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:233
+#: cinder/backup/drivers/swift.py:234
 #, fuzzy, python-format
 msgid "volume size %d is invalid."
 msgstr "请求无效。"
 
-#: cinder/backup/drivers/swift.py:247
+#: cinder/backup/drivers/swift.py:248
 #, python-format
 msgid ""
 "starting backup of volume: %(volume_id)s to swift, volume size: "
@@ -2106,121 +2101,121 @@ msgid ""
 "availability zone: %(availability_zone)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:270
+#: cinder/backup/drivers/swift.py:271
 msgid "reading chunk of data from volume"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:277
+#: cinder/backup/drivers/swift.py:278
 #, python-format
 msgid ""
 "compressed %(data_size_bytes)d bytes of data to %(comp_size_bytes)d bytes"
 " using %(algorithm)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:286
+#: cinder/backup/drivers/swift.py:287
 msgid "not compressing data"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:290
+#: cinder/backup/drivers/swift.py:291
 msgid "About to put_object"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:296
+#: cinder/backup/drivers/swift.py:297
 #, python-format
 msgid "swift MD5 for %(object_name)s: %(etag)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:300
+#: cinder/backup/drivers/swift.py:301
 #, python-format
 msgid "backup MD5 for %(object_name)s: %(md5)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:303
+#: cinder/backup/drivers/swift.py:304
 #, python-format
 msgid ""
 "error writing object to swift, MD5 of object in swift %(etag)s is not the"
 " same as MD5 of object sent to swift %(md5)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:311
+#: cinder/backup/drivers/swift.py:312
 msgid "Calling eventlet.sleep(0)"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:327 cinder/backup/drivers/tsm.py:324
+#: cinder/backup/drivers/swift.py:328 cinder/backup/drivers/tsm.py:324
 #, python-format
 msgid "backup %s finished."
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:344
+#: cinder/backup/drivers/swift.py:345
 #, python-format
 msgid "v1 swift volume backup restore of %s started"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:349
+#: cinder/backup/drivers/swift.py:350
 #, python-format
 msgid "metadata_object_names = %s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:355
+#: cinder/backup/drivers/swift.py:356
 msgid ""
 "restore_backup aborted, actual swift object list in swift does not match "
 "object list stored in metadata"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:361
+#: cinder/backup/drivers/swift.py:362
 #, python-format
 msgid ""
 "restoring object from swift. backup: %(backup_id)s, container: "
 "%(container)s, swift object name: %(object_name)s, volume: %(volume_id)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:377
+#: cinder/backup/drivers/swift.py:378
 #, python-format
 msgid "decompressing data using %s algorithm"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:400
+#: cinder/backup/drivers/swift.py:401
 #, python-format
 msgid "v1 swift volume backup restore of %s finished"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:408
+#: cinder/backup/drivers/swift.py:409
 #, python-format
 msgid ""
 "starting restore of backup %(object_prefix)s from swift container: "
 "%(container)s, to volume %(volume_id)s, backup: %(backup_id)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:422
+#: cinder/backup/drivers/swift.py:423
 #, python-format
 msgid "Restoring swift backup version %s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:427
+#: cinder/backup/drivers/swift.py:428
 #, python-format
 msgid "No support to restore swift backup version %s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:431 cinder/backup/drivers/tsm.py:378
+#: cinder/backup/drivers/swift.py:432 cinder/backup/drivers/tsm.py:378
 #, python-format
 msgid "restore %(backup_id)s to %(volume_id)s finished."
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:445
+#: cinder/backup/drivers/swift.py:446
 msgid "swift error while listing objects, continuing with delete"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:454
+#: cinder/backup/drivers/swift.py:455
 #, python-format
 msgid "swift error while deleting object %s, continuing with delete"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:457
+#: cinder/backup/drivers/swift.py:458
 #, python-format
 msgid "deleted swift object: %(swift_object_name)s in container: %(container)s"
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:467 cinder/backup/drivers/tsm.py:440
+#: cinder/backup/drivers/swift.py:468 cinder/backup/drivers/tsm.py:440
 #, fuzzy, python-format
 msgid "delete %s finished"
 msgstr "_delete: %s"
@@ -4110,7 +4105,7 @@ msgid "The volume driver requires the iSCSI initiator name in the connector."
 msgstr ""
 
 #: cinder/volume/driver.py:673 cinder/volume/drivers/lvm.py:352
-#: cinder/volume/drivers/storwize_svc.py:1538
+#: cinder/volume/drivers/storwize_svc.py:1539
 #: cinder/volume/drivers/zadara.py:658
 #: cinder/volume/drivers/emc/emc_smis_common.py:858
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:237
@@ -5405,60 +5400,60 @@ msgstr ""
 msgid "Leaving SolidFire transfer volume"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:193
+#: cinder/volume/drivers/storwize_svc.py:194
 #, python-format
 msgid "WWPN on node %(node)s: %(wwpn)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:199
+#: cinder/volume/drivers/storwize_svc.py:200
 msgid "enter: do_setup"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:206
+#: cinder/volume/drivers/storwize_svc.py:207
 msgid "do_setup: Could not get system name"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:217
+#: cinder/volume/drivers/storwize_svc.py:218
 #, python-format
 msgid "do_setup: Pool %s does not exist"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:235
+#: cinder/volume/drivers/storwize_svc.py:236
 msgid "Failed to get license information."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:257
+#: cinder/volume/drivers/storwize_svc.py:258
 #, python-format
 msgid ""
 "Expected integers for node_count and vdisk_count, svcinfo lsiogrp "
 "returned: %(node)s and %(vdisk)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:320
+#: cinder/volume/drivers/storwize_svc.py:321
 msgid "do_setup: No configured nodes"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:322
+#: cinder/volume/drivers/storwize_svc.py:323
 msgid "leave: do_setup"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:345
+#: cinder/volume/drivers/storwize_svc.py:346
 msgid "enter: check_for_setup_error"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:349
+#: cinder/volume/drivers/storwize_svc.py:350
 msgid "Unable to determine system name"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:352
+#: cinder/volume/drivers/storwize_svc.py:353
 msgid "Unable to determine system id"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:355
+#: cinder/volume/drivers/storwize_svc.py:356
 msgid "Unable to determine pool extent size"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:362
+#: cinder/volume/drivers/storwize_svc.py:363
 #: cinder/volume/drivers/netapp/iscsi.py:134
 #: cinder/volume/drivers/netapp/nfs.py:644
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:160
@@ -5466,159 +5461,159 @@ msgstr ""
 msgid "%s is not set"
 msgstr "租户ID没有设"
 
-#: cinder/volume/drivers/storwize_svc.py:368
+#: cinder/volume/drivers/storwize_svc.py:369
 msgid ""
 "Password or SSH private key is required for authentication: set either "
 "san_password or san_private_key option"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:376
+#: cinder/volume/drivers/storwize_svc.py:377
 #, python-format
 msgid ""
 "Illegal value %d specified for storwize_svc_flashcopy_timeout: valid "
 "values are between 0 and 600"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:384
+#: cinder/volume/drivers/storwize_svc.py:385
 msgid "leave: check_for_setup_error"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:398
+#: cinder/volume/drivers/storwize_svc.py:399
 #, python-format
 msgid "ensure_export: Volume %s not found on storage"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:422
+#: cinder/volume/drivers/storwize_svc.py:423
 #, python-format
 msgid "enter: _get_chap_secret_for_host: host name %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:458
+#: cinder/volume/drivers/storwize_svc.py:459
 #, python-format
 msgid ""
 "leave: _get_chap_secret_for_host: host name %(host_name)s with secret "
 "%(chap_secret)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:481
+#: cinder/volume/drivers/storwize_svc.py:482
 msgid "_create_host: Cannot clean host name. Host name is not unicode or string"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:554
+#: cinder/volume/drivers/storwize_svc.py:555
 #, python-format
 msgid "enter: _get_host_from_connector: prefix %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:582
+#: cinder/volume/drivers/storwize_svc.py:583
 #, python-format
 msgid "leave: _get_host_from_connector: host %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:594
+#: cinder/volume/drivers/storwize_svc.py:595
 #, python-format
 msgid "enter: _create_host: host %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:609
+#: cinder/volume/drivers/storwize_svc.py:610
 msgid "_create_host: No connector ports"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:625
+#: cinder/volume/drivers/storwize_svc.py:626
 #, fuzzy, python-format
 msgid "leave: _create_host: host %(host)s - %(host_name)s"
 msgstr "把主机 %(host)s 设置为 %(state)s。"
 
-#: cinder/volume/drivers/storwize_svc.py:648
+#: cinder/volume/drivers/storwize_svc.py:649
 #, fuzzy, python-format
 msgid "enter: _map_vol_to_host: volume %(volume_name)s to host %(host_name)s"
 msgstr "正在删除有快照的卷  %(volume_name)s"
 
-#: cinder/volume/drivers/storwize_svc.py:678
+#: cinder/volume/drivers/storwize_svc.py:679
 msgid ""
 "storwize_svc_multihostmap_enabled is set to False, Not allow multi host "
 "mapping"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:691
+#: cinder/volume/drivers/storwize_svc.py:692
 #, fuzzy, python-format
 msgid "volume %s mapping to multi host"
 msgstr "卷 %s：跳过导出"
 
-#: cinder/volume/drivers/storwize_svc.py:697
+#: cinder/volume/drivers/storwize_svc.py:698
 #, python-format
 msgid ""
 "leave: _map_vol_to_host: LUN %(result_lun)s, volume %(volume_name)s, host"
 " %(host_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:707
+#: cinder/volume/drivers/storwize_svc.py:708
 #, python-format
 msgid "enter: _delete_host: host %s "
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:715
+#: cinder/volume/drivers/storwize_svc.py:716
 #, python-format
 msgid "leave: _delete_host: host %s "
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:741
+#: cinder/volume/drivers/storwize_svc.py:742
 msgid "The connector does not contain the required information."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:760
+#: cinder/volume/drivers/storwize_svc.py:761
 #, python-format
 msgid "enter: initialize_connection: volume %(vol)s with connector %(conn)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:776
+#: cinder/volume/drivers/storwize_svc.py:777
 msgid "_create_host failed to return the host name."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:784
+#: cinder/volume/drivers/storwize_svc.py:785
 msgid "CHAP secret exists for host but CHAP is disabled"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:791
+#: cinder/volume/drivers/storwize_svc.py:792
 #, python-format
 msgid "initialize_connection: Failed to get attributes for volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:798
+#: cinder/volume/drivers/storwize_svc.py:799
 #, python-format
 msgid "Did not find expected column name in lsvdisk: %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:800
+#: cinder/volume/drivers/storwize_svc.py:801
 #, python-format
 msgid "initialize_connection: Missing volume attribute for volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:817
+#: cinder/volume/drivers/storwize_svc.py:818
 #, python-format
 msgid ""
 "initialize_connection: No node found in I/O group %(gid)s for volume "
 "%(vol)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:826
+#: cinder/volume/drivers/storwize_svc.py:827
 #, python-format
 msgid "initialize_connection: Did not find a preferred node for volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:849
+#: cinder/volume/drivers/storwize_svc.py:850
 msgid ""
 "Could not get FC connection information for the host-volume connection. "
 "Is the host configured properly for FC connections?"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:864
+#: cinder/volume/drivers/storwize_svc.py:865
 #, python-format
 msgid ""
 "initialize_connection: Failed to collect return properties for volume "
 "%(vol)s and connector %(conn)s.\n"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:869
+#: cinder/volume/drivers/storwize_svc.py:870
 #, python-format
 msgid ""
 "leave: initialize_connection:\n"
@@ -5627,37 +5622,37 @@ msgid ""
 " properties: %(prop)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:887
+#: cinder/volume/drivers/storwize_svc.py:888
 #, python-format
 msgid "enter: terminate_connection: volume %(vol)s with connector %(conn)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:897
+#: cinder/volume/drivers/storwize_svc.py:898
 msgid "_get_host_from_connector failed to return the host name for connector"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:912
+#: cinder/volume/drivers/storwize_svc.py:913
 #, python-format
 msgid ""
 "terminate_connection: No mapping of volume %(vol_name)s to host "
 "%(host_name)s found"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:920
+#: cinder/volume/drivers/storwize_svc.py:921
 #, python-format
 msgid "leave: terminate_connection: volume %(vol)s with connector %(conn)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:977
+#: cinder/volume/drivers/storwize_svc.py:978
 msgid "protocol must be specified as '<in> iSCSI' or '<in> FC'"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1001
+#: cinder/volume/drivers/storwize_svc.py:1002
 #, python-format
 msgid "enter: _create_vdisk: vdisk %s "
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1020
+#: cinder/volume/drivers/storwize_svc.py:1021
 #, python-format
 msgid ""
 "_create_vdisk %(name)s - did not find success message in CLI output.\n"
@@ -5665,13 +5660,13 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1025
+#: cinder/volume/drivers/storwize_svc.py:1026
 #, python-format
 msgid "leave: _create_vdisk: volume %s "
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1035
-#: cinder/volume/drivers/storwize_svc.py:1049
+#: cinder/volume/drivers/storwize_svc.py:1036
+#: cinder/volume/drivers/storwize_svc.py:1050
 #, python-format
 msgid ""
 "create FC mapping from %(source)s to %(target)s - did not find success "
@@ -5680,8 +5675,8 @@ msgid ""
 " stderr: %(err)s\n"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1061
-#: cinder/volume/drivers/storwize_svc.py:1071
+#: cinder/volume/drivers/storwize_svc.py:1062
+#: cinder/volume/drivers/storwize_svc.py:1072
 #, python-format
 msgid ""
 "create FC mapping from %(source)s to %(target)s - did not find mapping id"
@@ -5690,7 +5685,7 @@ msgid ""
 " stderr: %(err)s\n"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1085
+#: cinder/volume/drivers/storwize_svc.py:1086
 #, python-format
 msgid ""
 "_prepare_fc_map: Failed to prepare FlashCopy from %(source)s to "
@@ -5699,33 +5694,33 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1112
+#: cinder/volume/drivers/storwize_svc.py:1113
 #, python-format
 msgid ""
 "Unexecpted mapping status %(status)s for mapping %(id)s. Attributes: "
 "%(attr)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1124
+#: cinder/volume/drivers/storwize_svc.py:1125
 #, python-format
 msgid ""
 "Mapping %(id)s prepare failed to complete within the allotted %(to)d "
 "seconds timeout. Terminating."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1129
+#: cinder/volume/drivers/storwize_svc.py:1130
 #, python-format
 msgid ""
 "_prepare_fc_map: Failed to start FlashCopy from %(source)s to %(target)s "
 "with exception %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1136
+#: cinder/volume/drivers/storwize_svc.py:1137
 #, fuzzy, python-format
 msgid "_prepare_fc_map: %s"
 msgstr "_create: %s"
 
-#: cinder/volume/drivers/storwize_svc.py:1143
+#: cinder/volume/drivers/storwize_svc.py:1144
 #, python-format
 msgid ""
 "_start_fc_map: Failed to start FlashCopy from %(source)s to %(target)s.\n"
@@ -5733,124 +5728,124 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1154
+#: cinder/volume/drivers/storwize_svc.py:1155
 #, python-format
 msgid ""
 "enter: _run_flashcopy: execute FlashCopy from source %(source)s to target"
 " %(target)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1166
+#: cinder/volume/drivers/storwize_svc.py:1167
 #, python-format
 msgid "leave: _run_flashcopy: FlashCopy started from %(source)s to %(target)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1174
+#: cinder/volume/drivers/storwize_svc.py:1175
 #, python-format
 msgid "enter: _create_copy: snapshot %(tgt_vdisk)s from vdisk %(src_vdisk)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1181
+#: cinder/volume/drivers/storwize_svc.py:1182
 #, python-format
 msgid "_create_copy: Source vdisk %(src_vdisk)s (%(src_id)s) does not exist"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1192
+#: cinder/volume/drivers/storwize_svc.py:1193
 #, python-format
 msgid ""
 "_create_copy: cannot get source vdisk %(src)s capacity from vdisk "
 "attributes %(attr)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1202
+#: cinder/volume/drivers/storwize_svc.py:1203
 #, python-format
 msgid "leave: _create_copy: snapshot %(tgt_vdisk)s from vdisk %(src_vdisk)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1207
+#: cinder/volume/drivers/storwize_svc.py:1208
 #, python-format
 msgid "enter: _get_flashcopy_mapping_attributes: mapping %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1229
+#: cinder/volume/drivers/storwize_svc.py:1230
 #, python-format
 msgid ""
 "leave: _get_flashcopy_mapping_attributes: mapping %(fc_map_id)s, "
 "attributes %(attributes)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1237
+#: cinder/volume/drivers/storwize_svc.py:1238
 #, python-format
 msgid "enter: _is_vdisk_defined: vdisk %s "
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1239
+#: cinder/volume/drivers/storwize_svc.py:1240
 #, python-format
 msgid "leave: _is_vdisk_defined: vdisk %(vol)s with %(str)s "
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1256
+#: cinder/volume/drivers/storwize_svc.py:1257
 #, python-format
 msgid "Calling _ensure_vdisk_no_fc_mappings: vdisk %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1265
+#: cinder/volume/drivers/storwize_svc.py:1266
 #, python-format
 msgid "Loopcall: _check_vdisk_fc_mappings(), vdisk %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1289
+#: cinder/volume/drivers/storwize_svc.py:1290
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1336
+#: cinder/volume/drivers/storwize_svc.py:1337
 #, python-format
 msgid "enter: _delete_vdisk: vdisk %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1341
+#: cinder/volume/drivers/storwize_svc.py:1342
 #, python-format
 msgid "warning: Tried to delete vdisk %s but it does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1356
+#: cinder/volume/drivers/storwize_svc.py:1357
 #, python-format
 msgid "leave: _delete_vdisk: vdisk %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1381
+#: cinder/volume/drivers/storwize_svc.py:1382
 msgid "create_volume_from_snapshot: Source and destination size differ."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1396
+#: cinder/volume/drivers/storwize_svc.py:1397
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1410
+#: cinder/volume/drivers/storwize_svc.py:1411
 #, python-format
 msgid "enter: extend_volume: volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1414
+#: cinder/volume/drivers/storwize_svc.py:1415
 msgid "extend_volume: Extending a volume with snapshots is not supported."
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1426
+#: cinder/volume/drivers/storwize_svc.py:1427
 #, python-format
 msgid "leave: extend_volume: volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1442
+#: cinder/volume/drivers/storwize_svc.py:1443
 #, python-format
 msgid "enter: migrate_volume: id=%(id)s, host=%(host)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1471
+#: cinder/volume/drivers/storwize_svc.py:1472
 msgid "migrate_volume started with more than one vdisk copy"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1489
+#: cinder/volume/drivers/storwize_svc.py:1490
 #, python-format
 msgid ""
 "migrate_volume %(name)s - did not find success message in CLI output.\n"
@@ -5858,67 +5853,67 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1501
+#: cinder/volume/drivers/storwize_svc.py:1502
 msgid "migrate_volume: Could not get vdisk copy data"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1516
+#: cinder/volume/drivers/storwize_svc.py:1517
 #, python-format
 msgid "leave: migrate_volume: id=%(id)s, host=%(host)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1559
+#: cinder/volume/drivers/storwize_svc.py:1560
 msgid "Could not get pool data from the storage"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1560
+#: cinder/volume/drivers/storwize_svc.py:1561
 msgid "_update_volume_stats: Could not get storage pool data"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1645
+#: cinder/volume/drivers/storwize_svc.py:1646
 msgid ""
 "Illegal value specified for storwize_svc_vol_rsize: set to either a "
 "percentage (0-100) or -1"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1651
+#: cinder/volume/drivers/storwize_svc.py:1652
 msgid ""
 "Illegal value specified for storwize_svc_vol_warning: set to a percentage"
 " (0-100)"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1658
+#: cinder/volume/drivers/storwize_svc.py:1659
 msgid ""
 "Illegal value specified for storwize_svc_vol_grainsize: set to either 32,"
 " 64, 128, or 256"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1665
+#: cinder/volume/drivers/storwize_svc.py:1666
 msgid "System does not support compression"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1670
+#: cinder/volume/drivers/storwize_svc.py:1671
 msgid "If compression is set to True, rsize must also be set (not equal to -1)"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1676
+#: cinder/volume/drivers/storwize_svc.py:1677
 #, python-format
 msgid ""
 "Illegal value %(prot)s specified for storwize_svc_connection_protocol: "
 "valid values are %(enabled)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1684
+#: cinder/volume/drivers/storwize_svc.py:1685
 #, python-format
 msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1697
+#: cinder/volume/drivers/storwize_svc.py:1698
 #, python-format
 msgid "enter: _execute_command_and_parse_attributes:  command %s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1704
+#: cinder/volume/drivers/storwize_svc.py:1705
 #, fuzzy, python-format
 msgid ""
 "CLI Exception output:\n"
@@ -5932,7 +5927,7 @@ msgstr ""
 "标准输出：%(stdout)r\n"
 "标准错误输出：%(stderr)r"
 
-#: cinder/volume/drivers/storwize_svc.py:1721
+#: cinder/volume/drivers/storwize_svc.py:1722
 #, python-format
 msgid ""
 "leave: _execute_command_and_parse_attributes:\n"
@@ -5940,7 +5935,7 @@ msgid ""
 "attributes: %(attr)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1740
+#: cinder/volume/drivers/storwize_svc.py:1741
 #, python-format
 msgid ""
 "_get_hdr_dic: attribute headers and values do not match.\n"
@@ -5948,7 +5943,7 @@ msgid ""
 " Values: %(row)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1748
+#: cinder/volume/drivers/storwize_svc.py:1749
 #, python-format
 msgid ""
 "%(fun)s: Failed with unexpected CLI output.\n"
@@ -5957,7 +5952,7 @@ msgid ""
 "stderr: %(err)s\n"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1762
+#: cinder/volume/drivers/storwize_svc.py:1763
 #, python-format
 msgid ""
 "%(fun)s: Failed with unexpected CLI output.\n"
@@ -5966,7 +5961,7 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/storwize_svc.py:1770
+#: cinder/volume/drivers/storwize_svc.py:1771
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s"
 msgstr ""
@@ -9945,5 +9940,11 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Failed to delete zfs recv snapshot %(volume)s@%(snapshot)s"
+#~ msgstr ""
+
+#~ msgid "rbd export-diff failed - %s"
+#~ msgstr ""
+
+#~ msgid "rbd import-diff failed - %s"
 #~ msgstr ""
 
