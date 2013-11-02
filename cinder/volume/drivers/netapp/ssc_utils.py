@@ -500,7 +500,7 @@ def get_volumes_for_specs(ssc_vols, specs):
     """Shortlists volumes for extra specs provided."""
     if specs is None or not isinstance(specs, dict):
         return ssc_vols['all']
-    result = ssc_vols['all']
+    result = copy.deepcopy(ssc_vols['all'])
     raid_type = specs.get('netapp:raid_type')
     disk_type = specs.get('netapp:disk_type')
     qos_policy_group = specs.get('netapp:qos_policy_group')
