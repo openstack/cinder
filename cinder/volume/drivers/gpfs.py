@@ -192,14 +192,8 @@ class GPFSDriver(driver.VolumeDriver):
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            try:
-                # check that configured directories are on GPFS
-                self._is_gpfs_path(directory)
-            except processutils.ProcessExecutionError:
-                msg = (_('%s is not on GPFS. Perhaps GPFS not mounted.') %
-                       directory)
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+            # Check if GPFS is mounted
+            self._verify_gpfs_path_state(directory)
 
             fs, fslevel = self._get_gpfs_filesystem_release_level(directory)
             if not fslevel >= GPFS_CLONE_MIN_RELEASE:
@@ -260,6 +254,9 @@ class GPFSDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         """Creates a GPFS volume."""
+        # Check if GPFS is mounted
+        self._verify_gpfs_path_state(self.configuration.gpfs_mount_point_base)
+
         volume_path = self.local_path(volume)
         volume_size = volume['size']
 
@@ -489,6 +486,9 @@ class GPFSDriver(driver.VolumeDriver):
         gpfs clone operation or with a file copy. If the image format is not
         raw, convert it to raw at the volume path.
         """
+        # Check if GPFS is mounted
+        self._verify_gpfs_path_state(self.configuration.gpfs_mount_point_base)
+
         cloneable_image, reason, image_path = self._is_cloneable(image_id)
         if not cloneable_image:
             LOG.debug('Image %(img)s not cloneable: %(reas)s' %
@@ -536,6 +536,9 @@ class GPFSDriver(driver.VolumeDriver):
         case, this function is invoked and uses fetch_to_raw to create the
         volume.
         """
+        # Check if GPFS is mounted
+        self._verify_gpfs_path_state(self.configuration.gpfs_mount_point_base)
+
         LOG.debug('Copy image to vol %s using image_utils fetch_to_raw' %
                   volume['id'])
         image_utils.fetch_to_raw(context, image_service, image_id,
@@ -592,3 +595,13 @@ class GPFSDriver(driver.VolumeDriver):
         size = int(out.split()[1])
         available = int(out.split()[3])
         return available, size
+
+    def _verify_gpfs_path_state(self, path):
+        """Examine if GPFS is active and file system is mounted or not."""
+        try:
+            self._is_gpfs_path(path)
+        except processutils.ProcessExecutionError:
+            msg = (_('%s cannot be accessed. Verify that GPFS is active and '
+                     'file system is mounted.') % path)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
