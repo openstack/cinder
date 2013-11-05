@@ -2351,6 +2351,25 @@ def volume_encryption_metadata_get(context, volume_id, session=None):
 
 
 @require_context
+def _volume_glance_metadata_get_all(context, session=None):
+    rows = model_query(context,
+                       models.VolumeGlanceMetadata,
+                       project_only=True,
+                       session=session).\
+        filter_by(deleted=False).\
+        all()
+
+    return rows
+
+
+@require_context
+def volume_glance_metadata_get_all(context):
+    """Return the Glance metadata for all volumes."""
+
+    return _volume_glance_metadata_get_all(context)
+
+
+@require_context
 @require_volume_exists
 def _volume_glance_metadata_get(context, volume_id, session=None):
     rows = model_query(context, models.VolumeGlanceMetadata, session=session).\
