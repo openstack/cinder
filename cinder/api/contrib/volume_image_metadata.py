@@ -14,11 +14,15 @@
 
 """The Volume Image Metadata API extension."""
 
+import logging
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import volume
 
+
+LOG = logging.getLogger(__name__)
 
 authorize = extensions.soft_extension_authorizer('volume',
                                                  'volume_image_metadata')
@@ -29,16 +33,35 @@ class VolumeImageMetadataController(wsgi.Controller):
         super(VolumeImageMetadataController, self).__init__(*args, **kwargs)
         self.volume_api = volume.API()
 
-    def _add_image_metadata(self, context, resp_volume):
+    def _get_all_images_metadata(self, context):
+        """Returns the image metadata for all volumes."""
         try:
-            image_meta = self.volume_api.get_volume_image_metadata(
-                context, resp_volume)
-        except Exception:
-            return
-        else:
-            if image_meta:
-                resp_volume['volume_image_metadata'] = dict(
-                    image_meta.iteritems())
+            all_metadata = self.volume_api.get_volumes_image_metadata(context)
+        except Exception as e:
+            LOG.debug('Problem retrieving volume image metadata. '
+                      'It will be skipped. Error: %s', e)
+            all_metadata = {}
+        return all_metadata
+
+    def _add_image_metadata(self, context, resp_volume, image_meta=None):
+        """Appends the image metadata to the given volume.
+
+        :param context: the request context
+        :param resp_volume: the response volume
+        :param image_meta: The image metadata to append, if None is provided it
+                           will be retrieved from the database. An empty dict
+                           means there is no metadata and it should not be
+                           retrieved from the db.
+        """
+        if image_meta is None:
+            try:
+                image_meta = self.volume_api.get_volume_image_metadata(
+                    context, resp_volume)
+            except Exception:
+                return
+        if image_meta:
+            resp_volume['volume_image_metadata'] = dict(
+                image_meta.iteritems())
 
     @wsgi.extends
     def show(self, req, resp_obj, id):
@@ -52,8 +75,10 @@ class VolumeImageMetadataController(wsgi.Controller):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumesImageMetadataTemplate())
+            all_meta = self._get_all_images_metadata(context)
             for volume in list(resp_obj.obj.get('volumes', [])):
-                self._add_image_metadata(context, volume)
+                image_meta = all_meta.get(volume['id'], {})
+                self._add_image_metadata(context, volume, image_meta)
 
 
 class Volume_image_metadata(extensions.ExtensionDescriptor):
