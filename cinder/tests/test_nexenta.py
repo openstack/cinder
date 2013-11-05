@@ -33,6 +33,7 @@ from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import iscsi
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import nfs
+from cinder.volume.drivers.nexenta import utils
 
 
 class TestNexentaISCSIDriver(test.TestCase):
@@ -677,3 +678,55 @@ class TestNexentaNfsDriver(test.TestCase):
             'provider_location': self.TEST_EXPORT1
         })
         self.mox.ResetAll()
+
+
+class TestNexentaUtils(test.TestCase):
+
+    def test_str2size(self):
+        values_to_test = (
+            # Test empty value
+            (None, 0),
+            ('', 0),
+            ('0', 0),
+            ('12', 12),
+            # Test int and long values
+            (10, 10),
+            (long(10), 10),
+            # Test bytes string
+            ('1b', 1),
+            ('1B', 1),
+            ('1023b', 1023),
+            ('0B', 0),
+            # Test other units
+            ('1M', units.MiB),
+            ('1.0M', units.MiB),
+        )
+
+        for value, result in values_to_test:
+            self.assertEquals(utils.str2size(value), result)
+
+        # Invalid format value
+        self.assertRaises(ValueError, utils.str2size, 'A')
+
+    def test_str2gib_size(self):
+        self.assertEqual(utils.str2gib_size('1024M'), 1)
+        self.assertEqual(utils.str2gib_size('300M'),
+                         300 * units.MiB // units.GiB)
+        self.assertEqual(utils.str2gib_size('1.2T'),
+                         1.2 * units.TiB // units.GiB)
+        self.assertRaises(ValueError, utils.str2gib_size, 'A')
+
+    def test_parse_nms_url(self):
+        urls = (
+            ('auto://192.168.1.1/', (True, 'http', 'admin', 'nexenta',
+                                     '192.168.1.1', '2000', '/rest/nms/')),
+            ('http://192.168.1.1/', (False, 'http', 'admin', 'nexenta',
+                                     '192.168.1.1', '2000', '/rest/nms/')),
+            ('http://192.168.1.1:8080', (False, 'http', 'admin', 'nexenta',
+                                         '192.168.1.1', '8080', '/rest/nms/')),
+            ('https://root:password@192.168.1.1:8080',
+             (False, 'https', 'root', 'password', '192.168.1.1', '8080',
+              '/rest/nms/')),
+        )
+        for url, result in urls:
+            self.assertEquals(utils.parse_nms_url(url), result)

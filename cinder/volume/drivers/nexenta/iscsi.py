@@ -28,12 +28,13 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder import units
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
+from cinder.volume.drivers.nexenta import utils
 
+VERSION = '1.1.3'
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -53,9 +54,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.1.1 - Ignore "does not exist" exception of nms.snapshot.destroy.
         1.1.2 - Optimized create_cloned_volume, replaced zfs send recv with zfs
                 clone.
+        1.1.3 - Extended volume stats provided by _update_volume_stats method.
     """
 
-    VERSION = '1.1.2'
+    VERSION = VERSION
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
@@ -67,31 +69,43 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 options.NEXENTA_ISCSI_OPTIONS)
             self.configuration.append_config_values(
                 options.NEXENTA_VOLUME_OPTIONS)
+        self.nms_protocol = self.configuration.nexenta_rest_protocol
+        self.nms_host = self.configuration.nexenta_host
+        self.nms_port = self.configuration.nexenta_rest_port
+        self.nms_user = self.configuration.nexenta_user
+        self.nms_password = self.configuration.nexenta_password
+        self.volume = self.configuration.nexenta_volume
+
+    @property
+    def backend_name(self):
+        backend_name = None
+        if self.configuration:
+            backend_name = self.configuration.safe_get('volume_backend_name')
+        if not backend_name:
+            backend_name = self.__class__.__name__
+        return backend_name
 
     def do_setup(self, context):
-        protocol = self.configuration.nexenta_rest_protocol
-        auto = protocol == 'auto'
-        if auto:
-            protocol = 'http'
+        if self.nms_protocol == 'auto':
+            protocol, auto = 'http', True
+        else:
+            protocol, auto = self.nms_protocol, False
         self.nms = jsonrpc.NexentaJSONProxy(
-            protocol, self.configuration.nexenta_host,
-            self.configuration.nexenta_rest_port, '/rest/nms',
-            self.configuration.nexenta_user,
-            self.configuration.nexenta_password, auto=auto)
+            protocol, self.nms_host, self.nms_port, '/rest/nms', self.nms_user,
+            self.nms_password, auto=auto)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
 
         :raise: :py:exc:`LookupError`
         """
-        if not self.nms.volume.object_exists(
-                self.configuration.nexenta_volume):
+        if not self.nms.volume.object_exists(self.volume):
             raise LookupError(_("Volume %s does not exist in Nexenta SA"),
-                              self.configuration.nexenta_volume)
+                              self.volume)
 
     def _get_zvol_name(self, volume_name):
         """Return zvol name that corresponds given volume name."""
-        return '%s/%s' % (self.configuration.nexenta_volume, volume_name)
+        return '%s/%s' % (self.volume, volume_name)
 
     def _get_target_name(self, volume_name):
         """Return iSCSI target name to access volume."""
@@ -102,11 +116,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return '%s%s' % (self.configuration.nexenta_target_group_prefix,
                          volume_name)
 
-    def _get_clone_snapshot_name(self, volume):
+    @staticmethod
+    def _get_clone_snapshot_name(volume):
         """Return name for snapshot that will be used to clone the volume."""
         return 'cinder-clone-snapshot-%(id)s' % volume
 
-    def _is_clone_snapshot_name(self, snapshot):
+    @staticmethod
+    def _is_clone_snapshot_name(snapshot):
         """Check if snapshot is created for cloning."""
         name = snapshot.split('@')[-1]
         return name.startswith('cinder-clone-snapshot-')
@@ -319,7 +335,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
         return '%(host)s:%(port)s,1 %(name)s 0' % {
-            'host': self.configuration.nexenta_host,
+            'host': self.nms_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
             'name': self._get_target_name(volume['name'])
         }
@@ -439,46 +455,29 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return self._stats
 
     def _update_volume_stats(self):
-        """Retrieve stats info for Nexenta device."""
-
-        # NOTE(jdg): Aimon Bustardo was kind enough to point out the
-        # info he had regarding Nexenta Capabilities, ideally it would
-        # be great if somebody from Nexenta looked this over at some point
-
-        LOG.debug(_("Updating volume stats"))
-        data = {}
-        backend_name = self.__class__.__name__
-        if self.configuration:
-            backend_name = self.configuration.safe_get('volume_backend_name')
-        data["volume_backend_name"] = backend_name or self.__class__.__name__
-        data["vendor_name"] = 'Nexenta'
-        data["driver_version"] = self.VERSION
-        data["storage_protocol"] = 'iSCSI'
+        """Retrieve stats info for NexentaStor appliance."""
+        LOG.debug(_('Updating volume stats'))
 
         stats = self.nms.volume.get_child_props(
             self.configuration.nexenta_volume, 'health|size|used|available')
-        total_unit = stats['size'][-1]
-        total_amount = float(stats['size'][:-1])
-        free_unit = stats['available'][-1]
-        free_amount = float(stats['available'][:-1])
 
-        if total_unit == "T":
-            total_amount *= units.KiB
-        elif total_unit == "M":
-            total_amount /= units.KiB
-        elif total_unit == "B":
-            total_amount /= units.MiB
+        total_amount = utils.str2gib_size(stats['size'])
+        free_amount = utils.str2gib_size(stats['available'])
 
-        if free_unit == "T":
-            free_amount *= units.KiB
-        elif free_unit == "M":
-            free_amount /= units.KiB
-        elif free_unit == "B":
-            free_amount /= units.MiB
+        location_info = '%(driver)s:%(host)s:%(volume)s' % {
+            'driver': self.__class__.__name__,
+            'host': self.nms_host,
+            'volume': self.volume
+        }
 
-        data['total_capacity_gb'] = total_amount
-        data['free_capacity_gb'] = free_amount
-
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
-        self._stats = data
+        self._stats = {
+            'vendor_name': 'Nexenta',
+            'driver_version': self.VERSION,
+            'storage_protocol': 'iSCSI',
+            'total_capacity_gb': total_amount,
+            'free_capacity_gb': free_amount,
+            'reserved_percentage': 0,
+            'QoS_support': False,
+            'volume_backend_name': self.backend_name,
+            'location_info': location_info
+        }
