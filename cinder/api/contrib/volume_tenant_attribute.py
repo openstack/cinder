@@ -27,21 +27,18 @@ class VolumeTenantAttributeController(wsgi.Controller):
         super(VolumeTenantAttributeController, self).__init__(*args, **kwargs)
         self.volume_api = volume.API()
 
-    def _add_volume_tenant_attribute(self, context, resp_volume):
-        try:
-            db_volume = self.volume_api.get(context, resp_volume['id'])
-        except Exception:
-            return
-        else:
-            key = "%s:tenant_id" % Volume_tenant_attribute.alias
-            resp_volume[key] = db_volume['project_id']
+    def _add_volume_tenant_attribute(self, context, req, resp_volume):
+        db_volume = req.cached_resource_by_id(resp_volume['id'])
+        key = "%s:tenant_id" % Volume_tenant_attribute.alias
+        resp_volume[key] = db_volume['project_id']
 
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeTenantAttributeTemplate())
-            self._add_volume_tenant_attribute(context, resp_obj.obj['volume'])
+            volume = resp_obj.obj['volume']
+            self._add_volume_tenant_attribute(context, req, volume)
 
     @wsgi.extends
     def detail(self, req, resp_obj):
@@ -49,7 +46,7 @@ class VolumeTenantAttributeController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeListTenantAttributeTemplate())
             for volume in list(resp_obj.obj['volumes']):
-                self._add_volume_tenant_attribute(context, volume)
+                self._add_volume_tenant_attribute(context, req, volume)
 
 
 class Volume_tenant_attribute(extensions.ExtensionDescriptor):
