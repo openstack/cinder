@@ -435,6 +435,8 @@ class VolumeApiTest(test.TestCase):
             ]
         }
         self.assertEqual(res_dict, expected)
+        # Finally test that we cached the returned volumes
+        self.assertEqual(1, len(req.cached_resource()))
 
     def test_volume_list_detail(self):
         self.stubs.Set(volume_api.API, 'get_all',
@@ -482,6 +484,8 @@ class VolumeApiTest(test.TestCase):
             ]
         }
         self.assertEqual(res_dict, expected)
+        # Finally test that we cached the returned volumes
+        self.assertEqual(1, len(req.cached_resource()))
 
     def test_volume_list_detail_with_admin_metadata(self):
         volume = stubs.stub_volume("1")
@@ -869,6 +873,8 @@ class VolumeApiTest(test.TestCase):
             }
         }
         self.assertEqual(res_dict, expected)
+        # Finally test that we cached the returned volume
+        self.assertIsNotNone(req.cached_resource_by_id('1'))
 
     def test_volume_show_no_attachments(self):
         def stub_volume_get(self, context, volume_id):
@@ -915,6 +921,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, 1)
+        # Finally test that nothing was cached
+        self.assertIsNone(req.cached_resource_by_id('1'))
 
     def test_volume_show_with_admin_metadata(self):
         volume = stubs.stub_volume("1")
