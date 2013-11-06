@@ -39,7 +39,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.1.2'
+VERSION = '1.1.3'
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
@@ -55,10 +55,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         1.1.1 - Added caching for NexentaStor appliance 'volroot' value.
         1.1.2 - Ignore "folder does not exist" error in delete_volume and
                 delete_snapshot method.
+        1.1.3 - Redefined volume_backend_name attribute inherited from
+                RemoteFsDriver.
     """
 
-    VERSION = VERSION
     driver_prefix = 'nexenta'
+    volume_backend_name = 'NexentaNfsDriver'
+    VERSION = VERSION
 
     def __init__(self, *args, **kwargs):
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
@@ -68,6 +71,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         conf = self.configuration
         self.nms_cache_volroot = conf.nexenta_nms_cache_volroot
         self._nms2volroot = {}
+        self.share2nms = {}
 
     def do_setup(self, context):
         super(NexentaNfsDriver, self).do_setup(context)
