@@ -70,3 +70,20 @@ class ContextTestCase(test.TestCase):
         self.assertTrue(c)
         self.assertIn("'extra_arg1': 'meow'", info['log_msg'])
         self.assertIn("'extra_arg2': 'wuff'", info['log_msg'])
+
+    def test_service_catalog_nova_only(self):
+        service_catalog = [
+            {u'type': u'compute', u'name': u'nova'},
+            {u'type': u's3', u'name': u's3'},
+            {u'type': u'image', u'name': u'glance'},
+            {u'type': u'volume', u'name': u'cinder'},
+            {u'type': u'ec2', u'name': u'ec2'},
+            {u'type': u'object-store', u'name': u'swift'},
+            {u'type': u'identity', u'name': u'keystone'},
+            {u'type': None, u'name': u'S_withtypeNone'},
+            {u'type': u'co', u'name': u'S_partofcompute'}]
+
+        compute_catalog = [{u'type': u'compute', u'name': u'nova'}]
+        ctxt = context.RequestContext('111', '222',
+                                      service_catalog=service_catalog)
+        self.assertEquals(ctxt.service_catalog, compute_catalog)
