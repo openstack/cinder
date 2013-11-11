@@ -2,7 +2,7 @@ Cinder Style Commandments
 =========================
 
 - Step 1: Read the OpenStack Style Commandments
-  https://github.com/openstack-dev/hacking/blob/master/doc/source/index.rst
+  http://docs.openstack.org/developer/hacking/
 - Step 2: Read on
 
 Cinder Specific Commandments
@@ -10,15 +10,6 @@ Cinder Specific Commandments
 
 General
 -------
-- Do not use locals(). Example::
-
-    LOG.debug(_("volume %(vol_name)s: creating size %(vol_size)sG") %
-              locals()) # BAD
-
-    LOG.debug(_("volume %(vol_name)s: creating size %(vol_size)sG") %
-              {'vol_name': vol_name,
-               'vol_size': vol_size}) # OKAY
-
 - Use 'raise' instead of 'raise e' to preserve original traceback or exception being reraised::
 
     except Exception as e:
