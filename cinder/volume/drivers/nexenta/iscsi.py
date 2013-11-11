@@ -69,12 +69,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 options.NEXENTA_ISCSI_OPTIONS)
             self.configuration.append_config_values(
                 options.NEXENTA_VOLUME_OPTIONS)
+            self.configuration.append_config_values(
+                options.NEXENTA_RRMGR_OPTIONS)
         self.nms_protocol = self.configuration.nexenta_rest_protocol
         self.nms_host = self.configuration.nexenta_host
         self.nms_port = self.configuration.nexenta_rest_port
         self.nms_user = self.configuration.nexenta_user
         self.nms_password = self.configuration.nexenta_password
         self.volume = self.configuration.nexenta_volume
+        self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
+        self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
+        self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
 
     @property
     def backend_name(self):
@@ -126,6 +131,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Check if snapshot is created for cloning."""
         name = snapshot.split('@')[-1]
         return name.startswith('cinder-clone-snapshot-')
+
+    @staticmethod
+    def _get_migrate_snapshot_name(volume):
+        """Return name for snapshot that will be used to migrate the volume."""
+        return 'cinder-migrate-snapshot-%(id)s' % volume
 
     def create_volume(self, volume):
         """Create a zvol on appliance.
@@ -204,6 +214,84 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 LOG.warning(_('Failed to delete zfs snapshot '
                               '%(volume_name)s@%(name)s'), snapshot)
             raise
+
+    def _get_zfs_send_recv_cmd(self, src, dst):
+        """Returns rrmgr command for source and destination."""
+        return utils.get_rrmgr_cmd(src, dst,
+                                   compression=self.rrmgr_compression,
+                                   tcp_buf_size=self.rrmgr_tcp_buf_size,
+                                   connections=self.rrmgr_connections)
+
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate if volume and host are managed by Nexenta appliance.
+
+        :param ctxt: context
+        :param volume: a dictionary describing the volume to migrate
+        :param host: a dictionary describing the host to migrate to
+        """
+        LOG.debug(_('Enter: migrate_volume: id=%(id)s, host=%(host)s') %
+                  {'id': volume['id'], 'host': host})
+
+        false_ret = (False, None)
+
+        if volume['status'] != 'available':
+            return false_ret
+
+        if 'location_info' not in host['capabilities']:
+            return false_ret
+
+        dst_parts = host['capabilities']['location_info'].split(':')
+
+        if host['capabilities']['vendor_name'] != 'Nexenta' or \
+           dst_parts[0] != self.__class__.__name__ or \
+           host['capabilities']['free_capacity_gb'] < volume['size']:
+            return false_ret
+
+        dst_host, dst_volume = dst_parts[1:]
+
+        ssh_bound = False
+        ssh_bindings = self.nms.appliance.ssh_list_bindings()
+        for bind in ssh_bindings:
+            if bind.index(dst_host) != -1:
+                ssh_bound = True
+                break
+        if not(ssh_bound):
+            LOG.warning(_("Remote NexentaStor appliance at %s should be "
+                          "SSH-bound."), dst_host)
+
+        # Create temporary snapshot of volume on NexentaStor Appliance.
+        snapshot = {'volume_name': volume['name'],
+                    'name': self._get_migrate_snapshot_name(volume)}
+        self.create_snapshot(snapshot)
+
+        src = '%(volume)s/%(zvol)s@%(snapshot)s' % {
+            'volume': self.volume,
+            'zvol': volume['name'],
+            'snapshot': snapshot['name']}
+        dst = ':'.join([dst_host, dst_volume])
+
+        try:
+            self.nms.appliance.execute(self._get_zfs_send_recv_cmd(src, dst))
+        except nexenta.NexentaException as exc:
+            LOG.warning(_("Cannot send source snapshot %(src)s to "
+                          "destination %(dst)s. Reason: %(exc)s"),
+                        {'src': src, 'dst': dst, 'exc': exc})
+            return false_ret
+        finally:
+            try:
+                self.delete_snapshot(snapshot)
+            except nexenta.NexentaException as exc:
+                LOG.warning(_("Cannot delete temporary source snapshot "
+                              "%(src)s on NexentaStor Appliance: %(exc)s"),
+                            {'src': src, 'exc': exc})
+        try:
+            self.delete_volume(volume)
+        except nexenta.NexentaException as exc:
+            LOG.warning(_("Cannot delete source volume %(volume)s on "
+                          "NexentaStor Appliance: %(exc)s"),
+                        {'volume': volume['name'], 'exc': exc})
+
+        return (True, None)
 
     def create_snapshot(self, snapshot):
         """Create snapshot of existing zvol on appliance.

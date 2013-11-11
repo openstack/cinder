@@ -20,7 +20,7 @@
 
 .. automodule:: nexenta.utils
 .. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <hodosmb@gmail.com>
+.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
 """
 
 import re
@@ -61,6 +61,22 @@ def str2gib_size(s):
     """Covert size-string to size in gigabytes."""
     size_in_bytes = str2size(s)
     return size_in_bytes / units.GiB
+
+
+def get_rrmgr_cmd(src, dst, compression=None, tcp_buf_size=None,
+                  connections=None):
+    """Returns rrmgr command for source and destination."""
+    cmd = ['rrmgr', '-s', 'zfs']
+    if compression:
+        cmd.extend(['-c', '%s' % str(compression)])
+    cmd.append('-q')
+    cmd.append('-e')
+    if tcp_buf_size:
+        cmd.extend(['-w', str(tcp_buf_size)])
+    if connections:
+        cmd.extend(['-n', str(connections)])
+    cmd.extend([src, dst])
+    return ' '.join(cmd)
 
 
 def parse_nms_url(url):
