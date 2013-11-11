@@ -231,7 +231,8 @@ class SolidFireDriver(SanISCSIDriver):
         sf_account_name = self._get_sf_account_name(project_id)
         sfaccount = self._get_sfaccount_by_name(sf_account_name)
         if sfaccount is None:
-            raise exception.SfAccountNotFound(account_name=sf_account_name)
+            raise exception.SolidFireAccountNotFound(
+                account_name=sf_account_name)
 
         return sfaccount
 

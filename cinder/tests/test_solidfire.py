@@ -367,7 +367,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         sfv = SolidFireDriver(configuration=self.configuration)
-        self.assertRaises(exception.SfAccountNotFound,
+        self.assertRaises(exception.SolidFireAccountNotFound,
                           sfv.delete_volume,
                           testvol)
 
@@ -426,6 +426,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         sfv = SolidFireDriver(configuration=self.configuration)
-        self.assertRaises(exception.SfAccountNotFound,
+        self.assertRaises(exception.SolidFireAccountNotFound,
                           sfv.extend_volume,
                           testvol, 2)
