@@ -937,6 +937,8 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0
+        configuration.volume_driver = \
+            'cinder.volume.drivers.lvm.LVMISCSIDriver'
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
         self.stubs.Set(lvm_driver, '_copy_volume', lambda *a, **kw: True)
 
