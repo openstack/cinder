@@ -2278,6 +2278,16 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 class ISCSITestCase(DriverTestCase):
     """Test Case for ISCSIDriver"""
     driver_name = "cinder.volume.drivers.lvm.LVMISCSIDriver"
+    base_driver = driver.ISCSIDriver
+
+    def setUp(self):
+        super(ISCSITestCase, self).setUp()
+        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration.num_iscsi_scan_tries = 3
+        self.configuration.iscsi_num_targets = 100
+        self.configuration.iscsi_target_prefix = 'iqn.2010-10.org.openstack:'
+        self.configuration.iscsi_ip_address = '0.0.0.0'
+        self.configuration.iscsi_port = 3260
 
     def _attach_volume(self):
         """Attach volumes to an instance."""
@@ -2299,11 +2309,8 @@ class ISCSITestCase(DriverTestCase):
         return volume_id_list
 
     def test_do_iscsi_discovery(self):
-        configuration = mox.MockObject(conf.Configuration)
-        configuration.iscsi_ip_address = '0.0.0.0'
-        configuration.append_config_values(mox.IgnoreArg())
-
-        iscsi_driver = driver.ISCSIDriver(configuration=configuration)
+        self.configuration.append_config_values(mox.IgnoreArg())
+        iscsi_driver = self.base_driver(configuration=self.configuration)
         iscsi_driver._execute = lambda *a, **kw: \
             ("%s dummy" % CONF.iscsi_ip_address, '')
         volume = {"name": "dummy",
@@ -2315,7 +2322,7 @@ class ISCSITestCase(DriverTestCase):
                   "id": "0",
                   "provider_auth": "a b c",
                   "attached_mode": "rw"}
-        iscsi_driver = driver.ISCSIDriver()
+        iscsi_driver = self.base_driver(configuration=self.configuration)
         iscsi_driver._do_iscsi_discovery = lambda v: "0.0.0.0:0000,0 iqn:iqn 0"
         result = iscsi_driver._get_iscsi_properties(volume)
         self.assertEqual(result["target_portal"], "0.0.0.0:0000")
@@ -2349,7 +2356,7 @@ class ISCSITestCase(DriverTestCase):
         self.assertEqual(stats['free_capacity_gb'], float('0.52'))
 
     def test_validate_connector(self):
-        iscsi_driver = driver.ISCSIDriver()
+        iscsi_driver = self.base_driver(configuration=self.configuration)
         # Validate a valid connector
         connector = {'ip': '10.0.0.2',
                      'host': 'fakehost',
@@ -2365,29 +2372,16 @@ class ISCSITestCase(DriverTestCase):
 class ISERTestCase(ISCSITestCase):
     """Test Case for ISERDriver."""
     driver_name = "cinder.volume.drivers.lvm.LVMISERDriver"
+    base_driver = driver.ISERDriver
 
-    def test_do_iscsi_discovery(self):
-        configuration = mox.MockObject(conf.Configuration)
-        configuration.iser_ip_address = '0.0.0.0'
-        configuration.append_config_values(mox.IgnoreArg())
-
-        iser_driver = driver.ISERDriver(configuration=configuration)
-        iser_driver._execute = lambda *a, **kw: \
-            ("%s dummy" % CONF.iser_ip_address, '')
-        volume = {"name": "dummy",
-                  "host": "0.0.0.0"}
-        iser_driver._do_iser_discovery(volume)
-
-    def test_get_iscsi_properties(self):
-        volume = {"provider_location": '',
-                  "id": "0",
-                  "provider_auth": "a b c"}
-        iser_driver = driver.ISERDriver()
-        iser_driver._do_iser_discovery = lambda v: "0.0.0.0:0000,0 iqn:iqn 0"
-        result = iser_driver._get_iser_properties(volume)
-        self.assertEqual(result["target_portal"], "0.0.0.0:0000")
-        self.assertEqual(result["target_iqn"], "iqn:iqn")
-        self.assertEqual(result["target_lun"], 0)
+    def setUp(self):
+        super(ISERTestCase, self).setUp()
+        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration.num_iser_scan_tries = 3
+        self.configuration.iser_num_targets = 100
+        self.configuration.iser_target_prefix = 'iqn.2010-10.org.openstack:'
+        self.configuration.iser_ip_address = '0.0.0.0'
+        self.configuration.iser_port = 3260
 
 
 class FibreChannelTestCase(DriverTestCase):
