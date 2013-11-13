@@ -592,6 +592,18 @@ class GPFSDriver(driver.VolumeDriver):
 
     def _get_available_capacity(self, path):
         """Calculate available space on path."""
+        # Check if GPFS is mounted
+        try:
+            self._verify_gpfs_path_state(path)
+            mounted = True
+        except exception.VolumeBackendAPIException:
+            mounted = False
+
+        # If GPFS is not mounted, return zero capacity. So that the volume
+        # request can be scheduled to another volume service.
+        if not mounted:
+            return 0, 0
+
         out, _ = self._execute('df', '-P', '-B', '1', path,
                                run_as_root=True)
         out = out.splitlines()[1]
