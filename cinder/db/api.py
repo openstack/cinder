@@ -549,6 +549,11 @@ def volume_glance_metadata_create(context, volume_id, key, value):
                                               value)
 
 
+def volume_glance_metadata_get_all(context):
+    """Return the glance metadata for all volumes."""
+    return IMPL.volume_glance_metadata_get_all(context)
+
+
 def volume_glance_metadata_get(context, volume_id):
     """Return the glance metadata for a volume."""
     return IMPL.volume_glance_metadata_get(context, volume_id)
