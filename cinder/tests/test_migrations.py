@@ -24,9 +24,9 @@ properly both upgrading and downgrading, and that no data loss occurs
 if possible.
 """
 
-import commands
 import ConfigParser
 import os
+import subprocess
 import urlparse
 import uuid
 
@@ -161,9 +161,12 @@ class TestMigrations(test.TestCase):
 
     def _reset_databases(self):
         def execute_cmd(cmd=None):
-            status, output = commands.getstatusoutput(cmd)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, shell=True)
+            output = proc.communicate()[0]
             LOG.debug(output)
-            self.assertEqual(0, status)
+            self.assertEqual(0, proc.returncode)
+
         for key, engine in self.engines.items():
             conn_string = self.test_databases[key]
             conn_pieces = urlparse.urlparse(conn_string)
