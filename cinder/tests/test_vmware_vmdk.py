@@ -408,22 +408,44 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
+    def _create_host_mounts(self, access_mode, host, set_accessible=True,
+                            is_accessible=True, mounted=True):
+        """Create host mount value of datastore with single mount info.
+
+        :param access_mode: string specifying the read/write permission
+        :param set_accessible: specify whether accessible property
+                               should be set
+        :param is_accessible: boolean specifying whether the datastore
+                              is accessible to host
+        :param host: managed object reference of the connected
+                     host
+        :return: list of host mount info
+        """
+        mntInfo = FakeObject()
+        mntInfo.accessMode = access_mode
+        if set_accessible:
+            mntInfo.accessible = is_accessible
+        mntInfo.mounted = mounted
+
+        host_mount = FakeObject()
+        host_mount.key = host
+        host_mount.mountInfo = mntInfo
+        host_mounts = FakeObject()
+        host_mounts.DatastoreHostMount = [host_mount]
+
+        return host_mounts
+
     def test_is_valid_with_accessible_attr(self):
         """Test _is_valid with accessible attribute."""
         m = self.mox
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
+
         datastore = FakeMor('Datastore', 'my_ds')
-        mntInfo = FakeObject()
-        mntInfo.accessMode = "readWrite"
-        mntInfo.accessible = True
-        host = FakeMor('HostSystem', 'my_host')
-        host_mount = FakeObject()
-        host_mount.key = host
-        host_mount.mountInfo = mntInfo
-        host_mounts = FakeObject()
-        host_mounts.DatastoreHostMount = [host_mount]
+        host = FakeMor('HostSystem', "my_host")
+        host_mounts = self._create_host_mounts("readWrite", host)
+
         self._session.invoke_api(vim_util, 'get_object_property',
                                  self._vim, datastore,
                                  'host').AndReturn(host_mounts)
@@ -439,15 +461,11 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
+
         datastore = FakeMor('Datastore', 'my_ds')
-        mntInfo = FakeObject()
-        mntInfo.accessMode = "readWrite"
-        host = FakeMor('HostSystem', 'my_host')
-        host_mount = FakeObject()
-        host_mount.key = host
-        host_mount.mountInfo = mntInfo
-        host_mounts = FakeObject()
-        host_mounts.DatastoreHostMount = [host_mount]
+        host = FakeMor('HostSystem', "my_host")
+        host_mounts = self._create_host_mounts("readWrite", host, False)
+
         self._session.invoke_api(vim_util, 'get_object_property',
                                  self._vim, datastore,
                                  'host').AndReturn(host_mounts)
@@ -467,16 +485,36 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
-        host = FakeObject()
+
+        datastore = FakeMor('Datastore', 'my_ds')
+        datastore_prop = FakeProp(name='datastore',
+                                  val=FakeManagedObjectReference([datastore]))
+
+        compute_resource = FakeMor('ClusterComputeResource', 'my_cluster')
+        compute_resource_prop = FakeProp(name='parent', val=compute_resource)
+
+        props = [FakeElem(prop_set=[datastore_prop, compute_resource_prop])]
+        host = FakeMor('HostSystem', "my_host")
         self._session.invoke_api(vim_util, 'get_object_properties',
                                  self._vim, host,
-                                 ['datastore', 'parent']).AndReturn([])
+                                 ['datastore', 'parent']).AndReturn(props)
+
+        host_mounts = self._create_host_mounts("readWrite", host)
         self._session.invoke_api(vim_util, 'get_object_property',
-                                 self._vim, mox.IgnoreArg(), 'resourcePool')
+                                 self._vim, datastore,
+                                 'host').AndReturn(host_mounts)
+
+        resource_pool = FakeMor('ResourcePool', 'my_res_pool')
+        self._session.invoke_api(vim_util, 'get_object_property',
+                                 self._vim, compute_resource,
+                                 'resourcePool').AndReturn(resource_pool)
 
         m.ReplayAll()
-        self.assertRaises(error_util.VimException, self._volumeops.get_dss_rp,
-                          host)
+        (datastores_ret, resource_pool_ret) = self._volumeops.get_dss_rp(host)
+        self.assertTrue(len(datastores_ret) == 1)
+        self.assertEqual(datastores_ret[0], datastore)
+        self.assertEqual(resource_pool_ret, resource_pool)
+
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -486,11 +524,11 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(api.VMwareAPISession, 'vim')
         self._session.vim = self._vim
         m.StubOutWithMock(self._session, 'invoke_api')
+
         host = FakeObject()
-        props = [FakeElem(prop_set=[FakeProp(name='datastore')])]
         self._session.invoke_api(vim_util, 'get_object_properties',
                                  self._vim, host,
-                                 ['datastore', 'parent']).AndReturn(props)
+                                 ['datastore', 'parent']).AndReturn([])
         self._session.invoke_api(vim_util, 'get_object_property',
                                  self._vim, mox.IgnoreArg(), 'resourcePool')
 
