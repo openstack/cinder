@@ -149,10 +149,21 @@ def check_ssh_injection(cmd_list):
     # Check whether injection attacks exist
     for arg in cmd_list:
         arg = arg.strip()
-        # First, check no space in the middle of arg
-        arg_len = len(arg.split())
-        if arg_len > 1:
-            raise exception.SSHInjectionThreat(command=str(cmd_list))
+
+        # Check for matching quotes on the ends
+        is_quoted = re.match('^(?P<quote>[\'"])(?P<quoted>.*)(?P=quote)$', arg)
+        if is_quoted:
+            # Check for unescaped quotes within the quoted argument
+            quoted = is_quoted.group('quoted')
+            if quoted:
+                if (re.match('[\'"]', quoted) or
+                        re.search('[^\\\\][\'"]', quoted)):
+                    raise exception.SSHInjectionThreat(command=str(cmd_list))
+        else:
+            # We only allow spaces within quoted arguments, and that
+            # is the only special character allowed within quotes
+            if len(arg.split()) > 1:
+                raise exception.SSHInjectionThreat(command=str(cmd_list))
 
         # Second, check whether danger character in command. So the shell
         # special operator must be a single argument.
