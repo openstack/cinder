@@ -83,8 +83,8 @@ class QuotaSetsControllerTest(test.TestCase):
 
     def test_update_wrong_key(self):
         body = {'quota_set': {'bad': 'bad'}}
-        result = self.controller.update(self.req, 'foo', body)
-        self.assertDictMatch(result, make_body(tenant_id=None))
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
 
     def test_update_invalid_key_value(self):
         body = {'quota_set': {'gigabytes': "should_be_int"}}
