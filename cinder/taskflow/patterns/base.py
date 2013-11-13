@@ -18,10 +18,10 @@
 
 import abc
 import threading
+import uuid as uuidlib
 
 import six
 
-from cinder.openstack.common import uuidutils
 
 from cinder.taskflow import decorators
 from cinder.taskflow import exceptions as exc
@@ -94,7 +94,7 @@ class Flow(object):
         if uuid:
             self._id = str(uuid)
         else:
-            self._id = uuidutils.generate_uuid()
+            self._id = str(uuidlib.uuid4())
 
     @property
     def name(self):
