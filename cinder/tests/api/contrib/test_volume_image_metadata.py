@@ -63,6 +63,10 @@ def fake_get_volume_image_metadata(*args, **kwargs):
     return fake_image_metadata
 
 
+def fake_get_volumes_image_metadata(*args, **kwargs):
+    return {'fake': fake_image_metadata}
+
+
 class VolumeImageMetadataTest(test.TestCase):
     content_type = 'application/json'
 
@@ -72,6 +76,8 @@ class VolumeImageMetadataTest(test.TestCase):
         self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
         self.stubs.Set(volume.API, 'get_volume_image_metadata',
                        fake_get_volume_image_metadata)
+        self.stubs.Set(volume.API, 'get_volumes_image_metadata',
+                       fake_get_volumes_image_metadata)
         self.stubs.Set(db, 'volume_get', fake_volume_get)
         self.UUID = uuid.uuid4()
 
