@@ -26,6 +26,8 @@
 import re
 import urlparse
 
+from cinder import units
+
 
 def str2size(s, scale=1024):
     """Convert size-string.
@@ -53,6 +55,12 @@ def str2size(s, scale=1024):
     for i, t in enumerate(types):
         if suffix == t:
             return int(value * pow(scale, i))
+
+
+def str2gib_size(s):
+    """Covert size-string to size in gigabytes."""
+    size_in_bytes = str2size(s)
+    return size_in_bytes / units.GiB
 
 
 def parse_nms_url(url):
