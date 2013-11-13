@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-10-31 06:13+0000\n"
+"POT-Creation-Date: 2013-11-13 06:15+0000\n"
 "PO-Revision-Date: 2013-07-01 16:14+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Slovenian (Slovenia) "
@@ -2919,22 +2919,22 @@ msgstr ""
 msgid "Released file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
 msgstr ""
 
-#: cinder/openstack/common/log.py:244
+#: cinder/openstack/common/log.py:250
 #, python-format
 msgid "Deprecated: %s"
 msgstr ""
 
-#: cinder/openstack/common/log.py:336
+#: cinder/openstack/common/log.py:349
 #, python-format
 msgid "Error loading logging config %(log_config)s: %(err_msg)s"
 msgstr ""
 
-#: cinder/openstack/common/log.py:386
+#: cinder/openstack/common/log.py:400
 #, python-format
 msgid "syslog facility must be one of: %s"
 msgstr ""
 
-#: cinder/openstack/common/log.py:556
+#: cinder/openstack/common/log.py:570
 #, python-format
 msgid "Fatal call to deprecated config: %(msg)s"
 msgstr ""
@@ -4055,7 +4055,7 @@ msgstr ""
 msgid "The volume driver requires the iSCSI initiator name in the connector."
 msgstr ""
 
-#: cinder/volume/driver.py:673 cinder/volume/drivers/lvm.py:352
+#: cinder/volume/driver.py:673 cinder/volume/drivers/lvm.py:348
 #: cinder/volume/drivers/storwize_svc.py:1539
 #: cinder/volume/drivers/zadara.py:658
 #: cinder/volume/drivers/emc/emc_smis_common.py:858
@@ -4384,30 +4384,30 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/block_device.py:131
-#: cinder/volume/drivers/block_device.py:143 cinder/volume/drivers/lvm.py:638
-#: cinder/volume/drivers/lvm.py:653
+#: cinder/volume/drivers/block_device.py:143 cinder/volume/drivers/lvm.py:634
+#: cinder/volume/drivers/lvm.py:649
 #, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:157 cinder/volume/drivers/lvm.py:671
+#: cinder/volume/drivers/block_device.py:157 cinder/volume/drivers/lvm.py:667
 #, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume:"
 " %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:183 cinder/volume/drivers/lvm.py:467
+#: cinder/volume/drivers/block_device.py:183 cinder/volume/drivers/lvm.py:463
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:200 cinder/volume/drivers/lvm.py:488
+#: cinder/volume/drivers/block_device.py:200 cinder/volume/drivers/lvm.py:484
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:272 cinder/volume/drivers/lvm.py:228
+#: cinder/volume/drivers/block_device.py:272 cinder/volume/drivers/lvm.py:224
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr ""
@@ -4417,7 +4417,7 @@ msgstr ""
 msgid "Error unrecognized volume_clear option: %s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:307 cinder/volume/drivers/lvm.py:297
+#: cinder/volume/drivers/block_device.py:307 cinder/volume/drivers/lvm.py:293
 #: cinder/volume/drivers/zadara.py:517 cinder/volume/drivers/nexenta/nfs.py:192
 #, python-format
 msgid "Creating clone of volume: %s"
@@ -4839,84 +4839,86 @@ msgstr ""
 msgid "%s is not a directory."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:199
-#, python-format
-msgid "%s is not on GPFS. Perhaps GPFS not mounted."
-msgstr ""
-
-#: cinder/volume/drivers/gpfs.py:206
+#: cinder/volume/drivers/gpfs.py:200
 #, python-format
 msgid ""
 "The GPFS filesystem %(fs)s is not at the required release level.  Current"
 " level is %(cur)s, must be at least %(min)s."
 msgstr ""
 
-#: cinder/volume/drivers/gpfs.py:580
+#: cinder/volume/drivers/gpfs.py:586
 #, python-format
 msgid "mkfs failed on volume %(vol)s, error message was: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:190
+#: cinder/volume/drivers/gpfs.py:619
+#, python-format
+msgid ""
+"%s cannot be accessed. Verify that GPFS is active and file system is "
+"mounted."
+msgstr ""
+
+#: cinder/volume/drivers/lvm.py:186
 #, python-format
 msgid "Unabled to delete due to existing snapshot for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:216
+#: cinder/volume/drivers/lvm.py:212
 #, python-format
 msgid "Volume device file path %s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:222
+#: cinder/volume/drivers/lvm.py:218
 #, python-format
 msgid "Size for volume: %s not found, cannot secure delete."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:261
+#: cinder/volume/drivers/lvm.py:257
 #, python-format
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:354
+#: cinder/volume/drivers/lvm.py:350
 #, python-format
 msgid "Unable to update stats on non-intialized Volume Group: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:446
+#: cinder/volume/drivers/lvm.py:442
 #, python-format
 msgid "Error creating iSCSI target, retrying creation for target: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:466
+#: cinder/volume/drivers/lvm.py:462
 #, python-format
 msgid "volume_info:%s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:502 cinder/volume/drivers/lvm.py:787
+#: cinder/volume/drivers/lvm.py:498 cinder/volume/drivers/lvm.py:783
 msgid "Detected inconsistency in provider_location id"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:503 cinder/volume/drivers/lvm.py:707
+#: cinder/volume/drivers/lvm.py:499 cinder/volume/drivers/lvm.py:703
 #: cinder/volume/drivers/huawei/rest_common.py:1227
 #, python-format
 msgid "%s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:557
+#: cinder/volume/drivers/lvm.py:553
 #, python-format
 msgid "Symbolic link %s not found"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:773
+#: cinder/volume/drivers/lvm.py:769
 #, python-format
 msgid "Skipping ensure_export. No iser_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:864
+#: cinder/volume/drivers/lvm.py:860
 #, python-format
 msgid "Skipping remove_export. No iser_target provisioned for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:880
+#: cinder/volume/drivers/lvm.py:876
 #, python-format
 msgid ""
 "Skipping remove_export. No iser_target is presently exported for volume: "
@@ -7954,19 +7956,18 @@ msgid "Creating temp snapshot of the original volume: %(volume_name)s@%(name)s"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/iscsi.py:183
-#: cinder/volume/drivers/nexenta/nfs.py:202
+#: cinder/volume/drivers/nexenta/nfs.py:203
 #, python-format
 msgid "Volume creation failed, deleting created snapshot %(volume_name)s@%(name)s"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/iscsi.py:188
-#: cinder/volume/drivers/nexenta/nfs.py:207
+#: cinder/volume/drivers/nexenta/nfs.py:208
 #, python-format
 msgid "Failed to delete zfs snapshot %(volume_name)s@%(name)s"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/iscsi.py:223
-#: cinder/volume/drivers/nexenta/nfs.py:258
 #, python-format
 msgid "Snapshot %s does not exist, it seems it was already deleted."
 msgstr ""
@@ -8059,27 +8060,33 @@ msgstr ""
 msgid "Cannot destroy cloned folder: %(vol)s/%(folder)s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:227
+#: cinder/volume/drivers/nexenta/nfs.py:230
 #, python-format
-msgid "Folder %s does not exist, it seems it was already deleted."
+msgid "Folder %s does not exist, it was already deleted."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:292
+#: cinder/volume/drivers/nexenta/nfs.py:240
+#: cinder/volume/drivers/nexenta/nfs.py:271
+#, python-format
+msgid "Snapshot %s does not exist, it was already deleted."
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/nfs.py:305
 #, python-format
 msgid "Creating regular file: %s.This may take some time."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:303
+#: cinder/volume/drivers/nexenta/nfs.py:316
 #, python-format
 msgid "Regular file: %s created."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:355
+#: cinder/volume/drivers/nexenta/nfs.py:368
 #, python-format
 msgid "Sharing folder %s on Nexenta Store"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nfs.py:383
+#: cinder/volume/drivers/nexenta/nfs.py:396
 #, python-format
 msgid "Shares loaded: %s"
 msgstr ""
@@ -9874,5 +9881,11 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "rbd import-diff failed - %s"
+#~ msgstr ""
+
+#~ msgid "%s is not on GPFS. Perhaps GPFS not mounted."
+#~ msgstr ""
+
+#~ msgid "Folder %s does not exist, it seems it was already deleted."
 #~ msgstr ""
 
