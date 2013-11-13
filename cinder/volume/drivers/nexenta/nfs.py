@@ -191,13 +191,14 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         LOG.info(_('Creating clone of volume: %s'), src_vref['id'])
         snapshot = {'volume_name': src_vref['name'],
-                    'name': 'cinder-clone-snap-%(id)s' % volume}
+                    'volume_id': src_vref['id'],
+                    'name': self._get_clone_snapshot_name(volume)}
         # We don't delete this snapshot, because this snapshot will be origin
         # of new volume. This snapshot will be automatically promoted by NMS
         # when user will delete its origin.
         self.create_snapshot(snapshot)
         try:
-            self.create_volume_from_snapshot(volume, snapshot)
+            return self.create_volume_from_snapshot(volume, snapshot)
         except nexenta.NexentaException:
             LOG.error(_('Volume creation failed, deleting created snapshot '
                         '%(volume_name)s@%(name)s'), snapshot)
@@ -215,19 +216,31 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         super(NexentaNfsDriver, self).delete_volume(volume)
 
-        nfs_share = volume['provider_location']
+        nfs_share = volume.get('provider_location')
+
         if nfs_share:
             nms = self.share2nms[nfs_share]
             vol, parent_folder = self._get_share_datasets(nfs_share)
             folder = '%s/%s/%s' % (vol, parent_folder, volume['name'])
+            props = nms.folder.get_child_props(folder, 'origin') or {}
             try:
-                nms.folder.destroy(folder, '')
+                nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
-                    LOG.info(_('Folder %s does not exist, it seems it was '
+                    LOG.info(_('Folder %s does not exist, it was '
                                'already deleted.'), folder)
                     return
                 raise
+            origin = props.get('origin')
+            if origin and self._is_clone_snapshot_name(origin):
+                try:
+                    nms.snapshot.destroy(origin, '')
+                except nexenta.NexentaException as exc:
+                    if 'does not exist' in exc.args[0]:
+                        LOG.info(_('Snapshot %s does not exist, it was '
+                                   'already deleted.'), origin)
+                        return
+                    raise
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -255,7 +268,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nms.snapshot.destroy('%s@%s' % (folder, snapshot['name']), '')
         except nexenta.NexentaException as exc:
             if 'does not exist' in exc.args[0]:
-                LOG.info(_('Snapshot %s does not exist, it seems it was '
+                LOG.info(_('Snapshot %s does not exist, it was '
                            'already deleted.'), '%s@%s' % (folder, snapshot))
                 return
             raise
@@ -421,3 +434,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         volume_name = path.split('/')[0]
         folder_name = '/'.join(path.split('/')[1:])
         return volume_name, folder_name
+
+    def _get_clone_snapshot_name(self, volume):
+        """Return name for snapshot that will be used to clone the volume."""
+        return 'cinder-clone-snapshot-%(id)s' % volume
+
+    def _is_clone_snapshot_name(self, snapshot):
+        """Check if snapshot is created for cloning."""
+        name = snapshot.split('@')[-1]
+        return name.startswith('cinder-clone-snapshot-')
