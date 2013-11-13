@@ -330,6 +330,9 @@ class GPFSDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
+        # Check if GPFS is mounted
+        self._verify_gpfs_path_state(self.configuration.gpfs_mount_point_base)
+
         volume_path = self.local_path(volume)
         self._delete_gpfs_file(volume_path)
 
