@@ -95,7 +95,7 @@ class LVM(executor.Executor):
 
         """
         exists = False
-        cmd = ['vgs', '--noheadings', '-o', 'name']
+        cmd = ['vgs', '--noheadings', '-o', 'name', self.vg_name]
         (out, err) = self._execute(*cmd,
                                    root_helper=self._root_helper,
                                    run_as_root=True)
