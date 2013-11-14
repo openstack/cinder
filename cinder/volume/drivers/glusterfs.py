@@ -30,6 +30,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import units
+from cinder import utils
 from cinder.volume.drivers import nfs
 
 LOG = logging.getLogger(__name__)
@@ -62,6 +63,10 @@ CONF.import_opt('volume_name_template', 'cinder.db')
 class GlusterfsDriver(nfs.RemoteFsDriver):
     """Gluster based cinder driver. Creates file on Gluster share for using it
     as block device on hypervisor.
+
+    Operations such as create/delete/extend volume/snapshot use locking on a
+    per-process basis to prevent multiple threads from modifying qcow2 chains
+    or the snapshot .info file simultaneously.
     """
 
     driver_volume_type = 'glusterfs'
@@ -187,6 +192,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         return {'provider_location': src_vref['provider_location']}
 
+    @utils.synchronized('glusterfs', external=False)
     def create_volume(self, volume):
         """Creates a volume."""
 
@@ -259,6 +265,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                                   path_to_new_vol,
                                   out_format)
 
+    @utils.synchronized('glusterfs', external=False)
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
@@ -273,6 +280,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
+    @utils.synchronized('glusterfs', external=False)
     def create_snapshot(self, snapshot):
         """Create a snapshot.
 
@@ -525,6 +533,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         return next(f for f in backing_chain
                     if f.get('backing-filename', '') == snapshot_file)
 
+    @utils.synchronized('glusterfs', external=False)
     def delete_snapshot(self, snapshot):
         """Delete a snapshot.
 
@@ -833,6 +842,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     def validate_connector(self, connector):
         pass
 
+    @utils.synchronized('glusterfs', external=False)
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -905,6 +915,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             if temp_path is not None:
                 self._execute('rm', '-f', temp_path)
 
+    @utils.synchronized('glusterfs', external=False)
     def extend_volume(self, volume, size_gb):
         volume_path = self.local_path(volume)
         volume_filename = os.path.basename(volume_path)
