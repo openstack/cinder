@@ -449,5 +449,18 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         """
         pass
 
+    def extend_volume(self, volume, new_size):
+        """Extend the size of the volume"""
+        try:
+            self._eql_execute('volume', 'select', volume['name'],
+                              'size', "%sG" % new_size)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_('Failed to extend_volume %(name)s from '
+                            '%(current_size)sGB to %(new_size)sGB'),
+                          {'name': volume['name'],
+                           'current_size': volume['size'],
+                           'new_size': new_size})
+
     def local_path(self, volume):
         raise NotImplementedError()
