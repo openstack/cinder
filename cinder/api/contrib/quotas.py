@@ -48,7 +48,7 @@ class QuotaTemplate(xmlutil.TemplateBuilder):
         return xmlutil.MasterTemplate(root, 1)
 
 
-class QuotaSetsController(object):
+class QuotaSetsController(wsgi.Controller):
 
     def _format_quota_set(self, project_id, quota_set):
         """Convert the quota object to a result dict"""
@@ -98,6 +98,10 @@ class QuotaSetsController(object):
         context = req.environ['cinder.context']
         authorize_update(context)
         project_id = id
+        if not self.is_valid_body(body, 'quota_set'):
+            msg = (_("Missing required element quota_set in request body."))
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         bad_keys = []
 
         for key, value in body['quota_set'].items():
