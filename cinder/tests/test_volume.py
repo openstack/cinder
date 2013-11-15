@@ -2330,10 +2330,6 @@ class ISCSITestCase(DriverTestCase):
         self.assertEqual(result["target_lun"], 0)
 
     def test_get_volume_stats(self):
-        def _emulate_vgs_execute(_command, *_args, **_kwargs):
-            out = "  test1-volumes  5,52  0,52"
-            out += " test2-volumes  5.52  0.52"
-            return out, None
 
         def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
             return [{'name': 'cinder-volumes',
@@ -2345,7 +2341,6 @@ class ISCSITestCase(DriverTestCase):
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_volume_groups',
                        _fake_get_all_volume_groups)
-        self.volume.driver.set_execute(_emulate_vgs_execute)
         self.volume.driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
 
         self.volume.driver._update_volume_stats()
