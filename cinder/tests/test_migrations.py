@@ -1008,3 +1008,34 @@ class TestMigrations(test.TestCase):
 
             self.assertFalse(engine.dialect.has_table(engine.connect(),
                                                       "volume_admin_metadata"))
+
+    def test_migration_021(self):
+        """Test adding default data for quota classes works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.db_initial_version())
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 20)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 21)
+
+            quota_class_metadata = sqlalchemy.Table('quota_classes',
+                                                    metadata,
+                                                    autoload=True)
+
+            num_defaults = quota_class_metadata.count().\
+                where(quota_class_metadata.c.class_name == 'default').\
+                execute().scalar()
+
+            self.assertEqual(3, num_defaults)
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 20)
+
+            # Defaults should not be deleted during downgrade
+            num_defaults = quota_class_metadata.count().\
+                where(quota_class_metadata.c.class_name == 'default').\
+                execute().scalar()
+
+            self.assertEqual(3, num_defaults)
