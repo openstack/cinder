@@ -386,6 +386,8 @@ class VolumeApiTest(test.TestCase):
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
+        # Finally test that we cached the returned volumes
+        self.assertEqual(1, len(req.cached_resource()))
 
     def test_volume_list_with_admin_metadata(self):
         volume = stubs.stub_volume("1")
@@ -451,6 +453,8 @@ class VolumeApiTest(test.TestCase):
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
+        # Finally test that we cached the returned volumes
+        self.assertEqual(1, len(req.cached_resource()))
 
     def test_volume_list_detail_with_admin_metadata(self):
         volume = stubs.stub_volume("1")
@@ -638,6 +642,8 @@ class VolumeApiTest(test.TestCase):
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
+        # Finally test that we cached the returned volume
+        self.assertIsNotNone(req.cached_resource_by_id('1'))
 
     def test_volume_show_no_attachments(self):
         def stub_volume_get(self, context, volume_id):
@@ -701,6 +707,8 @@ class VolumeApiTest(test.TestCase):
                           self.controller.show,
                           req,
                           1)
+        # Finally test that we did not cache anything
+        self.assertIsNone(req.cached_resource_by_id('1'))
 
     def test_volume_detail_limit_offset(self):
         def volume_detail_limit_offset(is_admin):

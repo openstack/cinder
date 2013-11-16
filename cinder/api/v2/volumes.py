@@ -212,6 +212,7 @@ class VolumeController(wsgi.Controller):
 
         try:
             vol = self.volume_api.get(context, id)
+            req.cache_resource(vol)
         except exception.NotFound:
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
@@ -285,6 +286,7 @@ class VolumeController(wsgi.Controller):
             volumes = self._view_builder.detail_list(req, limited_list)
         else:
             volumes = self._view_builder.summary_list(req, limited_list)
+        req.cache_resource(limited_list)
         return volumes
 
     def _image_uuid_from_href(self, image_href):
