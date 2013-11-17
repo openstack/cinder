@@ -714,7 +714,6 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             self.ssc_enabled = True
             LOG.info(_("Shares on vserver %s will only"
                        " be used for provisioning.") % (self.vserver))
-            ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver)
         else:
             self.ssc_enabled = False
             LOG.warn(_("No vserver set in config. SSC will be disabled."))
@@ -881,6 +880,12 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
     def _update_cluster_vol_stats(self, data):
         """Updates vol stats with cluster config."""
+        if self.ssc_enabled:
+            sync = True if self.ssc_vols is None else False
+            ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver,
+                                          synchronous=sync)
+        else:
+            LOG.warn(_("No vserver set in config. SSC will be disabled."))
         if self.ssc_vols:
             data['netapp_mirrored'] = 'true'\
                 if self.ssc_vols['mirrored'] else 'false'
@@ -914,10 +919,6 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         elif self.ssc_enabled:
             LOG.warn(_("No cluster ssc stats found."
                        " Wait for next volume stats update."))
-        if self.ssc_enabled:
-            ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver)
-        else:
-            LOG.warn(_("No vserver set in config. SSC will be disabled."))
 
     @utils.synchronized('update_stale')
     def _update_stale_vols(self, volume=None, reset=False):
