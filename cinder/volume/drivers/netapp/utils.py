@@ -32,6 +32,7 @@ from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
+from cinder.volume.drivers.netapp.api import NaErrors
 from cinder.volume.drivers.netapp.api import NaServer
 from cinder.volume import volume_types
 
@@ -89,7 +90,7 @@ def provide_ems(requester, server, stats, netapp_backend,
             vs_info = attr_list.get_child_by_name('vserver-info')
             vs_name = vs_info.get_child_content('vserver-name')
             return vs_name
-        raise NaApiError(code='Not found', message='No records found')
+        return None
 
     do_ems = True
     if hasattr(requester, 'last_ems'):
@@ -103,15 +104,28 @@ def provide_ems(requester, server, stats, netapp_backend,
         ems = _create_ems(stats, netapp_backend, server_type)
         try:
             if server_type == "cluster":
-                node = _get_cluster_node(na_server)
+                api_version = na_server.get_api_version()
+                if api_version:
+                    major, minor = api_version
+                else:
+                    raise NaApiError(code='Not found',
+                                     message='No api version found')
+                if major == 1 and minor > 15:
+                    node = getattr(requester, 'vserver', None)
+                else:
+                    node = _get_cluster_node(na_server)
+                if node is None:
+                    raise NaApiError(code='Not found',
+                                     message='No vserver found')
                 na_server.set_vserver(node)
             else:
                 na_server.set_vfiler(None)
             na_server.invoke_successfully(ems, True)
-            requester.last_ems = timeutils.utcnow()
             LOG.debug(_("ems executed successfully."))
         except NaApiError as e:
-            LOG.debug(_("Failed to invoke ems. Message : %s") % e)
+            LOG.warn(_("Failed to invoke ems. Message : %s") % e)
+        finally:
+            requester.last_ems = timeutils.utcnow()
 
 
 def validate_instantiation(**kwargs):
@@ -249,3 +263,62 @@ def get_volume_extra_specs(volume):
         volume_type = volume_types.get_volume_type(ctxt, type_id)
         specs = volume_type.get('extra_specs')
     return specs
+
+
+def check_apis_on_cluster(na_server, api_list=[]):
+    """Checks api availability and permissions on cluster.
+
+    Checks api availability and permissions for executing user.
+    Returns a list of failed apis.
+    """
+    failed_apis = []
+    if api_list:
+        api_version = na_server.get_api_version()
+        if api_version:
+            major, minor = api_version
+            if major == 1 and minor < 20:
+                for api_name in api_list:
+                    na_el = NaElement(api_name)
+                    try:
+                        na_server.invoke_successfully(na_el)
+                    except Exception as e:
+                        if isinstance(e, NaApiError):
+                            if (e.code == NaErrors['API_NOT_FOUND'].code or
+                                    e.code ==
+                                    NaErrors['INSUFFICIENT_PRIVS'].code):
+                                failed_apis.append(api_name)
+            elif major == 1 and minor >= 20:
+                failed_apis = copy.copy(api_list)
+                result = invoke_api(
+                    na_server,
+                    api_name='system-user-capability-get-iter',
+                    api_family='cm',
+                    additional_elems=None,
+                    is_iter=True)
+                for res in result:
+                    attr_list = res.get_child_by_name('attributes-list')
+                    if attr_list:
+                        capabilities = attr_list.get_children()
+                        for capability in capabilities:
+                            op_list = capability.get_child_by_name(
+                                'operation-list')
+                            if op_list:
+                                ops = op_list.get_children()
+                                for op in ops:
+                                    apis = op.get_child_content('api-name')
+                                    if apis:
+                                        api_list = apis.split(',')
+                                        for api_name in api_list:
+                                            if (api_name and
+                                                    api_name.strip()
+                                                    in failed_apis):
+                                                failed_apis.remove(api_name)
+                                    else:
+                                        continue
+            else:
+                msg = _("Unsupported Clustered Data ONTAP version.")
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            msg = _("Api version could not be determined.")
+            raise exception.VolumeBackendAPIException(data=msg)
+    return failed_apis
