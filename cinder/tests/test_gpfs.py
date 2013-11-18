@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import mox as mox_lib
 import os
 import tempfile
 
@@ -23,6 +24,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import imageutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
@@ -362,6 +364,43 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual(stats['volume_backend_name'], 'GPFS')
         self.assertEqual(stats['storage_protocol'], 'file')
 
+    def test_extend_volume(self):
+        new_vol_size = 15
+        mox = mox_lib.Mox()
+        volume = test_utils.create_volume(self.context, host=CONF.host)
+        volpath = os.path.join(self.volumes_path, volume['name'])
+
+        qemu_img_info_output = """image: %s
+        file format: raw
+        virtual size: %sG (%s bytes)
+        backing file: %s
+        """ % (volume['name'], new_vol_size, new_vol_size * units.GiB, volpath)
+        mox.StubOutWithMock(image_utils, 'resize_image')
+        image_utils.resize_image(volpath, new_vol_size)
+
+        mox.StubOutWithMock(image_utils, 'qemu_img_info')
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
+        image_utils.qemu_img_info(volpath).AndReturn(img_info)
+        mox.ReplayAll()
+
+        self.driver.extend_volume(volume, new_vol_size)
+        mox.VerifyAll()
+
+    def test_extend_volume_with_failure(self):
+        new_vol_size = 15
+        mox = mox_lib.Mox()
+        volume = test_utils.create_volume(self.context, host=CONF.host)
+        volpath = os.path.join(self.volumes_path, volume['name'])
+
+        mox.StubOutWithMock(image_utils, 'resize_image')
+        image_utils.resize_image(volpath, new_vol_size).AndRaise(
+            processutils.ProcessExecutionError('error'))
+        mox.ReplayAll()
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume, volume, new_vol_size)
+        mox.VerifyAll()
+
     def test_check_for_setup_error_ok(self):
         self.stubs.Set(GPFSDriver, '_get_gpfs_state',
                        self._fake_gpfs_get_state_active)
@@ -497,6 +536,7 @@ class GPFSDriverTestCase(test.TestCase):
         return data
 
     def _fake_qemu_image_resize(self, path, size):
+        LOG.info('wtf')
         pass
 
     def _fake_delete_gpfs_file(self, fchild):
