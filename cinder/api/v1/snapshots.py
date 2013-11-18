@@ -167,7 +167,12 @@ class SnapshotsController(wsgi.Controller):
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)
 
-        volume_id = snapshot['volume_id']
+        try:
+            volume_id = snapshot['volume_id']
+        except KeyError:
+            msg = _("'volume_id' must be specified")
+            raise exc.HTTPBadRequest(explanation=msg)
+
         volume = self.volume_api.get(context, volume_id)
         force = snapshot.get('force', False)
         msg = _("Create snapshot from volume %s")
