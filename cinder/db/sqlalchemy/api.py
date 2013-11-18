@@ -2244,22 +2244,35 @@ def volume_type_encryption_delete(context, volume_type_id):
 
 
 @require_admin_context
-def volume_type_encryption_update_or_create(context, volume_type_id,
-                                            values):
+def volume_type_encryption_create(context, volume_type_id, values):
     session = get_session()
-    encryption = volume_type_encryption_get(context, volume_type_id,
-                                            session)
-
-    if not encryption:
+    with session.begin():
         encryption = models.Encryption()
 
         if 'volume_type_id' not in values:
             values['volume_type_id'] = volume_type_id
 
-    encryption.update(values)
-    encryption.save(session=session)
+        encryption.update(values)
+        encryption.save(session=session)
 
-    return encryption
+        return encryption
+
+
+@require_admin_context
+def volume_type_encryption_update(context, volume_type_id, values):
+    session = get_session()
+    with session.begin():
+        encryption = volume_type_encryption_get(context, volume_type_id,
+                                                session)
+
+        if not encryption:
+            raise exception.VolumeTypeEncryptionNotFound(type_id=
+                                                         volume_type_id)
+
+        encryption.update(values)
+        encryption.save(session=session)
+
+        return encryption
 
 
 def volume_type_encryption_volume_get(context, volume_type_id, session=None):

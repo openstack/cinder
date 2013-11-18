@@ -211,9 +211,8 @@ class VolumeTypeTestCase(test.TestCase):
             'control_location': 'front-end',
             'provider': 'fake_provider',
         }
-        db_api.volume_type_encryption_update_or_create(self.ctxt,
-                                                       volume_type_id,
-                                                       encryption)
+        db_api.volume_type_encryption_create(self.ctxt, volume_type_id,
+                                             encryption)
         self.assertTrue(volume_types.is_encrypted(self.ctxt, volume_type_id))
 
     def test_get_volume_type_qos_specs(self):
@@ -292,10 +291,10 @@ class VolumeTypeTestCase(test.TestCase):
                         'control_location': 'front-end'}
         enc_keyvals2 = {'cipher': 'c1', 'key_size': 128, 'provider': 'p1',
                         'control_location': 'front-end'}
-        db.volume_type_encryption_update_or_create(self.ctxt, type_ref1['id'],
-                                                   enc_keyvals1)
-        db.volume_type_encryption_update_or_create(self.ctxt, type_ref2['id'],
-                                                   enc_keyvals2)
+        db.volume_type_encryption_create(self.ctxt, type_ref1['id'],
+                                         enc_keyvals1)
+        db.volume_type_encryption_create(self.ctxt, type_ref2['id'],
+                                         enc_keyvals2)
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
         self.assertEqual(same, False)

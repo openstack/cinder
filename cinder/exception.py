@@ -369,6 +369,10 @@ class VolumeTypeEncryptionExists(Invalid):
     message = _("Volume type encryption for type %(type_id)s already exists.")
 
 
+class VolumeTypeEncryptionNotFound(NotFound):
+    message = _("Volume type encryption for type %(type_id)s does not exist.")
+
+
 class MalformedRequestBody(CinderException):
     message = _("Malformed message body: %(reason)s")
 
