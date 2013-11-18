@@ -166,6 +166,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
                             self.configuration.lvm_type,
                             self.configuration.lvm_mirrors)
 
+        # Some configurations of LVM do not automatically activate
+        # ThinLVM snapshot LVs.
+        self.vg.activate_lv(snapshot['name'], is_snapshot=True)
+
         volutils.copy_volume(self.local_path(snapshot),
                              self.local_path(volume),
                              snapshot['volume_size'] * 1024,
