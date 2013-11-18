@@ -464,7 +464,7 @@ class API(base.Base):
 
         if volume['migration_status'] != None:
             # Volume is migrating, wait until done
-            msg = _("Volume cannot be deleted while migrating")
+            msg = _("Snapshot cannot be created while volume is migrating")
             raise exception.InvalidVolume(reason=msg)
 
         if ((not force) and (volume['status'] != "available")):
