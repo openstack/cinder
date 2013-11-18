@@ -67,9 +67,10 @@ class BrickLvmTestCase(test.TestCase):
 
         if 'vgs, --noheadings, --unit=g, -o, name' == cmd_string:
             data = "  fake-volumes\n"
-        elif 'vgs, --noheadings, -o, name' == cmd_string:
+            data += "  some-other-vg\n"
+        elif 'vgs, --noheadings, -o, name, fake-volumes' == cmd_string:
             data = "  fake-volumes\n"
-        if 'vgs, --version' in cmd_string:
+        elif 'vgs, --version' in cmd_string:
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
         elif 'vgs, --noheadings, -o uuid, fake-volumes' in cmd_string:
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
@@ -99,7 +100,7 @@ class BrickLvmTestCase(test.TestCase):
             data += "  fake-volumes-2:/dev/sdb:10.00g:8.99g\n"
             data += "  fake-volumes-3:/dev/sdc:10.00g:8.99g\n"
         else:
-            pass
+            raise AssertionError('unexpected command called: %s' % cmd_string)
 
         return (data, "")
 
