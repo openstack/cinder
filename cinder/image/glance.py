@@ -233,6 +233,9 @@ class GlanceImageService(object):
         """Returns the direct url representing the backend storage location,
         or None if this attribute is not shown by Glance.
         """
+        if CONF.glance_api_version == 1:
+            # image location not available in v1
+            return (None, None)
         try:
             # direct_url is returned by v2 api
             client = GlanceClientWrapper(version=2)
