@@ -875,7 +875,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         snap_path_chain = [{self.SNAP_UUID: snap_file},
                            {'active': snap_file}]
 
-        drv._read_info_file(info_path).AndReturn(info_file_dict)
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(info_file_dict)
 
         drv._execute('qemu-img', 'commit', snap_path_2, run_as_root=True)
 
@@ -964,7 +965,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv._ensure_share_writable(volume_dir)
 
         info_path = drv._local_path_volume(volume) + '.info'
-        drv._read_info_file(info_path).AndReturn(info_file_dict)
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(info_file_dict)
 
         img_info = image_utils.QemuImgInfo(qemu_img_info_output_snap_1)
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
@@ -992,6 +994,44 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv._read_info_file(info_path).AndReturn(info_file_dict)
 
         drv._write_info_file(info_path, info_file_dict)
+
+        mox.ReplayAll()
+
+        drv.delete_snapshot(snap_ref)
+
+        mox.VerifyAll()
+
+    def test_delete_snapshot_not_in_info(self):
+        """Snapshot not in info file / info file doesn't exist.
+
+        Snapshot creation failed so nothing is on-disk.  Driver
+        should allow operation to succeed so the manager can
+        remove the snapshot record.
+
+        (Scenario: Snapshot object created in Cinder db but not
+         on backing storage.)
+
+        """
+        (mox, drv) = self._mox, self._driver
+
+        hashed = drv._get_hash_str(self.TEST_EXPORT1)
+        volume_dir = os.path.join(self.TEST_MNT_POINT_BASE, hashed)
+        volume_filename = 'volume-%s' % self.VOLUME_UUID
+        volume_path = os.path.join(volume_dir, volume_filename)
+        info_path = '%s%s' % (volume_path, '.info')
+
+        mox.StubOutWithMock(drv, '_read_file')
+        mox.StubOutWithMock(drv, '_read_info_file')
+        mox.StubOutWithMock(drv, '_ensure_share_writable')
+
+        snap_ref = {'name': 'test snap',
+                    'volume_id': self.VOLUME_UUID,
+                    'volume': self._simple_volume(),
+                    'id': self.SNAP_UUID_2}
+
+        drv._ensure_share_writable(volume_dir)
+
+        drv._read_info_file(info_path, empty_if_missing=True).AndReturn({})
 
         mox.ReplayAll()
 
@@ -1220,7 +1260,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv._ensure_share_writable(volume_dir)
 
-        drv._read_info_file(info_path).AndReturn(snap_info)
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(snap_info)
 
         os.path.exists(snap_path).AndReturn(True)
 
@@ -1312,7 +1353,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv._ensure_share_writable(volume_dir)
 
-        drv._read_info_file(info_path).AndReturn(snap_info)
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(snap_info)
 
         os.path.exists(snap_path).AndReturn(True)
 
@@ -1395,7 +1437,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         snap_info = {'active': snap_file,
                      self.SNAP_UUID: snap_file}
 
-        drv._read_info_file(info_path).AndReturn(snap_info)
+        drv._read_info_file(info_path, empty_if_missing=True).\
+            AndReturn(snap_info)
 
         os.path.exists(snap_path).AndReturn(True)
 

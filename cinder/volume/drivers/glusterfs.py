@@ -547,6 +547,10 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         If volume status is 'in-use', calculate what qcow2 files need to
         merge, and call to Nova to perform this operation.
 
+        :raises: InvalidVolume if status not acceptable
+        :raises: GlusterfsException(msg) if operation fails
+        :returns: None
+
         """
 
         LOG.debug(_('deleting snapshot %s') % snapshot['id'])
@@ -562,9 +566,18 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         # Determine the true snapshot file for this snapshot
         #  based on the .info file
         info_path = self._local_path_volume(snapshot['volume']) + '.info'
-        snap_info = self._read_info_file(info_path)
-        snapshot_file = snap_info[snapshot['id']]
+        snap_info = self._read_info_file(info_path, empty_if_missing=True)
 
+        if snapshot['id'] not in snap_info:
+            # If snapshot info file is present, but snapshot record does not
+            # exist, do not attempt to delete.
+            # (This happens, for example, if snapshot_create failed due to lack
+            # of permission to write to the share.)
+            LOG.info(_('Snapshot record for %s is not present, allowing '
+                       'snapshot_delete to proceed.') % snapshot['id'])
+            return
+
+        snapshot_file = snap_info[snapshot['id']]
         LOG.debug(_('snapshot_file for this snap is %s') % snapshot_file)
 
         snapshot_path = '%s/%s' % (self._local_volume_dir(snapshot['volume']),
