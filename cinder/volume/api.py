@@ -100,7 +100,7 @@ class API(base.Base):
         self.key_manager = keymgr.API()
         super(API, self).__init__(db_driver)
 
-    def _valid_availabilty_zone(self, availability_zone):
+    def _valid_availability_zone(self, availability_zone):
         #NOTE(bcwaldon): This approach to caching fails to handle the case
         # that an availability zone is disabled/removed.
         if availability_zone in self.availability_zone_names:
@@ -139,7 +139,7 @@ class API(base.Base):
 
         def check_volume_az_zone(availability_zone):
             try:
-                return self._valid_availabilty_zone(availability_zone)
+                return self._valid_availability_zone(availability_zone)
             except exception.CinderException:
                 LOG.exception(_("Unable to query if %s is in the "
                                 "availability zone set"), availability_zone)
