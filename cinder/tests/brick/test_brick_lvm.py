@@ -214,6 +214,17 @@ class BrickLvmTestCase(test.TestCase):
 
         self.vg._supports_lvchange_ignoreskipactivation = None
 
+    def test_thin_pool_creation(self):
+
+        # The size of fake-volumes volume group is 10g, so the calculated thin
+        # pool size should be 9.5g (95% of 10g).
+        self.assertEqual("9.5g", self.vg.create_thin_pool())
+
+        # Passing a size parameter should result in a thin pool of that exact
+        # size.
+        for size in ("1g", "1.2g", "1.75g"):
+            self.assertEqual(size, self.vg.create_thin_pool(size_str=size))
+
     def test_volume_create_after_thin_creation(self):
         """Test self.vg.vg_thin_pool is set to pool_name
 
