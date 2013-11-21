@@ -22,7 +22,7 @@ import sys
 from eventlet import event
 from eventlet import greenthread
 
-from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common.gettextutils import _  # noqa
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 
