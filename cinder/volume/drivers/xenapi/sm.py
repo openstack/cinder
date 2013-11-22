@@ -175,7 +175,8 @@ class XenAPINFSDriver(driver.VolumeDriver):
             image_utils.fetch_to_raw(context,
                                      image_service,
                                      image_id,
-                                     device)
+                                     device,
+                                     size=volume['size'])
 
     def _use_glance_plugin_to_copy_image_to_volume(self, context, volume,
                                                    image_service, image_id):

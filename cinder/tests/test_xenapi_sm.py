@@ -392,7 +392,7 @@ class DriverTestCase(test.TestCase):
         mock, drv = self._setup_mock_driver(
             'server', 'serverpath', '/var/run/sr-mount')
 
-        volume = dict(provider_location='sr-uuid/vdi-uuid')
+        volume = dict(provider_location='sr-uuid/vdi-uuid', size=1)
         context = MockContext('token')
 
         mock.StubOutWithMock(driver.image_utils, 'fetch_to_raw')
@@ -402,7 +402,7 @@ class DriverTestCase(test.TestCase):
                 simple_context('device'))
 
         driver.image_utils.fetch_to_raw(
-            context, 'image_service', 'image_id', 'device')
+            context, 'image_service', 'image_id', 'device', size=1)
 
         mock.ReplayAll()
         drv._use_image_utils_to_pipe_bytes_to_volume(
