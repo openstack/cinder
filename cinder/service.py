@@ -323,7 +323,10 @@ class ProcessLauncher(object):
         if self.children:
             LOG.info(_('Waiting on %d children to exit'), len(self.children))
             while self.children:
-                self._wait_child()
+                wrap = self._wait_child()
+                if not wrap:
+                    eventlet.greenthread.sleep(.01)
+                    continue
 
 
 class Service(object):
