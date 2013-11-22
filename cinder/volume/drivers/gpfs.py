@@ -287,15 +287,15 @@ class GPFSDriver(driver.VolumeDriver):
         snapshot_path = self.local_path(snapshot)
         self._create_gpfs_copy(src=snapshot_path, dest=volume_path)
         self._gpfs_redirect(volume_path)
-        data = image_utils.qemu_img_info(volume_path)
-        return {'size': math.ceil(data.virtual_size / 1024.0 ** 3)}
+        virt_size = self._resize_volume_file(volume, volume['size'])
+        return {'size': math.ceil(virt_size / units.GiB)}
 
     def create_cloned_volume(self, volume, src_vref):
         src = self.local_path(src_vref)
         dest = self.local_path(volume)
         self._create_gpfs_clone(src, dest)
-        data = image_utils.qemu_img_info(dest)
-        return {'size': math.ceil(data.virtual_size / 1024.0 ** 3)}
+        virt_size = self._resize_volume_file(volume, volume['size'])
+        return {'size': math.ceil(virt_size / units.GiB)}
 
     def _delete_gpfs_file(self, fchild):
         if not os.path.exists(fchild):
@@ -452,8 +452,8 @@ class GPFSDriver(driver.VolumeDriver):
         data["storage_protocol"] = 'file'
         free, capacity = self._get_available_capacity(self.configuration.
                                                       gpfs_mount_point_base)
-        data['total_capacity_gb'] = math.ceil(capacity / 1024.0 ** 3)
-        data['free_capacity_gb'] = math.ceil(free / 1024.0 ** 3)
+        data['total_capacity_gb'] = math.ceil(capacity / units.GiB)
+        data['free_capacity_gb'] = math.ceil(free / units.GiB)
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data
@@ -526,7 +526,7 @@ class GPFSDriver(driver.VolumeDriver):
             image_utils.convert_image(image_path, vol_path, 'raw')
             self._execute('chmod', '666', vol_path, run_as_root=True)
 
-        image_utils.resize_image(vol_path, volume['size'])
+        self._resize_volume_file(volume, volume['size'])
 
         return {'provider_location': None}, True
 
@@ -546,7 +546,26 @@ class GPFSDriver(driver.VolumeDriver):
                   volume['id'])
         image_utils.fetch_to_raw(context, image_service, image_id,
                                  self.local_path(volume), size=volume['size'])
-        image_utils.resize_image(self.local_path(volume), volume['size'])
+        self._resize_volume_file(volume, volume['size'])
+
+    def _resize_volume_file(self, volume, new_size):
+        """Resize volume file to new size."""
+        vol_path = self.local_path(volume)
+        try:
+            image_utils.resize_image(vol_path, new_size)
+        except processutils.ProcessExecutionError as exc:
+            LOG.error(_("Failed to resize volume "
+                        "%(volume_id)s, error: %(error)s") %
+                      {'volume_id': volume['id'],
+                       'error': exc.stderr})
+            raise exception.VolumeBackendAPIException(data=exc.stderr)
+
+        data = image_utils.qemu_img_info(vol_path)
+        return data.virtual_size
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        self._resize_volume_file(volume, new_size)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
