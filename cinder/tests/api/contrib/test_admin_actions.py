@@ -633,7 +633,6 @@ class AdminActionsTest(test.TestCase):
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
                                   expected_status, expected_id):
-        admin_ctx = context.get_admin_context()
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
