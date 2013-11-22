@@ -184,8 +184,10 @@ class VolumeActionsController(wsgi.Controller):
             volume = self.volume_api.get(context, id)
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
-
-        connector = body['os-initialize_connection']['connector']
+        try:
+            connector = body['os-initialize_connection']['connector']
+        except KeyError:
+            raise webob.exc.HTTPBadRequest("Must specify 'connector'")
         info = self.volume_api.initialize_connection(context,
                                                      volume,
                                                      connector)
@@ -199,8 +201,10 @@ class VolumeActionsController(wsgi.Controller):
             volume = self.volume_api.get(context, id)
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
-
-        connector = body['os-terminate_connection']['connector']
+        try:
+            connector = body['os-terminate_connection']['connector']
+        except KeyError:
+            raise webob.exc.HTTPBadRequest("Must specify 'connector'")
         self.volume_api.terminate_connection(context, volume, connector)
         return webob.Response(status_int=202)
 
