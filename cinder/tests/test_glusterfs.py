@@ -405,7 +405,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv._mounted_shares = []
 
-        self.assertRaises(exception.NotFound, drv._find_share,
+        self.assertRaises(exception.GlusterfsNoSharesMounted,
+                          drv._find_share,
                           self.TEST_SIZE_IN_GB)
 
     def test_find_share(self):

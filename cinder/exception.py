@@ -106,6 +106,19 @@ class CinderException(Exception):
         return unicode(self.msg)
 
 
+class VolumeBackendAPIException(CinderException):
+    message = _("Bad or unexpected response from the storage volume "
+                "backend API: %(data)s")
+
+
+class VolumeDriverException(CinderException):
+    message = _("Volume driver reported an error: %(message)s")
+
+
+class BackupDriverException(CinderException):
+    message = _("Backup driver reported an error: %(message)s")
+
+
 class GlanceConnectionFailed(CinderException):
     message = _("Connection to glance failed: %(reason)s")
 
@@ -216,11 +229,6 @@ class NotFound(CinderException):
 
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
-
-
-class SfAccountNotFound(NotFound):
-    message = _("Unable to locate account %(account_name)s on "
-                "Solidfire device")
 
 
 class VolumeMetadataNotFound(NotFound):
@@ -417,90 +425,29 @@ class DuplicateSfVolumeNames(Duplicate):
     message = _("Detected more than one volume with name %(vol_name)s")
 
 
-class Invalid3PARDomain(CinderException):
-    message = _("Invalid 3PAR Domain: %(err)s")
-
-
 class VolumeTypeCreateFailed(CinderException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
 
 
-class SolidFireAPIException(CinderException):
-    message = _("Bad response from SolidFire API")
-
-
-class SolidFireAPIDataException(SolidFireAPIException):
-    message = _("Error in SolidFire API response: data=%(data)s")
-
-
-class UnknownCmd(Invalid):
+class UnknownCmd(VolumeDriverException):
     message = _("Unknown or unsupported command %(cmd)s")
 
 
-class MalformedResponse(Invalid):
+class MalformedResponse(VolumeDriverException):
     message = _("Malformed response to command %(cmd)s: %(reason)s")
 
 
-class BadHTTPResponseStatus(CinderException):
-    message = _("Bad HTTP response status %(status)s")
+class BadDriverResponseStatus(VolumeDriverException):
+    message = _("Bad driver response status: %(status)s")
 
 
-class FailedCmdWithDump(CinderException):
+class FailedCmdWithDump(VolumeDriverException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
-
-
-class ZadaraServerCreateFailure(CinderException):
-    message = _("Unable to create server object for initiator %(name)s")
-
-
-class ZadaraServerNotFound(NotFound):
-    message = _("Unable to find server object for initiator %(name)s")
-
-
-class ZadaraVPSANoActiveController(CinderException):
-    message = _("Unable to find any active VPSA controller")
-
-
-class ZadaraAttachmentsNotFound(NotFound):
-    message = _("Failed to retrieve attachments for volume %(name)s")
-
-
-class ZadaraInvalidAttachmentInfo(Invalid):
-    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
 
 
 class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
-
-
-class VolumeBackendAPIException(CinderException):
-    message = _("Bad or unexpected response from the storage volume "
-                "backend API: %(data)s")
-
-
-class NfsException(CinderException):
-    message = _("Unknown NFS exception")
-
-
-class NfsNoSharesMounted(NotFound):
-    message = _("No mounted NFS shares found")
-
-
-class NfsNoSuitableShareFound(NotFound):
-    message = _("There is no share which can host %(volume_size)sG")
-
-
-class GlusterfsException(CinderException):
-    message = _("Unknown Gluster exception")
-
-
-class GlusterfsNoSharesMounted(NotFound):
-    message = _("No mounted Gluster shares found")
-
-
-class GlusterfsNoSuitableShareFound(NotFound):
-    message = _("There is no share which can host %(volume_size)sG")
 
 
 class GlanceMetadataExists(Invalid):
@@ -532,7 +479,7 @@ class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume: %(reason)s")
 
 
-class BackupInvalidCephArgs(Invalid):
+class BackupInvalidCephArgs(BackupDriverException):
     message = _("Invalid Ceph args provided for backup rbd operation")
 
 
@@ -540,7 +487,7 @@ class BackupOperationError(Invalid):
     message = _("An error has occurred during backup operation")
 
 
-class BackupRBDOperationFailed(Invalid):
+class BackupRBDOperationFailed(BackupDriverException):
     message = _("Backup RBD operation failed")
 
 
@@ -556,7 +503,7 @@ class InvalidBackup(Invalid):
     message = _("Invalid backup: %(reason)s")
 
 
-class SwiftConnectionFailed(CinderException):
+class SwiftConnectionFailed(BackupDriverException):
     message = _("Connection to swift failed: %(reason)s")
 
 
@@ -570,34 +517,6 @@ class VolumeMigrationFailed(CinderException):
 
 class SSHInjectionThreat(CinderException):
     message = _("SSH command injection detected: %(command)s")
-
-
-class CoraidException(CinderException):
-    message = _('Coraid Cinder Driver exception.')
-
-
-class CoraidJsonEncodeFailure(CoraidException):
-    message = _('Failed to encode json data.')
-
-
-class CoraidESMBadCredentials(CoraidException):
-    message = _('Login on ESM failed.')
-
-
-class CoraidESMReloginFailed(CoraidException):
-    message = _('Relogin on ESM failed.')
-
-
-class CoraidESMBadGroup(CoraidException):
-    message = _('Group with name "%(group_name)s" not found.')
-
-
-class CoraidESMConfigureError(CoraidException):
-    message = _('ESM configure request failed: %(message)s.')
-
-
-class CoraidESMNotAvailable(CoraidException):
-    message = _('Coraid ESM not available with reason: %(reason)s.')
 
 
 class QoSSpecsExists(Duplicate):
@@ -643,3 +562,115 @@ class QoSSpecsInUse(CinderException):
 
 class KeyManagerError(CinderException):
     msg_fmt = _("key manager error: %(reason)s")
+
+
+# Driver specific exceptions
+# Coraid
+class CoraidException(VolumeDriverException):
+    message = _('Coraid Cinder Driver exception.')
+
+
+class CoraidJsonEncodeFailure(CoraidException):
+    message = _('Failed to encode json data.')
+
+
+class CoraidESMBadCredentials(CoraidException):
+    message = _('Login on ESM failed.')
+
+
+class CoraidESMReloginFailed(CoraidException):
+    message = _('Relogin on ESM failed.')
+
+
+class CoraidESMBadGroup(CoraidException):
+    message = _('Group with name "%(group_name)s" not found.')
+
+
+class CoraidESMConfigureError(CoraidException):
+    message = _('ESM configure request failed: %(message)s.')
+
+
+class CoraidESMNotAvailable(CoraidException):
+    message = _('Coraid ESM not available with reason: %(reason)s.')
+
+
+# Zadara
+class ZadaraException(VolumeDriverException):
+    message = _('Zadara Cinder Driver exception.')
+
+
+class ZadaraServerCreateFailure(ZadaraException):
+    message = _("Unable to create server object for initiator %(name)s")
+
+
+class ZadaraServerNotFound(ZadaraException):
+    message = _("Unable to find server object for initiator %(name)s")
+
+
+class ZadaraVPSANoActiveController(ZadaraException):
+    message = _("Unable to find any active VPSA controller")
+
+
+class ZadaraAttachmentsNotFound(ZadaraException):
+    message = _("Failed to retrieve attachments for volume %(name)s")
+
+
+class ZadaraInvalidAttachmentInfo(ZadaraException):
+    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
+
+
+class BadHTTPResponseStatus(ZadaraException):
+    message = _("Bad HTTP response status %(status)s")
+
+
+#SolidFire
+class SolidFireAPIException(VolumeBackendAPIException):
+    message = _("Bad response from SolidFire API")
+
+
+class SolidFireDriverException(VolumeDriverException):
+    message = _("SolidFire Cinder Driver exception")
+
+
+class SolidFireAPIDataException(SolidFireAPIException):
+    message = _("Error in SolidFire API response: data=%(data)s")
+
+
+class SolidFireAccountNotFound(SolidFireDriverException):
+    message = _("Unable to locate account %(account_name)s on "
+                "Solidfire device")
+
+
+class DuplicateSolidFireVolumeNames(SolidFireDriverException):
+    message = _("Detected more than one volume with name %(vol_name)s")
+
+
+# HP 3Par
+class Invalid3PARDomain(VolumeDriverException):
+    message = _("Invalid 3PAR Domain: %(err)s")
+
+
+# NFS driver
+class NfsException(VolumeDriverException):
+    message = _("Unknown NFS exception")
+
+
+class NfsNoSharesMounted(VolumeDriverException):
+    message = _("No mounted NFS shares found")
+
+
+class NfsNoSuitableShareFound(VolumeDriverException):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
+# Gluster driver
+class GlusterfsException(VolumeDriverException):
+    message = _("Unknown Gluster exception")
+
+
+class GlusterfsNoSharesMounted(VolumeDriverException):
+    message = _("No mounted Gluster shares found")
+
+
+class GlusterfsNoSuitableShareFound(VolumeDriverException):
+    message = _("There is no share which can host %(volume_size)sG")
