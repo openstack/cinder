@@ -56,6 +56,8 @@ def print_help():
 def main(argv):
     root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     venv = os.path.join(root, '.venv')
+    if os.environ.get('venv'):
+        venv = os.environ['venv']
     pip_requires = os.path.join(root, 'requirements.txt')
     test_requires = os.path.join(root, 'test-requirements.txt')
     project = 'Cinder'
