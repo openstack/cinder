@@ -56,6 +56,17 @@ class SnapshotActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 400)
 
+    def test_update_snapshot_status_without_status(self):
+        self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
+        body = {'os-update_snapshot_status': {}}
+        req = webob.Request.blank('/v2/fake/snapshots/1/action')
+        req.method = "POST"
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+
 
 def stub_snapshot_get(context, snapshot_id):
     snapshot = stubs.stub_snapshot(snapshot_id)

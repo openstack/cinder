@@ -46,7 +46,11 @@ class SnapshotActionsController(wsgi.Controller):
         authorize(context, 'update_snapshot_status')
 
         LOG.debug("body: %s" % body)
-        status = body['os-update_snapshot_status']['status']
+        try:
+            status = body['os-update_snapshot_status']['status']
+        except KeyError:
+            msg = _("'status' must be specified.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         # Allowed state transitions
         status_map = {'creating': ['creating', 'available', 'error'],
