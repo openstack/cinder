@@ -917,26 +917,6 @@ class DBAPIReservationTestCase(BaseTest):
             'usage': {'id': 1}
         }
 
-    def test_reservation_create(self):
-        reservation = db.reservation_create(self.ctxt, **self.values)
-        self._assertEqualObjects(self.values, reservation, ignored_keys=(
-            'deleted', 'updated_at',
-            'deleted_at', 'id',
-            'created_at', 'usage',
-            'usage_id'))
-        self.assertEqual(reservation['usage_id'], self.values['usage']['id'])
-
-    def test_reservation_get(self):
-        reservation = db.reservation_create(self.ctxt, **self.values)
-        reservation_db = db.reservation_get(self.ctxt, self.values['uuid'])
-        self._assertEqualObjects(reservation, reservation_db)
-
-    def test_reservation_get_nonexistent(self):
-        self.assertRaises(exception.ReservationNotFound,
-                          db.reservation_get,
-                          self.ctxt,
-                          'non-exitent-resevation-uuid')
-
     def test_reservation_commit(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = {'project_id': 'project1',
@@ -946,12 +926,7 @@ class DBAPIReservationTestCase(BaseTest):
         self.assertEqual(expected,
                          db.quota_usage_get_all_by_project(
                              self.ctxt, 'project1'))
-        db.reservation_get(self.ctxt, reservations[0])
         db.reservation_commit(self.ctxt, reservations, 'project1')
-        self.assertRaises(exception.ReservationNotFound,
-                          db.reservation_get,
-                          self.ctxt,
-                          reservations[0])
         expected = {'project_id': 'project1',
                     'volumes': {'reserved': 0, 'in_use': 1},
                     'gigabytes': {'reserved': 0, 'in_use': 2},
@@ -971,12 +946,7 @@ class DBAPIReservationTestCase(BaseTest):
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
                              'project1'))
-        db.reservation_get(self.ctxt, reservations[0])
         db.reservation_rollback(self.ctxt, reservations, 'project1')
-        self.assertRaises(exception.ReservationNotFound,
-                          db.reservation_get,
-                          self.ctxt,
-                          reservations[0])
         expected = {'project_id': 'project1',
                     'volumes': {'reserved': 0, 'in_use': 0},
                     'gigabytes': {'reserved': 0, 'in_use': 0},
@@ -985,16 +955,6 @@ class DBAPIReservationTestCase(BaseTest):
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
                              'project1'))
-
-    def test_reservation_get_all_by_project(self):
-        reservations = _quota_reserve(self.ctxt, 'project1')
-        r1 = db.reservation_get(self.ctxt, reservations[0])
-        r2 = db.reservation_get(self.ctxt, reservations[1])
-        expected = {'project_id': 'project1',
-                    r1['resource']: {r1['uuid']: r1['delta']},
-                    r2['resource']: {r2['uuid']: r2['delta']}}
-        self.assertEqual(expected, db.reservation_get_all_by_project(
-            self.ctxt, 'project1'))
 
     def test_reservation_expire(self):
         self.values['expire'] = datetime.datetime.utcnow() + \
@@ -1009,15 +969,6 @@ class DBAPIReservationTestCase(BaseTest):
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
                              'project1'))
-
-    def test_reservation_destroy(self):
-        reservations = _quota_reserve(self.ctxt, 'project1')
-        r1 = db.reservation_get(self.ctxt, reservations[0])
-        db.reservation_destroy(self.ctxt, reservations[1])
-        expected = {'project_id': 'project1',
-                    r1['resource']: {r1['uuid']: r1['delta']}}
-        self.assertEqual(expected, db.reservation_get_all_by_project(
-            self.ctxt, 'project1'))
 
 
 class DBAPIQuotaClassTestCase(BaseTest):
@@ -1117,11 +1068,11 @@ class DBAPIQuotaTestCase(BaseTest):
     def test_quota_reserve(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         self.assertEqual(len(reservations), 2)
-        res_names = ['gigabytes', 'volumes']
-        for uuid in reservations:
-            reservation = db.reservation_get(self.ctxt, uuid)
-            self.assertIn(reservation.resource, res_names)
-            res_names.remove(reservation.resource)
+        quota_usage = db.quota_usage_get_all_by_project(self.ctxt, 'project1')
+        self.assertEqual({'project_id': 'project1',
+                          'gigabytes': {'reserved': 2, 'in_use': 0},
+                          'volumes': {'reserved': 1, 'in_use': 0}},
+                         quota_usage)
 
     def test_quota_destroy(self):
         db.quota_create(self.ctxt, 'project1', 'resource1', 41)
@@ -1131,18 +1082,13 @@ class DBAPIQuotaTestCase(BaseTest):
                           self.ctxt, 'project1', 'resource1')
 
     def test_quota_destroy_all_by_project(self):
-        reservations = _quota_reserve(self.ctxt, 'project1')
+        _quota_reserve(self.ctxt, 'project1')
         db.quota_destroy_all_by_project(self.ctxt, 'project1')
         self.assertEqual(db.quota_get_all_by_project(self.ctxt, 'project1'),
                          {'project_id': 'project1'})
         self.assertEqual(db.quota_usage_get_all_by_project(self.ctxt,
                                                            'project1'),
                          {'project_id': 'project1'})
-        for r in reservations:
-            self.assertRaises(exception.ReservationNotFound,
-                              db.reservation_get,
-                              self.ctxt,
-                              r)
 
     def test_quota_usage_get_nonexistent(self):
         self.assertRaises(exception.QuotaUsageNotFound,
