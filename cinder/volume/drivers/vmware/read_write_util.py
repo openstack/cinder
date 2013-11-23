@@ -28,6 +28,8 @@ import urllib2
 import urlparse
 
 from cinder.openstack.common import log as logging
+from cinder.volume.drivers.vmware import error_util
+from cinder.volume.drivers.vmware import vim_util
 
 LOG = logging.getLogger(__name__)
 USER_AGENT = 'OpenStack-ESX-Adapter'
@@ -63,19 +65,11 @@ class GlanceFileRead(object):
 
 
 class VMwareHTTPFile(object):
-    """Base class for HTTP file."""
+    """Base class for VMDK file access over HTTP."""
 
     def __init__(self, file_handle):
         self.eof = False
         self.file_handle = file_handle
-
-    def set_eof(self, eof):
-        """Set the end of file marker."""
-        self.eof = eof
-
-    def get_eof(self):
-        """Check if the end of file has been reached."""
-        return self.eof
 
     def close(self):
         """Close the file handle."""
@@ -121,6 +115,28 @@ class VMwareHTTPFile(object):
             return '%s://[%s]' % (scheme, host)
         return '%s://%s' % (scheme, host)
 
+    def _fix_esx_url(self, url, host):
+        """Fix netloc if it is a ESX host.
+
+        For a ESX host the netloc is set to '*' in the url returned in
+        HttpNfcLeaseInfo. The netloc is right IP when talking to a VC.
+        """
+        urlp = urlparse.urlparse(url)
+        if urlp.netloc == '*':
+            scheme, _, path, params, query, fragment = urlp
+            url = urlparse.urlunparse((scheme, host, path, params,
+                                       query, fragment))
+        return url
+
+    def find_vmdk_url(self, lease_info, host):
+        """Find the URL corresponding to a vmdk disk in lease info."""
+        url = None
+        for deviceUrl in lease_info.deviceUrl:
+            if deviceUrl.disk:
+                url = self._fix_esx_url(deviceUrl.url, host)
+                break
+        return url
+
 
 class VMwareHTTPWriteFile(VMwareHTTPFile):
     """VMware file write handler class."""
@@ -159,28 +175,165 @@ class VMwareHTTPWriteFile(VMwareHTTPFile):
         super(VMwareHTTPWriteFile, self).close()
 
 
-class VMwareHTTPReadFile(VMwareHTTPFile):
-    """VMware file read handler class."""
+class VMwareHTTPWriteVmdk(VMwareHTTPFile):
+    """Write VMDK over HTTP using VMware HttpNfcLease."""
 
-    def __init__(self, host, data_center_name, datastore_name, cookies,
-                 file_path, scheme='https'):
-        soap_url = self.get_soap_url(scheme, host)
-        base_url = '%s/folder/%s' % (soap_url, urllib.pathname2url(file_path))
-        param_list = {'dcPath': data_center_name, 'dsName': datastore_name}
-        base_url = base_url + '?' + urllib.urlencode(param_list)
+    def __init__(self, session, host, rp_ref, vm_folder_ref, vm_create_spec,
+                 vmdk_size):
+        """Initialize a writer for vmdk file.
+
+        :param session: a valid api session to ESX/VC server
+        :param host: the ESX or VC host IP
+        :param rp_ref: resource pool into which backing VM is imported
+        :param vm_folder_ref: VM folder in ESX/VC inventory to use as parent
+               of backing VM
+        :param vm_create_spec: backing VM created using this create spec
+        :param vmdk_size: VMDK size to be imported into backing VM
+        """
+        self._session = session
+        self._vmdk_size = vmdk_size
+        self._progress = 0
+        lease = session.invoke_api(session.vim, 'ImportVApp', rp_ref,
+                                   spec=vm_create_spec, folder=vm_folder_ref)
+        session.wait_for_lease_ready(lease)
+        self._lease = lease
+        lease_info = session.invoke_api(vim_util, 'get_object_property',
+                                        session.vim, lease, 'info')
+        # Find the url for vmdk device
+        url = self.find_vmdk_url(lease_info, host)
+        if not url:
+            msg = _("Could not retrieve URL from lease.")
+            LOG.exception(msg)
+            raise error_util.VimException(msg)
+        LOG.info(_("Opening vmdk url: %s for write.") % url)
+
+        # Prepare the http connection to the vmdk url
+        cookies = session.vim.client.options.transport.cookiejar
+        _urlparse = urlparse.urlparse(url)
+        scheme, netloc, path, params, query, fragment = _urlparse
+        if scheme == 'http':
+            conn = httplib.HTTPConnection(netloc)
+        elif scheme == 'https':
+            conn = httplib.HTTPSConnection(netloc)
+        if query:
+            path = path + '?' + query
+        conn.putrequest('PUT', path)
+        conn.putheader('User-Agent', USER_AGENT)
+        conn.putheader('Content-Length', str(vmdk_size))
+        conn.putheader('Overwrite', 't')
+        conn.putheader('Cookie', self._build_vim_cookie_headers(cookies))
+        conn.putheader('Content-Type', 'binary/octet-stream')
+        conn.endheaders()
+        self.conn = conn
+        VMwareHTTPFile.__init__(self, conn)
+
+    def write(self, data):
+        """Write to the file."""
+        self._progress += len(data)
+        LOG.debug(_("Written %s bytes to vmdk.") % self._progress)
+        self.file_handle.send(data)
+
+    def update_progress(self):
+        """Updates progress to lease.
+
+        This call back to the lease is essential to keep the lease alive
+        across long running write operations.
+        """
+        percent = int(float(self._progress) / self._vmdk_size * 100)
+        try:
+            LOG.debug(_("Updating progress to %s percent.") % percent)
+            self._session.invoke_api(self._session.vim,
+                                     'HttpNfcLeaseProgress',
+                                     self._lease, percent=percent)
+        except error_util.VimException as ex:
+            LOG.exception(ex)
+            raise ex
+
+    def close(self):
+        """End the lease and close the connection."""
+        state = self._session.invoke_api(vim_util, 'get_object_property',
+                                         self._session.vim,
+                                         self._lease, 'state')
+        if state == 'ready':
+            self._session.invoke_api(self._session.vim, 'HttpNfcLeaseComplete',
+                                     self._lease)
+            LOG.debug(_("Lease released."))
+        else:
+            LOG.debug(_("Lease is already in state: %s.") % state)
+        super(VMwareHTTPWriteVmdk, self).close()
+
+
+class VMwareHTTPReadVmdk(VMwareHTTPFile):
+    """read VMDK over HTTP using VMware HttpNfcLease."""
+
+    def __init__(self, session, host, vm_ref, vmdk_path, vmdk_size):
+        """Initialize a writer for vmdk file.
+
+        During an export operation the vmdk disk is converted to a
+        stream-optimized sparse disk format. So the size of the VMDK
+        after export may be smaller than the current vmdk disk size.
+
+        :param session: a valid api session to ESX/VC server
+        :param host: the ESX or VC host IP
+        :param vm_ref: backing VM whose vmdk is to be exported
+        :param vmdk_path: datastore relative path to vmdk file to be exported
+        :param vmdk_size: current disk size of vmdk file to be exported
+        """
+        self._session = session
+        self._vmdk_size = vmdk_size
+        self._progress = 0
+        lease = session.invoke_api(session.vim, 'ExportVm', vm_ref)
+        session.wait_for_lease_ready(lease)
+        self._lease = lease
+        lease_info = session.invoke_api(vim_util, 'get_object_property',
+                                        session.vim, lease, 'info')
+
+        # find the right disk url corresponding to given vmdk_path
+        url = self.find_vmdk_url(lease_info, host)
+        if not url:
+            msg = _("Could not retrieve URL from lease.")
+            LOG.exception(msg)
+            raise error_util.VimException(msg)
+        LOG.info(_("Opening vmdk url: %s for read.") % url)
+
+        cookies = session.vim.client.options.transport.cookiejar
         headers = {'User-Agent': USER_AGENT,
                    'Cookie': self._build_vim_cookie_headers(cookies)}
-        request = urllib2.Request(base_url, None, headers)
+        request = urllib2.Request(url, None, headers)
         conn = urllib2.urlopen(request)
         VMwareHTTPFile.__init__(self, conn)
 
     def read(self, chunk_size):
-        """Read a chunk of data."""
-        # We are ignoring the chunk size passed for we want the pipe to hold
-        # data items of the chunk-size that Glance Client uses for read
-        # while writing.
+        """Read a chunk from file"""
+        self._progress += READ_CHUNKSIZE
+        LOG.debug(_("Read %s bytes from vmdk.") % self._progress)
         return self.file_handle.read(READ_CHUNKSIZE)
 
-    def get_size(self):
-        """Get size of the file to be read."""
-        return self.file_handle.headers.get('Content-Length', -1)
+    def update_progress(self):
+        """Updates progress to lease.
+
+        This call back to the lease is essential to keep the lease alive
+        across long running read operations.
+        """
+        percent = int(float(self._progress) / self._vmdk_size * 100)
+        try:
+            LOG.debug(_("Updating progress to %s percent.") % percent)
+            self._session.invoke_api(self._session.vim,
+                                     'HttpNfcLeaseProgress',
+                                     self._lease, percent=percent)
+        except error_util.VimException as ex:
+            LOG.exception(ex)
+            raise ex
+
+    def close(self):
+        """End the lease and close the connection."""
+        state = self._session.invoke_api(vim_util, 'get_object_property',
+                                         self._session.vim,
+                                         self._lease, 'state')
+        if state == 'ready':
+            self._session.invoke_api(self._session.vim, 'HttpNfcLeaseComplete',
+                                     self._lease)
+            LOG.debug(_("Lease released."))
+        else:
+            LOG.debug(_("Lease is already in state: %s.") % state)
+        super(VMwareHTTPReadVmdk, self).close()

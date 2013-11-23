@@ -30,7 +30,7 @@ LOG = logging.getLogger(__name__)
 QUEUE_BUFFER_SIZE = 10
 
 
-def start_transfer(context, timeout_secs, read_file_handle, data_size,
+def start_transfer(context, timeout_secs, read_file_handle, max_data_size,
                    write_file_handle=None, image_service=None, image_id=None,
                    image_meta=None):
     """Start the data transfer from the reader to the writer.
@@ -45,7 +45,7 @@ def start_transfer(context, timeout_secs, read_file_handle, data_size,
 
     # The pipe that acts as an intermediate store of data for reader to write
     # to and writer to grab from.
-    thread_safe_pipe = io_util.ThreadSafePipe(QUEUE_BUFFER_SIZE, data_size)
+    thread_safe_pipe = io_util.ThreadSafePipe(QUEUE_BUFFER_SIZE, max_data_size)
     # The read thread. In case of glance it is the instance of the
     # GlanceFileRead class. The glance client read returns an iterator
     # and this class wraps that iterator to provide datachunks in calls
@@ -91,11 +91,11 @@ def start_transfer(context, timeout_secs, read_file_handle, data_size,
             write_file_handle.close()
 
 
-def fetch_image(context, timeout_secs, image_service, image_id, **kwargs):
-    """Download image from the glance image server."""
-    LOG.debug(_("Downloading image: %s from glance image server.") % image_id)
-    metadata = image_service.show(context, image_id)
-    file_size = int(metadata['size'])
+def fetch_flat_image(context, timeout_secs, image_service, image_id, **kwargs):
+    """Download flat image from the glance image server."""
+    LOG.debug(_("Downloading image: %s from glance image server as a flat vmdk"
+                " file.") % image_id)
+    file_size = int(kwargs.get('image_size'))
     read_iter = image_service.download(context, image_id)
     read_handle = rw_util.GlanceFileRead(read_iter)
     write_handle = rw_util.VMwareHTTPWriteFile(kwargs.get('host'),
@@ -109,25 +109,50 @@ def fetch_image(context, timeout_secs, image_service, image_id, **kwargs):
     LOG.info(_("Downloaded image: %s from glance image server.") % image_id)
 
 
+def fetch_stream_optimized_image(context, timeout_secs, image_service,
+                                 image_id, **kwargs):
+    """Download stream optimized image from glance image server."""
+    LOG.debug(_("Downloading image: %s from glance image server using HttpNfc"
+                " import.") % image_id)
+    file_size = int(kwargs.get('image_size'))
+    read_iter = image_service.download(context, image_id)
+    read_handle = rw_util.GlanceFileRead(read_iter)
+    write_handle = rw_util.VMwareHTTPWriteVmdk(kwargs.get('session'),
+                                               kwargs.get('host'),
+                                               kwargs.get('resource_pool'),
+                                               kwargs.get('vm_folder'),
+                                               kwargs.get('vm_create_spec'),
+                                               file_size)
+    start_transfer(context, timeout_secs, read_handle, file_size,
+                   write_file_handle=write_handle)
+    LOG.info(_("Downloaded image: %s from glance image server.") % image_id)
+
+
 def upload_image(context, timeout_secs, image_service, image_id, owner_id,
                  **kwargs):
-    """Upload the snapshot vm disk file to Glance image server."""
-    LOG.debug(_("Uploading image: %s to the Glance image server.") % image_id)
-    read_handle = rw_util.VMwareHTTPReadFile(kwargs.get('host'),
-                                             kwargs.get('data_center_name'),
-                                             kwargs.get('datastore_name'),
-                                             kwargs.get('cookies'),
-                                             kwargs.get('file_path'))
-    file_size = read_handle.get_size()
+    """Upload the vm's disk file to Glance image server."""
+    LOG.debug(_("Uploading image: %s to the Glance image server using HttpNfc"
+                " export.") % image_id)
+    file_size = kwargs.get('vmdk_size')
+    read_handle = rw_util.VMwareHTTPReadVmdk(kwargs.get('session'),
+                                             kwargs.get('host'),
+                                             kwargs.get('vm'),
+                                             kwargs.get('vmdk_file_path'),
+                                             file_size)
+
     # The properties and other fields that we need to set for the image.
+    # Important to set the 'size' to 0 here. Otherwise the glance client
+    # uses the volume size which may not be image size after upload since
+    # it is converted to a stream-optimized sparse disk
     image_metadata = {'disk_format': 'vmdk',
                       'is_public': 'false',
-                      'name': kwargs.get('snapshot_name'),
+                      'name': kwargs.get('image_name'),
                       'status': 'active',
                       'container_format': 'bare',
-                      'size': file_size,
+                      'size': 0,
                       'properties': {'vmware_image_version':
                                      kwargs.get('image_version'),
+                                     'vmware_disktype': 'streamOptimized',
                                      'owner_id': owner_id}}
     start_transfer(context, timeout_secs, read_handle, file_size,
                    image_service=image_service, image_id=image_id,

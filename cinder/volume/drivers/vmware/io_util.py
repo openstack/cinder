@@ -36,22 +36,26 @@ class ThreadSafePipe(queue.LightQueue):
     """The pipe to hold the data which the reader writes to and the writer
     reads from.
     """
-    def __init__(self, maxsize, transfer_size):
+    def __init__(self, maxsize, max_transfer_size):
         queue.LightQueue.__init__(self, maxsize)
-        self.transfer_size = transfer_size
+        self.max_transfer_size = max_transfer_size
         self.transferred = 0
 
     def read(self, chunk_size):
         """Read data from the pipe.
 
-        Chunksize if ignored for we have ensured that the data chunks written
+        Chunksize is ignored for we have ensured that the data chunks written
         to the pipe by readers is the same as the chunks asked for by Writer.
         """
-        if self.transferred < self.transfer_size:
+        if self.transferred < self.max_transfer_size:
             data_item = self.get()
             self.transferred += len(data_item)
+            LOG.debug(_("Read %(bytes)s out of %(max)s from ThreadSafePipe.") %
+                      {'bytes': self.transferred,
+                       'max': self.max_transfer_size})
             return data_item
         else:
+            LOG.debug(_("Completed transfer of size %s.") % self.transferred)
             return ""
 
     def write(self, data):
@@ -64,7 +68,7 @@ class ThreadSafePipe(queue.LightQueue):
 
     def tell(self):
         """Get size of the file to be read."""
-        return self.transfer_size
+        return self.max_transfer_size
 
     def close(self):
         """A place-holder to maintain consistency."""
@@ -76,13 +80,13 @@ class GlanceWriteThread(object):
     it is in correct ('active')state.
     """
 
-    def __init__(self, context, input, image_service, image_id,
+    def __init__(self, context, input_file, image_service, image_id,
                  image_meta=None):
         if not image_meta:
             image_meta = {}
 
         self.context = context
-        self.input = input
+        self.input_file = input_file
         self.image_service = image_service
         self.image_id = image_id
         self.image_meta = image_meta
@@ -97,10 +101,13 @@ class GlanceWriteThread(object):
             Function to do the image data transfer through an update
             and thereon checks if the state is 'active'.
             """
+            LOG.debug(_("Initiating image service update on image: %(image)s "
+                        "with meta: %(meta)s") % {'image': self.image_id,
+                                                  'meta': self.image_meta})
             self.image_service.update(self.context,
                                       self.image_id,
                                       self.image_meta,
-                                      data=self.input)
+                                      data=self.input_file)
             self._running = True
             while self._running:
                 try:
@@ -109,6 +116,8 @@ class GlanceWriteThread(object):
                     image_status = image_meta.get('status')
                     if image_status == 'active':
                         self.stop()
+                        LOG.debug(_("Glance image: %s is now active.") %
+                                  self.image_id)
                         self.done.send(True)
                     # If the state is killed, then raise an exception.
                     elif image_status == 'killed':
@@ -150,9 +159,9 @@ class IOThread(object):
     output file till the transfer is completely done.
     """
 
-    def __init__(self, input, output):
-        self.input = input
-        self.output = output
+    def __init__(self, input_file, output_file):
+        self.input_file = input_file
+        self.output_file = output_file
         self._running = False
         self.got_exception = False
 
@@ -160,15 +169,19 @@ class IOThread(object):
         self.done = event.Event()
 
         def _inner():
-            """Read data from the input and write the same to the output."""
+            """Read data from input and write the same to output."""
             self._running = True
             while self._running:
                 try:
-                    data = self.input.read(None)
+                    data = self.input_file.read(None)
                     if not data:
                         self.stop()
                         self.done.send(True)
-                    self.output.write(data)
+                    self.output_file.write(data)
+                    if hasattr(self.input_file, "update_progress"):
+                        self.input_file.update_progress()
+                    if hasattr(self.output_file, "update_progress"):
+                        self.output_file.update_progress()
                     greenthread.sleep(IO_THREAD_SLEEP_TIME)
                 except Exception as exc:
                     self.stop()
