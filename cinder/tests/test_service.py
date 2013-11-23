@@ -210,6 +210,12 @@ class TestWSGIService(test.TestCase):
         self.assertNotEqual(0, test_service.port)
         test_service.stop()
 
+    def test_service_with_min_down_time(self):
+        CONF.set_override('service_down_time', 10)
+        CONF.set_override('report_interval', 10)
+        service.WSGIService("test_service")
+        self.assertEqual(CONF.service_down_time, 25)
+
 
 class TestLauncher(test.TestCase):
 
