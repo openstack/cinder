@@ -62,6 +62,11 @@ class QuotaIntegrationTestCase(test.TestCase):
 
         self.stubs.Set(rpc, 'call', rpc_call_wrapper)
 
+        # Destroy the 'default' quota_class in the database to avoid
+        # conflicts with the test cases here that are setting up their own
+        # defaults.
+        db.quota_class_destroy_all_by_name(self.context, 'default')
+
     def tearDown(self):
         db.volume_type_destroy(context.get_admin_context(),
                                self.volume_type['id'])
