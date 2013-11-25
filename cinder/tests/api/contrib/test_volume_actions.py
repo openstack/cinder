@@ -241,6 +241,8 @@ class VolumeActionsTest(test.TestCase):
 
         def make_update_readonly_flag_test(self, readonly, return_code):
             body = {"os-update_readonly_flag": {"readonly": readonly}}
+            if readonly is None:
+                body = {"os-update_readonly_flag": {}}
             req = webob.Request.blank('/v2/fake/volumes/1/action')
             req.method = "POST"
             req.body = jsonutils.dumps(body)
@@ -254,6 +256,7 @@ class VolumeActionsTest(test.TestCase):
         make_update_readonly_flag_test(self, 'false', 202)
         make_update_readonly_flag_test(self, 'tt', 400)
         make_update_readonly_flag_test(self, 11, 400)
+        make_update_readonly_flag_test(self, None, 400)
 
 
 def stub_volume_get(self, context, volume_id):

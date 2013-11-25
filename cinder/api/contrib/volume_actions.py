@@ -280,6 +280,10 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         readonly_flag = body['os-update_readonly_flag'].get('readonly')
+        if not readonly_flag:
+            msg = _("Must specify readonly in request.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         if isinstance(readonly_flag, basestring):
             try:
                 readonly_flag = strutils.bool_from_string(readonly_flag,
