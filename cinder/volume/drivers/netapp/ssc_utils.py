@@ -434,6 +434,9 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
                         vol_set = ssc_vols_copy[k]
                         vol_set.discard(vol)
                 backend.refresh_ssc_vols(ssc_vols_copy)
+                LOG.info(_('Successfully completed stale refresh job for'
+                           ' %(server)s and vserver %(vs)s')
+                         % {'server': na_server, 'vs': vserver})
 
         refresh_stale_ssc()
     finally:
@@ -464,13 +467,16 @@ def get_cluster_latest_ssc(*args, **kwargs):
             ssc_vols = get_cluster_ssc(na_server, vserver)
             backend.refresh_ssc_vols(ssc_vols)
             backend.ssc_run_time = timeutils.utcnow()
+            LOG.info(_('Successfully completed ssc job for %(server)s'
+                       ' and vserver %(vs)s')
+                     % {'server': na_server, 'vs': vserver})
 
         get_latest_ssc()
     finally:
         na_utils.set_safe_attr(backend, 'ssc_job_running', False)
 
 
-def refresh_cluster_ssc(backend, na_server, vserver):
+def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
     """Refresh cluster ssc for backend."""
     if not isinstance(backend, driver.VolumeDriver):
         raise exception.InvalidInput(reason=_("Backend not a VolumeDriver."))
@@ -483,17 +489,23 @@ def refresh_cluster_ssc(backend, na_server, vserver):
     elif (getattr(backend, 'ssc_run_time', None) is None or
           (backend.ssc_run_time and
            timeutils.is_newer_than(backend.ssc_run_time, delta_secs))):
-        t = Timer(0, get_cluster_latest_ssc,
-                  args=[backend, na_server, vserver])
-        t.start()
+        if synchronous:
+            get_cluster_latest_ssc(backend, na_server, vserver)
+        else:
+            t = Timer(0, get_cluster_latest_ssc,
+                      args=[backend, na_server, vserver])
+            t.start()
     elif getattr(backend, 'refresh_stale_running', None):
             LOG.warn(_('refresh stale ssc job in progress. Returning... '))
             return
     else:
         if backend.stale_vols:
-            t = Timer(0, refresh_cluster_stale_ssc,
-                      args=[backend, na_server, vserver])
-            t.start()
+            if synchronous:
+                refresh_cluster_stale_ssc(backend, na_server, vserver)
+            else:
+                t = Timer(0, refresh_cluster_stale_ssc,
+                          args=[backend, na_server, vserver])
+                t.start()
 
 
 def get_volumes_for_specs(ssc_vols, specs):
