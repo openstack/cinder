@@ -166,7 +166,7 @@ class VolumeAdminController(AdminController):
 
     @wsgi.action('os-migrate_volume_completion')
     def _migrate_volume_completion(self, req, id, body):
-        """Migrate a volume to the specified host."""
+        """Complete an in-progress migration."""
         context = req.environ['cinder.context']
         self.authorize(context, 'migrate_volume_completion')
         try:
