@@ -1443,6 +1443,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(image_utils, 'convert_image')
         mox.StubOutWithMock(drv, '_read_info_file')
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
+        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
 
         dest_volume = self._simple_volume(
             'c1073000-0000-0000-0000-0000000c1073')
@@ -1483,6 +1484,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
 
         image_utils.convert_image(src_vol_path, dest_vol_path, 'raw')
+
+        drv._set_rw_permissions_for_all(dest_vol_path)
 
         mox.ReplayAll()
 
