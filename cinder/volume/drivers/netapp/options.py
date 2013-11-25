@@ -31,8 +31,8 @@ netapp_proxy_opts = [
                default='ontap_cluster',
                help=('The storage family type used on the storage system; '
                      'valid values are ontap_7mode for using Data ONTAP '
-                     'operating in 7-Mode or ontap_cluster for using '
-                     'clustered Data ONTAP.')),
+                     'operating in 7-Mode, ontap_cluster for using '
+                     'clustered Data ONTAP, or eseries for using E-Series.')),
     cfg.StrOpt('netapp_storage_protocol',
                default=None,
                help=('The storage protocol to be used on the data path with '
@@ -41,27 +41,28 @@ netapp_proxy_opts = [
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
                default=None,
-               help='The hostname (or IP address) for the storage system.'),
+               help='The hostname (or IP address) for the storage system or '
+                    'proxy server.'),
     cfg.IntOpt('netapp_server_port',
                default=80,
-               help=('The TCP port to use for communication with ONTAPI on '
-                     'the storage system. Traditionally, port 80 is used for '
-                     'HTTP and port 443 is used for HTTPS; however, this '
+               help=('The TCP port to use for communication with the storage '
+                     'system or proxy server. Traditionally, port 80 is used '
+                     'for HTTP and port 443 is used for HTTPS; however, this '
                      'value should be changed if an alternate port has been '
-                     'configured on the storage system.')), ]
+                     'configured on the storage system or proxy server.')), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
                default='http',
                help=('The transport protocol used when communicating with '
-                     'ONTAPI on the storage system. Valid values are http '
-                     'or https.')), ]
+                     'the storage system or proxy server. Valid values are '
+                     'http or https.')), ]
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',
                default=None,
                help=('Administrative user account name used to access the '
-                     'storage system.')),
+                     'storage system or proxy server.')),
     cfg.StrOpt('netapp_password',
                default=None,
                help=('Password for the administrative user account '
@@ -133,6 +134,35 @@ netapp_img_cache_opts = [
                      'the value of this parameter, will be deleted from the '
                      'cache to create free space on the NFS share.')), ]
 
+netapp_eseries_opts = [
+    cfg.StrOpt('netapp_webservice_path',
+               default='/devmgr/v2',
+               help=('This option is used to specify the path to the E-Series '
+                     'proxy application on a proxy server. The value is '
+                     'combined with the value of the netapp_transport_type, '
+                     'netapp_server_hostname, and netapp_server_port options '
+                     'to create the URL used by the driver to connect to the '
+                     'proxy application.')),
+    cfg.StrOpt('netapp_controller_ips',
+               default=None,
+               help=('This option is only utilized when the storage family '
+                     'is configured to eseries. This option is used to '
+                     'restrict provisioning to the specified controllers. '
+                     'Specify the value of this option to be a comma '
+                     'separated list of controller hostnames or IP addresses '
+                     'to be used for provisioning.')),
+    cfg.StrOpt('netapp_sa_password',
+               default=None,
+               help=('Password for the NetApp E-Series storage array.'),
+               secret=True),
+    cfg.StrOpt('netapp_storage_pools',
+               default=None,
+               help=('This option is used to restrict provisioning to the '
+                     'specified storage pools. Only dynamic disk pools are '
+                     'currently supported. Specify the value of this option to'
+                     ' be a comma separated list of disk pool names to be used'
+                     ' for provisioning.')), ]
+
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
 CONF.register_opts(netapp_connection_opts)
@@ -142,3 +172,4 @@ CONF.register_opts(netapp_cluster_opts)
 CONF.register_opts(netapp_7mode_opts)
 CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_img_cache_opts)
+CONF.register_opts(netapp_eseries_opts)
