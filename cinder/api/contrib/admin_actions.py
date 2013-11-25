@@ -148,7 +148,10 @@ class VolumeAdminController(AdminController):
         except exception.NotFound:
             raise exc.HTTPNotFound()
         params = body['os-migrate_volume']
-        host = params['host']
+        try:
+            host = params['host']
+        except KeyError:
+            raise exc.HTTPBadRequest("Must specify 'host'")
         force_host_copy = params.get('force_host_copy', False)
         if isinstance(force_host_copy, basestring):
             try:
