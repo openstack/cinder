@@ -345,7 +345,7 @@ class Reservation(BASE, CinderBase):
 
 
 class Snapshot(BASE, CinderBase):
-    """Represents a block storage device that can be attached to a VM."""
+    """Represents a snapshot of volume."""
     __tablename__ = 'snapshots'
     id = Column(String(36), primary_key=True)
 
