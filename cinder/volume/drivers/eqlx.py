@@ -241,10 +241,10 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             part = 'TB'
         return scale * float(val.partition(part)[0])
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from eqlx group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
         backend_name = "eqlx"
         if self.configuration:
