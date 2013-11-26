@@ -265,6 +265,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                                   path_to_new_vol,
                                   out_format)
 
+        self._set_rw_permissions_for_all(path_to_new_vol)
+
     @utils.synchronized('glusterfs', external=False)
     def delete_volume(self, volume):
         """Deletes a logical volume."""
