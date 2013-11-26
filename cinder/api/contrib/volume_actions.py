@@ -215,12 +215,7 @@ class VolumeActionsController(wsgi.Controller):
     def _volume_upload_image(self, req, id, body):
         """Uploads the specified volume to image service."""
         context = req.environ['cinder.context']
-        try:
-            params = body['os-volume_upload_image']
-        except (TypeError, KeyError):
-            msg = _("Invalid request body")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
+        params = body['os-volume_upload_image']
         if not params.get("image_name"):
             msg = _("No image_name was specified in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
