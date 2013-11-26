@@ -787,7 +787,8 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
 
         utils.brick_get_connector('aoe',
                                   device_scan_attempts=3,
-                                  use_multipath=False).\
+                                  use_multipath=False,
+                                  conn=mox.IgnoreArg()).\
             AndReturn(aoe_initiator)
 
         aoe_initiator\
