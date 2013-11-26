@@ -61,3 +61,4 @@ def downgrade(migrate_engine):
         transfers.drop()
     except Exception:
         LOG.error(_("transfers table not dropped"))
+        raise
