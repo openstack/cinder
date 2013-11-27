@@ -26,7 +26,6 @@ from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from oslo.config import cfg
 
@@ -68,14 +67,6 @@ class Service(BASE, CinderBase):
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
     availability_zone = Column(String(255), default='cinder')
-
-
-class CinderNode(BASE, CinderBase):
-    """Represents a running cinder service on a host."""
-
-    __tablename__ = 'cinder_nodes'
-    id = Column(Integer, primary_key=True)
-    service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
 
 
 class Volume(BASE, CinderBase):
