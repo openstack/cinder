@@ -20,6 +20,8 @@ import testtools
 
 from cinder import context
 from cinder.openstack.common.scheduler.weights import HostWeightHandler
+
+from cinder.scheduler.weights.capacity import CapacityWeigher
 from cinder import test
 from cinder.tests.scheduler import fakes
 from cinder.tests import utils as test_utils
@@ -30,12 +32,11 @@ class CapacityWeigherTestCase(test.TestCase):
         super(CapacityWeigherTestCase, self).setUp()
         self.host_manager = fakes.FakeHostManager()
         self.weight_handler = HostWeightHandler('cinder.scheduler.weights')
-        self.weight_classes = self.weight_handler.get_all_classes()
 
     def _get_weighed_host(self, hosts, weight_properties=None):
         if weight_properties is None:
             weight_properties = {}
-        return self.weight_handler.get_weighed_objects(self.weight_classes,
+        return self.weight_handler.get_weighed_objects([CapacityWeigher],
                                                        hosts,
                                                        weight_properties)[0]
 
