@@ -1486,7 +1486,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         def fake_fetch_to_raw(ctx, image_service, image_id, path, size=None):
             pass
 
-        def fake_clone_image(volume_ref, image_location, image_id):
+        def fake_clone_image(volume_ref, image_location, image_id, image_meta):
             return {'provider_location': None}, True
 
         dst_fd, dst_path = tempfile.mkstemp()

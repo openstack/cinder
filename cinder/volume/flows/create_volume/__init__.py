@@ -1364,7 +1364,7 @@ class CreateVolumeFromSpecTask(base.CinderTask):
         # dict containing provider_location for cloned volume
         # and clone status.
         model_update, cloned = self.driver.clone_image(
-            volume_ref, image_location, image_id)
+            volume_ref, image_location, image_id, image_meta)
         if not cloned:
             # TODO(harlowja): what needs to be rolled back in the clone if this
             # volume create fails?? Likely this should be a subflow or broken

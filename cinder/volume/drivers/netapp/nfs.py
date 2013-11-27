@@ -374,7 +374,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             LOG.warning(_('Exception during deleting %s'), ex.__str__())
             return False
 
-    def clone_image(self, volume, image_location, image_id):
+    def clone_image(self, volume, image_location, image_id, image_meta):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the

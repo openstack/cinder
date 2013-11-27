@@ -250,7 +250,7 @@ class ScalityDriver(driver.VolumeDriver):
                                   image_meta,
                                   self.local_path(volume))
 
-    def clone_image(self, volume, image_location, image_id):
+    def clone_image(self, volume, image_location, image_id, image_meta):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
