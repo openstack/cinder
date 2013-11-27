@@ -499,9 +499,20 @@ class ISCSIDriver(VolumeDriver):
 
         volume_name = volume['name']
 
-        (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
-                                    '-t', 'sendtargets', '-p', volume['host'],
-                                    run_as_root=True)
+        try:
+            # NOTE(griff) We're doing the split straight away which should be
+            # safe since using '@' in hostname is considered invalid
+
+            (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
+                                        '-t', 'sendtargets', '-p',
+                                        volume['host'].split('@')[0],
+                                        run_as_root=True)
+        except processutils.ProcessExecutionError as ex:
+            LOG.error(_("ISCSI discovery attempt failed for:%s") %
+                      volume['host'].split('@')[0])
+            LOG.debug(_("Error from iscsiadm -m discovery: %s") % ex.stderr)
+            return None
+
         for target in out.splitlines():
             if (self.configuration.iscsi_ip_address in target
                     and volume_name in target):
