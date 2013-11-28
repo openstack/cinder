@@ -103,3 +103,16 @@ NEXENTA_VOLUME_OPTIONS = [
                 default=False,
                 help='flag to create sparse volumes'),
 ]
+
+NEXENTA_RRMGR_OPTIONS = [
+    cfg.IntOpt('nexenta_rrmgr_compression',
+               default=0,
+               help=('Enable stream compression, level 1..9. 1 - gives best '
+                     'speed; 9 - gives best compression.')),
+    cfg.IntOpt('nexenta_rrmgr_tcp_buf_size',
+               default=4096,
+               help='TCP Buffer size in KiloBytes.'),
+    cfg.IntOpt('nexenta_rrmgr_connections',
+               default=2,
+               help='Number of TCP connections.'),
+]

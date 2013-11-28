@@ -43,12 +43,14 @@ class TestNexentaISCSIDriver(test.TestCase):
     TEST_VOLUME_REF = {
         'name': TEST_VOLUME_NAME,
         'size': 1,
-        'id': '1'
+        'id': '1',
+        'status': 'available'
     }
     TEST_VOLUME_REF2 = {
         'name': TEST_VOLUME_NAME2,
         'size': 1,
-        'id': '2'
+        'id': '2',
+        'status': 'in-use'
     }
     TEST_SNAPSHOT_REF = {
         'name': TEST_SNAPSHOT_NAME,
@@ -72,6 +74,9 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.configuration.nexenta_target_group_prefix = 'cinder/'
         self.configuration.nexenta_blocksize = '8K'
         self.configuration.nexenta_sparse = True
+        self.configuration.nexenta_rrmgr_compression = 1
+        self.configuration.nexenta_rrmgr_tcp_buf_size = 1024
+        self.configuration.nexenta_rrmgr_connections = 2
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ['volume', 'zvol', 'iscsitarget', 'appliance',
                     'stmf', 'scsidisk', 'snapshot']:
@@ -149,6 +154,43 @@ class TestNexentaISCSIDriver(test.TestCase):
                                  'cinder/%s' % vol['name'])
         self.mox.ReplayAll()
         self.drv.create_cloned_volume(vol, src_vref)
+
+    def test_migrate_volume(self):
+        volume = self.TEST_VOLUME_REF
+        host = {
+            'capabilities': {
+                'vendor_name': 'Nexenta',
+                'location_info': 'NexentaISCSIDriver:1.1.1.1:cinder',
+                'free_capacity_gb': 1
+            }
+        }
+        snapshot = {
+            'volume_name': volume['name'],
+            'name': 'cinder-migrate-snapshot-%s' % volume['id'],
+        }
+        self.nms_mock.appliance.ssh_list_bindings().AndReturn([])
+        self.nms_mock.zvol.create_snapshot('cinder/%s' % volume['name'],
+                                           snapshot['name'], '')
+
+        src = '%(volume)s/%(zvol)s@%(snapshot)s' % {
+            'volume': 'cinder',
+            'zvol': volume['name'],
+            'snapshot': snapshot['name']}
+        dst = '1.1.1.1:cinder'
+        cmd = ' '.join(['rrmgr -s zfs -c 1 -q -e -w 1024 -n 2', src, dst])
+
+        self.nms_mock.appliance.execute(cmd)
+
+        self.nms_mock.snapshot.destroy('cinder/%(volume)s@%(snapshot)s' % {
+                                       'volume': volume['name'],
+                                       'snapshot': snapshot['name']}, '')
+        volume_name = 'cinder/%s' % volume['name']
+        self.nms_mock.zvol.get_child_props(volume_name,
+                                           'origin').AndReturn(None)
+        self.nms_mock.zvol.destroy(volume_name, '')
+
+        self.mox.ReplayAll()
+        self.drv.migrate_volume(None, volume, host)
 
     def test_create_snapshot(self):
         self.nms_mock.zvol.create_snapshot('cinder/volume1', 'snapshot1', '')

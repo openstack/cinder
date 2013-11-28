@@ -1377,6 +1377,16 @@
 # value. (boolean value)
 #nexenta_nms_cache_volroot=true
 
+# Enable stream compression, level 1..9. 1 - gives best speed;
+# 9 - gives best compression. (integer value)
+#nexenta_rrmgr_compression=0
+
+# TCP Buffer size in KiloBytes. (integer value)
+#nexenta_rrmgr_tcp_buf_size=4096
+
+# Number of TCP connections. (integer value)
+#nexenta_rrmgr_connections=2
+
 # block size for volumes (blank=default,8KB) (string value)
 #nexenta_blocksize=
 
