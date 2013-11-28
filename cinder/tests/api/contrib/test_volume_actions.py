@@ -251,6 +251,8 @@ class VolumeActionsTest(test.TestCase):
             self.assertEqual(res.status_int, return_code)
 
         make_update_readonly_flag_test(self, True, 202)
+        make_update_readonly_flag_test(self, False, 202)
+        make_update_readonly_flag_test(self, '1', 202)
         make_update_readonly_flag_test(self, '0', 202)
         make_update_readonly_flag_test(self, 'true', 202)
         make_update_readonly_flag_test(self, 'false', 202)
