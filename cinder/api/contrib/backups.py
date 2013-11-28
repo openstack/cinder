@@ -224,15 +224,11 @@ class BackupsController(wsgi.Controller):
         LOG.debug(_('Restoring backup %(backup_id)s (%(body)s)'),
                   {'backup_id': id, 'body': body})
         if not self.is_valid_body(body, 'restore'):
-            raise exc.HTTPBadRequest()
-
-        context = req.environ['cinder.context']
-
-        try:
-            restore = body['restore']
-        except KeyError:
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
+
+        context = req.environ['cinder.context']
+        restore = body['restore']
         volume_id = restore.get('volume_id', None)
 
         LOG.audit(_("Restoring backup %(backup_id)s to volume %(volume_id)s"),

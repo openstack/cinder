@@ -685,8 +685,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 400)
         self.assertEqual(res_dict['badRequest']['code'], 400)
         self.assertEqual(res_dict['badRequest']['message'],
-                         'The server could not comply with the request since'
-                         ' it is either malformed or otherwise incorrect.')
+                         'Incorrect request body format')
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
@@ -707,8 +706,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 400)
         self.assertEqual(res_dict['badRequest']['code'], 400)
         self.assertEqual(res_dict['badRequest']['message'],
-                         'The server could not comply with the request since'
-                         ' it is either malformed or otherwise incorrect.')
+                         'Incorrect request body format')
 
     def test_restore_backup_volume_id_unspecified(self):
 
