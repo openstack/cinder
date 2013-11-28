@@ -279,8 +279,9 @@ class VolumeActionsController(wsgi.Controller):
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
-        readonly_flag = body['os-update_readonly_flag'].get('readonly')
-        if not readonly_flag:
+        try:
+            readonly_flag = body['os-update_readonly_flag']['readonly']
+        except KeyError:
             msg = _("Must specify readonly in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
