@@ -58,3 +58,4 @@ def downgrade(migrate_engine):
         snapshot_metadata.drop()
     except Exception:
         LOG.error(_("snapshot_metadata table not dropped"))
+        raise

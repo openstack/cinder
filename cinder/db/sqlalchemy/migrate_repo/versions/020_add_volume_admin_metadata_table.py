@@ -59,3 +59,4 @@ def downgrade(migrate_engine):
         volume_admin_metadata.drop()
     except Exception:
         LOG.error(_("volume_admin_metadata table not dropped"))
+        raise
