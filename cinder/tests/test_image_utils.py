@@ -19,11 +19,11 @@
 import contextlib
 import mox
 import tempfile
-import textwrap
 
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import processutils
 from cinder import test
 from cinder import utils
 
@@ -52,6 +52,8 @@ class TestUtils(test.TestCase):
     def setUp(self):
         super(TestUtils, self).setUp()
         self._mox = mox.Mox()
+        self._image_service = FakeImageService()
+
         self.addCleanup(self._mox.UnsetStubs)
 
     def test_resize_image(self):
@@ -190,174 +192,158 @@ class TestUtils(test.TestCase):
 
         self.assertEquals(str(inf), TEST_STR)
 
-    def test_fetch_to_raw(self):
-        TEST_RET = "image: qemu.qcow2\n"\
-                   "file_format: qcow2 \n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
-        TEST_RETURN_RAW = "image: qemu.raw\n"\
-                          "file_format: raw\n"\
-                          "virtual_size: 50M (52428800 bytes)\n"\
-                          "cluster_size: 65536\n"\
-                          "disk_size: 196K (200704 bytes)\n"\
-
-        fake_image_service = FakeImageService()
+    def _test_fetch_to_raw(self, has_qemu=True, src_inf=None, dest_inf=None):
         mox = self._mox
-
         mox.StubOutWithMock(image_utils, 'create_temporary_file')
         mox.StubOutWithMock(utils, 'execute')
         mox.StubOutWithMock(image_utils, 'fetch')
 
+        TEST_INFO = ("image: qemu.qcow2\n"
+                     "file format: raw\n"
+                     "virtual size: 0 (0 bytes)\n"
+                     "disk size: 0")
+
         image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
-        image_utils.fetch(context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
 
-        utils.execute(
+        test_qemu_img = utils.execute(
             'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
+            self.TEST_DEV_PATH, run_as_root=True)
 
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
+        if has_qemu:
+            test_qemu_img.AndReturn((TEST_INFO, 'ignored'))
+            image_utils.fetch(context, self._image_service, self.TEST_IMAGE_ID,
+                              self.TEST_DEV_PATH, None, None)
+        else:
+            test_qemu_img.AndRaise(processutils.ProcessExecutionError())
 
-        utils.execute('qemu-img', 'convert', '-O', 'raw',
-                      self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
+        if has_qemu and src_inf:
+            utils.execute(
+                'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+                self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                    (src_inf, 'ignored')
+                )
 
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RETURN_RAW, 'ignored')
-            )
+        if has_qemu and dest_inf:
+            utils.execute(
+                'qemu-img', 'convert', '-O', 'raw',
+                self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
 
-        mox.ReplayAll()
+            utils.execute(
+                'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+                self.TEST_DEV_PATH, run_as_root=True).AndReturn(
+                    (dest_inf, 'ignored')
+                )
 
-        image_utils.fetch_to_raw(context, fake_image_service,
+        self._mox.ReplayAll()
+
+    def test_fetch_to_raw(self):
+        SRC_INFO = ("image: qemu.qcow2\n"
+                    "file_format: qcow2 \n"
+                    "virtual_size: 50M (52428800 bytes)\n"
+                    "cluster_size: 65536\n"
+                    "disk_size: 196K (200704 bytes)")
+        DST_INFO = ("image: qemu.raw\n"
+                    "file_format: raw\n"
+                    "virtual_size: 50M (52428800 bytes)\n"
+                    "cluster_size: 65536\n"
+                    "disk_size: 196K (200704 bytes)\n")
+
+        self._test_fetch_to_raw(src_inf=SRC_INFO, dest_inf=DST_INFO)
+
+        image_utils.fetch_to_raw(context, self._image_service,
                                  self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
-        mox.VerifyAll()
+        self._mox.VerifyAll()
+
+    def test_fetch_to_raw_no_qemu_img(self):
+        self._test_fetch_to_raw(has_qemu=False)
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_to_raw,
+                          context, self._image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+
+        self._mox.VerifyAll()
 
     def test_fetch_to_raw_on_error_parsing_failed(self):
-        TEST_RET = "image: qemu.qcow2\n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
+        SRC_INFO_NO_FORMAT = ("image: qemu.qcow2\n"
+                              "virtual_size: 50M (52428800 bytes)\n"
+                              "cluster_size: 65536\n"
+                              "disk_size: 196K (200704 bytes)")
 
-        fake_image_service = FakeImageService()
-        mox = self._mox
-
-        mox.StubOutWithMock(image_utils, 'create_temporary_file')
-        mox.StubOutWithMock(utils, 'execute')
-        mox.StubOutWithMock(image_utils, 'fetch')
-
-        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
-        image_utils.fetch(context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
-
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
-
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
-
-        mox.ReplayAll()
+        self._test_fetch_to_raw(src_inf=SRC_INFO_NO_FORMAT)
 
         self.assertRaises(exception.ImageUnacceptable,
-                          image_utils.fetch_to_raw, context,
-                          fake_image_service, self.TEST_IMAGE_ID,
-                          self.TEST_DEV_PATH)
+                          image_utils.fetch_to_raw,
+                          context, self._image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+        self._mox.VerifyAll()
 
     def test_fetch_to_raw_on_error_backing_file(self):
-        TEST_RET = "image: qemu.qcow2\n"\
-                   "backing_file: qemu.qcow2 (actual path: qemu.qcow2)\n"\
-                   "file_format: qcow2 \n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
+        SRC_INFO_BACKING_FILE = ("image: qemu.qcow2\n"
+                                 "backing_file: qemu.qcow2\n"
+                                 "file_format: qcow2 \n"
+                                 "virtual_size: 50M (52428800 bytes)\n"
+                                 "cluster_size: 65536\n"
+                                 "disk_size: 196K (200704 bytes)")
 
-        fake_image_service = FakeImageService()
-        mox = self._mox
+        self._test_fetch_to_raw(src_inf=SRC_INFO_BACKING_FILE)
 
-        mox.StubOutWithMock(image_utils, 'create_temporary_file')
-        mox.StubOutWithMock(utils, 'execute')
-        mox.StubOutWithMock(image_utils, 'fetch')
-
-        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
-        image_utils.fetch(context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
-
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
-
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
-
-        mox.ReplayAll()
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_to_raw,
-                          context, fake_image_service,
+                          context, self._image_service,
                           self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+        self._mox.VerifyAll()
 
     def test_fetch_to_raw_on_error_not_convert_to_raw(self):
-        TEST_RET = "image: qemu.qcow2\n"\
-                   "file_format: qcow2 \n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
+        IMG_INFO = ("image: qemu.qcow2\n"
+                    "file_format: qcow2 \n"
+                    "virtual_size: 50M (52428800 bytes)\n"
+                    "cluster_size: 65536\n"
+                    "disk_size: 196K (200704 bytes)")
 
+        self._test_fetch_to_raw(src_inf=IMG_INFO, dest_inf=IMG_INFO)
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_to_raw,
+                          context, self._image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+
+    def test_fetch_to_raw_on_error_image_size(self):
+        TEST_VOLUME_SIZE = 1
+        SRC_INFO = ("image: qemu.qcow2\n"
+                    "file_format: qcow2 \n"
+                    "virtual_size: 2G (2147483648 bytes)\n"
+                    "cluster_size: 65536\n"
+                    "disk_size: 196K (200704 bytes)")
+
+        self._test_fetch_to_raw(src_inf=SRC_INFO)
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.fetch_to_raw,
+                          context, self._image_service,
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                          size=TEST_VOLUME_SIZE)
+
+    def _test_fetch_verify_image(self, qemu_info, volume_size=1):
         fake_image_service = FakeImageService()
         mox = self._mox
-
-        mox.StubOutWithMock(image_utils, 'create_temporary_file')
-        mox.StubOutWithMock(utils, 'execute')
         mox.StubOutWithMock(image_utils, 'fetch')
-
-        image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
+        mox.StubOutWithMock(utils, 'execute')
         image_utils.fetch(context, fake_image_service,
                           self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
 
         utils.execute(
             'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
             self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
+                (qemu_info, 'ignored')
             )
 
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
-
-        utils.execute('qemu-img', 'convert', '-O', 'raw',
-                      self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
-
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
-
-        mox.ReplayAll()
-
+        self._mox.ReplayAll()
         self.assertRaises(exception.ImageUnacceptable,
-                          image_utils.fetch_to_raw,
+                          image_utils.fetch_verify_image,
                           context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                          size=volume_size)
 
     def test_fetch_verify_image_with_backing_file(self):
         TEST_RETURN = "image: qemu.qcow2\n"\
@@ -370,25 +356,7 @@ class TestUtils(test.TestCase):
                       "ID TAG  VM SIZE DATE VM CLOCK\n"\
                       "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
 
-        fake_image_service = FakeImageService()
-        mox = self._mox
-        mox.StubOutWithMock(image_utils, 'fetch')
-        mox.StubOutWithMock(utils, 'execute')
-        image_utils.fetch(context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
-
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RETURN, 'ignored')
-            )
-
-        mox.ReplayAll()
-
-        self.assertRaises(exception.ImageUnacceptable,
-                          image_utils.fetch_verify_image,
-                          context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+        self._test_fetch_verify_image(TEST_RETURN)
 
     def test_fetch_verify_image_without_file_format(self):
         TEST_RETURN = "image: qemu.qcow2\n"\
@@ -399,25 +367,19 @@ class TestUtils(test.TestCase):
                       "ID TAG  VM SIZE DATE VM CLOCK\n"\
                       "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
 
-        fake_image_service = FakeImageService()
-        mox = self._mox
-        mox.StubOutWithMock(image_utils, 'fetch')
-        mox.StubOutWithMock(utils, 'execute')
-        image_utils.fetch(context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
+        self._test_fetch_verify_image(TEST_RETURN)
 
-        utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (TEST_RETURN, 'ignored')
-            )
+    def test_fetch_verify_image_image_size(self):
+        TEST_RETURN = "image: qemu.qcow2\n"\
+                      "file_format: qcow2\n"\
+                      "virtual_size: 2G (2147483648 bytes)\n"\
+                      "cluster_size: 65536\n"\
+                      "disk_size: 196K (200704 bytes)\n"\
+                      "Snapshot list:\n"\
+                      "ID TAG  VM SIZE DATE VM CLOCK\n"\
+                      "1  snap1 1.7G 2011-10-04 19:04:00 32:06:34.974"
 
-        mox.ReplayAll()
-
-        self.assertRaises(exception.ImageUnacceptable,
-                          image_utils.fetch_verify_image,
-                          context, fake_image_service,
-                          self.TEST_IMAGE_ID, self.TEST_DEV_PATH)
+        self._test_fetch_verify_image(TEST_RETURN)
 
     def test_upload_volume(self):
         image_meta = {'id': 1, 'disk_format': 'qcow2'}

@@ -339,7 +339,8 @@ class VolumeDriver(object):
             image_utils.fetch_to_raw(context,
                                      image_service,
                                      image_id,
-                                     attach_info['device']['path'])
+                                     attach_info['device']['path'],
+                                     size=volume['size'])
         finally:
             self._detach_volume(attach_info)
             self.terminate_connection(volume, properties)

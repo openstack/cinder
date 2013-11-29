@@ -145,14 +145,14 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                                'None None None /dev/loop2'})
 
     def test_copy_image_to_volume(self):
-        TEST_VOLUME = {'provider_location': '1 2 3 /dev/loop1'}
+        TEST_VOLUME = {'provider_location': '1 2 3 /dev/loop1', 'size': 1}
         TEST_IMAGE_SERVICE = "image_service"
         TEST_IMAGE_ID = "image_id"
         self.mox.StubOutWithMock(image_utils, 'fetch_to_raw')
         self.mox.StubOutWithMock(self.drv, 'local_path')
         self.drv.local_path(TEST_VOLUME).AndReturn('/dev/loop1')
         image_utils.fetch_to_raw(context, TEST_IMAGE_SERVICE,
-                                 TEST_IMAGE_ID, '/dev/loop1')
+                                 TEST_IMAGE_ID, '/dev/loop1', size=1)
         self.mox.ReplayAll()
         self.drv.copy_image_to_volume(context, TEST_VOLUME, TEST_IMAGE_SERVICE,
                                       TEST_IMAGE_ID)

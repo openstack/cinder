@@ -539,7 +539,7 @@ class GPFSDriver(driver.VolumeDriver):
         LOG.debug('Copy image to vol %s using image_utils fetch_to_raw' %
                   volume['id'])
         image_utils.fetch_to_raw(context, image_service, image_id,
-                                 self.local_path(volume))
+                                 self.local_path(volume), size=volume['size'])
         image_utils.resize_image(self.local_path(volume), volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
