@@ -124,7 +124,7 @@ class VolumeTransferController(wsgi.Controller):
 
     @wsgi.serializers(xml=TransfersTemplate)
     def detail(self, req):
-        """Returns a detailed list of tranfers."""
+        """Returns a detailed list of transfers."""
         return self._get_transfers(req, is_detail=True)
 
     def _get_transfers(self, req, is_detail):

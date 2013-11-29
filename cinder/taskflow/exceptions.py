@@ -60,7 +60,7 @@ class JobNotFound(TaskFlowException):
 
 
 class MissingDependencies(InvalidStateException):
-    """Raised when a task has dependencies that can not be satisified."""
+    """Raised when a task has dependencies that can not be satisfied."""
     message = ("%(task)s requires %(requirements)s but no other task produces"
                " said requirements")
 

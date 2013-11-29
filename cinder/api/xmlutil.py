@@ -599,7 +599,7 @@ class Template(object):
         # First step, render the element
         elems = siblings[0].render(parent, obj, siblings[1:], nsmap)
 
-        # Now, recurse to all child elements
+        # Now, traverse all child elements
         seen = set()
         for idx, sibling in enumerate(siblings):
             for child in sibling:
@@ -614,7 +614,7 @@ class Template(object):
                     if child.tag in sib:
                         nieces.append(sib[child.tag])
 
-                # Now we recurse for every data element
+                # Now call this function for all data elements recursively
                 for elem, datum in elems:
                     self._serialize(elem, datum, nieces)
 
