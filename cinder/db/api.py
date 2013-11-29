@@ -321,7 +321,8 @@ def snapshot_metadata_delete(context, snapshot_id, key):
 
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
     """Update metadata if it exists, otherwise create it."""
-    IMPL.snapshot_metadata_update(context, snapshot_id, metadata, delete)
+    return IMPL.snapshot_metadata_update(context, snapshot_id,
+                                         metadata, delete)
 
 
 ####################

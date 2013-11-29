@@ -503,9 +503,9 @@ class DBAPISnapshotTestCase(BaseTest):
         db.volume_create(self.ctxt, {'id': 1})
         db.snapshot_create(self.ctxt,
                            {'id': 1, 'volume_id': 1, 'metadata': metadata1})
-        db.snapshot_metadata_update(self.ctxt, 1, metadata2, False)
+        db_meta = db.snapshot_metadata_update(self.ctxt, 1, metadata2, False)
 
-        self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+        self.assertEqual(should_be, db_meta)
 
     def test_snapshot_metadata_update_delete(self):
         metadata1 = {'a': '1', 'c': '2'}
@@ -515,9 +515,9 @@ class DBAPISnapshotTestCase(BaseTest):
         db.volume_create(self.ctxt, {'id': 1})
         db.snapshot_create(self.ctxt,
                            {'id': 1, 'volume_id': 1, 'metadata': metadata1})
-        db.snapshot_metadata_update(self.ctxt, 1, metadata2, True)
+        db_meta = db.snapshot_metadata_update(self.ctxt, 1, metadata2, True)
 
-        self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+        self.assertEqual(should_be, db_meta)
 
     def test_snapshot_metadata_delete(self):
         metadata = {'a': '1', 'c': '2'}
