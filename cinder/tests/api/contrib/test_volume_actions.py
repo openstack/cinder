@@ -15,6 +15,7 @@
 #   under the License.
 
 import datetime
+import json
 import uuid
 import webob
 
@@ -400,13 +401,28 @@ class VolumeImageActionsTest(test.TestCase):
                           body)
 
     def test_volume_upload_image_typeerror(self):
+        id = 1
         body = {"os-volume_upload_image_fake": "fake"}
-        req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._volume_upload_image,
-                          req,
-                          id,
-                          body)
+        req = webob.Request.blank('/v2/tenant1/volumes/%s/action' % id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+
+    def test_volume_upload_image_without_type(self):
+        id = 1
+        vol = {"container_format": 'bare',
+               "disk_format": 'raw',
+               "image_name": None,
+               "force": True}
+        body = {"": vol}
+        req = webob.Request.blank('/v2/tenant1/volumes/%s/action' % id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
 
     def test_extend_volume_valueerror(self):
         id = 1
