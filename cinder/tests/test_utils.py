@@ -513,6 +513,57 @@ class GenericUtilsTestCase(test.TestCase):
 
         self.mox.VerifyAll()
 
+    def _make_fake_stat(self, test_file, orig_os_stat):
+        """Create a fake method to stub out os.stat().
+
+           Generate a function that will return a particular
+           stat object for a given file.
+
+           :param: test_file: file to spoof stat() for
+           :param: orig_os_stat: pointer to original os.stat()
+        """
+
+        def fake_stat(path):
+            if path == test_file:
+                class stat_result:
+                    st_mode = 0o777
+                    st_gid = 33333
+                return stat_result
+            else:
+                return orig_os_stat(path)
+
+        return fake_stat
+
+    def test_get_file_mode(self):
+        test_file = '/var/tmp/made_up_file'
+
+        orig_os_stat = os.stat
+        os.stat = self._make_fake_stat(test_file, orig_os_stat)
+
+        self.mox.ReplayAll()
+
+        mode = utils.get_file_mode(test_file)
+        self.assertEqual(mode, 0o777)
+
+        self.mox.VerifyAll()
+
+        os.stat = orig_os_stat
+
+    def test_get_file_gid(self):
+        test_file = '/var/tmp/made_up_file'
+
+        orig_os_stat = os.stat
+        os.stat = self._make_fake_stat(test_file, orig_os_stat)
+
+        self.mox.ReplayAll()
+
+        gid = utils.get_file_gid(test_file)
+        self.assertEqual(gid, 33333)
+
+        self.mox.VerifyAll()
+
+        os.stat = orig_os_stat
+
 
 class MonkeyPatchTestCase(test.TestCase):
     """Unit test for utils.monkey_patch()."""

@@ -20,6 +20,8 @@ import hashlib
 import json
 import os
 import re
+import stat
+import tempfile
 import time
 
 from oslo.config import cfg
@@ -107,6 +109,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                     _('mount.glusterfs is not installed'))
             else:
                 raise
+
+        self._ensure_shares_mounted()
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
@@ -554,6 +558,9 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             msg = _('Volume status must be "available" or "in-use".')
             raise exception.InvalidVolume(msg)
 
+        self._ensure_share_writable(
+            self._local_volume_dir(snapshot['volume']))
+
         # Determine the true snapshot file for this snapshot
         #  based on the .info file
         info_path = self._local_path_volume(snapshot['volume']) + '.info'
@@ -981,12 +988,47 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         LOG.debug(_('Available shares: %s') % str(self._mounted_shares))
 
+    def _ensure_share_writable(self, path):
+        """Ensure that the Cinder user can write to the share.
+
+        If not, raise an exception.
+
+        :param path: path to test
+        :raises: GlusterfsException
+        :returns: None
+        """
+
+        prefix = '.cinder-write-test-' + str(os.getpid()) + '-'
+
+        try:
+            tempfile.NamedTemporaryFile(prefix=prefix, dir=path)
+        except OSError:
+            msg = _('GlusterFS share at %(dir)s is not writable by the '
+                    'Cinder volume service. Snapshot operations will not be '
+                    'supported.') % {'dir': path}
+            raise exception.GlusterfsException(msg)
+
     def _ensure_share_mounted(self, glusterfs_share):
         """Mount GlusterFS share.
         :param glusterfs_share: string
         """
         mount_path = self._get_mount_point_for_share(glusterfs_share)
         self._mount_glusterfs(glusterfs_share, mount_path, ensure=True)
+
+        # Ensure we can write to this share
+        group_id = os.getegid()
+        current_group_id = utils.get_file_gid(mount_path)
+        current_mode = utils.get_file_mode(mount_path)
+
+        if group_id != current_group_id:
+            cmd = ['chgrp', group_id, mount_path]
+            self._execute(*cmd, run_as_root=True)
+
+        if not (current_mode & stat.S_IWGRP):
+            cmd = ['chmod', 'g+w', mount_path]
+            self._execute(*cmd, run_as_root=True)
+
+        self._ensure_share_writable(mount_path)
 
     def _find_share(self, volume_size_for):
         """Choose GlusterFS share among available ones for given volume size.
