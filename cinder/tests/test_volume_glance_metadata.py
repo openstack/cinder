@@ -50,6 +50,9 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         vol_metadata = db.volume_glance_metadata_create(ctxt, 2,
                                                         'key2',
                                                         'value2')
+        vol_metadata = db.volume_glance_metadata_create(ctxt, 2,
+                                                        'key3',
+                                                        123)
 
         expected_metadata_1 = {'volume_id': '1',
                                'key': 'key1',
@@ -65,10 +68,13 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
                                 'value': 'value1'},
                                {'volume_id': '2',
                                 'key': 'key2',
-                                'value': 'value2'})
+                                'value': 'value2'},
+                               {'volume_id': '2',
+                                'key': 'key3',
+                                'value': '123'})
 
         metadata = db.volume_glance_metadata_get(ctxt, 2)
-        self.assertEqual(len(metadata), 2)
+        self.assertEqual(len(metadata), 3)
         for expected, meta in zip(expected_metadata_2, metadata):
             for key, value in expected.iteritems():
                 self.assertEqual(meta[key], value)
