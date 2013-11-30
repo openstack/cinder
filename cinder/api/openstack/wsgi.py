@@ -790,6 +790,11 @@ class Resource(wsgi.Application):
         return args
 
     def get_body(self, request):
+
+        if len(request.body) == 0:
+            LOG.debug(_("Empty body provided in request"))
+            return None, ''
+
         try:
             content_type = request.get_content_type()
         except exception.InvalidContentType:
@@ -798,10 +803,6 @@ class Resource(wsgi.Application):
 
         if not content_type:
             LOG.debug(_("No Content-Type provided in request"))
-            return None, ''
-
-        if len(request.body) <= 0:
-            LOG.debug(_("Empty body provided in request"))
             return None, ''
 
         return content_type, request.body
