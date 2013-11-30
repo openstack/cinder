@@ -993,8 +993,6 @@ class TestMigrations(test.TestCase):
                                   sqlalchemy.types.DATETIME)
             self.assertIsInstance(volume_admin_metadata.c.deleted.type,
                                   sqlalchemy.types.BOOLEAN)
-            self.assertIsInstance(volume_admin_metadata.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
             self.assertIsInstance(volume_admin_metadata.c.id.type,
                                   sqlalchemy.types.INTEGER)
             self.assertIsInstance(volume_admin_metadata.c.volume_id.type,
