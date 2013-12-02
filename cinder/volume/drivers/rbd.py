@@ -587,13 +587,11 @@ class RBDDriver(driver.VolumeDriver):
         """Deletes a logical volume."""
         volume_name = str(volume['name'])
         with RADOSClient(self) as client:
-            # If the volume has non-clone snapshots this delete is expected to
-            # raise VolumeIsBusy so do so straight away.
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
             except self.rbd.ImageNotFound:
-                LOG.debug(_("volume %s no longer exists in backend")
-                          % (volume_name))
+                LOG.info(_("volume %s no longer exists in backend")
+                         % (volume_name))
                 return
 
             clone_snap = None
@@ -602,13 +600,15 @@ class RBDDriver(driver.VolumeDriver):
             # Ensure any backup snapshots are deleted
             self._delete_backup_snaps(client, volume_name)
 
+            # If the volume has non-clone snapshots this delete is expected to
+            # raise VolumeIsBusy so do so straight away.
             try:
                 snaps = rbd_image.list_snaps()
                 for snap in snaps:
                     if snap['name'].endswith('.clone_snap'):
                         LOG.debug(_("volume has clone snapshot(s)"))
                         # We grab one of these and use it when fetching parent
-                        # info in case the this volume has been flattened.
+                        # info in case the volume has been flattened.
                         clone_snap = snap['name']
                         break
 
