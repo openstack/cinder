@@ -807,10 +807,10 @@ class ISERDriver(ISCSIDriver):
             'data': iser_properties
         }
 
-    def _update_volume_status(self):
-        """Retrieve status info from volume group."""
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume status"))
+        LOG.debug(_("Updating volume stats"))
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSER'

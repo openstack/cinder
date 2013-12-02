@@ -217,16 +217,28 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.driver.do_setup(self._context)
         self.assertEqual(fake_group_ip, self.driver._group_ip)
 
-    def test_update_volume_status(self):
+    def test_update_volume_stats(self):
         self.driver._eql_execute = self.mox.\
             CreateMock(self.driver._eql_execute)
         self.driver._eql_execute('pool', 'select',
                                  self.configuration.eqlx_pool, 'show').\
             AndReturn(['TotalCapacity: 111GB', 'FreeSpace: 11GB'])
         self.mox.ReplayAll()
-        self.driver._update_volume_status()
+        self.driver._update_volume_stats()
         self.assertEqual(self.driver._stats['total_capacity_gb'], 111.0)
         self.assertEqual(self.driver._stats['free_capacity_gb'], 11.0)
+
+    def test_update_volume_stats2(self):
+        self.driver._eql_execute = self.mox.\
+            CreateMock(self.driver._eql_execute)
+        self.driver._eql_execute('pool', 'select',
+                                 self.configuration.eqlx_pool, 'show').\
+            AndReturn(['TotalCapacity: 111GB', 'FreeSpace: 11GB'])
+        self.mox.ReplayAll()
+        stats = self.driver.get_volume_stats(refresh=True)
+        self.assertEqual(stats['total_capacity_gb'], float('111.0'))
+        self.assertEqual(stats['free_capacity_gb'], float('11.0'))
+        self.assertEqual(stats['vendor_name'], 'Dell')
 
     def test_get_space_in_gb(self):
         self.assertEqual(self.driver._get_space_in_gb('123.0GB'), 123.0)

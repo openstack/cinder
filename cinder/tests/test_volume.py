@@ -2378,6 +2378,34 @@ class ISERTestCase(ISCSITestCase):
         self.configuration.iser_ip_address = '0.0.0.0'
         self.configuration.iser_port = 3260
 
+    def test_get_volume_stats(self):
+        def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
+            return [{'name': 'cinder-volumes',
+                     'size': '5.52',
+                     'available': '0.52',
+                     'lv_count': '2',
+                     'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
+
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_all_volume_groups',
+                       _fake_get_all_volume_groups)
+        self.volume.driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
+
+        stats = self.volume.driver.get_volume_stats(refresh=True)
+
+        self.assertEqual(stats['total_capacity_gb'], float('5.52'))
+        self.assertEqual(stats['free_capacity_gb'], float('0.52'))
+        self.assertEqual(stats['storage_protocol'], 'iSER')
+
+    def test_get_volume_stats2(self):
+        iser_driver = self.base_driver(configuration=self.configuration)
+
+        stats = iser_driver.get_volume_stats(refresh=True)
+
+        self.assertEqual(stats['total_capacity_gb'], 'infinite')
+        self.assertEqual(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(stats['storage_protocol'], 'iSER')
+
 
 class FibreChannelTestCase(DriverTestCase):
     """Test Case for FibreChannelDriver."""
