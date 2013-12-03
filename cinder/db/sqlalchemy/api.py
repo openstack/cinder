@@ -1080,21 +1080,21 @@ def volume_destroy(context, volume_id):
     session = get_session()
     now = timeutils.utcnow()
     with session.begin():
-        session.query(models.Volume).\
+        model_query(context, models.Volume, session=session).\
             filter_by(id=volume_id).\
             update({'status': 'deleted',
                     'deleted': True,
                     'deleted_at': now,
                     'updated_at': literal_column('updated_at')})
-        session.query(models.IscsiTarget).\
+        model_query(context, models.IscsiTarget, session=session).\
             filter_by(volume_id=volume_id).\
             update({'volume_id': None})
-        session.query(models.VolumeMetadata).\
+        model_query(context, models.VolumeMetadata, session=session).\
             filter_by(volume_id=volume_id).\
             update({'deleted': True,
                     'deleted_at': now,
                     'updated_at': literal_column('updated_at')})
-        session.query(models.VolumeAdminMetadata).\
+        model_query(context, models.VolumeAdminMetadata, session=session).\
             filter_by(volume_id=volume_id).\
             update({'deleted': True,
                     'deleted_at': now,
@@ -1447,13 +1447,13 @@ def snapshot_create(context, values):
 def snapshot_destroy(context, snapshot_id):
     session = get_session()
     with session.begin():
-        session.query(models.Snapshot).\
+        model_query(context, models.Snapshot, session=session).\
             filter_by(id=snapshot_id).\
             update({'status': 'deleted',
                     'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})
-        session.query(models.SnapshotMetadata).\
+        model_query(context, models.SnapshotMetadata, session=session).\
             filter_by(snapshot_id=snapshot_id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
@@ -1839,12 +1839,12 @@ def volume_type_destroy(context, id):
             msg = _('VolumeType %s deletion failed, VolumeType in use.') % id
             LOG.error(msg)
             raise exception.VolumeTypeInUse(volume_type_id=id)
-        session.query(models.VolumeTypes).\
+        model_query(context, models.VolumeTypes, session=session).\
             filter_by(id=id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})
-        session.query(models.VolumeTypeExtraSpecs).\
+        model_query(context, models.VolumeTypeExtraSpecs, session=session).\
             filter_by(volume_type_id=id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
@@ -2641,7 +2641,7 @@ def transfer_destroy(context, transfer_id):
             volume_ref['status'] = 'available'
         volume_ref.update(volume_ref)
         volume_ref.save(session=session)
-        session.query(models.Transfer).\
+        model_query(context, models.Transfer, session=session).\
             filter_by(id=transfer_id).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
