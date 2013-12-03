@@ -37,7 +37,7 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
     try:
         rtsroot = rtslib.root.RTSRoot()
     except rtslib.utils.RTSLibError:
-        print _('Ensure that configfs is mounted at /sys/kernel/config.')
+        print(_('Ensure that configfs is mounted at /sys/kernel/config.'))
         raise
 
     # Look to see if BlockStorageObject already exists
@@ -94,8 +94,8 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
     try:
         rtslib.NetworkPortal(tpg_new, '0.0.0.0', 3260, mode='any')
     except rtslib.utils.RTSLibError:
-        print _('Error creating NetworkPortal: ensure port 3260 '
-                'is not in use by another service.')
+        print(_('Error creating NetworkPortal: ensure port 3260 '
+                'is not in use by another service.'))
         raise
 
     try:
@@ -109,7 +109,7 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
     try:
         rtsroot = rtslib.root.RTSRoot()
     except rtslib.utils.RTSLibError:
-        print _('Ensure that configfs is mounted at /sys/kernel/config.')
+        print(_('Ensure that configfs is mounted at /sys/kernel/config.'))
         raise
 
     # Look for the target
@@ -165,15 +165,15 @@ def verify_rtslib():
 
 
 def usage():
-    print "Usage:"
-    print sys.argv[0], \
-        "create [device] [name] [userid] [password]", \
-        "<initiator_iqn,iqn2,iqn3,...>"
-    print sys.argv[0], \
-        "add-initiator [target_iqn] [userid] [password] [initiator_iqn]"
-    print sys.argv[0], "get-targets"
-    print sys.argv[0], "delete [iqn]"
-    print sys.argv[0], "verify"
+    print("Usage:")
+    print(sys.argv[0] +
+          " create [device] [name] [userid] [password]" +
+          " <initiator_iqn,iqn2,iqn3,...>")
+    print(sys.argv[0] +
+          " add-initiator [target_iqn] [userid] [password] [initiator_iqn]")
+    print(sys.argv[0] + " get-targets")
+    print(sys.argv[0] + " delete [iqn]")
+    print(sys.argv[0] + " verify")
     sys.exit(1)
 
 

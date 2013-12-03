@@ -177,21 +177,21 @@ class TestUtils(test.TestCase):
 
         inf = image_utils.qemu_img_info(TEST_PATH)
 
-        self.assertEquals(inf.image, 'qemu.qcow2')
-        self.assertEquals(inf.backing_file, 'qemu.qcow2')
-        self.assertEquals(inf.file_format, 'qcow2')
-        self.assertEquals(inf.virtual_size, 52428800)
-        self.assertEquals(inf.cluster_size, 65536)
-        self.assertEquals(inf.disk_size, 200704)
+        self.assertEqual(inf.image, 'qemu.qcow2')
+        self.assertEqual(inf.backing_file, 'qemu.qcow2')
+        self.assertEqual(inf.file_format, 'qcow2')
+        self.assertEqual(inf.virtual_size, 52428800)
+        self.assertEqual(inf.cluster_size, 65536)
+        self.assertEqual(inf.disk_size, 200704)
 
-        self.assertEquals(inf.snapshots[0]['id'], '1')
-        self.assertEquals(inf.snapshots[0]['tag'], 'snap1')
-        self.assertEquals(inf.snapshots[0]['vm_size'], '1.7G')
-        self.assertEquals(inf.snapshots[0]['date'], '2011-10-04')
-        self.assertEquals(inf.snapshots[0]['vm_clock'],
-                          '19:04:00 32:06:34.974')
+        self.assertEqual(inf.snapshots[0]['id'], '1')
+        self.assertEqual(inf.snapshots[0]['tag'], 'snap1')
+        self.assertEqual(inf.snapshots[0]['vm_size'], '1.7G')
+        self.assertEqual(inf.snapshots[0]['date'], '2011-10-04')
+        self.assertEqual(inf.snapshots[0]['vm_clock'],
+                         '19:04:00 32:06:34.974')
 
-        self.assertEquals(str(inf), TEST_STR)
+        self.assertEqual(str(inf), TEST_STR)
 
     def _test_fetch_to_raw(self, has_qemu=True, src_inf=None, dest_inf=None):
         mox = self._mox

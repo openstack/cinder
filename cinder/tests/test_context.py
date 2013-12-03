@@ -86,4 +86,4 @@ class ContextTestCase(test.TestCase):
         compute_catalog = [{u'type': u'compute', u'name': u'nova'}]
         ctxt = context.RequestContext('111', '222',
                                       service_catalog=service_catalog)
-        self.assertEquals(ctxt.service_catalog, compute_catalog)
+        self.assertEqual(ctxt.service_catalog, compute_catalog)
