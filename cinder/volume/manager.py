@@ -731,11 +731,18 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
                                   error=False):
+        msg = _("migrate_volume_completion: completing migration for "
+                "volume %(vol1)s (temporary volume %(vol2)s")
+        LOG.debug(msg % {'vol1': volume_id, 'vol2': new_volume_id})
         volume = self.db.volume_get(ctxt, volume_id)
         new_volume = self.db.volume_get(ctxt, new_volume_id)
         rpcapi = volume_rpcapi.VolumeAPI()
 
         if error:
+            msg = _("migrate_volume_completion is cleaning up an error "
+                    "for volume %(vol1)s (temporary volume %(vol2)s")
+            LOG.info(msg % {'vol1': volume['id'],
+                            'vol2': new_volume['id']})
             new_volume['migration_status'] = None
             rpcapi.delete_volume(ctxt, new_volume)
             self.db.volume_update(ctxt, volume_id, {'migration_status': None})
