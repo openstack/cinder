@@ -75,7 +75,7 @@ class LimitsTemplate(xmlutil.TemplateBuilder):
         return xmlutil.MasterTemplate(root, 1, nsmap=limits_nsmap)
 
 
-class LimitsController(object):
+class LimitsController(wsgi.Controller):
     """Controller for accessing limits in the OpenStack API."""
 
     @wsgi.serializers(xml=LimitsTemplate)

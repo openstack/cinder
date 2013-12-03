@@ -23,7 +23,7 @@ from cinder import exception
 from cinder import volume
 
 
-class Controller(object):
+class Controller(wsgi.Controller):
     """The volume metadata API controller for the OpenStack API."""
 
     def __init__(self):

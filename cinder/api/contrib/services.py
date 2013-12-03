@@ -65,7 +65,7 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
         return xmlutil.MasterTemplate(root, 1)
 
 
-class ServiceController(object):
+class ServiceController(wsgi.Controller):
     @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
         """Return a list of all running services.

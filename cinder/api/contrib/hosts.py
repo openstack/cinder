@@ -138,7 +138,7 @@ def check_host(fn):
     return wrapped
 
 
-class HostController(object):
+class HostController(wsgi.Controller):
     """The Hosts API controller for the OpenStack API."""
     def __init__(self):
         self.api = volume_api.HostAPI()
