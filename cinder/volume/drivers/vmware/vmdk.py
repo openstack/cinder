@@ -232,7 +232,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         return self.volumeops.get_vmfolder(datacenter)
 
     def _select_datastore_summary(self, size_bytes, datastores):
-        """Get best summary from datastore list that can accomodate volume.
+        """Get best summary from datastore list that can accommodate volume.
 
         The implementation selects datastore based on maximum relative
         free space, which is (free_space/total_space) and has free space to
@@ -254,7 +254,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     best_summary = summary
 
         if not best_summary:
-            msg = _("Unable to pick datastore to accomodate %(size)s bytes "
+            msg = _("Unable to pick datastore to accommodate %(size)s bytes "
                     "from the datastores: %(dss)s.")
             LOG.error(msg % {'size': size_bytes, 'dss': datastores})
             raise error_util.VimException(msg %

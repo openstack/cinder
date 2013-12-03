@@ -74,7 +74,7 @@ class HVSCommon():
             res = urllib2.urlopen(req).read().decode("utf-8")
             LOG.debug(_('HVS Response Data: %(res)s') % {'res': res})
         except Exception as err:
-            err_msg = _('Bad reponse from server: %s') % err
+            err_msg = _('Bad response from server: %s') % err
             LOG.error(err_msg)
             raise err
 
@@ -218,7 +218,7 @@ class HVSCommon():
     def _get_volume_size(self, poolinfo, volume):
         """Calculate the volume size.
 
-        We should devide the given volume size by 512 for the HVS system
+        We should divide the given volume size by 512 for the HVS system
         caculates volume size with sectors, which is 512 bytes.
         """
 

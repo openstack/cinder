@@ -418,7 +418,7 @@ class ISCSIConnector(InitiatorConnector):
                                    check_exit_code=[0, 255])
             except putils.ProcessExecutionError as err:
                 #as this might be one of many paths,
-                #only set successfull logins to startup automatically
+                #only set successful logins to startup automatically
                 if err.exit_code in [15]:
                     self._iscsiadm_update(connection_properties,
                                           "node.startup",

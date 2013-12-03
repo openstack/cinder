@@ -984,7 +984,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           snapshot_id)
 
-    def test_cant_delete_volume_in_use(self):
+    def test_cannot_delete_volume_in_use(self):
         """Test volume can't be deleted in invalid stats."""
         # create a volume and assign to host
         volume = tests_utils.create_volume(self.context, **self.volume_params)
@@ -1029,7 +1029,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
 
-    def test_cant_force_delete_attached_volume(self):
+    def test_cannot_force_delete_attached_volume(self):
         """Test volume can't be force delete in attached state"""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.volume.create_volume(self.context, volume['id'])
@@ -1047,7 +1047,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.volume.delete_volume(self.context, volume['id'])
 
-    def test_cant_delete_volume_with_snapshots(self):
+    def test_cannot_delete_volume_with_snapshots(self):
         """Test volume can't be deleted with dependent snapshots."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.volume.create_volume(self.context, volume['id'])

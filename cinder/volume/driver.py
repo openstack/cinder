@@ -141,7 +141,7 @@ class VolumeDriver(object):
         self.set_execute(execute)
         self._stats = {}
 
-        # set True by manager after succesful check_for_setup
+        # set True by manager after successful check_for_setup
         self._initialized = False
 
     def set_execute(self, execute):

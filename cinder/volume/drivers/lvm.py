@@ -416,7 +416,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     def _create_tgtadm_target(self, iscsi_name, iscsi_target,
                               volume_path, chap_auth, lun=0,
                               check_exit_code=False, old_name=None):
-        # NOTE(jdg): tgt driver has an issue where with alot of activity
+        # NOTE(jdg): tgt driver has an issue where with a lot of activity
         # (or sometimes just randomly) it will get *confused* and attempt
         # to reuse a target ID, resulting in a target already exists error
         # Typically a simple retry will address this

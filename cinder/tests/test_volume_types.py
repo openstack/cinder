@@ -64,7 +64,7 @@ class VolumeTypeTestCase(test.TestCase):
 
         for k, v in self.vol_type1_specs.iteritems():
             self.assertEqual(v, new['extra_specs'][k],
-                             'one of fields doesnt match')
+                             'one of fields does not match')
 
         new_all_vtypes = volume_types.get_all_types(self.ctxt)
         self.assertEqual(len(prev_all_vtypes) + 1,

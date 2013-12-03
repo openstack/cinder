@@ -1050,7 +1050,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         client.set_api_version(major, minor)
 
     def check_for_setup_error(self):
-        """Checks if setup occured properly."""
+        """Checks if setup occurred properly."""
         api_version = self._client.get_api_version()
         if api_version:
             major, minor = api_version

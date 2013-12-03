@@ -30,7 +30,7 @@ def attach_debug_listeners(flow):
 
     These listeners will log when tasks/flows are transitioning from state to
     state so that said states can be seen in the debug log output which is very
-    useful for figuring out where problems are occuring.
+    useful for figuring out where problems are occurring.
     """
 
     def flow_log_change(state, details):

@@ -212,7 +212,7 @@ class ExtractVolumeRequestTask(base.CinderTask):
                 # TODO(harlowja): what happens if the status changes after this
                 # initial snapshot status check occurs??? Seems like someone
                 # could delete the snapshot after this check passes but before
-                # the volume is offically created?
+                # the volume is officially created?
                 raise exception.InvalidSnapshot(reason=msg)
             snapshot_id = snapshot['id']
         return snapshot_id
@@ -235,7 +235,7 @@ class ExtractVolumeRequestTask(base.CinderTask):
                 # TODO(harlowja): what happens if the status changes after this
                 # initial volume status check occurs??? Seems like someone
                 # could delete the volume after this check passes but before
-                # the volume is offically created?
+                # the volume is officially created?
                 raise exception.InvalidVolume(reason=msg)
             source_volid = source_volume['id']
         return source_volid
@@ -475,7 +475,7 @@ class ExtractVolumeRequestTask(base.CinderTask):
         # TODO(joel-coffman): This special handling of snapshots to ensure that
         # their volume type matches the source volume is too convoluted. We
         # should copy encryption metadata from the encrypted volume type to the
-        # volume upon creation and propogate that information to each snapshot.
+        # volume upon creation and propagate that information to each snapshot.
         # This strategy avoid any dependency upon the encrypted volume type.
         if not volume_type and not source_volume and not snapshot:
             volume_type = volume_types.get_default_volume_type()
@@ -595,7 +595,7 @@ class QuotaReserveTask(base.CinderTask):
     Reversion strategy: rollback the quota reservation.
 
     Warning Warning: if the process that is running this reserve and commit
-    process fails (or is killed before the quota is rolled back or commited
+    process fails (or is killed before the quota is rolled back or committed
     it does appear like the quota will never be rolled back). This makes
     software upgrades hard (inflight operations will need to be stopped or
     allowed to complete before the upgrade can occur). *In the future* when
@@ -659,7 +659,7 @@ class QuotaReserveTask(base.CinderTask):
         if not result:
             return
         if context.quota_committed:
-            # The reservations have already been commited and can not be
+            # The reservations have already been committed and can not be
             # rolled back at this point.
             return
         # We actually produced an output that we can revert so lets attempt
@@ -681,7 +681,7 @@ class QuotaCommitTask(base.CinderTask):
     the initial reservation (see: QuotaReserveTask).
 
     Warning Warning: if the process that is running this reserve and commit
-    process fails (or is killed before the quota is rolled back or commited
+    process fails (or is killed before the quota is rolled back or committed
     it does appear like the quota will never be rolled back). This makes
     software upgrades hard (inflight operations will need to be stopped or
     allowed to complete before the upgrade can occur). *In the future* when
@@ -1615,7 +1615,7 @@ def get_api_flow(scheduler_rpcapi, volume_rpcapi, db,
     v_uuid = api_flow.add(EntryCreateTask(db))
     api_flow.add(QuotaCommitTask())
 
-    # If after commiting something fails, ensure we set the db to failure
+    # If after committing something fails, ensure we set the db to failure
     # before reverting any prior tasks.
     api_flow.add(OnFailureChangeStatusTask(db))
 

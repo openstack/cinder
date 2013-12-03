@@ -371,7 +371,7 @@ class RBDDriver(driver.VolumeDriver):
         if not parent:
             return depth
 
-        # If clone depth was reached, flatten should have occured so if it has
+        # If clone depth was reached, flatten should have occurred so if it has
         # been exceeded then something has gone wrong.
         if depth > CONF.rbd_max_clone_depth:
             raise Exception(_("clone depth exceeds limit of %s") %

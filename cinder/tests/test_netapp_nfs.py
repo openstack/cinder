@@ -73,9 +73,9 @@ class FakeSnapshot(object):
         return self.__dict__[key]
 
 
-class FakeResponce(object):
+class FakeResponse(object):
     def __init__(self, status):
-        """Initialize FakeResponce.
+        """Initialize FakeResponse.
 
         :param status: Either 'failed' or 'passed'
         """

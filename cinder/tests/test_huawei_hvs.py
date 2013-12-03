@@ -636,10 +636,10 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
         product.appendChild(product_text)
         storage.appendChild(product)
 
-        protocal = doc.createElement('Protocol')
-        protocal_text = doc.createTextNode('iSCSI')
-        protocal.appendChild(protocal_text)
-        storage.appendChild(protocal)
+        protocol = doc.createElement('Protocol')
+        protocol_text = doc.createTextNode('iSCSI')
+        protocol.appendChild(protocol_text)
+        storage.appendChild(protocol)
 
         username = doc.createElement('UserName')
         username_text = doc.createTextNode('admin')
@@ -819,10 +819,10 @@ class HVSRESTFCDriverTestCase(test.TestCase):
         product.appendChild(product_text)
         storage.appendChild(product)
 
-        protocal = doc.createElement('Protocol')
-        protocal_text = doc.createTextNode('FC')
-        protocal.appendChild(protocal_text)
-        storage.appendChild(protocal)
+        protocol = doc.createElement('Protocol')
+        protocol_text = doc.createTextNode('FC')
+        protocol.appendChild(protocol_text)
+        storage.appendChild(protocol)
 
         username = doc.createElement('UserName')
         username_text = doc.createTextNode('admin')

@@ -62,7 +62,7 @@ class FakeRequest(object):
 
 
 # NOTE(uni): deprecating service request key, binary takes precedence
-# Still keeping service key here for API compability sake.
+# Still keeping service key here for API compatibility sake.
 class FakeRequestWithService(object):
         environ = {"cinder.context": context.get_admin_context()}
         GET = {"service": "cinder-volume"}
@@ -79,7 +79,7 @@ class FakeRequestWithHost(object):
 
 
 # NOTE(uni): deprecating service request key, binary takes precedence
-# Still keeping service key here for API compability sake.
+# Still keeping service key here for API compatibility sake.
 class FakeRequestWithHostService(object):
         environ = {"cinder.context": context.get_admin_context()}
         GET = {"host": "host1", "service": "cinder-volume"}

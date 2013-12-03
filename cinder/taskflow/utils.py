@@ -263,7 +263,7 @@ class Runner(object):
 
 class TransitionNotifier(object):
     """A utility helper class that can be used to subscribe to
-    notifications of events occuring as well as allow a entity to post said
+    notifications of events occurring as well as allow a entity to post said
     notifications to subscribers.
     """
 

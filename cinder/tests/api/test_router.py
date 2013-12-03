@@ -63,15 +63,15 @@ class VolumeRouterTestCase(test.TestCase):
         self.assertEqual(200, response.status_int)
 
     def test_versions_action_args_index(self):
-        request_enviroment = {'PATH_INFO': '/'}
+        request_environment = {'PATH_INFO': '/'}
         resource = versions.Versions()
-        result = resource.get_action_args(request_enviroment)
+        result = resource.get_action_args(request_environment)
         self.assertEqual(result['action'], 'index')
 
     def test_versions_action_args_multi(self):
-        request_enviroment = {'PATH_INFO': '/fake/path'}
+        request_environment = {'PATH_INFO': '/fake/path'}
         resource = versions.Versions()
-        result = resource.get_action_args(request_enviroment)
+        result = resource.get_action_args(request_environment)
         self.assertEqual(result['action'], 'multi')
 
     def test_versions_get_most_recent_update(self):

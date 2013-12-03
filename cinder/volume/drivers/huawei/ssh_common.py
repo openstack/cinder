@@ -1054,7 +1054,7 @@ class TseriesCommon():
             return None
 
     def _get_host_map_info(self, hostid):
-        """Get map infomation of the given host."""
+        """Get map information of the given host."""
 
         cli_cmd = 'showhostmap -host %(hostid)s' % {'hostid': hostid}
         out = self._execute_cli(cli_cmd)
@@ -1259,7 +1259,7 @@ class DoradoCommon(TseriesCommon):
     def _check_conf_file(self):
         """Check the config file, make sure the key elements are set."""
         root = huawei_utils.parse_xml_file(self.xml_conf)
-        # Check login infomation
+        # Check login information
         check_list = ['Storage/ControllerIP0', 'Storage/ControllerIP1',
                       'Storage/UserName', 'Storage/UserPassword']
         for item in check_list:
