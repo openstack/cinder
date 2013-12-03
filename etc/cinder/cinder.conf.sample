@@ -930,6 +930,14 @@
 
 
 #
+# Options defined in cinder.openstack.common.rpc.matchmaker_ring
+#
+
+# Matchmaker ring file (JSON) (string value)
+#ringfile=/etc/oslo/matchmaker_ring.json
+
+
+#
 # Options defined in cinder.scheduler.driver
 #
 
