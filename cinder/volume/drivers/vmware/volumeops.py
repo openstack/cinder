@@ -18,6 +18,7 @@ Implements operations on volumes residing on VMware datastores.
 """
 
 from cinder.openstack.common import log as logging
+from cinder import units
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 
@@ -317,6 +318,35 @@ class VMwareVolumeOps(object):
                                                 name=child_folder_name)
         LOG.debug(_("Created child folder: %s.") % child_folder)
         return child_folder
+
+    def extend_virtual_disk(self, requested_size_in_gb, name, dc_ref,
+                            eager_zero=False):
+        """Extend the virtual disk to the requested size.
+
+        :param requested_size_in_gb: Size of the volume in GB
+        :param name: Name of the backing
+        :param dc_ref: Reference datacenter
+        :param eager_zero: Boolean determining if the free space
+        is zeroed out
+        """
+        LOG.debug(_("Extending the volume %(name)s to %(size)s GB."),
+                  {'name': name, 'size': requested_size_in_gb})
+        diskMgr = self._session.vim.service_content.virtualDiskManager
+
+        # VMWare API needs the capacity unit to be in KB, so convert the
+        # capacity unit from GB to KB.
+        size_in_kb = requested_size_in_gb * units.MiB
+        task = self._session.invoke_api(self._session.vim,
+                                        "ExtendVirtualDisk_Task",
+                                        diskMgr,
+                                        name=name,
+                                        datacenter=dc_ref,
+                                        newCapacityKb=size_in_kb,
+                                        eagerZero=eager_zero)
+        self._session.wait_for_task(task)
+        LOG.info(_("Successfully extended the volume %(name)s to "
+                   "%(size)s GB."),
+                 {'name': name, 'size': requested_size_in_gb})
 
     def _get_create_spec(self, name, size_kb, disk_type, ds_name,
                          profileId=None):

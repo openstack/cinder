@@ -676,24 +676,37 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         self._delete_snapshot(snapshot)
 
-    def _clone_backing_by_copying(self, volume, src_vmdk_path):
-        """Clones volume backing.
+    def _create_backing_by_copying(self, volume, src_vmdk_path,
+                                   src_size_in_gb):
+        """Create volume backing.
 
         Creates a backing for the input volume and replaces its VMDK file
         with the input VMDK file copy.
 
         :param volume: New Volume object
         :param src_vmdk_path: VMDK file path of the source volume backing
+        :param src_size_in_gb: The size of the original volume to be cloned
+        in GB. The size of the target volume is saved in volume['size'].
+        This parameter is used to check if the size specified by the user is
+        greater than the original size. If so, the target volume should extend
+        its size.
         """
 
         # Create a backing
         backing = self._create_backing_in_inventory(volume)
-        new_vmdk_path = self.volumeops.get_vmdk_path(backing)
+        dest_vmdk_path = self.volumeops.get_vmdk_path(backing)
         datacenter = self.volumeops.get_dc(backing)
         # Deleting the current VMDK file
-        self.volumeops.delete_vmdk_file(new_vmdk_path, datacenter)
+        self.volumeops.delete_vmdk_file(dest_vmdk_path, datacenter)
         # Copying the source VMDK file
-        self.volumeops.copy_vmdk_file(datacenter, src_vmdk_path, new_vmdk_path)
+        self.volumeops.copy_vmdk_file(datacenter, src_vmdk_path,
+                                      dest_vmdk_path)
+        # If the target volume has a larger size than the source
+        # volume/snapshot, we need to resize/extend the size of the
+        # vmdk virtual disk to the value specified by the user.
+        if volume['size'] > src_size_in_gb:
+            self._extend_volumeops_virtual_disk(volume['size'], dest_vmdk_path,
+                                                datacenter)
         LOG.info(_("Successfully cloned new backing: %(back)s from "
                    "source VMDK file: %(vmdk)s.") %
                  {'back': backing, 'vmdk': src_vmdk_path})
@@ -718,7 +731,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                       'vol': volume['name']})
             return
         src_vmdk_path = self.volumeops.get_vmdk_path(backing)
-        self._clone_backing_by_copying(volume, src_vmdk_path)
+        self._create_backing_by_copying(volume, src_vmdk_path,
+                                        src_vref['size'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates volume clone.
@@ -750,13 +764,14 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         snapshot_moref = self.volumeops.get_snapshot(backing,
                                                      snapshot['name'])
         if not snapshot_moref:
-            LOG.info(_("There is no snapshot point for the snapshoted volume: "
-                       "%(snap)s. Not creating any backing for the "
-                       "volume: %(vol)s.") %
+            LOG.info(_("There is no snapshot point for the snapshotted "
+                       "volume: %(snap)s. Not creating any backing for "
+                       "the volume: %(vol)s.") %
                      {'snap': snapshot['name'], 'vol': volume['name']})
             return
         src_vmdk_path = self.volumeops.get_vmdk_path(snapshot_moref)
-        self._clone_backing_by_copying(volume, src_vmdk_path)
+        self._create_backing_by_copying(volume, src_vmdk_path,
+                                        snapshot['volume_size'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
@@ -903,6 +918,40 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         LOG.info(_("Done copying image: %(id)s to volume: %(vol)s.") %
                  {'id': image_id, 'vol': volume['name']})
 
+    def _extend_vmdk_virtual_disk(self, name, new_size_in_gb):
+        """Extend the size of the vmdk virtual disk to the new size.
+
+        :param name: the name of the volume
+        :param new_size_in_gb: the new size the vmdk virtual disk extends to
+        """
+        backing = self.volumeops.get_backing(name)
+        if not backing:
+            LOG.info(_("The backing is not found, so there is no need "
+                       "to extend the vmdk virtual disk for the volume "
+                       "%s."), name)
+        else:
+            root_vmdk_path = self.volumeops.get_vmdk_path(backing)
+            datacenter = self.volumeops.get_dc(backing)
+            self._extend_volumeops_virtual_disk(new_size_in_gb, root_vmdk_path,
+                                                datacenter)
+
+    def _extend_volumeops_virtual_disk(self, new_size_in_gb, root_vmdk_path,
+                                       datacenter):
+        """Call the ExtendVirtualDisk_Task.
+
+        :param new_size_in_gb: the new size the vmdk virtual disk extends to
+        :param root_vmdk_path: the path for the vmdk file
+        :param datacenter: reference to the datacenter
+        """
+        try:
+            self.volumeops.extend_virtual_disk(new_size_in_gb,
+                                               root_vmdk_path, datacenter)
+        except error_util.VimException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Unable to extend the size of the "
+                                "vmdk virtual disk at the path %s."),
+                              root_vmdk_path)
+
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Creates volume from image.
 
@@ -917,23 +966,36 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :param image_id: Glance image id
         """
         LOG.debug(_("Copy glance image: %s to create new volume.") % image_id)
-
+        # Record the volume size specified by the user, if the size is input
+        # from the API.
+        volume_size_in_gb = volume['size']
         # Verify glance image is vmdk disk format
         metadata = image_service.show(context, image_id)
         VMwareEsxVmdkDriver._validate_disk_format(metadata['disk_format'])
 
         # Get disk_type for vmdk disk
         disk_type = None
+        image_size_in_bytes = metadata['size']
         properties = metadata['properties']
         if properties and 'vmware_disktype' in properties:
             disk_type = properties['vmware_disktype']
 
         if disk_type == 'streamOptimized':
             self._fetch_stream_optimized_image(context, volume, image_service,
-                                               image_id, metadata['size'])
+                                               image_id, image_size_in_bytes)
         else:
             self._fetch_flat_image(context, volume, image_service, image_id,
-                                   metadata['size'])
+                                   image_size_in_bytes)
+        # image_size_in_bytes is the capacity of the image in Bytes and
+        # volume_size_in_gb is the size specified by the user, if the
+        # size is input from the API.
+        #
+        # Convert the volume_size_in_gb into bytes and compare with the
+        # image size. If the volume_size_in_gb is greater, meaning the
+        # user specifies a larger volume, we need to extend/resize the vmdk
+        # virtual disk to the capacity specified by the user.
+        if volume_size_in_gb * units.GiB > image_size_in_bytes:
+            self._extend_vmdk_virtual_disk(volume['name'], volume_size_in_gb)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Creates glance image from volume.
@@ -1159,13 +1221,14 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                                             volumeops.LINKED_CLONE_TYPE),
                                            volumeops.FULL_CLONE_TYPE)
 
-    def _clone_backing(self, volume, backing, snapshot, clone_type):
+    def _clone_backing(self, volume, backing, snapshot, clone_type, src_vsize):
         """Clone the backing.
 
         :param volume: New Volume object
         :param backing: Reference to the backing entity
-        :param snapshot: Reference to snapshot entity
+        :param snapshot: Reference to the snapshot entity
         :param clone_type: type of the clone
+        :param src_vsize: the size of the source volume
         """
         datastore = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
@@ -1174,6 +1237,15 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             datastore = summary.datastore
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore)
+        # If the volume size specified by the user is greater than
+        # the size of the source volume, the newly created volume will
+        # allocate the capacity to the size of the source volume in the backend
+        # VMDK datastore, though the volume information indicates it has a
+        # capacity of the volume size. If the volume size is greater,
+        # we need to extend/resize the capacity of the vmdk virtual disk from
+        # the size of the source volume to the volume size.
+        if volume['size'] > src_vsize:
+            self._extend_vmdk_virtual_disk(volume['name'], volume['size'])
         LOG.info(_("Successfully created clone: %s.") % clone)
 
     def _create_volume_from_snapshot(self, volume, snapshot):
@@ -1188,7 +1260,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(snapshot['volume_name'])
         if not backing:
-            LOG.info(_("There is no backing for the snapshoted volume: "
+            LOG.info(_("There is no backing for the snapshotted volume: "
                        "%(snap)s. Not creating any backing for the "
                        "volume: %(vol)s.") %
                      {'snap': snapshot['name'], 'vol': volume['name']})
@@ -1196,13 +1268,14 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         snapshot_moref = self.volumeops.get_snapshot(backing,
                                                      snapshot['name'])
         if not snapshot_moref:
-            LOG.info(_("There is no snapshot point for the snapshoted volume: "
-                       "%(snap)s. Not creating any backing for the "
-                       "volume: %(vol)s.") %
+            LOG.info(_("There is no snapshot point for the snapshotted "
+                       "volume: %(snap)s. Not creating any backing for "
+                       "the volume: %(vol)s.") %
                      {'snap': snapshot['name'], 'vol': volume['name']})
             return
         clone_type = VMwareVcVmdkDriver._get_clone_type(volume)
-        self._clone_backing(volume, backing, snapshot_moref, clone_type)
+        self._clone_backing(volume, backing, snapshot_moref, clone_type,
+                            snapshot['volume_size'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
@@ -1240,7 +1313,8 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             # then create the linked clone out of this snapshot point.
             name = 'snapshot-%s' % volume['id']
             snapshot = self.volumeops.create_snapshot(backing, name, None)
-        self._clone_backing(volume, backing, snapshot, clone_type)
+        self._clone_backing(volume, backing, snapshot, clone_type,
+                            src_vref['size'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates volume clone.

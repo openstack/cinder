@@ -20,6 +20,7 @@ Test suite for VMware VMDK driver volumeops module.
 import mock
 
 from cinder import test
+from cinder import units
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 from cinder.volume.drivers.vmware import volumeops
@@ -790,4 +791,25 @@ class VolumeOpsTestCase(test.TestCase):
                                            disk_mgr,
                                            name=vmdk_file_path,
                                            datacenter=dc_ref)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_extend_virtual_disk(self):
+        """Test volumeops.extend_virtual_disk."""
+        task = mock.sentinel.task
+        invoke_api = self.session.invoke_api
+        invoke_api.return_value = task
+        disk_mgr = self.session.vim.service_content.virtualDiskManager
+        fake_size = 5
+        fake_size_in_kb = fake_size * units.MiB
+        fake_name = 'fake_volume_0000000001'
+        fake_dc = mock.sentinel.datacenter
+        self.vops.extend_virtual_disk(fake_size,
+                                      fake_name, fake_dc)
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           "ExtendVirtualDisk_Task",
+                                           disk_mgr,
+                                           name=fake_name,
+                                           datacenter=fake_dc,
+                                           newCapacityKb=fake_size_in_kb,
+                                           eagerZero=False)
         self.session.wait_for_task.assert_called_once_with(task)
