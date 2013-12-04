@@ -21,6 +21,7 @@ Tests for Volume Code.
 """
 
 import datetime
+import mock
 import os
 import re
 import shutil
@@ -70,6 +71,8 @@ ENCRYPTION_PROVIDER = 'nova.volume.encryptors.cryptsetup.CryptsetupEncryptor'
 fake_opt = [
     cfg.StrOpt('fake_opt', default='fake', help='fake opts')
 ]
+
+FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa'
 
 
 class FakeImageService:
@@ -872,6 +875,54 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
         self.assertEqual(admin_metadata[0]['value'], 'True')
 
+    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(cinder.volume.api.API, 'update')
+    def test_reserve_volume_success(self, volume_get, volume_update):
+        fake_volume = {
+            'id': FAKE_UUID,
+            'status': 'available'
+        }
+
+        volume_get.return_value = fake_volume
+        volume_update.return_value = fake_volume
+
+        self.assertIsNone(cinder.volume.api.API().reserve_volume(
+            self.context,
+            fake_volume,
+        ))
+
+        self.assertTrue(volume_get.called)
+        self.assertTrue(volume_update.called)
+
+    def test_reserve_volume_bad_status(self):
+        fake_volume = {
+            'id': FAKE_UUID,
+            'status': 'in-use'
+        }
+
+        with mock.patch.object(db, 'volume_get') as mock_volume_get:
+            mock_volume_get.return_value = fake_volume
+            self.assertRaises(exception.InvalidVolume,
+                              cinder.volume.api.API().reserve_volume,
+                              self.context,
+                              fake_volume)
+            self.assertTrue(mock_volume_get.called)
+
+    def test_unreserve_volume_success(self):
+        fake_volume = {
+            'id': FAKE_UUID,
+            'status': 'attaching'
+        }
+
+        with mock.patch.object(cinder.volume.api.API,
+                               'update') as mock_volume_update:
+            mock_volume_update.return_value = fake_volume
+            self.assertIsNone(cinder.volume.api.API().unreserve_volume(
+                self.context,
+                fake_volume
+            ))
+            self.assertTrue(mock_volume_update.called)
+
     def test_concurrent_volumes_get_different_targets(self):
         """Ensure multiple concurrent volumes get different targets."""
         volume_ids = []
@@ -1275,7 +1326,6 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.stubs.Set(self.volume.driver, 'local_path', lambda x: dst_path)
 
-        image_id = 'aaaaaaaa-0000-0000-0000-000000000000'
         # creating volume testdata
         volume_id = 1
         db.volume_create(self.context,
@@ -1291,7 +1341,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           volume_id, None, None, None,
                           None,
-                          image_id)
+                          FAKE_UUID)
         volume = db.volume_get(self.context, volume_id)
         self.assertEqual(volume['status'], "error")
         self.assertEqual(volume['bootable'], False)
@@ -1828,7 +1878,7 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['status'], 'in-use')
 
     def test_copy_volume_to_image_exception(self):
-        self.image_meta['id'] = 'aaaaaaaa-0000-0000-0000-000000000000'
+        self.image_meta['id'] = FAKE_UUID
         # creating volume testdata
         self.volume_attrs['status'] = 'in-use'
         db.volume_create(self.context, self.volume_attrs)
