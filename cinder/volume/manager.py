@@ -492,6 +492,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             # TODO(jdg): attach_time column is currently varchar
             # we should update this to a date-time object
             # also consider adding detach_time?
+            self._notify_about_volume_usage(context, volume,
+                                            "attach.start")
             self.db.volume_update(context, volume_id,
                                   {"instance_uuid": instance_uuid,
                                    "attached_host": host_name,
@@ -528,11 +530,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.db.volume_update(context, volume_id,
                                           {'status': 'error_attaching'})
 
-            self.db.volume_attached(context.elevated(),
-                                    volume_id,
-                                    instance_uuid,
-                                    host_name_sanitized,
-                                    mountpoint)
+            volume = self.db.volume_attached(context.elevated(),
+                                             volume_id,
+                                             instance_uuid,
+                                             host_name_sanitized,
+                                             mountpoint)
+            self._notify_about_volume_usage(context, volume, "attach.end")
         return do_attach()
 
     @utils.require_driver_initialized
@@ -542,6 +545,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
 
         volume = self.db.volume_get(context, volume_id)
+        self._notify_about_volume_usage(context, volume, "detach.start")
         try:
             self.driver.detach_volume(context, volume)
         except Exception:
@@ -559,6 +563,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if (volume['provider_location'] and
                 volume['name'] not in volume['provider_location']):
             self.driver.ensure_export(context, volume)
+        self._notify_about_volume_usage(context, volume, "detach.end")
 
     @utils.require_driver_initialized
     def copy_volume_to_image(self, context, volume_id, image_meta):

@@ -988,6 +988,7 @@ def volume_attached(context, volume_id, instance_uuid, host_name, mountpoint):
         volume_ref['instance_uuid'] = instance_uuid
         volume_ref['attached_host'] = host_name
         volume_ref.save(session=session)
+        return volume_ref
 
 
 @require_context
