@@ -17,6 +17,7 @@
 
 
 import contextlib
+import mock
 import mox
 import os
 import tempfile
@@ -104,6 +105,9 @@ class RBDTestCase(test.TestCase):
                                        rbd=self.rbd)
         self.driver.set_initialized()
 
+    def tearDown(self):
+        super(RBDTestCase, self).tearDown()
+
     def test_create_volume(self):
         name = u'volume-00000001'
         size = 1
@@ -125,36 +129,77 @@ class RBDTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
 
-    def test_delete_volume(self):
+    @mock.patch('cinder.volume.drivers.rbd.rados')
+    @mock.patch('cinder.volume.drivers.rbd.rbd')
+    def test_delete_volume(self, _mock_rbd, _mock_rados):
         name = u'volume-00000001'
         volume = dict(name=name)
 
-        # Setup librbd stubs
-        self.stubs.Set(self.driver, 'rados', mock_rados)
-        self.stubs.Set(self.driver, 'rbd', mock_rbd)
+        _mock_rbd.Image = mock_rbd.Image
+        _mock_rbd.Image.list_snaps = mock.Mock()
+        _mock_rbd.Image.list_snaps.return_value = []
+        _mock_rbd.Image.unprotect_snap = mock.Mock()
 
-        class mock_client(object):
-            def __init__(self, *args, **kwargs):
-                self.ioctx = None
+        _mock_rbd.RBD = mock_rbd.RBD
+        _mock_rbd.RBD.remove = mock.Mock()
 
-            def __enter__(self, *args, **kwargs):
-                return self
+        self.driver.rbd = _mock_rbd
+        self.driver.rados = _mock_rados
 
-            def __exit__(self, type_, value, traceback):
-                pass
+        mpo = mock.patch.object
+        with mpo(driver, 'RADOSClient') as mock_rados_client:
+            with mpo(self.driver, '_get_clone_info') as mock_get_clone_info:
+                mock_get_clone_info.return_value = (None, None, None)
+                with mpo(self.driver,
+                         '_delete_backup_snaps') as mock_del_backup_snaps:
+                    self.driver.delete_volume(volume)
 
-        self.stubs.Set(driver, 'RADOSClient', mock_client)
+                    self.assertTrue(mock_get_clone_info.called)
+                    self.assertTrue(_mock_rbd.Image.list_snaps.called)
+                    self.assertTrue(mock_rados_client.called)
+                    self.assertTrue(mock_del_backup_snaps.called)
+                    self.assertFalse(mock_rbd.Image.unprotect_snap.called)
+                    self.assertTrue(_mock_rbd.RBD.remove.called)
 
-        self.stubs.Set(self.driver, '_get_backup_snaps',
-                       lambda *args: None)
-        self.stubs.Set(self.driver.rbd.Image, 'list_snaps',
-                       lambda *args: [])
-        self.stubs.Set(self.driver.rbd.Image, 'parent_info',
-                       lambda *args: (None, None, None))
-        self.stubs.Set(self.driver.rbd.Image, 'unprotect_snap',
-                       lambda *args: None)
+    @mock.patch('cinder.volume.drivers.rbd.rados')
+    @mock.patch('cinder.volume.drivers.rbd.rbd')
+    def test_delete_busy_volume(self, _mock_rbd, _mock_rados):
+        name = u'volume-00000001'
+        volume = dict(name=name)
 
-        self.driver.delete_volume(volume)
+        _mock_rbd.Image = mock_rbd.Image
+        _mock_rbd.Image.list_snaps = mock.Mock()
+        _mock_rbd.Image.list_snaps.return_value = []
+        _mock_rbd.Image.unprotect_snap = mock.Mock()
+
+        class MyMockException(Exception):
+            pass
+
+        _mock_rbd.RBD = mock_rbd.RBD
+        _mock_rbd.ImageBusy = MyMockException
+        _mock_rbd.RBD.remove = mock.Mock()
+        _mock_rbd.RBD.remove.side_effect = _mock_rbd.ImageBusy
+
+        self.driver.rbd = _mock_rbd
+        self.driver.rados = _mock_rados
+
+        mpo = mock.patch.object
+        with mpo(driver, 'RADOSClient') as mock_rados_client:
+            with mpo(self.driver, '_get_clone_info') as mock_get_clone_info:
+                mock_get_clone_info.return_value = (None, None, None)
+                with mpo(self.driver,
+                         '_delete_backup_snaps') as mock_del_backup_snaps:
+
+                    self.assertRaises(exception.VolumeIsBusy,
+                                      self.driver.delete_volume,
+                                      volume)
+
+                    self.assertTrue(mock_get_clone_info.called)
+                    self.assertTrue(_mock_rbd.Image.list_snaps.called)
+                    self.assertTrue(mock_rados_client.called)
+                    self.assertTrue(mock_del_backup_snaps.called)
+                    self.assertFalse(mock_rbd.Image.unprotect_snap.called)
+                    self.assertTrue(_mock_rbd.RBD.remove.called)
 
     def test_create_snapshot(self):
         vol_name = u'volume-00000001'

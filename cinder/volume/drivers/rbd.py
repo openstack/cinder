@@ -623,7 +623,18 @@ class RBDDriver(driver.VolumeDriver):
 
             if clone_snap is None:
                 LOG.debug(_("deleting rbd volume %s") % (volume_name))
-                self.rbd.RBD().remove(client.ioctx, volume_name)
+                try:
+                    self.rbd.RBD().remove(client.ioctx, volume_name)
+                except self.rbd.ImageBusy:
+                    msg = (_("ImageBusy error raised while deleting rbd "
+                             "volume. This may have been caused by a "
+                             "connection from a client that has crashed and, "
+                             "if so, may be resolved by retrying the delete "
+                             "after 30 seconds has elapsed."))
+                    LOG.error(msg)
+                    # Now raise this so that volume stays available so that we
+                    # delete can be retried.
+                    raise exception.VolumeIsBusy(msg, volume_name=volume_name)
 
                 # If it is a clone, walk back up the parent chain deleting
                 # references.
