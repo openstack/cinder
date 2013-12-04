@@ -550,8 +550,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         """
 
-        prefix = self._connector_to_hostname_prefix(connector)
-        LOG.debug(_('enter: _get_host_from_connector: prefix %s') % prefix)
+        LOG.debug(_('enter: _get_host_from_connector: %s') % str(connector))
 
         # Get list of host in the storage
         ssh_cmd = ['svcinfo', 'lshost', '-delim', '!']
@@ -625,6 +624,22 @@ class StorwizeSVCDriver(san.SanDriver):
         LOG.debug(_('leave: _create_host: host %(host)s - %(host_name)s') %
                   {'host': connector['host'], 'host_name': host_name})
         return host_name
+
+    def _get_vdiskhost_mappings(self, vdisk_name):
+        """Return the defined storage mappings for a vdisk."""
+
+        return_data = {}
+        ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', vdisk_name]
+        out, err = self._run_ssh(ssh_cmd)
+
+        mappings = out.strip().split('\n')
+        if len(mappings):
+            header = mappings.pop(0)
+            for mapping_line in mappings:
+                mapping_data = self._get_hdr_dic(header, mapping_line, '!')
+                return_data[mapping_data['host_name']] = mapping_data
+
+        return return_data
 
     def _get_hostvdisk_mappings(self, host_name):
         """Return the defined storage mappings for a host."""
@@ -889,31 +904,49 @@ class StorwizeSVCDriver(san.SanDriver):
                                              'conn': str(connector)})
 
         vol_name = volume['name']
-        host_name = self._get_host_from_connector(connector)
-        # Verify that _get_host_from_connector returned the host.
-        # This should always succeed as we terminate an existing connection.
-        self._driver_assert(
-            host_name is not None,
-            _('_get_host_from_connector failed to return the host name '
-              'for connector'))
-
-        # Check if vdisk-host mapping exists, remove if it does
-        mapping_data = self._get_hostvdisk_mappings(host_name)
-        if vol_name in mapping_data:
-            ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', host_name,
-                       vol_name]
-            out, err = self._run_ssh(ssh_cmd)
-            # Verify CLI behaviour - no output is returned from
-            # rmvdiskhostmap
-            self._assert_ssh_return(len(out.strip()) == 0,
-                                    'terminate_connection', ssh_cmd, out, err)
-            del mapping_data[vol_name]
+        if 'host' in connector:
+            host_name = self._get_host_from_connector(connector)
+            self._driver_assert(
+                host_name is not None,
+                _('_get_host_from_connector failed to return the host name '
+                  'for connector'))
         else:
-            LOG.error(_('terminate_connection: No mapping of volume '
-                        '%(vol_name)s to host %(host_name)s found') %
-                      {'vol_name': vol_name, 'host_name': host_name})
+            # See bug #1244257
+            host_name = None
+
+        # Check if vdisk-host mapping exists, remove if it does. If no host
+        # name was given, but only one mapping exists, we can use that.
+        mapping_data = self._get_vdiskhost_mappings(vol_name)
+        if len(mapping_data) == 0:
+            LOG.warning(_('terminate_connection: No mapping of volume '
+                          '%(vol_name)s to any host found.') %
+                        {'vol_name': vol_name})
+            return
+        if host_name is None:
+            if len(mapping_data) > 1:
+                LOG.warning(_('terminate_connection: Multiple mappings of '
+                              'volume %(vol_name)s found, no host '
+                              'specified.') % {'vol_name': vol_name})
+                return
+            else:
+                host_name = mapping_data.keys()[0]
+        else:
+            if host_name not in mapping_data:
+                LOG.error(_('terminate_connection: No mapping of volume '
+                            '%(vol_name)s to host %(host_name)s found') %
+                          {'vol_name': vol_name, 'host_name': host_name})
+                return
+
+        # We have a valid host_name now
+        ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', host_name,
+                   vol_name]
+        out, err = self._run_ssh(ssh_cmd)
+        # Verify CLI behaviour - no output is returned from rmvdiskhostmap
+        self._assert_ssh_return(len(out.strip()) == 0,
+                                'terminate_connection', ssh_cmd, out, err)
 
         # If this host has no more mappings, delete it
+        mapping_data = self._get_hostvdisk_mappings(host_name)
         if not mapping_data:
             self._delete_host(host_name)
 
