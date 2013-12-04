@@ -41,6 +41,7 @@ from cinder import units
 from cinder import utils
 from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 from cinder.taskflow import states
@@ -193,6 +194,8 @@ class API(base.Base):
 
         volume_id = volume['id']
         if not volume['host']:
+            volume_utils.notify_about_volume_usage(context,
+                                                   volume, "delete.start")
             # NOTE(vish): scheduling failed, so delete it
             # Note(zhiteng): update volume quota reservation
             try:
@@ -210,6 +213,9 @@ class API(base.Base):
 
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
+
+            volume_utils.notify_about_volume_usage(context,
+                                                   volume, "delete.end")
             return
         if not force and volume['status'] not in ["available", "error",
                                                   "error_restoring",
