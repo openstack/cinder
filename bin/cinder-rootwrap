@@ -57,7 +57,8 @@ def _subprocess_setup():
 
 
 def _exit_error(execname, message, errorcode, log=True):
-    print("%s: %s" % (execname, message))
+    print(_("%(execname)s: %(message)s") %
+          {'execname': execname, 'message': message})
     if log:
         logging.error(message)
     sys.exit(errorcode)
@@ -86,7 +87,8 @@ if __name__ == '__main__':
         rawconfig.read(configfile)
         config = wrapper.RootwrapConfig(rawconfig)
     except ValueError as exc:
-        msg = "Incorrect value in %s: %s" % (configfile, exc.message)
+        msg = (_("Incorrect value in %(configfile)s: %(message)s")
+               % {'configfile': configfile, 'message': exc.message})
         _exit_error(execname, msg, RC_BADCONFIG, log=False)
     except ConfigParser.Error:
         _exit_error(execname, "Incorrect configuration file: %s" % configfile,
@@ -120,11 +122,12 @@ if __name__ == '__main__':
             sys.exit(obj.returncode)
 
     except wrapper.FilterMatchNotExecutable as exc:
-        msg = ("Executable not found: %s (filter match = %s)"
-               % (exc.match.exec_path, exc.match.name))
+        msg = (_("Executable not found: %(exec_path)s "
+                 "(filter match = %(name)s)")
+               % {'exec_path': exc.match.exec_path, 'name': exc.match.name})
         _exit_error(execname, msg, RC_NOEXECFOUND, log=config.use_syslog)
 
     except wrapper.NoFilterMatched:
-        msg = ("Unauthorized command: %s (no filter matched)"
+        msg = (_("Unauthorized command: %s (no filter matched)")
                % ' '.join(userargs))
         _exit_error(execname, msg, RC_UNAUTHORIZED, log=config.use_syslog)
