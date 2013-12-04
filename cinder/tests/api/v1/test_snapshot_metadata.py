@@ -44,6 +44,15 @@ def return_create_snapshot_metadata(context, snapshot_id, metadata, delete):
     return stub_snapshot_metadata()
 
 
+def return_create_snapshot_metadata_insensitive(context, snapshot_id,
+                                                metadata, delete):
+    return stub_snapshot_metadata_insensitive()
+
+
+def return_new_snapshot_metadata(context, snapshot_id, metadata, delete):
+    return stub_new_snapshot_metadata()
+
+
 def return_snapshot_metadata(context, snapshot_id):
     if not isinstance(snapshot_id, str) or not len(snapshot_id) == 36:
         msg = 'id %s must be a uuid in return snapshot metadata' % snapshot_id
@@ -52,6 +61,10 @@ def return_snapshot_metadata(context, snapshot_id):
 
 
 def return_empty_snapshot_metadata(context, snapshot_id):
+    return {}
+
+
+def return_empty_container_metadata(context, snapshot_id, metadata, delete):
     return {}
 
 
@@ -64,6 +77,25 @@ def stub_snapshot_metadata():
         "key1": "value1",
         "key2": "value2",
         "key3": "value3",
+    }
+    return metadata
+
+
+def stub_snapshot_metadata_insensitive():
+    metadata = {
+        "key1": "value1",
+        "key2": "value2",
+        "key3": "value3",
+        "KEY4": "value4",
+    }
+    return metadata
+
+
+def stub_new_snapshot_metadata():
+    metadata = {
+        'key10': 'value10',
+        'key99': 'value99',
+        'KEY20': 'value20',
     }
     return metadata
 
@@ -218,10 +250,37 @@ class SnapshotMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/snapshot_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
-        body = {"metadata": {"key9": "value9"}}
+        body = {"metadata": {"key1": "value1",
+                             "key2": "value2",
+                             "key3": "value3"}}
         req.body = jsonutils.dumps(body)
         res_dict = self.controller.create(req, self.req_id, body)
         self.assertEqual(body, res_dict)
+
+    def test_create_with_keys_in_uppercase_and_lowercase(self):
+        # if the keys in uppercase_and_lowercase, should return the one
+        # which server added
+        self.stubs.Set(cinder.db, 'snapshot_metadata_get',
+                       return_empty_snapshot_metadata)
+        self.stubs.Set(cinder.db, 'snapshot_metadata_update',
+                       return_create_snapshot_metadata_insensitive)
+
+        req = fakes.HTTPRequest.blank('/v1/snapshot_metadata')
+        req.method = 'POST'
+        req.content_type = "application/json"
+        body = {"metadata": {"key1": "value1",
+                             "KEY1": "value1",
+                             "key2": "value2",
+                             "KEY2": "value2",
+                             "key3": "value3",
+                             "KEY4": "value4"}}
+        expected = {"metadata": {"key1": "value1",
+                                 "key2": "value2",
+                                 "key3": "value3",
+                                 "KEY4": "value4"}}
+        req.body = jsonutils.dumps(body)
+        res_dict = self.controller.create(req, self.req_id, body)
+        self.assertEqual(expected, res_dict)
 
     def test_create_empty_body(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
@@ -275,8 +334,10 @@ class SnapshotMetaDataTest(test.TestCase):
                           self.controller.create, req, self.req_id, body)
 
     def test_update_all(self):
-        self.stubs.Set(cinder.db, 'snapshot_metadata_update',
+        self.stubs.Set(cinder.db, 'snapshot_metadata_get',
                        return_create_snapshot_metadata)
+        self.stubs.Set(cinder.db, 'snapshot_metadata_update',
+                       return_new_snapshot_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -284,6 +345,7 @@ class SnapshotMetaDataTest(test.TestCase):
             'metadata': {
                 'key10': 'value10',
                 'key99': 'value99',
+                'KEY20': 'value20',
             },
         }
         req.body = jsonutils.dumps(expected)
@@ -291,9 +353,37 @@ class SnapshotMetaDataTest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
+    def test_update_all_with_keys_in_uppercase_and_lowercase(self):
+        self.stubs.Set(cinder.db, 'snapshot_metadata_get',
+                       return_create_snapshot_metadata)
+        self.stubs.Set(cinder.db, 'snapshot_metadata_update',
+                       return_new_snapshot_metadata)
+        req = fakes.HTTPRequest.blank(self.url)
+        req.method = 'PUT'
+        req.content_type = "application/json"
+        body = {
+            'metadata': {
+                'key10': 'value10',
+                'KEY10': 'value10',
+                'key99': 'value99',
+                'KEY20': 'value20',
+            },
+        }
+        expected = {
+            'metadata': {
+                'key10': 'value10',
+                'key99': 'value99',
+                'KEY20': 'value20',
+            },
+        }
+        req.body = jsonutils.dumps(expected)
+        res_dict = self.controller.update_all(req, self.req_id, body)
+
+        self.assertEqual(expected, res_dict)
+
     def test_update_all_empty_container(self):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
-                       return_create_snapshot_metadata)
+                       return_empty_container_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"

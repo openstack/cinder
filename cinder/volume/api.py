@@ -689,14 +689,14 @@ class API(base.Base):
 
         self._check_metadata_properties(context, _metadata)
 
-        self.db.snapshot_metadata_update(context,
-                                         snapshot['id'],
-                                         _metadata,
-                                         True)
+        db_meta = self.db.snapshot_metadata_update(context,
+                                                   snapshot['id'],
+                                                   _metadata,
+                                                   True)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        return _metadata
+        return db_meta
 
     def get_snapshot_metadata_value(self, snapshot, key):
         pass

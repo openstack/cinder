@@ -1641,7 +1641,7 @@ def snapshot_metadata_update(context, snapshot_id, metadata, delete):
             meta_ref.update(item)
             meta_ref.save(session=session)
 
-        return metadata
+    return snapshot_metadata_get(context, snapshot_id)
 
 ###################
 
