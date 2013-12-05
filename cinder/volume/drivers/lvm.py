@@ -697,6 +697,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         try:
             (dest_type, dest_hostname, dest_vg, lvm_type, lvm_mirrors) =\
                 info.split(':')
+            lvm_mirrors = int(lvm_mirrors)
         except ValueError:
             return false_ret
         if (dest_type != 'LVMVolumeDriver' or dest_hostname != self.hostname):
