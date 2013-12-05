@@ -25,7 +25,7 @@ from webob import exc
 
 
 class Controller(wsgi.Controller):
-    """The volume metadata API controller for the OpenStack API."""
+    """The snapshot metadata API controller for the OpenStack API."""
 
     def __init__(self):
         self.volume_api = volume.API()
