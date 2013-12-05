@@ -1316,7 +1316,7 @@ def _volume_x_metadata_update(context, volume_id, metadata, delete,
             meta_ref.update(item)
             meta_ref.save(session=session)
 
-        return metadata
+    return _volume_x_metadata_get(context, volume_id, model)
 
 
 def _volume_user_metadata_get_query(context, volume_id, session=None):

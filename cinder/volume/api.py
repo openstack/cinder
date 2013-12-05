@@ -610,12 +610,12 @@ class API(base.Base):
 
         self._check_metadata_properties(context, _metadata)
 
-        self.db.volume_metadata_update(context, volume['id'],
-                                       _metadata, delete)
+        db_meta = self.db.volume_metadata_update(context, volume['id'],
+                                                 _metadata, delete)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        return _metadata
+        return db_meta
 
     def get_volume_metadata_value(self, volume, key):
         """Get value of particular metadata key."""

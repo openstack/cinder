@@ -343,7 +343,7 @@ class VolumeApiTest(test.TestCase):
             "display_name": "Updated Test Name",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/1')
         admin_ctx = context.RequestContext('admin', 'fake', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
