@@ -47,19 +47,19 @@ class ChanceWeigherTestCase(test.TestCase):
         self.fake_random(reset=True)
         host_state = {'host': 'host.example.com', 'free_capacity_gb': 99999}
         weight = weigher._weigh_object(host_state, None)
-        self.assertEquals(1.0, weight)
+        self.assertEqual(1.0, weight)
         weight = weigher._weigh_object(host_state, None)
-        self.assertEquals(2.0, weight)
+        self.assertEqual(2.0, weight)
         weight = weigher._weigh_object(host_state, None)
-        self.assertEquals(3.0, weight)
+        self.assertEqual(3.0, weight)
 
     def test_host_manager_choosing_chance_weigher(self):
         # ensure HostManager can load the ChanceWeigher
         # via the entry points mechanism
         hm = host_manager.HostManager()
         weighers = hm._choose_host_weighers('ChanceWeigher')
-        self.assertEquals(1, len(weighers))
-        self.assertEquals(weighers[0], ChanceWeigher)
+        self.assertEqual(1, len(weighers))
+        self.assertEqual(weighers[0], ChanceWeigher)
 
     def test_use_of_chance_weigher_via_host_manager(self):
         # ensure we don't lose any hosts when weighing with
@@ -68,4 +68,4 @@ class ChanceWeigherTestCase(test.TestCase):
         fake_hosts = [host_manager.HostState('fake_host%s' % x)
                       for x in xrange(1, 5)]
         weighed_hosts = hm.get_weighed_hosts(fake_hosts, {}, 'ChanceWeigher')
-        self.assertEquals(4, len(weighed_hosts))
+        self.assertEqual(4, len(weighed_hosts))

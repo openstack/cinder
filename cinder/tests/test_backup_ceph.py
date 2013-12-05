@@ -397,9 +397,9 @@ class BackupCephTestCase(test.TestCase):
 
             self.service.backup(backup, rbd_io)
 
-            self.assertEquals(self.called, ['list', 'popen_init', 'read',
-                                            'popen_init', 'write',
-                                            'stdout_close', 'communicate'])
+            self.assertEqual(self.called, ['list', 'popen_init', 'read',
+                                           'popen_init', 'write',
+                                           'stdout_close', 'communicate'])
 
             # Ensure the files are equal
             self.assertEqual(checksum.digest(), self.checksum.digest())
@@ -515,7 +515,7 @@ class BackupCephTestCase(test.TestCase):
 
         self.stubs.Set(self.service.rbd.RBD, 'remove', remove)
         self.service.delete(backup)
-        self.assertEquals(self.called, ['remove'])
+        self.assertEqual(self.called, ['remove'])
 
     def test_try_delete_base_image(self):
         # don't create volume db entry since it should not be required
@@ -538,7 +538,7 @@ class BackupCephTestCase(test.TestCase):
 
         self.stubs.Set(self.service.rbd.RBD, 'remove', remove)
         self.service.delete(backup)
-        self.assertEquals(self.called, ['remove'])
+        self.assertEqual(self.called, ['remove'])
 
     def test_try_delete_base_image_busy(self):
         """This should induce retries then raise rbd.ImageBusy."""
@@ -658,8 +658,8 @@ class BackupCephTestCase(test.TestCase):
         self.stubs.Set(fcntl, 'fcntl', lambda *args, **kwargs: 0)
         self._setup_mock_popen(self, ['out', 'err'])
         self.service._piped_execute(['foo'], ['bar'])
-        self.assertEquals(self.called, ['popen_init', 'popen_init',
-                                        'stdout_close', 'communicate'])
+        self.assertEqual(self.called, ['popen_init', 'popen_init',
+                                       'stdout_close', 'communicate'])
 
     def tearDown(self):
         self.volume_file.close()

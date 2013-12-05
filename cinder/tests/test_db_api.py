@@ -461,7 +461,7 @@ class DBAPIVolumeTestCase(BaseTest):
         db.volume_create(self.ctxt, {'id': 1, 'metadata': metadata})
         db.volume_metadata_delete(self.ctxt, 1, 'c')
         metadata.pop('c')
-        self.assertEquals(metadata, db.volume_metadata_get(self.ctxt, 1))
+        self.assertEqual(metadata, db.volume_metadata_get(self.ctxt, 1))
 
 
 class DBAPISnapshotTestCase(BaseTest):
