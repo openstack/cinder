@@ -706,7 +706,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         if dest_vg != self.vg.vg_name:
             vg_list = volutils.get_all_volume_groups()
             vg_dict = \
-                (vg for vg in vg_list if vg['name'] == self.vg.vg_name).next()
+                (vg for vg in vg_list if vg['name'] == dest_vg).next()
             if vg_dict is None:
                 message = ("Destination Volume Group %s does not exist" %
                            dest_vg)
