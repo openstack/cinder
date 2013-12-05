@@ -41,9 +41,6 @@ volume_opts = [
     cfg.StrOpt('glusterfs_shares_config',
                default='/etc/cinder/glusterfs_shares',
                help='File with the list of available gluster shares'),
-    cfg.StrOpt('glusterfs_disk_util',
-               default='df',
-               help='Use du or df for free space calculation'),
     cfg.BoolOpt('glusterfs_sparsed_volumes',
                 default=True,
                 help=('Create volumes as sparsed files which take no space.'
@@ -1076,17 +1073,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                                mount_point, run_as_root=True)
         out = out.splitlines()[1]
 
-        available = 0
-
         size = int(out.split()[1])
-        if self.configuration.glusterfs_disk_util == 'df':
-            available = int(out.split()[3])
-        else:
-            out, _ = self._execute('du', '-sb', '--apparent-size',
-                                   '--exclude', '*snapshot*', mount_point,
-                                   run_as_root=True)
-            used = int(out.split()[0])
-            available = size - used
+        available = int(out.split()[3])
 
         return available, size
 
