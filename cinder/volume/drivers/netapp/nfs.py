@@ -718,6 +718,12 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             self.ssc_enabled = False
             LOG.warn(_("No vserver set in config. SSC will be disabled."))
 
+    def check_for_setup_error(self):
+        """Check that the driver is working and can communicate."""
+        super(NetAppDirectCmodeNfsDriver, self).check_for_setup_error()
+        if self.ssc_enabled:
+            ssc_utils.check_ssc_api_permissions(self._client)
+
     def _invoke_successfully(self, na_element, vserver=None):
         """Invoke the api for successful result.
 
@@ -786,6 +792,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         """Clones mounted volume on NetApp Cluster."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(volume_id, share)
         self._clone_file(exp_volume, volume_name, clone_name, vserver)
+        share = share if share else self._get_provider_location(volume_id)
+        self._post_prov_deprov_in_ssc(share)
 
     def _get_vserver_and_exp_vol(self, volume_id=None, share=None):
         """Gets the vserver and export volume for share."""
@@ -1036,6 +1044,24 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         extra_specs = get_volume_extra_specs(volume)
         vols = ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
         return netapp_vol in vols
+
+    def delete_volume(self, volume):
+        """Deletes a logical volume."""
+        share = volume['provider_location']
+        super(NetAppDirectCmodeNfsDriver, self).delete_volume(volume)
+        self._post_prov_deprov_in_ssc(share)
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
+        share = self._get_provider_location(snapshot.volume_id)
+        super(NetAppDirectCmodeNfsDriver, self).delete_snapshot(snapshot)
+        self._post_prov_deprov_in_ssc(share)
+
+    def _post_prov_deprov_in_ssc(self, share):
+        if self.ssc_enabled and share:
+            netapp_vol = self._get_vol_for_share(share)
+            if netapp_vol:
+                self._update_stale_vols(volume=netapp_vol)
 
 
 class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):

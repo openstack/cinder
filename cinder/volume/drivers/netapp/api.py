@@ -479,3 +479,8 @@ class NaApiError(Exception):
 
     def __str__(self, *args, **kwargs):
         return 'NetApp api failed. Reason - %s:%s' % (self.code, self.message)
+
+
+NaErrors = {'API_NOT_FOUND': NaApiError('13005', 'Unable to find API'),
+            'INSUFFICIENT_PRIVS': NaApiError('13003',
+                                             'Insufficient privileges')}
