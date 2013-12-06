@@ -19,6 +19,7 @@
 Unit tests for OpenStack Cinder volume drivers
 """
 import ast
+import mock
 import mox
 import shutil
 import tempfile
@@ -787,7 +788,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                             '123456789054321'])
         _run_ssh(create_host_cmd, False).AndReturn([CLI_CR, ''])
 
-        getHost('fakehost').AndReturn({'name': self.FAKE_HOST})
+        getHost('fakehost').AndReturn({'name': self.FAKE_HOST,
+                                       'FCPaths': [{'wwn': '123456789012345'},
+                                                   {'wwn': '123456789054321'}]}
+                                      )
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
@@ -818,7 +822,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                                'already used by host fakehost.foo (19)')
         _run_ssh(create_host_cmd, False).AndReturn([create_host_ret, ''])
 
-        getHost('fakehost.foo').AndReturn({'name': 'fakehost.foo'})
+        host_ret = {
+            'name': 'fakehost.foo',
+            'FCPaths': [{'wwn': '123456789012345'},
+                        {'wwn': '123456789054321'}]}
+        getHost('fakehost.foo').AndReturn(host_ret)
+
         self.mox.ReplayAll()
 
         host = self.driver._create_host(self.volume, self.connector)
@@ -849,8 +858,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                                 'pathOperation': 1})
 
         getHost('fakehost').AndReturn({'name': self.FAKE_HOST,
-                                       'FCPaths': [{'WWN': '123456789012345'},
-                                                   {'WWN': '123456789054321'}]}
+                                       'FCPaths': [{'wwn': '123456789012345'},
+                                                   {'wwn': '123456789054321'}]}
                                       )
 
         self.mox.ReplayAll()
@@ -858,6 +867,82 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         host = self.driver._create_host(self.volume, self.connector)
         self.assertEqual(host['name'], self.FAKE_HOST)
         self.assertEqual(len(host['FCPaths']), 2)
+
+    def test_modify_host_with_new_wwn(self):
+        self.flags(lock_path=self.tempdir)
+        self.clear_mox()
+
+        hpdriver.hpcommon.HP3PARCommon.get_cpg = mock.Mock(
+            return_value=self.fake_get_cpg)
+        hpdriver.hpcommon.HP3PARCommon.get_domain = mock.Mock(
+            return_value=self.fake_get_domain)
+
+        # set up the getHost mock
+        self.driver.common.client.getHost = mock.Mock()
+        # define the return values for the 2 calls
+        getHost_ret1 = {
+            'name': self.FAKE_HOST,
+            'FCPaths': [{'wwn': '123456789054321'}]}
+        getHost_ret2 = {
+            'name': self.FAKE_HOST,
+            'FCPaths': [{'wwn': '123456789012345'},
+                        {'wwn': '123456789054321'}]}
+        self.driver.common.client.getHost.side_effect = [
+            getHost_ret1, getHost_ret2]
+
+        # setup the modifyHost mock
+        self.driver.common.client.modifyHost = mock.Mock()
+
+        host = self.driver._create_host(self.volume, self.connector)
+
+        # mock assertions
+        self.driver.common.client.getHost.assert_has_calls([
+            mock.call('fakehost'),
+            mock.call('fakehost')])
+        self.driver.common.client.modifyHost.assert_called_once_with(
+            'fakehost', {'FCWWNs': ['123456789012345'], 'pathOperation': 1})
+
+        self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(len(host['FCPaths']), 2)
+
+    def test_modify_host_with_unknown_wwn_and_new_wwn(self):
+        self.flags(lock_path=self.tempdir)
+        self.clear_mox()
+
+        hpdriver.hpcommon.HP3PARCommon.get_cpg = mock.Mock(
+            return_value=self.fake_get_cpg)
+        hpdriver.hpcommon.HP3PARCommon.get_domain = mock.Mock(
+            return_value=self.fake_get_domain)
+
+        # set up the getHost mock
+        self.driver.common.client.getHost = mock.Mock()
+        # define the return values for the 2 calls
+        getHost_ret1 = {
+            'name': self.FAKE_HOST,
+            'FCPaths': [{'wwn': '123456789054321'},
+                        {'wwn': 'xxxxxxxxxxxxxxx'}]}
+        getHost_ret2 = {
+            'name': self.FAKE_HOST,
+            'FCPaths': [{'wwn': '123456789012345'},
+                        {'wwn': '123456789054321'},
+                        {'wwn': 'xxxxxxxxxxxxxxx'}]}
+        self.driver.common.client.getHost.side_effect = [
+            getHost_ret1, getHost_ret2]
+
+        # setup the modifyHost mock
+        self.driver.common.client.modifyHost = mock.Mock()
+
+        host = self.driver._create_host(self.volume, self.connector)
+
+        # mock assertions
+        self.driver.common.client.getHost.assert_has_calls([
+            mock.call('fakehost'),
+            mock.call('fakehost')])
+        self.driver.common.client.modifyHost.assert_called_once_with(
+            'fakehost', {'FCWWNs': ['123456789012345'], 'pathOperation': 1})
+
+        self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(len(host['FCPaths']), 3)
 
 
 class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
