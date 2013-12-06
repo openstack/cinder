@@ -161,6 +161,24 @@ class RBDTestCase(test.TestCase):
                     self.assertFalse(mock_rbd.Image.unprotect_snap.called)
                     self.assertTrue(_mock_rbd.RBD.remove.called)
 
+    @mock.patch('cinder.volume.drivers.rbd.rbd')
+    def test_delete_volume_not_found(self, _mock_rbd):
+        name = u'volume-00000001'
+        volume = dict(name=name)
+
+        class MyMockException(Exception):
+            pass
+
+        _mock_rbd.RBD = mock_rbd.RBD
+        _mock_rbd.ImageNotFound = MyMockException
+        _mock_rbd.Image.side_effect = _mock_rbd.ImageNotFound
+
+        mpo = mock.patch.object
+        with mpo(self.driver, 'rbd', _mock_rbd):
+            with mpo(driver, 'RADOSClient'):
+                self.assertIsNone(self.driver.delete_volume(volume))
+                _mock_rbd.Image.assert_called_once()
+
     @mock.patch('cinder.volume.drivers.rbd.rados')
     @mock.patch('cinder.volume.drivers.rbd.rbd')
     def test_delete_busy_volume(self, _mock_rbd, _mock_rados):
