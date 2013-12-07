@@ -107,6 +107,40 @@ class RequestTest(test.TestCase):
         request.headers.pop('Accept-Language')
         self.assertEqual(request.best_match_language(), None)
 
+    def test_cache_and_retrieve_resources(self):
+        request = wsgi.Request.blank('/foo')
+        # Test that trying to retrieve a cached object on
+        # an empty cache fails gracefully
+        self.assertIsNone(request.cached_resource())
+        self.assertIsNone(request.cached_resource_by_id('r-0'))
+
+        resources = []
+        for x in xrange(3):
+            resources.append({'id': 'r-%s' % x})
+
+        # Cache an empty list of resources using the default name
+        request.cache_resource([])
+        self.assertEqual({}, request.cached_resource())
+        self.assertIsNone(request.cached_resource('r-0'))
+        # Cache some resources
+        request.cache_resource(resources[:2])
+        # Cache  one resource
+        request.cache_resource(resources[2])
+        # Cache  a different resource name
+        other_resource = {'id': 'o-0'}
+        request.cache_resource(other_resource, name='other-resource')
+
+        self.assertEqual(resources[0], request.cached_resource_by_id('r-0'))
+        self.assertEqual(resources[1], request.cached_resource_by_id('r-1'))
+        self.assertEqual(resources[2], request.cached_resource_by_id('r-2'))
+        self.assertIsNone(request.cached_resource_by_id('r-3'))
+        self.assertEqual({'r-0': resources[0],
+                          'r-1': resources[1],
+                          'r-2': resources[2]}, request.cached_resource())
+        self.assertEqual(other_resource,
+                         request.cached_resource_by_id('o-0',
+                                                       name='other-resource'))
+
 
 class ActionDispatcherTest(test.TestCase):
     def test_dispatch(self):
