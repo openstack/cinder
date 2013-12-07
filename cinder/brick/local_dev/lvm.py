@@ -64,6 +64,8 @@ class LVM(executor.Executor):
         self.vg_uuid = None
         self.vg_thin_pool = None
         self.vg_thin_pool_size = 0
+        self._supports_snapshot_lv_activation = None
+        self._supports_lvchange_ignoreskipactivation = None
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
@@ -120,13 +122,14 @@ class LVM(executor.Executor):
             return []
 
     @staticmethod
-    def supports_thin_provisioning(root_helper):
-        """Static method to check for thin LVM support on a system.
+    def get_lvm_version(root_helper):
+        """Static method to get LVM version from system.
 
         :param root_helper: root_helper to use for execute
-        :returns: True if supported, False otherwise
+        :returns: version 3-tuple
 
         """
+
         cmd = ['vgs', '--version']
         (out, err) = putils.execute(*cmd,
                                     root_helper=root_helper,
@@ -142,9 +145,59 @@ class LVM(executor.Executor):
                 version_filter = "(\d+)\.(\d+)\.(\d+).*"
                 r = re.search(version_filter, version)
                 version_tuple = tuple(map(int, r.group(1, 2, 3)))
-                if version_tuple >= (2, 2, 95):
-                    return True
-        return False
+                return version_tuple
+
+    @staticmethod
+    def supports_thin_provisioning(root_helper):
+        """Static method to check for thin LVM support on a system.
+
+        :param root_helper: root_helper to use for execute
+        :returns: True if supported, False otherwise
+
+        """
+
+        return LVM.get_lvm_version(root_helper) >= (2, 2, 95)
+
+    @property
+    def supports_snapshot_lv_activation(self):
+        """Property indicating whether snap activation changes are supported.
+
+        Check for LVM version > 2.02.91.
+        (LVM2 git: e8a40f6 Allow to activate snapshot)
+
+        :returns: True/False indicating support
+        """
+
+        if self._supports_snapshot_lv_activation is not None:
+            return self._supports_snapshot_lv_activation
+
+        self._supports_snapshot_lv_activation = (
+            self.get_lvm_version(self._root_helper) >= (2, 2, 91))
+
+        return self._supports_snapshot_lv_activation
+
+    @property
+    def supports_lvchange_ignoreskipactivation(self):
+        """Property indicating whether lvchange can ignore skip activation.
+
+        Tests whether lvchange -K/--ignoreactivationskip exists.
+        """
+
+        if self._supports_lvchange_ignoreskipactivation is not None:
+            return self._supports_lvchange_ignoreskipactivation
+
+        cmd = ['lvchange', '--help']
+        (out, err) = self._execute(*cmd)
+
+        self._supports_lvchange_ignoreskipactivation = False
+
+        lines = out.split('\n')
+        for line in lines:
+            if '-K' in line and '--ignoreactivationskip' in line:
+                self._supports_lvchange_ignoreskipactivation = True
+                break
+
+        return self._supports_lvchange_ignoreskipactivation
 
     @staticmethod
     def get_all_volumes(root_helper, vg_name=None, no_suffix=True):
@@ -399,6 +452,49 @@ class LVM(executor.Executor):
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_('Error creating snapshot'))
+            LOG.error(_('Cmd     :%s') % err.cmd)
+            LOG.error(_('StdOut  :%s') % err.stdout)
+            LOG.error(_('StdErr  :%s') % err.stderr)
+            raise
+
+    def _mangle_lv_name(self, name):
+        # Linux LVM reserves name that starts with snapshot, so that
+        # such volume name can't be created. Mangle it.
+        if not name.startswith('snapshot'):
+            return name
+        return '_' + name
+
+    def activate_lv(self, name, is_snapshot=False):
+        """Ensure that logical volume/snapshot logical volume is activated.
+
+        :param name: Name of LV to activate
+        :raises: putils.ProcessExecutionError
+        """
+
+        # This is a no-op if requested for a snapshot on a version
+        # of LVM that doesn't support snapshot activation.
+        # (Assume snapshot LV is always active.)
+        if is_snapshot and not self.supports_snapshot_lv_activation:
+            return
+
+        lv_path = self.vg_name + '/' + self._mangle_lv_name(name)
+
+        # Must pass --yes to activate both the snap LV and its origin LV.
+        # Otherwise lvchange asks if you would like to do this interactively,
+        # and fails.
+        cmd = ['lvchange', '-a', 'y', '--yes']
+
+        if self.supports_lvchange_ignoreskipactivation:
+            cmd.append('-K')
+
+        cmd.append(lv_path)
+
+        try:
+            self._execute(*cmd,
+                          root_helper=self._root_helper,
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_('Error activating LV'))
             LOG.error(_('Cmd     :%s') % err.cmd)
             LOG.error(_('StdOut  :%s') % err.stdout)
             LOG.error(_('StdErr  :%s') % err.stderr)

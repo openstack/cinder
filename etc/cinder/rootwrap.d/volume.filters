@@ -30,6 +30,9 @@ lvrename: CommandFilter, lvrename, root
 # cinder/volume/driver.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
 lvextend: CommandFilter, lvextend, root
 
+# cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
+lvchange: CommandFilter, lvchange, root
+
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root
