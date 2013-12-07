@@ -21,6 +21,7 @@ Handles all requests relating to volumes.
 """
 
 
+import collections
 import functools
 
 from oslo.config import cfg
@@ -696,6 +697,15 @@ class API(base.Base):
 
     def get_snapshot_metadata_value(self, snapshot, key):
         pass
+
+    def get_volumes_image_metadata(self, context):
+        check_policy(context, 'get_volumes_image_metadata')
+        db_data = self.db.volume_glance_metadata_get_all(context)
+        results = collections.defaultdict(dict)
+        for meta_entry in db_data:
+            results[meta_entry['volume_id']].update({meta_entry['key']:
+                                                     meta_entry['value']})
+        return results
 
     @wrap_check_policy
     def get_volume_image_metadata(self, context, volume):

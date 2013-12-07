@@ -85,6 +85,26 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         for key, value in expected_metadata_1.items():
             self.assertEqual(metadata[0][key], value)
 
+    def test_vols_get_glance_metadata(self):
+        ctxt = context.get_admin_context()
+        db.volume_create(ctxt, {'id': '1'})
+        db.volume_create(ctxt, {'id': '2'})
+        db.volume_create(ctxt, {'id': '3'})
+        db.volume_glance_metadata_create(ctxt, '1', 'key1', 'value1')
+        db.volume_glance_metadata_create(ctxt, '2', 'key2', 'value2')
+        db.volume_glance_metadata_create(ctxt, '2', 'key22', 'value22')
+
+        metadata = db.volume_glance_metadata_get_all(ctxt)
+        self.assertEqual(len(metadata), 3)
+        self._assert_metadata_equals('1', 'key1', 'value1', metadata[0])
+        self._assert_metadata_equals('2', 'key2', 'value2', metadata[1])
+        self._assert_metadata_equals('2', 'key22', 'value22', metadata[2])
+
+    def _assert_metadata_equals(self, volume_id, key, value, observed):
+        self.assertEqual(volume_id, observed.volume_id)
+        self.assertEqual(key, observed.key)
+        self.assertEqual(value, observed.value)
+
     def test_vol_delete_glance_metadata(self):
         ctxt = context.get_admin_context()
         db.volume_create(ctxt, {'id': 1})
