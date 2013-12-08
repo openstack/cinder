@@ -708,7 +708,9 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 return false_ret
 
             helper = utils.get_root_helper()
-            dest_vg_ref = lvm.LVM(dest_vg, helper, lvm_type, self._execute)
+            dest_vg_ref = lvm.LVM(dest_vg, helper,
+                                  lvm_type=lvm_type,
+                                  executor=self._execute)
             self.remove_export(ctxt, volume)
             self._create_volume(volume['name'],
                                 self._sizestr(volume['size']),
