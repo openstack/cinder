@@ -289,6 +289,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         config_data.append(self.TEST_EXPORT1)
         config_data.append('#' + self.TEST_EXPORT2)
         config_data.append(self.TEST_EXPORT2 + ' ' + self.TEST_EXPORT2_OPTIONS)
+        config_data.append('broken:share_format')
         config_data.append('')
         drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
             AndReturn(config_data)

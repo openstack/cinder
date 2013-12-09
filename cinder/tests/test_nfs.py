@@ -280,6 +280,7 @@ class NfsDriverTestCase(test.TestCase):
         config_data.append('')
         config_data.append(self.TEST_NFS_EXPORT2 + ' ' +
                            self.TEST_NFS_EXPORT2_OPTIONS)
+        config_data.append('broken:share_format')
         drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
             AndReturn(config_data)
         mox.ReplayAll()

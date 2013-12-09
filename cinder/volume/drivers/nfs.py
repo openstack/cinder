@@ -17,6 +17,7 @@
 
 import errno
 import os
+import re
 
 from oslo.config import cfg
 
@@ -293,6 +294,11 @@ class RemoteFsDriver(driver.VolumeDriver):
 
             share_address = share_info[0].strip().decode('unicode_escape')
             share_opts = share_info[1].strip() if len(share_info) > 1 else None
+
+            if not re.match(r'.+:/.+', share_address):
+                LOG.warn("Share %s ignored due to invalid format.  Must be of "
+                         "form address:/export." % share_address)
+                continue
 
             self.shares[share_address] = share_opts
 
