@@ -138,6 +138,49 @@ MAPPING = {
     'cinder.volume.drivers.huawei.HuaweiVolumeDriver'}
 
 
+def locked_volume_operation(f):
+    """Lock decorator for volume operations.
+
+    Takes a named lock prior to executing the operation. The lock is named with
+    the operation executed and the id of the volume. This lock can then be used
+    by other operations to avoid operation conflicts on shared volumes.
+
+    Example use:
+
+    If a volume operation uses this decorator, it will block until the named
+    lock is free. This is used to protect concurrent operations on the same
+    volume e.g. delete VolA while create volume VolB from VolA is in progress.
+    """
+    def lvo_inner1(inst, context, volume_id, **kwargs):
+        @utils.synchronized("%s-%s" % (volume_id, f.__name__), external=True)
+        def lvo_inner2(*_args, **_kwargs):
+            return f(*_args, **_kwargs)
+        return lvo_inner2(inst, context, volume_id, **kwargs)
+    return lvo_inner1
+
+
+def locked_snapshot_operation(f):
+    """Lock decorator for snapshot operations.
+
+    Takes a named lock prior to executing the operation. The lock is named with
+    the operation executed and the id of the snapshot. This lock can then be
+    used by other operations to avoid operation conflicts on shared snapshots.
+
+    Example use:
+
+    If a snapshot operation uses this decorator, it will block until the named
+    lock is free. This is used to protect concurrent operations on the same
+    snapshot e.g. delete SnapA while create volume VolA from SnapA is in
+    progress.
+    """
+    def lso_inner1(inst, context, snapshot_id, **kwargs):
+        @utils.synchronized("%s-%s" % (snapshot_id, f.__name__), external=True)
+        def lso_inner2(*_args, **_kwargs):
+            return f(*_args, **_kwargs)
+        return lso_inner2(inst, context, snapshot_id, **kwargs)
+    return lso_inner1
+
+
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
@@ -264,15 +307,36 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         assert flow, _('Manager volume flow not retrieved')
 
-        flow.run(context.elevated())
-        if flow.state != states.SUCCESS:
-            raise exception.CinderException(_("Failed to successfully complete"
-                                              " manager volume workflow"))
+        if snapshot_id is not None:
+            # Make sure the snapshot is not deleted until we are done with it.
+            locked_action = "%s-%s" % (snapshot_id, 'delete_snapshot')
+        elif source_volid is not None:
+            # Make sure the volume is not deleted until we are done with it.
+            locked_action = "%s-%s" % (source_volid, 'delete_volume')
+        else:
+            locked_action = None
+
+        def _run_flow():
+            flow.run(context.elevated())
+            if flow.state != states.SUCCESS:
+                msg = _("Failed to successfully complete manager volume "
+                        "workflow")
+                raise exception.CinderException(msg)
+
+        @utils.synchronized(locked_action, external=True)
+        def _run_flow_locked():
+            _run_flow()
+
+        if locked_action is None:
+            _run_flow()
+        else:
+            _run_flow_locked()
 
         self._reset_stats()
         return volume_id
 
     @utils.require_driver_initialized
+    @locked_volume_operation
     def delete_volume(self, context, volume_id):
         """Deletes and unexports volume."""
         context = context.elevated()
@@ -401,6 +465,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         return snapshot_id
 
     @utils.require_driver_initialized
+    @locked_snapshot_operation
     def delete_snapshot(self, context, snapshot_id):
         """Deletes and unexports snapshot."""
         caller_context = context
