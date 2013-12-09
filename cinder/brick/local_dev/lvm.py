@@ -64,6 +64,7 @@ class LVM(executor.Executor):
         self.vg_uuid = None
         self.vg_thin_pool = None
         self.vg_thin_pool_size = 0
+        self.vg_thin_pool_free_space = 0
         self._supports_snapshot_lv_activation = None
         self._supports_lvchange_ignoreskipactivation = None
 
@@ -120,6 +121,41 @@ class LVM(executor.Executor):
             return out.split()
         else:
             return []
+
+    def _get_thin_pool_free_space(self, vg_name, thin_pool_name):
+        """Returns available thin pool free space.
+
+        :param vg_name: the vg where the pool is placed
+        :param thin_pool_name: the thin pool to gather info for
+        :returns: Free space, calculated after the data_percent value
+
+        """
+        cmd = ['env', 'LC_ALL=C', 'LANG=C', 'lvs', '--noheadings', '--unit=g',
+               '-o', 'size,data_percent', '--separator', ':', '--nosuffix']
+
+        # NOTE(gfidente): data_percent only applies to some types of LV so we
+        # make sure to append the actual thin pool name
+        cmd.append("/dev/%s/%s" % (vg_name, thin_pool_name))
+
+        free_space = 0
+
+        try:
+            (out, err) = self._execute(*cmd,
+                                       root_helper=self._root_helper,
+                                       run_as_root=True)
+            if out is not None:
+                out = out.strip()
+                data = out.split(':')
+                consumed_space = float(data[0]) / 100 * (float(data[1]))
+                free_space = float(data[0]) - consumed_space
+                free_space = round(free_space, 2)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_('Error querying thin pool about data_percent'))
+            LOG.error(_('Cmd     :%s') % err.cmd)
+            LOG.error(_('StdOut  :%s') % err.stdout)
+            LOG.error(_('StdErr  :%s') % err.stderr)
+
+        return free_space
 
     @staticmethod
     def get_lvm_version(root_helper):
@@ -355,6 +391,9 @@ class LVM(executor.Executor):
             for lv in self.get_all_volumes(self._root_helper, self.vg_name):
                 if lv['name'] == self.vg_thin_pool:
                     self.vg_thin_pool_size = lv['size']
+                    tpfs = self._get_thin_pool_free_space(self.vg_name,
+                                                          self.vg_thin_pool)
+                    self.vg_thin_pool_free_space = tpfs
 
     def _calculate_thin_pool_size(self):
         """Calculates the correct size for a thin pool.
