@@ -25,6 +25,7 @@ import tempfile
 
 from hp3parclient import exceptions as hpexceptions
 
+from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
@@ -574,6 +575,33 @@ class HP3PARBaseDriver():
         model_update = self.driver.create_cloned_volume(volume, src_vref)
         self.assertIsNotNone(model_update)
 
+    @mock.patch.object(hpdriver.hpcommon.HP3PARCommon, '_run_ssh')
+    def test_attach_volume(self, mock_run_ssh):
+        mock_run_ssh.side_effect = [[CLI_CR, ''], Exception('Custom ex')]
+        self.driver.attach_volume(context.get_admin_context(),
+                                  self.volume,
+                                  'abcdef',
+                                  'newhost',
+                                  '/dev/vdb')
+        self.assertTrue(mock_run_ssh.called)
+        self.assertRaises(exception.CinderException,
+                          self.driver.attach_volume,
+                          context.get_admin_context(),
+                          self.volume,
+                          'abcdef',
+                          'newhost',
+                          '/dev/vdb')
+
+    @mock.patch.object(hpdriver.hpcommon.HP3PARCommon, '_run_ssh')
+    def test_detach_volume(self, mock_run_ssh):
+        mock_run_ssh.side_effect = [[CLI_CR, ''], Exception('Custom ex')]
+        self.driver.detach_volume(context.get_admin_context(), self.volume)
+        self.assertTrue(mock_run_ssh.called)
+        self.assertRaises(exception.CinderException,
+                          self.driver.detach_volume,
+                          context.get_admin_context(),
+                          self.volume)
+
     def test_create_snapshot(self):
         self.flags(lock_path=self.tempdir)
         self.driver.create_snapshot(self.snapshot)
@@ -642,6 +670,35 @@ class HP3PARBaseDriver():
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.common.client.getVLUN,
                           self.VOLUME_3PAR_NAME)
+
+    @mock.patch.object(hpdriver.hpcommon.HP3PARCommon, '_run_ssh')
+    def test_update_volume_key_value_pair(self, mock_run_ssh):
+        mock_run_ssh.return_value = [CLI_CR, '']
+        self.assertEqual(
+            self.driver.common.update_volume_key_value_pair(self.volume,
+                                                            'a',
+                                                            'b'),
+            None)
+        update_cmd = ['setvv', '-setkv', 'a=b', self.VOLUME_3PAR_NAME]
+        mock_run_ssh.assert_called_once_with(update_cmd, False)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.common.update_volume_key_value_pair,
+                          self.volume,
+                          None,
+                          'b')
+
+    @mock.patch.object(hpdriver.hpcommon.HP3PARCommon, '_run_ssh')
+    def test_clear_volume_key_value_pair(self, mock_run_ssh):
+        mock_run_ssh.side_effect = [[CLI_CR, ''], Exception('Custom ex')]
+        self.assertEqual(
+            self.driver.common.clear_volume_key_value_pair(self.volume, 'a'),
+            None)
+        clear_cmd = ['setvv', '-clrkey', 'a', self.VOLUME_3PAR_NAME]
+        mock_run_ssh.assert_called_once_with(clear_cmd, False)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.common.clear_volume_key_value_pair,
+                          self.volume,
+                          None)
 
     def test_extend_volume(self):
         self.flags(lock_path=self.tempdir)
