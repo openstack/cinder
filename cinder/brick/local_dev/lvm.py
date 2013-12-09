@@ -295,7 +295,8 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with PV info
 
         """
-        cmd = ['pvs', '--noheadings',
+        cmd = ['env', 'LC_ALL=C', 'LANG=C',
+               'pvs', '--noheadings',
                '--unit=g',
                '-o', 'vg_name,name,size,free',
                '--separator', ':']
