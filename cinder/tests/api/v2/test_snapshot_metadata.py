@@ -265,7 +265,7 @@ class SnapshotMetaDataTest(test.TestCase):
         self.stubs.Set(cinder.db, 'snapshot_metadata_update',
                        return_create_snapshot_metadata_insensitive)
 
-        req = fakes.HTTPRequest.blank('/v1/snapshot_metadata')
+        req = fakes.HTTPRequest.blank('/v2/snapshot_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key1": "value1",

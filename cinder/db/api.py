@@ -340,7 +340,7 @@ def volume_metadata_delete(context, volume_id, key):
 
 def volume_metadata_update(context, volume_id, metadata, delete):
     """Update metadata if it exists, otherwise create it."""
-    IMPL.volume_metadata_update(context, volume_id, metadata, delete)
+    return IMPL.volume_metadata_update(context, volume_id, metadata, delete)
 
 
 ##################

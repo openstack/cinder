@@ -43,6 +43,15 @@ def return_create_volume_metadata(context, volume_id, metadata, delete):
     return stub_volume_metadata()
 
 
+def return_new_volume_metadata(context, volume_id, metadata, delete):
+    return stub_new_volume_metadata()
+
+
+def return_create_volume_metadata_insensitive(context, snapshot_id,
+                                              metadata, delete):
+    return stub_volume_metadata_insensitive()
+
+
 def return_volume_metadata(context, volume_id):
     if not isinstance(volume_id, str) or not len(volume_id) == 36:
         msg = 'id %s must be a uuid in return volume metadata' % volume_id
@@ -51,6 +60,10 @@ def return_volume_metadata(context, volume_id):
 
 
 def return_empty_volume_metadata(context, volume_id):
+    return {}
+
+
+def return_empty_container_metadata(context, volume_id, metadata, delete):
     return {}
 
 
@@ -63,6 +76,25 @@ def stub_volume_metadata():
         "key1": "value1",
         "key2": "value2",
         "key3": "value3",
+    }
+    return metadata
+
+
+def stub_new_volume_metadata():
+    metadata = {
+        'key10': 'value10',
+        'key99': 'value99',
+        'KEY20': 'value20',
+    }
+    return metadata
+
+
+def stub_volume_metadata_insensitive():
+    metadata = {
+        "key1": "value1",
+        "key2": "value2",
+        "key3": "value3",
+        "KEY4": "value4",
     }
     return metadata
 
@@ -203,10 +235,37 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volume_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
-        body = {"metadata": {"key9": "value9"}}
+        body = {"metadata": {"key1": "value1",
+                             "key2": "value2",
+                             "key3": "value3", }}
         req.body = jsonutils.dumps(body)
         res_dict = self.controller.create(req, self.req_id, body)
         self.assertEqual(body, res_dict)
+
+    def test_create_with_keys_in_uppercase_and_lowercase(self):
+        # if the keys in uppercase_and_lowercase, should return the one
+        # which server added
+        self.stubs.Set(db, 'volume_metadata_get',
+                       return_empty_volume_metadata)
+        self.stubs.Set(db, 'volume_metadata_update',
+                       return_create_volume_metadata_insensitive)
+
+        req = fakes.HTTPRequest.blank('/v2/volume_metadata')
+        req.method = 'POST'
+        req.content_type = "application/json"
+        body = {"metadata": {"key1": "value1",
+                             "KEY1": "value1",
+                             "key2": "value2",
+                             "KEY2": "value2",
+                             "key3": "value3",
+                             "KEY4": "value4"}}
+        expected = {"metadata": {"key1": "value1",
+                                 "key2": "value2",
+                                 "key3": "value3",
+                                 "KEY4": "value4"}}
+        req.body = jsonutils.dumps(body)
+        res_dict = self.controller.create(req, self.req_id, body)
+        self.assertEqual(expected, res_dict)
 
     def test_create_empty_body(self):
         self.stubs.Set(db, 'volume_metadata_update',
@@ -261,7 +320,7 @@ class volumeMetaDataTest(test.TestCase):
 
     def test_update_all(self):
         self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+                       return_new_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -269,6 +328,7 @@ class volumeMetaDataTest(test.TestCase):
             'metadata': {
                 'key10': 'value10',
                 'key99': 'value99',
+                'KEY20': 'value20',
             },
         }
         req.body = jsonutils.dumps(expected)
@@ -276,9 +336,37 @@ class volumeMetaDataTest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
+    def test_update_all_with_keys_in_uppercase_and_lowercase(self):
+        self.stubs.Set(db, 'volume_metadata_get',
+                       return_create_volume_metadata)
+        self.stubs.Set(db, 'volume_metadata_update',
+                       return_new_volume_metadata)
+        req = fakes.HTTPRequest.blank(self.url)
+        req.method = 'PUT'
+        req.content_type = "application/json"
+        body = {
+            'metadata': {
+                'key10': 'value10',
+                'KEY10': 'value10',
+                'key99': 'value99',
+                'KEY20': 'value20',
+            },
+        }
+        expected = {
+            'metadata': {
+                'key10': 'value10',
+                'key99': 'value99',
+                'KEY20': 'value20',
+            },
+        }
+        req.body = jsonutils.dumps(expected)
+        res_dict = self.controller.update_all(req, self.req_id, body)
+
+        self.assertEqual(expected, res_dict)
+
     def test_update_all_empty_container(self):
         self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+                       return_empty_container_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
