@@ -15,42 +15,13 @@
 Tests For Scheduler Host Filters.
 """
 
-import httplib
-import stubout
-import testtools
+import mock
 
 from cinder import context
-from cinder import db
-from cinder import exception
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common.scheduler import filters
 from cinder import test
 from cinder.tests.scheduler import fakes
-from cinder.tests import utils as test_utils
-from cinder import utils
-
-
-DATA = ''
-
-
-def stub_out_https_backend(stubs):
-    """Stub out the httplib.HTTPRequest.getresponse.
-
-    return faked-out data instead of grabbing actual contents of a resource.
-
-    The stubbed getresponse() returns an iterator over
-    the data "I am a teapot, short and stout\n"
-
-    :param stubs: Set of stubout stubs
-    """
-
-    class FakeHTTPResponse(object):
-
-        def read(self):
-            return DATA
-
-    def fake_do_request(self, *args, **kwargs):
-        return httplib.OK, FakeHTTPResponse()
 
 
 class HostFiltersTestCase(test.TestCase):
@@ -58,8 +29,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.stubs = stubout.StubOutForTesting()
-        stub_out_https_backend(self.stubs)
         self.context = context.RequestContext('fake', 'fake')
         self.json_query = jsonutils.dumps(
             ['and',
@@ -73,13 +42,9 @@ class HostFiltersTestCase(test.TestCase):
         for cls in classes:
             self.class_map[cls.__name__] = cls
 
-    def _stub_service_is_up(self, ret_value):
-        def fake_service_is_up(service):
-            return ret_value
-        self.stubs.Set(utils, 'service_is_up', fake_service_is_up)
-
-    def test_capacity_filter_passes(self):
-        self._stub_service_is_up(True)
+    @mock.patch('cinder.utils.service_is_up')
+    def test_capacity_filter_passes(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
         service = {'disabled': False}
@@ -89,8 +54,9 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_capacity_filter_fails(self):
-        self._stub_service_is_up(True)
+    @mock.patch('cinder.utils.service_is_up')
+    def test_capacity_filter_fails(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
         service = {'disabled': False}
@@ -101,8 +67,9 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_capacity_filter_passes_infinite(self):
-        self._stub_service_is_up(True)
+    @mock.patch('cinder.utils.service_is_up')
+    def test_capacity_filter_passes_infinite(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
         service = {'disabled': False}
@@ -112,8 +79,9 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_capacity_filter_passes_unknown(self):
-        self._stub_service_is_up(True)
+    @mock.patch('cinder.utils.service_is_up')
+    def test_capacity_filter_passes_unknown(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
         service = {'disabled': False}
