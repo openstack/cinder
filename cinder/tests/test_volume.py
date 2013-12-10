@@ -30,6 +30,7 @@ import tempfile
 
 import mox
 from oslo.config import cfg
+from taskflow.engines.action_engine import engine
 
 from cinder.backup import driver as backup_driver
 from cinder.brick.iscsi import iscsi
@@ -46,7 +47,6 @@ from cinder.openstack.common.notifier import test_notifier
 from cinder.openstack.common import rpc
 import cinder.policy
 from cinder import quota
-from cinder.taskflow.patterns import linear_flow
 from cinder import test
 from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.tests import conf_fixture
@@ -59,7 +59,6 @@ import cinder.volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
-from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volutils
 
@@ -465,7 +464,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.stubs.Set(self.volume.driver, 'create_volume_from_snapshot',
                        lambda *args, **kwargs: None)
 
-        orig_flow = linear_flow.Flow.run
+        orig_flow = engine.ActionEngine.run
 
         def mock_flow_run(*args, **kwargs):
             # ensure the lock has been taken
@@ -492,7 +491,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         admin_ctxt = context.get_admin_context()
 
         # mock the flow runner so we can do some checks
-        self.stubs.Set(linear_flow.Flow, 'run', mock_flow_run)
+        self.stubs.Set(engine.ActionEngine, 'run', mock_flow_run)
 
         # locked
         self.volume.create_volume(self.context, volume_id=dst_vol_id,
@@ -528,7 +527,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         # mock the synchroniser so we can record events
         self.stubs.Set(utils, 'synchronized', self._mock_synchronized)
 
-        orig_flow = linear_flow.Flow.run
+        orig_flow = engine.ActionEngine.run
 
         def mock_flow_run(*args, **kwargs):
             # ensure the lock has been taken
@@ -551,7 +550,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         admin_ctxt = context.get_admin_context()
 
         # mock the flow runner so we can do some checks
-        self.stubs.Set(linear_flow.Flow, 'run', mock_flow_run)
+        self.stubs.Set(engine.ActionEngine, 'run', mock_flow_run)
 
         # locked
         self.volume.create_volume(self.context, volume_id=dst_vol_id,
@@ -1816,13 +1815,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         def fake_create_volume(*args, **kwargs):
             raise exception.CinderException('fake exception')
 
-        def fake_reschedule_or_error(self, context, *args, **kwargs):
-            self.assertFalse(context.is_admin)
-            self.assertNotIn('admin', context.roles)
-            #compare context passed in with the context we saved
-            self.assertDictMatch(self.saved_ctxt.__dict__,
-                                 context.__dict__)
-
         #create context for testing
         ctxt = self.context.deepcopy()
         if 'admin' in ctxt.roles:
@@ -1831,8 +1823,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         #create one copy of context for future comparison
         self.saved_ctxt = ctxt.deepcopy()
 
-        self.stubs.Set(create_volume.OnFailureRescheduleTask, '_reschedule',
-                       fake_reschedule_or_error)
         self.stubs.Set(self.volume.driver, 'create_volume', fake_create_volume)
 
         volume_src = tests_utils.create_volume(self.context,
