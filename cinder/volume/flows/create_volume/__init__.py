@@ -1470,19 +1470,25 @@ class CreateVolumeFromSpecTask(base.CinderTask):
         return self.driver.create_volume(volume_ref)
 
     def __call__(self, context, volume_ref, volume_spec):
+        volume_spec = dict(volume_spec)
+        volume_id = volume_spec.pop('volume_id', None)
+
         # we can't do anything if the driver didn't init
         if not self.driver.initialized:
-            LOG.error(_("Unable to create volume, driver not initialized"))
             driver_name = self.driver.__class__.__name__
-            raise exception.DriverNotInitialized(driver=driver_name)
+            LOG.error(_("Unable to create volume. "
+                        "Volume driver %s not initialized") % driver_name)
+
+            # NOTE(flaper87): Set the error status before
+            # raising any exception.
+            self.db.volume_update(context, volume_id, dict(status='error'))
+            raise exception.DriverNotInitialized()
 
         create_type = volume_spec.pop('type', None)
         create_functor = self._create_func_mapping.get(create_type)
         if not create_functor:
             raise exception.VolumeTypeNotFound(volume_type_id=create_type)
 
-        volume_spec = dict(volume_spec)
-        volume_id = volume_spec.pop('volume_id', None)
         if not volume_id:
             volume_id = volume_ref['id']
         LOG.info(_("Volume %(volume_id)s: being created using %(functor)s "
