@@ -217,7 +217,6 @@ class BackupManager(manager.SchedulerDependentManager):
                 LOG.info(_('Resuming delete on backup: %s.') % backup['id'])
                 self.delete_backup(ctxt, backup['id'])
 
-    @utils.require_driver_initialized
     def create_backup(self, context, backup_id):
         """Create volume backups using configured backup service."""
         backup = self.db.backup_get(context, backup_id)
@@ -258,6 +257,12 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         try:
+            # NOTE(flaper87): Verify the driver is enabled
+            # before going forward. The exception will be caught,
+            # the volume status will be set back to available and
+            # the backup status to 'error'
+            utils.require_driver_initialized(self.driver)
+
             backup_service = self.service.get_backup_driver(context)
             self._get_driver(backend).backup_volume(context, backup,
                                                     backup_service)
@@ -276,7 +281,6 @@ class BackupManager(manager.SchedulerDependentManager):
                                                    self.az})
         LOG.info(_('Create backup finished. backup: %s.'), backup_id)
 
-    @utils.require_driver_initialized
     def restore_backup(self, context, backup_id, volume_id):
         """Restore volume backups from configured backup service."""
         LOG.info(_('Restore backup started, backup: %(backup_id)s '
@@ -334,6 +338,12 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         try:
+            # NOTE(flaper87): Verify the driver is enabled
+            # before going forward. The exception will be caught,
+            # the volume status will be set back to available and
+            # the backup status to 'error'
+            utils.require_driver_initialized(self.driver)
+
             backup_service = self.service.get_backup_driver(context)
             self._get_driver(backend).restore_backup(context, backup,
                                                      volume,
@@ -351,9 +361,21 @@ class BackupManager(manager.SchedulerDependentManager):
                    ' to volume %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
 
-    @utils.require_driver_initialized
     def delete_backup(self, context, backup_id):
         """Delete volume backup from configured backup service."""
+        try:
+            # NOTE(flaper87): Verify the driver is enabled
+            # before going forward. The exception will be caught
+            # and the backup status updated. Fail early since there
+            # are no other status to change but backup's
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized as err:
+            with excutils.save_and_reraise_exception():
+                    self.db.backup_update(context, backup_id,
+                                          {'status': 'error',
+                                           'fail_reason':
+                                           unicode(err)})
+
         LOG.info(_('Delete backup started, backup: %s.'), backup_id)
         backup = self.db.backup_get(context, backup_id)
         self.db.backup_update(context, backup_id, {'host': self.host})
