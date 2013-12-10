@@ -257,7 +257,7 @@ class VolumeActionsController(wsgi.Controller):
 
         try:
             _val = int(body['os-extend']['new_size'])
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             msg = _("New volume size must be specified as an integer.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
