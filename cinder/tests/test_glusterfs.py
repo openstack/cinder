@@ -236,50 +236,6 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         delattr(glusterfs.CONF, 'glusterfs_disk_util')
 
-    def test_get_available_capacity_with_du(self):
-        """_get_available_capacity should calculate correct value."""
-        mox = self._mox
-        drv = self._driver
-
-        old_value = self._configuration.glusterfs_disk_util
-        self._configuration.glusterfs_disk_util = 'du'
-
-        df_total_size = 2620544
-        df_used_size = 996864
-        df_avail_size = 1490560
-        df_title = 'Filesystem 1-blocks Used Available Use% Mounted on\n'
-        df_mnt_data = 'glusterfs-host:/export %d %d %d 41%% /mnt' % \
-                      (df_total_size,
-                       df_used_size,
-                       df_avail_size)
-        df_output = df_title + df_mnt_data
-
-        du_used = 490560
-        du_output = '%d /mnt' % du_used
-
-        mox.StubOutWithMock(drv, '_get_mount_point_for_share')
-        drv._get_mount_point_for_share(self.TEST_EXPORT1).\
-            AndReturn(self.TEST_MNT_POINT)
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('df', '--portability', '--block-size', '1',
-                     self.TEST_MNT_POINT,
-                     run_as_root=True).\
-            AndReturn((df_output, None))
-        drv._execute('du', '-sb', '--apparent-size',
-                     '--exclude', '*snapshot*',
-                     self.TEST_MNT_POINT,
-                     run_as_root=True).AndReturn((du_output, None))
-
-        mox.ReplayAll()
-
-        self.assertEqual((df_total_size - du_used, df_total_size),
-                         drv._get_available_capacity(self.TEST_EXPORT1))
-
-        mox.VerifyAll()
-
-        self._configuration.glusterfs_disk_util = old_value
-
     def test_load_shares_config(self):
         mox = self._mox
         drv = self._driver

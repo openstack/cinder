@@ -1176,9 +1176,6 @@
 # value)
 #glusterfs_shares_config=/etc/cinder/glusterfs_shares
 
-# Use du or df for free space calculation (string value)
-#glusterfs_disk_util=df
-
 # Create volumes as sparsed files which take no space.If set
 # to False volume is created as regular file.In such case
 # volume creation takes a lot of time. (boolean value)
