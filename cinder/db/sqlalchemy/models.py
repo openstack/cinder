@@ -67,6 +67,7 @@ class Service(BASE, CinderBase):
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
     availability_zone = Column(String(255), default='cinder')
+    disabled_reason = Column(String(255))
 
 
 class Volume(BASE, CinderBase):
