@@ -54,9 +54,9 @@ CONF.register_opts(image_helper_opt)
 
 def qemu_img_info(path):
     """Return a object containing the parsed output from qemu-img info."""
-    cmd = ('env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info', path)
+    cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
-        cmd = cmd[3:]
+        cmd = cmd[2:]
     out, err = utils.execute(*cmd, run_as_root=True)
     return imageutils.QemuImgInfo(out)
 

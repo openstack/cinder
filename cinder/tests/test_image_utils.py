@@ -115,7 +115,7 @@ class TestUtils(test.TestCase):
         mox.StubOutWithMock(utils, 'execute')
 
         utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
             TEST_PATH, run_as_root=True).AndReturn(
                 (TEST_RETURN, 'ignored')
             )
@@ -168,8 +168,7 @@ class TestUtils(test.TestCase):
         mox = self._mox
         mox.StubOutWithMock(utils, 'execute')
 
-        cmd = ['env', 'LC_ALL=C', 'LANG=C',
-               'qemu-img', 'info', TEST_PATH]
+        cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info', TEST_PATH]
         utils.execute(*cmd, run_as_root=True).AndReturn(
             (TEST_RETURN, 'ignored'))
 
@@ -207,8 +206,8 @@ class TestUtils(test.TestCase):
         image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
 
         test_qemu_img = utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
-            self.TEST_DEV_PATH, run_as_root=True)
+            'env', 'LC_ALL=C', 'qemu-img', 'info', self.TEST_DEV_PATH,
+            run_as_root=True)
 
         if has_qemu:
             test_qemu_img.AndReturn((TEST_INFO, 'ignored'))
@@ -219,7 +218,7 @@ class TestUtils(test.TestCase):
 
         if has_qemu and src_inf:
             utils.execute(
-                'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+                'env', 'LC_ALL=C', 'qemu-img', 'info',
                 self.TEST_DEV_PATH, run_as_root=True).AndReturn(
                     (src_inf, 'ignored')
                 )
@@ -230,7 +229,7 @@ class TestUtils(test.TestCase):
                 self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
 
             utils.execute(
-                'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+                'env', 'LC_ALL=C', 'qemu-img', 'info',
                 self.TEST_DEV_PATH, run_as_root=True).AndReturn(
                     (dest_inf, 'ignored')
                 )
@@ -334,7 +333,7 @@ class TestUtils(test.TestCase):
                           self.TEST_IMAGE_ID, self.TEST_DEV_PATH, None, None)
 
         utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
             self.TEST_DEV_PATH, run_as_root=True).AndReturn(
                 (qemu_info, 'ignored')
             )
@@ -396,7 +395,7 @@ class TestUtils(test.TestCase):
         utils.execute('qemu-img', 'convert', '-O', 'qcow2',
                       mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
         utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
             mox.IgnoreArg(), run_as_root=True).AndReturn(
                 (TEST_RET, 'ignored')
             )
@@ -434,7 +433,7 @@ class TestUtils(test.TestCase):
         utils.execute('qemu-img', 'convert', '-O', 'qcow2',
                       mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
         utils.execute(
-            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info',
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
             mox.IgnoreArg(), run_as_root=True).AndReturn(
                 (TEST_RET, 'ignored')
             )
