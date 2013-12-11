@@ -625,14 +625,16 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Add qos_specs to connection info
         typeid = volume['volume_type_id']
-        specs = {}
+        specs = None
         if typeid:
             res = volume_types.get_volume_type_qos_specs(typeid)
-            specs = res['qos_specs']
+            qos = res['qos_specs']
+            # only pass qos_specs that is designated to be consumed by
+            # front-end, or both front-end and back-end.
+            if qos and qos.get('consumer') in ['front-end', 'both']:
+                specs = qos.get('specs')
 
-        # Don't pass qos_spec as empty dict
-        qos_spec = dict(qos_spec=specs if specs else None)
-
+        qos_spec = dict(qos_specs=specs)
         conn_info['data'].update(qos_spec)
 
         # Add access_mode to connection info
