@@ -1700,6 +1700,12 @@
 # less than the configured value. (integer value)
 #vmware_max_objects_retrieval=100
 
+# PBM service WSDL file location URL. e.g.
+# file:///opt/SDK/spbm/wsdl/pbmService.wsdl. Not setting this
+# will disable storage policy based placement of volumes.
+# (string value)
+#vmware_pbm_wsdl=<None>
+
 
 #
 # Options defined in cinder.volume.drivers.windows.windows

@@ -31,6 +31,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim
+from cinder.volume.drivers.vmware import vim_util
 from cinder.volume.drivers.vmware import vmware_images
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
@@ -79,14 +80,19 @@ vmdk_opts = [
                     'Query results will be obtained in batches from the '
                     'server and not in one shot. Server may still limit the '
                     'count to something less than the configured value.'),
+    cfg.StrOpt('vmware_pbm_wsdl',
+               help='PBM service WSDL file location URL. '
+                    'e.g. file:///opt/SDK/spbm/wsdl/pbmService.wsdl. '
+                    'Not setting this will disable storage policy based '
+                    'placement of volumes.'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(vmdk_opts)
 
 
-def _get_volume_type_extra_spec(type_id, spec_key, possible_values,
-                                default_value):
+def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
+                                default_value=None):
     """Get extra spec value.
 
     If the spec value is not present in the input possible_values, then
@@ -99,30 +105,38 @@ def _get_volume_type_extra_spec(type_id, spec_key, possible_values,
 
     :param type_id: Volume type ID
     :param spec_key: Extra spec key
-    :param possible_values: Permitted values for the extra spec
+    :param possible_values: Permitted values for the extra spec if known
     :param default_value: Default value for the extra spec incase of an
                           invalid value or if the entry does not exist
     :return: extra spec value
     """
-    if type_id:
-        spec_key = ('vmware:%s') % spec_key
-        spec_value = volume_types.get_volume_type_extra_specs(type_id,
-                                                              spec_key)
-        if spec_value in possible_values:
-            LOG.debug(_("Returning spec value %s") % spec_value)
-            return spec_value
+    if not type_id:
+        return default_value
 
-        LOG.debug(_("Invalid spec value: %s specified.") % spec_value)
+    spec_key = ('vmware:%s') % spec_key
+    spec_value = volume_types.get_volume_type_extra_specs(type_id,
+                                                          spec_key)
+    if not spec_value:
+        LOG.debug(_("Returning default spec value: %s.") % default_value)
+        return default_value
 
-    # Default we return thin disk type
-    LOG.debug(_("Returning default spec value: %s.") % default_value)
-    return default_value
+    if possible_values is None:
+        return spec_value
+
+    if spec_value in possible_values:
+        LOG.debug(_("Returning spec value %s") % spec_value)
+        return spec_value
+
+    LOG.debug(_("Invalid spec value: %s specified.") % spec_value)
 
 
 class VMwareEsxVmdkDriver(driver.VolumeDriver):
     """Manage volumes on VMware ESX server."""
 
-    VERSION = '1.1.0'
+    # 1.0 - initial version of driver
+    # 1.1.0 - selection of datastore based on number of host mounts
+    # 1.2.0 - storage profile volume types based placement of volumes
+    VERSION = '1.2.0'
 
     def __init__(self, *args, **kwargs):
         super(VMwareEsxVmdkDriver, self).__init__(*args, **kwargs)
@@ -130,6 +144,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         self._session = None
         self._stats = None
         self._volumeops = None
+        # No storage policy based placement possible when connecting
+        # directly to ESX
+        self._storage_policy_enabled = False
 
     @property
     def session(self):
@@ -295,19 +312,68 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                   {'datastore': best_summary, 'host_count': max_host_count})
         return best_summary
 
-    def _get_folder_ds_summary(self, size_gb, resource_pool, datastores):
+    def _get_storage_profile(self, volume):
+        """Get storage profile associated with this volume's volume_type.
+
+        :param volume: volume whose storage profile should be queried
+        :return: string value of storage profile if volume type is associated,
+                 None otherwise
+        """
+        type_id = volume['volume_type_id']
+        if not type_id:
+            return
+        return _get_volume_type_extra_spec(type_id, 'storage_profile')
+
+    def _filter_ds_by_profile(self, datastores, storage_profile):
+        """Filter out datastores that do not match given storage profile.
+
+        :param datastores: list of candidate datastores
+        :param storage_profile: storage profile name required to be satisfied
+        :return: subset of datastores that match storage_profile, or empty list
+                 if none of the datastores match
+        """
+        LOG.debug(_("Filter datastores matching storage profile %(profile)s: "
+                    "%(dss)s."),
+                  {'profile': storage_profile, 'dss': datastores})
+        profileId = self.volumeops.retrieve_profile_id(storage_profile)
+        if not profileId:
+            msg = _("No such storage profile '%s; is defined in vCenter.")
+            LOG.error(msg, storage_profile)
+            raise error_util.VimException(msg % storage_profile)
+        pbm_cf = self.session.pbm.client.factory
+        hubs = vim_util.convert_datastores_to_hubs(pbm_cf, datastores)
+        filtered_hubs = self.volumeops.filter_matching_hubs(hubs, profileId)
+        return vim_util.convert_hubs_to_datastores(filtered_hubs, datastores)
+
+    def _get_folder_ds_summary(self, volume, resource_pool, datastores):
         """Get folder and best datastore summary where volume can be placed.
 
-        :param size_gb: Size of the volume in GB
+        :param volume: volume to place into one of the datastores
         :param resource_pool: Resource pool reference
         :param datastores: Datastores from which a choice is to be made
                            for the volume
         :return: Folder and best datastore summary where volume can be
-                 placed on
+                 placed on.
         """
         datacenter = self.volumeops.get_dc(resource_pool)
         folder = self._get_volume_group_folder(datacenter)
-        size_bytes = size_gb * units.GiB
+        storage_profile = self._get_storage_profile(volume)
+        if self._storage_policy_enabled and storage_profile:
+            LOG.debug(_("Storage profile required for this volume: %s."),
+                      storage_profile)
+            datastores = self._filter_ds_by_profile(datastores,
+                                                    storage_profile)
+            if not datastores:
+                msg = _("Aborting since none of the datastores match the "
+                        "given storage profile %s.")
+                LOG.error(msg, storage_profile)
+                raise error_util.VimException(msg % storage_profile)
+        elif storage_profile:
+            LOG.warn(_("Ignoring storage profile %s requirement for this "
+                       "volume since policy based placement is "
+                       "disabled."), storage_profile)
+
+        size_bytes = volume['size'] * units.GiB
         datastore_summary = self._select_datastore_summary(size_bytes,
                                                            datastores)
         return (folder, datastore_summary)
@@ -335,22 +401,29 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # Get datastores and resource pool of the host
         (datastores, resource_pool) = self.volumeops.get_dss_rp(host)
         # Pick a folder and datastore to create the volume backing on
-        (folder, summary) = self._get_folder_ds_summary(volume['size'],
+        (folder, summary) = self._get_folder_ds_summary(volume,
                                                         resource_pool,
                                                         datastores)
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
         size_kb = volume['size'] * units.MiB
+        storage_profile = self._get_storage_profile(volume)
+        profileId = None
+        if self._storage_policy_enabled and storage_profile:
+            profile = self.volumeops.retrieve_profile_id(storage_profile)
+            if profile:
+                profileId = profile.uniqueId
         return self.volumeops.create_backing(volume['name'],
                                              size_kb,
                                              disk_type, folder,
                                              resource_pool,
                                              host,
-                                             summary.name)
+                                             summary.name,
+                                             profileId)
 
-    def _relocate_backing(self, size_gb, backing, host):
+    def _relocate_backing(self, volume, backing, host):
         pass
 
-    def _select_ds_for_volume(self, size_gb):
+    def _select_ds_for_volume(self, volume):
         """Select datastore that can accommodate a volume of given size.
 
         Returns the selected datastore summary along with a compute host and
@@ -367,7 +440,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 host = host.obj
                 try:
                     (dss, rp) = self.volumeops.get_dss_rp(host)
-                    (folder, summary) = self._get_folder_ds_summary(size_gb,
+                    (folder, summary) = self._get_folder_ds_summary(volume,
                                                                     rp, dss)
                     selected_host = host
                     break
@@ -375,7 +448,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     LOG.warn(_("Unable to find suitable datastore for volume "
                                "of size: %(vol)s GB under host: %(host)s. "
                                "More details: %(excep)s") %
-                             {'vol': size_gb,
+                             {'vol': volume['size'],
                               'host': host.obj, 'excep': excep})
             if selected_host:
                 self.volumeops.cancel_retrieval(retrv_result)
@@ -383,7 +456,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             retrv_result = self.volumeops.continue_retrieval(retrv_result)
 
         msg = _("Unable to find host to accommodate a disk of size: %s "
-                "in the inventory.") % size_gb
+                "in the inventory.") % volume['size']
         LOG.error(msg)
         raise error_util.VimException(msg)
 
@@ -450,7 +523,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 backing = self._create_backing(volume, host)
             else:
                 # Relocate volume is necessary
-                self._relocate_backing(volume['size'], backing, host)
+                self._relocate_backing(volume, backing, host)
         else:
             # The instance does not exist
             LOG.debug(_("The instance for which initialize connection "
@@ -740,12 +813,12 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         try:
             # find host in which to create the volume
-            size_gb = volume['size']
-            (host, rp, folder, summary) = self._select_ds_for_volume(size_gb)
+            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
         except error_util.VimException as excep:
             LOG.exception(_("Exception in _select_ds_for_volume: %s.") % excep)
             raise excep
 
+        size_gb = volume['size']
         LOG.debug(_("Selected datastore %(ds)s for new volume of size "
                     "%(size)s GB.") % {'ds': summary.name, 'size': size_gb})
 
@@ -876,6 +949,29 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
     """Manage volumes on VMware VC server."""
 
+    def __init__(self, *args, **kwargs):
+        super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
+        self._session = None
+
+    @property
+    def session(self):
+        if not self._session:
+            ip = self.configuration.vmware_host_ip
+            username = self.configuration.vmware_host_username
+            password = self.configuration.vmware_host_password
+            api_retry_count = self.configuration.vmware_api_retry_count
+            task_poll_interval = self.configuration.vmware_task_poll_interval
+            wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
+            pbm_wsdl = self.configuration.vmware_pbm_wsdl
+            self._session = api.VMwareAPISession(ip, username,
+                                                 password, api_retry_count,
+                                                 task_poll_interval,
+                                                 wsdl_loc=wsdl_loc,
+                                                 pbm_wsdl=pbm_wsdl)
+            if pbm_wsdl:
+                self._storage_policy_enabled = True
+        return self._session
+
     def _get_volume_group_folder(self, datacenter):
         """Get volume group folder.
 
@@ -890,13 +986,13 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         volume_folder = self.configuration.vmware_volume_folder
         return self.volumeops.create_folder(vm_folder, volume_folder)
 
-    def _relocate_backing(self, size_gb, backing, host):
+    def _relocate_backing(self, volume, backing, host):
         """Relocate volume backing under host and move to volume_group folder.
 
         If the volume backing is on a datastore that is visible to the host,
         then need not do any operation.
 
-        :param size_gb: Size of the volume in GB
+        :param volume: volume to be relocated
         :param backing: Reference to the backing
         :param host: Reference to the host
         """
@@ -917,7 +1013,8 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         # host managing the instance. We relocate the volume's backing.
 
         # Pick a folder and datastore to relocate volume backing to
-        (folder, summary) = self._get_folder_ds_summary(size_gb, resource_pool,
+        (folder, summary) = self._get_folder_ds_summary(volume,
+                                                        resource_pool,
                                                         datastores)
         LOG.info(_("Relocating volume: %(backing)s to %(ds)s and %(rp)s.") %
                  {'backing': backing, 'ds': summary, 'rp': resource_pool})
@@ -950,12 +1047,9 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         """
         datastore = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
-            # Pick a datastore where to create the full clone under same host
-            host = self.volumeops.get_host(backing)
-            (datastores, resource_pool) = self.volumeops.get_dss_rp(host)
-            size_bytes = volume['size'] * units.GiB
-            datastore = self._select_datastore_summary(size_bytes,
-                                                       datastores).datastore
+            # Pick a datastore where to create the full clone under any host
+            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+            datastore = summary.datastore
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore)
         LOG.info(_("Successfully created clone: %s.") % clone)

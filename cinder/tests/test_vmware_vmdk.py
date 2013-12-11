@@ -17,6 +17,7 @@
 Test suite for VMware VMDK driver.
 """
 
+import mock
 import mox
 
 from cinder import exception
@@ -215,7 +216,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test get_volume_stats."""
         stats = self._driver.get_volume_stats()
         self.assertEqual(stats['vendor_name'], 'VMware')
-        self.assertEqual(stats['driver_version'], '1.1.0')
+        self.assertEqual(stats['driver_version'], self._driver.VERSION)
         self.assertEqual(stats['storage_protocol'], 'LSI Logic SCSI')
         self.assertEqual(stats['reserved_percentage'], 0)
         self.assertEqual(stats['total_capacity_gb'], 'unknown')
@@ -441,28 +442,36 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
-    def test_get_folder_ds_summary(self):
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareEsxVmdkDriver.'
+                'session', new_callable=mock.PropertyMock)
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareEsxVmdkDriver.'
+                'volumeops', new_callable=mock.PropertyMock)
+    def test_get_folder_ds_summary(self, volumeops, session):
         """Test _get_folder_ds_summary."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        size = 1
-        resource_pool = FakeMor('ResourcePool', 'my_rp')
-        datacenter = FakeMor('Datacenter', 'my_dc')
-        m.StubOutWithMock(self._volumeops, 'get_dc')
-        self._volumeops.get_dc(resource_pool).AndReturn(datacenter)
-        m.StubOutWithMock(self._driver, '_get_volume_group_folder')
-        folder = FakeMor('Folder', 'my_fol')
-        self._driver._get_volume_group_folder(datacenter).AndReturn(folder)
-        m.StubOutWithMock(self._driver, '_select_datastore_summary')
-        size = 1
-        datastores = [FakeMor('Datastore', 'my_ds')]
-        self._driver._select_datastore_summary(size * units.GiB, datastores)
-
-        m.ReplayAll()
-        self._driver._get_folder_ds_summary(size, resource_pool, datastores)
-        m.UnsetStubs()
-        m.VerifyAll()
+        volumeops = volumeops.return_value
+        driver = self._driver
+        volume = {'size': 10, 'volume_type_id': 'fake_type'}
+        rp = mock.sentinel.resource_pool
+        dss = mock.sentinel.datastores
+        # patch method calls from _get_folder_ds_summary
+        volumeops.get_dc.return_value = mock.sentinel.dc
+        volumeops.get_vmfolder.return_value = mock.sentinel.folder
+        driver._get_storage_profile = mock.MagicMock()
+        driver._select_datastore_summary = mock.MagicMock()
+        driver._select_datastore_summary.return_value = mock.sentinel.summary
+        # call _get_folder_ds_summary
+        (folder, datastore_summary) = driver._get_folder_ds_summary(volume,
+                                                                    rp, dss)
+        # verify returned values and calls made
+        self.assertEqual(mock.sentinel.folder, folder,
+                         "Folder returned is wrong.")
+        self.assertEqual(mock.sentinel.summary, datastore_summary,
+                         "Datastore summary returned is wrong.")
+        volumeops.get_dc.assert_called_once_with(rp)
+        volumeops.get_vmfolder.assert_called_once_with(mock.sentinel.dc)
+        driver._get_storage_profile.assert_called_once_with(volume)
+        size = volume['size'] * units.GiB
+        driver._select_datastore_summary.assert_called_once_with(size, dss)
 
     def test_get_disk_type(self):
         """Test _get_disk_type."""
@@ -494,7 +503,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.StubOutWithMock(self._driver, '_get_folder_ds_summary')
         folder = FakeMor('Folder', 'my_fol')
         summary = FakeDatastoreSummary(1, 1)
-        self._driver._get_folder_ds_summary(volume['size'], resource_pool,
+        self._driver._get_folder_ds_summary(volume, resource_pool,
                                             datastores).AndReturn((folder,
                                                                    summary))
         backing = FakeMor('VirtualMachine', 'my_back')
@@ -503,6 +512,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                        volume['size'] * units.MiB,
                                        mox.IgnoreArg(), folder,
                                        resource_pool, host,
+                                       mox.IgnoreArg(),
                                        mox.IgnoreArg()).AndReturn(backing)
 
         m.ReplayAll()
@@ -877,17 +887,17 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         (host, rp, folder, summary) = (FakeObject(), FakeObject(),
                                        FakeObject(), FakeObject())
         summary.name = "datastore-1"
-        m.StubOutWithMock(self._driver, '_select_ds_for_volume')
-        self._driver._select_ds_for_volume(size_gb).AndReturn((host, rp,
-                                                               folder,
-                                                               summary))
-        # _get_disk_type call
         vol_name = 'volume name'
         volume = FakeObject()
         volume['name'] = vol_name
         volume['size'] = size_gb
         volume['volume_type_id'] = None  # _get_disk_type will return 'thin'
         disk_type = 'thin'
+        m.StubOutWithMock(self._driver, '_select_ds_for_volume')
+        self._driver._select_ds_for_volume(volume).AndReturn((host, rp,
+                                                              folder,
+                                                              summary))
+
         # _get_create_spec call
         m.StubOutWithMock(self._volumeops, '_get_create_spec')
         self._volumeops._get_create_spec(vol_name, 0, disk_type,
@@ -1043,8 +1053,11 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     """Test class for VMwareVcVmdkDriver."""
 
+    PBM_WSDL = '/fake/wsdl/path'
+
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
+        self.flags(vmware_pbm_wsdl=self.PBM_WSDL)
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
 
     def test_init_conn_with_instance_and_backing(self):
@@ -1124,7 +1137,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         folder = FakeMor('Folder', 'my_fol')
         summary = FakeDatastoreSummary(1, 1, datastore1)
         size = 1
-        self._driver._get_folder_ds_summary(size, resource_pool,
+        self._driver._get_folder_ds_summary(volume, resource_pool,
                                             [datastore1]).AndReturn((folder,
                                                                      summary))
         m.StubOutWithMock(self._volumeops, 'relocate_backing')
@@ -1165,23 +1178,15 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
-        m.StubOutWithMock(self._volumeops, 'get_host')
         backing = FakeMor('VirtualMachine', 'my_vm')
-        host = FakeMor('HostSystem', 'my_host')
-        self._volumeops.get_host(backing).AndReturn(host)
-        m.StubOutWithMock(self._volumeops, 'get_dss_rp')
         datastore = FakeMor('Datastore', 'my_ds')
-        datastores = [datastore]
-        resource_pool = FakeMor('ResourcePool', 'my_rp')
-        self._volumeops.get_dss_rp(host).AndReturn((datastores,
-                                                    resource_pool))
-        m.StubOutWithMock(self._driver, '_select_datastore_summary')
+        m.StubOutWithMock(self._driver, '_select_ds_for_volume')
         volume = FakeObject()
         volume['name'] = 'volume_name'
         volume['size'] = 1
         summary = FakeDatastoreSummary(1, 1, datastore=datastore)
-        self._driver._select_datastore_summary(volume['size'] * units.GiB,
-                                               datastores).AndReturn(summary)
+        self._driver._select_ds_for_volume(volume).AndReturn((_, _, _,
+                                                              summary))
         m.StubOutWithMock(self._volumeops, 'clone_backing')
         self._volumeops.clone_backing(volume['name'], backing,
                                       mox.IgnoreArg(),
@@ -1290,3 +1295,111 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                           self._driver.create_cloned_volume, volume, src_vref)
         m.UnsetStubs()
         m.VerifyAll()
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    def test_get_storage_profile(self, get_volume_type_extra_specs):
+        """Test vmdk _get_storage_profile."""
+
+        # Test volume with no type id returns None
+        volume = FakeObject()
+        volume['volume_type_id'] = None
+        sp = self._driver._get_storage_profile(volume)
+        self.assertEqual(None, sp, "Without a volume_type_id no storage "
+                         "profile should be returned.")
+
+        # Test volume with type id calls extra specs
+        fake_id = 'fake_volume_id'
+        volume['volume_type_id'] = fake_id
+        self._driver._get_storage_profile(volume)
+        spec_key = 'vmware:storage_profile'
+        get_volume_type_extra_specs.assert_called_once_with(fake_id, spec_key)
+
+    @mock.patch('cinder.volume.drivers.vmware.vim_util.'
+                'convert_datastores_to_hubs')
+    @mock.patch('cinder.volume.drivers.vmware.vim_util.'
+                'convert_hubs_to_datastores')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'session', new_callable=mock.PropertyMock)
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'volumeops', new_callable=mock.PropertyMock)
+    def test_filter_ds_by_profile(self, volumeops, session, hubs_to_ds,
+                                  ds_to_hubs):
+        """Test vmdk _filter_ds_by_profile() method."""
+
+        volumeops = volumeops.return_value
+        session = session.return_value
+
+        # Test with no profile id
+        datastores = [mock.sentinel.ds1, mock.sentinel.ds2]
+        profile = 'fake_profile'
+        volumeops.retrieve_profile_id.return_value = None
+        self.assertRaises(error_util.VimException,
+                          self._driver._filter_ds_by_profile,
+                          datastores, profile)
+        volumeops.retrieve_profile_id.assert_called_once_with(profile)
+
+        # Test with a fake profile id
+        profileId = 'fake_profile_id'
+        filtered_dss = [mock.sentinel.ds1]
+        # patch method calls from _filter_ds_by_profile
+        volumeops.retrieve_profile_id.return_value = profileId
+        pbm_cf = mock.sentinel.pbm_cf
+        session.pbm.client.factory = pbm_cf
+        hubs = [mock.sentinel.hub1, mock.sentinel.hub2]
+        ds_to_hubs.return_value = hubs
+        volumeops.filter_matching_hubs.return_value = mock.sentinel.hubs
+        hubs_to_ds.return_value = filtered_dss
+        # call _filter_ds_by_profile with a fake profile
+        actual_dss = self._driver._filter_ds_by_profile(datastores, profile)
+        # verify return value and called methods
+        self.assertEqual(filtered_dss, actual_dss,
+                         "Wrong filtered datastores returned.")
+        ds_to_hubs.assert_called_once_with(pbm_cf, datastores)
+        volumeops.filter_matching_hubs.assert_called_once_with(hubs,
+                                                               profileId)
+        hubs_to_ds.assert_called_once_with(mock.sentinel.hubs, datastores)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'session', new_callable=mock.PropertyMock)
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'volumeops', new_callable=mock.PropertyMock)
+    def test_get_folder_ds_summary(self, volumeops, session):
+        """Test _get_folder_ds_summary."""
+        volumeops = volumeops.return_value
+        driver = self._driver
+        driver._storage_policy_enabled = True
+        volume = {'size': 10, 'volume_type_id': 'fake_type'}
+        rp = mock.sentinel.resource_pool
+        dss = [mock.sentinel.datastore1, mock.sentinel.datastore2]
+        filtered_dss = [mock.sentinel.datastore1]
+        profile = mock.sentinel.profile
+
+        def filter_ds(datastores, storage_profile):
+            return filtered_dss
+
+        # patch method calls from _get_folder_ds_summary
+        volumeops.get_dc.return_value = mock.sentinel.dc
+        volumeops.get_vmfolder.return_value = mock.sentinel.vmfolder
+        volumeops.create_folder.return_value = mock.sentinel.folder
+        driver._get_storage_profile = mock.MagicMock()
+        driver._get_storage_profile.return_value = profile
+        driver._filter_ds_by_profile = mock.MagicMock(side_effect=filter_ds)
+        driver._select_datastore_summary = mock.MagicMock()
+        driver._select_datastore_summary.return_value = mock.sentinel.summary
+        # call _get_folder_ds_summary
+        (folder, datastore_summary) = driver._get_folder_ds_summary(volume,
+                                                                    rp, dss)
+        # verify returned values and calls made
+        self.assertEqual(mock.sentinel.folder, folder,
+                         "Folder returned is wrong.")
+        self.assertEqual(mock.sentinel.summary, datastore_summary,
+                         "Datastore summary returned is wrong.")
+        volumeops.get_dc.assert_called_once_with(rp)
+        volumeops.get_vmfolder.assert_called_once_with(mock.sentinel.dc)
+        volumeops.create_folder.assert_called_once_with(mock.sentinel.vmfolder,
+                                                        self.VOLUME_FOLDER)
+        driver._get_storage_profile.assert_called_once_with(volume)
+        driver._filter_ds_by_profile.assert_called_once_with(dss, profile)
+        size = volume['size'] * units.GiB
+        driver._select_datastore_summary.assert_called_once_with(size,
+                                                                 filtered_dss)

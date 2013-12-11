@@ -222,6 +222,8 @@ class VMwareVolumeOps(object):
                     datastores = prop.val.ManagedObjectReference
                 elif prop.name == 'parent':
                     compute_resource = prop.val
+        LOG.debug(_("Datastores attached to host %(host)s are: %(ds)s."),
+                  {'host': host, 'ds': datastores})
         # Filter datastores based on if it is accessible, mounted and writable
         valid_dss = []
         for datastore in datastores:
@@ -237,6 +239,8 @@ class VMwareVolumeOps(object):
             msg = _("There are no valid datastores attached to %s.") % host
             LOG.error(msg)
             raise error_util.VimException(msg)
+        else:
+            LOG.debug(_("Valid datastores are: %s"), valid_dss)
         return (valid_dss, resource_pool)
 
     def _get_parent(self, child, parent_type):
@@ -314,13 +318,15 @@ class VMwareVolumeOps(object):
         LOG.debug(_("Created child folder: %s.") % child_folder)
         return child_folder
 
-    def _get_create_spec(self, name, size_kb, disk_type, ds_name):
+    def _get_create_spec(self, name, size_kb, disk_type, ds_name,
+                         profileId=None):
         """Return spec for creating volume backing.
 
         :param name: Name of the backing
         :param size_kb: Size in KB of the backing
         :param disk_type: VMDK type for the disk
         :param ds_name: Datastore name where the disk is to be provisioned
+        :param profileId: storage profile ID for the backing
         :return: Spec for creation
         """
         cf = self._session.vim.client.factory
@@ -362,11 +368,16 @@ class VMwareVolumeOps(object):
         create_spec.deviceChange = [controller_spec, disk_spec]
         create_spec.files = vm_file_info
 
+        if profileId:
+            vmProfile = cf.create('ns0:VirtualMachineDefinedProfileSpec')
+            vmProfile.profileId = profileId
+            create_spec.vmProfile = [vmProfile]
+
         LOG.debug(_("Spec for creating the backing: %s.") % create_spec)
         return create_spec
 
-    def create_backing(self, name, size_kb, disk_type,
-                       folder, resource_pool, host, ds_name):
+    def create_backing(self, name, size_kb, disk_type, folder, resource_pool,
+                       host, ds_name, profileId=None):
         """Create backing for the volume.
 
         Creates a VM with one VMDK based on the given inputs.
@@ -378,17 +389,19 @@ class VMwareVolumeOps(object):
         :param resource_pool: Resource pool reference
         :param host: Host reference
         :param ds_name: Datastore name where the disk is to be provisioned
+        :param profileId: storage profile ID to be associated with backing
         :return: Reference to the created backing entity
         """
         LOG.debug(_("Creating volume backing name: %(name)s "
                     "disk_type: %(disk_type)s size_kb: %(size_kb)s at "
                     "folder: %(folder)s resourse pool: %(resource_pool)s "
-                    "datastore name: %(ds_name)s.") %
+                    "datastore name: %(ds_name)s profileId: %(profile)s.") %
                   {'name': name, 'disk_type': disk_type, 'size_kb': size_kb,
                    'folder': folder, 'resource_pool': resource_pool,
-                   'ds_name': ds_name})
+                   'ds_name': ds_name, 'profile': profileId})
 
-        create_spec = self._get_create_spec(name, size_kb, disk_type, ds_name)
+        create_spec = self._get_create_spec(name, size_kb, disk_type, ds_name,
+                                            profileId)
         task = self._session.invoke_api(self._session.vim, 'CreateVM_Task',
                                         folder, config=create_spec,
                                         pool=resource_pool, host=host)
@@ -729,3 +742,53 @@ class VMwareVolumeOps(object):
         LOG.debug(_("Initiated deleting vmdk file via task: %s.") % task)
         self._session.wait_for_task(task)
         LOG.info(_("Deleted vmdk file: %s.") % vmdk_file_path)
+
+    def get_all_profiles(self):
+        """Get all profiles defined in current VC.
+
+        :return: PbmProfile data objects from VC
+        """
+        LOG.debug(_("Get all profiles defined in current VC."))
+        pbm = self._session.pbm
+        profile_manager = pbm.service_content.profileManager
+        res_type = pbm.client.factory.create('ns0:PbmProfileResourceType')
+        res_type.resourceType = 'STORAGE'
+        profileIds = self._session.invoke_api(pbm, 'PbmQueryProfile',
+                                              profile_manager,
+                                              resourceType=res_type)
+        LOG.debug(_("Got profile IDs: %s"), profileIds)
+        return self._session.invoke_api(pbm, 'PbmRetrieveContent',
+                                        profile_manager,
+                                        profileIds=profileIds)
+
+    def retrieve_profile_id(self, profile_name):
+        """Get the profile uuid from current VC for given profile name.
+
+        :param profile_name: profile name as string
+        :return: profile id as string
+        """
+        LOG.debug(_("Trying to retrieve profile id for %s"), profile_name)
+        for profile in self.get_all_profiles():
+            if profile.name == profile_name:
+                profileId = profile.profileId
+                LOG.debug(_("Got profile id %(id)s for profile %(name)s."),
+                          {'id': profileId, 'name': profile_name})
+                return profileId
+
+    def filter_matching_hubs(self, hubs, profile_id):
+        """Filter and return only hubs that match given profile.
+
+        :param hubs: PbmPlacementHub morefs candidates
+        :param profile_id: profile id string
+        :return: subset of hubs that match given profile_id
+        """
+        LOG.debug(_("Filtering hubs %(hubs)s that match profile "
+                    "%(profile)s."), {'hubs': hubs, 'profile': profile_id})
+        pbm = self._session.pbm
+        placement_solver = pbm.service_content.placementSolver
+        filtered_hubs = self._session.invoke_api(pbm, 'PbmQueryMatchingHub',
+                                                 placement_solver,
+                                                 hubsToSearch=hubs,
+                                                 profile=profile_id)
+        LOG.debug(_("Filtered hubs: %s"), filtered_hubs)
+        return filtered_hubs
