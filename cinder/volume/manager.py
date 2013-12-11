@@ -193,6 +193,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.configuration = Configuration(volume_manager_opts,
                                            config_group=service_name)
         self._tp = GreenPool()
+        self.stats = {}
 
         if not volume_driver:
             # Get from configuration, which will get the default
@@ -243,8 +244,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.debug(_("Re-exporting %s volumes"), len(volumes))
 
         try:
+            sum = 0
+            self.stats.update({'allocated_capacity_gb': sum})
             for volume in volumes:
                 if volume['status'] in ['available', 'in-use']:
+                    # calculate allocated capacity for driver
+                    sum += volume['size']
+                    self.stats['allocated_capacity_gb'] = sum
                     self.driver.ensure_export(ctxt, volume)
                 elif volume['status'] == 'downloading':
                     LOG.info(_("volume %s stuck in a downloading state"),
@@ -341,6 +347,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Fetch created volume from storage
         volume_ref = flow_engine.storage.fetch('volume')
+        # Update volume stats
+        self.stats['allocated_capacity_gb'] += volume_ref['size']
         return volume_ref['id']
 
     @utils.require_driver_initialized
@@ -417,6 +425,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
 
+        self.stats['allocated_capacity_gb'] -= volume_ref['size']
         self.publish_service_capabilities(context)
 
         return True
@@ -925,8 +934,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             volume_stats = self.driver.get_volume_stats(refresh=True)
             if volume_stats:
-                # This will grab info about the host and queue it
-                # to be sent to the Schedulers.
+                # Append volume stats with 'allocated_capacity_gb'
+                volume_stats.update(self.stats)
+                # queue it to be sent to the Schedulers.
                 self.update_service_capabilities(volume_stats)
 
     def publish_service_capabilities(self, context):
@@ -1001,6 +1011,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         QUOTAS.commit(context, reservations)
         self.db.volume_update(context, volume['id'], {'size': int(new_size),
                                                       'status': 'available'})
+        self.stats['allocated_capacity_gb'] += size_increase
         self._notify_about_volume_usage(
             context, volume, "resize.end",
             extra_usage_info={'size': int(new_size)})

@@ -76,7 +76,7 @@ class AdminActionsTest(test.TestCase):
     def test_reset_status_as_non_admin(self):
         # current status is 'error'
         volume = db.volume_create(context.get_admin_context(),
-                                  {'status': 'error'})
+                                  {'status': 'error', 'size': 1})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -96,7 +96,7 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available'})
+        volume = db.volume_create(ctx, {'status': 'available', 'size': 1})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -115,7 +115,7 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available'})
+        volume = db.volume_create(ctx, {'status': 'available', 'size': 1})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -153,7 +153,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available',
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1,
                                         'attach_status': 'attached'})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
@@ -177,7 +178,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available',
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1,
                                         'attach_status': 'detached'})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
@@ -200,7 +202,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # snapshot in 'error_deleting'
-        volume = db.volume_create(ctx, {})
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
         snapshot = db.snapshot_create(ctx, {'status': 'error_deleting',
                                             'volume_id': volume['id']})
         req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
@@ -222,7 +225,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # snapshot in 'available'
-        volume = db.volume_create(ctx, {})
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
         snapshot = db.snapshot_create(ctx, {'status': 'available',
                                             'volume_id': volume['id']})
         req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
@@ -245,7 +249,7 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is creating
-        volume = db.volume_create(ctx, {'status': 'creating'})
+        volume = db.volume_create(ctx, {'size': 1})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -263,7 +267,7 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is creating
-        volume = db.volume_create(ctx, {'host': 'test'})
+        volume = db.volume_create(ctx, {'host': 'test', 'size': 1})
         snapshot = db.snapshot_create(ctx, {'status': 'creating',
                                             'volume_size': 1,
                                             'volume_id': volume['id']})
@@ -291,7 +295,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -346,7 +350,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -402,7 +406,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -438,7 +442,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -474,7 +478,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         connector = {}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -489,7 +493,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         values = {'status': 'attaching',
@@ -513,7 +517,7 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': ''})
+                                        'provider_location': '', 'size': 1})
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         values = {'status': 'attaching',

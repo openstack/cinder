@@ -996,6 +996,10 @@
 # numbers mean to stack vs spread. (floating point value)
 #capacity_weight_multiplier=1.0
 
+# Multiplier used for weighing volume capacity. Negative
+# numbers mean to stack vs spread. (floating point value)
+#allocated_capacity_weight_multiplier=-1.0
+
 
 #
 # Options defined in cinder.transfer.api

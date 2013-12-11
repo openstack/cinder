@@ -702,6 +702,7 @@ class ManagedRBDTestCase(DriverTestCase):
         super(ManagedRBDTestCase, self).setUp()
         fake_image.stub_out_image_service(self.stubs)
         self.volume.driver.set_initialized()
+        self.volume.stats = {'allocated_capacity_gb': 0}
         self.called = []
 
     def _create_volume_from_image(self, expected_status, raw=False,

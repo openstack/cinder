@@ -1,4 +1,5 @@
-# Copyright 2011-2012 OpenStack Foundation
+# Copyright 2013 eBay Inc.
+#
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,33 +14,31 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Tests For Capacity Weigher.
+Tests For Allocated Capacity Weigher.
 """
 
 import mock
-
 from oslo.config import cfg
 
 from cinder import context
 from cinder.openstack.common.scheduler.weights import HostWeightHandler
-from cinder.scheduler.weights.capacity import CapacityWeigher
+from cinder.scheduler.weights.capacity import AllocatedCapacityWeigher as ACW
 from cinder import test
 from cinder.tests.scheduler import fakes
 
 CONF = cfg.CONF
 
 
-class CapacityWeigherTestCase(test.TestCase):
+class AllocatedCapacityWeigherTestCase(test.TestCase):
     def setUp(self):
-        super(CapacityWeigherTestCase, self).setUp()
+        super(AllocatedCapacityWeigherTestCase, self).setUp()
         self.host_manager = fakes.FakeHostManager()
         self.weight_handler = HostWeightHandler('cinder.scheduler.weights')
 
     def _get_weighed_host(self, hosts, weight_properties=None):
         if weight_properties is None:
             weight_properties = {}
-        return self.weight_handler.get_weighed_objects([CapacityWeigher],
-                                                       hosts,
+        return self.weight_handler.get_weighed_objects([ACW], hosts,
                                                        weight_properties)[0]
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get_all_by_topic')
@@ -54,40 +53,40 @@ class CapacityWeigherTestCase(test.TestCase):
     def test_default_of_spreading_first(self):
         hostinfo_list = self._get_all_hosts()
 
-        # host1: free_capacity_gb=1024, free=1024*(1-0.1)
-        # host2: free_capacity_gb=300, free=300*(1-0.1)
-        # host3: free_capacity_gb=512, free=256
-        # host4: free_capacity_gb=200, free=200*(1-0.05)
+        # host1: allocated_capacity_gb=0, weight=0
+        # host2: allocated_capacity_gb=1748, weight=-1748
+        # host3: allocated_capacity_gb=256, weight=-256
+        # host4: allocated_capacity_gb=1848, weight=-1848
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 921.0)
+        self.assertEqual(weighed_host.weight, 0)
         self.assertEqual(weighed_host.obj.host, 'host1')
 
     def test_capacity_weight_multiplier1(self):
-        self.flags(capacity_weight_multiplier=-1.0)
+        self.flags(allocated_capacity_weight_multiplier=1.0)
         hostinfo_list = self._get_all_hosts()
 
-        # host1: free_capacity_gb=1024, free=-1024*(1-0.1)
-        # host2: free_capacity_gb=300, free=-300*(1-0.1)
-        # host3: free_capacity_gb=512, free=-256
-        # host4: free_capacity_gb=200, free=-200*(1-0.05)
+        # host1: allocated_capacity_gb=0, weight=0
+        # host2: allocated_capacity_gb=1748, weight=1748
+        # host3: allocated_capacity_gb=256, weight=256
+        # host4: allocated_capacity_gb=1848, weight=1848
 
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, -190.0)
+        self.assertEqual(weighed_host.weight, 1848.0)
         self.assertEqual(weighed_host.obj.host, 'host4')
 
     def test_capacity_weight_multiplier2(self):
-        self.flags(capacity_weight_multiplier=2.0)
+        self.flags(allocated_capacity_weight_multiplier=-2.0)
         hostinfo_list = self._get_all_hosts()
 
-        # host1: free_capacity_gb=1024, free=1024*(1-0.1)*2
-        # host2: free_capacity_gb=300, free=300*(1-0.1)*2
-        # host3: free_capacity_gb=512, free=256*2
-        # host4: free_capacity_gb=200, free=200*(1-0.05)*2
+        # host1: allocated_capacity_gb=0, weight=0
+        # host2: allocated_capacity_gb=1748, weight=-3496
+        # host3: allocated_capacity_gb=256, weight=-512
+        # host4: allocated_capacity_gb=1848, weight=-3696
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 921.0 * 2)
+        self.assertEqual(weighed_host.weight, 0)
         self.assertEqual(weighed_host.obj.host, 'host1')

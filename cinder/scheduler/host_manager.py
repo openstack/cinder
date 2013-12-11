@@ -99,6 +99,9 @@ class HostState(object):
         # Mutable available resources.
         # These will change as resources are virtually "consumed".
         self.total_capacity_gb = 0
+        # capacity has been allocated in cinder POV, which should be
+        # sum(vol['size'] for vol in vols_on_hosts)
+        self.allocated_capacity_gb = 0
         self.free_capacity_gb = None
         self.reserved_percentage = 0
 
@@ -128,6 +131,8 @@ class HostState(object):
 
             self.total_capacity_gb = capability['total_capacity_gb']
             self.free_capacity_gb = capability['free_capacity_gb']
+            self.allocated_capacity_gb = capability.get(
+                'allocated_capacity_gb', 0)
             self.reserved_percentage = capability['reserved_percentage']
 
             self.updated = capability['timestamp']
@@ -135,6 +140,7 @@ class HostState(object):
     def consume_from_volume(self, volume):
         """Incrementally update host state from an volume."""
         volume_gb = volume['size']
+        self.allocated_capacity_gb += volume_gb
         if self.free_capacity_gb == 'infinite':
             # There's virtually infinite space on back-end
             pass
