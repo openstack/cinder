@@ -24,8 +24,6 @@
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
-from oslo.config import cfg
-
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
@@ -36,11 +34,6 @@ from cinder.volume.drivers.nexenta import utils
 
 VERSION = '1.1.3'
 LOG = logging.getLogger(__name__)
-
-CONF = cfg.CONF
-CONF.register_opts(options.NEXENTA_CONNECTION_OPTIONS)
-CONF.register_opts(options.NEXENTA_ISCSI_OPTIONS)
-CONF.register_opts(options.NEXENTA_VOLUME_OPTIONS)
 
 
 class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
