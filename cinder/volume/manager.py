@@ -888,8 +888,18 @@ class VolumeManager(manager.SchedulerDependentManager):
     def _report_driver_status(self, context):
         LOG.info(_("Updating volume status"))
         if not self.driver.initialized:
-            LOG.warning(_('Unable to update stats, driver is '
-                          'uninitialized'))
+            if self.driver.configuration.config_group is None:
+                config_group = ''
+            else:
+                config_group = ('(config name %s)' %
+                                self.driver.configuration.config_group)
+
+            LOG.warning(_('Unable to update stats, %(driver_name)s '
+                          '-%(driver_version)s '
+                          '%(config_group)s driver is uninitialized.') %
+                        {'driver_name': self.driver.__class__.__name__,
+                         'driver_version': self.driver.get_version(),
+                         'config_group': config_group})
         else:
             volume_stats = self.driver.get_volume_stats(refresh=True)
             if volume_stats:
