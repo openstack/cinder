@@ -1267,51 +1267,94 @@
 # Options defined in cinder.volume.drivers.netapp.options
 #
 
-# Vfiler to use for provisioning (string value)
+# The vFiler unit on which provisioning of block storage
+# volumes will be done. This option is only used by the driver
+# when connecting to an instance with a storage family of Data
+# ONTAP operating in 7-Mode and the storage protocol selected
+# is iSCSI. Only use this option when utilizing the MultiStore
+# feature on the NetApp storage system. (string value)
 #netapp_vfiler=<None>
 
-# User name for the storage controller (string value)
+# Administrative user account name used to access the storage
+# system. (string value)
 #netapp_login=<None>
 
-# Password for the storage controller (string value)
+# Password for the administrative user account specified in
+# the netapp_login option. (string value)
 #netapp_password=<None>
 
-# Cluster vserver to use for provisioning (string value)
+# This option specifies the virtual storage server (Vserver)
+# name on the storage cluster on which provisioning of block
+# storage volumes should occur. If using the NFS storage
+# protocol, this parameter is mandatory for storage service
+# catalog support (utilized by Cinder volume type extra_specs
+# support). If this option is specified, the exports belonging
+# to the Vserver will only be used for provisioning in the
+# future. Block storage volumes on exports not belonging to
+# the Vserver specified by this option will continue to
+# function normally. (string value)
 #netapp_vserver=<None>
 
-# Host name for the storage controller (string value)
+# The hostname (or IP address) for the storage system. (string
+# value)
 #netapp_server_hostname=<None>
 
-# Port number for the storage controller (integer value)
+# The TCP port to use for communication with ONTAPI on the
+# storage system. Traditionally, port 80 is used for HTTP and
+# port 443 is used for HTTPS; however, this value should be
+# changed if an alternate port has been configured on the
+# storage system. (integer value)
 #netapp_server_port=80
 
-# Threshold available percent to start cache cleaning.
-# (integer value)
+# If the percentage of available space for an NFS share has
+# dropped below the value specified by this option, the NFS
+# image cache will be cleaned. (integer value)
 #thres_avl_size_perc_start=20
 
-# Threshold available percent to stop cache cleaning. (integer
-# value)
+# When the percentage of available space on an NFS share has
+# reached the percentage specified by this option, the driver
+# will stop clearing files from the NFS image cache that have
+# not been accessed in the last M minutes, where M is the
+# value of the expiry_thres_minutes configuration option.
+# (integer value)
 #thres_avl_size_perc_stop=60
 
-# Threshold minutes after which cache file can be cleaned.
-# (integer value)
+# This option specifies the threshold for last access time for
+# images in the NFS image cache. When a cache cleaning cycle
+# begins, images in the cache that have not been accessed in
+# the last M minutes, where M is the value of this parameter,
+# will be deleted from the cache to create free space on the
+# NFS share. (integer value)
 #expiry_thres_minutes=720
 
-# Volume size multiplier to ensure while creation (floating
-# point value)
+# The quantity to be multiplied by the requested volume size
+# to ensure enough space is available on the virtual storage
+# server (Vserver) to fulfill the volume creation request.
+# (floating point value)
 #netapp_size_multiplier=1.2
 
-# Comma separated volumes to be used for provisioning (string
-# value)
+# This option is only utilized when the storage protocol is
+# configured to use iSCSI. This option is used to restrict
+# provisioning to the specified controller volumes. Specify
+# the value of this option to be a comma separated list of
+# NetApp controller volume names to be used for provisioning.
+# (string value)
 #netapp_volume_list=<None>
 
-# Storage family type. (string value)
+# The storage family type used on the storage system; valid
+# values are ontap_7mode for using Data ONTAP operating in
+# 7-Mode or ontap_cluster for using clustered Data ONTAP.
+# (string value)
 #netapp_storage_family=ontap_cluster
 
-# Storage protocol type. (string value)
+# The storage protocol to be used on the data path with the
+# storage system; valid values are iscsi or nfs. (string
+# value)
 #netapp_storage_protocol=<None>
 
-# Transport type protocol (string value)
+# The transport protocol used when communicating with ONTAPI
+# on the storage system. Valid values are http or https.
+# (string value)
 #netapp_transport_type=http
 
 
