@@ -167,9 +167,6 @@ global_opts = [
                     'If this is not set then we use the value from the '
                     'storage_availability_zone option as the default '
                     'availability_zone for new volumes.'),
-    cfg.ListOpt('memcached_servers',
-                default=None,
-                help='Memcached servers or None for in process cache.'),
     cfg.StrOpt('default_volume_type',
                default=None,
                help='default volume type to use'),
