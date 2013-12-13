@@ -44,7 +44,6 @@ import json
 import pprint
 from random import randint
 import re
-import time
 import uuid
 
 from eventlet import greenthread
@@ -52,7 +51,6 @@ import hp3parclient
 from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
 from oslo.config import cfg
-import paramiko
 
 from cinder import context
 from cinder import exception

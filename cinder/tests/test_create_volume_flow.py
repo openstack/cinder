@@ -16,8 +16,6 @@
 
 import time
 
-import mock
-
 from cinder import context
 from cinder import test
 from cinder.volume.flows import create_volume

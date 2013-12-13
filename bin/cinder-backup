@@ -38,7 +38,8 @@ if os.path.exists(os.path.join(possible_topdir, 'cinder', '__init__.py')):
 from cinder.openstack.common import gettextutils
 gettextutils.install('cinder')
 
-from cinder.common import config  # Need to register global_opts
+# Need to register global_opts
+from cinder.common import config  # noqa
 from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import utils

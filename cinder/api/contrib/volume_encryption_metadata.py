@@ -17,14 +17,10 @@
 
 """The volume encryption metadata extension."""
 
-import webob
-
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import db
-from cinder import exception
-from cinder.openstack.common.notifier import api as notifier_api
 from cinder.volume import volume_types
 
 authorize = extensions.extension_authorizer('volume',

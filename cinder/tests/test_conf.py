@@ -48,7 +48,7 @@ class ConfigTestCase(test.TestCase):
 
     def test_runtime_and_unknown_conf(self):
         self.assertNotIn('runtime_answer', CONF)
-        import cinder.tests.runtime_conf
+        import cinder.tests.runtime_conf    # noqa
         self.assertIn('runtime_answer', CONF)
         self.assertEqual(CONF.runtime_answer, 54)
 

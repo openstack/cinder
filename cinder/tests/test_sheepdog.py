@@ -20,7 +20,6 @@ import contextlib
 import os
 import tempfile
 
-from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import processutils
 from cinder import test

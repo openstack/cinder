@@ -23,9 +23,6 @@ import mox
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
-from cinder.brick.initiator import linuxfc
-from cinder.brick.initiator import linuxscsi
-from cinder.brick.remotefs import remotefs
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils as putils

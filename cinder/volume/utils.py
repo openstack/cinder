@@ -18,13 +18,10 @@
 
 
 import math
-import os
-import stat
 
 from oslo.config import cfg
 
 from cinder.brick.local_dev import lvm as brick_lvm
-from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import processutils

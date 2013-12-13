@@ -22,6 +22,6 @@
 """
 
 # Adding imports for backwards compatibility in loading volume_driver.
-from hp_lefthand import HpSanISCSIDriver
-from san import SanISCSIDriver
-from solaris import SolarisISCSIDriver
+from hp_lefthand import HpSanISCSIDriver    # noqa
+from san import SanISCSIDriver      # noqa
+from solaris import SolarisISCSIDriver      # noqa

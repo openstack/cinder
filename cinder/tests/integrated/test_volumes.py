@@ -23,7 +23,6 @@ from cinder import service
 from cinder.tests import fake_driver
 from cinder.tests.integrated.api import client
 from cinder.tests.integrated import integrated_helpers
-from cinder.volume import driver
 
 
 LOG = logging.getLogger(__name__)

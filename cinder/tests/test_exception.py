@@ -18,7 +18,6 @@
 
 from cinder import exception
 from cinder import test
-from cinder import utils
 
 
 class FakeNotifier(object):

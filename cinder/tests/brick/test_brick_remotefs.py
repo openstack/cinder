@@ -19,7 +19,6 @@ import mox
 
 from cinder.brick.remotefs import remotefs
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 from cinder import test
 
 LOG = logging.getLogger(__name__)

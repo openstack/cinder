@@ -24,7 +24,6 @@ inline callbacks.
 """
 
 
-import functools
 import os
 import shutil
 import tempfile
@@ -37,7 +36,7 @@ import stubout
 import testtools
 from testtools import matchers
 
-from cinder.common import config  # Need to register global_opts
+from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.openstack.common.db.sqlalchemy import session
 from cinder.openstack.common import log as logging

@@ -21,7 +21,6 @@ Tests for Zadara VPSA volume driver
 
 import copy
 import httplib
-import mox
 
 from cinder import exception
 from cinder.openstack.common import log as logging

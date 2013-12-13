@@ -23,7 +23,6 @@ from cinder.openstack.common import gettextutils
 gettextutils.install('cinder', lazy=False)
 
 from cinder.db.sqlalchemy import migrate_repo
-import cinder.openstack.common.db.sqlalchemy.session
 from cinder import version
 
 from migrate.versioning.shell import main

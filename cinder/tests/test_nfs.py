@@ -16,7 +16,6 @@
 #    under the License.
 """Unit tests for the NFS driver module."""
 
-import __builtin__
 import errno
 import os
 
@@ -29,7 +28,6 @@ from oslo.config import cfg
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder import units
 from cinder.volume import configuration as conf

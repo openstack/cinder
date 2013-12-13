@@ -17,7 +17,6 @@
 """Unit tests for the GlusterFS driver module."""
 
 import errno
-import json
 import os
 import tempfile
 
@@ -26,7 +25,6 @@ from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
 
-from cinder import compute
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -34,7 +32,6 @@ from cinder.image import image_utils
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import processutils as putils
 from cinder import test
-from cinder.tests.compute import test_nova
 from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf

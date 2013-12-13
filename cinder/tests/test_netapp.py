@@ -36,7 +36,6 @@ from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp import ssc_utils
-from cinder.volume.drivers.netapp import utils
 
 
 LOG = logging.getLogger("cinder.volume.driver")

@@ -14,7 +14,6 @@
 #    under the License.
 
 from cinder.backup.driver import BackupDriver
-from cinder.db import base
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

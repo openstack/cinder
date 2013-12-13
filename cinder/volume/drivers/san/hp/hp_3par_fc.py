@@ -32,9 +32,7 @@ volume_driver=cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver
 """
 
 from hp3parclient import exceptions as hpexceptions
-from oslo.config import cfg
 
-from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver

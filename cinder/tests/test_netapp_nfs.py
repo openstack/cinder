@@ -31,7 +31,6 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
-from cinder.volume.drivers.netapp import ssc_utils
 
 
 from oslo.config import cfg

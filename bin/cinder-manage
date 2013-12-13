@@ -74,7 +74,8 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
 from cinder.openstack.common import gettextutils
 gettextutils.install('cinder')
 
-from cinder.common import config  # Need to register global_opts
+# Need to register global_opts
+from cinder.common import config  # noqa
 from cinder import context
 from cinder import db
 from cinder.db import migration
@@ -168,7 +169,7 @@ class ShellCommands(object):
             else:
                 # We don't have to wrap the following import in a 'try',
                 # because we already know 'readline' was imported successfully.
-                import rlcompleter
+                import rlcompleter    # noqa
                 readline.parse_and_bind("tab:complete")
             code.interact()
 

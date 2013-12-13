@@ -22,7 +22,6 @@ import tempfile
 from cinder.brick.iscsi import iscsi
 from cinder import test
 from cinder.volume import driver
-from cinder.volume import utils as volume_utils
 
 
 class TargetAdminTestCase(object):

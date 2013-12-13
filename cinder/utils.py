@@ -33,7 +33,6 @@ import shutil
 import stat
 import sys
 import tempfile
-import time
 
 from eventlet import event
 from eventlet import greenthread
@@ -48,8 +47,6 @@ from xml.sax import saxutils
 
 from cinder.brick.initiator import connector
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common import gettextutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
