@@ -84,12 +84,16 @@ class LVM(executor.Executor):
             LOG.error(_('Unable to locate Volume Group %s') % vg_name)
             raise exception.VolumeGroupNotFound(vg_name=vg_name)
 
+        # NOTE: we assume that the VG has been activated outside of Cinder
+
         if lvm_type == 'thin':
             pool_name = "%s-pool" % self.vg_name
             if self.get_volume(pool_name) is None:
                 self.create_thin_pool(pool_name)
             else:
                 self.vg_thin_pool = pool_name
+
+            self.activate_lv(self.vg_thin_pool)
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
@@ -146,8 +150,10 @@ class LVM(executor.Executor):
             if out is not None:
                 out = out.strip()
                 data = out.split(':')
-                consumed_space = float(data[0]) / 100 * (float(data[1]))
-                free_space = float(data[0]) - consumed_space
+                pool_size = float(data[0])
+                data_percent = float(data[1])
+                consumed_space = pool_size / 100 * data_percent
+                free_space = pool_size - consumed_space
                 free_space = round(free_space, 2)
         except putils.ProcessExecutionError as err:
             LOG.exception(_('Error querying thin pool about data_percent'))
