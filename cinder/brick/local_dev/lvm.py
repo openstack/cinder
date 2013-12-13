@@ -130,7 +130,7 @@ class LVM(executor.Executor):
         :returns: Free space, calculated after the data_percent value
 
         """
-        cmd = ['env', 'LC_ALL=C', 'LANG=C', 'lvs', '--noheadings', '--unit=g',
+        cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
                '-o', 'size,data_percent', '--separator', ':', '--nosuffix']
 
         # NOTE(gfidente): data_percent only applies to some types of LV so we
@@ -295,8 +295,7 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with PV info
 
         """
-        cmd = ['env', 'LC_ALL=C', 'LANG=C',
-               'pvs', '--noheadings',
+        cmd = ['env', 'LC_ALL=C', 'pvs', '--noheadings',
                '--unit=g',
                '-o', 'vg_name,name,size,free',
                '--separator', ':']
@@ -342,7 +341,7 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with VG info
 
         """
-        cmd = ['env', 'LC_ALL=C', 'LANG=C', 'vgs', '--noheadings', '--unit=g',
+        cmd = ['env', 'LC_ALL=C', 'vgs', '--noheadings', '--unit=g',
                '-o', 'name,size,free,lv_count,uuid', '--separator', ':']
 
         if no_suffix:
