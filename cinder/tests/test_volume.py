@@ -841,20 +841,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                           image_id='fake_id',
                           source_volume='fake_id')
 
-    def test_too_big_volume(self):
-        """Ensure failure if a too large of a volume is requested."""
-        # FIXME(vish): validation needs to move into the data layer in
-        #              volume_create
-        return True
-        try:
-            volume = tests_utils.create_volume(self.context, size=1001,
-                                               status='creating',
-                                               host=CONF.host)
-            self.volume.create_volume(self.context, volume)
-            self.fail("Should have thrown TypeError")
-        except TypeError:
-            pass
-
     def test_run_attach_detach_volume_for_instance(self):
         """Make sure volume can be attached and detached from instance."""
         mountpoint = "/dev/sdf"
