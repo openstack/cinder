@@ -34,7 +34,6 @@ from cinder.openstack.common.notifier import api as notifier
 from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 
-from cinder.taskflow import states
 
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
                                   default='cinder.scheduler.filter_scheduler.'
@@ -76,17 +75,18 @@ class SchedulerManager(manager.Manager):
                       image_id=None, request_spec=None,
                       filter_properties=None):
 
-        flow = create_volume.get_scheduler_flow(db, self.driver,
-                                                request_spec,
-                                                filter_properties,
-                                                volume_id, snapshot_id,
-                                                image_id)
-        assert flow, _('Schedule volume flow not retrieved')
-
-        flow.run(context)
-        if flow.state != states.SUCCESS:
-            LOG.warn(_("Failed to successfully complete"
-                       " schedule volume using flow: %s"), flow)
+        try:
+            flow_engine = create_volume.get_scheduler_flow(context,
+                                                           db, self.driver,
+                                                           request_spec,
+                                                           filter_properties,
+                                                           volume_id,
+                                                           snapshot_id,
+                                                           image_id)
+        except Exception:
+            raise exception.CinderException(
+                _("Failed to create scheduler manager volume flow"))
+        flow_engine.run()
 
     def request_service_capabilities(self, context):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)

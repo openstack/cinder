@@ -37,14 +37,11 @@ from cinder.openstack.common import timeutils
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder import units
 from cinder import utils
 from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
-
-from cinder.taskflow import states
 
 
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
@@ -147,42 +144,34 @@ class API(base.Base):
                 return False
 
         create_what = {
-            'size': size,
+            'context': context,
+            'raw_size': size,
             'name': name,
             'description': description,
             'snapshot': snapshot,
             'image_id': image_id,
-            'volume_type': volume_type,
+            'raw_volume_type': volume_type,
             'metadata': metadata,
-            'availability_zone': availability_zone,
+            'raw_availability_zone': availability_zone,
             'source_volume': source_volume,
             'scheduler_hints': scheduler_hints,
             'key_manager': self.key_manager,
             'backup_source_volume': backup_source_volume,
         }
-        (flow, uuid) = create_volume.get_api_flow(self.scheduler_rpcapi,
-                                                  self.volume_rpcapi,
-                                                  self.db,
-                                                  self.image_service,
-                                                  check_volume_az_zone,
-                                                  create_what)
 
-        assert flow, _('Create volume flow not retrieved')
-        flow.run(context)
-        if flow.state != states.SUCCESS:
-            raise exception.CinderException(_("Failed to successfully complete"
-                                              " create volume workflow"))
-
-        # Extract the volume information from the task uuid that was specified
-        # to produce said information.
-        volume = None
         try:
-            volume = flow.results[uuid]['volume']
-        except KeyError:
-            pass
+            flow_engine = create_volume.get_api_flow(self.scheduler_rpcapi,
+                                                     self.volume_rpcapi,
+                                                     self.db,
+                                                     self.image_service,
+                                                     check_volume_az_zone,
+                                                     create_what)
+        except Exception:
+            raise exception.CinderException(
+                _("Failed to create api volume flow"))
 
-        # Raise an error, nobody provided it??
-        assert volume, _('Expected volume result not found')
+        flow_engine.run()
+        volume = flow_engine.storage.fetch('volume')
         return volume
 
     @wrap_check_policy

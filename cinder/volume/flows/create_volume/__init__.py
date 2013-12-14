@@ -23,6 +23,10 @@
 import traceback
 
 from oslo.config import cfg
+import taskflow.engines
+from taskflow.patterns import linear_flow
+from taskflow import task
+from taskflow.utils import misc
 
 from cinder import exception
 from cinder.image import glance
@@ -34,13 +38,9 @@ from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
 from cinder import policy
 from cinder import quota
-from cinder.taskflow import decorators
-from cinder.taskflow.patterns import linear_flow
-from cinder.taskflow import task
 from cinder import units
 from cinder import utils
 from cinder.volume.flows import base
-from cinder.volume.flows import utils as flow_utils
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
@@ -84,16 +84,6 @@ def _make_pretty_name(method):
         except AttributeError:
             pass
     return ".".join(meth_pieces)
-
-
-def _find_result_spec(flow):
-    """Find the last task that produced a valid volume_spec and returns it."""
-    for there_result in flow.results.values():
-        if not there_result or not 'volume_spec' in there_result:
-            continue
-        if there_result['volume_spec']:
-            return there_result['volume_spec']
-    return None
 
 
 def _restore_source_status(context, db, volume_spec):
@@ -171,25 +161,16 @@ class ExtractVolumeRequestTask(base.CinderTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, image_service, az_check_functor=None):
-        super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION])
-        # This task will produce the following outputs (said outputs can be
-        # saved to durable storage in the future so that the flow can be
-        # reconstructed elsewhere and continued).
-        self.provides.update(['availability_zone', 'size', 'snapshot_id',
-                              'source_volid', 'volume_type', 'volume_type_id',
-                              'encryption_key_id'])
-        # This task requires the following inputs to operate (provided
-        # automatically to __call__(). This is done so that the flow can
-        # be reconstructed elsewhere and continue running (in the future).
-        #
-        # It also is used to be able to link tasks that produce items to tasks
-        # that consume items (thus allowing the linking of the flow to be
-        # mostly automatic).
-        self.requires.update(['availability_zone', 'image_id', 'metadata',
-                              'size', 'snapshot', 'source_volume',
-                              'volume_type', 'key_manager',
-                              'backup_source_volume'])
+    # This task will produce the following outputs (said outputs can be
+    # saved to durable storage in the future so that the flow can be
+    # reconstructed elsewhere and continued).
+    default_provides = set(['availability_zone', 'size', 'snapshot_id',
+                            'source_volid', 'volume_type', 'volume_type_id',
+                            'encryption_key_id'])
+
+    def __init__(self, image_service, az_check_functor=None, **kwargs):
+        super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
+                                                       **kwargs)
         self.image_service = image_service
         self.az_check_functor = az_check_functor
         if not self.az_check_functor:
@@ -451,9 +432,9 @@ class ExtractVolumeRequestTask(base.CinderTask):
 
         return volume_type_id
 
-    def __call__(self, context, size, snapshot, image_id, source_volume,
-                 availability_zone, volume_type, metadata,
-                 key_manager, backup_source_volume):
+    def execute(self, context, size, snapshot, image_id, source_volume,
+                availability_zone, volume_type, metadata,
+                key_manager, backup_source_volume):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -519,16 +500,18 @@ class EntryCreateTask(base.CinderTask):
     Reversion strategy: remove the volume_id created from the database.
     """
 
-    def __init__(self, db):
-        super(EntryCreateTask, self).__init__(addons=[ACTION])
-        self.db = db
-        self.requires.update(['availability_zone', 'description', 'metadata',
-                              'name', 'reservations', 'size', 'snapshot_id',
-                              'source_volid', 'volume_type_id',
-                              'encryption_key_id'])
-        self.provides.update(['volume_properties', 'volume_id'])
+    default_provides = set(['volume_properties', 'volume_id', 'volume'])
 
-    def __call__(self, context, **kwargs):
+    def __init__(self, db):
+        requires = ['availability_zone', 'description', 'metadata',
+                    'name', 'reservations', 'size', 'snapshot_id',
+                    'source_volid', 'volume_type_id', 'encryption_key_id']
+        super(EntryCreateTask, self).__init__(addons=[ACTION],
+                                              requires=requires)
+        self.db = db
+        self.provides.update()
+
+    def execute(self, context, **kwargs):
         """Creates a database entry for the given inputs and returns details.
 
         Accesses the database and creates a new entry for the to be created
@@ -569,9 +552,9 @@ class EntryCreateTask(base.CinderTask):
             'volume': volume,
         }
 
-    def revert(self, context, result, cause):
+    def revert(self, context, result, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if not result:
+        if isinstance(result, misc.Failure):
             return
         if context.quota_committed:
             # Committed quota doesn't rollback as the volume has already been
@@ -603,12 +586,12 @@ class QuotaReserveTask(base.CinderTask):
     an automated or manual process.
     """
 
+    default_provides = set(['reservations'])
+
     def __init__(self):
         super(QuotaReserveTask, self).__init__(addons=[ACTION])
-        self.requires.update(['size', 'volume_type_id'])
-        self.provides.update(['reservations'])
 
-    def __call__(self, context, size, volume_type_id):
+    def execute(self, context, size, volume_type_id):
         try:
             reserve_opts = {'volumes': 1, 'gigabytes': size}
             QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
@@ -648,15 +631,14 @@ class QuotaReserveTask(base.CinderTask):
                         "already consumed)")
                 LOG.warn(msg % {'s_pid': context.project_id,
                                 'd_consumed': _consumed('volumes')})
-                allowed = quotas['volumes']
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
             else:
                 # If nothing was reraised, ensure we reraise the initial error
                 raise
 
-    def revert(self, context, result, cause):
+    def revert(self, context, result, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if not result:
+        if isinstance(result, misc.Failure):
             return
         if context.quota_committed:
             # The reservations have already been committed and can not be
@@ -691,16 +673,15 @@ class QuotaCommitTask(base.CinderTask):
 
     def __init__(self):
         super(QuotaCommitTask, self).__init__(addons=[ACTION])
-        self.requires.update(['reservations', 'volume_properties'])
 
-    def __call__(self, context, reservations, volume_properties):
+    def execute(self, context, reservations, volume_properties):
         QUOTAS.commit(context, reservations)
         context.quota_committed = True
         return {'volume_properties': volume_properties}
 
-    def revert(self, context, result, cause):
+    def revert(self, context, result, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if not result:
+        if isinstance(result, misc.Failure):
             return
         volume = result['volume_properties']
         try:
@@ -729,13 +710,14 @@ class VolumeCastTask(base.CinderTask):
     """
 
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
-        super(VolumeCastTask, self).__init__(addons=[ACTION])
+        requires = ['image_id', 'scheduler_hints', 'snapshot_id',
+                    'source_volid', 'volume_id', 'volume_type',
+                    'volume_properties']
+        super(VolumeCastTask, self).__init__(addons=[ACTION],
+                                             requires=requires)
         self.volume_rpcapi = volume_rpcapi
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
-        self.requires.update(['image_id', 'scheduler_hints', 'snapshot_id',
-                              'source_volid', 'volume_id', 'volume_type',
-                              'volume_properties'])
 
     def _cast_create_volume(self, context, request_spec, filter_properties):
         source_volid = request_spec['source_volid']
@@ -786,13 +768,27 @@ class VolumeCastTask(base.CinderTask):
                 image_id=image_id,
                 source_volid=source_volid)
 
-    def __call__(self, context, **kwargs):
+    def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
         request_spec = kwargs.copy()
         filter_properties = {}
         if scheduler_hints:
             filter_properties['scheduler_hints'] = scheduler_hints
         self._cast_create_volume(context, request_spec, filter_properties)
+
+    def revert(self, context, result, flow_failures, **kwargs):
+        if isinstance(result, misc.Failure):
+            return
+
+        # Restore the source volume status and set the volume to error status.
+        volume_id = kwargs['volume_id']
+        _restore_source_status(context, self.db, kwargs)
+        _error_out_volume(context, self.db, volume_id)
+        LOG.error(_("Volume %s: create failed"), volume_id)
+        exc_info = False
+        if all(flow_failures[-1].exc_info):
+            exc_info = flow_failures[-1].exc_info
+        LOG.error(_('Unexpected build error:'), exc_info=exc_info)
 
 
 class OnFailureChangeStatusTask(base.CinderTask):
@@ -808,33 +804,24 @@ class OnFailureChangeStatusTask(base.CinderTask):
     def __init__(self, db):
         super(OnFailureChangeStatusTask, self).__init__(addons=[ACTION])
         self.db = db
-        self.requires.update(['volume_id'])
-        self.optional.update(['volume_spec'])
 
-    def __call__(self, context, volume_id, volume_spec=None):
+    def execute(self, context, volume_id, volume_spec):
         # Save these items since we only use them if a reversion is triggered.
         return {
             'volume_id': volume_id,
             'volume_spec': volume_spec,
         }
 
-    def revert(self, context, result, cause):
+    def revert(self, context, result, flow_failures, **kwargs):
+        if isinstance(result, misc.Failure):
+            return
         volume_spec = result.get('volume_spec')
-        if not volume_spec:
-            # Attempt to use it from a later task that *should* have populated
-            # this from the database. It is not needed to be found since
-            # reverting will continue without it.
-            volume_spec = _find_result_spec(cause.flow)
 
         # Restore the source volume status and set the volume to error status.
         volume_id = result['volume_id']
         _restore_source_status(context, self.db, volume_spec)
-        _error_out_volume(context, self.db, volume_id, reason=cause.exc)
+        _error_out_volume(context, self.db, volume_id)
         LOG.error(_("Volume %s: create failed"), volume_id)
-        exc_info = False
-        if all(cause.exc_info):
-            exc_info = cause.exc_info
-        LOG.error(_('Unexpected build error:'), exc_info=exc_info)
 
 
 class OnFailureRescheduleTask(base.CinderTask):
@@ -846,10 +833,10 @@ class OnFailureRescheduleTask(base.CinderTask):
     """
 
     def __init__(self, reschedule_context, db, scheduler_rpcapi):
-        super(OnFailureRescheduleTask, self).__init__(addons=[ACTION])
-        self.requires.update(['filter_properties', 'image_id', 'request_spec',
-                              'snapshot_id', 'volume_id'])
-        self.optional.update(['volume_spec'])
+        requires = ['filter_properties', 'image_id', 'request_spec',
+                    'snapshot_id', 'volume_id', 'context']
+        super(OnFailureRescheduleTask, self).__init__(addons=[ACTION],
+                                                      requires=requires)
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
         self.reschedule_context = reschedule_context
@@ -878,27 +865,8 @@ class OnFailureRescheduleTask(base.CinderTask):
             exception.ImageUnacceptable,
         ]
 
-    def _is_reschedulable(self, cause):
-        # Figure out the type of the causes exception and compare it against
-        # our black-list of exception types that will not cause rescheduling.
-        exc_type, value = cause.exc_info[:2]
-        # If we don't have a type from exc_info but we do have a exception in
-        # the cause, try to get the type from that instead.
-        if not value:
-            value = cause.exc
-        if not exc_type and value:
-            exc_type = type(value)
-        if exc_type and exc_type in self.no_reschedule_types:
-            return False
-        # Couldn't figure it out, by default assume whatever the cause was can
-        # be fixed by rescheduling.
-        #
-        # NOTE(harlowja): Crosses fingers.
-        return True
-
-    def __call__(self, context, *args, **kwargs):
-        # Save these items since we only use them if a reversion is triggered.
-        return kwargs.copy()
+    def execute(self, **kwargs):
+        pass
 
     def _reschedule(self, context, cause, request_spec, filter_properties,
                     snapshot_id, image_id, volume_id, **kwargs):
@@ -919,7 +887,7 @@ class OnFailureRescheduleTask(base.CinderTask):
                   {'volume_id': volume_id,
                    'method': _make_pretty_name(create_volume),
                    'num': num_attempts,
-                   'reason': _exception_to_unicode(cause.exc)})
+                   'reason': cause.exception_str})
 
         if all(cause.exc_info):
             # Stringify to avoid circular ref problem in json serialization
@@ -958,83 +926,23 @@ class OnFailureRescheduleTask(base.CinderTask):
             LOG.exception(_("Volume %s: resetting 'creating' status failed"),
                           volume_id)
 
-    def revert(self, context, result, cause):
-        volume_spec = result.get('volume_spec')
-        if not volume_spec:
-            # Find it from a prior task that populated this from the database.
-            volume_spec = _find_result_spec(cause.flow)
-        volume_id = result['volume_id']
+    def revert(self, context, result, flow_failures, **kwargs):
+        # Check if we have a cause which can tell us not to reschedule.
+        for failure in flow_failures.values():
+            if failure.check(self.no_reschedule_types):
+                return
 
+        volume_id = kwargs['volume_id']
         # Use a different context when rescheduling.
         if self.reschedule_context:
             context = self.reschedule_context
-
-        # If we are now supposed to reschedule (or unable to), then just
-        # restore the source volume status and set the volume to error status.
-        def do_error_revert():
-            LOG.debug(_("Failing volume %s creation by altering volume status"
-                        " instead of rescheduling"), volume_id)
-            _restore_source_status(context, self.db, volume_spec)
-            _error_out_volume(context, self.db, volume_id, reason=cause.exc)
-            LOG.error(_("Volume %s: create failed"), volume_id)
-
-        # Check if we have a cause which can tell us not to reschedule.
-        if not self._is_reschedulable(cause):
-            do_error_revert()
-        else:
             try:
+                cause = list(flow_failures.values())[0]
                 self._pre_reschedule(context, volume_id)
-                self._reschedule(context, cause, **result)
+                self._reschedule(context, cause, **kwargs)
                 self._post_reschedule(context, volume_id)
             except exception.CinderException:
                 LOG.exception(_("Volume %s: rescheduling failed"), volume_id)
-                # NOTE(harlowja): Do error volume status changing instead.
-                do_error_revert()
-        exc_info = False
-        if all(cause.exc_info):
-            exc_info = cause.exc_info
-        LOG.error(_('Unexpected build error:'), exc_info=exc_info)
-
-
-class NotifySchedulerFailureTask(base.CinderTask):
-    """Helper task that notifies some external service on failure.
-
-    Reversion strategy: On failure of any flow that includes this task the
-    request specification associated with that flow will be extracted and
-    sent as a payload to the notification service under the given methods
-    scheduler topic.
-    """
-
-    def __init__(self, method):
-        super(NotifySchedulerFailureTask, self).__init__(addons=[ACTION])
-        self.requires.update(['request_spec', 'volume_id'])
-        self.method = method
-        self.topic = 'scheduler.%s' % self.method
-        self.publisher_id = notifier.publisher_id("scheduler")
-
-    def __call__(self, context, **kwargs):
-        # Save these items since we only use them if a reversion is triggered.
-        return kwargs.copy()
-
-    def revert(self, context, result, cause):
-        request_spec = result['request_spec']
-        volume_id = result['volume_id']
-        volume_properties = request_spec['volume_properties']
-        payload = {
-            'request_spec': request_spec,
-            'volume_properties': volume_properties,
-            'volume_id': volume_id,
-            'state': 'error',
-            'method': self.method,
-            'reason': unicode(cause.exc),
-        }
-        try:
-            notifier.notify(context, self.publisher_id, self.topic,
-                            notifier.ERROR, payload)
-        except exception.CinderException:
-            LOG.exception(_("Failed notifying on %(topic)s "
-                            "payload %(payload)s") % {'topic': self.topic,
-                                                      'payload': payload})
 
 
 class ExtractSchedulerSpecTask(base.CinderTask):
@@ -1043,12 +951,12 @@ class ExtractSchedulerSpecTask(base.CinderTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, db):
-        super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION])
+    default_provides = set(['request_spec'])
+
+    def __init__(self, db, **kwargs):
+        super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION],
+                                                       **kwargs)
         self.db = db
-        self.requires.update(['image_id', 'request_spec', 'snapshot_id',
-                              'volume_id'])
-        self.provides.update(['request_spec'])
 
     def _populate_request_spec(self, context, volume_id, snapshot_id,
                                image_id):
@@ -1077,8 +985,8 @@ class ExtractSchedulerSpecTask(base.CinderTask):
             'volume_type': list(dict(vol_type).iteritems()),
         }
 
-    def __call__(self, context, request_spec, volume_id, snapshot_id,
-                 image_id):
+    def execute(self, context, request_spec, volume_id, snapshot_id,
+                image_id):
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
             request_spec = self._populate_request_spec(context, volume_id,
@@ -1086,6 +994,33 @@ class ExtractSchedulerSpecTask(base.CinderTask):
         return {
             'request_spec': request_spec,
         }
+
+
+class ExtractVolumeRefTask(base.CinderTask):
+    """Extracts volume reference for given volume id. """
+
+    default_provides = 'volume_ref'
+
+    def __init__(self, db):
+        super(ExtractVolumeRefTask, self).__init__(addons=[ACTION])
+        self.db = db
+
+    def execute(self, context, volume_id):
+        # NOTE(harlowja): this will fetch the volume from the database, if
+        # the volume has been deleted before we got here then this should fail.
+        #
+        # In the future we might want to have a lock on the volume_id so that
+        # the volume can not be deleted while its still being created?
+        volume_ref = self.db.volume_get(context, volume_id)
+
+        return volume_ref
+
+    def revert(self, context, volume_id, result, **kwargs):
+        if isinstance(result, misc.Failure):
+            return
+
+        _error_out_volume(context, self.db, volume_id)
+        LOG.error(_("Volume %s: create failed"), volume_id)
 
 
 class ExtractVolumeSpecTask(base.CinderTask):
@@ -1099,22 +1034,17 @@ class ExtractVolumeSpecTask(base.CinderTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, db):
-        super(ExtractVolumeSpecTask, self).__init__(addons=[ACTION])
-        self.db = db
-        self.requires.update(['filter_properties', 'image_id', 'snapshot_id',
-                              'source_volid', 'volume_id'])
-        self.provides.update(['volume_spec', 'volume_ref'])
+    default_provides = 'volume_spec'
 
-    def __call__(self, context, volume_id, **kwargs):
+    def __init__(self, db):
+        requires = ['image_id', 'snapshot_id', 'source_volid']
+        super(ExtractVolumeSpecTask, self).__init__(addons=[ACTION],
+                                                    requires=requires)
+        self.db = db
+
+    def execute(self, context, volume_ref, **kwargs):
         get_remote_image_service = glance.get_remote_image_service
 
-        # NOTE(harlowja): this will fetch the volume from the database, if
-        # the volume has been deleted before we got here then this should fail.
-        #
-        # In the future we might want to have a lock on the volume_id so that
-        # the volume can not be deleted while its still being created?
-        volume_ref = self.db.volume_get(context, volume_id)
         volume_name = volume_ref['name']
         volume_size = utils.as_int(volume_ref['size'], quiet=False)
 
@@ -1173,21 +1103,14 @@ class ExtractVolumeSpecTask(base.CinderTask):
                 'image_service': image_service,
             })
 
-        return {
-            'volume_spec': specs,
-            # NOTE(harlowja): it appears like further usage of this volume_ref
-            # result actually depend on it being a sqlalchemy object and not
-            # just a plain dictionary so thats why we are storing this here.
-            #
-            # It was attempted to refetch it when needed in subsequent tasks,
-            # but that caused sqlalchemy errors to occur (volume already open
-            # or similar).
-            #
-            # In the future where this task could fail and be recovered from we
-            # will need to store the volume_spec and recreate the volume_ref
-            # on demand.
-            'volume_ref': volume_ref,
-        }
+        return specs
+
+    def revert(self, context, result, **kwargs):
+        if isinstance(result, misc.Failure):
+            return
+        volume_spec = result.get('volume_spec')
+        # Restore the source volume status and set the volume to error status.
+        _restore_source_status(context, self.db, volume_spec)
 
 
 class NotifyVolumeActionTask(base.CinderTask):
@@ -1199,12 +1122,11 @@ class NotifyVolumeActionTask(base.CinderTask):
     def __init__(self, db, host, event_suffix):
         super(NotifyVolumeActionTask, self).__init__(addons=[ACTION,
                                                              event_suffix])
-        self.requires.update(['volume_ref'])
         self.db = db
         self.event_suffix = event_suffix
         self.host = host
 
-    def __call__(self, context, volume_ref):
+    def execute(self, context, volume_ref):
         volume_id = volume_ref['id']
         try:
             volume_utils.notify_about_volume_usage(context, volume_ref,
@@ -1226,11 +1148,12 @@ class CreateVolumeFromSpecTask(base.CinderTask):
     Reversion strategy: N/A
     """
 
+    default_provides = 'volume'
+
     def __init__(self, db, host, driver):
         super(CreateVolumeFromSpecTask, self).__init__(addons=[ACTION])
         self.db = db
         self.driver = driver
-        self.requires.update(['volume_spec', 'volume_ref'])
         # This maps the different volume specification types into the methods
         # that can create said volume type (aka this is a jump table).
         self._create_func_mapping = {
@@ -1472,7 +1395,7 @@ class CreateVolumeFromSpecTask(base.CinderTask):
     def _create_raw_volume(self, context, volume_ref, **kwargs):
         return self.driver.create_volume(volume_ref)
 
-    def __call__(self, context, volume_ref, volume_spec):
+    def execute(self, context, volume_ref, volume_spec):
         # we can't do anything if the driver didn't init
         if not self.driver.initialized:
             LOG.error(_("Unable to create volume, driver not initialized"))
@@ -1538,6 +1461,8 @@ class CreateVolumeFromSpecTask(base.CinderTask):
                               {'volume_id': volume_id, 'model': model_update})
                 raise exception.ExportFailure(reason=ex)
 
+        return volume_ref
+
 
 class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
     """On successful volume creation this will perform final volume actions.
@@ -1553,13 +1478,12 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
 
     def __init__(self, db, host, event_suffix):
         super(CreateVolumeOnFinishTask, self).__init__(db, host, event_suffix)
-        self.requires.update(['volume_spec'])
         self.status_translation = {
             'migration_target_creating': 'migration_target',
         }
 
-    def __call__(self, context, volume_ref, volume_spec):
-        volume_id = volume_ref['id']
+    def execute(self, context, volume, volume_spec):
+        volume_id = volume['id']
         new_status = self.status_translation.get(volume_spec.get('status'),
                                                  'available')
         update = {
@@ -1573,7 +1497,7 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
             # 'building' if this fails)??
             volume_ref = self.db.volume_update(context, volume_id, update)
             # Now use the parent to notify.
-            super(CreateVolumeOnFinishTask, self).__call__(context, volume_ref)
+            super(CreateVolumeOnFinishTask, self).execute(context, volume_ref)
         except exception.CinderException:
             LOG.exception(_("Failed updating volume %(volume_id)s with "
                             "%(update)s") % {'volume_id': volume_id,
@@ -1605,31 +1529,26 @@ def get_api_flow(scheduler_rpcapi, volume_rpcapi, db,
     flow_name = ACTION.replace(":", "_") + "_api"
     api_flow = linear_flow.Flow(flow_name)
 
-    # This injects the initial starting flow values into the workflow so that
-    # the dependency order of the tasks provides/requires can be correctly
-    # determined.
-    api_flow.add(base.InjectTask(create_what, addons=[ACTION]))
-    api_flow.add(ExtractVolumeRequestTask(image_service,
-                                          az_check_functor))
-    api_flow.add(QuotaReserveTask())
-    v_uuid = api_flow.add(EntryCreateTask(db))
-    api_flow.add(QuotaCommitTask())
-
-    # If after committing something fails, ensure we set the db to failure
-    # before reverting any prior tasks.
-    api_flow.add(OnFailureChangeStatusTask(db))
+    api_flow.add(ExtractVolumeRequestTask(
+        image_service,
+        az_check_functor,
+        rebind={'size': 'raw_size',
+                'availability_zone': 'raw_availability_zone',
+                'volume_type': 'raw_volume_type'}))
+    api_flow.add(QuotaReserveTask(),
+                 EntryCreateTask(db),
+                 QuotaCommitTask())
 
     # This will cast it out to either the scheduler or volume manager via
     # the rpc apis provided.
     api_flow.add(VolumeCastTask(scheduler_rpcapi, volume_rpcapi, db))
 
-    # Note(harlowja): this will return the flow as well as the uuid of the
-    # task which will produce the 'volume' database reference (since said
-    # reference is returned to other callers in the api for further usage).
-    return (flow_utils.attach_debug_listeners(api_flow), v_uuid)
+    # Now load (but do not run) the flow using the provided initial data.
+    return taskflow.engines.load(api_flow, store=create_what)
 
 
-def get_scheduler_flow(db, driver, request_spec=None, filter_properties=None,
+def get_scheduler_flow(context, db, driver, request_spec=None,
+                       filter_properties=None,
                        volume_id=None, snapshot_id=None, image_id=None):
 
     """Constructs and returns the scheduler entrypoint flow.
@@ -1643,29 +1562,23 @@ def get_scheduler_flow(db, driver, request_spec=None, filter_properties=None,
     4. Uses provided driver to to then select and continue processing of
        volume request.
     """
-
-    flow_name = ACTION.replace(":", "_") + "_scheduler"
-    scheduler_flow = linear_flow.Flow(flow_name)
-
-    # This injects the initial starting flow values into the workflow so that
-    # the dependency order of the tasks provides/requires can be correctly
-    # determined.
-    scheduler_flow.add(base.InjectTask({
-        'request_spec': request_spec,
+    create_what = {
+        'context': context,
+        'raw_request_spec': request_spec,
         'filter_properties': filter_properties,
         'volume_id': volume_id,
         'snapshot_id': snapshot_id,
         'image_id': image_id,
-    }, addons=[ACTION]))
+    }
+
+    flow_name = ACTION.replace(":", "_") + "_scheduler"
+    scheduler_flow = linear_flow.Flow(flow_name)
 
     # This will extract and clean the spec from the starting values.
-    scheduler_flow.add(ExtractSchedulerSpecTask(db))
+    scheduler_flow.add(ExtractSchedulerSpecTask(
+        db,
+        rebind={'request_spec': 'raw_request_spec'}))
 
-    # The decorator application here ensures that the method gets the right
-    # requires attributes automatically by examining the underlying functions
-    # arguments.
-
-    @decorators.task
     def schedule_create_volume(context, request_spec, filter_properties):
 
         def _log_failure(cause):
@@ -1711,16 +1624,16 @@ def get_scheduler_flow(db, driver, request_spec=None, filter_properties=None,
                 _log_failure(e)
                 _error_out_volume(context, db, volume_id, reason=e)
 
-    scheduler_flow.add(schedule_create_volume)
+    scheduler_flow.add(task.FunctorTask(schedule_create_volume))
 
-    return flow_utils.attach_debug_listeners(scheduler_flow)
+    # Now load (but do not run) the flow using the provided initial data.
+    return taskflow.engines.load(scheduler_flow, store=create_what)
 
 
-def get_manager_flow(db, driver, scheduler_rpcapi, host, volume_id,
-                     request_spec=None, filter_properties=None,
-                     allow_reschedule=True,
-                     snapshot_id=None, image_id=None, source_volid=None,
-                     reschedule_context=None):
+def get_manager_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
+                     allow_reschedule, reschedule_context, request_spec,
+                     filter_properties, snapshot_id=None, image_id=None,
+                     source_volid=None):
     """Constructs and returns the manager entrypoint flow.
 
     This flow will do the following:
@@ -1739,44 +1652,29 @@ def get_manager_flow(db, driver, scheduler_rpcapi, host, volume_id,
     flow_name = ACTION.replace(":", "_") + "_manager"
     volume_flow = linear_flow.Flow(flow_name)
 
-    # Determine if we are allowed to reschedule since this affects how
-    # failures will be handled.
-    if not filter_properties:
-        filter_properties = {}
-    if not request_spec and allow_reschedule:
-        LOG.debug(_("No request spec, will not reschedule"))
-        allow_reschedule = False
-    if not filter_properties.get('retry', None) and allow_reschedule:
-        LOG.debug(_("No retry filter property or associated "
-                    "retry info, will not reschedule"))
-        allow_reschedule = False
-
     # This injects the initial starting flow values into the workflow so that
     # the dependency order of the tasks provides/requires can be correctly
     # determined.
-    volume_flow.add(base.InjectTask({
+    create_what = {
+        'context': context,
         'filter_properties': filter_properties,
         'image_id': image_id,
         'request_spec': request_spec,
         'snapshot_id': snapshot_id,
         'source_volid': source_volid,
         'volume_id': volume_id,
-    }, addons=[ACTION]))
+    }
 
-    # We can actually just check if we should reschedule on failure ahead of
-    # time instead of trying to determine this later, certain values are needed
-    # to reschedule and without them we should just avoid rescheduling.
-    if not allow_reschedule:
-        # On failure ensure that we just set the volume status to error.
-        LOG.debug(_("Retry info not present, will not reschedule"))
-        volume_flow.add(OnFailureChangeStatusTask(db))
-    else:
+    volume_flow.add(ExtractVolumeRefTask(db))
+
+    if allow_reschedule and request_spec:
         volume_flow.add(OnFailureRescheduleTask(reschedule_context,
                                                 db, scheduler_rpcapi))
 
-    volume_flow.add(ExtractVolumeSpecTask(db))
-    volume_flow.add(NotifyVolumeActionTask(db, host, "create.start"))
-    volume_flow.add(CreateVolumeFromSpecTask(db, host, driver))
-    volume_flow.add(CreateVolumeOnFinishTask(db, host, "create.end"))
+    volume_flow.add(ExtractVolumeSpecTask(db),
+                    NotifyVolumeActionTask(db, host, "create.start"),
+                    CreateVolumeFromSpecTask(db, host, driver),
+                    CreateVolumeOnFinishTask(db, host, "create.end"))
 
-    return flow_utils.attach_debug_listeners(volume_flow)
+    # Now load (but do not run) the flow using the provided initial data.
+    return taskflow.engines.load(volume_flow, store=create_what)
