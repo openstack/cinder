@@ -1037,3 +1037,29 @@ class TestMigrations(test.TestCase):
                 execute().scalar()
 
             self.assertEqual(3, num_defaults)
+
+    def test_migration_022(self):
+        """Test that adding disabled_reason column works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.db_initial_version())
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 21)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 22)
+            services = sqlalchemy.Table('services',
+                                        metadata,
+                                        autoload=True)
+            self.assertIsInstance(services.c.disabled_reason.type,
+                                  sqlalchemy.types.VARCHAR)
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 21)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            services = sqlalchemy.Table('services',
+                                        metadata,
+                                        autoload=True)
+            self.assertNotIn('disabled_reason', services.c)
