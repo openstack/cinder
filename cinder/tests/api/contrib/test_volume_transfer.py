@@ -264,7 +264,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume(status='available', size=volume_size)
 
         req = webob.Request.blank('/v2/fake/os-volume-transfer')
-        req.body = ('<transfer display_name="transfer-001" '
+        req.body = ('<transfer name="transfer-001" '
                     'volume_id="%s"/>' % volume_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/xml'
@@ -277,7 +277,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertTrue(transfer.item(0).hasAttribute('id'))
         self.assertTrue(transfer.item(0).hasAttribute('auth_key'))
         self.assertTrue(transfer.item(0).hasAttribute('created_at'))
-        self.assertTrue(transfer.item(0).hasAttribute('name'))
+        self.assertEqual(transfer.item(0).getAttribute('name'), 'transfer-001')
         self.assertTrue(transfer.item(0).hasAttribute('volume_id'))
         db.volume_destroy(context.get_admin_context(), volume_id)
 
