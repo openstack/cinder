@@ -19,7 +19,12 @@
 import inspect
 import math
 import time
+
+from lxml import etree
+import six
 import webob
+from xml.dom import minidom
+from xml.parsers import expat
 
 from cinder import exception
 from cinder.openstack.common import gettextutils
@@ -27,11 +32,6 @@ from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi
-
-from lxml import etree
-import six
-from xml.dom import minidom
-from xml.parsers import expat
 
 
 XMLNS_V1 = 'http://docs.openstack.org/volume/api/v1'

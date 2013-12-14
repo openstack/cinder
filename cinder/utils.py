@@ -34,17 +34,17 @@ import stat
 import sys
 import tempfile
 import time
-from xml.dom import minidom
-from xml.parsers import expat
-from xml import sax
-from xml.sax import expatreader
-from xml.sax import saxutils
 
 from eventlet import event
 from eventlet import greenthread
 from eventlet import pools
 from oslo.config import cfg
 import paramiko
+from xml.dom import minidom
+from xml.parsers import expat
+from xml import sax
+from xml.sax import expatreader
+from xml.sax import saxutils
 
 from cinder.brick.initiator import connector
 from cinder import exception
