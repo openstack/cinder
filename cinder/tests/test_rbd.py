@@ -560,6 +560,126 @@ class RBDTestCase(test.TestCase):
         self.assertRaises(test.TestingException, self.driver._connect_to_rados)
 
 
+class RBDImageIOWrapperTestCase(test.TestCase):
+    def setUp(self):
+        super(RBDImageIOWrapperTestCase, self).setUp()
+        self.meta = mock.Mock()
+        self.meta.user = 'mock_user'
+        self.meta.conf = 'mock_conf'
+        self.meta.pool = 'mock_pool'
+        self.meta.image = mock.Mock()
+        self.meta.image.read = mock.Mock()
+        self.meta.image.write = mock.Mock()
+        self.meta.image.size = mock.Mock()
+        self.rbd_wrapper = driver.RBDImageIOWrapper(self.meta)
+        self.data_length = 1024
+        self.full_data = 'abcd' * 256
+
+    def tearDown(self):
+        super(RBDImageIOWrapperTestCase, self).tearDown()
+
+    def test_init(self):
+        self.assertEqual(self.rbd_wrapper._rbd_meta, self.meta)
+        self.assertEqual(self.rbd_wrapper._offset, 0)
+
+    def test_inc_offset(self):
+        self.rbd_wrapper._inc_offset(10)
+        self.rbd_wrapper._inc_offset(10)
+        self.assertEqual(self.rbd_wrapper._offset, 20)
+
+    def test_rbd_image(self):
+        self.assertEqual(self.rbd_wrapper.rbd_image, self.meta.image)
+
+    def test_rbd_user(self):
+        self.assertEqual(self.rbd_wrapper.rbd_user, self.meta.user)
+
+    def test_rbd_pool(self):
+        self.assertEqual(self.rbd_wrapper.rbd_conf, self.meta.conf)
+
+    def test_rbd_conf(self):
+        self.assertEqual(self.rbd_wrapper.rbd_pool, self.meta.pool)
+
+    def test_read(self):
+
+        def mock_read(offset, length):
+            return self.full_data[offset:length]
+
+        self.meta.image.read.side_effect = mock_read
+        self.meta.image.size.return_value = self.data_length
+
+        data = self.rbd_wrapper.read()
+        self.assertEqual(data, self.full_data)
+
+        data = self.rbd_wrapper.read()
+        self.assertEqual(data, '')
+
+        self.rbd_wrapper.seek(0)
+        data = self.rbd_wrapper.read()
+        self.assertEqual(data, self.full_data)
+
+        self.rbd_wrapper.seek(0)
+        data = self.rbd_wrapper.read(10)
+        self.assertEqual(data, self.full_data[:10])
+
+    def test_write(self):
+        self.rbd_wrapper.write(self.full_data)
+        self.assertEqual(self.rbd_wrapper._offset, 1024)
+
+    def test_seekable(self):
+        self.assertTrue(self.rbd_wrapper.seekable)
+
+    def test_seek(self):
+        self.assertEqual(self.rbd_wrapper._offset, 0)
+        self.rbd_wrapper.seek(10)
+        self.assertEqual(self.rbd_wrapper._offset, 10)
+        self.rbd_wrapper.seek(10)
+        self.assertEqual(self.rbd_wrapper._offset, 10)
+        self.rbd_wrapper.seek(10, 1)
+        self.assertEqual(self.rbd_wrapper._offset, 20)
+
+        self.rbd_wrapper.seek(0)
+        self.rbd_wrapper.write(self.full_data)
+        self.meta.image.size.return_value = self.data_length
+        self.rbd_wrapper.seek(0)
+        self.assertEqual(self.rbd_wrapper._offset, 0)
+
+        self.rbd_wrapper.seek(10, 2)
+        self.assertEqual(self.rbd_wrapper._offset, self.data_length + 10)
+        self.rbd_wrapper.seek(-10, 2)
+        self.assertEqual(self.rbd_wrapper._offset, self.data_length - 10)
+
+        # test exceptions.
+        self.assertRaises(IOError, self.rbd_wrapper.seek, 0, 3)
+        self.assertRaises(IOError, self.rbd_wrapper.seek, -1)
+        # offset should not have been changed by any of the previous
+        # operations.
+        self.assertEqual(self.rbd_wrapper._offset, self.data_length - 10)
+
+    def test_tell(self):
+        self.assertEqual(self.rbd_wrapper.tell(), 0)
+        self.rbd_wrapper._inc_offset(10)
+        self.assertEqual(self.rbd_wrapper.tell(), 10)
+
+    def test_flush(self):
+        with mock.patch.object(driver, 'LOG') as mock_logger:
+            self.meta.image.flush = mock.Mock()
+            self.rbd_wrapper.flush()
+            self.assertTrue(self.meta.image.flush.called)
+            self.meta.image.flush.reset_mock()
+            # this should be caught and logged silently.
+            self.meta.image.flush.side_effect = AttributeError
+            self.rbd_wrapper.flush()
+            self.assertTrue(self.meta.image.flush.called)
+            msg = _("flush() not supported in this version of librbd")
+            mock_logger.warning.assert_called_with(msg)
+
+    def test_fileno(self):
+        self.assertRaises(IOError, self.rbd_wrapper.fileno)
+
+    def test_close(self):
+        self.rbd_wrapper.close()
+
+
 class ManagedRBDTestCase(DriverTestCase):
     driver_name = "cinder.volume.drivers.rbd.RBDDriver"
 
