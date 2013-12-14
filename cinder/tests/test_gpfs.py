@@ -130,7 +130,7 @@ class GPFSDriverTestCase(test.TestCase):
         super(GPFSDriverTestCase, self).tearDown()
 
     def test_create_delete_volume_full_backing_file(self):
-        """create and delete vol with full creation method"""
+        """Create and delete vol with full creation method."""
         CONF.gpfs_sparse_volumes = False
         vol = test_utils.create_volume(self.context, host=CONF.host)
         volume_id = vol['id']
@@ -142,7 +142,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertFalse(os.path.exists(path))
 
     def test_create_delete_volume_sparse_backing_file(self):
-        """create and delete vol with default sparse creation method"""
+        """Create and delete vol with default sparse creation method."""
         CONF.gpfs_sparse_volumes = True
         vol = test_utils.create_volume(self.context, host=CONF.host)
         volume_id = vol['id']

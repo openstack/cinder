@@ -59,7 +59,7 @@ class APIRouter(base_wsgi.Router):
 
     @classmethod
     def factory(cls, global_config, **local_config):
-        """Simple paste factory, :class:`cinder.wsgi.Router` doesn't have"""
+        """Simple paste factory, :class:`cinder.wsgi.Router` doesn't have."""
         return cls()
 
     def __init__(self, ext_mgr=None):

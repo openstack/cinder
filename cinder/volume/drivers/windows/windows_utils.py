@@ -131,7 +131,7 @@ class WindowsUtils(object):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def create_volume(self, vhd_path, vol_name, vol_size):
-        """Creates a volume"""
+        """Creates a volume."""
         try:
             cl = self._conn_wmi.__getattr__("WT_Disk")
             cl.NewWTDisk(DevicePath=vhd_path,
@@ -247,7 +247,7 @@ class WindowsUtils(object):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def add_disk_to_target(self, vol_name, target_name):
-        """Adds the disk to the target"""
+        """Adds the disk to the target."""
         try:
             q = self._conn_wmi.WT_Disk(Description=vol_name)
             wt_disk = q[0]

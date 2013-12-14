@@ -450,7 +450,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         pass
 
     def extend_volume(self, volume, new_size):
-        """Extend the size of the volume"""
+        """Extend the size of the volume."""
         try:
             self._eql_execute('volume', 'select', volume['name'],
                               'size', "%sG" % new_size)

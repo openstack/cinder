@@ -73,7 +73,7 @@ class ViewBuilder(common.ViewBuilder):
         }
 
     def _get_attachments(self, volume):
-        """Retrieves the attachments of the volume object"""
+        """Retrieve the attachments of the volume object."""
         attachments = []
 
         if volume['attach_status'] == 'attached':
@@ -94,7 +94,7 @@ class ViewBuilder(common.ViewBuilder):
         return attachments
 
     def _get_volume_metadata(self, volume):
-        """Retrieves the metadata of the volume object"""
+        """Retrieve the metadata of the volume object."""
         if volume.get('volume_metadata'):
             metadata = volume.get('volume_metadata')
             return dict((item['key'], item['value']) for item in metadata)
@@ -105,7 +105,7 @@ class ViewBuilder(common.ViewBuilder):
         return {}
 
     def _get_volume_type(self, volume):
-        """Retrieves the type the volume object is"""
+        """Retrieve the type the volume object."""
         if volume['volume_type_id'] and volume.get('volume_type'):
             return volume['volume_type']['name']
         else:

@@ -554,7 +554,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         raise NotImplementedError()
 
     def _check_share_in_use(self, conn, dir):
-        """Checks if share is cinder mounted and returns it. """
+        """Checks if share is cinder mounted and returns it."""
         try:
             if conn:
                 host = conn.split(':')[0]

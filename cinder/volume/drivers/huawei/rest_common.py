@@ -123,7 +123,7 @@ class HVSCommon():
                 lunparam['INITIALDISTRIBUTEPOLICY'] = "2"
 
     def _init_lun_parameters(self, name, parameters):
-        """Init basic LUN parameters """
+        """Init basic LUN parameters."""
         lunparam = {"TYPE": "11",
                     "NAME": name,
                     "PARENTTYPE": "216",

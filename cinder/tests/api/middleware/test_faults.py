@@ -169,12 +169,12 @@ class TestFaults(test.TestCase):
         self.assertIn("Entrada invalida: El valor es invalido", resp.body)
 
     def test_fault_has_status_int(self):
-        """Ensure the status_int is set correctly on faults"""
+        """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
         self.assertEqual(fault.status_int, 400)
 
     def test_xml_serializer(self):
-        """Ensure that a v1.1 request responds with a v1 xmlns"""
+        """Ensure that a v1.1 request responds with a v1 xmlns."""
         request = webob.Request.blank('/v1',
                                       headers={"Accept": "application/xml"})
 

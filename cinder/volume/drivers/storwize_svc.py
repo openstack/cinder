@@ -1809,7 +1809,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
 
 class CLIResponse(object):
-    '''Parse SVC CLI output and generate iterable'''
+    '''Parse SVC CLI output and generate iterable.'''
 
     def __init__(self, raw, delim='!', with_header=True):
         super(CLIResponse, self).__init__()

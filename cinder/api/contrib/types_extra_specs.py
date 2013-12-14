@@ -148,7 +148,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
 
 
 class Types_extra_specs(extensions.ExtensionDescriptor):
-    """Types extra specs support"""
+    """Type extra specs support."""
 
     name = "TypesExtraSpecs"
     alias = "os-types-extra-specs"

@@ -270,7 +270,7 @@ class TestCase(testtools.TestCase):
                                 })
 
     def assertGreater(self, first, second, msg=None):
-        """Python < v2.7 compatibility.  Assert 'first' > 'second'"""
+        """Python < v2.7 compatibility.  Assert 'first' > 'second'."""
         try:
             f = super(TestCase, self).assertGreater
         except AttributeError:
@@ -281,7 +281,7 @@ class TestCase(testtools.TestCase):
             f(first, second, msg=msg)
 
     def assertGreaterEqual(self, first, second, msg=None):
-        """Python < v2.7 compatibility.  Assert 'first' >= 'second'"""
+        """Python < v2.7 compatibility.  Assert 'first' >= 'second'."""
         try:
             f = super(TestCase, self).assertGreaterEqual
         except AttributeError:

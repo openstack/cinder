@@ -1718,7 +1718,7 @@ def _volume_type_get(context, id, session=None, inactive=False):
 
 @require_context
 def volume_type_get(context, id, inactive=False):
-    """Returns a dict describing specific volume_type"""
+    """Return a dict describing specific volume_type."""
 
     return _volume_type_get(context, id, None, inactive)
 
@@ -1738,7 +1738,7 @@ def _volume_type_get_by_name(context, name, session=None):
 
 @require_context
 def volume_type_get_by_name(context, name):
-    """Returns a dict describing specific volume_type"""
+    """Return a dict describing specific volume_type."""
 
     return _volume_type_get_by_name(context, name)
 

@@ -39,7 +39,7 @@ CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
 
 
 class SheepdogDriver(driver.VolumeDriver):
-    """Executes commands relating to Sheepdog Volumes"""
+    """Executes commands relating to Sheepdog Volumes."""
 
     VERSION = "1.0.0"
 
@@ -49,7 +49,7 @@ class SheepdogDriver(driver.VolumeDriver):
         self._stats = {}
 
     def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met"""
+        """Return error if prerequisites aren't met."""
         try:
             #NOTE(francois-charlier) Since 0.24 'collie cluster info -r'
             #  gives short output, but for compatibility reason we won't
@@ -68,20 +68,20 @@ class SheepdogDriver(driver.VolumeDriver):
         raise NotImplementedError()
 
     def create_volume(self, volume):
-        """Creates a sheepdog volume"""
+        """Create a sheepdog volume."""
         self._try_execute('qemu-img', 'create',
                           "sheepdog:%s" % volume['name'],
                           '%sG' % volume['size'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a sheepdog volume from a snapshot."""
+        """Create a sheepdog volume from a snapshot."""
         self._try_execute('qemu-img', 'create', '-b',
                           "sheepdog:%s:%s" % (snapshot['volume_name'],
                                               snapshot['name']),
                           "sheepdog:%s" % volume['name'])
 
     def delete_volume(self, volume):
-        """Deletes a logical volume"""
+        """Delete a logical volume."""
         self._delete(volume)
 
     def _ensure_dir_exists(self, tmp_dir):
@@ -117,12 +117,12 @@ class SheepdogDriver(driver.VolumeDriver):
             self._resize(volume)
 
     def create_snapshot(self, snapshot):
-        """Creates a sheepdog snapshot"""
+        """Create a sheepdog snapshot."""
         self._try_execute('qemu-img', 'snapshot', '-c', snapshot['name'],
                           "sheepdog:%s" % snapshot['volume_name'])
 
     def delete_snapshot(self, snapshot):
-        """Deletes a sheepdog snapshot"""
+        """Delete a sheepdog snapshot."""
         self._try_execute('collie', 'vdi', 'delete', snapshot['volume_name'],
                           '-s', snapshot['name'])
 
@@ -130,15 +130,15 @@ class SheepdogDriver(driver.VolumeDriver):
         return "sheepdog:%s" % volume['name']
 
     def ensure_export(self, context, volume):
-        """Safely and synchronously recreates an export for a logical volume"""
+        """Safely and synchronously recreate an export for a logical volume."""
         pass
 
     def create_export(self, context, volume):
-        """Exports the volume"""
+        """Export a volume."""
         pass
 
     def remove_export(self, context, volume):
-        """Removes an export for a logical volume"""
+        """Remove an export for a logical volume."""
         pass
 
     def initialize_connection(self, volume, connector):

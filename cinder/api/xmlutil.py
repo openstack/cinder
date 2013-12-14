@@ -346,7 +346,7 @@ class TemplateElement(object):
                 pass
 
     def getAttrib(self, obj):
-        """Get attribute"""
+        """Get attribute."""
         tmpattrib = {}
         #Now set up all the attributes...
         for key, value in self.attrib.items():

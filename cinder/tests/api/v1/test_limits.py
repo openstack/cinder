@@ -276,7 +276,7 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
         self.assertEqual(value, expected)
 
     def test_limited_request_xml(self):
-        """Test a rate-limited (413) response as XML"""
+        """Test a rate-limited (413) response as XML."""
         request = webob.Request.blank("/")
         response = request.get_response(self.app)
         self.assertEqual(200, response.status_int)

@@ -51,7 +51,7 @@ class QuotaTemplate(xmlutil.TemplateBuilder):
 class QuotaSetsController(wsgi.Controller):
 
     def _format_quota_set(self, project_id, quota_set):
-        """Convert the quota object to a result dict"""
+        """Convert the quota object to a result dict."""
 
         quota_set['id'] = str(project_id)
 
@@ -135,7 +135,7 @@ class QuotaSetsController(wsgi.Controller):
 
 
 class Quotas(extensions.ExtensionDescriptor):
-    """Quotas management support"""
+    """Quota management support."""
 
     name = "Quotas"
     alias = "os-quota-sets"

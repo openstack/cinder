@@ -408,7 +408,7 @@ class NfsDriver(RemoteFsDriver):
             self._remotefsclient.set_execute(execute)
 
     def do_setup(self, context):
-        """Any initialization the volume driver does while starting"""
+        """Any initialization the volume driver does while starting."""
         super(NfsDriver, self).do_setup(context)
 
         config = self.configuration.nfs_shares_config

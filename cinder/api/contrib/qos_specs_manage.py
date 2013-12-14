@@ -416,7 +416,7 @@ class QoSSpecsController(wsgi.Controller):
 
 
 class Qos_specs_manage(extensions.ExtensionDescriptor):
-    """QoS specs support"""
+    """QoS specs support."""
 
     name = "Qos_specs_manage"
     alias = "qos-specs"

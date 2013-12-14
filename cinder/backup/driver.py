@@ -21,13 +21,13 @@ from cinder.db import base
 class BackupDriver(base.Base):
 
     def backup(self, backup, volume_file):
-        """Starts a backup of a specified volume"""
+        """Start a backup of a specified volume."""
         raise NotImplementedError()
 
     def restore(self, backup, volume_id, volume_file):
-        """Restores a saved backup"""
+        """Restore a saved backup."""
         raise NotImplementedError()
 
     def delete(self, backup):
-        """Deletes a saved backup"""
+        """Delete a saved backup."""
         raise NotImplementedError()

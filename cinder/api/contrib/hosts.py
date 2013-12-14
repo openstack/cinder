@@ -250,7 +250,7 @@ class HostController(wsgi.Controller):
 
 
 class Hosts(extensions.ExtensionDescriptor):
-    """Admin-only host administration"""
+    """Admin-only host administration."""
 
     name = "Hosts"
     alias = "os-hosts"

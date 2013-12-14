@@ -538,7 +538,7 @@ class TestMigrations(test.TestCase):
             self.assertEqual(0, len(snapshots.c.volume_id.foreign_keys))
 
     def test_migration_008(self):
-        """Test that adding and removing the backups table works correctly"""
+        """Test that adding and removing the backups table works correctly."""
         for (key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
