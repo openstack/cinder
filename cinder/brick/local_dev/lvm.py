@@ -178,7 +178,7 @@ class LVM(executor.Executor):
                 # NOTE(gfidente): version is formatted as follows:
                 # major.minor.patchlevel(library API version)[-customisation]
                 version = version_list[2]
-                version_filter = "(\d+)\.(\d+)\.(\d+).*"
+                version_filter = r"(\d+)\.(\d+)\.(\d+).*"
                 r = re.search(version_filter, version)
                 version_tuple = tuple(map(int, r.group(1, 2, 3)))
                 return version_tuple
