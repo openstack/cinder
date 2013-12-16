@@ -2133,17 +2133,28 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
     def test_lvm_migrate_volume_proceed(self):
         hostname = socket.gethostname()
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
-                        'cinder-volumes:default:0' % hostname}
+                        'cinder-volumes-2:default:0' % hostname}
         host = {'capabilities': capabilities}
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
-        self.stubs.Set(self.volume.driver, 'remove_export',
-                       lambda x, y: None)
-        self.stubs.Set(self.volume.driver, '_create_volume',
-                       lambda x, y, z: None)
+
+        def fake_execute(*args, **kwargs):
+            pass
+
+        def get_all_volume_groups():
+            return [{'name': 'cinder-volumes-2'},
+                    {'name': 'cinder-volumes'}]
+
+        self.stubs.Set(self.volume.driver, '_execute', fake_execute)
+
         self.stubs.Set(volutils, 'copy_volume',
                        lambda x, y, z, sync=False, execute='foo': None)
+
+        self.stubs.Set(volutils, 'get_all_volume_groups',
+                       get_all_volume_groups)
+
         self.stubs.Set(self.volume.driver, '_delete_volume',
                        lambda x: None)
+
         self.stubs.Set(self.volume.driver, '_create_export',
                        lambda x, y, vg='vg': None)
 
