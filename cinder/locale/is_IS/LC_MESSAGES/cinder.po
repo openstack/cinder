@@ -1,4 +1,4 @@
-# Urdu translations for cinder.
+# Icelandic (Iceland) translations for cinder.
 # Copyright (C) 2013 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
 #
@@ -8,10 +8,10 @@ msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2013-12-16 06:13+0000\n"
-"PO-Revision-Date: 2013-10-07 06:14+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
-"Language-Team: Urdu "
-"(http://www.transifex.com/projects/p/openstack/language/ur/)\n"
+"PO-Revision-Date: 2013-12-16 02:36+0000\n"
+"Last-Translator: daisy.ycguo <daisy.ycguo@gmail.com>\n"
+"Language-Team: Icelandic (Iceland) "
+"(http://www.transifex.com/projects/p/openstack/language/is_IS/)\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -9475,173 +9475,4 @@ msgstr ""
 #, python-format
 msgid "Failed notifying on %(topic)s payload %(payload)s"
 msgstr ""
-
-#~ msgid ""
-#~ msgstr ""
-
-#~ msgid "Error(s): %s occurred in the call to RetrieveProperties."
-#~ msgstr ""
-
-#~ msgid "Requested volume or snapshot exceeds allowed Gigabytes quota"
-#~ msgstr ""
-
-#~ msgid "Deploy v1 of the Cinder API. "
-#~ msgstr ""
-
-#~ msgid "Deploy v2 of the Cinder API. "
-#~ msgstr ""
-
-#~ msgid "_read_xml:%s"
-#~ msgstr ""
-
-#~ msgid "request ip info is %s."
-#~ msgstr ""
-
-#~ msgid "new str info is %s."
-#~ msgstr ""
-
-#~ msgid "Failed to create iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "Failed to remove iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "rtstool is not installed correctly"
-#~ msgstr ""
-
-#~ msgid "Creating iser_target for: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to create iser target for volume id:%(vol_id)s: %(e)s"
-#~ msgstr ""
-
-#~ msgid "Removing iser_target for: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to remove iser target for volume id:%(vol_id)s: %(e)s"
-#~ msgstr ""
-
-#~ msgid "Volume %s does not exist, it seems it was already deleted"
-#~ msgstr ""
-
-#~ msgid "Executing zfs send/recv on the appliance"
-#~ msgstr ""
-
-#~ msgid "zfs send/recv done, new volume %s created"
-#~ msgstr ""
-
-#~ msgid "Failed to delete temp snapshot %(volume)s@%(snapshot)s"
-#~ msgstr ""
-
-#~ msgid "Failed to delete zfs recv snapshot %(volume)s@%(snapshot)s"
-#~ msgstr ""
-
-#~ msgid "rbd export-diff failed - %s"
-#~ msgstr ""
-
-#~ msgid "rbd import-diff failed - %s"
-#~ msgstr ""
-
-#~ msgid "%s is not on GPFS. Perhaps GPFS not mounted."
-#~ msgstr ""
-
-#~ msgid "Folder %s does not exist, it seems it was already deleted."
-#~ msgstr ""
-
-#~ msgid "No 'os-update_readonly_flag' was specified in request."
-#~ msgstr ""
-
-#~ msgid "Volume 'readonly' flag must be specified in request as a boolean."
-#~ msgstr ""
-
-#~ msgid "ISER provider_location not stored, using discovery"
-#~ msgstr ""
-
-#~ msgid "Could not find iSER export for volume %s"
-#~ msgstr ""
-
-#~ msgid "ISER Discovery: Found %s"
-#~ msgstr ""
-
-#~ msgid "Failed to access the device on the path %(path)s: %(error)s."
-#~ msgstr ""
-
-#~ msgid "iSER device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Found iSER node %(host_device)s (after %(tries)s rescans)."
-#~ msgstr ""
-
-#~ msgid "Skipping ensure_export. No iser_target provisioned for volume: %s"
-#~ msgstr ""
-
-#~ msgid "Skipping remove_export. No iser_target provisioned for volume: %s"
-#~ msgstr ""
-
-#~ msgid "Downloading image: %s from glance image server."
-#~ msgstr ""
-
-#~ msgid "Uploading image: %s to the Glance image server."
-#~ msgstr ""
-
-#~ msgid "Invalid request body"
-#~ msgstr ""
-
-#~ msgid "enter: _get_host_from_connector: prefix %s"
-#~ msgstr ""
-
-#~ msgid "Schedule volume flow not retrieved"
-#~ msgstr ""
-
-#~ msgid "Failed to successfully complete schedule volume using flow: %s"
-#~ msgstr ""
-
-#~ msgid "Create volume flow not retrieved"
-#~ msgstr ""
-
-#~ msgid "Failed to successfully complete create volume workflow"
-#~ msgstr ""
-
-#~ msgid "Expected volume result not found"
-#~ msgstr ""
-
-#~ msgid "Manager volume flow not retrieved"
-#~ msgstr ""
-
-#~ msgid "Failed to successfully complete manager volume workflow"
-#~ msgstr ""
-
-#~ msgid "Unable to update stats, driver is uninitialized"
-#~ msgstr ""
-
-#~ msgid "Bad reponse from server: %s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Unable to pick datastore to accomodate"
-#~ " %(size)s bytes from the datastores: "
-#~ "%(dss)s."
-#~ msgstr ""
-
-#~ msgid "%(flow)s has moved into state %(state)s from state %(old_state)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "%(flow)s has moved %(runner)s into state"
-#~ " %(state)s with result: %(result)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Failing volume %s creation by altering"
-#~ " volume status instead of rescheduling"
-#~ msgstr ""
-
-#~ msgid "No request spec, will not reschedule"
-#~ msgstr ""
-
-#~ msgid "No retry filter property or associated retry info, will not reschedule"
-#~ msgstr ""
-
-#~ msgid "Retry info not present, will not reschedule"
-#~ msgstr ""
 
