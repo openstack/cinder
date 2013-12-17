@@ -310,6 +310,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 request_spec=request_spec,
                 filter_properties=filter_properties)
         except Exception:
+            LOG.exception(_("Failed to create manager volume flow"))
             raise exception.CinderException(
                 _("Failed to create manager volume flow"))
 
