@@ -363,7 +363,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                 reason=_("volume is not local to this node"))
 
         self._notify_about_volume_usage(context, volume_ref, "delete.start")
-        self._reset_stats()
         try:
             LOG.debug(_("volume %s: removing export"), volume_ref['id'])
             self.driver.remove_export(context, volume_ref)
@@ -919,13 +918,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
 
-    def _reset_stats(self):
-        LOG.info(_("Clear capabilities"))
-        self._last_volume_stats = []
-
     def notification(self, context, event):
         LOG.info(_("Notification {%s} received"), event)
-        self._reset_stats()
 
     def _notify_about_volume_usage(self,
                                    context,
