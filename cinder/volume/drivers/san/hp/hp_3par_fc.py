@@ -56,9 +56,10 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 the drivers to use the new APIs.
         1.2.1 - Synchronized extend_volume method.
         1.2.2 - Added try/finally around client login/logout.
+        1.2.3 - Added ability to add WWNs to host.
     """
 
-    VERSION = "1.2.2"
+    VERSION = "1.2.3"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -261,9 +262,6 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)
-            if 'FCPaths' not in host or len(host['FCPaths']) < 1:
-                self._modify_3par_fibrechan_host(hostname, connector['wwpns'])
-                host = self.common._get_3par_host(hostname)
         except hpexceptions.HTTPNotFound as ex:
             # get persona from the volume type extra specs
             persona_id = self.common.get_persona_type(volume)
@@ -274,6 +272,35 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                                                         persona_id)
             host = self.common._get_3par_host(hostname)
 
+        return self._add_new_wwn_to_host(host, connector['wwpns'])
+
+    def _add_new_wwn_to_host(self, host, wwns):
+        """Add wwns to a host if one or more don't exist.
+
+        Identify if argument wwns contains any world wide names
+        not configured in the 3PAR host path. If any are found,
+        add them to the 3PAR host.
+        """
+        # get the currently configured wwns
+        # from the host's FC paths
+        host_wwns = []
+        if 'FCPaths' in host:
+            for path in host['FCPaths']:
+                wwn = path.get('wwn', None)
+                if wwn is not None:
+                    host_wwns.append(wwn.lower())
+
+        # lower case all wwns in the compare list
+        compare_wwns = [x.lower() for x in wwns]
+
+        # calculate wwns in compare list, but not in host_wwns list
+        new_wwns = list(set(compare_wwns).difference(host_wwns))
+
+        # if any wwns found that were not in host list,
+        # add them to the host
+        if (len(new_wwns) > 0):
+            self._modify_3par_fibrechan_host(host['name'], new_wwns)
+            host = self.common._get_3par_host(host['name'])
         return host
 
     @utils.synchronized('3par', external=True)
