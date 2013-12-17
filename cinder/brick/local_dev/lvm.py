@@ -574,9 +574,9 @@ class LVM(executor.Executor):
             mesg = (_('Error reported running lvremove: CMD: %(command)s, '
                     'RESPONSE: %(response)s') %
                     {'command': err.cmd, 'response': err.stderr})
-            LOG.error(mesg)
+            LOG.debug(mesg)
 
-            LOG.warning(_('Attempting udev settle and retry of lvremove...'))
+            LOG.debug(_('Attempting udev settle and retry of lvremove...'))
             self._execute('udevadm', 'settle',
                           root_helper=self._root_helper,
                           run_as_root=True)
