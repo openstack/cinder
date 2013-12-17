@@ -427,6 +427,7 @@ class FakeIscsiHelper(object):
 
     def __init__(self):
         self.tid = 1
+        self._execute = None
 
     def set_execute(self, execute):
         self._execute = execute
@@ -495,11 +496,11 @@ class LioAdm(TargetAdmin):
                 command_args.extend(extra_args)
             self._execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
-                LOG.error(_("Failed to create iscsi target for volume "
-                            "id:%s.") % vol_id)
-                LOG.error("%s" % str(e))
+            LOG.error(_("Failed to create iscsi target for volume "
+                        "id:%s.") % vol_id)
+            LOG.error("%s" % str(e))
 
-                raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+            raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
