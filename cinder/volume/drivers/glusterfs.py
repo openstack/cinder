@@ -19,7 +19,6 @@ import errno
 import hashlib
 import json
 import os
-import re
 import stat
 import tempfile
 import time
@@ -453,8 +452,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         LOG.debug(_('volume id: %s') % snapshot['volume_id'])
 
         path_to_disk = self._local_path_volume(snapshot['volume'])
-        snap_id = snapshot['id']
-        self._create_snapshot(snapshot, path_to_disk, snap_id)
+        self._create_snapshot(snapshot, path_to_disk)
 
     def _create_qcow2_snap_file(self, snapshot, backing_filename,
                                 new_snap_path):
@@ -483,7 +481,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                    new_snap_path]
         self._execute(*command, run_as_root=True)
 
-    def _create_snapshot(self, snapshot, path_to_disk, snap_id):
+    def _create_snapshot(self, snapshot, path_to_disk):
         """Create snapshot (offline case)."""
 
         # Requires volume status = 'available'
