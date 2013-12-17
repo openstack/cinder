@@ -21,8 +21,6 @@ Unified driver for NetApp storage systems.
 Supports call to multiple storage systems of different families and protocols.
 """
 
-from oslo.config import cfg
-
 from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
@@ -31,10 +29,6 @@ from cinder.volume.drivers.netapp.options import netapp_proxy_opts
 
 
 LOG = logging.getLogger(__name__)
-
-
-CONF = cfg.CONF
-CONF.register_opts(netapp_proxy_opts)
 
 
 #NOTE(singn): Holds family:{protocol:driver} registration information.

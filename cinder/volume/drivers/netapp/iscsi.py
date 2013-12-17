@@ -49,19 +49,9 @@ from cinder.volume.drivers.netapp.utils import provide_ems
 from cinder.volume.drivers.netapp.utils import set_safe_attr
 from cinder.volume.drivers.netapp.utils import validate_instantiation
 from cinder.volume import volume_types
-from oslo.config import cfg
 
 
 LOG = logging.getLogger(__name__)
-
-
-CONF = cfg.CONF
-CONF.register_opts(netapp_connection_opts)
-CONF.register_opts(netapp_transport_opts)
-CONF.register_opts(netapp_basicauth_opts)
-CONF.register_opts(netapp_cluster_opts)
-CONF.register_opts(netapp_7mode_opts)
-CONF.register_opts(netapp_provisioning_opts)
 
 
 class NetAppLun(object):

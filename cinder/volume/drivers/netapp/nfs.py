@@ -26,8 +26,6 @@ from threading import Timer
 import time
 import urlparse
 
-from oslo.config import cfg
-
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
@@ -52,13 +50,6 @@ from cinder.volume.drivers import nfs
 
 
 LOG = logging.getLogger(__name__)
-
-
-CONF = cfg.CONF
-CONF.register_opts(netapp_connection_opts)
-CONF.register_opts(netapp_transport_opts)
-CONF.register_opts(netapp_basicauth_opts)
-CONF.register_opts(netapp_img_cache_opts)
 
 
 class NetAppNFSDriver(nfs.NfsDriver):

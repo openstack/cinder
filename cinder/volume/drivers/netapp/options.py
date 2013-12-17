@@ -134,3 +134,13 @@ netapp_img_cache_opts = [
                      'not been accessed in the last M minutes, where M is '
                      'the value of this parameter, will be deleted from the '
                      'cache to create free space on the NFS share.')), ]
+
+CONF = cfg.CONF
+CONF.register_opts(netapp_proxy_opts)
+CONF.register_opts(netapp_connection_opts)
+CONF.register_opts(netapp_transport_opts)
+CONF.register_opts(netapp_basicauth_opts)
+CONF.register_opts(netapp_cluster_opts)
+CONF.register_opts(netapp_7mode_opts)
+CONF.register_opts(netapp_provisioning_opts)
+CONF.register_opts(netapp_img_cache_opts)

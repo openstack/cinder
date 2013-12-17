@@ -116,3 +116,10 @@ NEXENTA_RRMGR_OPTIONS = [
                default=2,
                help='Number of TCP connections.'),
 ]
+
+CONF = cfg.CONF
+CONF.register_opts(NEXENTA_CONNECTION_OPTIONS)
+CONF.register_opts(NEXENTA_ISCSI_OPTIONS)
+CONF.register_opts(NEXENTA_VOLUME_OPTIONS)
+CONF.register_opts(NEXENTA_NFS_OPTIONS)
+CONF.register_opts(NEXENTA_RRMGR_OPTIONS)
