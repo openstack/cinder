@@ -16,7 +16,7 @@
 Fakes For Scheduler tests.
 """
 
-import mox
+import mock
 
 from cinder import db
 from cinder.openstack.common import timeutils
@@ -61,9 +61,7 @@ class FakeHostState(host_manager.HostState):
             setattr(self, key, val)
 
 
-def mox_host_manager_db_calls(mock, context):
-    mock.StubOutWithMock(db, 'service_get_all_by_topic')
-
+def mock_host_manager_db_calls(mock_obj):
     services = [
         dict(id=1, host='host1', topic='volume', disabled=False,
              availability_zone='zone1', updated_at=timeutils.utcnow()),
@@ -77,6 +75,4 @@ def mox_host_manager_db_calls(mock, context):
         dict(id=5, host='host5', topic='volume', disabled=True,
              availability_zone='zone4', updated_at=timeutils.utcnow()),
     ]
-
-    db.service_get_all_by_topic(mox.IgnoreArg(),
-                                mox.IgnoreArg()).AndReturn(services)
+    mock_obj.return_value = services

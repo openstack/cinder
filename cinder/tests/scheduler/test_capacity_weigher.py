@@ -16,15 +16,17 @@
 Tests For Capacity Weigher.
 """
 
-import testtools
+import mock
+
+from oslo.config import cfg
 
 from cinder import context
 from cinder.openstack.common.scheduler.weights import HostWeightHandler
-
 from cinder.scheduler.weights.capacity import CapacityWeigher
 from cinder import test
 from cinder.tests.scheduler import fakes
-from cinder.tests import utils as test_utils
+
+CONF = cfg.CONF
 
 
 class CapacityWeigherTestCase(test.TestCase):
@@ -40,13 +42,13 @@ class CapacityWeigherTestCase(test.TestCase):
                                                        hosts,
                                                        weight_properties)[0]
 
-    def _get_all_hosts(self):
+    @mock.patch('cinder.db.sqlalchemy.api.service_get_all_by_topic')
+    def _get_all_hosts(self, _mock_service_get_all_by_topic):
         ctxt = context.get_admin_context()
-        fakes.mox_host_manager_db_calls(self.mox, ctxt)
-        self.mox.ReplayAll()
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
         host_states = self.host_manager.get_all_host_states(ctxt)
-        self.mox.VerifyAll()
-        self.mox.ResetAll()
+        _mock_service_get_all_by_topic.assert_called_once_with(
+            ctxt, CONF.volume_topic)
         return host_states
 
     def test_default_of_spreading_first(self):

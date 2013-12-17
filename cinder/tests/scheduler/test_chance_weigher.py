@@ -15,16 +15,12 @@
 Tests For Chance Weigher.
 """
 
+import mock
 import random
-import testtools
 
-from oslo.config import cfg
-
-from cinder import context
 from cinder.scheduler import host_manager
 from cinder.scheduler.weights.chance import ChanceWeigher
 from cinder import test
-from cinder.tests import utils as test_utils
 
 
 class ChanceWeigherTestCase(test.TestCase):
@@ -38,12 +34,13 @@ class ChanceWeigherTestCase(test.TestCase):
             self.not_random_float += 1.0
         return self.not_random_float
 
-    def test_chance_weigher(self):
+    @mock.patch('random.random')
+    def test_chance_weigher(self, _mock_random):
         # stub random.random() to verify the ChanceWeigher
         # is using random.random() (repeated calls to weigh should
         # return incrementing weights)
         weigher = ChanceWeigher()
-        self.stubs.Set(random, 'random', self.fake_random)
+        _mock_random.side_effect = self.fake_random
         self.fake_random(reset=True)
         host_state = {'host': 'host.example.com', 'free_capacity_gb': 99999}
         weight = weigher._weigh_object(host_state, None)

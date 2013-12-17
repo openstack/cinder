@@ -19,6 +19,8 @@
 Tests For Scheduler
 """
 
+import mock
+
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -53,92 +55,72 @@ class SchedulerManagerTestCase(test.TestCase):
         manager = self.manager
         self.assertIsInstance(manager.driver, self.driver_cls)
 
-    def test_update_service_capabilities(self):
-        service_name = 'fake_service'
+    @mock.patch('cinder.scheduler.driver.Scheduler.'
+                'update_service_capabilities')
+    def test_update_service_capabilities_empty_dict(self, _mock_update_cap):
+        # Test no capabilities passes empty dictionary
+        service = 'fake_service'
         host = 'fake_host'
 
-        self.mox.StubOutWithMock(self.manager.driver,
-                                 'update_service_capabilities')
+        self.manager.update_service_capabilities(self.context,
+                                                 service_name=service,
+                                                 host=host)
+        _mock_update_cap.assert_called_once_with(service, host, {})
 
-        # Test no capabilities passes empty dictionary
-        self.manager.driver.update_service_capabilities(service_name,
-                                                        host, {})
-        self.mox.ReplayAll()
-        result = self.manager.update_service_capabilities(
-            self.context,
-            service_name=service_name,
-            host=host)
-        self.mox.VerifyAll()
-
-        self.mox.ResetAll()
+    @mock.patch('cinder.scheduler.driver.Scheduler.'
+                'update_service_capabilities')
+    def test_update_service_capabilities_correct(self, _mock_update_cap):
         # Test capabilities passes correctly
+        service = 'fake_service'
+        host = 'fake_host'
         capabilities = {'fake_capability': 'fake_value'}
-        self.manager.driver.update_service_capabilities(service_name,
-                                                        host,
-                                                        capabilities)
-        self.mox.ReplayAll()
-        result = self.manager.update_service_capabilities(
-            self.context,
-            service_name=service_name, host=host,
-            capabilities=capabilities)
 
-    def test_create_volume_exception_puts_volume_in_error_state(self):
-        """Test NoValidHost exception behavior for create_volume.
+        self.manager.update_service_capabilities(self.context,
+                                                 service_name=service,
+                                                 host=host,
+                                                 capabilities=capabilities)
+        _mock_update_cap.assert_called_once_with(service, host, capabilities)
 
-        Puts the volume in 'error' state and eats the exception.
-        """
+    @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
+    @mock.patch('cinder.db.volume_update')
+    def test_create_volume_exception_puts_volume_in_error_state(
+            self, _mock_volume_update, _mock_sched_create):
+        # Test NoValidHost exception behavior for create_volume.
+        # Puts the volume in 'error' state and eats the exception.
+        _mock_sched_create.side_effect = exception.NoValidHost(reason="")
         fake_volume_id = 1
-        self._mox_schedule_method_helper('schedule_create_volume')
-        self.mox.StubOutWithMock(db, 'volume_update')
-
         topic = 'fake_topic'
-        volume_id = fake_volume_id
         request_spec = {'volume_id': fake_volume_id}
 
-        self.manager.driver.schedule_create_volume(
-            self.context,
-            request_spec, {}).AndRaise(exception.NoValidHost(reason=""))
-        db.volume_update(self.context, fake_volume_id, {'status': 'error'})
-
-        self.mox.ReplayAll()
-        self.manager.create_volume(self.context, topic, volume_id,
+        self.manager.create_volume(self.context, topic, fake_volume_id,
                                    request_spec=request_spec,
                                    filter_properties={})
+        _mock_volume_update.assert_called_once_with(self.context,
+                                                    fake_volume_id,
+                                                    {'status': 'error'})
+        _mock_sched_create.assert_called_once_with(self.context, request_spec,
+                                                   {})
 
-    def test_migrate_volume_exception_returns_volume_state(self):
-        """Test NoValidHost exception behavior for migrate_volume_to_host.
-
-        Puts the volume in 'error_migrating' state and eats the exception.
-        """
+    @mock.patch('cinder.scheduler.driver.Scheduler.host_passes_filters')
+    @mock.patch('cinder.db.volume_update')
+    def test_migrate_volume_exception_returns_volume_state(
+            self, _mock_volume_update, _mock_host_passes):
+        # Test NoValidHost exception behavior for migrate_volume_to_host.
+        # Puts the volume in 'error_migrating' state and eats the exception.
+        _mock_host_passes.side_effect = exception.NoValidHost(reason="")
         fake_volume_id = 1
-        self._mox_schedule_method_helper('host_passes_filters')
-        self.mox.StubOutWithMock(db, 'volume_update')
-
         topic = 'fake_topic'
-        volume_id = fake_volume_id
         request_spec = {'volume_id': fake_volume_id}
 
-        self.manager.driver.host_passes_filters(
-            self.context, 'host',
-            request_spec, {}).AndRaise(exception.NoValidHost(reason=""))
-        db.volume_update(self.context, fake_volume_id,
-                         {'migration_status': None})
-
-        self.mox.ReplayAll()
-        self.manager.migrate_volume_to_host(self.context, topic, volume_id,
-                                            'host', True,
+        self.manager.migrate_volume_to_host(self.context, topic,
+                                            fake_volume_id, 'host', True,
                                             request_spec=request_spec,
                                             filter_properties={})
-
-    def _mox_schedule_method_helper(self, method_name):
-        # Make sure the method exists that we're going to test call
-        def stub_method(*args, **kwargs):
-            pass
-
-        setattr(self.manager.driver, method_name, stub_method)
-
-        self.mox.StubOutWithMock(self.manager.driver,
-                                 method_name)
+        _mock_volume_update.assert_called_once_with(self.context,
+                                                    fake_volume_id,
+                                                    {'migration_status': None})
+        _mock_host_passes.assert_called_once_with(self.context, 'host',
+                                                  request_spec, {})
 
 
 class SchedulerTestCase(test.TestCase):
@@ -153,38 +135,33 @@ class SchedulerTestCase(test.TestCase):
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.topic = 'fake_topic'
 
-    def test_update_service_capabilities(self):
+    @mock.patch('cinder.scheduler.driver.Scheduler.'
+                'update_service_capabilities')
+    def test_update_service_capabilities(self, _mock_update_cap):
         service_name = 'fake_service'
         host = 'fake_host'
-
-        self.mox.StubOutWithMock(self.driver.host_manager,
-                                 'update_service_capabilities')
-
         capabilities = {'fake_capability': 'fake_value'}
-        self.driver.host_manager.update_service_capabilities(service_name,
-                                                             host,
-                                                             capabilities)
-        self.mox.ReplayAll()
-        result = self.driver.update_service_capabilities(service_name,
-                                                         host,
-                                                         capabilities)
+        self.driver.update_service_capabilities(service_name, host,
+                                                capabilities)
+        _mock_update_cap.assert_called_once_with(service_name, host,
+                                                 capabilities)
 
-    def test_hosts_up(self):
-        service1 = {'host': 'host1'}
-        service2 = {'host': 'host2'}
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.utils.service_is_up')
+    def test_hosts_up(self, _mock_serv_is_up, _mock_serv_get_all_by_topic):
+        service1 = {'host': 'host1', 'disabled': False}
+        service2 = {'host': 'host2', 'disabled': False}
         services = [service1, service2]
 
-        self.mox.StubOutWithMock(db, 'service_get_all_by_topic')
-        self.mox.StubOutWithMock(utils, 'service_is_up')
+        def fake_serv_is_up(service):
+            return service['host'] is 'host2'
 
-        db.service_get_all_by_topic(self.context,
-                                    self.topic).AndReturn(services)
-        utils.service_is_up(service1).AndReturn(False)
-        utils.service_is_up(service2).AndReturn(True)
-
-        self.mox.ReplayAll()
+        _mock_serv_get_all_by_topic.return_value = services
+        _mock_serv_is_up.side_effect = fake_serv_is_up
         result = self.driver.hosts_up(self.context, self.topic)
         self.assertEqual(result, ['host2'])
+        _mock_serv_get_all_by_topic.assert_called_once_with(self.context,
+                                                            self.topic)
 
 
 class SchedulerDriverBaseTestCase(SchedulerTestCase):
@@ -208,14 +185,11 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         super(SchedulerDriverModuleTestCase, self).setUp()
         self.context = context.RequestContext('fake_user', 'fake_project')
 
-    def test_volume_host_update_db(self):
-        self.mox.StubOutWithMock(timeutils, 'utcnow')
-        self.mox.StubOutWithMock(db, 'volume_update')
-
-        timeutils.utcnow().AndReturn('fake-now')
-        db.volume_update(self.context, 31337,
-                         {'host': 'fake_host',
-                          'scheduled_at': 'fake-now'})
-
-        self.mox.ReplayAll()
+    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.openstack.common.timeutils.utcnow')
+    def test_volume_host_update_db(self, _mock_utcnow, _mock_vol_update):
+        _mock_utcnow.return_value = 'fake-now'
         driver.volume_update_db(self.context, 31337, 'fake_host')
+        _mock_vol_update.assert_called_once_with(self.context, 31337,
+                                                 {'host': 'fake_host',
+                                                  'scheduled_at': 'fake-now'})

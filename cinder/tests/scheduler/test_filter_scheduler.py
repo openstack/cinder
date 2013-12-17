@@ -16,18 +16,14 @@
 Tests For Filter Scheduler.
 """
 
-import testtools
+import mock
 
 from cinder import context
 from cinder import exception
-from cinder import test
-
-from cinder.openstack.common.scheduler import weights
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
 from cinder.tests.scheduler import fakes
 from cinder.tests.scheduler import test_scheduler
-from cinder.tests import utils as test_utils
 
 
 class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
@@ -36,10 +32,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
     driver_cls = filter_scheduler.FilterScheduler
 
     def test_create_volume_no_hosts(self):
-        """Ensure empty hosts/child_zones result in NoValidHosts exception."""
-        def _fake_empty_call_zone_method(*args, **kwargs):
-            return []
-
+        # Ensure empty hosts/child_zones result in NoValidHosts exception.
         sched = fakes.FakeFilterScheduler()
 
         fake_context = context.RequestContext('user', 'project')
@@ -50,20 +43,21 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, {})
 
-    def test_create_volume_non_admin(self):
-        """Test creating an instance locally using run_instance, passing
-        a non-admin context.  DB actions should work.
-        """
+    @mock.patch('cinder.scheduler.host_manager.HostManager.'
+                'get_all_host_states')
+    def test_create_volume_non_admin(self, _mock_get_all_host_states):
+        # Test creating a volume locally using create_volume, passing
+        # a non-admin context.  DB actions should work.
         self.was_admin = False
 
-        def fake_get(context, *args, **kwargs):
-            # make sure this is called with admin context, even though
-            # we're using user context below
-            self.was_admin = context.is_admin
+        def fake_get(ctxt):
+            # Make sure this is called with admin context, even though
+            # we're using user context below.
+            self.was_admin = ctxt.is_admin
             return {}
 
         sched = fakes.FakeFilterScheduler()
-        self.stubs.Set(sched.host_manager, 'get_all_host_states', fake_get)
+        _mock_get_all_host_states.side_effect = fake_get
 
         fake_context = context.RequestContext('user', 'project')
 
@@ -75,24 +69,23 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, request_spec, {})
         self.assertTrue(self.was_admin)
 
-    def test_schedule_happy_day(self):
-        """Make sure there's nothing glaringly wrong with _schedule()
-        by doing a happy day pass through.
-        """
-
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_schedule_happy_day(self, _mock_service_get_all_by_topic):
+        # Make sure there's nothing glaringly wrong with _schedule()
+        # by doing a happy day pass through.
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        fakes.mox_host_manager_db_calls(self.mox, fake_context)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
 
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
-        self.mox.ReplayAll()
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
 
     def test_max_attempts(self):
         self.flags(scheduler_max_attempts=4)
@@ -119,7 +112,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         sched._schedule(self.context, request_spec,
                         filter_properties=filter_properties)
 
-        # should not have retry info in the populated filter properties:
+        # Should not have retry info in the populated filter properties.
         self.assertNotIn("retry", filter_properties)
 
     def test_retry_attempt_one(self):
@@ -199,30 +192,34 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
         self.assertEqual(1024, host_state.total_capacity_gb)
 
-    def _host_passes_filters_setup(self):
+    def _host_passes_filters_setup(self, mock_obj):
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        fakes.mox_host_manager_db_calls(self.mox, fake_context)
+        fakes.mock_host_manager_db_calls(mock_obj)
 
-        self.mox.ReplayAll()
         return (sched, fake_context)
 
-    def test_host_passes_filters_happy_day(self):
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_host_passes_filters_happy_day(self, _mock_service_get_topic):
         """Do a successful pass through of with host_passes_filters()."""
-        sched, ctx = self._host_passes_filters_setup()
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
         request_spec = {'volume_id': 1,
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
         ret_host = sched.host_passes_filters(ctx, 'host1', request_spec, {})
         self.assertEqual(ret_host.host, 'host1')
+        self.assertTrue(_mock_service_get_topic.called)
 
-    def test_host_passes_filters_no_capacity(self):
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_host_passes_filters_no_capacity(self, _mock_service_get_topic):
         """Fail the host due to insufficient capacity."""
-        sched, ctx = self._host_passes_filters_setup()
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
         request_spec = {'volume_id': 1,
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
@@ -230,3 +227,4 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost,
                           sched.host_passes_filters,
                           ctx, 'host1', request_spec, {})
+        self.assertTrue(_mock_service_get_topic.called)
