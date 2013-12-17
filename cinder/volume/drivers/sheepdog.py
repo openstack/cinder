@@ -112,7 +112,7 @@ class SheepdogDriver(driver.VolumeDriver):
             # see volume/drivers/manager.py:_create_volume
             self._delete(volume)
             # convert and store into sheepdog
-            image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
+            image_utils.convert_image(tmp.name, 'sheepdog:%s' % volume['name'],
                                       'raw')
             self._resize(volume)
 
