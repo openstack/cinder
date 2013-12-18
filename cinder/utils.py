@@ -669,7 +669,7 @@ def make_dev_path(dev, partition=None, base='/dev'):
 
 
 def total_seconds(td):
-    """Local total_seconds implementation for compatibility with python 2.6"""
+    """Local total_seconds implementation for compatibility with python 2.6."""
     if hasattr(td, 'total_seconds'):
         return td.total_seconds()
     else:
@@ -767,7 +767,7 @@ def tempdir(**kwargs):
 
 
 def walk_class_hierarchy(clazz, encountered=None):
-    """Walk class hierarchy, yielding most derived classes first"""
+    """Walk class hierarchy, yielding most derived classes first."""
     if not encountered:
         encountered = []
     for subclass in clazz.__subclasses__():

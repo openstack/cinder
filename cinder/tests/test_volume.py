@@ -1299,7 +1299,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, volume['id'])
 
     def test_cannot_force_delete_attached_volume(self):
-        """Test volume can't be force delete in attached state"""
+        """Test volume can't be force delete in attached state."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.volume.create_volume(self.context, volume['id'])
         volume['status'] = 'in-use'

@@ -55,7 +55,7 @@ class Controller(wsgi.Controller):
 
 
 class Availability_zones(extensions.ExtensionDescriptor):
-    """Describe Availability Zones"""
+    """Describe Availability Zones."""
 
     name = 'AvailabilityZones'
     alias = 'os-availability-zone'

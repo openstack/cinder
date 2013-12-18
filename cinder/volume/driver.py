@@ -258,11 +258,11 @@ class VolumeDriver(object):
         return None
 
     def do_setup(self, context):
-        """Any initialization the volume driver does while starting"""
+        """Any initialization the volume driver does while starting."""
         pass
 
     def validate_connector(self, connector):
-        """Fail if connector doesn't contain all the data needed by driver"""
+        """Fail if connector doesn't contain all the data needed by driver."""
         pass
 
     def _copy_volume_data_cleanup(self, context, volume, properties,
@@ -667,7 +667,7 @@ class ISCSIDriver(VolumeDriver):
         pass
 
     def _get_iscsi_initiator(self):
-        """Get iscsi initiator name for this machine"""
+        """Get iscsi initiator name for this machine."""
         # NOTE openiscsi stores initiator name in a file that
         #      needs root permission to read.
         contents = utils.read_file_as_root('/etc/iscsi/initiatorname.iscsi')

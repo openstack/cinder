@@ -151,7 +151,7 @@ class BackupTestCase(test.TestCase):
                           backup_id)
 
     def test_create_backup_with_error(self):
-        """Test error handling when an error occurs during backup creation"""
+        """Test error handling when error occurs during backup creation."""
         vol_id = self._create_volume_db_entry(size=1)
         backup_id = self._create_backup_db_entry(volume_id=vol_id)
 
@@ -171,7 +171,7 @@ class BackupTestCase(test.TestCase):
         self.assertEqual(backup['status'], 'error')
 
     def test_create_backup(self):
-        """Test normal backup creation"""
+        """Test normal backup creation."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(size=vol_size)
         backup_id = self._create_backup_db_entry(volume_id=vol_id)
@@ -191,7 +191,7 @@ class BackupTestCase(test.TestCase):
 
     def test_restore_backup_with_bad_volume_status(self):
         """Test error handling when restoring a backup to a volume
-        with a bad status
+        with a bad status.
         """
         vol_id = self._create_volume_db_entry(status='available', size=1)
         backup_id = self._create_backup_db_entry(volume_id=vol_id)
@@ -205,7 +205,7 @@ class BackupTestCase(test.TestCase):
 
     def test_restore_backup_with_bad_backup_status(self):
         """Test error handling when restoring a backup with a backup
-        with a bad status
+        with a bad status.
         """
         vol_id = self._create_volume_db_entry(status='restoring-backup',
                                               size=1)
@@ -222,7 +222,7 @@ class BackupTestCase(test.TestCase):
         self.assertEqual(backup['status'], 'error')
 
     def test_restore_backup_with_driver_error(self):
-        """Test error handling when an error occurs during backup restore"""
+        """Test error handling when an error occurs during backup restore."""
         vol_id = self._create_volume_db_entry(status='restoring-backup',
                                               size=1)
         backup_id = self._create_backup_db_entry(status='restoring',
@@ -246,7 +246,7 @@ class BackupTestCase(test.TestCase):
 
     def test_restore_backup_with_bad_service(self):
         """Test error handling when attempting a restore of a backup
-        with a different service to that used to create the backup
+        with a different service to that used to create the backup.
         """
         vol_id = self._create_volume_db_entry(status='restoring-backup',
                                               size=1)
@@ -272,7 +272,7 @@ class BackupTestCase(test.TestCase):
         self.assertEqual(backup['status'], 'available')
 
     def test_restore_backup(self):
-        """Test normal backup restoration"""
+        """Test normal backup restoration."""
         vol_size = 1
         vol_id = self._create_volume_db_entry(status='restoring-backup',
                                               size=vol_size)
@@ -293,7 +293,7 @@ class BackupTestCase(test.TestCase):
 
     def test_delete_backup_with_bad_backup_status(self):
         """Test error handling when deleting a backup with a backup
-        with a bad status
+        with a bad status.
         """
         vol_id = self._create_volume_db_entry(size=1)
         backup_id = self._create_backup_db_entry(status='available',
@@ -320,7 +320,7 @@ class BackupTestCase(test.TestCase):
 
     def test_delete_backup_with_bad_service(self):
         """Test error handling when attempting a delete of a backup
-        with a different service to that used to create the backup
+        with a different service to that used to create the backup.
         """
         vol_id = self._create_volume_db_entry(size=1)
         backup_id = self._create_backup_db_entry(status='deleting',
@@ -345,7 +345,7 @@ class BackupTestCase(test.TestCase):
         self.backup_mgr.delete_backup(self.ctxt, backup_id)
 
     def test_delete_backup(self):
-        """Test normal backup deletion"""
+        """Test normal backup deletion."""
         vol_id = self._create_volume_db_entry(size=1)
         backup_id = self._create_backup_db_entry(status='deleting',
                                                  volume_id=vol_id)
@@ -373,7 +373,7 @@ class BackupTestCase(test.TestCase):
 
     def test_backup_get_all_by_project_with_deleted(self):
         """Test deleted backups don't show up in backup_get_all_by_project.
-           Unless context.read_deleted is 'yes'
+           Unless context.read_deleted is 'yes'.
         """
         backups = db.backup_get_all_by_project(self.ctxt, 'fake')
         self.assertEqual(len(backups), 0)

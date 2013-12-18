@@ -78,7 +78,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         self.cluster_vip = None
 
     def _cliq_run(self, verb, cliq_args, check_exit_code=True):
-        """Runs a CLIQ command over SSH, without doing any result parsing"""
+        """Runs a CLIQ command over SSH, without doing any result parsing."""
         cmd_list = [verb]
         for k, v in cliq_args.items():
             cmd_list.append("%s=%s" % (k, v))
@@ -86,7 +86,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         return self._run_ssh(cmd_list, check_exit_code)
 
     def _cliq_run_xml(self, verb, cliq_args, check_cliq_result=True):
-        """Runs a CLIQ command over SSH, parsing and checking the output"""
+        """Runs a CLIQ command over SSH, parsing and checking the output."""
         cliq_args['output'] = 'XML'
         (out, _err) = self._cliq_run(verb, cliq_args, check_cliq_result)
 
@@ -112,7 +112,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         return result_xml
 
     def _cliq_get_cluster_info(self, cluster_name):
-        """Queries for info about the cluster (including IP)"""
+        """Queries for info about the cluster (including IP)."""
         cliq_args = {}
         cliq_args['clusterName'] = cluster_name
         cliq_args['searchDepth'] = '1'
@@ -123,7 +123,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         return result_xml
 
     def _cliq_get_cluster_vip(self, cluster_name):
-        """Gets the IP on which a cluster shares iSCSI volumes"""
+        """Gets the IP on which a cluster shares iSCSI volumes."""
         cluster_xml = self._cliq_get_cluster_info(cluster_name)
 
         vips = []
@@ -140,7 +140,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         raise exception.VolumeBackendAPIException(data=msg)
 
     def _cliq_get_volume_info(self, volume_name):
-        """Gets the volume info, including IQN"""
+        """Gets the volume info, including IQN."""
         cliq_args = {}
         cliq_args['volumeName'] = volume_name
         result_xml = self._cliq_run_xml("getVolumeInfo", cliq_args)
@@ -193,7 +193,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         return volume_attributes
 
     def _cliq_get_snapshot_info(self, snapshot_name):
-        """Gets the snapshot info, including IQN"""
+        """Gets the snapshot info, including IQN."""
         cliq_args = {}
         cliq_args['snapshotName'] = snapshot_name
         result_xml = self._cliq_run_xml("getSnapshotInfo", cliq_args)

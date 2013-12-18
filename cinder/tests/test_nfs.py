@@ -606,7 +606,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.VerifyAll()
 
     def test_get_volume_stats(self):
-        """get_volume_stats must fill the correct values"""
+        """get_volume_stats must fill the correct values."""
         mox = self._mox
         drv = self._driver
 

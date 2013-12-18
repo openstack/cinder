@@ -125,7 +125,7 @@ class XenAPINFSDriver(driver.VolumeDriver):
         pass
 
     def check_for_setup_error(self):
-        """To override superclass' method"""
+        """To override superclass' method."""
 
     def create_volume_from_snapshot(self, volume, snapshot):
         return self._copy_volume(

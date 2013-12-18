@@ -62,7 +62,7 @@ def qemu_img_info(path):
 
 
 def convert_image(source, dest, out_format):
-    """Convert image to other format"""
+    """Convert image to other format."""
     cmd = ('qemu-img', 'convert', '-O', out_format, source, dest)
     utils.execute(*cmd, run_as_root=True)
 

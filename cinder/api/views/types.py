@@ -28,7 +28,7 @@ class ViewBuilder(common.ViewBuilder):
         return trimmed if brief else dict(volume_type=trimmed)
 
     def index(self, request, volume_types):
-        """Index over trimmed volume types"""
+        """Index over trimmed volume types."""
         volume_types_list = [self.show(request, volume_type, True)
                              for volume_type in volume_types]
         return dict(volume_types=volume_types_list)

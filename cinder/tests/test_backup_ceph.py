@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-""" Tests for Ceph backup service """
+""" Tests for Ceph backup service."""
 
 import fcntl
 import hashlib
@@ -40,7 +40,7 @@ LOG = logging.getLogger(__name__)
 
 
 class BackupCephTestCase(test.TestCase):
-    """Test Case for backup to Ceph object store"""
+    """Test Case for backup to Ceph object store."""
 
     def _create_volume_db_entry(self, id, size):
         vol = {'id': id, 'size': size, 'status': 'available'}

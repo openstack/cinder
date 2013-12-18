@@ -267,7 +267,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
             self._execute('/usr/sbin/sbdadm', 'delete-lu', luid)
 
     def _collect_lines(self, data):
-        """Split lines from data into an array, trimming them """
+        """Split lines from data into an array, trimming them."""
         matches = []
         for line in data.splitlines():
             match = line.strip()
@@ -275,7 +275,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
         return matches
 
     def _get_prefixed_values(self, data, prefix):
-        """Collect lines which start with prefix; with trimming"""
+        """Collect lines which start with prefix; with trimming."""
         matches = []
         for line in data.splitlines():
             line = line.strip()

@@ -23,7 +23,7 @@ from cinder.api import extensions
 
 
 class Image_create(extensions.ExtensionDescriptor):
-    """Allow creating a volume from an image in the Create Volume v1 API"""
+    """Allow creating a volume from an image in the Create Volume v1 API."""
 
     name = "CreateVolumeExtension"
     alias = "os-image-create"

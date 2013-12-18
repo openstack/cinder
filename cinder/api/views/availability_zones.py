@@ -17,7 +17,7 @@ import cinder.api.common
 
 
 class ViewBuilder(cinder.api.common.ViewBuilder):
-    """Map cinder.volumes.api list_availability_zones response into dicts"""
+    """Map cinder.volumes.api list_availability_zones response into dicts."""
 
     def list(self, request, availability_zones):
         def fmt(az):

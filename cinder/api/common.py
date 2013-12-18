@@ -71,7 +71,7 @@ def get_pagination_params(request):
 
 
 def _get_limit_param(request):
-    """Extract integer limit from request or fail"""
+    """Extract integer limit from request or fail."""
     try:
         limit = int(request.GET['limit'])
     except ValueError:
@@ -84,7 +84,7 @@ def _get_limit_param(request):
 
 
 def _get_marker_param(request):
-    """Extract marker id from request or fail"""
+    """Extract marker id from request or fail."""
     return request.GET['marker']
 
 
@@ -275,7 +275,7 @@ class MetaItemDeserializer(wsgi.MetadataXMLDeserializer):
 class MetadataXMLDeserializer(wsgi.XMLDeserializer):
 
     def extract_metadata(self, metadata_node):
-        """Marshal the metadata attribute of a parsed request"""
+        """Marshal the metadata attribute of a parsed request."""
         if metadata_node is None:
             return {}
         metadata = {}

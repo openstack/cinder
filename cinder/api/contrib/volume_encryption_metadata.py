@@ -38,7 +38,7 @@ class VolumeEncryptionMetadataTemplate(xmlutil.TemplateBuilder):
 
 
 class VolumeEncryptionMetadataController(wsgi.Controller):
-    """The volume encryption metadata API extension"""
+    """The volume encryption metadata API extension."""
 
     def _get_volume_encryption_metadata(self, context, volume_id):
         return db.volume_encryption_metadata_get(context, volume_id)

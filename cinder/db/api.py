@@ -80,7 +80,7 @@ IMPL = db_api.DBAPI(backend_mapping=_BACKEND_MAPPING)
 
 
 class NoMoreTargets(exception.CinderException):
-    """No more available targets"""
+    """No more available targets."""
     pass
 
 

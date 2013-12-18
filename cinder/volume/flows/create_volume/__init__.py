@@ -997,7 +997,7 @@ class ExtractSchedulerSpecTask(base.CinderTask):
 
 
 class ExtractVolumeRefTask(base.CinderTask):
-    """Extracts volume reference for given volume id. """
+    """Extracts volume reference for given volume id."""
 
     default_provides = 'volume_ref'
 
@@ -1273,7 +1273,7 @@ class CreateVolumeFromSpecTask(base.CinderTask):
 
     def _copy_image_to_volume(self, context, volume_ref,
                               image_id, image_location, image_service):
-        """Downloads Glance image to the specified volume. """
+        """Downloads Glance image to the specified volume."""
         copy_image_to_volume = self.driver.copy_image_to_volume
         volume_id = volume_ref['id']
         LOG.debug(_("Attempting download of %(image_id)s (%(image_location)s)"

@@ -82,7 +82,7 @@ class VolumeImageMetadataController(wsgi.Controller):
 
 
 class Volume_image_metadata(extensions.ExtensionDescriptor):
-    """Show image metadata associated with the volume"""
+    """Show image metadata associated with the volume."""
 
     name = "VolumeImageMetadata"
     alias = "os-vol-image-meta"

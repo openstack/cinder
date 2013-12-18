@@ -536,7 +536,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     @utils.require_driver_initialized
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
                       mountpoint, mode):
-        """Updates db to show volume is attached"""
+        """Updates db to show volume is attached."""
         @utils.synchronized(volume_id, external=True)
         def do_attach():
             # check the volume status before attaching
@@ -611,7 +611,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     @utils.require_driver_initialized
     def detach_volume(self, context, volume_id):
-        """Updates db to show volume is detached"""
+        """Updates db to show volume is detached."""
         # TODO(vish): refactor this into a more general "unreserve"
         # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
 

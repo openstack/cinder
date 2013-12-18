@@ -37,7 +37,7 @@ class FakeSwiftClient(object):
 
 
 class FakeSwiftConnection(object):
-    """Logging calls instead of executing"""
+    """Logging calls instead of executing."""
     def __init__(self, *args, **kwargs):
         pass
 

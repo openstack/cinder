@@ -225,7 +225,7 @@ class SwiftBackupDriver(BackupDriver):
         return metadata
 
     def _prepare_backup(self, backup):
-        """Prepare the backup process and return the backup metadata"""
+        """Prepare the backup process and return the backup metadata."""
         backup_id = backup['id']
         volume_id = backup['volume_id']
         volume = self.db.volume_get(self.context, volume_id)
@@ -259,7 +259,7 @@ class SwiftBackupDriver(BackupDriver):
         return object_meta, container
 
     def _backup_chunk(self, backup, container, data, data_offset, object_meta):
-        """Backup data chunk based on the object metadata and offset"""
+        """Backup data chunk based on the object metadata and offset."""
         object_prefix = object_meta['prefix']
         object_list = object_meta['list']
         object_id = object_meta['id']
@@ -313,7 +313,7 @@ class SwiftBackupDriver(BackupDriver):
         eventlet.sleep(0)
 
     def _finalize_backup(self, backup, container, object_meta):
-        """Finalize the backup by updating its metadata on Swift"""
+        """Finalize the backup by updating its metadata on Swift."""
         object_list = object_meta['list']
         object_id = object_meta['id']
         try:
