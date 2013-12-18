@@ -167,6 +167,7 @@ class API(base.Base):
                                                      check_volume_az_zone,
                                                      create_what)
         except Exception:
+            LOG.exception(_("Failed to create api volume flow"))
             raise exception.CinderException(
                 _("Failed to create api volume flow"))
 

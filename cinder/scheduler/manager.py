@@ -84,6 +84,7 @@ class SchedulerManager(manager.Manager):
                                                            snapshot_id,
                                                            image_id)
         except Exception:
+            LOG.exception(_("Failed to create scheduler manager volume flow"))
             raise exception.CinderException(
                 _("Failed to create scheduler manager volume flow"))
         flow_engine.run()
