@@ -717,7 +717,7 @@ class RBDDriver(driver.VolumeDriver):
         with RADOSClient(self) as client:
             return client.cluster.get_fsid()
 
-    def _is_cloneable(self, image_location):
+    def _is_cloneable(self, image_location, image_meta):
         try:
             fsid, pool, image, snapshot = self._parse_location(image_location)
         except exception.ImageUnacceptable as e:
@@ -726,6 +726,13 @@ class RBDDriver(driver.VolumeDriver):
 
         if self._get_fsid() != fsid:
             reason = _('%s is in a different ceph cluster') % image_location
+            LOG.debug(reason)
+            return False
+
+        if image_meta['disk_format'] != 'raw':
+            reason = _("rbd image clone requires image format to be "
+                       "'raw' but image {0} is '{1}'").format(
+                           image_location, image_meta['disk_format'])
             LOG.debug(reason)
             return False
 
@@ -741,9 +748,10 @@ class RBDDriver(driver.VolumeDriver):
                       dict(loc=image_location, err=e))
             return False
 
-    def clone_image(self, volume, image_location, image_id):
+    def clone_image(self, volume, image_location, image_id, image_meta):
         image_location = image_location[0] if image_location else None
-        if image_location is None or not self._is_cloneable(image_location):
+        if image_location is None or not self._is_cloneable(
+                image_location, image_meta):
             return ({}, False)
         prefix, pool, image, snapshot = self._parse_location(image_location)
         self._clone(volume, pool, image, snapshot)

@@ -400,7 +400,7 @@ class VolumeDriver(object):
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
 
-    def clone_image(self, volume, image_location, image_id):
+    def clone_image(self, volume, image_location, image_id, image_meta):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
@@ -410,6 +410,11 @@ class VolumeDriver(object):
         image_id is a string which represents id of the image.
         It can be used by the driver to introspect internal
         stores or registry to do an efficient image clone.
+
+        image_meta is a dictionary that includes 'disk_format' (e.g.
+        raw, qcow2) and other image attributes that allow drivers to
+        decide whether they can clone the image without first requiring
+        conversion.
 
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred

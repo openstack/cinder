@@ -463,7 +463,7 @@ class GPFSDriver(driver.VolumeDriver):
             return '100M'
         return '%sG' % size_in_g
 
-    def clone_image(self, volume, image_location, image_id):
+    def clone_image(self, volume, image_location, image_id, image_meta):
         return self._clone_image(volume, image_location, image_id)
 
     def _is_cloneable(self, image_id):
