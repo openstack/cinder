@@ -34,7 +34,7 @@ from cinder.tests.test_volume import DriverTestCase
 from cinder import units
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
-from cinder.volume.flows.api import create_volume
+from cinder.volume.flows.manager import create_volume
 
 
 LOG = logging.getLogger(__name__)

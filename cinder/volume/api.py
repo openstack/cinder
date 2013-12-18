@@ -161,12 +161,12 @@ class API(base.Base):
         }
 
         try:
-            flow_engine = create_volume.get_api_flow(self.scheduler_rpcapi,
-                                                     self.volume_rpcapi,
-                                                     self.db,
-                                                     self.image_service,
-                                                     check_volume_az_zone,
-                                                     create_what)
+            flow_engine = create_volume.get_flow(self.scheduler_rpcapi,
+                                                 self.volume_rpcapi,
+                                                 self.db,
+                                                 self.image_service,
+                                                 check_volume_az_zone,
+                                                 create_what)
         except Exception:
             LOG.exception(_("Failed to create api volume flow"))
             raise exception.CinderException(

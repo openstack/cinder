@@ -30,7 +30,7 @@ from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
 from cinder import quota
-from cinder.volume.flows.api import create_volume
+from cinder.scheduler.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -87,13 +87,13 @@ class SchedulerManager(manager.Manager):
                       filter_properties=None):
 
         try:
-            flow_engine = create_volume.get_scheduler_flow(context,
-                                                           db, self.driver,
-                                                           request_spec,
-                                                           filter_properties,
-                                                           volume_id,
-                                                           snapshot_id,
-                                                           image_id)
+            flow_engine = create_volume.get_flow(context,
+                                                 db, self.driver,
+                                                 request_spec,
+                                                 filter_properties,
+                                                 volume_id,
+                                                 snapshot_id,
+                                                 image_id)
         except Exception:
             LOG.exception(_("Failed to create scheduler manager volume flow"))
             raise exception.CinderException(
