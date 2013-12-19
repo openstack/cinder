@@ -110,6 +110,7 @@ class VolumeTransferTestCase(test.TestCase):
 
         nctxt = context.RequestContext(user_id='new_user_id',
                                        project_id='new_project_id')
+        utils.create_volume(nctxt, id='2', updated_at=self.updated_at)
         self.assertRaises(exception.TransferNotFound,
                           tx_api.get,
                           nctxt,
