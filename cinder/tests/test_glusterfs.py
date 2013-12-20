@@ -1,4 +1,3 @@
-
 # Copyright (c) 2013 Red Hat, Inc.
 # All Rights Reserved.
 #
@@ -24,6 +23,7 @@ from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
 
+from cinder import brick
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -90,6 +90,23 @@ class GlusterFsDriverTestCase(test.TestCase):
         attr_to_replace = getattr(obj, attr_name)
         stub = mox_lib.MockObject(attr_to_replace)
         self.stubs.Set(obj, attr_name, stub)
+
+    def test_set_execute(self):
+        mox = self._mox
+        drv = self._driver
+
+        rfsclient = brick.remotefs.remotefs.RemoteFsClient
+
+        mox.StubOutWithMock(rfsclient, 'set_execute')
+
+        def my_execute(*a, **k):
+            pass
+
+        rfsclient.set_execute(my_execute)
+
+        mox.ReplayAll()
+
+        drv.set_execute(my_execute)
 
     def test_local_path(self):
         """local_path common use case."""
@@ -191,14 +208,22 @@ class GlusterFsDriverTestCase(test.TestCase):
                          drv._get_hash_str(self.TEST_EXPORT1))
 
     def test_get_mount_point_for_share(self):
-        """_get_mount_point_for_share should calculate correct value."""
+        """_get_mount_point_for_share should call RemoteFsClient."""
+        mox = self._mox
         drv = self._driver
+        hashed_path = '/mnt/test/abcdefabcdef'
+
+        mox.StubOutWithMock(brick.remotefs.remotefs.RemoteFsClient,
+                            'get_mount_point')
 
         glusterfs.CONF.glusterfs_mount_point_base = self.TEST_MNT_POINT_BASE
 
-        self.assertEqual('/mnt/test/ab03ab34eaca46a5fb81878f7e9b91fc',
-                         drv._get_mount_point_for_share(
-                             self.TEST_EXPORT1))
+        brick.remotefs.remotefs.RemoteFsClient.\
+            get_mount_point(self.TEST_EXPORT1).AndReturn(hashed_path)
+
+        mox.ReplayAll()
+
+        drv._get_mount_point_for_share(self.TEST_EXPORT1)
 
     def test_get_available_capacity_with_df(self):
         """_get_available_capacity should calculate correct value."""
@@ -1646,3 +1671,11 @@ class GlusterFsDriverTestCase(test.TestCase):
         self.assertEqual(conn_info['data']['format'], 'raw')
         self.assertEqual(conn_info['driver_volume_type'], 'glusterfs')
         self.assertEqual(conn_info['data']['name'], volume['name'])
+        self.assertEqual(conn_info['mount_point_base'],
+                         self.TEST_MNT_POINT_BASE)
+
+    def test_get_mount_point_base(self):
+        (mox, drv) = self._mox, self._driver
+
+        self.assertEqual(drv._get_mount_point_base(),
+                         self.TEST_MNT_POINT_BASE)
