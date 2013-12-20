@@ -2141,8 +2141,9 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
             pass
 
         def get_all_volume_groups():
-            return [{'name': 'cinder-volumes-2'},
-                    {'name': 'cinder-volumes'}]
+            # NOTE(flaper87) Return just the destination
+            # host to test the check of dest VG existence.
+            return [{'name': 'cinder-volumes-2'}]
 
         self.stubs.Set(self.volume.driver, '_execute', fake_execute)
 
