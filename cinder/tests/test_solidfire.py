@@ -17,6 +17,7 @@
 
 import mox
 
+from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -24,6 +25,8 @@ from cinder import test
 from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.solidfire import SolidFireDriver
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ def create_configuration():
 
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
+        self.ctxt = context.get_admin_context()
         self._mox = mox.Mox()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.sf_allow_tenant_qos = True
@@ -47,6 +51,10 @@ class SolidFireVolumeTestCase(test.TestCase):
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request)
+
+        self.expected_qos_results = {'minIOPS': 1000,
+                                     'maxIOPS': 10000,
+                                     'burstIOPS': 20000}
 
     def fake_issue_api_request(obj, method, params, version='1.0'):
         if method is 'GetClusterCapacity' and version == '1.0':
@@ -429,3 +437,46 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertRaises(exception.SolidFireAccountNotFound,
                           sfv.extend_volume,
                           testvol, 2)
+
+    def test_set_by_qos_spec_with_scoping(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        qos_ref = qos_specs.create(self.ctxt,
+                                   'qos-specs-1', {'qos:minIOPS': '1000',
+                                                   'qos:maxIOPS': '10000',
+                                                   'qos:burstIOPS': '20000'})
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:minIOPS": "100",
+                                                 "qos:burstIOPS": "300",
+                                                 "qos:maxIOPS": "200"})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
+        self.assertEqual(qos, self.expected_qos_results)
+
+    def test_set_by_qos_spec(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        qos_ref = qos_specs.create(self.ctxt,
+                                   'qos-specs-1', {'minIOPS': '1000',
+                                                   'maxIOPS': '10000',
+                                                   'burstIOPS': '20000'})
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:minIOPS": "100",
+                                                 "qos:burstIOPS": "300",
+                                                 "qos:maxIOPS": "200"})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
+        self.assertEqual(qos, self.expected_qos_results)
+
+    def test_set_by_qos_by_type_only(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:minIOPS": "100",
+                                                 "qos:burstIOPS": "300",
+                                                 "qos:maxIOPS": "200"})
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
+        self.assertEqual(qos, {'minIOPS': 100,
+                               'maxIOPS': 200,
+                               'burstIOPS': 300})

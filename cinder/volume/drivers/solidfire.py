@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.volume.drivers.san.san import SanISCSIDriver
+from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -432,8 +433,18 @@ class SolidFireDriver(SanISCSIDriver):
     def _set_qos_by_volume_type(self, ctxt, type_id):
         qos = {}
         volume_type = volume_types.get_volume_type(ctxt, type_id)
+        qos_specs_id = volume_type.get('qos_specs_id')
         specs = volume_type.get('extra_specs')
-        for key, value in specs.iteritems():
+
+        # NOTE(jdg): We prefer the qos_specs association
+        # and over-ride any existing
+        # extra-specs settings if present
+        if qos_specs_id is not None:
+            kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+        else:
+            kvs = specs
+
+        for key, value in kvs.iteritems():
             if ':' in key:
                 fields = key.split(':')
                 key = fields[1]
