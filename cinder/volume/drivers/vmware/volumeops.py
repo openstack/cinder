@@ -257,7 +257,7 @@ class VMwareVolumeOps(object):
                   {'child_folder_name': child_folder_name,
                    'parent_folder': parent_folder})
 
-        # Get list of child entites for the parent folder
+        # Get list of child entities for the parent folder
         prop_val = self._session.invoke_api(vim_util, 'get_object_property',
                                             self._session.vim, parent_folder,
                                             'childEntity')

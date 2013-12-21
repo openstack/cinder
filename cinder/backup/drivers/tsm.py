@@ -182,7 +182,7 @@ class TSMBackupDriver(BackupDriver):
         """Get the real path for the volume block device.
 
         If the volume is not a block device then issue an
-        InvalidBackup exsception.
+        InvalidBackup exception.
 
         :param volume_file: file object representing the volume
         :param volume_id: Volume id for backup or as restore target

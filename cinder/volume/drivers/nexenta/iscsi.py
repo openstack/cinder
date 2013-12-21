@@ -289,7 +289,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def create_snapshot(self, snapshot):
         """Create snapshot of existing zvol on appliance.
 
-        :param snapshot: shapshot reference
+        :param snapshot: snapshot reference
         """
         self.nms.zvol.create_snapshot(
             self._get_zvol_name(snapshot['volume_name']),

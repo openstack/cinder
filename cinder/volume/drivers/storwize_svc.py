@@ -1460,7 +1460,7 @@ class StorwizeSVCDriver(san.SanDriver):
         LOG.debug(_('leave: extend_volume: volume %s') % volume['id'])
 
     def migrate_volume(self, ctxt, volume, host):
-        """Migrate direclty if source and dest are managed by same storage.
+        """Migrate directly if source and dest are managed by same storage.
 
         The method uses the migratevdisk method, which returns almost
         immediately, if the source and target pools have the same extent_size.

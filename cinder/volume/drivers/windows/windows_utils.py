@@ -290,7 +290,7 @@ class WindowsUtils(object):
             wt_disk.Extend(additional_size)
         except wmi.x_wmi as exc:
             err_msg = (_(
-                'extend: error when extending the volumne: %(vol_name)s '
+                'extend: error when extending the volume: %(vol_name)s '
                 '.WMI exception: %(wmi_exc)s') % {'vol_name': vol_name,
                                                   'wmi_exc': exc})
             LOG.error(err_msg)

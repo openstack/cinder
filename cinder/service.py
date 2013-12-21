@@ -185,7 +185,7 @@ class ProcessLauncher(object):
         signal.signal(signal.SIGTERM, _sigterm)
         # Block SIGINT and let the parent send us a SIGTERM
         # signal.signal(signal.SIGINT, signal.SIG_IGN)
-        # This differs from the behavior in nova in that we dont ignore this
+        # This differs from the behavior in nova in that we don't ignore this
         # It allows the non-wsgi services to be terminated properly
         signal.signal(signal.SIGINT, _sigterm)
 

@@ -257,7 +257,7 @@ def _get_token(retrieve_result):
 
 
 def cancel_retrieval(vim, retrieve_result):
-    """Cancels the retrive operation if necessary.
+    """Cancels the retrieve operation if necessary.
 
     :param vim: Vim object
     :param retrieve_result: Result from the RetrievePropertiesEx API
