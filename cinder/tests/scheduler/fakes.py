@@ -16,9 +16,6 @@
 Fakes For Scheduler tests.
 """
 
-import mock
-
-from cinder import db
 from cinder.openstack.common import timeutils
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager

@@ -17,7 +17,6 @@
 
 from cinder import context
 from cinder import db
-from cinder import exception
 from cinder import test
 from cinder.tests import utils as testutils
 

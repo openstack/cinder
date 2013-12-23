@@ -22,7 +22,6 @@ import routes
 
 from cinder.api.openstack import wsgi
 from cinder.openstack.common import log as logging
-from cinder import utils
 from cinder import wsgi as base_wsgi
 
 

@@ -16,8 +16,6 @@
 #
 
 
-import os
-
 from cinder import context
 from cinder import db
 

@@ -22,13 +22,10 @@ Tests For Scheduler
 import mock
 
 from cinder import context
-from cinder import db
 from cinder import exception
-from cinder.openstack.common import timeutils
 from cinder.scheduler import driver
 from cinder.scheduler import manager
 from cinder import test
-from cinder import utils
 
 
 class SchedulerManagerTestCase(test.TestCase):

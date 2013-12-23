@@ -20,7 +20,6 @@
 
 import mock
 import os.path
-import ssl
 import tempfile
 import urllib2
 
@@ -32,7 +31,6 @@ import webob.dec
 from cinder import exception
 from cinder.openstack.common import gettextutils
 from cinder import test
-from cinder import utils
 import cinder.wsgi
 
 CONF = cfg.CONF

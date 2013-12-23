@@ -20,7 +20,6 @@ Drivers for volumes.
 
 """
 
-import os
 import time
 
 from oslo.config import cfg

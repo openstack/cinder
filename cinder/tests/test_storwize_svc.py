@@ -25,7 +25,6 @@ Tests for the IBM Storwize family and SVC volume driver.
 
 import random
 import re
-import socket
 
 from cinder import context
 from cinder import exception

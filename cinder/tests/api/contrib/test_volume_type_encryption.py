@@ -19,17 +19,13 @@
 
 import json
 import webob
-from xml.dom import minidom
 
-from cinder.api.contrib import volume_type_encryption
 from cinder import context
 from cinder import db
-from cinder import exception
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
 from cinder import test
 from cinder.tests.api import fakes
-from cinder.volume import volume_types
 
 
 def return_volume_type_encryption_db(context, volume_type_id, session):

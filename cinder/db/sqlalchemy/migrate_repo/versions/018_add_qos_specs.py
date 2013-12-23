@@ -17,7 +17,7 @@
 #    under the License.
 
 from sqlalchemy import Boolean, Column, DateTime
-from sqlalchemy import ForeignKey, MetaData, Integer, String, Table
+from sqlalchemy import ForeignKey, MetaData, String, Table
 
 from cinder.openstack.common import log as logging
 

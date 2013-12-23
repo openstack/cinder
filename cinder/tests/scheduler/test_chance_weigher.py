@@ -16,7 +16,6 @@ Tests For Chance Weigher.
 """
 
 import mock
-import random
 
 from cinder.scheduler import host_manager
 from cinder.scheduler.weights.chance import ChanceWeigher

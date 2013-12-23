@@ -14,7 +14,6 @@
 
 from cinder.compute import nova
 from cinder import context
-from cinder import exception
 from cinder import test
 
 

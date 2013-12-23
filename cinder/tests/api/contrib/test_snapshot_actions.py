@@ -12,19 +12,13 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import datetime
-import uuid
 import webob
 
 from cinder import db
-from cinder import exception
 from cinder.openstack.common import jsonutils
-from cinder.openstack.common.rpc import common as rpc_common
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
-from cinder import volume
-from cinder.volume import api as volume_api
 
 
 class SnapshotActionsTest(test.TestCase):
