@@ -89,7 +89,7 @@ class Launcher(object):
     def run_server(server):
         """Start and wait for a server to finish.
 
-        :param service: Server to run and wait for.
+        :param server: Server to run and wait for.
         :returns: None
 
         """
