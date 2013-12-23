@@ -31,15 +31,7 @@ from cinder import units
 from cinder import utils
 
 
-volume_opts = [
-    cfg.StrOpt('volume_dd_blocksize',
-               default='1M',
-               help='The default block size used when copying/clearing '
-                    'volumes'),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -141,8 +133,8 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
                         notifier_api.INFO, usage_info)
 
 
-def _calculate_count(size_in_m):
-    blocksize = CONF.volume_dd_blocksize
+def _calculate_count(size_in_m, blocksize):
+
     # Check if volume_dd_blocksize is valid
     try:
         # Rule out zero-sized/negative dd blocksize which
@@ -166,7 +158,7 @@ def _calculate_count(size_in_m):
     return blocksize, int(count)
 
 
-def copy_volume(srcstr, deststr, size_in_m, sync=False,
+def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
                 execute=utils.execute):
     # Use O_DIRECT to avoid thrashing the system buffer cache
     extra_flags = ['iflag=direct', 'oflag=direct']
@@ -184,7 +176,7 @@ def copy_volume(srcstr, deststr, size_in_m, sync=False,
     if sync and not extra_flags:
         extra_flags.append('conv=fdatasync')
 
-    blocksize, count = _calculate_count(size_in_m)
+    blocksize, count = _calculate_count(size_in_m, blocksize)
 
     # Perform the copy
     execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,

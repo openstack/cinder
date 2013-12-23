@@ -240,6 +240,7 @@ class ScalityDriver(driver.VolumeDriver):
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
+                                 CONF.volume_dd_blocksize,
                                  size=volume['size'])
         self.create_volume(volume)
 

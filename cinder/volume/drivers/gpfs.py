@@ -544,7 +544,9 @@ class GPFSDriver(driver.VolumeDriver):
         LOG.debug('Copy image to vol %s using image_utils fetch_to_raw' %
                   volume['id'])
         image_utils.fetch_to_raw(context, image_service, image_id,
-                                 self.local_path(volume), size=volume['size'])
+                                 self.local_path(volume),
+                                 self.configuration.volume_dd_blocksize,
+                                 size=volume['size'])
         self._resize_volume_file(volume, volume['size'])
 
     def _resize_volume_file(self, volume, new_size):

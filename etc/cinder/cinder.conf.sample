@@ -1110,6 +1110,10 @@
 # will autodetect type of backing device (string value)
 #iscsi_iotype=fileio
 
+# The default block size used when copying/clearing volumes
+# (string value)
+#volume_dd_blocksize=1M
+
 
 #
 # Options defined in cinder.volume.drivers.block_device
@@ -1829,15 +1833,6 @@
 # Offload pending volume delete during volume service startup
 # (boolean value)
 #volume_service_inithost_offload=false
-
-
-#
-# Options defined in cinder.volume.utils
-#
-
-# The default block size used when copying/clearing volumes
-# (string value)
-#volume_dd_blocksize=1M
 
 
 [keystone_authtoken]

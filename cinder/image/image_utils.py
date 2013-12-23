@@ -114,21 +114,21 @@ def fetch_verify_image(context, image_service, image_id, dest,
 
 
 def fetch_to_vhd(context, image_service,
-                 image_id, dest,
+                 image_id, dest, blocksize,
                  user_id=None, project_id=None):
     fetch_to_volume_format(context, image_service, image_id, dest, 'vpc',
-                           user_id, project_id)
+                           blocksize, user_id, project_id)
 
 
 def fetch_to_raw(context, image_service,
-                 image_id, dest,
+                 image_id, dest, blocksize,
                  user_id=None, project_id=None, size=None):
     fetch_to_volume_format(context, image_service, image_id, dest, 'raw',
-                           user_id, project_id, size)
+                           blocksize, user_id, project_id, size)
 
 
 def fetch_to_volume_format(context, image_service,
-                           image_id, dest, volume_format,
+                           image_id, dest, volume_format, blocksize,
                            user_id=None, project_id=None, size=None):
     if (CONF.image_conversion_dir and not
             os.path.exists(CONF.image_conversion_dir)):
@@ -180,7 +180,7 @@ def fetch_to_volume_format(context, image_service,
             LOG.debug(_('Copying image from %(tmp)s to volume %(dest)s - '
                         'size: %(size)s') % {'tmp': tmp, 'dest': dest,
                                              'size': image_meta['size']})
-            volume_utils.copy_volume(tmp, dest, image_meta['size'])
+            volume_utils.copy_volume(tmp, dest, image_meta['size'], blocksize)
             return
 
         data = qemu_img_info(tmp)

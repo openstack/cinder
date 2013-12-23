@@ -97,6 +97,7 @@ class RBDTestCase(test.TestCase):
         self.configuration.rbd_secret_uuid = None
         self.configuration.rbd_user = None
         self.configuration.append_config_values(mox.IgnoreArg())
+        self.configuration.volume_dd_blocksize = '1M'
 
         self.rados = self.mox.CreateMockAnything()
         self.rbd = self.mox.CreateMockAnything()
@@ -370,7 +371,8 @@ class RBDTestCase(test.TestCase):
                     self.name = name
             yield FakeTmp('test')
 
-        def fake_fetch_to_raw(ctx, image_service, image_id, path, size=None):
+        def fake_fetch_to_raw(ctx, image_service, image_id, path, blocksize,
+                              size=None):
             pass
 
         self.stubs.Set(tempfile, 'NamedTemporaryFile', fake_temp_file)

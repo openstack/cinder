@@ -304,7 +304,8 @@ class TestWindowsDriver(test.TestCase):
 
         mox.StubOutWithMock(image_utils, 'fetch_to_vhd')
         image_utils.fetch_to_vhd(None, None, None,
-                                 self.fake_local_path(volume))
+                                 self.fake_local_path(volume),
+                                 mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 

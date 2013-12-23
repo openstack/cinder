@@ -1533,7 +1533,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                       image_service, image_id):
             pass
 
-        def fake_fetch_to_raw(ctx, image_service, image_id, path, size=None):
+        def fake_fetch_to_raw(ctx, image_service, image_id, path, blocksize,
+                              size=None):
             pass
 
         def fake_clone_image(volume_ref, image_location, image_id, image_meta):
@@ -2465,7 +2466,8 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, '_execute', fake_execute)
 
         self.stubs.Set(volutils, 'copy_volume',
-                       lambda x, y, z, sync=False, execute='foo': None)
+                       lambda x, y, z, sync=False, execute='foo',
+                       blocksize=mox.IgnoreArg(): None)
 
         self.stubs.Set(volutils, 'get_all_volume_groups',
                        get_all_volume_groups)
@@ -2505,11 +2507,13 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 
         os.path.exists(mox.IgnoreArg()).AndReturn(True)
         volutils.copy_volume('/dev/zero', mox.IgnoreArg(), 123 * 1024,
-                             execute=lvm_driver._execute, sync=True)
+                             mox.IgnoreArg(), execute=lvm_driver._execute,
+                             sync=True)
 
         os.path.exists(mox.IgnoreArg()).AndReturn(True)
         volutils.copy_volume('/dev/zero', mox.IgnoreArg(), 123 * 1024,
-                             execute=lvm_driver._execute, sync=True)
+                             mox.IgnoreArg(), execute=lvm_driver._execute,
+                             sync=True)
 
         os.path.exists(mox.IgnoreArg()).AndReturn(True)
 
@@ -2581,7 +2585,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         name = 'snapshot-' + uuid
         mangle_name = '_' + re.sub(r'-', r'--', name)
 
-        def fake_copy_volume(srcstr, deststr, size, **kwargs):
+        def fake_copy_volume(srcstr, deststr, size, blocksize, **kwargs):
             self.assertEqual(deststr,
                              '/dev/mapper/cinder--volumes-%s-cow' %
                              mangle_name)

@@ -96,6 +96,7 @@ class ScalityDriverTestCase(test.TestCase):
         scality.CONF.scality_sofs_config = self.TEST_CONFIG
         scality.CONF.scality_sofs_mount_point = self.TEST_MOUNT
         scality.CONF.scality_sofs_volume_dir = self.TEST_VOLDIR
+        scality.CONF.volume_dd_blocksize = '1M'
 
     def _execute_wrapper(self, cmd, *args, **kwargs):
         try:
@@ -238,6 +239,7 @@ class ScalityDriverTestCase(test.TestCase):
                                  self.TEST_IMAGE_SERVICE,
                                  self.TEST_IMAGE_ID,
                                  self.TEST_VOLPATH,
+                                 mox_lib.IgnoreArg(),
                                  size=self.TEST_VOLSIZE)
 
         self.mox.ReplayAll()
