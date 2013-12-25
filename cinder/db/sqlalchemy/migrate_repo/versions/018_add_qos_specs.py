@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (C) 2013 eBay Inc.
 # Copyright (C) 2013 OpenStack Foundation
 # All Rights Reserved.

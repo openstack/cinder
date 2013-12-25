@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2013 Huawei Technologies Co., Ltd.
 # Copyright (c) 2012 OpenStack Foundation
 # All Rights Reserved.

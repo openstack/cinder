@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2011 Zadara Storage Inc.
 # Copyright (c) 2011 OpenStack Foundation
 # Copyright 2010 United States Government as represented by the
