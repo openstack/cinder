@@ -391,7 +391,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self._stats = data
 
     def extend_volume(self, volume, new_size):
-        """Extend an existing voumes size."""
+        """Extend an existing volume's size."""
         self.vg.extend_volume(volume['name'],
                               self._sizestr(new_size))
 
@@ -461,7 +461,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         """Synchronously recreates an export for a logical volume."""
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
+        # corresponding target admin class
 
         if isinstance(self.tgtadm, iscsi.LioAdm):
             try:
@@ -580,7 +580,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         """Ensure that target ids have been created in datastore."""
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
+        # corresponding target admin class
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
             host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
                                                                     host)
@@ -607,7 +607,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         model_update = {}
 
         # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
+        # corresponding target admin class
         if not isinstance(self.tgtadm, iscsi.TgtAdm):
             lun = 0
             self._ensure_iscsi_targets(context, volume['host'])
@@ -637,7 +637,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         """Removes an export for a logical volume."""
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
+        # corresponding target admin class
 
         if isinstance(self.tgtadm, iscsi.LioAdm):
             try:

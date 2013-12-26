@@ -101,7 +101,7 @@ class SolidFireDriver(SanISCSIDriver):
         """All API requests to SolidFire device go through this method.
 
         Simple json-rpc web based API calls.
-        each call takes a set of paramaters (dict)
+        each call takes a set of parameters (dict)
         and returns results in a dict as well.
 
         """
@@ -529,7 +529,7 @@ class SolidFireDriver(SanISCSIDriver):
     def delete_volume(self, volume):
         """Delete SolidFire Volume from device.
 
-        SolidFire allows multipe volumes with same name,
+        SolidFire allows multiple volumes with same name,
         volumeID is what's guaranteed unique.
 
         """
@@ -541,7 +541,7 @@ class SolidFireDriver(SanISCSIDriver):
             LOG.error(_("Account for Volume ID %s was not found on "
                         "the SolidFire Cluster!") % volume['id'])
             LOG.error(_("This usually means the volume was never "
-                        "succesfully created."))
+                        "successfully created."))
             return
 
         params = {'accountID': sfaccount['accountID']}

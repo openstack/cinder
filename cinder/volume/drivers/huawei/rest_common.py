@@ -219,7 +219,7 @@ class HVSCommon():
         """Calculate the volume size.
 
         We should divide the given volume size by 512 for the HVS system
-        caculates volume size with sectors, which is 512 bytes.
+        calculates volume size with sectors, which is 512 bytes.
         """
 
         volume_size = units.GiB / 512  # 1G
@@ -245,7 +245,7 @@ class HVSCommon():
             self._delete_lungroup(lungroup_id)
             self._delete_lun(lun_id)
         else:
-            LOG.warn(_("Can't find lun or lun goup in array"))
+            LOG.warn(_("Can't find lun or lun group in array"))
 
     def _delete_lun_from_qos_policy(self, volume, lun_id):
         """Remove lun from qos policy."""
@@ -517,12 +517,12 @@ class HVSCommon():
 
         (iscsi_iqn, target_ip) = self._get_iscsi_params(connector)
 
-        #create host_goup if not exist
+        #create host_group if not exist
         hostid, hostgroup_id = self._add_host_into_hostgroup(connector['host'],
                                                              connector['ip'])
         self._ensure_initiator_added(initiator_name, hostid)
 
-        # Mapping lungooup and hostgoup to view
+        # Mapping lungroup and hostgroup to view
         lun_id = self._mapping_hostgroup_and_lungroup(volume_name,
                                                       hostgroup_id, hostid)
         hostlunid = self._find_host_lun_id(hostid, lun_id)
@@ -894,7 +894,7 @@ class HVSCommon():
         self._assert_rest_result(result, 'Log out of session error.')
 
     def _start_luncopy(self, luncopyid):
-        """Starte a LUNcopy."""
+        """Start a LUNcopy."""
         url = self.url + "/LUNCOPY/start"
         data = json.dumps({"TYPE": "219", "ID": luncopyid})
         result = self.call(url, data, "PUT")
@@ -1156,7 +1156,7 @@ class HVSCommon():
                     params[key] = value.strip()
                 else:
                     conf = self.configuration.cinder_huawei_conf_file
-                    LOG.warn(_('_parse_volume_type: Unacceptable paramater '
+                    LOG.warn(_('_parse_volume_type: Unacceptable parameter '
                                '%(key)s. Please check this key in extra_specs '
                                'and make it consistent with the configuration '
                                'file %(conf)s.') % {'key': key, 'conf': conf})

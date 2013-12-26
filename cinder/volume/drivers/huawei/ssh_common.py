@@ -320,7 +320,7 @@ class TseriesCommon():
         # If constant prefetch, we should specify prefetch value.
         if params['PrefetchType'] == '1':
             prefetch_value_or_times = '-value %s' % params['PrefetchValue']
-        # If variable prefetch, we should specify prefetch mutiple.
+        # If variable prefetch, we should specify prefetch multiple.
         elif params['PrefetchType'] == '2':
             prefetch_value_or_times = '-times %s' % params['PrefetchTimes']
 

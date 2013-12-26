@@ -649,7 +649,7 @@ exit
                                   self.config.hp3par_cpg)
         if cpg is not self.config.hp3par_cpg:
             # The cpg was specified in a volume type extra spec so it
-            # needs to be validiated that it's in the correct domain.
+            # needs to be validated that it's in the correct domain.
             self.validate_cpg(cpg)
             # Also, look to see if the snap_cpg was specified in volume
             # type extra spec, if not use the extra spec cpg as the

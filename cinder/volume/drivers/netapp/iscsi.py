@@ -203,7 +203,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         return {'provider_location': handle}
 
     def remove_export(self, context, volume):
-        """Driver exntry point to remove an export for a volume.
+        """Driver entry point to remove an export for a volume.
 
         Since exporting is idempotent in this driver, we have nothing
         to do for unexporting.
@@ -315,7 +315,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
 
-        Unmask the LUN on the storage system so the given intiator can no
+        Unmask the LUN on the storage system so the given initiator can no
         longer access it.
         """
 
@@ -481,7 +481,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             return False
 
     def _create_igroup(self, igroup, igroup_type='iscsi', os_type='default'):
-        """Creates igoup with specified args."""
+        """Creates igroup with specified args."""
         igroup_create = NaElement.create_node_with_children(
             'igroup-create',
             **{'initiator-group-name': igroup,
@@ -533,7 +533,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         raise NotImplementedError()
 
     def _get_lun_by_args(self, **args):
-        """Retrives luns with specified args."""
+        """Retrieves luns with specified args."""
         raise NotImplementedError()
 
     def _get_lun_attr(self, name, attr):
@@ -997,7 +997,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             volume=ssc_utils.NetAppVolume(volume, self.vserver))
 
     def _get_lun_by_args(self, **args):
-        """Retrives lun with specified args."""
+        """Retrieves lun with specified args."""
         lun_iter = NaElement('lun-get-iter')
         lun_iter.add_new_child('max-records', '100')
         query = NaElement('query')
@@ -1399,7 +1399,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                         clone_ops_info.get_child_content('reason'))
 
     def _get_lun_by_args(self, **args):
-        """Retrives luns with specified args."""
+        """Retrieves luns with specified args."""
         lun_info = NaElement.create_node_with_children('lun-list-info', **args)
         result = self.client.invoke_successfully(lun_info, True)
         luns = result.get_child_by_name('luns')

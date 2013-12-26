@@ -81,7 +81,7 @@ def _do_lu_range_check(start, end, maxlun):
         raise exception.InvalidInput(reason=msg)
     if int(end) > int(maxlun):
         end = maxlun
-        LOG.debug(_("setting LU uppper (end) limit to %s") % maxlun)
+        LOG.debug(_("setting LU upper (end) limit to %s") % maxlun)
     return (start, end)
 
 

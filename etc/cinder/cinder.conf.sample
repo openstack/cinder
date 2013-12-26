@@ -432,7 +432,7 @@
 # region name of this node (string value)
 #os_region_name=<None>
 
-# Location of ca certicates file to use for nova client
+# Location of ca certificates file to use for nova client
 # requests. (string value)
 #nova_ca_certificates_file=<None>
 
@@ -1159,7 +1159,7 @@
 # Maximum retry count for reconnection (integer value)
 #eqlx_cli_max_retries=5
 
-# Use CHAP authentificaion for targets? (boolean value)
+# Use CHAP authentication for targets? (boolean value)
 #eqlx_use_chap=false
 
 # Existing CHAP account name (string value)

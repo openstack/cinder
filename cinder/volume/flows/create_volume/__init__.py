@@ -357,7 +357,7 @@ class ExtractVolumeRequestTask(base.CinderTask):
             if CONF.default_availability_zone:
                 availability_zone = CONF.default_availability_zone
             else:
-                # For backwards compatibility use the storge_availability_zone
+                # For backwards compatibility use the storage_availability_zone
                 availability_zone = CONF.storage_availability_zone
         if not self.az_check_functor(availability_zone):
             msg = _("Availability zone '%s' is invalid") % (availability_zone)
@@ -517,7 +517,7 @@ class EntryCreateTask(base.CinderTask):
         Accesses the database and creates a new entry for the to be created
         volume using the given volume properties which are extracted from the
         input kwargs (and associated requirements this task needs). These
-        requirements should be previously satisifed and validated by a
+        requirements should be previously satisfied and validated by a
         pre-cursor task.
         """
 
@@ -543,7 +543,7 @@ class EntryCreateTask(base.CinderTask):
             'volume_properties': volume_properties,
             # NOTE(harlowja): it appears like further usage of this volume
             # result actually depend on it being a sqlalchemy object and not
-            # just a plain dictionary so thats why we are storing this here.
+            # just a plain dictionary so that's why we are storing this here.
             #
             # In the future where this task results can be serialized and
             # restored automatically for continued running we will need to
@@ -1558,7 +1558,7 @@ def get_scheduler_flow(context, db, driver, request_spec=None,
     1. Inject keys & values for dependent tasks.
     2. Extracts a scheduler specification from the provided inputs.
     3. Attaches 2 activated only on *failure* tasks (one to update the db
-       status and one to notify on the MQ of the failure that occured).
+       status and one to notify on the MQ of the failure that occurred).
     4. Uses provided driver to to then select and continue processing of
        volume request.
     """

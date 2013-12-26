@@ -44,7 +44,7 @@ eqlx_opts = [
                help='Maximum retry count for reconnection'),
     cfg.BoolOpt('eqlx_use_chap',
                 default=False,
-                help='Use CHAP authentificaion for targets?'),
+                help='Use CHAP authentication for targets?'),
     cfg.StrOpt('eqlx_chap_login',
                default='admin',
                help='Existing CHAP account name'),
@@ -102,7 +102,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         san_ip=<ip_address>
         san_login=<user name>
         san_password=<user password>
-        san_private_key=<file containig SSH prvate key>
+        san_private_key=<file containing SSH private key>
 
     Thin provision of volumes is enabled by default, to disable it use:
         san_thin_provision=false
@@ -406,7 +406,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                           volume['name'])
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
-        """Remove access restictions from a volume."""
+        """Remove access restrictions from a volume."""
         try:
             self._eql_execute('volume', 'select', volume['name'],
                               'access', 'delete', '1')

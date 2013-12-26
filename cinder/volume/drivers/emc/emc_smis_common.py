@@ -1292,7 +1292,7 @@ class EMCSMISCommon():
         return foundCtrl
 
     # Find out how many volumes are mapped to a host
-    # assoociated to the LunMaskingSCSIProtocolController
+    # associated to the LunMaskingSCSIProtocolController
     def get_num_volumes_mapped(self, volume, connector):
         numVolumesMapped = 0
         volumename = volume['name']
