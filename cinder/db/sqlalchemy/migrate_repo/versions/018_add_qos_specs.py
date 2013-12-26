@@ -18,6 +18,7 @@
 
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
+from migrate import ForeignKeyConstraint
 
 from cinder.openstack.common import log as logging
 
@@ -69,17 +70,34 @@ def downgrade(migrate_engine):
 
     qos_specs = Table('quality_of_service_specs', meta, autoload=True)
 
+    if migrate_engine.name == 'mysql':
+        # NOTE(alanmeadows): MySQL Cannot drop column qos_specs_id
+        # until the foreign key volumes_types_ibfk_1 is removed.  We
+        # remove the foreign key first, and then we drop the column.
+        table = Table('volume_types', meta, autoload=True)
+        ref_table = Table('volume_types', meta, autoload=True)
+        params = {'columns': [table.c['qos_specs_id']],
+                  'refcolumns': [ref_table.c['id']],
+                  'name': 'volume_types_ibfk_1'}
+
+        try:
+            fkey = ForeignKeyConstraint(**params)
+            fkey.drop()
+        except Exception:
+            LOG.error(_("Dropping foreign key volume_types_ibfk_1 failed"))
+
+    volume_types = Table('volume_types', meta, autoload=True)
+    qos_specs_id = Column('qos_specs_id', String(36))
+
+    try:
+        volume_types.drop_column(qos_specs_id)
+    except Exception:
+        LOG.error(_("Dropping qos_specs_id column failed."))
+        raise
+
     try:
         qos_specs.drop()
 
     except Exception:
         LOG.error(_("Dropping quality_of_service_specs table failed."))
-        raise
-
-    volume_types = Table('volume_types', meta, autoload=True)
-    qos_specs_id = Column('qos_specs_id', String(36))
-    try:
-        volume_types.drop_column(qos_specs_id)
-    except Exception:
-        LOG.error(_("Dropping qos_specs_id column failed."))
         raise
