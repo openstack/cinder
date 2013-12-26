@@ -708,7 +708,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         volume = self.db.volume_get(context, volume_id)
         self.driver.validate_connector(connector)
-        conn_info = self.driver.initialize_connection(volume, connector)
+        try:
+            conn_info = self.driver.initialize_connection(volume, connector)
+        except Exception as err:
+            err_msg = (_('Unable to fetch connection information from '
+                         'backend: %(err)s') % {'err': str(err)})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
         # Add qos_specs to connection info
         typeid = volume['volume_type_id']
