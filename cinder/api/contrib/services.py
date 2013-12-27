@@ -147,7 +147,7 @@ class ServiceController(wsgi.Controller):
             disabled = True
             status = "disabled"
         else:
-            raise webob.exc.HTTPNotFound("Unknown action")
+            raise webob.exc.HTTPNotFound(explanation=_("Unknown action"))
 
         try:
             host = body['host']
@@ -174,11 +174,11 @@ class ServiceController(wsgi.Controller):
         try:
             svc = db.service_get_by_args(context, host, binary_key)
             if not svc:
-                raise webob.exc.HTTPNotFound('Unknown service')
+                raise webob.exc.HTTPNotFound(explanation=_('Unknown service'))
 
             db.service_update(context, svc['id'], ret_val)
         except exception.ServiceNotFound:
-            raise webob.exc.HTTPNotFound("service not found")
+            raise webob.exc.HTTPNotFound(explanation=_("service not found"))
 
         ret_val.update({'host': host, 'service': service,
                         'binary': binary, 'status': status})

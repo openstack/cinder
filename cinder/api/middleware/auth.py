@@ -109,7 +109,7 @@ class CinderKeystoneContext(base_wsgi.Middleware):
                 service_catalog = jsonutils.loads(catalog_header)
             except ValueError:
                 raise webob.exc.HTTPInternalServerError(
-                    _('Invalid service catalog json.'))
+                    explanation=_('Invalid service catalog json.'))
 
         if CONF.use_forwarded_for:
             remote_address = req.headers.get('X-Forwarded-For', remote_address)
