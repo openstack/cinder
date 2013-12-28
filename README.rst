@@ -16,4 +16,4 @@ To taunt it with its weaknesses: use http://bugs.launchpad.net/cinder
 
 To watch it: http://jenkins.openstack.org
 
-To hack at it: read HACKING.rst
+To hack at it: read `HACKING.rst <https://github.com/openstack/cinder/blob/master/HACKING.rst>`_
