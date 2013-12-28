@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-12-26 06:12+0000\n"
+"POT-Creation-Date: 2013-12-28 06:13+0000\n"
 "PO-Revision-Date: 2013-09-12 07:56+0000\n"
 "Last-Translator: Tom Fifield <tom@openstack.org>\n"
 "Language-Team: Arabic "
@@ -1239,23 +1239,27 @@ msgid ""
 "should be 'rw' or 'ro'"
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:220
+#: cinder/api/contrib/volume_actions.py:196
+msgid "Unable to fetch connection information from backend."
+msgstr ""
+
+#: cinder/api/contrib/volume_actions.py:225
 msgid "No image_name was specified in request."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:261
+#: cinder/api/contrib/volume_actions.py:266
 msgid "New volume size must be specified as an integer."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:280
+#: cinder/api/contrib/volume_actions.py:285
 msgid "Must specify readonly in request."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:288
+#: cinder/api/contrib/volume_actions.py:293
 msgid "Bad value for 'readonly'"
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:292
+#: cinder/api/contrib/volume_actions.py:297
 msgid "'readonly' not string or bool"
 msgstr ""
 
@@ -2876,20 +2880,24 @@ msgstr ""
 msgid "encryption table not dropped"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:50
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:51
 msgid "Table quality_of_service_specs not created!"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:61
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:62
 msgid "Added qos_specs_id column to volume type table failed."
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:76
-msgid "Dropping quality_of_service_specs table failed."
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:87
+msgid "Dropping foreign key volume_types_ibfk_1 failed"
 msgstr ""
 
-#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:84
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:95
 msgid "Dropping qos_specs_id column failed."
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/018_add_qos_specs.py:102
+msgid "Dropping quality_of_service_specs table failed."
 msgstr ""
 
 #: cinder/db/sqlalchemy/migrate_repo/versions/020_add_volume_admin_metadata_table.py:61
@@ -4339,77 +4347,82 @@ msgstr ""
 msgid "Uploaded volume %(volume_id)s to image (%(image_id)s) successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:785
+#: cinder/volume/manager.py:714
+#, python-format
+msgid "Unable to fetch connection information from backend: %(err)s"
+msgstr ""
+
+#: cinder/volume/manager.py:791
 msgid "failed to create new_volume on destination host"
 msgstr ""
 
-#: cinder/volume/manager.py:788
+#: cinder/volume/manager.py:794
 msgid "timeout creating new_volume on destination host"
 msgstr ""
 
-#: cinder/volume/manager.py:810
+#: cinder/volume/manager.py:816
 #, python-format
 msgid "Failed to copy volume %(vol1)s to %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:822
+#: cinder/volume/manager.py:828
 #, python-format
 msgid ""
 "migrate_volume_completion: completing migration for volume %(vol1)s "
 "(temporary volume %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:830
+#: cinder/volume/manager.py:836
 #, python-format
 msgid ""
 "migrate_volume_completion is cleaning up an error for volume %(vol1)s "
 "(temporary volume %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:846
+#: cinder/volume/manager.py:852
 #, python-format
 msgid "Failed to delete migration source vol %(vol)s: %(err)s"
 msgstr ""
 
-#: cinder/volume/manager.py:865
+#: cinder/volume/manager.py:871
 #, python-format
 msgid "volume %s: calling driver migrate_volume"
 msgstr ""
 
-#: cinder/volume/manager.py:898
+#: cinder/volume/manager.py:904
 msgid "Updating volume status"
 msgstr ""
 
-#: cinder/volume/manager.py:906
+#: cinder/volume/manager.py:912
 #, python-format
 msgid ""
 "Unable to update stats, %(driver_name)s -%(driver_version)s "
 "%(config_group)s driver is uninitialized."
 msgstr ""
 
-#: cinder/volume/manager.py:925
+#: cinder/volume/manager.py:931
 #, python-format
 msgid "Notification {%s} received"
 msgstr ""
 
-#: cinder/volume/manager.py:963
+#: cinder/volume/manager.py:969
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to extend volume by %(s_size)sG, "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/volume/manager.py:975
+#: cinder/volume/manager.py:981
 #, python-format
 msgid "volume %s: extending"
 msgstr ""
 
-#: cinder/volume/manager.py:977
+#: cinder/volume/manager.py:983
 #, python-format
 msgid "volume %s: extended successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:979
+#: cinder/volume/manager.py:985
 #, python-format
 msgid "volume %s: Error trying to extend volume"
 msgstr ""
@@ -5290,176 +5303,176 @@ msgstr ""
 msgid "Sheepdog is not working"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:142
+#: cinder/volume/drivers/solidfire.py:143
 #, python-format
 msgid "Payload for SolidFire API call: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:149
+#: cinder/volume/drivers/solidfire.py:150
 #, python-format
 msgid ""
 "Failed to make httplib connection SolidFire Cluster: %s (verify san_ip "
 "settings)"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:152
+#: cinder/volume/drivers/solidfire.py:153
 #, python-format
 msgid "Failed to make httplib connection: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:159
+#: cinder/volume/drivers/solidfire.py:160
 #, python-format
 msgid ""
 "Request to SolidFire cluster returned bad status: %(status)s / %(reason)s"
 " (check san_login/san_password settings)"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:164
+#: cinder/volume/drivers/solidfire.py:165
 #, python-format
 msgid "HTTP request failed, with status: %(status)s and reason: %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:175
+#: cinder/volume/drivers/solidfire.py:176
 #, python-format
 msgid "Call to json.loads() raised an exception: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:181
+#: cinder/volume/drivers/solidfire.py:182
 #, python-format
 msgid "Results of SolidFire API call: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:185
+#: cinder/volume/drivers/solidfire.py:186
 #, python-format
 msgid "Clone operation encountered: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:187
+#: cinder/volume/drivers/solidfire.py:188
 #, python-format
 msgid "Waiting for outstanding operation before retrying snapshot: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:193
+#: cinder/volume/drivers/solidfire.py:194
 #, python-format
 msgid "Detected xDBVersionMismatch, retry %s of 5"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:200
-#: cinder/volume/drivers/solidfire.py:268
-#: cinder/volume/drivers/solidfire.py:363
+#: cinder/volume/drivers/solidfire.py:201
+#: cinder/volume/drivers/solidfire.py:269
+#: cinder/volume/drivers/solidfire.py:364
 #, python-format
 msgid "API response: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:220
+#: cinder/volume/drivers/solidfire.py:221
 #, python-format
 msgid "Found solidfire account: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:250
+#: cinder/volume/drivers/solidfire.py:251
 #, python-format
 msgid "solidfire account: %s does not exist, create it..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:312
+#: cinder/volume/drivers/solidfire.py:313
 #, python-format
 msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:395
+#: cinder/volume/drivers/solidfire.py:396
 msgid "Failed to get model update from clone"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:407
+#: cinder/volume/drivers/solidfire.py:408
 #, python-format
 msgid "Failed volume create: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:422
+#: cinder/volume/drivers/solidfire.py:423
 #, python-format
 msgid "More than one valid preset was detected, using %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:447
+#: cinder/volume/drivers/solidfire.py:458
 #, python-format
 msgid "Failed to get SolidFire Volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:456
+#: cinder/volume/drivers/solidfire.py:467
 #, python-format
 msgid "Mapped SolidFire volumeID %(sfid)s to cinder ID %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:465
+#: cinder/volume/drivers/solidfire.py:476
 #, python-format
 msgid "Volume %s, not found on SF Cluster."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:468
+#: cinder/volume/drivers/solidfire.py:479
 #, python-format
 msgid "Found %(count)s volumes mapped to id: %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:537
+#: cinder/volume/drivers/solidfire.py:548
 msgid "Enter SolidFire delete_volume..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:541
+#: cinder/volume/drivers/solidfire.py:552
 #, python-format
 msgid "Account for Volume ID %s was not found on the SolidFire Cluster!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:543
-msgid "This usually means the volume was never succesfully created."
+#: cinder/volume/drivers/solidfire.py:554
+msgid "This usually means the volume was never successfully created."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:556
+#: cinder/volume/drivers/solidfire.py:567
 #, python-format
 msgid "Failed to delete SolidFire Volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:559
-#: cinder/volume/drivers/solidfire.py:633
-#: cinder/volume/drivers/solidfire.py:696
-#: cinder/volume/drivers/solidfire.py:721
+#: cinder/volume/drivers/solidfire.py:570
+#: cinder/volume/drivers/solidfire.py:644
+#: cinder/volume/drivers/solidfire.py:707
+#: cinder/volume/drivers/solidfire.py:732
 #, python-format
 msgid "Volume ID %s was not found on the SolidFire Cluster!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:562
+#: cinder/volume/drivers/solidfire.py:573
 msgid "Leaving SolidFire delete_volume"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:566
+#: cinder/volume/drivers/solidfire.py:577
 msgid "Executing SolidFire ensure_export..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:574
+#: cinder/volume/drivers/solidfire.py:585
 msgid "Executing SolidFire create_export..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:625
+#: cinder/volume/drivers/solidfire.py:636
 msgid "Entering SolidFire extend_volume..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:647
+#: cinder/volume/drivers/solidfire.py:658
 msgid "Leaving SolidFire extend_volume"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:652
+#: cinder/volume/drivers/solidfire.py:663
 msgid "Updating cluster status info"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:660
+#: cinder/volume/drivers/solidfire.py:671
 msgid "Failed to get updated stats"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:690
-#: cinder/volume/drivers/solidfire.py:715
+#: cinder/volume/drivers/solidfire.py:701
+#: cinder/volume/drivers/solidfire.py:726
 msgid "Entering SolidFire attach_volume..."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:760
+#: cinder/volume/drivers/solidfire.py:771
 msgid "Leaving SolidFire transfer volume"
 msgstr ""
 
@@ -6837,7 +6850,7 @@ msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:84
 #, python-format
-msgid "setting LU uppper (end) limit to %s"
+msgid "setting LU upper (end) limit to %s"
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:92
@@ -7055,7 +7068,7 @@ msgid "Can't find the Qos policy in array"
 msgstr ""
 
 #: cinder/volume/drivers/huawei/rest_common.py:248
-msgid "Can't find lun or lun goup in array"
+msgid "Can't find lun or lun group in array"
 msgstr ""
 
 #: cinder/volume/drivers/huawei/rest_common.py:282
@@ -7161,7 +7174,7 @@ msgstr ""
 #: cinder/volume/drivers/huawei/rest_common.py:1159
 #, python-format
 msgid ""
-"_parse_volume_type: Unacceptable paramater %(key)s. Please check this key"
+"_parse_volume_type: Unacceptable parameter %(key)s. Please check this key"
 " in extra_specs and make it consistent with the configuration file "
 "%(conf)s."
 msgstr ""
@@ -9194,7 +9207,7 @@ msgstr ""
 #: cinder/volume/drivers/windows/windows_utils.py:292
 #, python-format
 msgid ""
-"extend: error when extending the volumne: %(vol_name)s .WMI exception: "
+"extend: error when extending the volume: %(vol_name)s .WMI exception: "
 "%(wmi_exc)s"
 msgstr ""
 
@@ -9946,5 +9959,27 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "Clear capabilities"
+#~ msgstr ""
+
+#~ msgid "This usually means the volume was never succesfully created."
+#~ msgstr ""
+
+#~ msgid "setting LU uppper (end) limit to %s"
+#~ msgstr ""
+
+#~ msgid "Can't find lun or lun goup in array"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "_parse_volume_type: Unacceptable paramater %(key)s."
+#~ " Please check this key in extra_specs"
+#~ " and make it consistent with the "
+#~ "configuration file %(conf)s."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "extend: error when extending the "
+#~ "volumne: %(vol_name)s .WMI exception: "
+#~ "%(wmi_exc)s"
 #~ msgstr ""
 
