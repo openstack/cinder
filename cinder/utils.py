@@ -794,7 +794,8 @@ def brick_get_connector_properties():
 def brick_get_connector(protocol, driver=None,
                         execute=processutils.execute,
                         use_multipath=False,
-                        device_scan_attempts=3):
+                        device_scan_attempts=3,
+                        *args, **kwargs):
     """Wrapper to get a brick connector object.
     This automatically populates the required protocol as well
     as the root_helper needed to execute commands.
@@ -806,7 +807,8 @@ def brick_get_connector(protocol, driver=None,
                                                 execute=execute,
                                                 use_multipath=use_multipath,
                                                 device_scan_attempts=
-                                                device_scan_attempts)
+                                                device_scan_attempts,
+                                                *args, **kwargs)
 
 
 def require_driver_initialized(func):

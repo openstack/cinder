@@ -376,7 +376,8 @@ class VolumeDriver(object):
         connector = utils.brick_get_connector(protocol,
                                               use_multipath=use_multipath,
                                               device_scan_attempts=
-                                              device_scan_attempts)
+                                              device_scan_attempts,
+                                              conn=conn)
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 
