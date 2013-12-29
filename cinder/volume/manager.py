@@ -750,7 +750,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         The format of connector is the same as for initialize_connection.
         """
         volume_ref = self.db.volume_get(context, volume_id)
-        self.driver.terminate_connection(volume_ref, connector, force=force)
+        try:
+            self.driver.terminate_connection(volume_ref,
+                                             connector, force=force)
+        except Exception as err:
+            err_msg = (_('Unable to terminate volume connection: %(err)s')
+                       % {'err': str(err)})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
     @utils.require_driver_initialized
     def accept_transfer(self, context, volume_id, new_user, new_project):
