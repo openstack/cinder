@@ -165,12 +165,6 @@ class API(base.Base):
                 greenthread.sleep(1)
         else:
             volume = self.volume_api.get(context, volume_id)
-            volume_size = volume['size']
-            if volume_size < size:
-                err = (_('volume size %(volume_size)d is too small to restore '
-                         'backup of size %(size)d.') %
-                       {'volume_size': volume_size, 'size': size})
-                raise exception.InvalidVolume(reason=err)
 
         if volume['status'] != "available":
             msg = _('Volume to be restored to must be available')
@@ -179,8 +173,9 @@ class API(base.Base):
         LOG.debug('Checking backup size %s against volume size %s',
                   size, volume['size'])
         if size > volume['size']:
-            msg = _('Volume to be restored to is smaller '
-                    'than the backup to be restored')
+            msg = (_('volume size %(volume_size)d is too small to restore '
+                     'backup of size %(size)d.') %
+                   {'volume_size': volume['size'], 'size': size})
             raise exception.InvalidVolume(reason=msg)
 
         LOG.audit(_("Overwriting volume %(volume_id)s with restore of "
