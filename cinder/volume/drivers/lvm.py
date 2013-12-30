@@ -31,7 +31,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -163,7 +163,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         # clear_volume expects sizes in MiB, we store integer GiB
         # be sure to convert before passing in
-        vol_sz_in_meg = size_in_g * units.KiB
+        vol_sz_in_meg = size_in_g * units.Ki
 
         volutils.clear_volume(
             vol_sz_in_meg, dev_path,
@@ -210,7 +210,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # be sure to convert before passing in
         volutils.copy_volume(self.local_path(snapshot),
                              self.local_path(volume),
-                             snapshot['volume_size'] * units.KiB,
+                             snapshot['volume_size'] * units.Ki,
                              self.configuration.volume_dd_blocksize,
                              execute=self._execute)
 
@@ -304,7 +304,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             volutils.copy_volume(
                 self.local_path(temp_snapshot),
                 self.local_path(volume),
-                src_vref['size'] * units.KiB,
+                src_vref['size'] * units.Ki,
                 self.configuration.volume_dd_blocksize,
                 execute=self._execute)
         finally:

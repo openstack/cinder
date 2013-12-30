@@ -30,7 +30,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
@@ -408,7 +408,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                        "volume since policy based placement is "
                        "disabled."), storage_profile)
 
-        size_bytes = volume['size'] * units.GiB
+        size_bytes = volume['size'] * units.Gi
         datastore_summary = self._select_datastore_summary(size_bytes,
                                                            datastores)
         return (folder, datastore_summary)
@@ -440,7 +440,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                                         resource_pool,
                                                         datastores)
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
-        size_kb = volume['size'] * units.MiB
+        size_kb = volume['size'] * units.Mi
         storage_profile = self._get_storage_profile(volume)
         profileId = None
         if self._storage_policy_enabled and storage_profile:
@@ -814,7 +814,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         "streamOptimized"
         """
         # Set volume size in GB from image metadata
-        volume['size'] = float(image_size) / units.GiB
+        volume['size'] = float(image_size) / units.Gi
         # First create empty backing in the inventory
         backing = self._create_backing_in_inventory(volume)
 
@@ -1000,7 +1000,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # image size. If the volume_size_in_gb is greater, meaning the
         # user specifies a larger volume, we need to extend/resize the vmdk
         # virtual disk to the capacity specified by the user.
-        if volume_size_in_gb * units.GiB > image_size_in_bytes:
+        if volume_size_in_gb * units.Gi > image_size_in_bytes:
             self._extend_vmdk_virtual_disk(volume['name'], volume_size_in_gb)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -1045,7 +1045,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                    host=host_ip,
                                    vm=backing,
                                    vmdk_file_path=vmdk_file_path,
-                                   vmdk_size=volume['size'] * units.GiB,
+                                   vmdk_size=volume['size'] * units.Gi,
                                    image_name=image_meta['name'],
                                    image_version=1)
         LOG.info(_("Done copying volume %(vol)s to a new image %(img)s") %

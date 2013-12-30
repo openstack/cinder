@@ -18,7 +18,7 @@
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.driver import ISCSIDriver
 from cinder.volume import volume_types
@@ -168,7 +168,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
             volume_info = self.client.createVolume(
                 volume['name'], self.cluster_id,
-                volume['size'] * units.GiB,
+                volume['size'] * units.Gi,
                 optional)
 
             return self._update_provider(volume_info)
@@ -191,7 +191,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             volume_info = self.client.getVolumeByName(volume['name'])
 
             # convert GB to bytes
-            options = {'size': int(new_size) * units.GiB}
+            options = {'size': int(new_size) * units.Gi}
             self.client.modifyVolume(volume_info['id'], options)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
@@ -249,8 +249,8 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         free_capacity = cluster_info['spaceAvailable']
 
         # convert to GB
-        data['total_capacity_gb'] = int(total_capacity) / units.GiB
-        data['free_capacity_gb'] = int(free_capacity) / units.GiB
+        data['total_capacity_gb'] = int(total_capacity) / units.Gi
+        data['free_capacity_gb'] = int(free_capacity) / units.Gi
 
         self.device_stats = data
 

@@ -24,8 +24,8 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import coraid
@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 def to_coraid_kb(gb):
-    return math.ceil(float(gb) * units.GiB / 1000)
+    return math.ceil(float(gb) * units.Gi / 1000)
 
 
 def coraid_volume_size(gb):

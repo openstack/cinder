@@ -28,7 +28,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume.drivers.hds.hnas_backend import HnasBackend
 from cinder.volume.drivers import nfs
 
@@ -226,7 +226,7 @@ class HDSNFSDriver(nfs.NfsDriver):
         """Checks if file size at path is equal to size."""
 
         data = image_utils.qemu_img_info(path)
-        virt_size = data.virtual_size / units.GiB
+        virt_size = data.virtual_size / units.Gi
 
         if virt_size == size:
             return True

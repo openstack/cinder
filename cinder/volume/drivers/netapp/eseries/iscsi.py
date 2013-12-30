@@ -25,7 +25,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
@@ -306,7 +306,7 @@ class Driver(driver.ISCSIDriver):
 
     def _get_sorted_avl_storage_pools(self, size_gb):
         """Returns storage pools sorted on available capacity."""
-        size = size_gb * units.GiB
+        size = size_gb * units.Gi
         pools = self._client.list_storage_pools()
         sorted_pools = sorted(pools, key=lambda x:
                               (int(x.get('totalRaidedSpace', 0))
@@ -350,7 +350,7 @@ class Driver(driver.ISCSIDriver):
         LOG.debug("Creating snap vol for group %s", group['label'])
         image = self._get_cached_snap_grp_image(snapshot_id)
         label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
-        capacity = int(image['pitCapacity']) / units.GiB
+        capacity = int(image['pitCapacity']) / units.Gi
         storage_pools = self._get_sorted_avl_storage_pools(capacity)
         s_id = storage_pools[0]['volumeGroupRef']
         return self._client.create_snapshot_volume(image['pitRef'], label,
@@ -423,7 +423,7 @@ class Driver(driver.ISCSIDriver):
         snap_grp, snap_image = None, None
         snapshot_name = utils.convert_uuid_to_es_fmt(snapshot['id'])
         vol = self._get_volume(snapshot['volume_id'])
-        vol_size_gb = int(vol['totalSizeInBytes']) / units.GiB
+        vol_size_gb = int(vol['totalSizeInBytes']) / units.Gi
         pools = self._get_sorted_avl_storage_pools(vol_size_gb)
         try:
             snap_grp = self._client.create_snapshot_group(
@@ -646,8 +646,8 @@ class Driver(driver.ISCSIDriver):
             if pool['volumeGroupRef'] in self._objects['disk_pool_refs']:
                 tot_bytes = tot_bytes + int(pool.get('totalRaidedSpace', 0))
                 used_bytes = used_bytes + int(pool.get('usedSpace', 0))
-        self._stats['free_capacity_gb'] = (tot_bytes - used_bytes) / units.GiB
-        self._stats['total_capacity_gb'] = tot_bytes / units.GiB
+        self._stats['free_capacity_gb'] = (tot_bytes - used_bytes) / units.Gi
+        self._stats['total_capacity_gb'] = tot_bytes / units.Gi
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""

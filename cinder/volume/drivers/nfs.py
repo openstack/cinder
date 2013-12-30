@@ -24,7 +24,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 
@@ -229,7 +229,7 @@ class RemoteFsDriver(driver.VolumeDriver):
         """
 
         block_size_mb = 1
-        block_count = size * units.GiB / (block_size_mb * units.MiB)
+        block_count = size * units.Gi / (block_size_mb * units.Mi)
 
         self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
                       'bs=%dM' % block_size_mb,
@@ -241,7 +241,7 @@ class RemoteFsDriver(driver.VolumeDriver):
 
         self._execute('qemu-img', 'create', '-f', 'qcow2',
                       '-o', 'preallocation=metadata',
-                      path, str(size_gb * units.GiB),
+                      path, str(size_gb * units.Gi),
                       run_as_root=True)
 
     def _set_rw_permissions_for_all(self, path):
@@ -275,7 +275,7 @@ class RemoteFsDriver(driver.VolumeDriver):
         image_utils.resize_image(self.local_path(volume), volume['size'])
 
         data = image_utils.qemu_img_info(self.local_path(volume))
-        virt_size = data.virtual_size / units.GiB
+        virt_size = data.virtual_size / units.Gi
         if virt_size != volume['size']:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
@@ -360,8 +360,8 @@ class RemoteFsDriver(driver.VolumeDriver):
             global_capacity += capacity
             global_free += free
 
-        data['total_capacity_gb'] = global_capacity / float(units.GiB)
-        data['free_capacity_gb'] = global_free / float(units.GiB)
+        data['total_capacity_gb'] = global_capacity / float(units.Gi)
+        data['free_capacity_gb'] = global_free / float(units.Gi)
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data
@@ -521,7 +521,7 @@ class NfsDriver(RemoteFsDriver):
 
         used_ratio = self.configuration.nfs_used_ratio
         oversub_ratio = self.configuration.nfs_oversub_ratio
-        requested_volume_size = volume_size_in_gib * units.GiB
+        requested_volume_size = volume_size_in_gib * units.Gi
 
         total_size, total_available, total_allocated = \
             self._get_capacity_info(nfs_share)
@@ -590,5 +590,5 @@ class NfsDriver(RemoteFsDriver):
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
         data = image_utils.qemu_img_info(path)
-        virt_size = data.virtual_size / units.GiB
+        virt_size = data.virtual_size / units.Gi
         return virt_size == size

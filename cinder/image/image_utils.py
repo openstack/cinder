@@ -35,7 +35,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import utils as volume_utils
 
@@ -182,7 +182,7 @@ def fetch_to_volume_format(context, image_service,
             return
 
         data = qemu_img_info(tmp)
-        virt_size = data.virtual_size / units.GiB
+        virt_size = data.virtual_size / units.Gi
 
         # NOTE(xqueralt): If the image virtual size doesn't fit in the
         # requested volume there is no point on resizing it because it will

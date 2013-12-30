@@ -18,7 +18,7 @@ Implements operations on volumes residing on VMware datastores.
 """
 
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 
@@ -335,7 +335,7 @@ class VMwareVolumeOps(object):
 
         # VMWare API needs the capacity unit to be in KB, so convert the
         # capacity unit from GB to KB.
-        size_in_kb = requested_size_in_gb * units.MiB
+        size_in_kb = requested_size_in_gb * units.Mi
         task = self._session.invoke_api(self._session.vim,
                                         "ExtendVirtualDisk_Task",
                                         diskMgr,

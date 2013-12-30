@@ -24,8 +24,8 @@ import mox as mox_lib
 
 from cinder import context
 from cinder import db
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import iscsi
@@ -660,9 +660,9 @@ class TestNexentaNfsDriver(test.TestCase):
         self.mox.ReplayAll()
         total, free, allocated = self.drv._get_capacity_info(self.TEST_EXPORT1)
 
-        self.assertEqual(total, 3 * units.GiB)
-        self.assertEqual(free, units.GiB)
-        self.assertEqual(allocated, 2 * units.GiB)
+        self.assertEqual(total, 3 * units.Gi)
+        self.assertEqual(free, units.Gi)
+        self.assertEqual(allocated, 2 * units.Gi)
 
     def test_get_share_datasets(self):
         self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
@@ -748,8 +748,8 @@ class TestNexentaUtils(test.TestCase):
             ('1023b', 1023),
             ('0B', 0),
             # Test other units
-            ('1M', units.MiB),
-            ('1.0M', units.MiB),
+            ('1M', units.Mi),
+            ('1.0M', units.Mi),
         )
 
         for value, result in values_to_test:
@@ -761,9 +761,9 @@ class TestNexentaUtils(test.TestCase):
     def test_str2gib_size(self):
         self.assertEqual(utils.str2gib_size('1024M'), 1)
         self.assertEqual(utils.str2gib_size('300M'),
-                         300 * units.MiB // units.GiB)
+                         300 * units.Mi // units.Gi)
         self.assertEqual(utils.str2gib_size('1.2T'),
-                         1.2 * units.TiB // units.GiB)
+                         1.2 * units.Ti // units.Gi)
         self.assertRaises(ValueError, utils.str2gib_size, 'A')
 
     def test_parse_nms_url(self):

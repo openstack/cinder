@@ -25,8 +25,8 @@ import mox
 
 from cinder import exception
 from cinder.image import glance
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
@@ -494,7 +494,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volumeops.get_dc.assert_called_once_with(rp)
         volumeops.get_vmfolder.assert_called_once_with(mock.sentinel.dc)
         driver._get_storage_profile.assert_called_once_with(volume)
-        size = volume['size'] * units.GiB
+        size = volume['size'] * units.Gi
         driver._select_datastore_summary.assert_called_once_with(size, dss)
 
     def test_get_disk_type(self):
@@ -533,7 +533,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         backing = FakeMor('VirtualMachine', 'my_back')
         m.StubOutWithMock(self._volumeops, 'create_backing')
         self._volumeops.create_backing(volume['name'],
-                                       volume['size'] * units.MiB,
+                                       volume['size'] * units.Mi,
                                        mox.IgnoreArg(), folder,
                                        resource_pool, host,
                                        mox.IgnoreArg(),
@@ -957,7 +957,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         fake_context = mock.sentinel.context
         fake_image_id = 'image-id'
         fake_image_meta = {'disk_format': 'vmdk',
-                           'size': 2 * units.GiB,
+                           'size': 2 * units.Gi,
                            'properties': {'vmware_disktype': 'preallocated'}}
         image_service = mock.Mock(glance.GlanceImageService)
         fake_size = 3
@@ -1051,8 +1051,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         fake_context = mock.Mock()
         fake_backing = mock.sentinel.backing
         fake_image_id = 'image-id'
-        size = 5 * units.GiB
-        size_gb = float(size) / units.GiB
+        size = 5 * units.Gi
+        size_gb = float(size) / units.Gi
         fake_volume_size = 1 + size_gb
         fake_image_meta = {'disk_format': 'vmdk', 'size': size,
                            'properties': {'vmware_disktype':
@@ -1189,7 +1189,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume = FakeObject()
         volume['name'] = vol_name
         size_gb = 5
-        size = size_gb * units.GiB
+        size = size_gb * units.Gi
         volume['size'] = size_gb
         volume['project_id'] = project_id
         volume['instance_uuid'] = None
@@ -1851,7 +1851,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                         self.VOLUME_FOLDER)
         driver._get_storage_profile.assert_called_once_with(volume)
         driver._filter_ds_by_profile.assert_called_once_with(dss, profile)
-        size = volume['size'] * units.GiB
+        size = volume['size'] * units.Gi
         driver._select_datastore_summary.assert_called_once_with(size,
                                                                  filtered_dss)
 

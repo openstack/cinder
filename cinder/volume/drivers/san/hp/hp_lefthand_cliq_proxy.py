@@ -25,7 +25,7 @@ from lxml import etree
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
 
@@ -438,7 +438,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         cluster_node = result_xml.find("response/cluster")
         total_capacity = cluster_node.attrib.get("spaceTotal")
         free_capacity = cluster_node.attrib.get("unprovisionedSpace")
-        GB = units.GiB
+        GB = units.Gi
 
         data['total_capacity_gb'] = int(total_capacity) / GB
         data['free_capacity_gb'] = int(free_capacity) / GB

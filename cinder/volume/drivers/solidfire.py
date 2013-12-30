@@ -28,7 +28,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -356,7 +356,7 @@ class SolidFireDriver(SanISCSIDriver):
 
         params = {'volumeID': int(sf_vol['volumeID']),
                   'name': 'UUID-%s' % v_ref['id'],
-                  'newSize': int(new_size * units.GiB),
+                  'newSize': int(new_size * units.Gi),
                   'newAccountID': sfaccount['accountID']}
         data = self._issue_api_request('CloneVolume', params)
 
@@ -521,7 +521,7 @@ class SolidFireDriver(SanISCSIDriver):
         params = {'name': 'UUID-%s' % volume['id'],
                   'accountID': None,
                   'sliceCount': slice_count,
-                  'totalSize': int(volume['size'] * units.GiB),
+                  'totalSize': int(volume['size'] * units.Gi),
                   'enable512e': self.configuration.sf_emulate_512,
                   'attributes': attributes,
                   'qos': qos}
@@ -647,7 +647,7 @@ class SolidFireDriver(SanISCSIDriver):
 
         params = {
             'volumeID': sf_vol['volumeID'],
-            'totalSize': int(new_size * units.GiB)
+            'totalSize': int(new_size * units.Gi)
         }
         data = self._issue_api_request('ModifyVolume',
                                        params, version='5.0')
@@ -682,9 +682,9 @@ class SolidFireDriver(SanISCSIDriver):
         data["storage_protocol"] = 'iSCSI'
 
         data['total_capacity_gb'] =\
-            float(results['maxProvisionedSpace'] / units.GiB)
+            float(results['maxProvisionedSpace'] / units.Gi)
 
-        data['free_capacity_gb'] = float(free_capacity / units.GiB)
+        data['free_capacity_gb'] = float(free_capacity / units.Gi)
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = True
         data['compression_percent'] =\

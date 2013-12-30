@@ -23,8 +23,8 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import gpfs
@@ -750,7 +750,7 @@ class GPFSDriverTestCase(test.TestCase):
                                          mock_rw_permission,
                                          mock_gpfs_redirect,
                                          mock_resize_volume_file):
-        mock_resize_volume_file.return_value = 5 * units.GiB
+        mock_resize_volume_file.return_value = 5 * units.Gi
         volume = {}
         volume['size'] = 1000
         self.assertEqual(self.driver.create_volume_from_snapshot(volume, ''),
@@ -765,7 +765,7 @@ class GPFSDriverTestCase(test.TestCase):
                                   mock_create_gpfs_clone,
                                   mock_rw_permission,
                                   mock_resize_volume_file):
-        mock_resize_volume_file.return_value = 5 * units.GiB
+        mock_resize_volume_file.return_value = 5 * units.Gi
         volume = {}
         volume['size'] = 1000
         self.assertEqual(self.driver.create_cloned_volume(volume, ''),
@@ -955,7 +955,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual(None, self.driver.terminate_connection('', ''))
 
     def test_get_volume_stats(self):
-        fake_avail = 80 * units.GiB
+        fake_avail = 80 * units.Gi
         fake_size = 2 * fake_avail
         with mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                         '_get_available_capacity',
@@ -1384,14 +1384,14 @@ class GPFSDriverTestCase(test.TestCase):
         data = FakeQemuImgInfo()
         data.file_format = 'qcow2'
         data.backing_file = None
-        data.virtual_size = 1 * units.GiB
+        data.virtual_size = 1 * units.Gi
         return data
 
     def _fake_qemu_raw_image_info(self, path):
         data = FakeQemuImgInfo()
         data.file_format = 'raw'
         data.backing_file = None
-        data.virtual_size = 1 * units.GiB
+        data.virtual_size = 1 * units.Gi
         return data
 
     def _fake_retype_arguments(self):

@@ -29,7 +29,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -294,7 +294,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param size: size of file
         """
         block_size_mb = 1
-        block_count = size * units.GiB / (block_size_mb * units.MiB)
+        block_count = size * units.Gi / (block_size_mb * units.Mi)
 
         LOG.info(_('Creating regular file: %s.'
                    'This may take some time.') % path)

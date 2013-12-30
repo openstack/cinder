@@ -33,8 +33,8 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import processutils as putils
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume import driver as base_driver
@@ -473,9 +473,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_available_capacity')
         drv._get_available_capacity(self.TEST_EXPORT1).\
-            AndReturn((2 * units.GiB, 5 * units.GiB))
+            AndReturn((2 * units.Gi, 5 * units.Gi))
         drv._get_available_capacity(self.TEST_EXPORT2).\
-            AndReturn((3 * units.GiB, 10 * units.GiB))
+            AndReturn((3 * units.Gi, 10 * units.Gi))
 
         mox.ReplayAll()
 
@@ -494,9 +494,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_available_capacity')
         drv._get_available_capacity(self.TEST_EXPORT1).\
-            AndReturn((0, 5 * units.GiB))
+            AndReturn((0, 5 * units.Gi))
         drv._get_available_capacity(self.TEST_EXPORT2).\
-            AndReturn((0, 10 * units.GiB))
+            AndReturn((0, 10 * units.Gi))
 
         mox.ReplayAll()
 
@@ -577,7 +577,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv._execute('qemu-img', 'create', '-f', 'qcow2',
                      '-o', 'preallocation=metadata', path,
-                     str(volume['size'] * units.GiB),
+                     str(volume['size'] * units.Gi),
                      run_as_root=True)
 
         drv._execute('chmod', 'ugo+rw', path, run_as_root=True)

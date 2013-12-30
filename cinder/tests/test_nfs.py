@@ -28,8 +28,8 @@ from oslo.config import cfg
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 
@@ -87,7 +87,7 @@ class RemoteFsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_execute')
         drv._execute('qemu-img', 'create', '-f', 'qcow2',
                      '-o', 'preallocation=metadata', '/path',
-                     '%s' % str(file_size * units.GiB), run_as_root=True)
+                     '%s' % str(file_size * units.Gi), run_as_root=True)
 
         mox.ReplayAll()
 
@@ -183,7 +183,7 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
         data = mox_lib.MockAnything()
-        data.virtual_size = 1 * units.GiB
+        data.virtual_size = 1 * units.Gi
         image_utils.qemu_img_info(TEST_IMG_SOURCE).AndReturn(data)
 
         mox.ReplayAll()
@@ -412,17 +412,17 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_capacity_info')
         drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
-            AndReturn((5 * units.GiB, 2 * units.GiB,
-                       2 * units.GiB))
+            AndReturn((5 * units.Gi, 2 * units.Gi,
+                       2 * units.Gi))
         drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
-            AndReturn((5 * units.GiB, 2 * units.GiB,
-                       2 * units.GiB))
+            AndReturn((5 * units.Gi, 2 * units.Gi,
+                       2 * units.Gi))
         drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
-            AndReturn((10 * units.GiB, 3 * units.GiB,
-                       1 * units.GiB))
+            AndReturn((10 * units.Gi, 3 * units.Gi,
+                       1 * units.Gi))
         drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
-            AndReturn((10 * units.GiB, 3 * units.GiB,
-                       1 * units.GiB))
+            AndReturn((10 * units.Gi, 3 * units.Gi,
+                       1 * units.Gi))
 
         mox.ReplayAll()
 
@@ -440,10 +440,10 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_capacity_info')
         drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
-            AndReturn((5 * units.GiB, 0, 5 * units.GiB))
+            AndReturn((5 * units.Gi, 0, 5 * units.Gi))
         drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
-            AndReturn((10 * units.GiB, 0,
-                       10 * units.GiB))
+            AndReturn((10 * units.Gi, 0,
+                       10 * units.Gi))
 
         mox.ReplayAll()
 
@@ -612,11 +612,11 @@ class NfsDriverTestCase(test.TestCase):
         drv._ensure_shares_mounted()
 
         drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
-            AndReturn((10 * units.GiB, 2 * units.GiB,
-                       2 * units.GiB))
+            AndReturn((10 * units.Gi, 2 * units.Gi,
+                       2 * units.Gi))
         drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
-            AndReturn((20 * units.GiB, 3 * units.GiB,
-                       3 * units.GiB))
+            AndReturn((20 * units.Gi, 3 * units.Gi,
+                       3 * units.Gi))
 
         mox.ReplayAll()
 
@@ -637,9 +637,9 @@ class NfsDriverTestCase(test.TestCase):
                                                    requested_volume_size)
 
     def test_is_share_eligible(self):
-        total_size = 100.0 * units.GiB
-        total_available = 90.0 * units.GiB
-        total_allocated = 10.0 * units.GiB
+        total_size = 100.0 * units.Gi
+        total_available = 90.0 * units.Gi
+        total_allocated = 10.0 * units.Gi
         requested_volume_size = 1  # GiB
 
         self.assertTrue(self._check_is_share_eligible(total_size,
@@ -648,9 +648,9 @@ class NfsDriverTestCase(test.TestCase):
                                                       requested_volume_size))
 
     def test_is_share_eligible_above_used_ratio(self):
-        total_size = 100.0 * units.GiB
-        total_available = 4.0 * units.GiB
-        total_allocated = 96.0 * units.GiB
+        total_size = 100.0 * units.Gi
+        total_available = 4.0 * units.Gi
+        total_allocated = 96.0 * units.Gi
         requested_volume_size = 1  # GiB
 
         # Check used > used_ratio statement entered
@@ -660,9 +660,9 @@ class NfsDriverTestCase(test.TestCase):
                                                        requested_volume_size))
 
     def test_is_share_eligible_above_oversub_ratio(self):
-        total_size = 100.0 * units.GiB
-        total_available = 10.0 * units.GiB
-        total_allocated = 90.0 * units.GiB
+        total_size = 100.0 * units.Gi
+        total_available = 10.0 * units.Gi
+        total_allocated = 90.0 * units.Gi
         requested_volume_size = 10  # GiB
 
         # Check apparent_available <= requested_volume_size statement entered
@@ -672,9 +672,9 @@ class NfsDriverTestCase(test.TestCase):
                                                        requested_volume_size))
 
     def test_is_share_eligible_reserved_space_above_oversub_ratio(self):
-        total_size = 100.0 * units.GiB
-        total_available = 10.0 * units.GiB
-        total_allocated = 100.0 * units.GiB
+        total_size = 100.0 * units.Gi
+        total_available = 10.0 * units.Gi
+        total_allocated = 100.0 * units.Gi
         requested_volume_size = 1  # GiB
 
         # Check total_allocated / total_size >= oversub_ratio
@@ -738,7 +738,7 @@ class NfsDriverTestCase(test.TestCase):
         path = 'fake/path'
         size = 2
         data = mock.MagicMock()
-        data.virtual_size = size * units.GiB
+        data.virtual_size = size * units.Gi
 
         with mock.patch.object(image_utils, 'qemu_img_info',
                                return_value=data):
@@ -750,7 +750,7 @@ class NfsDriverTestCase(test.TestCase):
         path = 'fake/path'
         size = 2
         data = mock.MagicMock()
-        data.virtual_size = (size + 1) * units.GiB
+        data.virtual_size = (size + 1) * units.Gi
 
         with mock.patch.object(image_utils, 'qemu_img_info',
                                return_value=data):

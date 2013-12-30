@@ -20,8 +20,8 @@ import mock
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 
 from cinder.tests import fake_hp_3par_client as hp3parclient
 from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
@@ -772,7 +772,7 @@ class HP3PARBaseDriver(object):
         old_size = self.volume['size']
         new_size = old_size + grow_size
         self.driver.extend_volume(self.volume, str(new_size))
-        growth_size_mib = grow_size * units.KiB
+        growth_size_mib = grow_size * units.Ki
 
         expected = [
             mock.call.growVolume(self.VOLUME_3PAR_NAME, growth_size_mib)]

@@ -18,7 +18,7 @@ import contextlib
 import os
 import pickle
 
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume.drivers.xenapi import tools
 
 
@@ -258,7 +258,7 @@ class CompoundOperations(object):
 
 
 def to_bytes(size_in_gigs):
-    return size_in_gigs * units.GiB
+    return size_in_gigs * units.Gi
 
 
 class NFSOperationsMixIn(CompoundOperations):

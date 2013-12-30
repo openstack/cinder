@@ -28,7 +28,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 
@@ -432,7 +432,7 @@ class GPFSDriver(driver.VolumeDriver):
         """Preallocate file blocks by writing zeros."""
 
         block_size_mb = 1
-        block_count = size * units.GiB / (block_size_mb * units.MiB)
+        block_count = size * units.Gi / (block_size_mb * units.Mi)
 
         self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
                       'bs=%dM' % block_size_mb,
@@ -514,7 +514,7 @@ class GPFSDriver(driver.VolumeDriver):
         self._set_rw_permission(volume_path)
         self._gpfs_redirect(volume_path)
         virt_size = self._resize_volume_file(volume, volume['size'])
-        return {'size': math.ceil(virt_size / units.GiB)}
+        return {'size': math.ceil(virt_size / units.Gi)}
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a GPFS volume from another volume."""
@@ -524,7 +524,7 @@ class GPFSDriver(driver.VolumeDriver):
         self._create_gpfs_clone(src, dest)
         self._set_rw_permission(dest)
         virt_size = self._resize_volume_file(volume, volume['size'])
-        return {'size': math.ceil(virt_size / units.GiB)}
+        return {'size': math.ceil(virt_size / units.Gi)}
 
     def _delete_gpfs_file(self, fchild):
         """Delete a GPFS file and cleanup clone children."""
@@ -688,8 +688,8 @@ class GPFSDriver(driver.VolumeDriver):
         data["storage_protocol"] = 'file'
         free, capacity = self._get_available_capacity(self.configuration.
                                                       gpfs_mount_point_base)
-        data['total_capacity_gb'] = math.ceil(capacity / units.GiB)
-        data['free_capacity_gb'] = math.ceil(free / units.GiB)
+        data['total_capacity_gb'] = math.ceil(capacity / units.Gi)
+        data['free_capacity_gb'] = math.ceil(free / units.Gi)
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         data['storage_pool'] = self._storage_pool

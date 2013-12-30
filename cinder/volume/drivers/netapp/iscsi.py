@@ -30,7 +30,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.api import NaApiError
@@ -577,7 +577,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         name = volume['name']
         path = self.lun_table[name].metadata['Path']
         curr_size_bytes = str(self.lun_table[name].size)
-        new_size_bytes = str(int(new_size) * units.GiB)
+        new_size_bytes = str(int(new_size) * units.Gi)
         # Reused by clone scenarios.
         # Hence comparing the stored size.
         if curr_size_bytes != new_size_bytes:
@@ -1103,9 +1103,9 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             if self.ssc_vols['all']:
                 vol_max = max(self.ssc_vols['all'])
                 data['total_capacity_gb'] =\
-                    int(vol_max.space['size_total_bytes']) / units.GiB
+                    int(vol_max.space['size_total_bytes']) / units.Gi
                 data['free_capacity_gb'] =\
-                    int(vol_max.space['size_avl_bytes']) / units.GiB
+                    int(vol_max.space['size_avl_bytes']) / units.Gi
             else:
                 data['total_capacity_gb'] = 0
                 data['free_capacity_gb'] = 0
@@ -1539,8 +1539,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                 avl_size = vol.get_child_content('size-available')
                 if avl_size:
                     free_bytes = free_bytes + int(avl_size)
-        self.total_gb = total_bytes / units.GiB
-        self.free_gb = free_bytes / units.GiB
+        self.total_gb = total_bytes / units.Gi
+        self.free_gb = free_bytes / units.Gi
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""

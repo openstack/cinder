@@ -29,9 +29,9 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder.openstack.common import units
 from cinder import test
 from cinder.tests import utils as testutils
-from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import storwize_svc
@@ -627,7 +627,7 @@ port_speed!N/A
             return self._errors['CMMVC5753E']
 
         curr_size = int(self._volumes_list[vol_name]['capacity'])
-        addition = size * units.GiB
+        addition = size * units.Gi
         self._volumes_list[vol_name]['capacity'] = str(curr_size + addition)
         return ('', '')
 
@@ -1765,7 +1765,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Make sure volume attributes are as they should be
         attributes = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        attr_size = float(attributes['capacity']) / units.GiB  # bytes to GB
+        attr_size = float(attributes['capacity']) / units.Gi  # bytes to GB
         self.assertEqual(attr_size, float(volume['size']))
         pool = self.driver.configuration.local_conf.storwize_svc_volpool_name
         self.assertEqual(attributes['mdisk_grp_name'], pool)
@@ -2230,7 +2230,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         volume = self._create_volume()
         self.driver.extend_volume(volume, '13')
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        vol_size = int(attrs['capacity']) / units.GiB
+        vol_size = int(attrs['capacity']) / units.Gi
+
         self.assertAlmostEqual(vol_size, 13)
 
         snap = self._generate_vol_info(volume['name'], volume['id'])

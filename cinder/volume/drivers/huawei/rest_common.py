@@ -28,7 +28,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume import volume_types
@@ -220,9 +220,9 @@ class HVSCommon():
         calculates volume size with sectors, which is 512 bytes.
         """
 
-        volume_size = units.GiB / 512  # 1G
+        volume_size = units.Gi / 512  # 1G
         if int(volume['size']) != 0:
-            volume_size = int(volume['size']) * units.GiB / 512
+            volume_size = int(volume['size']) * units.Gi / 512
 
         return volume_size
 
@@ -1290,7 +1290,7 @@ class HVSCommon():
         lun_id = self._get_volume_by_name(name)
         if lun_id:
             url = self.url + "/lun/expand"
-            capacity = int(new_size) * units.GiB / 512
+            capacity = int(new_size) * units.Gi / 512
             data = json.dumps({"TYPE": "11",
                                "ID": lun_id,
                                "CAPACITY": capacity})

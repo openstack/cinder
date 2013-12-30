@@ -54,7 +54,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -264,7 +264,7 @@ class HP3PARCommon(object):
                   " by %(diff)s GB." %
                   {'vol': volume_name, 'old': old_size, 'new': new_size,
                    'diff': growth_size})
-        growth_size_mib = growth_size * units.KiB
+        growth_size_mib = growth_size * units.Ki
         self._extend_volume(volume, volume_name, growth_size_mib)
 
     def _extend_volume(self, volume, volume_name, growth_size_mib,
@@ -637,13 +637,13 @@ class HP3PARCommon(object):
             if min_io is None:
                 qosRule['ioMinGoal'] = int(max_io)
         if min_bw:
-            qosRule['bwMinGoalKB'] = int(min_bw) * units.KiB
+            qosRule['bwMinGoalKB'] = int(min_bw) * units.Ki
             if max_bw is None:
-                qosRule['bwMaxLimitKB'] = int(min_bw) * units.KiB
+                qosRule['bwMaxLimitKB'] = int(min_bw) * units.Ki
         if max_bw:
-            qosRule['bwMaxLimitKB'] = int(max_bw) * units.KiB
+            qosRule['bwMaxLimitKB'] = int(max_bw) * units.Ki
             if min_bw is None:
-                qosRule['bwMinGoalKB'] = int(max_bw) * units.KiB
+                qosRule['bwMinGoalKB'] = int(max_bw) * units.Ki
         if latency:
             qosRule['latencyGoal'] = int(latency)
         if priority:
@@ -1002,7 +1002,7 @@ class HP3PARCommon(object):
                     LOG.debug('Converting to base volume type: %s.' %
                               volume['id'])
                     self._convert_to_base_volume(volume)
-                    growth_size_mib = growth_size * units.GiB / units.MiB
+                    growth_size_mib = growth_size * units.Gi / units.Mi
                     LOG.debug('Growing volume: %(id)s by %(size)s GiB.' %
                               {'id': volume['id'], 'size': growth_size})
                     self.client.growVolume(volume_name, growth_size_mib)

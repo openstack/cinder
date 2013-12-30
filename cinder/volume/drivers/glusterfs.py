@@ -31,7 +31,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import nfs
 
@@ -1104,7 +1104,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                 greatest_share = glusterfs_share
                 greatest_size = capacity
 
-        if volume_size_for * units.GiB > greatest_size:
+        if volume_size_for * units.Gi > greatest_size:
             raise exception.GlusterfsNoSuitableShareFound(
                 volume_size=volume_size_for)
         return greatest_share

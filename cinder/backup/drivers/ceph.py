@@ -55,7 +55,7 @@ from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import strutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 import cinder.volume.drivers.rbd as rbd_driver
 
@@ -75,7 +75,7 @@ service_opts = [
                help='The Ceph user to connect with. Default here is to use '
                     'the same user as for Cinder volumes. If not using cephx '
                     'this should be set to None.'),
-    cfg.IntOpt('backup_ceph_chunk_size', default=(units.MiB * 128),
+    cfg.IntOpt('backup_ceph_chunk_size', default=(units.Mi * 128),
                help='The chunk size, in bytes, that a backup is broken into '
                     'before transfer to the Ceph object store.'),
     cfg.StrOpt('backup_ceph_pool', default='backups',
@@ -814,7 +814,7 @@ class CephBackupDriver(BackupDriver):
             errmsg = _("Need non-zero volume size")
             raise exception.InvalidParameterValue(errmsg)
 
-        return int(volume['size']) * units.GiB
+        return int(volume['size']) * units.Gi
 
     def _backup_metadata(self, backup):
         """Backup volume metadata.
@@ -1097,7 +1097,7 @@ class CephBackupDriver(BackupDriver):
         volume_name = volume['name']
         backup_id = backup['id']
         backup_volume_id = backup['volume_id']
-        length = int(volume['size']) * units.GiB
+        length = int(volume['size']) * units.Gi
 
         base_name = self._get_backup_base_name(backup['volume_id'],
                                                diff_format=True)

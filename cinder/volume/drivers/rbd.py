@@ -28,7 +28,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import strutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume import driver
 
 try:
@@ -346,8 +346,8 @@ class RBDDriver(driver.VolumeDriver):
         try:
             with RADOSClient(self) as client:
                 new_stats = client.cluster.get_cluster_stats()
-            stats['total_capacity_gb'] = new_stats['kb'] / units.MiB
-            stats['free_capacity_gb'] = new_stats['kb_avail'] / units.MiB
+            stats['total_capacity_gb'] = new_stats['kb'] / units.Mi
+            stats['free_capacity_gb'] = new_stats['kb_avail'] / units.Mi
         except self.rados.Error:
             # just log and return unknown capacities
             LOG.exception(_('error refreshing volume stats'))
@@ -468,15 +468,15 @@ class RBDDriver(driver.VolumeDriver):
     def create_volume(self, volume):
         """Creates a logical volume."""
         if int(volume['size']) == 0:
-            size = 100 * units.MiB
+            size = 100 * units.Mi
         else:
-            size = int(volume['size']) * units.GiB
+            size = int(volume['size']) * units.Gi
 
         LOG.debug("creating volume '%s'" % (volume['name']))
 
         old_format = True
         features = 0
-        chunk_size = CONF.rbd_store_chunk_size * units.MiB
+        chunk_size = CONF.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
         if self._supports_layering():
             old_format = False
@@ -512,7 +512,7 @@ class RBDDriver(driver.VolumeDriver):
     def _resize(self, volume, **kwargs):
         size = kwargs.get('size', None)
         if not size:
-            size = int(volume['size']) * units.GiB
+            size = int(volume['size']) * units.Gi
 
         with RBDVolumeProxy(self, volume['name']) as vol:
             vol.resize(size)
@@ -786,7 +786,7 @@ class RBDDriver(driver.VolumeDriver):
 
             self.delete_volume(volume)
 
-            chunk_size = CONF.rbd_store_chunk_size * units.MiB
+            chunk_size = CONF.rbd_store_chunk_size * units.Mi
             order = int(math.log(chunk_size, 2))
             # keep using the command line import instead of librbd since it
             # detects zeroes to preserve sparseness in the image
@@ -848,7 +848,7 @@ class RBDDriver(driver.VolumeDriver):
         old_size = volume['size']
 
         try:
-            size = int(new_size) * units.GiB
+            size = int(new_size) * units.Gi
             self._resize(volume, size=size)
         except Exception:
             msg = _('Failed to Extend Volume '

@@ -20,9 +20,9 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import units
 from cinder import policy
 from cinder import quota
-from cinder import units
 from cinder import utils
 from cinder.volume.flows import common
 from cinder.volume import volume_types
@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 
 ACTION = 'volume:create'
 CONF = cfg.CONF
-GB = units.GiB
+GB = units.Gi
 QUOTAS = quota.QUOTAS
 
 # Only in these 'sources' status can we attempt to create a volume from a

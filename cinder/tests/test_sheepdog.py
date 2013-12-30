@@ -21,8 +21,8 @@ import tempfile
 
 from cinder.image import image_utils
 from cinder.openstack.common import processutils
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder.volume.drivers.sheepdog import SheepdogDriver
 
 
@@ -69,8 +69,8 @@ class SheepdogTestCase(test.TestCase):
             vendor_name='Open Source',
             dirver_version=self.driver.VERSION,
             storage_protocol='sheepdog',
-            total_capacity_gb=float(107287605248) / units.GiB,
-            free_capacity_gb=float(107287605248 - 3623897354) / units.GiB,
+            total_capacity_gb=float(107287605248) / units.Gi,
+            free_capacity_gb=float(107287605248 - 3623897354) / units.Gi,
             reserved_percentage=0,
             QoS_support=False)
         actual = self.driver.get_volume_stats(True)
@@ -134,7 +134,7 @@ class SheepdogTestCase(test.TestCase):
                     'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
 
         self.mox.StubOutWithMock(self.driver, '_resize')
-        size = int(fake_size) * units.GiB
+        size = int(fake_size) * units.Gi
         self.driver._resize(fake_vol, size=size)
 
         self.mox.ReplayAll()

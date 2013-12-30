@@ -25,7 +25,7 @@ import re
 
 import six.moves.urllib.parse as urlparse
 
-from cinder import units
+from cinder.openstack.common import units
 
 
 def str2size(s, scale=1024):
@@ -59,7 +59,7 @@ def str2size(s, scale=1024):
 def str2gib_size(s):
     """Covert size-string to size in gigabytes."""
     size_in_bytes = str2size(s)
-    return size_in_bytes / units.GiB
+    return size_in_bytes / units.Gi
 
 
 def get_rrmgr_cmd(src, dst, compression=None, tcp_buf_size=None,

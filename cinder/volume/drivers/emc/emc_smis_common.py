@@ -27,7 +27,7 @@ from xml.dom.minidom import parseString
 
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ class EMCSMISCommon():
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VNX) volume."""
         LOG.debug('Entering create_volume.')
-        volumesize = int(volume['size']) * units.GiB
+        volumesize = int(volume['size']) * units.Gi
         volumename = volume['name']
 
         LOG.info(_('Create Volume: %(volume)s  Size: %(size)lu')
@@ -954,7 +954,7 @@ class EMCSMISCommon():
     def extend_volume(self, volume, new_size):
         """Extends an existing  volume."""
         LOG.debug('Entering extend_volume.')
-        volumesize = int(new_size) * units.GiB
+        volumesize = int(new_size) * units.Gi
         volumename = volume['name']
 
         LOG.info(_('Extend Volume: %(volume)s  New size: %(size)lu')

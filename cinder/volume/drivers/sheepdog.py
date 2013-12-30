@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume import driver
 
 
@@ -90,7 +90,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def _resize(self, volume, size=None):
         if not size:
-            size = int(volume['size']) * units.GiB
+            size = int(volume['size']) * units.Gi
 
         self._try_execute('collie', 'vdi', 'resize',
                           volume['name'], size)
@@ -172,8 +172,8 @@ class SheepdogDriver(driver.VolumeDriver):
             m = self.stats_pattern.match(stdout)
             total = float(m.group(1))
             used = float(m.group(2))
-            stats['total_capacity_gb'] = total / units.GiB
-            stats['free_capacity_gb'] = (total - used) / units.GiB
+            stats['total_capacity_gb'] = total / units.Gi
+            stats['free_capacity_gb'] = (total - used) / units.Gi
         except processutils.ProcessExecutionError:
             LOG.exception(_('error refreshing volume stats'))
 
@@ -189,7 +189,7 @@ class SheepdogDriver(driver.VolumeDriver):
         old_size = volume['size']
 
         try:
-            size = int(new_size) * units.GiB
+            size = int(new_size) * units.Gi
             self._resize(volume, size=size)
         except Exception:
             msg = _('Failed to Extend Volume '

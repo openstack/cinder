@@ -19,8 +19,8 @@ Test suite for VMware VMDK driver volumeops module.
 
 import mock
 
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 from cinder.volume.drivers.vmware import volumeops
@@ -801,7 +801,7 @@ class VolumeOpsTestCase(test.TestCase):
         invoke_api.return_value = task
         disk_mgr = self.session.vim.service_content.virtualDiskManager
         fake_size = 5
-        fake_size_in_kb = fake_size * units.MiB
+        fake_size_in_kb = fake_size * units.Mi
         fake_name = 'fake_volume_0000000001'
         fake_dc = mock.sentinel.datacenter
         self.vops.extend_virtual_disk(fake_size,

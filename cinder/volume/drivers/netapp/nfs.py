@@ -30,7 +30,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
@@ -493,7 +493,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
         data = image_utils.qemu_img_info(path)
-        virt_size = data.virtual_size / units.GiB
+        virt_size = data.virtual_size / units.Gi
         if virt_size == size:
             return True
         else:
@@ -969,9 +969,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             if self.ssc_vols['all']:
                 vol_max = max(self.ssc_vols['all'])
                 data['total_capacity_gb'] =\
-                    int(vol_max.space['size_total_bytes']) / units.GiB
+                    int(vol_max.space['size_total_bytes']) / units.Gi
                 data['free_capacity_gb'] =\
-                    int(vol_max.space['size_avl_bytes']) / units.GiB
+                    int(vol_max.space['size_avl_bytes']) / units.Gi
             else:
                 data['total_capacity_gb'] = 0
                 data['free_capacity_gb'] = 0

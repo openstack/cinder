@@ -36,7 +36,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.nfs import nas_opts
@@ -126,8 +126,8 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
             global_capacity += capacity
             global_free += free
 
-        data['total_capacity_gb'] = global_capacity / float(units.GiB)
-        data['free_capacity_gb'] = global_free / float(units.GiB)
+        data['total_capacity_gb'] = global_capacity / float(units.Gi)
+        data['free_capacity_gb'] = global_free / float(units.Gi)
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data

@@ -24,8 +24,8 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
+from cinder.openstack.common import units
 from cinder import rpc
-from cinder import units
 from cinder import utils
 
 
@@ -123,7 +123,7 @@ def _calculate_count(size_in_m, blocksize):
         blocksize = CONF.volume_dd_blocksize
         bs = strutils.string_to_bytes('%sB' % blocksize)
 
-    count = math.ceil(size_in_m * units.MiB / bs)
+    count = math.ceil(size_in_m * units.Mi / bs)
 
     return blocksize, int(count)
 

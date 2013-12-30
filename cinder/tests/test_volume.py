@@ -44,6 +44,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import units
 import cinder.policy
 from cinder import quota
 from cinder import test
@@ -53,7 +54,6 @@ from cinder.tests import fake_notifier
 from cinder.tests.image import fake as fake_image
 from cinder.tests.keymgr import fake as fake_keymgr
 from cinder.tests import utils as tests_utils
-from cinder import units
 from cinder import utils
 import cinder.volume
 from cinder.volume import configuration as conf
@@ -83,7 +83,7 @@ class FakeImageService:
         pass
 
     def show(self, context, image_id):
-        return {'size': 2 * units.GiB,
+        return {'size': 2 * units.Gi,
                 'disk_format': 'raw',
                 'container_format': 'bare',
                 'status': 'active'}
@@ -2066,7 +2066,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Verify that an image which is too big will fail correctly."""
         class _ModifiedFakeImageService(FakeImageService):
             def show(self, context, image_id):
-                return {'size': 2 * units.GiB + 1,
+                return {'size': 2 * units.Gi + 1,
                         'disk_format': 'raw',
                         'container_format': 'bare',
                         'status': 'active'}
@@ -2083,7 +2083,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Verify volumes smaller than image minDisk will cause an error."""
         class _ModifiedFakeImageService(FakeImageService):
             def show(self, context, image_id):
-                return {'size': 2 * units.GiB,
+                return {'size': 2 * units.Gi,
                         'disk_format': 'raw',
                         'container_format': 'bare',
                         'min_disk': 5,
@@ -2101,7 +2101,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Verify create volume from image will cause an error."""
         class _ModifiedFakeImageService(FakeImageService):
             def show(self, context, image_id):
-                return {'size': 2 * units.GiB,
+                return {'size': 2 * units.Gi,
                         'disk_format': 'raw',
                         'container_format': 'bare',
                         'min_disk': 5,

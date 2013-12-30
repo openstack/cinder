@@ -19,7 +19,7 @@ Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 """
 
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 import re
 
@@ -116,13 +116,13 @@ class HnasBackend():
                     (inf[0], inf[1], inf[2], inf[3], inf[5], inf[7])
                 (availunit, usedunit) = (inf[4], inf[6])
                 if usedunit == 'GB':
-                    usedmultiplier = units.KiB
+                    usedmultiplier = units.Ki
                 else:
-                    usedmultiplier = units.MiB
+                    usedmultiplier = units.Mi
                 if availunit == 'GB':
-                    availmultiplier = units.KiB
+                    availmultiplier = units.Ki
                 else:
-                    availmultiplier = units.MiB
+                    availmultiplier = units.Mi
                 m = re.match("\((\d+)\%\)", perstr)
                 if m:
                     percent = m.group(1)

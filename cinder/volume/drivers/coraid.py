@@ -33,7 +33,7 @@ from cinder import exception
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder.volume import driver
 from cinder.volume import volume_types
 
@@ -140,7 +140,7 @@ class CoraidRESTClient(object):
 
 
 def to_coraid_kb(gb):
-    return math.ceil(float(gb) * units.GiB / 1000)
+    return math.ceil(float(gb) * units.Gi / 1000)
 
 
 def coraid_volume_size(gb):

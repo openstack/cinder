@@ -24,7 +24,7 @@ from xml.etree import ElementTree as ETree
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hds.hnas_backend import HnasBackend
@@ -286,7 +286,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
             if 'HDP' in line:
                 (hdp, size, _ign, used) = line.split()[1:5]  # in MB
                 LOG.debug("stats: looking for: %s", hdp)
-                if int(hdp) >= units.KiB:        # HNAS fsid
+                if int(hdp) >= units.Ki:        # HNAS fsid
                     hdp = line.split()[11]
                 if hdp in self.config['hdp'].keys():
                     total_cap += int(size)
@@ -295,9 +295,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         LOG.info("stats: total: %d used: %d" % (total_cap, total_used))
 
         hnas_stat = {}
-        hnas_stat['total_capacity_gb'] = int(total_cap / units.KiB)  # in GB
+        hnas_stat['total_capacity_gb'] = int(total_cap / units.Ki)  # in GB
         hnas_stat['free_capacity_gb'] = \
-            int((total_cap - total_used) / units.KiB)
+            int((total_cap - total_used) / units.Ki)
         be_name = self.configuration.safe_get('volume_backend_name')
         hnas_stat["volume_backend_name"] = be_name or 'HDSISCSIDriver'
         hnas_stat["vendor_name"] = 'HDS'
@@ -321,8 +321,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         for line in out.split('\n'):
             if 'HDP' in line:
                 inf = line.split()
-                if int(inf[1]) >= units.KiB:
-                    # HDP fsids start at units.KiB (1024)
+                if int(inf[1]) >= units.Ki:
+                    # HDP fsids start at units.Ki (1024)
                     hdp_list.append(inf[11])
                 else:
                     # HDP pools are 2-digits max
@@ -434,7 +434,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                                   self.config['username'],
                                   self.config['password'],
                                   hdp,
-                                  '%s' % (int(volume['size']) * units.KiB),
+                                  '%s' % (int(volume['size']) * units.Ki),
                                   volume['name'])
 
         LOG.info(_("create_volume: create_lu returns %s") % out)
@@ -458,7 +458,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(data=msg)
         service = self._get_service(dst)
         (_ip, _ipp, _ctl, _port, hdp, target, secret) = service
-        size = int(src['size']) * units.KiB
+        size = int(src['size']) * units.Ki
         source_vol = self._id_to_vol(src['id'])
         (arid, slun) = _loc_info(source_vol['provider_location'])['id_lu']
         out = self.bend.create_dup(self.config['hnas_cmd'],
@@ -491,7 +491,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                              self.config['username'],
                              self.config['password'],
                              hdp, lun,
-                             '%s' % (new_size * units.KiB),
+                             '%s' % (new_size * units.Ki),
                              volume['name'])
 
         LOG.info(_("LUN %(lun)s extended to %(size)s GB.")
@@ -615,7 +615,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         :param snapshot: dictionary snapshot reference
         """
 
-        size = int(snapshot['volume_size']) * units.KiB
+        size = int(snapshot['volume_size']) * units.Ki
         (arid, slun) = _loc_info(snapshot['provider_location'])['id_lu']
         service = self._get_service(volume)
         (_ip, _ipp, _ctl, _port, hdp, target, secret) = service
@@ -640,7 +640,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         source_vol = self._id_to_vol(snapshot['volume_id'])
         service = self._get_service(source_vol)
         (_ip, _ipp, _ctl, _port, hdp, target, secret) = service
-        size = int(snapshot['volume_size']) * units.KiB
+        size = int(snapshot['volume_size']) * units.Ki
         (arid, slun) = _loc_info(source_vol['provider_location'])['id_lu']
         out = self.bend.create_dup(self.config['hnas_cmd'],
                                    self.config['mgmt_ip0'],

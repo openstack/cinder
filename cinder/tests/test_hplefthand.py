@@ -19,8 +19,8 @@ import mock
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 
 from cinder.tests import fake_hp_lefthand_client as hplefthandclient
 from cinder.volume.drivers.san.hp import hp_lefthand_iscsi
@@ -672,8 +672,8 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         _mock_client.return_value.getClusterByName.return_value = {
             'id': 1, 'virtualIPAddresses': [{'ipV4Address': '10.0.1.6'}]}
         _mock_client.return_value.getCluster.return_value = {
-            'spaceTotal': units.GiB * 500,
-            'spaceAvailable': units.GiB * 250}
+            'spaceTotal': units.Gi * 500,
+            'spaceAvailable': units.Gi * 250}
         self.driver = hp_lefthand_iscsi.HPLeftHandISCSIDriver(
             configuration=config)
         self.driver.do_setup(None)
@@ -699,7 +699,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock.call.createVolume(
                 'fakevolume',
                 1,
-                units.GiB,
+                units.Gi,
                 {'isThinProvisioned': True, 'clusterName': 'CloudCluster1'})]
 
         mock_client.assert_has_calls(expected)
@@ -737,7 +737,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock.call.createVolume(
                 'fakevolume',
                 1,
-                units.GiB,
+                units.Gi,
                 {'isThinProvisioned': False, 'clusterName': 'CloudCluster1'})]
 
         mock_client.assert_has_calls(expected)
@@ -785,7 +785,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         expected = self.driver_startup_call_stack + [
             mock.call.getVolumeByName('fakevolume'),
-            mock.call.modifyVolume(1, {'size': 2 * units.GiB})]
+            mock.call.modifyVolume(1, {'size': 2 * units.Gi})]
 
         # validate call chain
         mock_client.assert_has_calls(expected)
@@ -1372,7 +1372,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock.call.createVolume(
                 'fakevolume',
                 1,
-                units.GiB,
+                units.Gi,
                 {'isThinProvisioned': True, 'clusterName': 'CloudCluster1'})]
 
         mock_client.assert_has_calls(expected)
@@ -1403,7 +1403,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock.call.createVolume(
                 'fakevolume',
                 1,
-                units.GiB,
+                units.Gi,
                 {'isThinProvisioned': True,
                  'clusterName': 'CloudCluster1',
                  'isAdaptiveOptimizationEnabled': False})]

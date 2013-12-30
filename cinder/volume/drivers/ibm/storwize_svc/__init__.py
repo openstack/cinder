@@ -42,7 +42,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder import units
+from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
 from cinder.volume.drivers.san import san
@@ -853,7 +853,7 @@ class StorwizeSVCDriver(san.SanDriver):
             raise exception.ManageExistingInvalidReference(existing_ref=ref,
                                                            reason=reason)
 
-        return int(math.ceil(float(vdisk['capacity']) / units.GiB))
+        return int(math.ceil(float(vdisk['capacity']) / units.Gi))
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -895,9 +895,9 @@ class StorwizeSVCDriver(san.SanDriver):
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         data['total_capacity_gb'] = (float(attributes['capacity']) /
-                                     units.GiB)
+                                     units.Gi)
         data['free_capacity_gb'] = (float(attributes['free_capacity']) /
-                                    units.GiB)
+                                    units.Gi)
         data['easytier_support'] = attributes['easy_tier'] in ['on', 'auto']
         data['compression_support'] = self._state['compression_enabled']
         data['location_info'] = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %

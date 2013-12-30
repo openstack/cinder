@@ -20,8 +20,8 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import units
 from cinder import test
-from cinder import units
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.solidfire import SolidFireDriver
 from cinder.volume import qos_specs
@@ -121,7 +121,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'name': test_name,
                              'accountID': 25,
                              'sliceCount': 1,
-                             'totalSize': 1 * units.GiB,
+                             'totalSize': 1 * units.Gi,
                              'enable512e': True,
                              'access': "readWrite",
                              'status': "active",
