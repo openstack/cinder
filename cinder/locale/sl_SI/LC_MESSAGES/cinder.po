@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-12-28 06:13+0000\n"
+"POT-Creation-Date: 2013-12-31 06:12+0000\n"
 "PO-Revision-Date: 2013-07-01 16:14+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Slovenian (Slovenia) "
@@ -1243,23 +1243,27 @@ msgstr ""
 msgid "Unable to fetch connection information from backend."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:225
+#: cinder/api/contrib/volume_actions.py:216
+msgid "Unable to terminate volume connection from backend."
+msgstr ""
+
+#: cinder/api/contrib/volume_actions.py:229
 msgid "No image_name was specified in request."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:266
+#: cinder/api/contrib/volume_actions.py:270
 msgid "New volume size must be specified as an integer."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:285
+#: cinder/api/contrib/volume_actions.py:289
 msgid "Must specify readonly in request."
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:293
+#: cinder/api/contrib/volume_actions.py:297
 msgid "Bad value for 'readonly'"
 msgstr ""
 
-#: cinder/api/contrib/volume_actions.py:297
+#: cinder/api/contrib/volume_actions.py:301
 msgid "'readonly' not string or bool"
 msgstr ""
 
@@ -1605,21 +1609,17 @@ msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s"
 msgstr ""
 
 #: cinder/backup/api.py:170
+msgid "Volume to be restored to must be available"
+msgstr ""
+
+#: cinder/backup/api.py:176
 #, python-format
 msgid ""
 "volume size %(volume_size)d is too small to restore backup of size "
 "%(size)d."
 msgstr ""
 
-#: cinder/backup/api.py:176
-msgid "Volume to be restored to must be available"
-msgstr ""
-
-#: cinder/backup/api.py:182
-msgid "Volume to be restored to is smaller than the backup to be restored"
-msgstr ""
-
-#: cinder/backup/api.py:186
+#: cinder/backup/api.py:181
 #, python-format
 msgid "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
 msgstr ""
@@ -4352,77 +4352,82 @@ msgstr ""
 msgid "Unable to fetch connection information from backend: %(err)s"
 msgstr ""
 
-#: cinder/volume/manager.py:791
+#: cinder/volume/manager.py:757
+#, python-format
+msgid "Unable to terminate volume connection: %(err)s"
+msgstr ""
+
+#: cinder/volume/manager.py:798
 msgid "failed to create new_volume on destination host"
 msgstr ""
 
-#: cinder/volume/manager.py:794
+#: cinder/volume/manager.py:801
 msgid "timeout creating new_volume on destination host"
 msgstr ""
 
-#: cinder/volume/manager.py:816
+#: cinder/volume/manager.py:823
 #, python-format
 msgid "Failed to copy volume %(vol1)s to %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:828
+#: cinder/volume/manager.py:835
 #, python-format
 msgid ""
 "migrate_volume_completion: completing migration for volume %(vol1)s "
 "(temporary volume %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:836
+#: cinder/volume/manager.py:843
 #, python-format
 msgid ""
 "migrate_volume_completion is cleaning up an error for volume %(vol1)s "
 "(temporary volume %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:852
+#: cinder/volume/manager.py:859
 #, python-format
 msgid "Failed to delete migration source vol %(vol)s: %(err)s"
 msgstr ""
 
-#: cinder/volume/manager.py:871
+#: cinder/volume/manager.py:878
 #, python-format
 msgid "volume %s: calling driver migrate_volume"
 msgstr ""
 
-#: cinder/volume/manager.py:904
+#: cinder/volume/manager.py:911
 msgid "Updating volume status"
 msgstr ""
 
-#: cinder/volume/manager.py:912
+#: cinder/volume/manager.py:919
 #, python-format
 msgid ""
 "Unable to update stats, %(driver_name)s -%(driver_version)s "
 "%(config_group)s driver is uninitialized."
 msgstr ""
 
-#: cinder/volume/manager.py:931
+#: cinder/volume/manager.py:938
 #, python-format
 msgid "Notification {%s} received"
 msgstr ""
 
-#: cinder/volume/manager.py:969
+#: cinder/volume/manager.py:976
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to extend volume by %(s_size)sG, "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/volume/manager.py:981
+#: cinder/volume/manager.py:988
 #, python-format
 msgid "volume %s: extending"
 msgstr ""
 
-#: cinder/volume/manager.py:983
+#: cinder/volume/manager.py:990
 #, python-format
 msgid "volume %s: extended successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:985
+#: cinder/volume/manager.py:992
 #, python-format
 msgid "volume %s: Error trying to extend volume"
 msgstr ""
@@ -10285,16 +10290,6 @@ msgstr ""
 #~ msgid "Can't find lun or lun goup in array"
 #~ msgstr ""
 
-#~ msgid ""
-#~ "_parse_volume_type: Unacceptable paramater %(key)s."
-#~ " Please check this key in extra_specs"
-#~ " and make it consistent with the "
-#~ "configuration file %(conf)s."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "extend: error when extending the "
-#~ "volumne: %(vol_name)s .WMI exception: "
-#~ "%(wmi_exc)s"
+#~ msgid "Volume to be restored to is smaller than the backup to be restored"
 #~ msgstr ""
 
