@@ -48,6 +48,7 @@ host_manager_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(host_manager_opts)
+CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
 
 LOG = logging.getLogger(__name__)
 
@@ -170,6 +171,23 @@ class HostManager(object):
         self.weight_handler = weights.HostWeightHandler('cinder.scheduler.'
                                                         'weights')
         self.weight_classes = self.weight_handler.get_all_classes()
+
+        default_filters = ['AvailabilityZoneFilter',
+                           'CapacityFilter',
+                           'CapabilitiesFilter']
+        chance = 'cinder.scheduler.chance.ChanceScheduler'
+        simple = 'cinder.scheduler.simple.SimpleScheduler'
+        if CONF.scheduler_driver == simple:
+            CONF.set_override('scheduler_default_filters', default_filters)
+            CONF.set_override('scheduler_default_weighers',
+                              ['AllocatedCapacityWeigher'])
+        elif CONF.scheduler_driver == chance:
+            CONF.set_override('scheduler_default_filters', default_filters)
+            CONF.set_override('scheduler_default_weighers',
+                              ['ChanceWeigher'])
+        else:
+            # Do nothing when some other scheduler is configured
+            pass
 
     def _choose_host_filters(self, filter_cls_names):
         """Since the caller may specify which filters to use we need

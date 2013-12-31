@@ -28,6 +28,7 @@ CONF.import_opt('volume_driver', 'cinder.volume.manager')
 CONF.import_opt('xiv_ds8k_proxy', 'cinder.volume.drivers.xiv_ds8k')
 CONF.import_opt('backup_driver', 'cinder.backup.manager')
 CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='keymgr')
+CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
 
 def_vol_type = 'fake_vol_type'
 
@@ -50,3 +51,5 @@ def set_defaults(conf):
         'cinder.tests.test_xiv_ds8k.XIVDS8KFakeProxyDriver')
     conf.set_default('backup_driver', 'cinder.tests.backup.fake_service')
     conf.set_default('fixed_key', default='0' * 64, group='keymgr')
+    conf.set_default('scheduler_driver',
+                     'cinder.scheduler.filter_scheduler.FilterScheduler')
