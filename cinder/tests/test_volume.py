@@ -111,6 +111,7 @@ class BaseVolumeTestCase(test.TestCase):
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
         self.stubs.Set(os.path, 'exists', lambda x: True)
         self.volume.driver.set_initialized()
+        self.volume.stats = {'allocated_capacity_gb': 0}
         # keep ordered record of what we execute
         self.called = []
 

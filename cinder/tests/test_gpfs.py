@@ -89,6 +89,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.volume = importutils.import_object(CONF.volume_manager)
         self.volume.driver.set_execute(self._execute_wrapper)
         self.volume.driver.set_initialized()
+        self.volume.stats = dict(allocated_capacity_gb=0)
 
         self.stubs.Set(GPFSDriver, '_create_gpfs_snap',
                        self._fake_gpfs_snap)
