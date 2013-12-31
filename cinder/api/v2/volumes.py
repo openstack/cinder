@@ -376,8 +376,6 @@ class VolumeController(wsgi.Controller):
 
         LOG.audit(_("Create volume of %s GB"), size, context=context)
 
-        image_href = None
-        image_uuid = None
         if self.ext_mgr.is_loaded('os-image-create'):
             image_href = volume.get('imageRef')
             if image_href:
