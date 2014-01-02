@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # Copyright 2011 Justin Santa Barbara
@@ -27,12 +25,20 @@ import signal
 import sys
 import time
 
+try:
+    # Importing just the symbol here because the io module does not
+    # exist in Python 2.6.
+    from io import UnsupportedOperation  # noqa
+except ImportError:
+    # Python 2.6
+    UnsupportedOperation = None
+
 import eventlet
 from eventlet import event
 from oslo.config import cfg
 
 from cinder.openstack.common import eventlet_backdoor
-from cinder.openstack.common.gettextutils import _  # noqa
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import threadgroup
@@ -47,8 +53,32 @@ def _sighup_supported():
     return hasattr(signal, 'SIGHUP')
 
 
-def _is_sighup(signo):
-    return _sighup_supported() and signo == signal.SIGHUP
+def _is_daemon():
+    # The process group for a foreground process will match the
+    # process group of the controlling terminal. If those values do
+    # not match, or ioctl() fails on the stdout file handle, we assume
+    # the process is running in the background as a daemon.
+    # http://www.gnu.org/software/bash/manual/bashref.html#Job-Control-Basics
+    try:
+        is_daemon = os.getpgrp() != os.tcgetpgrp(sys.stdout.fileno())
+    except OSError as err:
+        if err.errno == errno.ENOTTY:
+            # Assume we are a daemon because there is no terminal.
+            is_daemon = True
+        else:
+            raise
+    except UnsupportedOperation:
+        # Could not get the fileno for stdout, so we must be a daemon.
+        is_daemon = True
+    return is_daemon
+
+
+def _is_sighup_and_daemon(signo):
+    if not (_sighup_supported() and signo == signal.SIGHUP):
+        # Avoid checking if we are a daemon, because the signal isn't
+        # SIGHUP.
+        return False
+    return _is_daemon()
 
 
 def _signo_to_signame(signo):
@@ -162,7 +192,7 @@ class ServiceLauncher(Launcher):
         while True:
             self.handle_signal()
             status, signo = self._wait_for_exit_or_signal(ready_callback)
-            if not _is_sighup(signo):
+            if not _is_sighup_and_daemon(signo):
                 return status
             self.restart()
 
@@ -282,7 +312,7 @@ class ProcessLauncher(object):
             while True:
                 self._child_process_handle_signal()
                 status, signo = self._child_wait_for_exit_or_signal(launcher)
-                if not _is_sighup(signo):
+                if not _is_sighup_and_daemon(signo):
                     break
                 launcher.restart()
 
@@ -354,7 +384,7 @@ class ProcessLauncher(object):
             if self.sigcaught:
                 signame = _signo_to_signame(self.sigcaught)
                 LOG.info(_('Caught %s, stopping children'), signame)
-            if not _is_sighup(self.sigcaught):
+            if not _is_sighup_and_daemon(self.sigcaught):
                 break
 
             for pid in self.children:
