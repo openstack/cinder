@@ -18,12 +18,12 @@ Scheduler host filters
 """
 
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.scheduler import filter
+from cinder.openstack.common.scheduler import base_filter
 
 LOG = logging.getLogger(__name__)
 
 
-class BaseHostFilter(filter.BaseFilter):
+class BaseHostFilter(base_filter.BaseFilter):
     """Base class for host filters."""
     def _filter_one(self, obj, filter_properties):
         """Return True if the object passes the filter, otherwise False."""
@@ -36,6 +36,6 @@ class BaseHostFilter(filter.BaseFilter):
         raise NotImplementedError()
 
 
-class HostFilterHandler(filter.BaseFilterHandler):
+class HostFilterHandler(base_filter.BaseFilterHandler):
     def __init__(self, namespace):
         super(HostFilterHandler, self).__init__(BaseHostFilter, namespace)

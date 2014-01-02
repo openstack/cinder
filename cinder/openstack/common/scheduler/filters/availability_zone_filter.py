@@ -22,7 +22,7 @@ class AvailabilityZoneFilter(filters.BaseHostFilter):
 
     def host_passes(self, host_state, filter_properties):
         spec = filter_properties.get('request_spec', {})
-        props = spec.get('resource_properties', [])
+        props = spec.get('resource_properties', {})
         availability_zone = props.get('availability_zone')
 
         if availability_zone:

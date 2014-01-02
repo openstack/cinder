@@ -1,4 +1,4 @@
-# Copyright (c) 2012 OpenStack Foundation
+# Copyright (c) 2011 OpenStack Foundation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,34 +13,44 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.openstack.common.gettextutils import _  # noqa
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 
 LOG = logging.getLogger(__name__)
 
 
-class RetryFilter(filters.BaseHostFilter):
-    """Filter out nodes that have already been attempted for scheduling
-    purposes
+class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
+    """Filter out previously attempted hosts
+
+    A host passes this filter if it has not already been attempted for
+    scheduling. The scheduler needs to add previously attempted hosts
+    to the 'retry' key of filter_properties in order for this to work
+    correctly.  For example:
+    {
+        'retry': {
+                'hosts': ['host1', 'host2'],
+                'num_attempts': 3,
+            }
+    }
     """
 
     def host_passes(self, host_state, filter_properties):
         """Skip nodes that have already been attempted."""
-        retry = filter_properties.get('retry', None)
-        if not retry:
+        attempted = filter_properties.get('retry', None)
+        if not attempted:
             # Re-scheduling is disabled
-            LOG.debug("Re-scheduling is disabled")
+            LOG.debug(_("Re-scheduling is disabled."))
             return True
 
-        hosts = retry.get('hosts', [])
+        hosts = attempted.get('hosts', [])
         host = host_state.host
 
         passes = host not in hosts
         pass_msg = "passes" if passes else "fails"
 
         LOG.debug(_("Host %(host)s %(pass_msg)s.  Previously tried hosts: "
-                    "%(hosts)s") %
-                  {'host': host, 'pass_msg': pass_msg, 'hosts': hosts})
-
-        # Host passes if it's not in the list of previously attempted hosts:
+                    "%(hosts)s") % {'host': host,
+                                    'pass_msg': pass_msg,
+                                    'hosts': hosts})
         return passes
