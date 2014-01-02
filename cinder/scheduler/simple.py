@@ -16,68 +16,51 @@
 #    under the License.
 
 """
-Simple Scheduler
+Chance and Simple Scheduler are DEPRECATED.
+
+Chance and Simple scheduler implementation have been deprecated, as their
+functionality can be implemented using the FilterScheduler, here's how:
+
+If one would like to have scheduler randomly picks available back-end
+(like ChanceScheduler did), use FilterScheduler with following combination
+of filters and weighers.
+
+  scheduler_driver = cinder.scheduler.filter_scheduler.FilterScheduler
+  scheduler_default_filters = ['AvailabilityZoneFilter', 'CapacityFilter',
+                               'CapabilitiesFilter']
+  scheduler_default_weighers = 'ChanceWeigher'
+
+If one prefers the scheduler to pick up the back-end has most available
+space that scheudler can see (like SimpleScheduler did), use following
+combination of filters and weighers with FilterScheduler.
+
+  scheduler_driver = cinder.scheduler.filter_scheduler.FilterScheduler
+  scheduler_default_filters = ['AvailabilityZoneFilter', 'CapacityFilter',
+                               'CapabilitiesFilter']
+  scheduler_default_weighers = 'AllocatedCapacityWeigher'
+  allocated_capacity_weight_multiplier = -1.0
+
+Setting/leaving configure option
+'scheduler_driver=cinder.scheduler.chance.ChanceScheduler' or
+'scheduler_driver=cinder.scheduler.simple.SimpleScheduler' in cinder.conf
+works exactly the same as described above since scheduler manager has been
+updated to do the trick internally/transparently for users.
+
+With that, FilterScheduler behaves mostly the same as Chance/SimpleScheduler,
+with additional benefits of supporting volume types, volume encryption, QoS.
 """
 
 from oslo.config import cfg
 
-from cinder import db
-from cinder import exception
-from cinder.scheduler import chance
-from cinder import utils
-
-
 simple_scheduler_opts = [
     cfg.IntOpt("max_gigabytes",
                default=10000,
-               help="maximum number of volume gigabytes to allow per host"), ]
+               help="This configure option has been deprecated along with "
+                    "the SimpleScheduler.  New scheduler is able to gather "
+                    "capacity information for each host, thus setting the "
+                    "maximum number of volume gigabytes for host is no "
+                    "longer needed.  It's safe to remove this configure "
+                    "from cinder.conf."), ]
 
 CONF = cfg.CONF
 CONF.register_opts(simple_scheduler_opts)
-
-
-class SimpleScheduler(chance.ChanceScheduler):
-    """Implements Naive Scheduler that tries to find least loaded host."""
-
-    def _get_weighted_candidates(self, context, topic, request_spec, **kwargs):
-        """Picks a host that is up and has the fewest volumes."""
-        elevated = context.elevated()
-
-        volume_id = request_spec.get('volume_id')
-        snapshot_id = request_spec.get('snapshot_id')
-        image_id = request_spec.get('image_id')
-        volume_properties = request_spec.get('volume_properties')
-        volume_size = volume_properties.get('size')
-        availability_zone = volume_properties.get('availability_zone')
-        filter_properties = kwargs.get('filter_properties', {})
-
-        zone, host = None, None
-        if availability_zone:
-            zone, _x, host = availability_zone.partition(':')
-        if host and context.is_admin:
-            service = db.service_get_by_args(elevated, host, topic)
-            if not utils.service_is_up(service):
-                raise exception.WillNotSchedule(host=host)
-            return [host]
-
-        candidates = []
-        results = db.service_get_all_volume_sorted(elevated)
-        if zone:
-            results = [(s, gigs) for (s, gigs) in results
-                       if s['availability_zone'] == zone]
-        for result in results:
-            (service, volume_gigabytes) = result
-            no_skip = service['host'] != filter_properties.get('vol_exists_on')
-            if no_skip and volume_gigabytes + volume_size > CONF.max_gigabytes:
-                continue
-            if utils.service_is_up(service) and not service['disabled']:
-                candidates.append(service['host'])
-
-        if candidates:
-            return candidates
-        else:
-            msg = _("No service with adequate space or no service running")
-            raise exception.NoValidHost(reason=msg)
-
-    def _choose_host_from_list(self, hosts):
-        return hosts[0]

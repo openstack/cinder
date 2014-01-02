@@ -212,23 +212,6 @@ class SchedulerTestCase(test.TestCase):
         _mock_update_cap.assert_called_once_with(service_name, host,
                                                  capabilities)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    @mock.patch('cinder.utils.service_is_up')
-    def test_hosts_up(self, _mock_serv_is_up, _mock_serv_get_all_by_topic):
-        service1 = {'host': 'host1', 'disabled': False}
-        service2 = {'host': 'host2', 'disabled': False}
-        services = [service1, service2]
-
-        def fake_serv_is_up(service):
-            return service['host'] is 'host2'
-
-        _mock_serv_get_all_by_topic.return_value = services
-        _mock_serv_is_up.side_effect = fake_serv_is_up
-        result = self.driver.hosts_up(self.context, self.topic)
-        self.assertEqual(result, ['host2'])
-        _mock_serv_get_all_by_topic.assert_called_once_with(self.context,
-                                                            self.topic)
-
 
 class SchedulerDriverBaseTestCase(SchedulerTestCase):
     """Test cases for base scheduler driver class methods
