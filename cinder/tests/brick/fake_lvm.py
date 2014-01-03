@@ -27,7 +27,7 @@ class FakeBrickLVM(object):
     def supports_thin_provisioning():
         return False
 
-    def get_all_volumes(vg_name=None, no_suffix=True):
+    def get_all_volumes(vg_name=None):
         if vg_name is not None:
             return [vg_name]
         return ['cinder-volumes', 'fake-vg-1']
@@ -38,13 +38,13 @@ class FakeBrickLVM(object):
     def get_volume(self, name):
         return ['name']
 
-    def get_all_physical_volumes(vg_name=None, no_suffix=True):
+    def get_all_physical_volumes(vg_name=None):
         return []
 
     def get_physical_volumes(self):
         return []
 
-    def get_all_volume_groups(vg_name=None, no_suffix=True):
+    def get_all_volume_groups(vg_name=None):
         return ['cinder-volumes', 'fake-vg']
 
     def update_volume_group_info(self):

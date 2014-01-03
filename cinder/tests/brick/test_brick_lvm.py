@@ -102,9 +102,8 @@ class BrickLvmTestCase(test.TestCase):
             data += "  fake-vg:/dev/sdb:10.00:1.00\n"
             data += "  fake-vg:/dev/sdc:10.00:8.99\n"
             data += "  fake-vg-2:/dev/sdd:10.00:9.99\n"
-        elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g, -o, ' \
-             'size,data_percent, ' \
-             '--separator, :' in cmd_string:
+        elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g' \
+             ', -o, size,data_percent, --separator, :' in cmd_string:
             data = "  9:12\n"
         elif 'lvcreate, -T, -L, ' in cmd_string:
             pass
