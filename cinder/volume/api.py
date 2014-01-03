@@ -358,7 +358,7 @@ class API(base.Base):
         return snapshots
 
     @wrap_check_policy
-    def check_attach(self, context, volume):
+    def check_attach(self, volume):
         # TODO(vish): abstract status checking?
         if volume['status'] != "available":
             msg = _("status must be available")
@@ -368,7 +368,7 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
     @wrap_check_policy
-    def check_detach(self, context, volume):
+    def check_detach(self, volume):
         # TODO(vish): abstract status checking?
         if volume['status'] != "in-use":
             msg = _("status must be in-use to detach")
@@ -505,7 +505,7 @@ class API(base.Base):
                     raise exception.SnapshotLimitExceeded(
                         allowed=quotas[over])
 
-        self._check_metadata_properties(context, metadata)
+        self._check_metadata_properties(metadata)
         options = {'volume_id': volume['id'],
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -569,7 +569,7 @@ class API(base.Base):
         """Delete the given metadata item from a volume."""
         self.db.volume_metadata_delete(context, volume['id'], key)
 
-    def _check_metadata_properties(self, context, metadata=None):
+    def _check_metadata_properties(self, metadata=None):
         if not metadata:
             metadata = {}
 
@@ -602,7 +602,7 @@ class API(base.Base):
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
-        self._check_metadata_properties(context, _metadata)
+        self._check_metadata_properties(_metadata)
 
         db_meta = self.db.volume_metadata_update(context, volume['id'],
                                                  _metadata, delete)
@@ -647,7 +647,7 @@ class API(base.Base):
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
-        self._check_metadata_properties(context, _metadata)
+        self._check_metadata_properties(_metadata)
 
         self.db.volume_admin_metadata_update(context, volume['id'],
                                              _metadata, delete)
@@ -681,7 +681,7 @@ class API(base.Base):
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
-        self._check_metadata_properties(context, _metadata)
+        self._check_metadata_properties(_metadata)
 
         db_meta = self.db.snapshot_metadata_update(context,
                                                    snapshot['id'],
@@ -711,7 +711,7 @@ class API(base.Base):
             (meta_entry.key, meta_entry.value) for meta_entry in db_data
         )
 
-    def _check_volume_availability(self, context, volume, force):
+    def _check_volume_availability(self, volume, force):
         """Check if the volume can be used."""
         if volume['status'] not in ['available', 'in-use']:
             msg = _('Volume status must be available/in-use.')
@@ -723,7 +723,7 @@ class API(base.Base):
     @wrap_check_policy
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
-        self._check_volume_availability(context, volume, force)
+        self._check_volume_availability(volume, force)
 
         recv_metadata = self.image_service.create(context, metadata)
         self.update(context, volume, {'status': 'uploading'})
