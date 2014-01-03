@@ -115,10 +115,11 @@ class HP3PARCommon(object):
         1.2.0 - Updated hp3parclient API use to 2.0.x
         1.2.1 - Check that the VVS exists
         1.2.2 - log prior to raising exceptions
+        1.2.3 - Methods to update key/value pair bug #1258033
 
     """
 
-    VERSION = "1.2.2"
+    VERSION = "1.2.3"
 
     stats = {}
 
@@ -969,6 +970,61 @@ exit
         except hpexceptions.HTTPNotFound as ex:
             LOG.error(str(ex))
             raise exception.NotFound()
+
+    def update_volume_key_value_pair(self, volume, key, value):
+        """Updates key,value pair as metadata onto virtual volume.
+
+        If key already exists, the value will be replaced.
+        """
+        LOG.debug("VOLUME (%s : %s %s) Updating KEY-VALUE pair: (%s : %s)" %
+                  (volume['display_name'],
+                   volume['name'],
+                   self._get_3par_vol_name(volume['id']),
+                   str(key),
+                   str(value)))
+        try:
+            volume_name = self._get_3par_vol_name(volume['id'])
+            if value is None:
+                value = ''
+            cmd = ['setvv', '-setkv', key + '=' + value, volume_name]
+            self._cli_run(cmd)
+        except Exception as ex:
+            msg = _('Failure in update_volume_key_value_pair:%s') % str(ex)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def clear_volume_key_value_pair(self, volume, key):
+        """Clears key,value pairs metadata from virtual volume."""
+
+        LOG.debug("VOLUME (%s : %s %s) Clearing Key : %s)" %
+                  (volume['display_name'], volume['name'],
+                   self._get_3par_vol_name(volume['id']), str(key)))
+        try:
+            volume_name = self._get_3par_vol_name(volume['id'])
+            cmd = ['setvv', '-clrkey', key, volume_name]
+            self._cli_run(cmd)
+        except Exception as ex:
+            msg = _('Failure in clear_volume_key_value_pair:%s') % str(ex)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def attach_volume(self, volume, instance_uuid):
+        LOG.debug("Attach Volume\n%s" % pprint.pformat(volume))
+        try:
+            self.update_volume_key_value_pair(volume,
+                                              'HPQ-CS-instance_uuid',
+                                              instance_uuid)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Error attaching volume %s") % volume)
+
+    def detach_volume(self, volume):
+        LOG.debug("Detach Volume\n%s" % pprint.pformat(volume))
+        try:
+            self.clear_volume_key_value_pair(volume, 'HPQ-CS-instance_uuid')
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Error detaching volume %s") % volume)
 
     def delete_snapshot(self, snapshot):
         LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))

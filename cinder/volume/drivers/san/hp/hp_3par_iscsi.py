@@ -57,9 +57,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.2.2 - Added try/finally around client login/logout.
         1.2.3 - log exceptions before raising
         1.2.4 - Fixed iSCSI active path bug #1224594
+        1.2.5 - Added metadata during attach/detach bug #1258033
+
     """
 
-    VERSION = "1.2.4"
+    VERSION = "1.2.5"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -421,3 +423,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @utils.synchronized('3par', external=True)
     def extend_volume(self, volume, new_size):
         self.common.extend_volume(volume, new_size)
+
+    @utils.synchronized('3par', external=True)
+    def attach_volume(self, context, volume, instance_uuid, host_name,
+                      mountpoint):
+        self.common.attach_volume(volume, instance_uuid)
+
+    @utils.synchronized('3par', external=True)
+    def detach_volume(self, context, volume):
+        self.common.detach_volume(volume)
