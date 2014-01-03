@@ -35,8 +35,8 @@ from cinder import db
 from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder.openstack.common import rpc
-from cinder import utils
 from cinder import version
 from cinder import wsgi
 
@@ -386,7 +386,7 @@ class Service(object):
         self.manager.init_host()
 
         if self.report_interval:
-            pulse = utils.LoopingCall(self.report_state)
+            pulse = loopingcall.LoopingCall(self.report_state)
             pulse.start(interval=self.report_interval,
                         initial_delay=self.report_interval)
             self.timers.append(pulse)
@@ -397,7 +397,7 @@ class Service(object):
             else:
                 initial_delay = None
 
-            periodic = utils.LoopingCall(self.periodic_tasks)
+            periodic = loopingcall.LoopingCall(self.periodic_tasks)
             periodic.start(interval=self.periodic_interval,
                            initial_delay=initial_delay)
             self.timers.append(periodic)
