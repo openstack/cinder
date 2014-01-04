@@ -1175,7 +1175,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                           snap_ref)
 
     def test_delete_snapshot_online_1(self):
-        """Delete the newest snapshot."""
+        """Delete the newest snapshot, with only one snap present."""
         (mox, drv) = self._mox, self._driver
 
         volume = self._simple_volume()
@@ -1226,7 +1226,17 @@ class GlusterFsDriverTestCase(test.TestCase):
         backing file: %s
         """ % (snap_file, volume_file)
         img_info = imageutils.QemuImgInfo(qemu_img_info_output)
+
+        vol_qemu_img_info_output = """image: %s
+        file format: raw
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        """ % volume_file
+        volume_img_info = imageutils.QemuImgInfo(vol_qemu_img_info_output)
+
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
+
+        image_utils.qemu_img_info(volume_path).AndReturn(volume_img_info)
 
         drv._read_info_file(info_path, empty_if_missing=True).\
             AndReturn(snap_info)
@@ -1234,7 +1244,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         delete_info = {
             'type': 'qcow2',
             'merge_target_file': None,
-            'file_to_merge': volume_file,
+            'file_to_merge': None,
             'volume_id': self.VOLUME_UUID
         }
 
@@ -1265,7 +1275,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv.delete_snapshot(snap_ref)
 
     def test_delete_snapshot_online_2(self):
-        """Delete the middle snapshot."""
+        """Delete the middle of 3 snapshots."""
         (mox, drv) = self._mox, self._driver
 
         volume = self._simple_volume()
@@ -1320,7 +1330,16 @@ class GlusterFsDriverTestCase(test.TestCase):
         """ % (snap_file, volume_file)
         img_info = imageutils.QemuImgInfo(qemu_img_info_output)
 
+        vol_qemu_img_info_output = """image: %s
+        file format: raw
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        """ % volume_file
+        volume_img_info = imageutils.QemuImgInfo(vol_qemu_img_info_output)
+
         image_utils.qemu_img_info(snap_path).AndReturn(img_info)
+
+        image_utils.qemu_img_info(volume_path).AndReturn(volume_img_info)
 
         drv._read_info_file(info_path, empty_if_missing=True).\
             AndReturn(snap_info)
