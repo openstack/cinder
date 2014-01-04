@@ -356,7 +356,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         LOG.debug(_("Updating volume stats"))
         if self.vg is None:
-            LOG.warning(_('Unable to update stats on non-intialized '
+            LOG.warning(_('Unable to update stats on non-initialized '
                           'Volume Group: %s'), self.configuration.volume_group)
             return
 
