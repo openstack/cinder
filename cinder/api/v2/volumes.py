@@ -398,7 +398,7 @@ class VolumeController(wsgi.Controller):
 
         self._add_visible_admin_metadata(context, new_volume)
 
-        retval = self._view_builder.summary(req, new_volume)
+        retval = self._view_builder.detail(req, new_volume)
 
         return retval
 
