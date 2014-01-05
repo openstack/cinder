@@ -230,6 +230,16 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         force = params.get('force', False)
+        if isinstance(force, basestring):
+            try:
+                force = strutils.bool_from_string(force, strict=False)
+            except ValueError:
+                msg = _("Bad value for 'force' parameter.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+        elif not isinstance(force, bool):
+            msg = _("'force' is not string or bool.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         try:
             volume = self.volume_api.get(context, id)
         except exception.VolumeNotFound as error:
