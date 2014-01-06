@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from migrate import ForeignKeyConstraint
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, Integer, String, Table, ForeignKey
 
@@ -108,6 +109,22 @@ def upgrade(migrate_engine):
 def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
+
+    if migrate_engine.name == 'mysql':
+        # NOTE(jsbryant): MySQL Cannot drop the quota_usages table
+        # until the foreign key reservations_ibfk_1 is removed.  We
+        # remove the foreign key first, and then we drop the table.
+        table = Table('reservations', meta, autoload=True)
+        ref_table = Table('reservations', meta, autoload=True)
+        params = {'columns': [table.c['usage_id']],
+                  'refcolumns': [ref_table.c['id']],
+                  'name': 'reservations_ibfk_1'}
+
+        try:
+            fkey = ForeignKeyConstraint(**params)
+            fkey.drop()
+        except Exception:
+            LOG.error(_("Dropping foreign key reservations_ibfk_1 failed."))
 
     quota_classes = Table('quota_classes', meta, autoload=True)
     try:
