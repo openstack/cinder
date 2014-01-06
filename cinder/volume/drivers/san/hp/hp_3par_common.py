@@ -75,11 +75,6 @@ hp3par_opts = [
                default='',
                help="3PAR Super user password",
                secret=True),
-    # TODO(kmartin): Remove hp3par_domain during I release.
-    cfg.StrOpt('hp3par_domain',
-               default=None,
-               help="This option is DEPRECATED and no longer used. "
-                    "The 3par domain name to use."),
     cfg.StrOpt('hp3par_cpg',
                default="OpenStack",
                help="The CPG to use for volume creation"),
@@ -116,10 +111,11 @@ class HP3PARCommon(object):
         1.2.1 - Check that the VVS exists
         1.2.2 - log prior to raising exceptions
         1.2.3 - Methods to update key/value pair bug #1258033
+        1.2.4 - Remove deprecated config option hp3par_domain
 
     """
 
-    VERSION = "1.2.3"
+    VERSION = "1.2.4"
 
     stats = {}
 
@@ -143,10 +139,6 @@ class HP3PARCommon(object):
         self.config = config
         self.hosts_naming_dict = dict()
         self.client = None
-        if CONF.hp3par_domain is not None:
-            LOG.deprecated(_("hp3par_domain has been deprecated and "
-                             "is no longer used. The domain is automatically "
-                             "looked up based on the CPG."))
 
     def get_version(self):
         return self.VERSION
