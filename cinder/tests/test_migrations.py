@@ -147,6 +147,14 @@ class TestMigrations(test.TestCase):
         for key, value in self.test_databases.items():
             self.engines[key] = sqlalchemy.create_engine(value)
 
+        # Set-up a dict of types for those column types that
+        # are not uniform for all databases.
+        self.bool_type = {}
+        for (key, engine) in self.engines.items():
+            self.bool_type[engine.name] = sqlalchemy.types.BOOLEAN
+            if engine.name == 'mysql':
+                self.bool_type[engine.name] = sqlalchemy.dialects.mysql.TINYINT
+
         # We start each test case with a completely blank slate.
         self._reset_databases()
 
@@ -561,7 +569,7 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(backups.c.deleted_at.type,
                                   sqlalchemy.types.DATETIME)
             self.assertIsInstance(backups.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
             self.assertIsInstance(backups.c.id.type,
                                   sqlalchemy.types.VARCHAR)
             self.assertIsInstance(backups.c.volume_id.type,
@@ -623,9 +631,9 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(snapshot_metadata.c.deleted_at.type,
                                   sqlalchemy.types.DATETIME)
             self.assertIsInstance(snapshot_metadata.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
             self.assertIsInstance(snapshot_metadata.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
             self.assertIsInstance(snapshot_metadata.c.id.type,
                                   sqlalchemy.types.INTEGER)
             self.assertIsInstance(snapshot_metadata.c.snapshot_id.type,
@@ -664,7 +672,7 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(transfers.c.deleted_at.type,
                                   sqlalchemy.types.DATETIME)
             self.assertIsInstance(transfers.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
             self.assertIsInstance(transfers.c.id.type,
                                   sqlalchemy.types.VARCHAR)
             self.assertIsInstance(transfers.c.volume_id.type,
@@ -712,7 +720,7 @@ class TestMigrations(test.TestCase):
                 self.assertTrue(volumes.c.__contains__(column.name))
 
             self.assertIsInstance(volumes.c.bootable.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 10)
             metadata = sqlalchemy.schema.MetaData()
@@ -925,7 +933,7 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(qos_specs.c.deleted_at.type,
                                   sqlalchemy.types.DATETIME)
             self.assertIsInstance(qos_specs.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
             self.assertIsInstance(qos_specs.c.id.type,
                                   sqlalchemy.types.VARCHAR)
             self.assertIsInstance(qos_specs.c.specs_id.type,
@@ -991,7 +999,7 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(volume_admin_metadata.c.deleted_at.type,
                                   sqlalchemy.types.DATETIME)
             self.assertIsInstance(volume_admin_metadata.c.deleted.type,
-                                  sqlalchemy.types.BOOLEAN)
+                                  self.bool_type[engine.name])
             self.assertIsInstance(volume_admin_metadata.c.id.type,
                                   sqlalchemy.types.INTEGER)
             self.assertIsInstance(volume_admin_metadata.c.volume_id.type,
