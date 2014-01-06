@@ -202,9 +202,10 @@ class ISCSIConnector(InitiatorConnector):
                                           check_exit_code=[0, 255])[0] \
                 or ""
 
-            for ip in self._get_target_portals_from_iscsiadm_output(out):
+            for ip, iqn in self._get_target_portals_from_iscsiadm_output(out):
                 props = connection_properties.copy()
                 props['target_portal'] = ip
+                props['target_iqn'] = iqn
                 self._connect_to_iscsi_portal(props)
 
             self._rescan_iscsi()
@@ -256,12 +257,20 @@ class ISCSIConnector(InitiatorConnector):
         target_iqn - iSCSI Qualified Name
         target_lun - LUN id of the volume
         """
+        # Moved _rescan_iscsi and _rescan_multipath
+        # from _disconnect_volume_multipath_iscsi to here.
+        # Otherwise, if we do rescan after _linuxscsi.remove_multipath_device
+        # but before logging out, the removed devices under /dev/disk/by-path
+        # will reappear after rescan.
+        self._rescan_iscsi()
         host_device = self._get_device_path(connection_properties)
         multipath_device = None
         if self.use_multipath:
+            self._rescan_multipath()
             multipath_device = self._get_multipath_device_name(host_device)
             if multipath_device:
-                self._linuxscsi.remove_multipath_device(multipath_device)
+                device_realpath = os.path.realpath(host_device)
+                self._linuxscsi.remove_multipath_device(device_realpath)
                 return self._disconnect_volume_multipath_iscsi(
                     connection_properties, multipath_device)
 
@@ -326,14 +335,13 @@ class ISCSIConnector(InitiatorConnector):
                                   **kwargs)
 
     def _get_target_portals_from_iscsiadm_output(self, output):
-        return [line.split()[0] for line in output.splitlines()]
+        # return both portals and iqns
+        return [line.split() for line in output.splitlines()]
 
     def _disconnect_volume_multipath_iscsi(self, connection_properties,
                                            multipath_name):
         """This removes a multipath device and it's LUNs."""
         LOG.debug("Disconnect multipath device %s" % multipath_name)
-        self._rescan_iscsi()
-        self._rescan_multipath()
         block_devices = self.driver.get_all_block_devices()
         devices = []
         for dev in block_devices:
@@ -344,17 +352,42 @@ class ISCSIConnector(InitiatorConnector):
                 if mpdev:
                     devices.append(mpdev)
 
+        # Do a discovery to find all targets.
+        # Targets for multiple paths for the same multipath device
+        # may not be the same.
+        out = self._run_iscsiadm_bare(['-m',
+                                      'discovery',
+                                      '-t',
+                                      'sendtargets',
+                                      '-p',
+                                      connection_properties['target_portal']],
+                                      check_exit_code=[0, 255])[0] \
+            or ""
+
+        ips_iqns = self._get_target_portals_from_iscsiadm_output(out)
+
         if not devices:
             # disconnect if no other multipath devices
-            self._disconnect_mpath(connection_properties)
+            self._disconnect_mpath(connection_properties, ips_iqns)
             return
 
+        # Get a target for all other multipath devices
         other_iqns = [self._get_multipath_iqn(device)
                       for device in devices]
+        # Get all the targets for the current multipath device
+        current_iqns = [iqn for ip, iqn in ips_iqns]
 
-        if connection_properties['target_iqn'] not in other_iqns:
+        in_use = False
+        for current in current_iqns:
+            if current in other_iqns:
+                in_use = True
+                break
+
+        # If no other multipath device attached has the same iqn
+        # as the current device
+        if not in_use:
             # disconnect if no other multipath devices with same iqn
-            self._disconnect_mpath(connection_properties)
+            self._disconnect_mpath(connection_properties, ips_iqns)
             return
 
         # else do not disconnect iscsi portals,
@@ -449,13 +482,11 @@ class ISCSIConnector(InitiatorConnector):
             return []
         return [entry for entry in devices if entry.startswith("ip-")]
 
-    def _disconnect_mpath(self, connection_properties):
-        entries = self._get_iscsi_devices()
-        ips = [ip.split("-")[1] for ip in entries
-               if connection_properties['target_iqn'] in ip]
-        for ip in ips:
+    def _disconnect_mpath(self, connection_properties, ips_iqns):
+        for ip, iqn in ips_iqns:
             props = connection_properties.copy()
             props['target_portal'] = ip
+            props['target_iqn'] = iqn
             self._disconnect_from_iscsi_portal(props)
 
         self._rescan_multipath()
