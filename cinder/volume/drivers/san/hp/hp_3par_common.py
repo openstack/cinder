@@ -112,10 +112,11 @@ class HP3PARCommon(object):
         1.2.2 - log prior to raising exceptions
         1.2.3 - Methods to update key/value pair bug #1258033
         1.2.4 - Remove deprecated config option hp3par_domain
+        1.2.5 - Raise Ex when deleting snapshot with dependencies bug #1250249
 
     """
 
-    VERSION = "1.2.4"
+    VERSION = "1.2.5"
 
     stats = {}
 
@@ -1019,7 +1020,8 @@ exit
                 LOG.error(_("Error detaching volume %s") % volume)
 
     def delete_snapshot(self, snapshot):
-        LOG.debug("Delete Snapshot\n%s" % pprint.pformat(snapshot))
+        LOG.debug("Delete Snapshot id %s %s" % (snapshot['id'],
+                                                pprint.pformat(snapshot)))
 
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
@@ -1030,6 +1032,9 @@ exit
         except hpexceptions.HTTPNotFound as ex:
             LOG.error(str(ex))
             raise exception.NotFound()
+        except hpexceptions.HTTPConflict as ex:
+            LOG.error(str(ex))
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
 
     def _get_3par_hostname_from_wwn_iqn(self, wwns, iqns):
         if wwns is not None and not isinstance(wwns, list):
