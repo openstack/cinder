@@ -19,12 +19,17 @@ Tests For Scheduler
 """
 
 import mock
+from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
 from cinder.scheduler import driver
+from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
+
+
+CONF = cfg.CONF
 
 
 class SchedulerManagerTestCase(test.TestCase):
@@ -117,6 +122,38 @@ class SchedulerManagerTestCase(test.TestCase):
                                                     {'migration_status': None})
         _mock_host_passes.assert_called_once_with(self.context, 'host',
                                                   request_spec, {})
+
+    def test_chance_simple_scheduler_mocked(self):
+        # Test FilterScheduler is loaded and predefined combination
+        # of filters and weighers overrides the default value of config option
+        # scheduler_default_filters and scheduler_default_weighers when
+        # ChanceScheduler or SimpleScheduler is configured as scheduler_driver.
+        chance = 'cinder.scheduler.chance.ChanceScheduler'
+        simple = 'cinder.scheduler.simple.SimpleScheduler'
+        default_filters = ['AvailabilityZoneFilter',
+                           'CapacityFilter',
+                           'CapabilitiesFilter']
+        self.flags(scheduler_driver=chance,
+                   scheduler_default_filters=['CapacityFilter'],
+                   scheduler_default_weighers=['CapacityWeigher'])
+        self.manager = self.manager_cls()
+        self.assertTrue(isinstance(self.manager.driver,
+                                   filter_scheduler.FilterScheduler))
+        self.assertEqual(CONF.scheduler_default_filters,
+                         default_filters)
+        self.assertEqual(CONF.scheduler_default_weighers,
+                         ['ChanceWeigher'])
+
+        self.flags(scheduler_driver=simple,
+                   scheduler_default_filters=['CapacityFilter'],
+                   scheduler_default_weighers=['CapacityWeigher'])
+        self.manager = self.manager_cls()
+        self.assertTrue(isinstance(self.manager.driver,
+                                   filter_scheduler.FilterScheduler))
+        self.assertEqual(CONF.scheduler_default_filters,
+                         default_filters)
+        self.assertEqual(CONF.scheduler_default_weighers,
+                         ['AllocatedCapacityWeigher'])
 
 
 class SchedulerTestCase(test.TestCase):

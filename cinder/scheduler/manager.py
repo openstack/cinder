@@ -53,6 +53,16 @@ class SchedulerManager(manager.Manager):
                  *args, **kwargs):
         if not scheduler_driver:
             scheduler_driver = CONF.scheduler_driver
+        if scheduler_driver in ['cinder.scheduler.chance.ChanceScheduler',
+                                'cinder.scheduler.simple.SimpleScheduler']:
+            scheduler_driver = ('cinder.scheduler.filter_scheduler.'
+                                'FilterScheduler')
+            LOG.deprecated(_('ChanceScheduler and SimpleScheduler have been '
+                             'deprecated due to lack of support for advanced '
+                             'features like: volume types, volume encryption,'
+                             ' QoS etc. These two schedulers can be fully '
+                             'replaced by FilterScheduler with certain '
+                             'combination of filters and weighers.'))
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
 
