@@ -1,4 +1,5 @@
-#    Copyright 2012 OpenStack Foundation
+#    (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+#    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -11,8 +12,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+#
 """
-HP Lefthand SAN ISCSI Driver.
+HP LeftHand SAN ISCSI Driver.
 
 The driver communicates to the backend aka Cliq via SSH to perform all the
 operations on the SAN.
@@ -22,14 +24,15 @@ from lxml import etree
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder import units
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
 
 LOG = logging.getLogger(__name__)
 
 
-class HpSanISCSIDriver(SanISCSIDriver):
-    """Executes commands relating to HP/Lefthand SAN ISCSI volumes.
+class HPLeftHandCLIQProxy(SanISCSIDriver):
+    """Executes commands relating to HP/LeftHand SAN ISCSI volumes.
 
     We use the CLIQ interface, over SSH.
 
@@ -53,8 +56,6 @@ class HpSanISCSIDriver(SanISCSIDriver):
 
     :getClusterInfo:    (to discover the iSCSI target IP address)
 
-    :assignVolumeChap:    (exports it with CHAP security)
-
     The 'trick' here is that the HP SAN enforces security by default, so
     normally a volume mount would need both to configure the SAN in the volume
     layer and do the mount on the compute layer.  Multi-layer operations are
@@ -67,15 +68,25 @@ class HpSanISCSIDriver(SanISCSIDriver):
         1.0.0 - Initial driver
         1.1.0 - Added create/delete snapshot, extend volume, create volume
                 from snapshot support.
+        1.2.0 - Ported into the new HP LeftHand driver.
     """
 
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
 
     device_stats = {}
 
     def __init__(self, *args, **kwargs):
-        super(HpSanISCSIDriver, self).__init__(*args, **kwargs)
+        super(HPLeftHandCLIQProxy, self).__init__(*args, **kwargs)
         self.cluster_vip = None
+
+    def do_setup(self, context):
+        pass
+
+    def check_for_setup_error(self):
+        pass
+
+    def get_version_string(self):
+        return (_('CLIQ %(proxy_ver)s') % {'proxy_ver': self.VERSION})
 
     def _cliq_run(self, verb, cliq_args, check_exit_code=True):
         """Runs a CLIQ command over SSH, without doing any result parsing."""
@@ -301,7 +312,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
         try:
             volume_info = self._cliq_get_volume_info(volume['name'])
         except processutils.ProcessExecutionError:
-            LOG.error_("Volume did not exist. It will not be deleted")
+            LOG.error(_("Volume did not exist. It will not be deleted"))
             return
         self._cliq_run_xml("deleteVolume", cliq_args)
 
@@ -313,9 +324,16 @@ class HpSanISCSIDriver(SanISCSIDriver):
         try:
             volume_info = self._cliq_get_snapshot_info(snapshot['name'])
         except processutils.ProcessExecutionError:
-            LOG.error_("Snapshot did not exist. It will not be deleted")
+            LOG.error(_("Snapshot did not exist. It will not be deleted"))
             return
-        self._cliq_run_xml("deleteSnapshot", cliq_args)
+        try:
+            self._cliq_run_xml("deleteSnapshot", cliq_args)
+        except Exception as ex:
+            in_use_msg = 'cannot be deleted because it is a clone point'
+            if in_use_msg in ex.message:
+                raise exception.SnapshotIsBusy(str(ex))
+
+            raise exception.VolumeBackendAPIException(str(ex))
 
     def local_path(self, volume):
         msg = _("local_path not supported")
@@ -349,10 +367,10 @@ class HpSanISCSIDriver(SanISCSIDriver):
         cliq_args['serverName'] = connector['host']
         self._cliq_run_xml("assignVolumeToServer", cliq_args)
 
-        iscsi_properties = self._get_iscsi_properties(volume)
+        iscsi_data = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iscsi',
-            'data': iscsi_properties
+            'data': iscsi_data
         }
 
     def _create_server(self, connector):
@@ -405,7 +423,6 @@ class HpSanISCSIDriver(SanISCSIDriver):
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
-        data['driver_version'] = self.VERSION
         data['reserved_percentage'] = 0
         data['storage_protocol'] = 'iSCSI'
         data['vendor_name'] = 'Hewlett-Packard'
@@ -414,8 +431,20 @@ class HpSanISCSIDriver(SanISCSIDriver):
         cluster_node = result_xml.find("response/cluster")
         total_capacity = cluster_node.attrib.get("spaceTotal")
         free_capacity = cluster_node.attrib.get("unprovisionedSpace")
-        GB = 1073741824
+        GB = units.GiB
 
         data['total_capacity_gb'] = int(total_capacity) / GB
         data['free_capacity_gb'] = int(free_capacity) / GB
         self.device_stats = data
+
+    def create_cloned_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
+    def create_export(self, context, volume):
+        pass
+
+    def ensure_export(self, context, volume):
+        pass
+
+    def remove_export(self, context, volume):
+        pass
