@@ -31,4 +31,5 @@ submitted bug fix does have a unit test, be sure to add a new one that fails
 without the patch and passes with the patch.
 
 For more information on creating unit tests and utilizing the testing
-infrastructure in OpenStack Cinder, please read cinder/testing/README.rst.
+infrastructure in OpenStack Cinder, please read the Cinder testing
+`README.rst <https://github.com/openstack/cinder/blob/master/cinder/testing/README.rst>`_.
