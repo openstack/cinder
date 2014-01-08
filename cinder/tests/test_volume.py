@@ -92,8 +92,7 @@ class BaseVolumeTestCase(test.TestCase):
     def setUp(self):
         super(BaseVolumeTestCase, self).setUp()
         vol_tmpdir = tempfile.mkdtemp()
-        self.flags(connection_type='fake',
-                   volumes_dir=vol_tmpdir,
+        self.flags(volumes_dir=vol_tmpdir,
                    notification_driver=[test_notifier.__name__])
         self.volume = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()

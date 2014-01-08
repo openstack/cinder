@@ -51,8 +51,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def setUp(self):
         super(VolumeTypeEncryptionTest, self).setUp()
-        self.flags(connection_type='fake',
-                   host='fake',
+        self.flags(host='fake',
                    notification_driver=[test_notifier.__name__])
         self.api_path = '/v2/fake/os-volume-types/1/encryption'
         """to reset notifier drivers left over from other api/contrib tests"""

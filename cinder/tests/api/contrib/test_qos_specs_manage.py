@@ -141,8 +141,7 @@ def return_disassociate_all(context, id):
 class QoSSpecManageApiTest(test.TestCase):
     def setUp(self):
         super(QoSSpecManageApiTest, self).setUp()
-        self.flags(connection_type='fake',
-                   host='fake',
+        self.flags(host='fake',
                    notification_driver=[test_notifier.__name__])
         self.controller = qos_specs_manage.QoSSpecsController()
         #reset notifier drivers left over from other api/contrib tests

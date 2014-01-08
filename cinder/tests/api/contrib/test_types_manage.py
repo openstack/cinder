@@ -64,8 +64,7 @@ def return_volume_types_get_by_name(context, name):
 class VolumeTypesManageApiTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesManageApiTest, self).setUp()
-        self.flags(connection_type='fake',
-                   host='fake',
+        self.flags(host='fake',
                    notification_driver=[test_notifier.__name__])
         self.controller = types_manage.VolumeTypesManageController()
         """to reset notifier drivers left over from other api/contrib tests"""

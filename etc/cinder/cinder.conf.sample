@@ -238,10 +238,6 @@
 # Options defined in cinder.common.config
 #
 
-# Virtualization api connection type : libvirt, xenapi, or
-# fake (string value)
-#connection_type=<None>
-
 # File name for the paste.deploy config for cinder-api (string
 # value)
 #api_paste_config=api-paste.ini
