@@ -58,18 +58,17 @@ if __name__ == '__main__':
          version=version.version_string())
     logging.setup("cinder")
     utils.monkey_patch()
-    if os.name == 'nt':
-        launcher = service
-        launcher.launch_server = service.serve
-    else:
-        launcher = service.ProcessLauncher()
+    # Note(zhiteng): Since Windows (os='nt') has already ignored monkey
+    # patching 'os' module, there is no need to treat it differently
+    # when creating launcher.
+    launcher = service.process_launcher()
     if CONF.enabled_backends:
         for backend in CONF.enabled_backends:
             host = "%s@%s" % (CONF.host, backend)
             server = service.Service.create(host=host,
                                             service_name=backend)
-            launcher.launch_server(server)
+            launcher.launch_service(server)
     else:
         server = service.Service.create(binary='cinder-volume')
-        launcher.launch_server(server)
+        launcher.launch_service(server)
     launcher.wait()

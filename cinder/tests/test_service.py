@@ -214,18 +214,3 @@ class TestWSGIService(test.TestCase):
         CONF.set_override('report_interval', 10)
         service.WSGIService("test_service")
         self.assertEqual(CONF.service_down_time, 25)
-
-
-class TestLauncher(test.TestCase):
-
-    def setUp(self):
-        super(TestLauncher, self).setUp()
-        self.stubs.Set(wsgi.Loader, "load_app", mox.MockAnything())
-        self.service = service.WSGIService("test_service")
-
-    def test_launch_app(self):
-        self.assertEqual(0, self.service.port)
-        launcher = service.Launcher()
-        launcher.launch_server(self.service)
-        self.assertEqual(0, self.service.port)
-        launcher.stop()
