@@ -84,17 +84,10 @@
 # File name of clean sqlite db (string value)
 #sqlite_clean_db=clean.sqlite
 
-# should we use everything for testing (boolean value)
-#fake_tests=true
-
 
 #
 # Options defined in cinder.wsgi
 #
-
-# Number of backlog requests to configure the socket with
-# (integer value)
-#backlog=4096
 
 # Sets the value of TCP_KEEPIDLE in seconds for each server
 # socket. Not supported on OS X. (integer value)
@@ -244,9 +237,6 @@
 # (string value)
 #pybasedir=/usr/lib/python/site-packages
 
-# Directory where cinder binaries are installed (string value)
-#bindir=$pybasedir/bin
-
 # Top-level directory for maintaining cinder's state (string
 # value)
 #state_path=$pybasedir
@@ -344,10 +334,6 @@
 # time period to generate volume usages for.  Time period must
 # be hour, day, month or year (string value)
 #volume_usage_audit_period=month
-
-# Deprecated: command to use for running commands as root
-# (string value)
-#root_helper=sudo
 
 # Path to the rootwrap configuration file to use for running
 # commands as root (string value)
@@ -1327,20 +1313,6 @@
 # value)
 #nexenta_volume_compression=on
 
-# Mount options passed to the nfs client. See section of the
-# nfs man page for details (string value)
-#nexenta_mount_options=<None>
-
-# Percent of ACTUAL usage of the underlying volume before no
-# new volumes can be allocated to the volume destination.
-# (floating point value)
-#nexenta_used_ratio=0.95
-
-# This will compare the allocated to available space on the
-# volume destination.  If the ratio exceeds this number, the
-# destination will no longer be valid. (floating point value)
-#nexenta_oversub_ratio=1.0
-
 # If set True cache NexentaStor appliance volroot option
 # value. (boolean value)
 #nexenta_nms_cache_volroot=true
@@ -1715,12 +1687,6 @@
 
 # Default encryption policy for volumes (boolean value)
 #zadara_vol_encrypt=false
-
-# Default striping mode for volumes (string value)
-#zadara_default_striping_mode=simple
-
-# Default stripe size for volumes (string value)
-#zadara_default_stripesize=64
 
 # Default template for VPSA volume names (string value)
 #zadara_vol_name_template=OS_%s

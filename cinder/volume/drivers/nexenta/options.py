@@ -73,20 +73,6 @@ NEXENTA_NFS_OPTIONS = [
     cfg.StrOpt('nexenta_volume_compression',
                default='on',
                help='Default compression value for new ZFS folders.'),
-    cfg.StrOpt('nexenta_mount_options',
-               default=None,
-               help='Mount options passed to the nfs client. See section '
-                    'of the nfs man page for details'),
-    cfg.FloatOpt('nexenta_used_ratio',
-                 default=0.95,
-                 help=('Percent of ACTUAL usage of the underlying volume '
-                       'before no new volumes can be allocated to the volume '
-                       'destination.')),
-    cfg.FloatOpt('nexenta_oversub_ratio',
-                 default=1.0,
-                 help=('This will compare the allocated to available space on '
-                       'the volume destination.  If the ratio exceeds this '
-                       'number, the destination will no longer be valid.')),
     cfg.BoolOpt('nexenta_nms_cache_volroot',
                 default=True,
                 help=('If set True cache NexentaStor appliance volroot option '
