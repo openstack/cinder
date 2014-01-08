@@ -46,8 +46,10 @@ sf_opts = [
 
     cfg.StrOpt('sf_account_prefix',
                default=None,
-               help='Create SolidFire accounts with this prefix. Uses current '
-                    'hostname if unset (default).'),
+               help='Create SolidFire accounts with this prefix. Any string '
+                    'can be used here, but the string \"hostname\" is special '
+                    'and will create a prefix using the cinder node hostsname '
+                    '(previous default behavior).  The default is NO prefix.'),
 
     cfg.IntOpt('sf_api_port',
                default=443,
@@ -223,7 +225,9 @@ class SolidFireDriver(SanISCSIDriver):
 
     def _get_sf_account_name(self, project_id):
         """Build the SolidFire account name to use."""
-        prefix = self.configuration.sf_account_prefix or socket.gethostname()
+        prefix = self.configuration.sf_account_prefix or ''
+        if prefix == 'hostname':
+            prefix = socket.gethostname()
         return '%s%s%s' % (prefix, '-' if prefix else '', project_id)
 
     def _get_sfaccount(self, project_id):

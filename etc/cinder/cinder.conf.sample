@@ -1624,8 +1624,10 @@
 # Allow tenants to specify QOS on create (boolean value)
 #sf_allow_tenant_qos=false
 
-# Create SolidFire accounts with this prefix. Uses current
-# hostname if unset (default). (string value)
+# Create SolidFire accounts with this prefix. Any string can
+# be used here, but the string "hostname" is special and will
+# create a prefix using the cinder node hostsname (previous
+# default behavior).  The default is NO prefix. (string value)
 #sf_account_prefix=<None>
 
 # SolidFire API port. Useful if the device api is behind a
