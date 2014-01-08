@@ -237,3 +237,68 @@ class VolumeTypeTestCase(test.TestCase):
                                       'k3': 'v3'}}}
         res = volume_types.get_volume_type_qos_specs(type_ref['id'])
         self.assertDictMatch(expected, res)
+
+    def test_volume_types_diff(self):
+        #type_ref 1 and 2 have the same extra_specs, while 3 has different
+        keyvals1 = {"key1": "val1", "key2": "val2"}
+        keyvals2 = {"key1": "val0", "key2": "val2"}
+        type_ref1 = volume_types.create(self.ctxt, "type1", keyvals1)
+        type_ref2 = volume_types.create(self.ctxt, "type2", keyvals1)
+        type_ref3 = volume_types.create(self.ctxt, "type3", keyvals2)
+
+        # Check equality with only extra_specs
+        diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
+                                                    type_ref2['id'])
+        self.assertEqual(same, True)
+        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
+        diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
+                                                    type_ref3['id'])
+        self.assertEqual(same, False)
+        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val0'))
+
+        #qos_ref 1 and 2 have the same specs, while 3 has different
+        qos_keyvals1 = {'k1': 'v1', 'k2': 'v2', 'k3': 'v3'}
+        qos_keyvals2 = {'k1': 'v0', 'k2': 'v2', 'k3': 'v3'}
+        qos_ref1 = qos_specs.create(self.ctxt, 'qos-specs-1', qos_keyvals1)
+        qos_ref2 = qos_specs.create(self.ctxt, 'qos-specs-2', qos_keyvals1)
+        qos_ref3 = qos_specs.create(self.ctxt, 'qos-specs-3', qos_keyvals2)
+
+        # Check equality with qos specs too
+        qos_specs.associate_qos_with_type(self.ctxt, qos_ref1['id'],
+                                          type_ref1['id'])
+        qos_specs.associate_qos_with_type(self.ctxt, qos_ref2['id'],
+                                          type_ref2['id'])
+        diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
+                                                    type_ref2['id'])
+        self.assertEqual(same, True)
+        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
+        self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
+        qos_specs.disassociate_qos_specs(self.ctxt, qos_ref2['id'],
+                                         type_ref2['id'])
+        qos_specs.associate_qos_with_type(self.ctxt, qos_ref3['id'],
+                                          type_ref2['id'])
+        diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
+                                                    type_ref2['id'])
+        self.assertEqual(same, False)
+        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
+        self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v0'))
+        qos_specs.disassociate_qos_specs(self.ctxt, qos_ref3['id'],
+                                         type_ref2['id'])
+        qos_specs.associate_qos_with_type(self.ctxt, qos_ref2['id'],
+                                          type_ref2['id'])
+
+        # And add encryption for good measure
+        enc_keyvals1 = {'cipher': 'c1', 'key_size': 256, 'provider': 'p1',
+                        'control_location': 'front-end'}
+        enc_keyvals2 = {'cipher': 'c1', 'key_size': 128, 'provider': 'p1',
+                        'control_location': 'front-end'}
+        db.volume_type_encryption_update_or_create(self.ctxt, type_ref1['id'],
+                                                   enc_keyvals1)
+        db.volume_type_encryption_update_or_create(self.ctxt, type_ref2['id'],
+                                                   enc_keyvals2)
+        diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
+                                                    type_ref2['id'])
+        self.assertEqual(same, False)
+        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
+        self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
+        self.assertEqual(diff['encryption']['key_size'], (256, 128))

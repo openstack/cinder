@@ -98,3 +98,14 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.3')
+
+    @mock.patch('cinder.openstack.common.rpc.cast')
+    def test_retype(self, _mock_rpc_method):
+        self._test_scheduler_api('retype',
+                                 rpc_method='cast',
+                                 _mock_method=_mock_rpc_method,
+                                 topic='topic',
+                                 volume_id='volume_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='1.4')

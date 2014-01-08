@@ -155,6 +155,39 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertEqual(CONF.scheduler_default_weighers,
                          ['AllocatedCapacityWeigher'])
 
+    @mock.patch('cinder.db.volume_update')
+    @mock.patch('cinder.db.volume_get')
+    def test_retype_volume_exception_returns_volume_state(self, _mock_vol_get,
+                                                          _mock_vol_update):
+        # Test NoValidHost exception behavior for retype.
+        # Puts the volume in original state and eats the exception.
+        fake_volume_id = 1
+        topic = 'fake_topic'
+        volume_id = fake_volume_id
+        request_spec = {'volume_id': fake_volume_id, 'volume_type': {'id': 3},
+                        'migration_policy': 'on-demand'}
+        vol_info = {'id': fake_volume_id, 'status': 'in-use',
+                    'instance_uuid': 'foo', 'attached_host': None}
+
+        _mock_vol_get.return_value = vol_info
+        _mock_vol_update.return_value = {'status': 'in-use'}
+        _mock_find_retype_host = mock.Mock(
+            side_effect=exception.NoValidHost(reason=""))
+        orig_retype = self.manager.driver.find_retype_host
+        self.manager.driver.find_retype_host = _mock_find_retype_host
+
+        self.manager.retype(self.context, topic, volume_id,
+                            request_spec=request_spec,
+                            filter_properties={})
+
+        _mock_vol_get.assert_called_once_with(self.context, fake_volume_id)
+        _mock_find_retype_host.assert_called_once_with(self.context,
+                                                       request_spec, {},
+                                                       'on-demand')
+        _mock_vol_update.assert_called_once_with(self.context, fake_volume_id,
+                                                 {'status': 'in-use'})
+        self.manager.driver.find_retype_host = orig_retype
+
 
 class SchedulerTestCase(test.TestCase):
     """Test case for base scheduler driver class."""

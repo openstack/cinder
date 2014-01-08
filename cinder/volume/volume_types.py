@@ -168,8 +168,92 @@ def is_encrypted(context, volume_type_id):
     return encryption is not None
 
 
+def get_volume_type_encryption(context, volume_type_id):
+    if volume_type_id is None:
+        return None
+
+    encryption = db.volume_type_encryption_get(context, volume_type_id)
+    return encryption
+
+
 def get_volume_type_qos_specs(volume_type_id):
     ctxt = context.get_admin_context()
     res = db.volume_type_qos_specs_get(ctxt,
                                        volume_type_id)
     return res
+
+
+def volume_types_diff(context, vol_type_id1, vol_type_id2):
+    """Returns a 'diff' of two volume types and whether they are equal.
+
+    Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
+    whether there is any difference, and 'diff' is a dictionary with the
+    following format:
+    {'extra_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
+                     'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
+                     ...}
+     'qos_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
+                   'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
+                   ...}
+     'encryption': {'cipher': (value_in_1st_vol_type, value_in_2nd_vol_type),
+                   {'key_size': (value_in_1st_vol_type, value_in_2nd_vol_type),
+                    ...}
+    """
+    def _fix_qos_specs(qos_specs):
+        if qos_specs:
+            qos_specs.pop('id', None)
+            qos_specs.pop('name', None)
+            qos_specs.update(qos_specs.pop('specs', {}))
+
+    def _fix_encryption_specs(encryption):
+        if encryption1:
+            encryption = dict(encryption)
+            for param in ['volume_type_id', 'created_at', 'updated_at',
+                          'deleted_at']:
+                encryption.pop(param, None)
+
+    def _dict_diff(dict1, dict2):
+        res = {}
+        equal = True
+        if dict1 is None:
+            dict1 = {}
+        if dict2 is None:
+            dict2 = {}
+        for k, v in dict1.iteritems():
+            res[k] = (v, dict2.get(k))
+            if k not in dict2 or res[k][0] != res[k][1]:
+                equal = False
+        for k, v in dict2.iteritems():
+            res[k] = (dict1.get(k), v)
+            if k not in dict1 or res[k][0] != res[k][1]:
+                equal = False
+        return (res, equal)
+
+    all_equal = True
+    diff = {}
+    vol_type1 = get_volume_type(context, vol_type_id1)
+    vol_type2 = get_volume_type(context, vol_type_id2)
+
+    extra_specs1 = vol_type1.get('extra_specs')
+    extra_specs2 = vol_type2.get('extra_specs')
+    diff['extra_specs'], equal = _dict_diff(extra_specs1, extra_specs2)
+    if not equal:
+        all_equal = False
+
+    qos_specs1 = get_volume_type_qos_specs(vol_type_id1).get('qos_specs')
+    _fix_qos_specs(qos_specs1)
+    qos_specs2 = get_volume_type_qos_specs(vol_type_id2).get('qos_specs')
+    _fix_qos_specs(qos_specs2)
+    diff['qos_specs'], equal = _dict_diff(qos_specs1, qos_specs2)
+    if not equal:
+        all_equal = False
+
+    encryption1 = get_volume_type_encryption(context, vol_type_id1)
+    _fix_encryption_specs(encryption1)
+    encryption2 = get_volume_type_encryption(context, vol_type_id2)
+    _fix_encryption_specs(encryption2)
+    diff['encryption'], equal = _dict_diff(encryption1, encryption2)
+    if not equal:
+        all_equal = False
+
+    return (diff, all_equal)

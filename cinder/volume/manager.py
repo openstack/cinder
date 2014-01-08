@@ -180,7 +180,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.11'
+    RPC_API_VERSION = '1.12'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -773,7 +773,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume_ref = self.db.volume_get(context.elevated(), volume_id)
         self.driver.accept_transfer(context, volume_ref, new_user, new_project)
 
-    def _migrate_volume_generic(self, ctxt, volume, host):
+    def _migrate_volume_generic(self, ctxt, volume, host, new_type_id):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
@@ -785,6 +785,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         # We don't copy volume_type because the db sets that according to
         # volume_type_id, which we do copy
         del new_vol_values['volume_type']
+        if new_type_id:
+            new_vol_values['volume_type_id'] = new_type_id
         new_vol_values['host'] = host['host']
         new_vol_values['status'] = 'creating'
         new_vol_values['migration_status'] = 'target:%s' % volume['id']
@@ -813,7 +815,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Copy the source volume to the destination volume
         try:
-            if volume['status'] == 'available':
+            if (volume['instance_uuid'] is None and
+                    volume['attached_host'] is None):
                 self.driver.copy_volume_data(ctxt, volume, new_volume,
                                              remote='dest')
                 # The above call is synchronous so we complete the migration
@@ -837,6 +840,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                     rpcapi.delete_volume(ctxt, new_volume)
                 new_volume['migration_status'] = None
 
+    def _get_original_status(self, volume):
+        if (volume['instance_uuid'] is None and
+                volume['attached_host'] is None):
+            return 'available'
+        else:
+            return 'in-use'
+
+    @utils.require_driver_initialized
     def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
                                   error=False):
         msg = _("migrate_volume_completion: completing migration for "
@@ -846,6 +857,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_volume = self.db.volume_get(ctxt, new_volume_id)
         rpcapi = volume_rpcapi.VolumeAPI()
 
+        status_update = None
+        if volume['status'] == 'retyping':
+            status_update = {'status': self._get_original_status(volume)}
+
         if error:
             msg = _("migrate_volume_completion is cleaning up an error "
                     "for volume %(vol1)s (temporary volume %(vol2)s")
@@ -853,7 +868,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                             'vol2': new_volume['id']})
             new_volume['migration_status'] = None
             rpcapi.delete_volume(ctxt, new_volume)
-            self.db.volume_update(ctxt, volume_id, {'migration_status': None})
+            updates = {'migration_status': None}
+            if status_update:
+                updates.update(status_update)
+            self.db.volume_update(ctxt, volume_id, updates)
             return volume_id
 
         self.db.volume_update(ctxt, volume_id,
@@ -868,19 +886,27 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
-        self.db.volume_update(ctxt, volume_id, {'migration_status': None})
+        updates = {'migration_status': None}
+        if status_update:
+            updates.update(status_update)
+        self.db.volume_update(ctxt, volume_id, updates)
         return volume['id']
 
     @utils.require_driver_initialized
-    def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False):
+    def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
+                       new_type_id=None):
         """Migrate the volume to the specified host (called on source host)."""
         volume_ref = self.db.volume_get(ctxt, volume_id)
         model_update = None
         moved = False
 
+        status_update = None
+        if volume_ref['status'] == 'retyping':
+            status_update = {'status': self._get_original_status(volume_ref)}
+
         self.db.volume_update(ctxt, volume_ref['id'],
                               {'migration_status': 'migrating'})
-        if not force_host_copy:
+        if not force_host_copy and new_type_id is None:
             try:
                 LOG.debug(_("volume %s: calling driver migrate_volume"),
                           volume_ref['id'])
@@ -890,6 +916,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 if moved:
                     updates = {'host': host['host'],
                                'migration_status': None}
+                    if status_update:
+                        updates.update(status_update)
                     if model_update:
                         updates.update(model_update)
                     volume_ref = self.db.volume_update(ctxt,
@@ -898,16 +926,21 @@ class VolumeManager(manager.SchedulerDependentManager):
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': None}
+                    if status_update:
+                        updates.update(status_update)
                     model_update = self.driver.create_export(ctxt, volume_ref)
                     if model_update:
                         updates.update(model_update)
                     self.db.volume_update(ctxt, volume_ref['id'], updates)
         if not moved:
             try:
-                self._migrate_volume_generic(ctxt, volume_ref, host)
+                self._migrate_volume_generic(ctxt, volume_ref, host,
+                                             new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': None}
+                    if status_update:
+                        updates.update(status_update)
                     model_update = self.driver.create_export(ctxt, volume_ref)
                     if model_update:
                         updates.update(model_update)
@@ -1013,3 +1046,101 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_volume_usage(
             context, volume, "resize.end",
             extra_usage_info={'size': int(new_size)})
+
+    @utils.require_driver_initialized
+    def retype(self, ctxt, volume_id, new_type_id, host,
+               migration_policy='never', reservations=None):
+        def _retype_error(context, volume_id, old_reservations,
+                          new_reservations, status_update):
+            try:
+                self.db.volume_update(context, volume_id, status_update)
+            finally:
+                QUOTAS.rollback(context, old_reservations)
+                QUOTAS.rollback(context, new_reservations)
+
+        context = ctxt.elevated()
+
+        volume_ref = self.db.volume_get(ctxt, volume_id)
+        status_update = {'status': self._get_original_status(volume_ref)}
+        if context.project_id != volume_ref['project_id']:
+            project_id = volume_ref['project_id']
+        else:
+            project_id = context.project_id
+
+        # Get old reservations
+        try:
+            reserve_opts = {'volumes': -1, 'gigabytes': -volume_ref['size']}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        volume_ref.get('volume_type_id'))
+            old_reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+        except Exception:
+            old_reservations = None
+            self.db.volume_update(context, volume_id, status_update)
+            LOG.exception(_("Failed to update usages while retyping volume."))
+            raise exception.CinderException(_("Failed to get old volume type"
+                                              " quota reservations"))
+
+        # We already got the new reservations
+        new_reservations = reservations
+
+        # If volume types have the same contents, no need to do anything
+        retyped = False
+        diff, all_equal = volume_types.volume_types_diff(
+            context, volume_ref.get('volume_type_id'), new_type_id)
+        if all_equal:
+            retyped = True
+
+        # Call driver to try and change the type
+        if not retyped:
+            try:
+                new_type = volume_types.get_volume_type(context, new_type_id)
+                retyped = self.driver.retype(context, volume_ref, new_type,
+                                             diff, host)
+                if retyped:
+                    LOG.info(_("Volume %s: retyped succesfully"), volume_id)
+            except Exception:
+                retyped = False
+                LOG.info(_("Volume %s: driver error when trying to retype, "
+                           "falling back to generic mechanism."),
+                         volume_ref['id'])
+
+        # We could not change the type, so we need to migrate the volume, where
+        # the destination volume will be of the new type
+        if not retyped:
+            if migration_policy == 'never':
+                _retype_error(context, volume_id, old_reservations,
+                              new_reservations, status_update)
+                msg = _("Retype requires migration but is not allowed.")
+                raise exception.VolumeMigrationFailed(reason=msg)
+
+            snaps = self.db.snapshot_get_all_for_volume(context,
+                                                        volume_ref['id'])
+            if snaps:
+                _retype_error(context, volume_id, old_reservations,
+                              new_reservations, status_update)
+                msg = _("Volume must not have snapshots.")
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+            self.db.volume_update(context, volume_ref['id'],
+                                  {'migration_status': 'starting'})
+
+            try:
+                self.migrate_volume(context, volume_id, host,
+                                    new_type_id=new_type_id)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    _retype_error(context, volume_id, old_reservations,
+                                  new_reservations, status_update)
+
+        self.db.volume_update(context, volume_id,
+                              {'volume_type_id': new_type_id,
+                               'status': status_update['status']})
+
+        if old_reservations:
+            QUOTAS.commit(context, old_reservations, project_id=project_id)
+        if new_reservations:
+            QUOTAS.commit(context, new_reservations, project_id=project_id)
+        self.publish_service_capabilities(context)

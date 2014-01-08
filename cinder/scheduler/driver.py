@@ -77,6 +77,11 @@ class Scheduler(object):
         """Check if the specified host passes the filters."""
         raise NotImplementedError(_("Must implement host_passes_filters"))
 
+    def find_retype_host(self, context, request_spec, filter_properties={},
+                         migration_policy='never'):
+        """Find a host that can accept the volume with its new type."""
+        raise NotImplementedError(_("Must implement find_retype_host"))
+
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement a fallback schedule"))

@@ -228,3 +228,75 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           sched.host_passes_filters,
                           ctx, 'host1', request_spec, {})
         self.assertTrue(_mock_service_get_topic.called)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_retype_policy_never_migrate_pass(self, _mock_service_get_topic):
+        # Retype should pass if current host passes filters and
+        # policy=never. host4 doesn't have enough space to hold an additional
+        # 200GB, but it is already the host of this volume and should not be
+        # counted twice.
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        extra_specs = {'volume_backend_name': 'lvm4'}
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI',
+                                        'extra_specs': extra_specs},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 200,
+                                              'host': 'host4'}}
+        host_state = sched.find_retype_host(ctx, request_spec,
+                                            filter_properties={},
+                                            migration_policy='never')
+        self.assertEqual(host_state.host, 'host4')
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_retype_policy_never_migrate_fail(self, _mock_service_get_topic):
+        # Retype should fail if current host doesn't pass filters and
+        # policy=never.
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        extra_specs = {'volume_backend_name': 'lvm1'}
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI',
+                                        'extra_specs': extra_specs},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 200,
+                                              'host': 'host4'}}
+        self.assertRaises(exception.NoValidHost, sched.find_retype_host, ctx,
+                          request_spec, filter_properties={},
+                          migration_policy='never')
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_retype_policy_demand_migrate_pass(self, _mock_service_get_topic):
+        # Retype should pass if current host fails filters but another host
+        # is suitable when policy=on-demand.
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        extra_specs = {'volume_backend_name': 'lvm1'}
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI',
+                                        'extra_specs': extra_specs},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 200,
+                                              'host': 'host4'}}
+        host_state = sched.find_retype_host(ctx, request_spec,
+                                            filter_properties={},
+                                            migration_policy='on-demand')
+        self.assertEqual(host_state.host, 'host1')
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_retype_policy_demand_migrate_fail(self, _mock_service_get_topic):
+        # Retype should fail if current host doesn't pass filters and
+        # no other suitable candidates exist even if policy=on-demand.
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        extra_specs = {'volume_backend_name': 'lvm1'}
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI',
+                                        'extra_specs': extra_specs},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 2048,
+                                              'host': 'host4'}}
+        self.assertRaises(exception.NoValidHost, sched.find_retype_host, ctx,
+                          request_spec, filter_properties={},
+                          migration_policy='on-demand')

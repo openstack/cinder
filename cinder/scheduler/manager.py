@@ -29,6 +29,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
+from cinder import quota
 from cinder.volume.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 
@@ -41,13 +42,15 @@ scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
 CONF = cfg.CONF
 CONF.register_opt(scheduler_driver_opt)
 
+QUOTAS = quota.QUOTAS
+
 LOG = logging.getLogger(__name__)
 
 
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.3'
+    RPC_API_VERSION = '1.4'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -100,37 +103,95 @@ class SchedulerManager(manager.Manager):
     def request_service_capabilities(self, context):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
 
-    def _migrate_volume_set_error(self, context, ex, request_spec):
-        volume_state = {'volume_state': {'migration_status': None}}
-        self._set_volume_state_and_notify('migrate_volume_to_host',
-                                          volume_state,
-                                          context, ex, request_spec)
-
     def migrate_volume_to_host(self, context, topic, volume_id, host,
                                force_host_copy, request_spec,
                                filter_properties=None):
         """Ensure that the host exists and can accept the volume."""
+
+        def _migrate_volume_set_error(self, context, ex, request_spec):
+            volume_state = {'volume_state': {'migration_status': None}}
+            self._set_volume_state_and_notify('migrate_volume_to_host',
+                                              volume_state,
+                                              context, ex, request_spec)
+
         try:
             tgt_host = self.driver.host_passes_filters(context, host,
                                                        request_spec,
                                                        filter_properties)
         except exception.NoValidHost as ex:
-                self._migrate_volume_set_error(context, ex, request_spec)
+            _migrate_volume_set_error(self, context, ex, request_spec)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
-                self._migrate_volume_set_error(context, ex, request_spec)
+                _migrate_volume_set_error(self, context, ex, request_spec)
         else:
             volume_ref = db.volume_get(context, volume_id)
             volume_rpcapi.VolumeAPI().migrate_volume(context, volume_ref,
                                                      tgt_host,
                                                      force_host_copy)
 
-    def _set_volume_state_and_notify(self, method, updates, context, ex,
-                                     request_spec):
-        # TODO(harlowja): move into a task that just does this later.
+    def retype(self, context, topic, volume_id,
+               request_spec, filter_properties=None):
+        """Schedule the modification of a volume's type.
 
-        LOG.error(_("Failed to schedule_%(method)s: %(ex)s") %
-                  {'method': method, 'ex': ex})
+        :param context: the request context
+        :param topic: the topic listened on
+        :param volume_id: the ID of the volume to retype
+        :param request_spec: parameters for this retype request
+        :param filter_properties: parameters to filter by
+        """
+        def _retype_volume_set_error(self, context, ex, request_spec,
+                                     volume_ref, msg, reservations):
+            if reservations:
+                QUOTAS.rollback(context, reservations)
+            if (volume_ref['instance_uuid'] is None and
+                    volume_ref['attached_host'] is None):
+                orig_status = 'available'
+            else:
+                orig_status = 'in-use'
+            volume_state = {'volume_state': {'status': orig_status}}
+            self._set_volume_state_and_notify('retype', volume_state,
+                                              context, ex, request_spec, msg)
+
+        volume_ref = db.volume_get(context, volume_id)
+        reservations = request_spec.get('quota_reservations')
+        new_type = request_spec.get('volume_type')
+        if new_type is None:
+            msg = _('New volume type not specified in request_spec.')
+            ex = exception.ParameterNotFound(param='volume_type')
+            _retype_volume_set_error(self, context, ex, request_spec,
+                                     volume_ref, msg, reservations)
+
+        # Default migration policy is 'never'
+        migration_policy = request_spec.get('migration_policy')
+        if not migration_policy:
+            migration_policy = 'never'
+
+        try:
+            tgt_host = self.driver.find_retype_host(context, request_spec,
+                                                    filter_properties,
+                                                    migration_policy)
+        except exception.NoValidHost as ex:
+            msg = (_("Could not find a host for volume %(volume_id)s with "
+                     "type %(type_id)s.") %
+                   {'type_id': new_type['id'], 'volume_id': volume_id})
+            _retype_volume_set_error(self, context, ex, request_spec,
+                                     volume_ref, msg, reservations)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception():
+                _retype_volume_set_error(self, context, ex, request_spec,
+                                         volume_ref, None, reservations)
+        else:
+            volume_rpcapi.VolumeAPI().retype(context, volume_ref,
+                                             new_type['id'], tgt_host,
+                                             migration_policy, reservations)
+
+    def _set_volume_state_and_notify(self, method, updates, context, ex,
+                                     request_spec, msg=None):
+        # TODO(harlowja): move into a task that just does this later.
+        if not msg:
+            msg = (_("Failed to schedule_%(method)s: %(ex)s") %
+                   {'method': method, 'ex': ex})
+        LOG.error(msg)
 
         volume_state = updates['volume_state']
         properties = request_spec.get('volume_properties', {})

@@ -46,6 +46,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
         1.10 - Add migrate_volume_completion, remove rename_volume.
         1.11 - Adds mode parameter to attach_volume()
                to support volume read-only attaching.
+        1.12 - Adds retype.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -180,3 +181,17 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                          topic=rpc.queue_get_for(ctxt, self.topic,
                                                  volume['host']),
                          version='1.10')
+
+    def retype(self, ctxt, volume, new_type_id, dest_host,
+               migration_policy='never', reservations=None):
+        host_p = {'host': dest_host.host,
+                  'capabilities': dest_host.capabilities}
+        self.cast(ctxt,
+                  self.make_msg('retype',
+                                volume_id=volume['id'],
+                                new_type_id=new_type_id,
+                                host=host_p,
+                                migration_policy=migration_policy,
+                                reservations=reservations),
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
+                  version='1.12')

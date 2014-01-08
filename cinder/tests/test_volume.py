@@ -61,6 +61,7 @@ from cinder.volume import driver
 from cinder.volume.drivers import lvm
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volutils
+from cinder.volume import volume_types
 
 
 QUOTAS = quota.QUOTAS
@@ -2002,7 +2003,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test volume migration done by driver."""
         # stub out driver and rpc functions
         self.stubs.Set(self.volume.driver, 'migrate_volume',
-                       lambda x, y, z: (True, {'user_id': 'foo'}))
+                       lambda x, y, z, new_type_id=None: (True,
+                                                          {'user_id': 'foo'}))
 
         volume = tests_utils.create_volume(self.context, size=0,
                                            host=CONF.host,
@@ -2044,6 +2046,92 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEqual(volume['host'], 'newhost')
         self.assertIsNone(volume['migration_status'])
+
+    def _retype_volume_exec(self, driver, snap=False, policy='on-demand',
+                            migrate_exc=False, exc=None, diff_equal=False):
+        elevated = context.get_admin_context()
+        project_id = self.context.project_id
+
+        db.volume_type_create(elevated, {'name': 'old', 'extra_specs': {}})
+        old_vol_type = db.volume_type_get_by_name(elevated, 'old')
+        db.volume_type_create(elevated, {'name': 'new', 'extra_specs': {}})
+        vol_type = db.volume_type_get_by_name(elevated, 'new')
+        db.quota_create(elevated, project_id, 'volumes_new', 10)
+
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           host=CONF.host, status='retyping',
+                                           volume_type_id=old_vol_type['id'])
+        if snap:
+            self._create_snapshot(volume['id'], size=volume['size'])
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+
+        reserve_opts = {'volumes': 1, 'gigabytes': volume['size']}
+        QUOTAS.add_volume_type_opts(self.context,
+                                    reserve_opts,
+                                    vol_type['id'])
+        reservations = QUOTAS.reserve(self.context,
+                                      project_id=project_id,
+                                      **reserve_opts)
+
+        with mock.patch.object(self.volume.driver, 'retype') as _retype:
+            with mock.patch.object(volume_types, 'volume_types_diff') as _diff:
+                with mock.patch.object(self.volume, 'migrate_volume') as _mig:
+                    _retype.return_value = driver
+                    _diff.return_value = ({}, diff_equal)
+                    if migrate_exc:
+                        _mig.side_effect = KeyError
+                    else:
+                        _mig.return_value = True
+
+                    if not exc:
+                        self.volume.retype(self.context, volume['id'],
+                                           vol_type['id'], host_obj,
+                                           migration_policy=policy,
+                                           reservations=reservations)
+                    else:
+                        self.assertRaises(exc, self.volume.retype,
+                                          self.context, volume['id'],
+                                          vol_type['id'], host_obj,
+                                          migration_policy=policy,
+                                          reservations=reservations)
+
+        # get volume/quota properties
+        volume = db.volume_get(elevated, volume['id'])
+        try:
+            usage = db.quota_usage_get(elevated, project_id, 'volumes_new')
+            volumes_in_use = usage.in_use
+        except exception.QuotaUsageNotFound:
+            volumes_in_use = 0
+
+        # check properties
+        if not exc:
+            self.assertEqual(volume['volume_type_id'], vol_type['id'])
+            self.assertEqual(volume['status'], 'available')
+            self.assertEqual(volumes_in_use, 1)
+        else:
+            self.assertEqual(volume['volume_type_id'], old_vol_type['id'])
+            self.assertEqual(volume['status'], 'available')
+            self.assertEqual(volumes_in_use, 0)
+
+    def test_retype_volume_driver_success(self):
+        self._retype_volume_exec(True)
+
+    def test_retype_volume_migration_bad_policy(self):
+        # Test volume retype that requires migration by not allowed
+        self._retype_volume_exec(False, policy='never',
+                                 exc=exception.VolumeMigrationFailed)
+
+    def test_retype_volume_migration_with_snaps(self):
+        self._retype_volume_exec(False, snap=True, exc=exception.InvalidVolume)
+
+    def test_retype_volume_migration_failed(self):
+        self._retype_volume_exec(False, migrate_exc=True, exc=KeyError)
+
+    def test_retype_volume_migration_success(self):
+        self._retype_volume_exec(False, migrate_exc=False, exc=None)
+
+    def test_retype_volume_migration_equal_types(self):
+        self._retype_volume_exec(False, diff_equal=True)
 
     def test_update_volume_readonly_flag(self):
         """Test volume readonly flag can be updated at API level."""

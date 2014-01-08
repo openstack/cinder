@@ -30,14 +30,6 @@ from cinder import volume
 from cinder.volume import api as volume_api
 
 
-def fake_volume_api(*args, **kwargs):
-    return True
-
-
-def fake_volume_get(*args, **kwargs):
-    return {'id': 'fake', 'host': 'fake'}
-
-
 class VolumeActionsTest(test.TestCase):
 
     _actions = ('os-detach', 'os-reserve', 'os-unreserve')
@@ -46,12 +38,30 @@ class VolumeActionsTest(test.TestCase):
 
     def setUp(self):
         super(VolumeActionsTest, self).setUp()
-        self.stubs.Set(volume.API, 'get', fake_volume_api)
         self.UUID = uuid.uuid4()
-        for _method in self._methods:
-            self.stubs.Set(volume.API, _method, fake_volume_api)
+        self.api_patchers = {}
+        for _meth in self._methods:
+            self.api_patchers[_meth] = mock.patch('cinder.volume.API.' + _meth)
+            self.api_patchers[_meth].start()
+            self.api_patchers[_meth].return_value = True
 
-        self.stubs.Set(volume.API, 'get', fake_volume_get)
+        vol = {'id': 'fake', 'host': 'fake', 'status': 'available', 'size': 1,
+               'migration_status': None, 'volume_type_id': 'fake'}
+        self.get_patcher = mock.patch('cinder.volume.API.get')
+        self.mock_volume_get = self.get_patcher.start()
+        self.mock_volume_get.return_value = vol
+        self.update_patcher = mock.patch('cinder.volume.API.update')
+        self.mock_volume_update = self.update_patcher.start()
+        self.mock_volume_update.return_value = vol
+
+        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+
+    def tearDown(self):
+        for patcher in self.api_patchers:
+            self.api_patchers[patcher].stop()
+        self.update_patcher.stop()
+        self.get_patcher.stop()
+        super(VolumeActionsTest, self).tearDown()
 
     def test_simple_api_actions(self):
         app = fakes.wsgi_app()
@@ -280,6 +290,124 @@ class VolumeActionsTest(test.TestCase):
         make_update_readonly_flag_test(self, 'tt', 400)
         make_update_readonly_flag_test(self, 11, 400)
         make_update_readonly_flag_test(self, None, 400)
+
+
+class VolumeRetypeActionsTest(VolumeActionsTest):
+    def setUp(self):
+        def get_vol_type(*args, **kwargs):
+            d1 = {'id': 'fake', 'qos_specs_id': 'fakeqid1', 'extra_specs': {}}
+            d2 = {'id': 'foo', 'qos_specs_id': 'fakeqid2', 'extra_specs': {}}
+            return d1 if d1['id'] == args[1] else d2
+
+        self.retype_patchers = {}
+        self.retype_mocks = {}
+        paths = ['cinder.volume.volume_types.get_volume_type',
+                 'cinder.volume.volume_types.get_volume_type_by_name',
+                 'cinder.volume.qos_specs.get_qos_specs',
+                 'cinder.quota.QUOTAS.add_volume_type_opts',
+                 'cinder.quota.QUOTAS.reserve']
+        for path in paths:
+            name = path.split('.')[-1]
+            self.retype_patchers[name] = mock.patch(path)
+            self.retype_mocks[name] = self.retype_patchers[name].start()
+
+        self.retype_mocks['get_volume_type'].side_effect = get_vol_type
+        self.retype_mocks['get_volume_type_by_name'].side_effect = get_vol_type
+        self.retype_mocks['add_volume_type_opts'].return_value = None
+        self.retype_mocks['reserve'].return_value = None
+
+        super(VolumeRetypeActionsTest, self).setUp()
+
+    def tearDown(self):
+        for name, patcher in self.retype_patchers.iteritems():
+            patcher.stop()
+        super(VolumeRetypeActionsTest, self).tearDown()
+
+    def _retype_volume_exec(self, expected_status, new_type='foo'):
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        retype_body = {'new_type': new_type, 'migration_policy': 'never'}
+        req.body = jsonutils.dumps({'os-retype': retype_body})
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, expected_status)
+
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs')
+    def test_retype_volume_success(self, _mock_get_qspecs):
+        # Test that the retype API works for both available and in-use
+        self._retype_volume_exec(202)
+        self.mock_volume_get.return_value['status'] = 'in-use'
+        specs = {'qos_specs': {'id': 'fakeqid1', 'consumer': 'back-end'}}
+        _mock_get_qspecs.return_value = specs
+        self._retype_volume_exec(202)
+
+    def test_retype_volume_no_body(self):
+        # Request with no body should fail
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = jsonutils.dumps({'os-retype': None})
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+
+    def test_retype_volume_bad_policy(self):
+        # Request with invalid migration policy should fail
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        retype_body = {'new_type': 'foo', 'migration_policy': 'invalid'}
+        req.body = jsonutils.dumps({'os-retype': retype_body})
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 400)
+
+    def test_retype_volume_bad_status(self):
+        # Should fail if volume does not have proper status
+        self.mock_volume_get.return_value['status'] = 'error'
+        self._retype_volume_exec(400)
+
+    def test_retype_type_no_exist(self):
+        # Should fail if new type does not exist
+        exc = exception.VolumeTypeNotFound('exc')
+        self.retype_mocks['get_volume_type'].side_effect = exc
+        self._retype_volume_exec(404)
+
+    def test_retype_same_type(self):
+        # Should fail if new type and old type are the same
+        self._retype_volume_exec(400, new_type='fake')
+
+    def test_retype_over_quota(self):
+        # Should fail if going over quota for new type
+        exc = exception.OverQuota(overs=['gigabytes'],
+                                  quotas={'gigabytes': 20},
+                                  usages={'gigabytes': {'reserved': 5,
+                                                        'in_use': 15}})
+        self.retype_mocks['reserve'].side_effect = exc
+        self._retype_volume_exec(413)
+
+    @mock.patch('cinder.volume.qos_specs.get_qos_specs')
+    def _retype_volume_diff_qos(self, vol_status, consumer, expected_status,
+                                _mock_get_qspecs):
+        def fake_get_qos(ctxt, qos_id):
+            d1 = {'qos_specs': {'id': 'fakeqid1', 'consumer': consumer}}
+            d2 = {'qos_specs': {'id': 'fakeqid2', 'consumer': consumer}}
+            return d1 if d1['qos_specs']['id'] == qos_id else d2
+
+        self.mock_volume_get.return_value['status'] = vol_status
+        _mock_get_qspecs.side_effect = fake_get_qos
+        self._retype_volume_exec(expected_status)
+
+    def test_retype_volume_diff_qos_fe_in_use(self):
+        # should fail if changing qos enforced by front-end for in-use volumes
+        self._retype_volume_diff_qos('in-use', 'front-end', 400)
+
+    def test_retype_volume_diff_qos_fe_available(self):
+        # should NOT fail if changing qos enforced by FE for available volumes
+        self._retype_volume_diff_qos('available', 'front-end', 202)
+
+    def test_retype_volume_diff_qos_be(self):
+        # should NOT fail if changing qos enforced by back-end
+        self._retype_volume_diff_qos('available', 'back-end', 202)
+        self._retype_volume_diff_qos('in-use', 'back-end', 202)
 
 
 def stub_volume_get(self, context, volume_id):

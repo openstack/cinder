@@ -30,6 +30,7 @@ def create_volume(ctxt,
                   migration_status=None,
                   size=1,
                   availability_zone='fake_az',
+                  volume_type_id=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -43,6 +44,8 @@ def create_volume(ctxt,
     vol['display_description'] = display_description
     vol['attach_status'] = 'detached'
     vol['availability_zone'] = availability_zone
+    if volume_type_id:
+        vol['volume_type_id'] = volume_type_id
     for key in kwargs:
         vol[key] = kwargs[key]
     return db.volume_create(ctxt, vol)

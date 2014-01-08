@@ -99,6 +99,38 @@ class FilterScheduler(driver.Scheduler):
                % {'id': request_spec['volume_id'], 'host': host})
         raise exception.NoValidHost(reason=msg)
 
+    def find_retype_host(self, context, request_spec, filter_properties={},
+                         migration_policy='never'):
+        """Find a host that can accept the volume with its new type."""
+        current_host = request_spec['volume_properties']['host']
+
+        # The volume already exists on this host, and so we shouldn't check if
+        # it can accept the volume again in the CapacityFilter.
+        filter_properties['vol_exists_on'] = current_host
+
+        weighed_hosts = self._get_weighted_candidates(context, request_spec,
+                                                      filter_properties)
+        if not weighed_hosts:
+            msg = (_('No valid hosts for volume %(id)s with type %(type)s')
+                   % {'id': request_spec['volume_id'],
+                      'type': request_spec['volume_type']})
+            raise exception.NoValidHost(reason=msg)
+
+        for weighed_host in weighed_hosts:
+            host_state = weighed_host.obj
+            if host_state.host == current_host:
+                return host_state
+
+        if migration_policy == 'never':
+            msg = (_('Current host not valid for volume %(id)s with type '
+                     '%(type)s, migration not allowed')
+                   % {'id': request_spec['volume_id'],
+                      'type': request_spec['volume_type']})
+            raise exception.NoValidHost(reason=msg)
+
+        top_host = self._choose_top_host(weighed_hosts, request_spec)
+        return top_host.obj
+
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
         """Add additional information to the filter properties after a host has
@@ -236,8 +268,12 @@ class FilterScheduler(driver.Scheduler):
                                                       filter_properties)
         if not weighed_hosts:
             return None
-        best_host = weighed_hosts[0]
-        LOG.debug(_("Choosing %s") % best_host)
+        return self._choose_top_host(weighed_hosts, request_spec)
+
+    def _choose_top_host(self, weighed_hosts, request_spec):
+        top_host = weighed_hosts[0]
+        host_state = top_host.obj
+        LOG.debug(_("Choosing %s") % host_state.host)
         volume_properties = request_spec['volume_properties']
-        best_host.obj.consume_from_volume(volume_properties)
-        return best_host
+        host_state.consume_from_volume(volume_properties)
+        return top_host
