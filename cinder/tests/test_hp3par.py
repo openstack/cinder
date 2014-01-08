@@ -408,7 +408,6 @@ class HP3PARBaseDriver():
         configuration.hp3par_username = 'testUser'
         configuration.hp3par_password = 'testPassword'
         configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
-        configuration.hp3par_domain = HP3PAR_DOMAIN
         configuration.hp3par_cpg = HP3PAR_CPG
         configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
         configuration.iscsi_ip_address = '1.1.1.2'

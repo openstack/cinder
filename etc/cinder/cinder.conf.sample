@@ -1528,10 +1528,6 @@
 # 3PAR Super user password (string value)
 #hp3par_password=
 
-# This option is DEPRECATED and no longer used. The 3par
-# domain name to use. (string value)
-#hp3par_domain=<None>
-
 # The CPG to use for volume creation (string value)
 #hp3par_cpg=OpenStack
 
