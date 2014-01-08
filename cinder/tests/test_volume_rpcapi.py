@@ -54,6 +54,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_volume_metadata = volume["volume_metadata"]
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
+        self.fake_reservations = ["RESERVATION"]
 
     def test_serialized_volume_has_id(self):
         self.assertIn('id', self.fake_volume)
@@ -229,7 +230,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               volume=self.fake_volume,
                               new_size=1,
-                              version='1.6')
+                              reservations=self.fake_reservations,
+                              version='1.14')
 
     def test_migrate_volume(self):
         class FakeHost(object):

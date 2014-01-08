@@ -1862,7 +1862,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         snap = db.snapshot_get(context.get_admin_context(), snapshot['id'])
         self.assertEqual(snap['display_name'], 'test update name')
 
-    def test_extend_volume(self):
+    @mock.patch.object(QUOTAS, 'reserve')
+    def test_extend_volume(self, reserve):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
         volume = tests_utils.create_volume(self.context, size=2,
@@ -1896,10 +1897,21 @@ class VolumeTestCase(BaseVolumeTestCase):
                           2)
 
         # works when new_size > orig_size
+        reserve.return_value = ["RESERVATION"]
         volume_api.extend(self.context, volume, 3)
-
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEqual(volume['status'], 'extending')
+
+        # Test the quota exceeded
+        volume['status'] = 'available'
+        reserve.side_effect = exception.OverQuota(overs=['gigabytes'],
+                                                  quotas={'gigabytes': 20},
+                                                  usages={'gigabytes':
+                                                          {'reserved': 5,
+                                                           'in_use': 15}})
+        self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
+                          volume_api.extend, self.context,
+                          volume, 3)
 
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
@@ -1907,6 +1919,7 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_extend_volume_driver_not_initialized(self):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
+        fake_reservations = ['RESERVATION']
         volume = tests_utils.create_volume(self.context, size=2,
                                            status='available',
                                            host=CONF.host)
@@ -1917,7 +1930,8 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.extend_volume,
-                          self.context, volume['id'], 3)
+                          self.context, volume['id'], 3,
+                          fake_reservations)
 
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEqual(volume.status, 'error_extending')
@@ -1929,49 +1943,36 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     def test_extend_volume_manager(self):
         """Test volume can be extended at the manager level."""
-        def fake_reserve(context, expire=None, project_id=None, **deltas):
-            return ['RESERVATION']
+        def fake_extend(volume, new_size):
+            volume['size'] = new_size
 
-        def fake_reserve_exc(context, expire=None, project_id=None, **deltas):
-            raise exception.OverQuota(overs=['gigabytes'],
-                                      quotas={'gigabytes': 20},
-                                      usages={'gigabytes': {'reserved': 5,
-                                                            'in_use': 15}})
-
-        def fake_extend_exc(volume, new_size):
-            raise exception.CinderException('fake exception')
-
+        fake_reservations = ['RESERVATION']
         volume = tests_utils.create_volume(self.context, size=2,
                                            status='creating', host=CONF.host)
         self.volume.create_volume(self.context, volume['id'])
 
-        # Test quota exceeded
-        self.stubs.Set(QUOTAS, 'reserve', fake_reserve_exc)
-        self.stubs.Set(QUOTAS, 'commit', lambda x, y, project_id=None: True)
-        self.stubs.Set(QUOTAS, 'rollback', lambda x, y: True)
-        volume['status'] = 'extending'
-        self.volume.extend_volume(self.context, volume['id'], '4')
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual(volume['size'], 2)
-        self.assertEqual(volume['status'], 'error_extending')
-
         # Test driver exception
-        self.stubs.Set(QUOTAS, 'reserve', fake_reserve)
-        self.stubs.Set(self.volume.driver, 'extend_volume', fake_extend_exc)
-        volume['status'] = 'extending'
-        self.volume.extend_volume(self.context, volume['id'], '4')
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual(volume['size'], 2)
-        self.assertEqual(volume['status'], 'error_extending')
+        with mock.patch.object(self.volume.driver,
+                               'extend_volume') as extend_volume:
+            extend_volume.side_effect =\
+                exception.CinderException('fake exception')
+            volume['status'] = 'extending'
+            self.volume.extend_volume(self.context, volume['id'], '4',
+                                      fake_reservations)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertEqual(volume['size'], 2)
+            self.assertEqual(volume['status'], 'error_extending')
 
         # Test driver success
-        self.stubs.Set(self.volume.driver, 'extend_volume',
-                       lambda x, y: True)
-        volume['status'] = 'extending'
-        self.volume.extend_volume(self.context, volume['id'], '4')
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual(volume['size'], 4)
-        self.assertEqual(volume['status'], 'available')
+        with mock.patch.object(self.volume.driver,
+                               'extend_volume') as extend_volume:
+            extend_volume.return_value = fake_extend
+            volume['status'] = 'extending'
+            self.volume.extend_volume(self.context, volume['id'], '4',
+                                      fake_reservations)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertEqual(volume['size'], 4)
+            self.assertEqual(volume['status'], 'available')
 
         # clean up
         self.volume.delete_volume(self.context, volume['id'])

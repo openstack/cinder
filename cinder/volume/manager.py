@@ -182,7 +182,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.13'
+    RPC_API_VERSION = '1.14'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -1092,7 +1092,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
-    def extend_volume(self, context, volume_id, new_size):
+    def extend_volume(self, context, volume_id, new_size, reservations):
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1105,30 +1105,6 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         volume = self.db.volume_get(context, volume_id)
         size_increase = (int(new_size)) - volume['size']
-
-        try:
-            reservations = QUOTAS.reserve(context, gigabytes=+size_increase)
-        except exception.OverQuota as exc:
-            self.db.volume_update(context, volume['id'],
-                                  {'status': 'error_extending'})
-            overs = exc.kwargs['overs']
-            usages = exc.kwargs['usages']
-            quotas = exc.kwargs['quotas']
-
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
-            if 'gigabytes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, "
-                        "tried to extend volume by "
-                        "%(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
-                        "already consumed)")
-                LOG.error(msg % {'s_pid': context.project_id,
-                                 's_size': size_increase,
-                                 'd_consumed': _consumed('gigabytes'),
-                                 'd_quota': quotas['gigabytes']})
-            return
-
         self._notify_about_volume_usage(context, volume, "resize.start")
         try:
             LOG.info(_("volume %s: extending"), volume['id'])
@@ -1140,6 +1116,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             try:
                 self.db.volume_update(context, volume['id'],
                                       {'status': 'error_extending'})
+                raise exception.CinderException(_("Volume %s: Error trying "
+                                                  "to extend volume") %
+                                                volume_id)
             finally:
                 QUOTAS.rollback(context, reservations)
                 return
