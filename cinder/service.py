@@ -86,6 +86,7 @@ class Service(service.Service):
         self.report_interval = report_interval
         self.periodic_interval = periodic_interval
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
+        self.basic_config_check()
         self.saved_args, self.saved_kwargs = args, kwargs
         self.timers = []
 
@@ -137,6 +138,22 @@ class Service(service.Service):
             periodic.start(interval=self.periodic_interval,
                            initial_delay=initial_delay)
             self.timers.append(periodic)
+
+    def basic_config_check(self):
+        """Perform basic config checks before starting service."""
+        # Make sure report interval is less than service down time
+        if self.report_interval:
+            if CONF.service_down_time <= self.report_interval:
+                new_down_time = int(self.report_interval * 2.5)
+                LOG.warn(_("Report interval must be less than service down "
+                           "time. Current config service_down_time: "
+                           "%(service_down_time)s, report_interval for this: "
+                           "service is: %(report_interval)s. Setting global "
+                           "service_down_time to: %(new_down_time)s") %
+                         {'service_down_time': CONF.service_down_time,
+                          'report_interval': self.report_interval,
+                          'new_down_time': new_down_time})
+                CONF.set_override('service_down_time', new_down_time)
 
     def _create_service_ref(self, context):
         zone = CONF.storage_availability_zone
@@ -283,27 +300,10 @@ class WSGIService(object):
                      {'name': name})
             # Reset workers to default
             self.workers = None
-        self.basic_config_check()
         self.server = wsgi.Server(name,
                                   self.app,
                                   host=self.host,
                                   port=self.port)
-
-    def basic_config_check(self):
-        """Perform basic config checks before starting service."""
-        # Make sure report interval is less than service down time
-        report_interval = CONF.report_interval
-        if CONF.service_down_time <= report_interval:
-            new_service_down_time = int(report_interval * 2.5)
-            LOG.warn(_("Report interval must be less than service down "
-                       "time. Current config: <service_down_time: "
-                       "%(service_down_time)s, report_interval: "
-                       "%(report_interval)s>. Setting service_down_time to: "
-                       "%(new_service_down_time)s") %
-                     {'service_down_time': CONF.service_down_time,
-                      'report_interval': report_interval,
-                      'new_service_down_time': new_service_down_time})
-            CONF.set_override('service_down_time', new_service_down_time)
 
     def _get_manager(self):
         """Initialize a Manager object appropriate for this service.
