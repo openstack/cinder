@@ -20,13 +20,13 @@ Tests for Volume Code.
 
 import contextlib
 import datetime
+import mock
 import os
 import shutil
 import socket
 import tempfile
 
 import eventlet
-import mock
 import mox
 from oslo.config import cfg
 from stevedore import extension
@@ -42,6 +42,7 @@ from cinder.image import image_utils
 from cinder import keymgr
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import jsonutils
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common.notifier import test_notifier
 from cinder.openstack.common import rpc
@@ -59,6 +60,7 @@ import cinder.volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
+from cinder.volume.manager import VolumeManager
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volutils
 from cinder.volume import volume_types
@@ -466,6 +468,27 @@ class VolumeTestCase(BaseVolumeTestCase):
                           db.volume_get,
                           self.context,
                           volume['id'])
+
+    def test_extra_capabilities(self):
+        # Test valid extra_capabilities.
+        fake_capabilities = {'key1': 1, 'key2': 2}
+
+        with mock.patch.object(jsonutils, 'loads') as mock_loads:
+            mock_loads.return_value = fake_capabilities
+            manager = VolumeManager()
+            manager.driver.set_initialized()
+            manager.publish_service_capabilities(self.context)
+            self.assertTrue(mock_loads.called)
+            volume_stats = manager.last_capabilities
+            self.assertEqual(volume_stats['key1'],
+                             fake_capabilities['key1'])
+            self.assertEqual(volume_stats['key2'],
+                             fake_capabilities['key2'])
+
+    def test_extra_capabilities_fail(self):
+        with mock.patch.object(jsonutils, 'loads') as mock_loads:
+            mock_loads.side_effect = exception.CinderException('test')
+            self.assertRaises(exception.CinderException, VolumeManager)
 
     def test_delete_busy_volume(self):
         """Test volume survives deletion if driver reports it as busy."""

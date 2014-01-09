@@ -47,6 +47,7 @@ from cinder.image import glance
 from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
+from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
 from cinder.openstack.common import timeutils
@@ -81,6 +82,10 @@ volume_manager_opts = [
     cfg.StrOpt('zoning_mode',
                default='none',
                help='FC Zoning mode configured'),
+    cfg.StrOpt('extra_capabilities',
+               default='{}',
+               help='User defined capabilities, a JSON formatted string '
+                    'specifying key/value pairs.'),
 ]
 
 CONF = cfg.CONF
@@ -199,6 +204,15 @@ class VolumeManager(manager.SchedulerDependentManager):
             host=self.host)
 
         self.zonemanager = None
+        try:
+            self.extra_capabilities = jsonutils.loads(
+                self.driver.configuration.extra_capabilities)
+        except AttributeError:
+            self.extra_capabilities = {}
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Invalid JSON: %s" %
+                          self.driver.configuration.extra_capabilities)
 
     def _add_to_threadpool(self, func, *args, **kwargs):
         self._tp.spawn_n(func, *args, **kwargs)
@@ -1069,6 +1083,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                          'config_group': config_group})
         else:
             volume_stats = self.driver.get_volume_stats(refresh=True)
+            if self.extra_capabilities:
+                volume_stats.update(self.extra_capabilities)
             if volume_stats:
                 # Append volume stats with 'allocated_capacity_gb'
                 volume_stats.update(self.stats)
