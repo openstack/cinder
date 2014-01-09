@@ -14,10 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-# Authors:
-#   Ronen Kat <ronenkat@il.ibm.com>
-#   Avishay Traeger <avishay@il.ibm.com>
-
 """
 Tests for the IBM Storwize family and SVC volume driver.
 """
@@ -129,6 +125,8 @@ class StorwizeSVCManagementSimulator:
             'CMMVC5903E': ('', 'CMMVC5903E The FlashCopy mapping was not '
                                'changed because the mapping or consistency '
                                'group is another state.'),
+            'CMMVC5709E': ('', 'CMMVC5709E [-%(VALUE)s] is not a supported '
+                               'parameter.'),
         }
         self._transitions = {'begin': {'make': 'idle_or_copied'},
                              'idle_or_copied': {'prepare': 'preparing',
@@ -190,7 +188,6 @@ class StorwizeSVCManagementSimulator:
     def _cmd_to_dict(self, arg_list):
         no_param_args = [
             'autodelete',
-            'autoexpand',
             'bytes',
             'compressed',
             'force',
@@ -221,6 +218,9 @@ class StorwizeSVCManagementSimulator:
             'warning',
             'wwpn',
         ]
+        no_or_one_param_args = [
+            'autoexpand',
+        ]
 
         # Handle the special case of lsnode which is a two-word command
         # Use the one word version of the command internally
@@ -247,6 +247,12 @@ class StorwizeSVCManagementSimulator:
                 elif arg_list[i][1:] in one_param_args:
                     ret[arg_list[i][1:]] = arg_list[i + 1]
                     skip = True
+                elif arg_list[i][1:] in no_or_one_param_args:
+                    if i == (len(arg_list) - 1) or arg_list[i + 1][0] == '-':
+                        ret[arg_list[i][1:]] = True
+                    else:
+                        ret[arg_list[i][1:]] = arg_list[i + 1]
+                        skip = True
                 else:
                     raise exception.InvalidInput(
                         reason=_('unrecognized argument %s') % arg_list[i])
@@ -310,9 +316,10 @@ class StorwizeSVCManagementSimulator:
 
     # Print mostly made-up stuff in the correct syntax
     def _cmd_lssystem(self, **kwargs):
-        rows = [None] * 2
+        rows = [None] * 3
         rows[0] = ['id', '0123456789ABCDEF']
         rows[1] = ['name', 'storwize-svc-sim']
+        rows[2] = ['code_level', '7.2.0.0 (build 87.0.1311291000)']
         return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax, assume -bytes passed
@@ -688,9 +695,11 @@ port_speed!N/A
             rows.append(['IO_group_name', vol['IO_group_name']])
             rows.append(['status', 'online'])
             rows.append(['mdisk_grp_id', '0'])
-            rows.append([
-                'mdisk_grp_name',
-                self._flags['storwize_svc_volpool_name']])
+            if 'mdisk_grp_name' in vol:
+                mdisk_grp_name = vol['mdisk_grp_name']
+            else:
+                mdisk_grp_name = self._flags['storwize_svc_volpool_name']
+            rows.append(['mdisk_grp_name', mdisk_grp_name])
             rows.append(['capacity', cap])
             rows.append(['type', 'striped'])
             rows.append(['formatted', 'no'])
@@ -1322,6 +1331,51 @@ port_speed!N/A
         if copy_id not in vol['copies']:
             return self._errors['CMMVC6353E']
         del vol['copies'][copy_id]
+
+        copy_info = vol['copies'].values()[0]
+        for key in copy_info:
+            vol[key] = copy_info[key]
+        del vol['copies']
+        return ('', '')
+
+    def _cmd_chvdisk(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        vol_name = kwargs['obj'].strip('\'\'')
+        vol = self._volumes_list[vol_name]
+        kwargs.pop('obj')
+
+        params = ['name', 'warning', 'udid', 'autoexpand', 'easytier']
+        for key, value in kwargs.iteritems():
+            if key == 'easytier':
+                vol['easy_tier'] = value
+                continue
+            if key == 'warning':
+                vol['warning'] = value.rstrip('%')
+                continue
+            if key in params:
+                vol[key] = value
+            else:
+                err = self._errors['CMMVC5709E'][1] % {'VALUE': key}
+                return ('', err)
+        return ('', '')
+
+    def _cmd_movevdisk(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        vol_name = kwargs['obj'].strip('\'\'')
+        vol = self._volumes_list[vol_name]
+
+        if 'iogrp' not in kwargs:
+            return self._errors['CMMVC5707E']
+
+        iogrp = kwargs['iogrp']
+        if iogrp.isdigit():
+            vol['IO_group_id'] = iogrp
+            vol['IO_group_name'] = 'io_grp%s' % iogrp
+        else:
+            vol['IO_group_id'] = iogrp[6:]
+            vol['IO_group_name'] = iogrp
         return ('', '')
 
     def _add_host_to_list(self, connector):
@@ -1420,6 +1474,10 @@ port_speed!N/A
             out, err = self._cmd_lsvdiskcopy(**kwargs)
         elif command == 'rmvdiskcopy':
             out, err = self._cmd_rmvdiskcopy(**kwargs)
+        elif command == 'chvdisk':
+            out, err = self._cmd_chvdisk(**kwargs)
+        elif command == 'movevdisk':
+            out, err = self._cmd_movevdisk(**kwargs)
         else:
             out, err = ('', 'ERROR: Unsupported command')
 
@@ -1619,18 +1677,23 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                     'volume_name': vol_name,
                     'id': rand_id,
                     'volume_id': vol_id,
-                    'volume_size': 10}
+                    'volume_size': 10,
+                    'mdisk_grp_name': 'openstack'}
         else:
             return {'name': 'test_volume%s' % rand_id,
                     'size': 10,
                     'id': '%s' % rand_id,
-                    'volume_type_id': None}
+                    'volume_type_id': None,
+                    'mdisk_grp_name': 'openstack'}
 
     def _create_test_vol(self, opts):
         ctxt = context.get_admin_context()
         type_ref = volume_types.create(ctxt, 'testtype', opts)
         volume = self._generate_vol_info(None, None)
-        volume['volume_type_id'] = type_ref['id']
+        type_id = type_ref['id']
+        type_ref = volume_types.get_volume_type(ctxt, type_id)
+        volume['volume_type_id'] = type_id
+        volume['volume_type'] = type_ref
         self.driver.create_volume(volume)
 
         attrs = self.driver._get_vdisk_attributes(volume['name'])
@@ -2264,7 +2327,103 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.create_volume(volume)
         self.assertNotEqual(cap['extent_size'], self.driver._extent_size)
         self.driver.migrate_volume(ctxt, volume, host)
+        attrs = self.driver._get_vdisk_attributes(volume['name'])
+        self.assertEqual('openstack3', attrs['mdisk_grp_name'], 'migrate '
+                         'with diff extent size failed')
         self.driver.delete_volume(volume)
+
+    def test_storwize_svc_retype_no_copy(self):
+        self.driver.do_setup(None)
+        loc = 'StorwizeSVCDriver:' + self.driver._system_id + ':openstack'
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        key_specs_old = {'easytier': False, 'warning': 2, 'autoexpand': True}
+        key_specs_new = {'easytier': True, 'warning': 5, 'autoexpand': False}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equel = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = self._generate_vol_info(None, None)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+        attrs = self.driver._get_vdisk_attributes(volume['name'])
+        self.assertEqual('on', attrs['easy_tier'], 'Volume retype failed')
+        self.assertEqual('5', attrs['warning'], 'Volume retype failed')
+        self.assertEqual('off', attrs['autoexpand'], 'Volume retype failed')
+        self.driver.delete_volume(volume)
+
+    def test_storwize_svc_retype_only_change_iogrp(self):
+        self.driver.do_setup(None)
+        loc = 'StorwizeSVCDriver:' + self.driver._system_id + ':openstack'
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        key_specs_old = {'iogrp': 0}
+        key_specs_new = {'iogrp': 1}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = self._generate_vol_info(None, None)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+        attrs = self.driver._get_vdisk_attributes(volume['name'])
+        self.assertEqual('1', attrs['IO_group_id'], 'Volume retype '
+                         'failed')
+        self.driver.delete_volume(volume)
+
+    def test_storwize_svc_retype_need_copy(self):
+        self.driver.do_setup(None)
+        loc = 'StorwizeSVCDriver:' + self.driver._system_id + ':openstack'
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        key_specs_old = {'compression': True}
+        key_specs_new = {'compression': False}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = self._generate_vol_info(None, None)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+        attrs = self.driver._get_vdisk_attributes(volume['name'])
+        self.assertEqual('no', attrs['compressed_copy'], 'Volume retype '
+                         'failed')
+        self.driver.delete_volume(volume)
+
+    def test_set_storage_code_level_success(self):
+        code_level = '7.2.0.0 (build 87.0.1311291000)'
+        res = self.driver._get_code_level(code_level)
+        self.assertEqual((7, 2, 0, 0), res, 'Get code level error')
 
 
 class CLIResponseTestCase(test.TestCase):
