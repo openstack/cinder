@@ -201,7 +201,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test get_volume_stats."""
         stats = self._driver.get_volume_stats()
         self.assertEqual(stats['vendor_name'], 'VMware')
-        self.assertEqual(stats['driver_version'], '1.0')
+        self.assertEqual(stats['driver_version'], '1.1.0')
         self.assertEqual(stats['storage_protocol'], 'LSI Logic SCSI')
         self.assertEqual(stats['reserved_percentage'], 0)
         self.assertEqual(stats['total_capacity_gb'], 'unknown')
@@ -719,32 +719,55 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m = self.mox
         m.StubOutWithMock(self._driver.__class__, 'volumeops')
         self._driver.volumeops = self._volumeops
+
         datastore1 = FakeMor('Datastore', 'my_ds_1')
         datastore2 = FakeMor('Datastore', 'my_ds_2')
         datastore3 = FakeMor('Datastore', 'my_ds_3')
         datastore4 = FakeMor('Datastore', 'my_ds_4')
         datastores = [datastore1, datastore2, datastore3, datastore4]
+
         m.StubOutWithMock(self._volumeops, 'get_summary')
-        summary1 = FakeDatastoreSummary(10, 10)
-        summary2 = FakeDatastoreSummary(25, 50)
-        summary3 = FakeDatastoreSummary(50, 50)
-        summary4 = FakeDatastoreSummary(100, 100)
-        moxd = self._volumeops.get_summary(datastore1)
-        moxd.MultipleTimes().AndReturn(summary1)
-        moxd = self._volumeops.get_summary(datastore2)
-        moxd.MultipleTimes().AndReturn(summary2)
-        moxd = self._volumeops.get_summary(datastore3)
-        moxd.MultipleTimes().AndReturn(summary3)
-        moxd = self._volumeops.get_summary(datastore4)
-        moxd.MultipleTimes().AndReturn(summary4)
+        summary1 = FakeDatastoreSummary(5, 100)
+        summary2 = FakeDatastoreSummary(25, 100)
+        summary3 = FakeDatastoreSummary(50, 100)
+        summary4 = FakeDatastoreSummary(75, 100)
+
+        self._volumeops.get_summary(
+            datastore1).MultipleTimes().AndReturn(summary1)
+        self._volumeops.get_summary(
+            datastore2).MultipleTimes().AndReturn(summary2)
+        self._volumeops.get_summary(
+            datastore3).MultipleTimes().AndReturn(summary3)
+        self._volumeops.get_summary(
+            datastore4).MultipleTimes().AndReturn(summary4)
+
+        m.StubOutWithMock(self._volumeops, 'get_connected_hosts')
+
+        host1 = FakeMor('HostSystem', 'my_host_1')
+        host2 = FakeMor('HostSystem', 'my_host_2')
+        host3 = FakeMor('HostSystem', 'my_host_3')
+        host4 = FakeMor('HostSystem', 'my_host_4')
+
+        self._volumeops.get_connected_hosts(
+            datastore1).MultipleTimes().AndReturn([host1, host2, host3, host4])
+        self._volumeops.get_connected_hosts(
+            datastore2).MultipleTimes().AndReturn([host1, host2, host3])
+        self._volumeops.get_connected_hosts(
+            datastore3).MultipleTimes().AndReturn([host1, host2])
+        self._volumeops.get_connected_hosts(
+            datastore4).MultipleTimes().AndReturn([host1, host2])
 
         m.ReplayAll()
+
         summary = self._driver._select_datastore_summary(1, datastores)
         self.assertEqual(summary, summary1)
+
         summary = self._driver._select_datastore_summary(10, datastores)
-        self.assertEqual(summary, summary3)
-        summary = self._driver._select_datastore_summary(50, datastores)
+        self.assertEqual(summary, summary2)
+
+        summary = self._driver._select_datastore_summary(40, datastores)
         self.assertEqual(summary, summary4)
+
         self.assertRaises(error_util.VimException,
                           self._driver._select_datastore_summary,
                           100, datastores)

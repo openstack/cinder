@@ -137,6 +137,54 @@ class VMwareVolumeOps(object):
         self._session.invoke_api(vim_util, 'cancel_retrieval',
                                  self._session.vim, retrieve_result)
 
+    def _is_usable(self, datastore, mount_info):
+        """Check if the given datastore is usable as per the given mount info.
+
+        The datastore is considered to be usable for a host only if it is
+        writable, mounted and accessible.
+
+        :param datastore: Reference to the datastore entity
+        :param mount_info: host mount information
+        :return: True if datastore is usable
+        """
+
+        writable = mount_info.accessMode == "readWrite"
+
+        # If mounted attribute is not set, then default is True
+        mounted = True
+        if hasattr(mount_info, "mounted"):
+            mounted = mount_info.mounted
+
+        if hasattr(mount_info, "accessible"):
+            accessible = mount_info.accessible
+        else:
+            # If accessible attribute is not set, we look at summary
+            summary = self.get_summary(datastore)
+            accessible = summary.accessible
+
+        return writable and mounted and accessible
+
+    def get_connected_hosts(self, datastore):
+        """Get all the hosts to which the datastore is connected and usable.
+
+        The datastore is considered to be usable for a host only if it is
+        writable, mounted and accessible.
+
+        :param datastore: Reference to the datastore entity
+        :return: List of managed object references of all connected
+                 hosts
+        """
+
+        host_mounts = self._session.invoke_api(vim_util, 'get_object_property',
+                                               self._session.vim, datastore,
+                                               'host')
+        connected_hosts = []
+        for host_mount in host_mounts.DatastoreHostMount:
+            if self._is_usable(datastore, host_mount.mountInfo):
+                connected_hosts.append(host_mount.key.value)
+
+        return connected_hosts
+
     def _is_valid(self, datastore, host):
         """Check if host's datastore is accessible, mounted and writable.
 
@@ -150,19 +198,7 @@ class VMwareVolumeOps(object):
                                                'host')
         for host_mount in host_mounts.DatastoreHostMount:
             if host_mount.key.value == host.value:
-                mntInfo = host_mount.mountInfo
-                writable = mntInfo.accessMode == "readWrite"
-                # If mounted attribute is not set, then default is True
-                mounted = True
-                if hasattr(mntInfo, "mounted"):
-                    mounted = mntInfo.mounted
-                if hasattr(mntInfo, "accessible"):
-                    accessible = mntInfo.accessible
-                else:
-                    # If accessible attribute is not set, we look at summary
-                    summary = self.get_summary(datastore)
-                    accessible = summary.accessible
-                return (accessible and mounted and writable)
+                return self._is_usable(datastore, host_mount.mountInfo)
         return False
 
     def get_dss_rp(self, host):
@@ -198,9 +234,9 @@ class VMwareVolumeOps(object):
                                                  compute_resource,
                                                  'resourcePool')
         if not valid_dss:
-            msg = _("There are no valid datastores present under %s.")
-            LOG.error(msg % host)
-            raise error_util.VimException(msg % host)
+            msg = _("There are no valid datastores attached to %s.") % host
+            LOG.error(msg)
+            raise error_util.VimException(msg)
         return (valid_dss, resource_pool)
 
     def _get_parent(self, child, parent_type):

@@ -14,7 +14,12 @@
 #    under the License.
 
 """
-Driver for virtual machines running on VMware supported datastores.
+Volume driver for VMware vCenter/ESX managed datastores.
+
+The volumes created by this driver are backed by VMDK (Virtual Machine
+Disk) files stored in datastores. For ease of managing the VMDKs, the
+driver creates a virtual machine for each of the volumes. This virtual
+machine is never powered on and is often referred as the shadow VM.
 """
 
 from oslo.config import cfg
@@ -31,6 +36,7 @@ from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
+
 THIN_VMDK_TYPE = 'thin'
 THICK_VMDK_TYPE = 'thick'
 EAGER_ZEROED_THICK_VMDK_TYPE = 'eagerZeroedThick'
@@ -116,7 +122,7 @@ def _get_volume_type_extra_spec(type_id, spec_key, possible_values,
 class VMwareEsxVmdkDriver(driver.VolumeDriver):
     """Manage volumes on VMware ESX server."""
 
-    VERSION = '1.0'
+    VERSION = '1.1.0'
 
     def __init__(self, *args, **kwargs):
         super(VMwareEsxVmdkDriver, self).__init__(*args, **kwargs)
@@ -229,37 +235,64 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         return self.volumeops.get_vmfolder(datacenter)
 
-    def _select_datastore_summary(self, size_bytes, datastores):
-        """Get best summary from datastore list that can accommodate volume.
+    def _compute_space_utilization(self, datastore_summary):
+        """Compute the space utilization of the given datastore.
 
-        The implementation selects datastore based on maximum relative
-        free space, which is (free_space/total_space) and has free space to
-        store the volume backing.
+        :param datastore_summary: Summary of the datastore for which
+                                  space utilization is to be computed
+        :return: space utilization in the range [0..1]
+        """
+        return (
+            1.0 -
+            datastore_summary.freeSpace / float(datastore_summary.capacity)
+        )
+
+    def _select_datastore_summary(self, size_bytes, datastores):
+        """Get the best datastore summary from the given datastore list.
+
+        The implementation selects a datastore which is connected to maximum
+        number of hosts, provided there is enough space to accommodate the
+        volume. Ties are broken based on space utilization; datastore with
+        low space utilization is preferred.
 
         :param size_bytes: Size in bytes of the volume
         :param datastores: Datastores from which a choice is to be made
                            for the volume
-        :return: Best datastore summary to be picked for the volume
+        :return: Summary of the best datastore selected for volume
         """
         best_summary = None
-        best_ratio = 0
+        max_host_count = 0
+        best_space_utilization = 1.0
+
         for datastore in datastores:
             summary = self.volumeops.get_summary(datastore)
             if summary.freeSpace > size_bytes:
-                ratio = float(summary.freeSpace) / summary.capacity
-                if ratio > best_ratio:
-                    best_ratio = ratio
+                host_count = len(self.volumeops.get_connected_hosts(datastore))
+                if host_count > max_host_count:
+                    max_host_count = host_count
+                    best_space_utilization = self._compute_space_utilization(
+                        summary
+                    )
                     best_summary = summary
+                elif host_count == max_host_count:
+                    # break the tie based on space utilization
+                    space_utilization = self._compute_space_utilization(
+                        summary
+                    )
+                    if space_utilization < best_space_utilization:
+                        best_space_utilization = space_utilization
+                        best_summary = summary
 
         if not best_summary:
             msg = _("Unable to pick datastore to accommodate %(size)s bytes "
-                    "from the datastores: %(dss)s.")
-            LOG.error(msg % {'size': size_bytes, 'dss': datastores})
-            raise error_util.VimException(msg %
-                                          {'size': size_bytes,
-                                           'dss': datastores})
+                    "from the datastores: %(dss)s.") % {'size': size_bytes,
+                                                        'dss': datastores}
+            LOG.error(msg)
+            raise error_util.VimException(msg)
 
-        LOG.debug(_("Selected datastore: %s for the volume.") % best_summary)
+        LOG.debug(_("Selected datastore: %(datastore)s with %(host_count)d "
+                    "connected host(s) for the volume.") %
+                  {'datastore': best_summary, 'host_count': max_host_count})
         return best_summary
 
     def _get_folder_ds_summary(self, size_gb, resource_pool, datastores):
