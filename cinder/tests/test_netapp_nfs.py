@@ -20,7 +20,6 @@ import mox
 from mox import IgnoreArg
 from mox import IsA
 import os
-import socket
 
 from cinder import context
 from cinder import exception
@@ -752,8 +751,8 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
     def test_check_share_in_use_incorrect_host(self):
         drv = self._driver
         mox = self.mox
-        mox.StubOutWithMock(socket, 'gethostbyname')
-        socket.gethostbyname(IgnoreArg()).AndRaise(Exception())
+        mox.StubOutWithMock(drv, '_resolve_hostname')
+        drv._resolve_hostname(IgnoreArg()).AndRaise(Exception())
         mox.ReplayAll()
         share = drv._check_share_in_use('incorrect:8989', '/dir')
         mox.VerifyAll()
@@ -764,9 +763,9 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv = self._driver
         mox = self.mox
         drv._mounted_shares = ['127.0.0.1:/dir/share']
-        mox.StubOutWithMock(socket, 'gethostbyname')
+        mox.StubOutWithMock(drv, '_resolve_hostname')
         mox.StubOutWithMock(drv, '_share_match_for_ip')
-        socket.gethostbyname(IgnoreArg()).AndReturn('10.22.33.44')
+        drv._resolve_hostname(IgnoreArg()).AndReturn('10.22.33.44')
         drv._share_match_for_ip(
             '10.22.33.44', ['127.0.0.1:/dir/share']).AndReturn('share')
         mox.ReplayAll()

@@ -547,7 +547,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         try:
             if conn:
                 host = conn.split(':')[0]
-                ipv4 = socket.gethostbyname(host)
+                ip = self._resolve_hostname(host)
                 share_candidates = []
                 for sh in self._mounted_shares:
                     sh_exp = sh.split(':')[1]
@@ -556,7 +556,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 if share_candidates:
                     LOG.debug(_('Found possible share matches %s'),
                               share_candidates)
-                    return self._share_match_for_ip(ipv4, share_candidates)
+                    return self._share_match_for_ip(ip, share_candidates)
         except Exception:
             LOG.warn(_("Unexpected exception while short listing used share."))
         return None
@@ -603,6 +603,12 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _is_share_vol_compatible(self, volume, share):
         """Checks if share is compatible with volume to host it."""
         raise NotImplementedError()
+
+    def _resolve_hostname(self, hostname):
+        """Resolves hostname to IP address."""
+        res = socket.getaddrinfo(hostname, None)[0]
+        family, socktype, proto, canonname, sockaddr = res
+        return sockaddr[0]
 
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
@@ -798,7 +804,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         net_if_iter.add_new_child('max-records', '10')
         query = NaElement('query')
         net_if_iter.add_child_elem(query)
-        query.add_node_with_children('net-interface-info', **{'address': ip})
+        query.add_node_with_children('net-interface-info',
+                                     **{'address': self._resolve_hostname(ip)})
         result = self._invoke_successfully(net_if_iter)
         if result.get_child_content('num-records') and\
                 int(result.get_child_content('num-records')) >= 1:
@@ -808,7 +815,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             _('No interface found on cluster for ip %s')
             % (ip))
 
-    def _get_verver_ips(self, vserver):
+    def _get_vserver_ips(self, vserver):
         """Get ips for the vserver."""
         result = na_utils.invoke_api(
             self._client, api_name='net-interface-get-iter',
@@ -934,13 +941,13 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             LOG.warn(_("No shares found hence skipping ssc refresh."))
             return
         mnt_share_vols = set()
-        vs_ifs = self._get_verver_ips(self.vserver)
+        vs_ifs = self._get_vserver_ips(self.vserver)
         for vol in vols['all']:
             for sh in self._mounted_shares:
                 host = sh.split(':')[0]
                 junction = sh.split(':')[1]
-                ipv4 = socket.gethostbyname(host)
-                if (self._ip_in_ifs(ipv4, vs_ifs) and
+                ip = self._resolve_hostname(host)
+                if (self._ip_in_ifs(ip, vs_ifs) and
                         junction == vol.id['junction_path']):
                     mnt_share_vols.add(vol)
                     vol.export['path'] = sh
