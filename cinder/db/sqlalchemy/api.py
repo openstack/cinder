@@ -2551,8 +2551,8 @@ def _transfer_get(context, transfer_id, session=None):
 
     if not is_admin_context(context):
         volume = models.Volume
-        query = query.options(joinedload('volume')).\
-            filter(volume.project_id == context.project_id)
+        query = query.filter(models.Transfer.volume_id == volume.id,
+                             volume.project_id == context.project_id)
 
     result = query.first()
 
@@ -2590,10 +2590,9 @@ def transfer_get_all(context):
 def transfer_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
 
-    volume = models.Volume
     query = model_query(context, models.Transfer).\
-        options(joinedload('volume')).\
-        filter(volume.project_id == project_id)
+        filter(models.Volume.id == models.Transfer.volume_id,
+               models.Volume.project_id == project_id)
     results = query.all()
     return _translate_transfers(results)
 
