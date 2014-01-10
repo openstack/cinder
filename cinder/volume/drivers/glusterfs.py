@@ -160,6 +160,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         return snap_info['active']
 
+    @utils.synchronized('glusterfs', external=False)
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
 
@@ -907,6 +908,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         """Disallow connection from connector."""
         pass
 
+    @utils.synchronized('glusterfs', external=False)
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
 
