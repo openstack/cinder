@@ -352,10 +352,6 @@ class OverQuota(CinderException):
     message = _("Quota exceeded for resources: %(overs)s")
 
 
-class MigrationNotFound(NotFound):
-    message = _("Migration %(migration_id)s could not be found.")
-
-
 class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
@@ -435,16 +431,8 @@ class MalformedResponse(VolumeDriverException):
     message = _("Malformed response to command %(cmd)s: %(reason)s")
 
 
-class BadDriverResponseStatus(VolumeDriverException):
-    message = _("Bad driver response status: %(status)s")
-
-
 class FailedCmdWithDump(VolumeDriverException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
-
-
-class InstanceNotFound(NotFound):
-    message = _("Instance %(instance_id)s could not be found.")
 
 
 class GlanceMetadataExists(Invalid):
@@ -561,10 +549,6 @@ class KeyManagerError(CinderException):
     msg_fmt = _("key manager error: %(reason)s")
 
 
-class VolumeRetypeFailed(CinderException):
-    message = _("Volume retype failed: %(reason)s")
-
-
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):
@@ -640,10 +624,6 @@ class SolidFireAPIDataException(SolidFireAPIException):
 class SolidFireAccountNotFound(SolidFireDriverException):
     message = _("Unable to locate account %(account_name)s on "
                 "Solidfire device")
-
-
-class DuplicateSolidFireVolumeNames(SolidFireDriverException):
-    message = _("Detected more than one volume with name %(vol_name)s")
 
 
 # HP 3Par
