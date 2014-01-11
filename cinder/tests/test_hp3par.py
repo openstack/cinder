@@ -13,9 +13,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit tests for OpenStack Cinder volume drivers
-"""
+"""Unit tests for OpenStack Cinder volume drivers."""
+
 import ast
 import mock
 import mox
@@ -621,6 +620,20 @@ class HP3PARBaseDriver():
         self.assertRaises(hpexceptions.HTTPNotFound,
                           self.driver.common.client.getVolume,
                           self.SNAPSHOT_3PAR_NAME)
+
+    def test_delete_snapshot_in_use(self):
+        self.flags(lock_path=self.tempdir)
+
+        self.driver.create_snapshot(self.snapshot)
+        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
+
+        ex = hpexceptions.HTTPConflict("In use")
+        self.driver.common.client.deleteVolume = mock.Mock(side_effect=ex)
+
+        # Deleting the snapshot that a volume is dependent on should fail
+        self.assertRaises(exception.SnapshotIsBusy,
+                          self.driver.delete_snapshot,
+                          self.snapshot)
 
     def test_create_volume_from_snapshot(self):
         self.flags(lock_path=self.tempdir)
