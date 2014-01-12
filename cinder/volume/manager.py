@@ -1101,11 +1101,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              diff, host)
                 if retyped:
                     LOG.info(_("Volume %s: retyped succesfully"), volume_id)
-            except Exception:
+            except Exception as ex:
                 retyped = False
-                LOG.info(_("Volume %s: driver error when trying to retype, "
-                           "falling back to generic mechanism."),
-                         volume_ref['id'])
+                LOG.error(_("Volume %s: driver error when trying to retype, "
+                            "falling back to generic mechanism."),
+                          volume_ref['id'])
+                LOG.exception(ex)
 
         # We could not change the type, so we need to migrate the volume, where
         # the destination volume will be of the new type
