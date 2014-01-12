@@ -24,7 +24,6 @@ from oslo.config import cfg
 from cinder import db
 from cinder.openstack.common import importutils
 from cinder.openstack.common import timeutils
-from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -64,14 +63,6 @@ class Scheduler(object):
         self.host_manager.update_service_capabilities(service_name,
                                                       host,
                                                       capabilities)
-
-    def hosts_up(self, context, topic):
-        """Return the list of hosts that have a running service for topic."""
-
-        services = db.service_get_all_by_topic(context, topic)
-        return [service['host']
-                for service in services
-                if utils.service_is_up(service)]
 
     def host_passes_filters(self, context, volume_id, host, filter_properties):
         """Check if the specified host passes the filters."""

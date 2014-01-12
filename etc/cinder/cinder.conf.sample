@@ -983,8 +983,11 @@
 # Options defined in cinder.scheduler.simple
 #
 
-# maximum number of volume gigabytes to allow per host
-# (integer value)
+# This configure option has been deprecated along with the
+# SimpleScheduler.  New scheduler is able to gather capacity
+# information for each host, thus setting the maximum number
+# of volume gigabytes for host is no longer needed.  It's safe
+# to remove this configure from cinder.conf. (integer value)
 #max_gigabytes=10000
 
 

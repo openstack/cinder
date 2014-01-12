@@ -38,10 +38,10 @@ The :mod:`cinder.scheduler.driver` Module
     :show-inheritance:
 
 
-The :mod:`cinder.scheduler.simple` Driver
+The :mod:`cinder.scheduler.filter_scheduler` Driver
 -----------------------------------------
 
-.. automodule:: cinder.scheduler.simple
+.. automodule:: cinder.scheduler.filter_scheduler
     :noindex:
     :members:
     :undoc-members:
