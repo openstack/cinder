@@ -253,10 +253,9 @@ class StorwizeSVCDriver(san.SanDriver):
             except KeyError:
                 self._handle_keyerror('lsnode', header)
             except ValueError:
-                msg = (_('Expected integers for node_count and vdisk_count, '
-                         'svcinfo lsiogrp returned: %(node)s and %(vdisk)s') %
-                       {'node': iogrp_data['node_count'],
-                        'vdisk': iogrp_data['vdisk_count']})
+                msg = (_('Expected integer for node_count, '
+                         'svcinfo lsiogrp returned: %(node)s') %
+                       {'node': iogrp_data['node_count']})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
