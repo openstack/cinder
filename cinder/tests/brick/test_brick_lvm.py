@@ -93,7 +93,8 @@ class BrickLvmTestCase(test.TestCase):
                 data = '  wi-a-'
             else:
                 data = '  owi-a-'
-        elif 'pvs, --noheadings' and 'fake-volumes' in cmd_string:
+        elif 'pvs, --noheadings' in cmd_string \
+                and 'fake-volumes' in cmd_string:
             data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
         elif 'pvs, --noheadings' in cmd_string:
             data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
@@ -102,6 +103,10 @@ class BrickLvmTestCase(test.TestCase):
         elif 'lvs, --noheadings, --unit=g, -o, size,data_percent, ' \
              '--separator, :' in cmd_string:
             data = "  9:12\n"
+        elif 'lvcreate, -T, -L, ' in cmd_string:
+            pass
+        elif 'lvcreate, -T, -V, ' in cmd_string:
+            pass
         else:
             raise AssertionError('unexpected command called: %s' % cmd_string)
 
