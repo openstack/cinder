@@ -1215,6 +1215,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.volume_update(context, volume_id,
                               {'volume_type_id': new_type_id,
+                               'host': host['host'],
                                'status': status_update['status']})
 
         if old_reservations:
