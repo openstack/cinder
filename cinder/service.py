@@ -611,7 +611,8 @@ def wait():
         # hide flag contents from log if contains a password
         # should use secret flag when switch over to openstack-common
         if ("_password" in flag or "_key" in flag or
-                (flag == "sql_connection" and "mysql:" in flag_get)):
+                (flag == "sql_connection" and
+                    ("mysql:" in flag_get or "postgresql:" in flag_get))):
             LOG.debug(_('%(flag)s : FLAG SET ') % locals())
         else:
             LOG.debug('%(flag)s : %(flag_get)s' % locals())
