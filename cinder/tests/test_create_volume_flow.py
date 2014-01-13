@@ -18,7 +18,7 @@ import time
 
 from cinder import context
 from cinder import test
-from cinder.volume.flows import create_volume
+from cinder.volume.flows.api import create_volume
 
 
 class fake_scheduler_rpc_api(object):

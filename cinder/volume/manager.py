@@ -54,7 +54,7 @@ from cinder.openstack.common import uuidutils
 from cinder import quota
 from cinder import utils
 from cinder.volume.configuration import Configuration
-from cinder.volume.flows import create_volume
+from cinder.volume.flows.api import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
