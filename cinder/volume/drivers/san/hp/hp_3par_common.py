@@ -1,7 +1,5 @@
-#    (c) Copyright 2012-2013 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2012-2014 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
-#
-#    Copyright 2012 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,7 +16,7 @@
 """
 Volume driver common utilities for HP 3PAR Storage array
 
-The 3PAR drivers requires 3.1.2 MU2 firmware on the 3PAR array.
+The 3PAR drivers requires 3.1.2 MU3 firmware on the 3PAR array.
 
 You will need to install the python hp3parclient.
 sudo pip install hp3parclient
@@ -113,12 +111,21 @@ class HP3PARCommon(object):
         1.2.3 - Methods to update key/value pair bug #1258033
         1.2.4 - Remove deprecated config option hp3par_domain
         1.2.5 - Raise Ex when deleting snapshot with dependencies bug #1250249
+        1.2.6 - Allow optional specifying n:s:p for vlun creation bug #1269515
+                This update now requires 3.1.2 MU3 firmware
 
     """
 
-    VERSION = "1.2.5"
+    VERSION = "1.2.6"
 
     stats = {}
+
+    # TODO(Ramy): move these to the 3PAR Client
+    VLUN_TYPE_EMPTY = 1
+    VLUN_TYPE_PORT = 2
+    VLUN_TYPE_HOST = 3
+    VLUN_TYPE_MATCHED_SET = 4
+    VLUN_TYPE_HOST_SET = 5
 
     # Valid values for volume type extra specs
     # The first value in the list is the default value
@@ -385,9 +392,15 @@ exit
     def _delete_3par_host(self, hostname):
         self.client.deleteHost(hostname)
 
-    def _create_3par_vlun(self, volume, hostname):
+    def _create_3par_vlun(self, volume, hostname, nsp):
         try:
-            self.client.createVLUN(volume, hostname=hostname, auto=True)
+            if nsp is None:
+                self.client.createVLUN(volume, hostname=hostname, auto=True)
+            else:
+                port = self.build_portPos(nsp)
+                self.client.createVLUN(volume, hostname=hostname, auto=True,
+                                       portPos=port)
+
         except hpexceptions.HTTPBadRequest as e:
             if 'must be in the same domain' in e.get_description():
                 LOG.error(e.get_description())
@@ -485,19 +498,25 @@ exit
 
         self.stats = stats
 
-    def create_vlun(self, volume, host):
+    def create_vlun(self, volume, host, nsp=None):
         """Create a VLUN.
 
         In order to export a volume on a 3PAR box, we have to create a VLUN.
         """
         volume_name = self._get_3par_vol_name(volume['id'])
-        self._create_3par_vlun(volume_name, host['name'])
+        self._create_3par_vlun(volume_name, host['name'], nsp)
         return self.client.getVLUN(volume_name)
 
     def delete_vlun(self, volume, hostname):
         volume_name = self._get_3par_vol_name(volume['id'])
         vlun = self.client.getVLUN(volume_name)
-        self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
+        # VLUN Type of MATCHED_SET 4 requires the port to be provided
+        if self.VLUN_TYPE_MATCHED_SET == vlun['type']:
+            self.client.deleteVLUN(volume_name, vlun['lun'], hostname,
+                                   vlun['portPos'])
+        else:
+            self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
+
         try:
             self._delete_3par_host(hostname)
         except hpexceptions.HTTPConflict as ex:
@@ -1095,3 +1114,11 @@ exit
         return '%s:%s:%s' % (portPos['node'],
                              portPos['slot'],
                              portPos['cardPort'])
+
+    def build_portPos(self, nsp):
+        split = nsp.split(":")
+        portPos = {}
+        portPos['node'] = int(split[0])
+        portPos['slot'] = int(split[1])
+        portPos['cardPort'] = int(split[2])
+        return portPos
