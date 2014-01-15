@@ -202,7 +202,7 @@ class LVM(executor.Executor):
     def supports_snapshot_lv_activation(self):
         """Property indicating whether snap activation changes are supported.
 
-        Check for LVM version > 2.02.91.
+        Check for LVM version >= 2.02.91.
         (LVM2 git: e8a40f6 Allow to activate snapshot)
 
         :returns: True/False indicating support
@@ -220,22 +220,15 @@ class LVM(executor.Executor):
     def supports_lvchange_ignoreskipactivation(self):
         """Property indicating whether lvchange can ignore skip activation.
 
-        Tests whether lvchange -K/--ignoreactivationskip exists.
+        Check for LVM version >= 2.02.99.
+        (LVM2 git: ab789c1bc add --ignoreactivationskip to lvchange)
         """
 
         if self._supports_lvchange_ignoreskipactivation is not None:
             return self._supports_lvchange_ignoreskipactivation
 
-        cmd = ['lvchange', '--help']
-        (out, err) = self._execute(*cmd)
-
-        self._supports_lvchange_ignoreskipactivation = False
-
-        lines = out.split('\n')
-        for line in lines:
-            if '-K' in line and '--ignoreactivationskip' in line:
-                self._supports_lvchange_ignoreskipactivation = True
-                break
+        self._supports_lvchange_ignoreskipactivation = (
+            self.get_lvm_version(self._root_helper) >= (2, 2, 99))
 
         return self._supports_lvchange_ignoreskipactivation
 

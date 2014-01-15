@@ -181,49 +181,14 @@ class BrickLvmTestCase(test.TestCase):
         self.vg._supports_snapshot_lv_activation = None
 
     def test_lvchange_ignskipact_support_yes(self):
-        """Tests the ability to test support for lvchange -K
-
-        Stubs provide output for "lvchange --help".
-        """
-
-        def lvchange_ign_yes(obj, *args, **kwargs):
-            return ("""
-              WARNING: Running as a non-root user. Functionality may be
-              unavailable.
-              lvchange: Change the attributes of logical volume(s)
-
-            lvchange
-                [-A|--autobackup y|n]
-                [-k|--setactivationskip {y|n}]
-                [-K|--ignoreactivationskip]
-                [-y|--yes]
-                [-Z|--zero {y|n}]
-                LogicalVolume[Path] [LogicalVolume[Path]...]
-            """, "")
+        """Tests if lvchange -K is available via a lvm2 version check."""
 
         self.vg._supports_lvchange_ignoreskipactivation = None
-        self.stubs.Set(self.vg, '_execute', lvchange_ign_yes)
+        self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
         self.assertTrue(self.vg.supports_lvchange_ignoreskipactivation)
 
         self.vg._supports_lvchange_ignoreskipactivation = None
-
-    def test_lvchange_ignskipact_support_no(self):
-        def lvchange_ign_no(obj, *args, **kwargs):
-            return ("""
-              WARNING: Running as a non-root user. Functionality may be
-              unavailable.
-              lvchange: Change the attributes of logical volume(s)
-
-            lvchange
-                [-A|--autobackup y|n]
-                [-k|--setactivationskip {y|n}]
-                [-y|--yes]
-                [-Z|--zero {y|n}]
-                LogicalVolume[Path] [LogicalVolume[Path]...]
-            """, "")
-
-        self.vg._supports_lvchange_ignoreskipactivation = None
-        self.stubs.Set(self.vg, '_execute', lvchange_ign_no)
+        self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
         self.assertFalse(self.vg.supports_lvchange_ignoreskipactivation)
 
         self.vg._supports_lvchange_ignoreskipactivation = None
