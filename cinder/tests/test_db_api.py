@@ -255,7 +255,7 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual(volume.host, 'host1')
 
     def test_volume_allocate_iscsi_target_no_more_targets(self):
-        self.assertRaises(db.NoMoreTargets,
+        self.assertRaises(exception.NoMoreTargets,
                           db.volume_allocate_iscsi_target,
                           self.ctxt, 42, 'host1')
 

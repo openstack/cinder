@@ -43,7 +43,6 @@ these objects be simple dictionaries.
 
 from oslo.config import cfg
 
-from cinder import exception
 from cinder.openstack.common.db import api as db_api
 
 
@@ -75,11 +74,6 @@ CONF.register_opts(db_opts)
 _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 
 IMPL = db_api.DBAPI(backend_mapping=_BACKEND_MAPPING)
-
-
-class NoMoreTargets(exception.CinderException):
-    """No more available targets."""
-    pass
 
 
 ###################
