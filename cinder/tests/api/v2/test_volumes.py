@@ -94,7 +94,7 @@ class VolumeApiTest(test.TestCase):
                          'description': 'Volume Test Desc',
                          'id': '1',
                          'links':
-                         [{'href': 'http://localhost/v1/fake/volumes/1',
+                         [{'href': 'http://localhost/v2/fake/volumes/1',
                            'rel': 'self'},
                           {'href': 'http://localhost/fake/volumes/1',
                            'rel': 'bookmark'}],
@@ -196,7 +196,7 @@ class VolumeApiTest(test.TestCase):
                          'description': 'Volume Test Desc',
                          'id': '1',
                          'links':
-                         [{'href': 'http://localhost/v1/fake/volumes/1',
+                         [{'href': 'http://localhost/v2/fake/volumes/1',
                            'rel': 'self'},
                           {'href': 'http://localhost/fake/volumes/1',
                            'rel': 'bookmark'}],
@@ -284,7 +284,7 @@ class VolumeApiTest(test.TestCase):
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'href': 'http://localhost/v2/fake/volumes/1',
                         'rel': 'self'
                     },
                     {
@@ -331,7 +331,7 @@ class VolumeApiTest(test.TestCase):
             'size': 1,
             'links': [
                 {
-                    'href': 'http://localhost/v1/fake/volumes/1',
+                    'href': 'http://localhost/v2/fake/volumes/1',
                     'rel': 'self'
                 },
                 {
@@ -388,7 +388,7 @@ class VolumeApiTest(test.TestCase):
             'size': 1,
             'links': [
                 {
-                    'href': 'http://localhost/v1/fake/volumes/1',
+                    'href': 'http://localhost/v2/fake/volumes/1',
                     'rel': 'self'
                 },
                 {
@@ -440,7 +440,7 @@ class VolumeApiTest(test.TestCase):
                     'id': '1',
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/volumes/1',
+                            'href': 'http://localhost/v2/fake/volumes/1',
                             'rel': 'self'
                         },
                         {
@@ -489,7 +489,7 @@ class VolumeApiTest(test.TestCase):
                     'size': 1,
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/volumes/1',
+                            'href': 'http://localhost/v2/fake/volumes/1',
                             'rel': 'self'
                         },
                         {
@@ -547,7 +547,7 @@ class VolumeApiTest(test.TestCase):
                     'size': 1,
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fakeproject'
+                            'href': 'http://localhost/v2/fakeproject'
                                     '/volumes/1',
                             'rel': 'self'
                         },
@@ -879,7 +879,7 @@ class VolumeApiTest(test.TestCase):
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'href': 'http://localhost/v2/fake/volumes/1',
                         'rel': 'self'
                     },
                     {
@@ -919,7 +919,7 @@ class VolumeApiTest(test.TestCase):
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fake/volumes/1',
+                        'href': 'http://localhost/v2/fake/volumes/1',
                         'rel': 'self'
                     },
                     {
@@ -984,7 +984,7 @@ class VolumeApiTest(test.TestCase):
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fakeproject/volumes/1',
+                        'href': 'http://localhost/v2/fakeproject/volumes/1',
                         'rel': 'self'
                     },
                     {
