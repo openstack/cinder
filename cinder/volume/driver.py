@@ -503,6 +503,10 @@ class VolumeDriver(object):
         """
         return False
 
+    def accept_transfer(self, context, volume, new_user, new_project):
+        """Accept the transfer of a volume for a new user/project."""
+        pass
+
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.
@@ -732,9 +736,6 @@ class ISCSIDriver(VolumeDriver):
         data['reserved_percentage'] = 100
         data['QoS_support'] = False
         self._stats = data
-
-    def accept_transfer(self, context, volume, new_user, new_project):
-        pass
 
     def get_target_admin(self):
         root_helper = utils.get_root_helper()
