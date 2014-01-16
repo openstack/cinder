@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # Copyright 2011 Justin Santa Barbara
@@ -41,8 +39,12 @@ import json
 try:
     import xmlrpclib
 except ImportError:
-    # NOTE(jd): xmlrpclib is not shipped with Python 3
-    xmlrpclib = None
+    # NOTE(jaypipes): xmlrpclib was renamed to xmlrpc.client in Python3
+    #                 however the function and object call signatures
+    #                 remained the same. This whole try/except block should
+    #                 be removed and replaced with a call to six.moves once
+    #                 six 1.4.2 is released. See http://bit.ly/1bqrVzu
+    import xmlrpc.client as xmlrpclib
 
 import six
 
@@ -124,14 +126,14 @@ def to_primitive(value, convert_instances=False, convert_datetime=True,
                                       level=level,
                                       max_depth=max_depth)
         if isinstance(value, dict):
-            return dict((k, recursive(v)) for k, v in value.iteritems())
+            return dict((k, recursive(v)) for k, v in six.iteritems(value))
         elif isinstance(value, (list, tuple)):
             return [recursive(lv) for lv in value]
 
         # It's not clear why xmlrpclib created their own DateTime type, but
         # for our purposes, make it a datetime type which is explicitly
         # handled
-        if xmlrpclib and isinstance(value, xmlrpclib.DateTime):
+        if isinstance(value, xmlrpclib.DateTime):
             value = datetime.datetime(*tuple(value.timetuple())[:6])
 
         if convert_datetime and isinstance(value, datetime.datetime):
