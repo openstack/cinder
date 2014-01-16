@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -22,18 +20,21 @@ import sys
 import traceback
 
 from oslo.config import cfg
+import six
 
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import local
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import versionutils
 
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
+_RPC_ENVELOPE_VERSION = '2.0'
 '''RPC Envelope Version.
 
 This version number applies to the top level structure of messages sent out.
@@ -46,7 +47,7 @@ This version number applies to the message envelope that is used in the
 serialization done inside the rpc layer.  See serialize_msg() and
 deserialize_msg().
 
-The current message format (version 2.0) is very simple.  It is:
+The current message format (version 2.0) is very simple.  It is::
 
     {
         'oslo.version': <RPC Envelope Version as a String>,
@@ -64,30 +65,31 @@ We will JSON encode the application message payload.  The message envelope,
 which includes the JSON encoded application message body, will be passed down
 to the messaging libraries as a dict.
 '''
-_RPC_ENVELOPE_VERSION = '2.0'
 
 _VERSION_KEY = 'oslo.version'
 _MESSAGE_KEY = 'oslo.message'
 
+_REMOTE_POSTFIX = '_Remote'
+
 
 class RPCException(Exception):
-    message = _("An unknown RPC related exception occurred.")
+    msg_fmt = _("An unknown RPC related exception occurred.")
 
     def __init__(self, message=None, **kwargs):
         self.kwargs = kwargs
 
         if not message:
             try:
-                message = self.message % kwargs
+                message = self.msg_fmt % kwargs
 
             except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_('Exception in string format operation'))
-                for name, value in kwargs.iteritems():
+                for name, value in six.iteritems(kwargs):
                     LOG.error("%s: %s" % (name, value))
                 # at least get the core message out if something happened
-                message = self.message
+                message = self.msg_fmt
 
         super(RPCException, self).__init__(message)
 
@@ -101,7 +103,7 @@ class RemoteError(RPCException):
     contains all of the relevant info.
 
     """
-    message = _("Remote error: %(exc_type)s %(value)s\n%(traceback)s.")
+    msg_fmt = _("Remote error: %(exc_type)s %(value)s\n%(traceback)s.")
 
     def __init__(self, exc_type=None, value=None, traceback=None):
         self.exc_type = exc_type
@@ -118,12 +120,13 @@ class Timeout(RPCException):
     This exception is raised if the rpc_response_timeout is reached while
     waiting for a response from the remote side.
     """
-    message = _('Timeout while waiting on RPC response - '
+    msg_fmt = _('Timeout while waiting on RPC response - '
                 'topic: "%(topic)s", RPC method: "%(method)s" '
                 'info: "%(info)s"')
 
     def __init__(self, info=None, topic=None, method=None):
-        """
+        """Initiates Timeout object.
+
         :param info: Extra info to convey to the user
         :param topic: The topic that the rpc call was sent to
         :param rpc_method_name: The name of the rpc method being
@@ -140,21 +143,25 @@ class Timeout(RPCException):
 
 
 class DuplicateMessageError(RPCException):
-    message = _("Found duplicate message(%(msg_id)s). Skipping it.")
+    msg_fmt = _("Found duplicate message(%(msg_id)s). Skipping it.")
 
 
 class InvalidRPCConnectionReuse(RPCException):
-    message = _("Invalid reuse of an RPC connection.")
+    msg_fmt = _("Invalid reuse of an RPC connection.")
 
 
 class UnsupportedRpcVersion(RPCException):
-    message = _("Specified RPC version, %(version)s, not supported by "
+    msg_fmt = _("Specified RPC version, %(version)s, not supported by "
                 "this endpoint.")
 
 
 class UnsupportedRpcEnvelopeVersion(RPCException):
-    message = _("Specified RPC envelope version, %(version)s, "
+    msg_fmt = _("Specified RPC envelope version, %(version)s, "
                 "not supported by this endpoint.")
+
+
+class RpcVersionCapError(RPCException):
+    msg_fmt = _("Specified RPC version cap, %(version_cap)s, is too low")
 
 
 class Connection(object):
@@ -216,9 +223,9 @@ class Connection(object):
         raise NotImplementedError()
 
     def join_consumer_pool(self, callback, pool_name, topic, exchange_name):
-        """Register as a member of a group of consumers for a given topic from
-        the specified exchange.
+        """Register as a member of a group of consumers.
 
+        Uses given topic from the specified exchange.
         Exactly one member of a given pool will receive each message.
 
         A message will be delivered to multiple pools, if more than
@@ -253,41 +260,24 @@ class Connection(object):
 
 def _safe_log(log_func, msg, msg_data):
     """Sanitizes the msg_data field before logging."""
-    SANITIZE = {'set_admin_password': [('args', 'new_pass')],
-                'run_instance': [('args', 'admin_password')],
-                'route_message': [('args', 'message', 'args', 'method_info',
-                                   'method_kwargs', 'password'),
-                                  ('args', 'message', 'args', 'method_info',
-                                   'method_kwargs', 'admin_password')]}
+    SANITIZE = ['_context_auth_token', 'auth_token', 'new_pass']
 
-    has_method = 'method' in msg_data and msg_data['method'] in SANITIZE
-    has_context_token = '_context_auth_token' in msg_data
-    has_token = 'auth_token' in msg_data
+    def _fix_passwords(d):
+        """Sanitizes the password fields in the dictionary."""
+        for k in six.iterkeys(d):
+            if k.lower().find('password') != -1:
+                d[k] = '<SANITIZED>'
+            elif k.lower() in SANITIZE:
+                d[k] = '<SANITIZED>'
+            elif isinstance(d[k], list):
+                for e in d[k]:
+                    if isinstance(e, dict):
+                        _fix_passwords(e)
+            elif isinstance(d[k], dict):
+                _fix_passwords(d[k])
+        return d
 
-    if not any([has_method, has_context_token, has_token]):
-        return log_func(msg, msg_data)
-
-    msg_data = copy.deepcopy(msg_data)
-
-    if has_method:
-        for arg in SANITIZE.get(msg_data['method'], []):
-            try:
-                d = msg_data
-                for elem in arg[:-1]:
-                    d = d[elem]
-                d[arg[-1]] = '<SANITIZED>'
-            except KeyError, e:
-                LOG.info(_('Failed to sanitize %(item)s. Key error %(err)s'),
-                         {'item': arg,
-                          'err': e})
-
-    if has_context_token:
-        msg_data['_context_auth_token'] = '<SANITIZED>'
-
-    if has_token:
-        msg_data['auth_token'] = '<SANITIZED>'
-
-    return log_func(msg, msg_data)
+    return log_func(msg, _fix_passwords(copy.deepcopy(msg_data)))
 
 
 def serialize_remote_exception(failure_info, log_failure=True):
@@ -299,17 +289,27 @@ def serialize_remote_exception(failure_info, log_failure=True):
     tb = traceback.format_exception(*failure_info)
     failure = failure_info[1]
     if log_failure:
-        LOG.error(_("Returning exception %s to caller"), unicode(failure))
+        LOG.error(_("Returning exception %s to caller"),
+                  six.text_type(failure))
         LOG.error(tb)
 
     kwargs = {}
     if hasattr(failure, 'kwargs'):
         kwargs = failure.kwargs
 
+    # NOTE(matiu): With cells, it's possible to re-raise remote, remote
+    # exceptions. Lets turn it back into the original exception type.
+    cls_name = str(failure.__class__.__name__)
+    mod_name = str(failure.__class__.__module__)
+    if (cls_name.endswith(_REMOTE_POSTFIX) and
+            mod_name.endswith(_REMOTE_POSTFIX)):
+        cls_name = cls_name[:-len(_REMOTE_POSTFIX)]
+        mod_name = mod_name[:-len(_REMOTE_POSTFIX)]
+
     data = {
-        'class': str(failure.__class__.__name__),
-        'module': str(failure.__class__.__module__),
-        'message': unicode(failure),
+        'class': cls_name,
+        'module': mod_name,
+        'message': six.text_type(failure),
         'tb': tb,
         'args': failure.args,
         'kwargs': kwargs
@@ -345,8 +345,9 @@ def deserialize_remote_exception(conf, data):
 
     ex_type = type(failure)
     str_override = lambda self: message
-    new_ex_type = type(ex_type.__name__ + "_Remote", (ex_type,),
+    new_ex_type = type(ex_type.__name__ + _REMOTE_POSTFIX, (ex_type,),
                        {'__str__': str_override, '__unicode__': str_override})
+    new_ex_type.__module__ = '%s%s' % (module, _REMOTE_POSTFIX)
     try:
         # NOTE(ameade): Dynamically create a new exception type and swap it in
         # as the new type for the exception. This only works on user defined
@@ -408,10 +409,11 @@ class CommonRpcContext(object):
 
 
 class ClientException(Exception):
-    """This encapsulates some actual exception that is expected to be
-    hit by an RPC proxy object. Merely instantiating it records the
-    current exception information, which will be passed back to the
-    RPC client without exceptional logging."""
+    """Encapsulates actual exception expected to be hit by a RPC proxy object.
+
+    Merely instantiating it records the current exception information, which
+    will be passed back to the RPC client without exceptional logging.
+    """
     def __init__(self):
         self._exc_info = sys.exc_info()
 
@@ -419,7 +421,7 @@ class ClientException(Exception):
 def catch_client_exception(exceptions, func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
-    except Exception, e:
+    except Exception as e:
         if type(e) in exceptions:
             raise ClientException()
         else:
@@ -428,11 +430,13 @@ def catch_client_exception(exceptions, func, *args, **kwargs):
 
 def client_exceptions(*exceptions):
     """Decorator for manager methods that raise expected exceptions.
+
     Marking a Manager method with this decorator allows the declaration
     of expected exceptions that the RPC layer should not consider fatal,
     and not log as if they were generated in a real error scenario. Note
     that this will cause listed exceptions to be wrapped in a
-    ClientException, which is used internally by the RPC layer."""
+    ClientException, which is used internally by the RPC layer.
+    """
     def outer(func):
         def inner(*args, **kwargs):
             return catch_client_exception(exceptions, func, *args, **kwargs)
@@ -440,19 +444,15 @@ def client_exceptions(*exceptions):
     return outer
 
 
+# TODO(sirp): we should deprecate this in favor of
+# using `versionutils.is_compatible` directly
 def version_is_compatible(imp_version, version):
     """Determine whether versions are compatible.
 
     :param imp_version: The version implemented
     :param version: The version requested by an incoming message.
     """
-    version_parts = version.split('.')
-    imp_version_parts = imp_version.split('.')
-    if int(version_parts[0]) != int(imp_version_parts[0]):  # Major
-        return False
-    if int(version_parts[1]) > int(imp_version_parts[1]):  # Minor
-        return False
-    return True
+    return versionutils.is_compatible(version, imp_version)
 
 
 def serialize_msg(raw_msg):

@@ -647,8 +647,8 @@
 # by impl_zmq. (integer value)
 #rpc_cast_timeout=30
 
-# Modules of exceptions that are permitted to be recreatedupon
-# receiving exception data from an rpc call. (list value)
+# Modules of exceptions that are permitted to be recreated
+# upon receiving exception data from an rpc call. (list value)
 #allowed_rpc_exception_modules=nova.exception,cinder.exception,exceptions
 
 # If passed, use a fake RabbitMQ provider (boolean value)
@@ -663,10 +663,6 @@
 # Options defined in cinder.openstack.common.rpc.amqp
 #
 
-# Enable a fast single reply queue if using AMQP based RPC
-# like RabbitMQ or Qpid. (boolean value)
-#amqp_rpc_single_reply_queue=false
-
 # Use durable queues in amqp. (boolean value)
 # Deprecated group/name - [DEFAULT]/rabbit_durable_queues
 #amqp_durable_queues=false
@@ -679,8 +675,9 @@
 # Options defined in cinder.openstack.common.rpc.impl_kombu
 #
 
-# SSL version to use (valid only if SSL enabled) (string
-# value)
+# SSL version to use (valid only if SSL enabled). valid values
+# are TLSv1, SSLv23 and SSLv3. SSLv2 may be available on some
+# distributions (string value)
 #kombu_ssl_version=
 
 # SSL key file (valid only if SSL enabled) (string value)
@@ -811,9 +808,6 @@
 #
 # Options defined in cinder.openstack.common.rpc.matchmaker
 #
-
-# Matchmaker ring file (JSON) (string value)
-#matchmaker_ringfile=/etc/nova/matchmaker_ring.json
 
 # Heartbeat frequency (integer value)
 #matchmaker_heartbeat_freq=300

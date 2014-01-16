@@ -376,7 +376,7 @@ class Service(object):
         # Share this same connection for these Consumers
         self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=False)
 
-        node_topic = '%s:%s' % (self.topic, self.host)
+        node_topic = '%s.%s' % (self.topic, self.host)
         self.conn.create_consumer(node_topic, rpc_dispatcher, fanout=False)
 
         self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=True)

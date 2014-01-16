@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Copyright 2011 Cloudscaling Group, Inc
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -25,6 +23,8 @@ import uuid
 import eventlet
 import greenlet
 from oslo.config import cfg
+import six
+from six import moves
 
 from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
@@ -192,7 +192,7 @@ class ZmqSocket(object):
             # it would be much worse if some of the code calling this
             # were to fail. For now, lets log, and later evaluate
             # if we can safely raise here.
-            LOG.error("ZeroMQ socket could not be closed.")
+            LOG.error(_("ZeroMQ socket could not be closed."))
         self.sock = None
 
     def recv(self, **kwargs):
@@ -221,7 +221,7 @@ class ZmqClient(object):
             return
 
         rpc_envelope = rpc_common.serialize_msg(data[1], envelope)
-        zmq_msg = reduce(lambda x, y: x + y, rpc_envelope.items())
+        zmq_msg = moves.reduce(lambda x, y: x + y, rpc_envelope.items())
         self.outq.send(map(bytes,
                        (msg_id, topic, 'impl_zmq_v2', data[0]) + zmq_msg))
 
@@ -383,6 +383,7 @@ class ZmqBaseReactor(ConsumerBase):
         LOG.info(_("In reactor registered"))
 
     def consume_in_thread(self):
+        @excutils.forever_retry_uncaught_exceptions
         def _consume(sock):
             LOG.info(_("Consuming socket"))
             while True:
@@ -522,8 +523,8 @@ def unflatten_envelope(packenv):
     h = {}
     try:
         while True:
-            k = i.next()
-            h[k] = i.next()
+            k = six.next(i)
+            h[k] = six.next(i)
     except StopIteration:
         return h
 
@@ -584,7 +585,7 @@ class Connection(rpc_common.Connection):
         else:
             sock_type = zmq.PULL
             subscribe = None
-            topic = '.'.join((topic, CONF.rpc_zmq_host))
+            topic = '.'.join((topic.split('.', 1)[0], CONF.rpc_zmq_host))
 
         if topic in self.topics:
             LOG.info(_("Skipping topic registration. Already registered."))
@@ -768,9 +769,7 @@ def fanout_cast(conf, context, topic, msg, **kwargs):
     """Send a message to all listening and expect no reply."""
     # NOTE(ewindisch): fanout~ is used because it avoid splitting on .
     # and acts as a non-subtle hint to the matchmaker and ZmqProxy.
-    LOG.error(_('topic is %s.') % topic)
-    if topic:
-        _multi_send(_cast, context, 'fanout~' + str(topic), msg, **kwargs)
+    _multi_send(_cast, context, 'fanout~' + str(topic), msg, **kwargs)
 
 
 def notify(conf, context, topic, msg, envelope):

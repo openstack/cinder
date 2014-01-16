@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -20,9 +18,9 @@
 """
 Shared code between AMQP based openstack.common.rpc implementations.
 
-The code in this module is shared between the rpc implemenations based on AMQP.
-Specifically, this includes impl_kombu and impl_qpid.  impl_carrot also uses
-AMQP, but is deprecated and predates this code.
+The code in this module is shared between the rpc implementations based on
+AMQP. Specifically, this includes impl_kombu and impl_qpid. impl_carrot also
+uses AMQP, but is deprecated and predates this code.
 """
 
 import collections
@@ -34,10 +32,9 @@ from eventlet import greenpool
 from eventlet import pools
 from eventlet import queue
 from eventlet import semaphore
-# TODO(pekowsk): Remove import cfg and below comment in Havana.
-# This import should no longer be needed when the amqp_rpc_single_reply_queue
-# option is removed.
 from oslo.config import cfg
+import six
+
 
 from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
@@ -47,11 +44,6 @@ from cinder.openstack.common.rpc import common as rpc_common
 
 
 amqp_opts = [
-    # TODO(pekowski): Remove this option in Havana.
-    cfg.BoolOpt('amqp_rpc_single_reply_queue',
-                default=False,
-                help='Enable a fast single reply queue if using AMQP based '
-                'RPC like RabbitMQ or Qpid.'),
     cfg.BoolOpt('amqp_durable_queues',
                 default=False,
                 deprecated_name='rabbit_durable_queues',
@@ -91,7 +83,7 @@ class Pool(pools.Pool):
         # is the above "while loop" gets all the cached connections from the
         # pool and closes them, but never returns them to the pool, a pool
         # leak. The unit tests hang waiting for an item to be returned to the
-        # pool. The unit tests get here via the teatDown() method. In the run
+        # pool. The unit tests get here via the tearDown() method. In the run
         # time code, it gets here via cleanup() and only appears in service.py
         # just before doing a sys.exit(), so cleanup() only happens once and
         # the leakage is not a problem.
@@ -110,19 +102,19 @@ def get_connection_pool(conf, connection_cls):
 
 
 class ConnectionContext(rpc_common.Connection):
-    """The class that is actually returned to the caller of
-    create_connection().  This is essentially a wrapper around
-    Connection that supports 'with'.  It can also return a new
-    Connection, or one from a pool.  The function will also catch
-    when an instance of this class is to be deleted.  With that
-    we can return Connections to the pool on exceptions and so
-    forth without making the caller be responsible for catching
-    them.  If possible the function makes sure to return a
-    connection to the pool.
+    """The class that is actually returned to the create_connection() caller.
+
+    This is essentially a wrapper around Connection that supports 'with'.
+    It can also return a new Connection, or one from a pool.
+
+    The function will also catch when an instance of this class is to be
+    deleted.  With that we can return Connections to the pool on exceptions
+    and so forth without making the caller be responsible for catching them.
+    If possible the function makes sure to return a connection to the pool.
     """
 
     def __init__(self, conf, connection_pool, pooled=True, server_params=None):
-        """Create a new connection, or get one from the pool"""
+        """Create a new connection, or get one from the pool."""
         self.connection = None
         self.conf = conf
         self.connection_pool = connection_pool
@@ -135,7 +127,7 @@ class ConnectionContext(rpc_common.Connection):
         self.pooled = pooled
 
     def __enter__(self):
-        """When with ConnectionContext() is used, return self"""
+        """When with ConnectionContext() is used, return self."""
         return self
 
     def _done(self):
@@ -173,17 +165,19 @@ class ConnectionContext(rpc_common.Connection):
     def create_worker(self, topic, proxy, pool_name):
         self.connection.create_worker(topic, proxy, pool_name)
 
-    def join_consumer_pool(self, callback, pool_name, topic, exchange_name):
+    def join_consumer_pool(self, callback, pool_name, topic, exchange_name,
+                           ack_on_error=True):
         self.connection.join_consumer_pool(callback,
                                            pool_name,
                                            topic,
-                                           exchange_name)
+                                           exchange_name,
+                                           ack_on_error)
 
     def consume_in_thread(self):
         self.connection.consume_in_thread()
 
     def __getattr__(self, key):
-        """Proxy all other calls to the Connection instance"""
+        """Proxy all other calls to the Connection instance."""
         if self.connection:
             return getattr(self.connection, key)
         else:
@@ -191,11 +185,11 @@ class ConnectionContext(rpc_common.Connection):
 
 
 class ReplyProxy(ConnectionContext):
-    """ Connection class for RPC replies / callbacks """
+    """Connection class for RPC replies / callbacks."""
     def __init__(self, conf, connection_pool):
         self._call_waiters = {}
         self._num_call_waiters = 0
-        self._num_call_waiters_wrn_threshhold = 10
+        self._num_call_waiters_wrn_threshold = 10
         self._reply_q = 'reply_' + uuid.uuid4().hex
         super(ReplyProxy, self).__init__(conf, connection_pool, pooled=False)
         self.declare_direct_consumer(self._reply_q, self._process_data)
@@ -205,18 +199,20 @@ class ReplyProxy(ConnectionContext):
         msg_id = message_data.pop('_msg_id', None)
         waiter = self._call_waiters.get(msg_id)
         if not waiter:
-            LOG.warn(_('no calling threads waiting for msg_id : %s'
-                       ', message : %s') % (msg_id, message_data))
+            LOG.warn(_('No calling threads waiting for msg_id : %(msg_id)s'
+                       ', message : %(data)s'), {'msg_id': msg_id,
+                                                 'data': message_data})
+            LOG.warn(_('_call_waiters: %s') % str(self._call_waiters))
         else:
             waiter.put(message_data)
 
     def add_call_waiter(self, waiter, msg_id):
         self._num_call_waiters += 1
-        if self._num_call_waiters > self._num_call_waiters_wrn_threshhold:
+        if self._num_call_waiters > self._num_call_waiters_wrn_threshold:
             LOG.warn(_('Number of call waiters is greater than warning '
-                       'threshhold: %d. There could be a MulticallProxyWaiter '
-                       'leak.') % self._num_call_waiters_wrn_threshhold)
-            self._num_call_waiters_wrn_threshhold *= 2
+                       'threshold: %d. There could be a MulticallProxyWaiter '
+                       'leak.') % self._num_call_waiters_wrn_threshold)
+            self._num_call_waiters_wrn_threshold *= 2
         self._call_waiters[msg_id] = waiter
 
     def del_call_waiter(self, msg_id):
@@ -239,18 +235,13 @@ def msg_reply(conf, msg_id, reply_q, connection_pool, reply=None,
             failure = rpc_common.serialize_remote_exception(failure,
                                                             log_failure)
 
-        try:
-            msg = {'result': reply, 'failure': failure}
-        except TypeError:
-            msg = {'result': dict((k, repr(v))
-                   for k, v in reply.__dict__.iteritems()),
-                   'failure': failure}
+        msg = {'result': reply, 'failure': failure}
         if ending:
             msg['ending'] = True
         _add_unique_id(msg)
         # If a reply_q exists, add the msg_id to the reply and pass the
         # reply_q to direct_send() to use it as the response queue.
-        # Otherwise use the msg_id for backward compatibilty.
+        # Otherwise use the msg_id for backward compatibility.
         if reply_q:
             msg['_msg_id'] = msg_id
             conn.direct_send(reply_q, rpc_common.serialize_msg(msg))
@@ -259,7 +250,7 @@ def msg_reply(conf, msg_id, reply_q, connection_pool, reply=None,
 
 
 class RpcContext(rpc_common.CommonRpcContext):
-    """Context that supports replying to a rpc.call"""
+    """Context that supports replying to a rpc.call."""
     def __init__(self, **kwargs):
         self.msg_id = kwargs.pop('msg_id', None)
         self.reply_q = kwargs.pop('reply_q', None)
@@ -309,8 +300,14 @@ def pack_context(msg, context):
     for args at some point.
 
     """
-    context_d = dict([('_context_%s' % key, value)
-                      for (key, value) in context.to_dict().iteritems()])
+    if isinstance(context, dict):
+        context_d = dict([('_context_%s' % key, value)
+                          for (key, value) in six.iteritems(context)])
+    else:
+        context_d = dict([('_context_%s' % key, value)
+                          for (key, value) in
+                          six.iteritems(context.to_dict())])
+
     msg.update(context_d)
 
 
@@ -346,8 +343,9 @@ def _add_unique_id(msg):
 
 
 class _ThreadPoolWithWait(object):
-    """Base class for a delayed invocation manager used by
-    the Connection class to start up green threads
+    """Base class for a delayed invocation manager.
+
+    Used by the Connection class to start up green threads
     to handle incoming messages.
     """
 
@@ -362,25 +360,48 @@ class _ThreadPoolWithWait(object):
 
 
 class CallbackWrapper(_ThreadPoolWithWait):
-    """Wraps a straight callback to allow it to be invoked in a green
-    thread.
+    """Wraps a straight callback.
+
+    Allows it to be invoked in a green thread.
     """
 
-    def __init__(self, conf, callback, connection_pool):
-        """
+    def __init__(self, conf, callback, connection_pool,
+                 wait_for_consumers=False):
+        """Initiates CallbackWrapper object.
+
         :param conf: cfg.CONF instance
         :param callback: a callable (probably a function)
         :param connection_pool: connection pool as returned by
                                 get_connection_pool()
+        :param wait_for_consumers: wait for all green threads to
+                                   complete and raise the last
+                                   caught exception, if any.
+
         """
         super(CallbackWrapper, self).__init__(
             conf=conf,
             connection_pool=connection_pool,
         )
         self.callback = callback
+        self.wait_for_consumers = wait_for_consumers
+        self.exc_info = None
+
+    def _wrap(self, message_data, **kwargs):
+        """Wrap the callback invocation to catch exceptions.
+        """
+        try:
+            self.callback(message_data, **kwargs)
+        except Exception:
+            self.exc_info = sys.exc_info()
 
     def __call__(self, message_data):
-        self.pool.spawn_n(self.callback, message_data)
+        self.exc_info = None
+        self.pool.spawn_n(self._wrap, message_data)
+
+        if self.wait_for_consumers:
+            self.pool.waitall()
+            if self.exc_info:
+                six.reraise(self.exc_info[1], None, self.exc_info[2])
 
 
 class ProxyCallback(_ThreadPoolWithWait):
@@ -498,7 +519,7 @@ class MulticallProxyWaiter(object):
         return result
 
     def __iter__(self):
-        """Return a result until we get a reply with an 'ending" flag"""
+        """Return a result until we get a reply with an 'ending' flag."""
         if self._done:
             raise StopIteration
         while True:
@@ -520,61 +541,8 @@ class MulticallProxyWaiter(object):
             yield result
 
 
-#TODO(pekowski): Remove MulticallWaiter() in Havana.
-class MulticallWaiter(object):
-    def __init__(self, conf, connection, timeout):
-        self._connection = connection
-        self._iterator = connection.iterconsume(timeout=timeout or
-                                                conf.rpc_response_timeout)
-        self._result = None
-        self._done = False
-        self._got_ending = False
-        self._conf = conf
-        self.msg_id_cache = _MsgIdCache()
-
-    def done(self):
-        if self._done:
-            return
-        self._done = True
-        self._iterator.close()
-        self._iterator = None
-        self._connection.close()
-
-    def __call__(self, data):
-        """The consume() callback will call this.  Store the result."""
-        self.msg_id_cache.check_duplicate_message(data)
-        if data['failure']:
-            failure = data['failure']
-            self._result = rpc_common.deserialize_remote_exception(self._conf,
-                                                                   failure)
-
-        elif data.get('ending', False):
-            self._got_ending = True
-        else:
-            self._result = data['result']
-
-    def __iter__(self):
-        """Return a result until we get a 'None' response from consumer"""
-        if self._done:
-            raise StopIteration
-        while True:
-            try:
-                self._iterator.next()
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    self.done()
-            if self._got_ending:
-                self.done()
-                raise StopIteration
-            result = self._result
-            if isinstance(result, Exception):
-                self.done()
-                raise result
-            yield result
-
-
 def create_connection(conf, new, connection_pool):
-    """Create a connection"""
+    """Create a connection."""
     return ConnectionContext(conf, connection_pool, pooled=not new)
 
 
@@ -583,14 +551,6 @@ _reply_proxy_create_sem = semaphore.Semaphore()
 
 def multicall(conf, context, topic, msg, timeout, connection_pool):
     """Make a call that returns multiple times."""
-    # TODO(pekowski): Remove all these comments in Havana.
-    # For amqp_rpc_single_reply_queue = False,
-    # Can't use 'with' for multicall, as it returns an iterator
-    # that will continue to use the connection.  When it's done,
-    # connection.close() will get called which will put it back into
-    # the pool
-    # For amqp_rpc_single_reply_queue = True,
-    # The 'with' statement is mandatory for closing the connection
     LOG.debug(_('Making synchronous call on %s ...'), topic)
     msg_id = uuid.uuid4().hex
     msg.update({'_msg_id': msg_id})
@@ -598,21 +558,13 @@ def multicall(conf, context, topic, msg, timeout, connection_pool):
     _add_unique_id(msg)
     pack_context(msg, context)
 
-    # TODO(pekowski): Remove this flag and the code under the if clause
-    #                 in Havana.
-    if not conf.amqp_rpc_single_reply_queue:
-        conn = ConnectionContext(conf, connection_pool)
-        wait_msg = MulticallWaiter(conf, conn, timeout)
-        conn.declare_direct_consumer(msg_id, wait_msg)
+    with _reply_proxy_create_sem:
+        if not connection_pool.reply_proxy:
+            connection_pool.reply_proxy = ReplyProxy(conf, connection_pool)
+    msg.update({'_reply_q': connection_pool.reply_proxy.get_reply_q()})
+    wait_msg = MulticallProxyWaiter(conf, msg_id, timeout, connection_pool)
+    with ConnectionContext(conf, connection_pool) as conn:
         conn.topic_send(topic, rpc_common.serialize_msg(msg), timeout)
-    else:
-        with _reply_proxy_create_sem:
-            if not connection_pool.reply_proxy:
-                connection_pool.reply_proxy = ReplyProxy(conf, connection_pool)
-        msg.update({'_reply_q': connection_pool.reply_proxy.get_reply_q()})
-        wait_msg = MulticallProxyWaiter(conf, msg_id, timeout, connection_pool)
-        with ConnectionContext(conf, connection_pool) as conn:
-            conn.topic_send(topic, rpc_common.serialize_msg(msg), timeout)
     return wait_msg
 
 
