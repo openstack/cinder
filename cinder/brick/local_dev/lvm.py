@@ -100,10 +100,9 @@ class LVM(executor.Executor):
 
         """
         exists = False
-        cmd = ['vgs', '--noheadings', '-o', 'name', self.vg_name]
-        (out, err) = self._execute(*cmd,
-                                   root_helper=self._root_helper,
-                                   run_as_root=True)
+        (out, err) = self._execute(
+            'env', 'LC_ALL=C', 'vgs', '--noheadings', '-o', 'name',
+            self.vg_name, root_helper=self._root_helper, run_as_root=True)
 
         if out is not None:
             volume_groups = out.split()
@@ -117,7 +116,7 @@ class LVM(executor.Executor):
         self._execute(*cmd, root_helper=self._root_helper, run_as_root=True)
 
     def _get_vg_uuid(self):
-        (out, err) = self._execute('vgs', '--noheadings',
+        (out, err) = self._execute('env', 'LC_ALL=C', 'vgs', '--noheadings',
                                    '-o uuid', self.vg_name)
         if out is not None:
             return out.split()
@@ -170,7 +169,7 @@ class LVM(executor.Executor):
 
         """
 
-        cmd = ['vgs', '--version']
+        cmd = ['env', 'LC_ALL=C', 'vgs', '--version']
         (out, err) = putils.execute(*cmd,
                                     root_helper=root_helper,
                                     run_as_root=True)
@@ -249,7 +248,8 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with LV info
 
         """
-        cmd = ['lvs', '--noheadings', '--unit=g', '-o', 'vg_name,name,size']
+        cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
+               '-o', 'vg_name,name,size']
 
         if no_suffix:
             cmd.append('--nosuffix')
@@ -601,11 +601,10 @@ class LVM(executor.Executor):
                       run_as_root=True)
 
     def lv_has_snapshot(self, name):
-        out, err = self._execute('lvdisplay', '--noheading',
-                                 '-C', '-o', 'Attr',
-                                 '%s/%s' % (self.vg_name, name),
-                                 root_helper=self._root_helper,
-                                 run_as_root=True)
+        out, err = self._execute(
+            'env', 'LC_ALL=C', 'lvdisplay', '--noheading',
+            '-C', '-o', 'Attr', '%s/%s' % (self.vg_name, name),
+            root_helper=self._root_helper, run_as_root=True)
         if out:
             out = out.strip()
             if (out[0] == 'o') or (out[0] == 'O'):
