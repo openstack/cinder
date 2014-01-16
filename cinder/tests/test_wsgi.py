@@ -263,7 +263,7 @@ class ExceptionTest(test.TestCase):
         resp = webob.Request.blank('/').get_response(api)
         self.assertEqual(500, resp.status_int)
 
-    @mock.patch('cinder.openstack.common.gettextutils.get_localized_message')
+    @mock.patch('cinder.openstack.common.gettextutils.translate')
     def test_cinder_exception_with_localized_explanation(self, mock_t9n):
         msg = 'My Not Found'
         msg_translation = 'Mi No Encontrado'
@@ -289,12 +289,12 @@ class ExceptionTest(test.TestCase):
         self.assertIn(msg, resp.body)
 
         # Test response with localization
-        def mock_get_localized_message(msgid, locale):
+        def mock_translate(msgid, locale):
             if isinstance(msgid, gettextutils.Message):
                 return msg_translation
             return msgid
 
-        mock_t9n.side_effect = mock_get_localized_message
+        mock_t9n.side_effect = mock_translate
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)

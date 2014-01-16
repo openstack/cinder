@@ -118,7 +118,7 @@ class TestFaults(test.TestCase):
             return "Mensaje traducido"
 
         self.stubs.Set(gettextutils,
-                       "get_localized_message", _mock_translation)
+                       "translate", _mock_translation)
 
         @webob.dec.wsgify
         def raiser(req):
