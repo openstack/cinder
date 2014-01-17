@@ -348,7 +348,7 @@ class BackupManager(manager.SchedulerDependentManager):
             self._get_driver(backend).restore_backup(context, backup,
                                                      volume,
                                                      backup_service)
-        except Exception as err:
+        except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context, volume_id,
                                       {'status': 'error_restoring'})
