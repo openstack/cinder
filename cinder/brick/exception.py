@@ -105,6 +105,10 @@ class ISCSITargetCreateFailed(BrickException):
     message = _("Failed to create iscsi target for volume %(volume_id)s.")
 
 
+class ISCSITargetUpdateFailed(BrickException):
+    message = _("Failed to update iscsi target for volume %(name)s.")
+
+
 class ISCSITargetRemoveFailed(BrickException):
     message = _("Failed to remove iscsi target for volume %(volume_id)s.")
 
