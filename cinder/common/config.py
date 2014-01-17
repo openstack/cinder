@@ -56,10 +56,6 @@ def _get_my_ip():
 
 
 core_opts = [
-    cfg.StrOpt('connection_type',
-               default=None,
-               help='Virtualization api connection type : libvirt, xenapi, '
-                    'or fake'),
     cfg.StrOpt('api_paste_config',
                default="api-paste.ini",
                help='File name for the paste.deploy config for cinder-api'),

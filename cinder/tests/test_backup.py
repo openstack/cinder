@@ -45,8 +45,7 @@ class BackupTestCase(test.TestCase):
     def setUp(self):
         super(BackupTestCase, self).setUp()
         vol_tmpdir = tempfile.mkdtemp()
-        self.flags(connection_type='fake',
-                   volumes_dir=vol_tmpdir)
+        self.flags(volumes_dir=vol_tmpdir)
         self.backup_mgr = \
             importutils.import_object(CONF.backup_manager)
         self.backup_mgr.host = 'testhost'

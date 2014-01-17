@@ -43,8 +43,7 @@ class UsageInfoTestCase(test.TestCase):
 
     def setUp(self):
         super(UsageInfoTestCase, self).setUp()
-        self.flags(connection_type='fake',
-                   host='fake',
+        self.flags(host='fake',
                    notification_driver=[test_notifier.__name__])
         self.volume = importutils.import_object(CONF.volume_manager)
         self.user_id = 'fake'
