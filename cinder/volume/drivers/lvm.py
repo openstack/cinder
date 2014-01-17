@@ -371,11 +371,17 @@ class LVMVolumeDriver(driver.VolumeDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = self.protocol
 
-        data['total_capacity_gb'] = float(self.vg.vg_size)
-        data['free_capacity_gb'] = float(self.vg.vg_free_space)
-        if self.configuration.lvm_type == 'thin':
+        if self.configuration.lvm_mirrors > 0:
+            data['total_capacity_gb'] =\
+                self.vg.vg_mirror_size(self.configuration.lvm_mirrors)
+            data['free_capacity_gb'] =\
+                self.vg.vg_mirror_free_space(self.configuration.lvm_mirrors)
+        elif self.configuration.lvm_type == 'thin':
             data['total_capacity_gb'] = float(self.vg.vg_thin_pool_size)
             data['free_capacity_gb'] = float(self.vg.vg_thin_pool_free_space)
+        else:
+            data['total_capacity_gb'] = float(self.vg.vg_size)
+            data['free_capacity_gb'] = float(self.vg.vg_free_space)
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
         data['location_info'] =\
