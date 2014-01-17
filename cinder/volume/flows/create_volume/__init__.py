@@ -927,7 +927,7 @@ class OnFailureRescheduleTask(base.CinderTask):
     def revert(self, context, result, flow_failures, **kwargs):
         # Check if we have a cause which can tell us not to reschedule.
         for failure in flow_failures.values():
-            if failure.check(self.no_reschedule_types):
+            if failure.check(*self.no_reschedule_types):
                 return
 
         volume_id = kwargs['volume_id']
