@@ -10,6 +10,7 @@ kombu>=2.4.8
 lxml>=2.3
 netaddr>=0.7.6
 oslo.config>=1.2.0
+oslo.rootwrap
 paramiko>=1.8.0
 Paste
 PasteDeploy>=1.5.0
