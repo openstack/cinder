@@ -577,7 +577,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     msg = _("being attached by different mode")
                     raise exception.InvalidVolume(reason=msg)
             elif volume['status'] != "available":
-                msg = _("status must be available")
+                msg = _("status must be available or attaching")
                 raise exception.InvalidVolume(reason=msg)
 
             # TODO(jdg): attach_time column is currently varchar
