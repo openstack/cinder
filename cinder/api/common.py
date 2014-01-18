@@ -30,8 +30,8 @@ from cinder import utils
 api_common_opts = [
     cfg.IntOpt('osapi_max_limit',
                default=1000,
-               help='the maximum number of items returned in a single '
-                    'response from a collection resource'),
+               help='The maximum number of items that a collection '
+                    'resource returns in a single response'),
     cfg.StrOpt('osapi_volume_base_URL',
                default=None,
                help='Base URL that will be presented to users in links '

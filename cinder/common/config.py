@@ -72,20 +72,20 @@ CONF.register_cli_opts(debug_opts)
 global_opts = [
     cfg.StrOpt('my_ip',
                default=_get_my_ip(),
-               help='ip address of this host'),
+               help='IP address of this host'),
     cfg.StrOpt('glance_host',
                default='$my_ip',
-               help='default glance hostname or ip'),
+               help='Default glance host name or IP'),
     cfg.IntOpt('glance_port',
                default=9292,
-               help='default glance port'),
+               help='Default glance port'),
     cfg.ListOpt('glance_api_servers',
                 default=['$glance_host:$glance_port'],
-                help='A list of the glance api servers available to cinder '
+                help='A list of the glance API servers available to cinder '
                      '([hostname|ip]:port)'),
     cfg.IntOpt('glance_api_version',
                default=1,
-               help='Version of the glance api to use'),
+               help='Version of the glance API to use'),
     cfg.IntOpt('glance_num_retries',
                default=0,
                help='Number retries when downloading an image from glance'),
@@ -95,12 +95,11 @@ global_opts = [
                      'glance'),
     cfg.BoolOpt('glance_api_ssl_compression',
                 default=False,
-                help='Whether to attempt to negotiate SSL layer compression '
-                     'when using SSL (https) requests. Set to False to '
-                     'disable SSL layer compression. In some cases disabling '
-                     'this may improve data throughput, eg when high network '
-                     'bandwidth is available and you are using already '
-                     'compressed image formats such as qcow2 .'),
+                help='Enables or disables negotiation of SSL layer '
+                     'compression. In some cases disabling compression '
+                     'can improve data throughput, such as when high '
+                     'network bandwidth is available and you use '
+                     'compressed image formats like qcow2.'),
     cfg.IntOpt('glance_request_timeout',
                default=None,
                help='http/https timeout value for glance operations. If no '
@@ -108,13 +107,13 @@ global_opts = [
                     'value is used.'),
     cfg.StrOpt('scheduler_topic',
                default='cinder-scheduler',
-               help='the topic scheduler nodes listen on'),
+               help='The topic that scheduler nodes listen on'),
     cfg.StrOpt('volume_topic',
                default='cinder-volume',
-               help='the topic volume nodes listen on'),
+               help='The topic that volume nodes listen on'),
     cfg.StrOpt('backup_topic',
                default='cinder-backup',
-               help='the topic volume backup nodes listen on'),
+               help='The topic that volume backup nodes listen on'),
     cfg.BoolOpt('enable_v1_api',
                 default=True,
                 help=_("Deploy v1 of the Cinder API.")),
@@ -123,7 +122,7 @@ global_opts = [
                 help=_("Deploy v2 of the Cinder API.")),
     cfg.BoolOpt('api_rate_limit',
                 default=True,
-                help='whether to rate limit the api'),
+                help='Enables or disables rate limit of the API.'),
     cfg.ListOpt('osapi_volume_ext_list',
                 default=[],
                 help='Specify list of extensions to load when using osapi_'
@@ -134,34 +133,32 @@ global_opts = [
                     help='osapi volume extension to load'),
     cfg.StrOpt('volume_manager',
                default='cinder.volume.manager.VolumeManager',
-               help='full class name for the Manager for volume'),
+               help='Full class name for the Manager for volume'),
     cfg.StrOpt('backup_manager',
                default='cinder.backup.manager.BackupManager',
-               help='full class name for the Manager for volume backup'),
+               help='Full class name for the Manager for volume backup'),
     cfg.StrOpt('scheduler_manager',
                default='cinder.scheduler.manager.SchedulerManager',
-               help='full class name for the Manager for scheduler'),
+               help='Full class name for the Manager for scheduler'),
     cfg.StrOpt('host',
                default=socket.gethostname(),
-               help='Name of this node.  This can be an opaque identifier.  '
-                    'It is not necessarily a hostname, FQDN, or IP address.'),
+               help='Name of this node.  This can be an opaque identifier. '
+                    'It is not necessarily a host name, FQDN, or IP address.'),
     # NOTE(vish): default to nova for compatibility with nova installs
     cfg.StrOpt('storage_availability_zone',
                default='nova',
-               help='availability zone of this node'),
+               help='Availability zone of this node'),
     cfg.StrOpt('default_availability_zone',
                default=None,
-               help='default availability zone to use when creating a new volume. '
-                    'If this is not set then we use the value from the '
-                    'storage_availability_zone option as the default '
-                    'availability_zone for new volumes.'),
+               help='Default availability zone for new volumes. If not set, '
+                    'the storage_availability_zone option value is used as '
+                    'the default for new volumes.'),
     cfg.StrOpt('default_volume_type',
                default=None,
-               help='default volume type to use'),
+               help='Default volume type to use'),
     cfg.StrOpt('volume_usage_audit_period',
-               default='month',
-               help='time period to generate volume usages for.  '
-                    'Time period must be hour, day, month or year'),
+               help='Time period for which to generate volume usages. '
+                    'The options are hour, day, month, or year.'),
     cfg.StrOpt('rootwrap_config',
                default='/etc/cinder/rootwrap.conf',
                help='Path to the rootwrap configuration file to use for '
@@ -174,7 +171,8 @@ global_opts = [
                 help='List of modules/decorators to monkey patch'),
     cfg.IntOpt('service_down_time',
                default=60,
-               help='maximum time since last check-in for up service'),
+               help='Maximum time since last check-in for a service to be '
+                    'considered up'),
     cfg.StrOpt('volume_api_class',
                default='cinder.volume.api.API',
                help='The full class name of the volume API class to use'),

@@ -49,13 +49,13 @@ NEXENTA_ISCSI_OPTIONS = [
                help='Nexenta target portal port'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
-               help='pool on SA that will hold all volumes'),
+               help='SA Pool that holds all volumes'),
     cfg.StrOpt('nexenta_target_prefix',
                default='iqn.1986-03.com.sun:02:cinder-',
                help='IQN prefix for iSCSI targets'),
     cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder/',
-               help='prefix for iSCSI target groups on SA'),
+               help='Prefix for iSCSI target groups on SA'),
 ]
 
 NEXENTA_NFS_OPTIONS = [
@@ -64,12 +64,13 @@ NEXENTA_NFS_OPTIONS = [
                help='File with the list of available nfs shares'),
     cfg.StrOpt('nexenta_mount_point_base',
                default='$state_path/mnt',
-               help='Base dir containing mount points for nfs shares'),
+               help='Base directory that contains NFS share mount points'),
     cfg.BoolOpt('nexenta_sparsed_volumes',
                 default=True,
-                help=('Create volumes as sparsed files which take no space.'
-                      'If set to False volume is created as regular file.'
-                      'In such case volume creation takes a lot of time.')),
+                help='Enables or disables the creation of volumes as '
+                     'sparsed files that take no space. If disabled '
+                     '(False), volume is created as a regular file, '
+                     'which takes a long time.'),
     cfg.StrOpt('nexenta_volume_compression',
                default='on',
                help='Default compression value for new ZFS folders.'),
@@ -82,10 +83,10 @@ NEXENTA_NFS_OPTIONS = [
 NEXENTA_VOLUME_OPTIONS = [
     cfg.StrOpt('nexenta_blocksize',
                default='',
-               help='block size for volumes (blank=default,8KB)'),
+               help='Block size for volumes (default=blank means 8KB)'),
     cfg.BoolOpt('nexenta_sparse',
                 default=False,
-                help='flag to create sparse volumes'),
+                help='Enables or disables the creation of sparse volumes'),
 ]
 
 NEXENTA_RRMGR_OPTIONS = [

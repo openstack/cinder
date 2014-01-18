@@ -34,29 +34,30 @@ LOG = logging.getLogger(__name__)
 quota_opts = [
     cfg.IntOpt('quota_volumes',
                default=10,
-               help='number of volumes allowed per project'),
+               help='Number of volumes allowed per project'),
     cfg.IntOpt('quota_snapshots',
                default=10,
-               help='number of volume snapshots allowed per project'),
+               help='Number of volume snapshots allowed per project'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
-               help='number of volume gigabytes (snapshots are also included) '
-                    'allowed per project'),
+               help='Total amount of storage, in gigabytes, allowed '
+                    'for volumes and snapshots per project'),
     cfg.IntOpt('reservation_expire',
                default=86400,
-               help='number of seconds until a reservation expires'),
+               help='Number of seconds until a reservation expires'),
     cfg.IntOpt('until_refresh',
                default=0,
-               help='count of reservations until usage is refreshed'),
+               help='Count of reservations until usage is refreshed'),
     cfg.IntOpt('max_age',
                default=0,
-               help='number of seconds between subsequent usage refreshes'),
+               help='Number of seconds between subsequent usage refreshes'),
     cfg.StrOpt('quota_driver',
                default='cinder.quota.DbQuotaDriver',
-               help='default driver to use for quota checks'),
+               help='Default driver to use for quota checks'),
     cfg.BoolOpt('use_default_quota_class',
                 default=True,
-                help='whether to use default quota class for default quota'), ]
+                help='Enables or disables use of default quota class '
+                     'with default quota.'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts)

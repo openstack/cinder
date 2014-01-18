@@ -48,8 +48,8 @@ POOL = 'storagetype:pool'
 emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
                default=CINDER_EMC_CONFIG_FILE,
-               help='use this file for cinder emc plugin '
-                    'config data'), ]
+               help='The configuration file for the Cinder '
+                    'EMC driver'), ]
 
 
 CONF.register_opts(emc_opts)
