@@ -862,10 +862,8 @@ class VolumeTypeQuotaEngine(QuotaEngine):
             result[resource.name] = resource
 
         # Volume type quotas.
-        # NOTE(jdg): We also want to check deleted types here as well
-        # if we don't the _get_quotas resource len check on will fail
         volume_types = db.volume_type_get_all(context.get_admin_context(),
-                                              True)
+                                              False)
         for volume_type in volume_types.values():
             for part_name in ('volumes', 'gigabytes', 'snapshots'):
                 resource = VolumeTypeResource(part_name, volume_type)
