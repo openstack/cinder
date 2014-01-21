@@ -18,10 +18,10 @@ Scheduler host weights
 """
 
 
-from cinder.openstack.common.scheduler import weight
+from cinder.openstack.common.scheduler import base_weight
 
 
-class WeighedHost(weight.WeighedObject):
+class WeighedHost(base_weight.WeighedObject):
     def to_dict(self):
         return {
             'weight': self.weight,
@@ -33,12 +33,12 @@ class WeighedHost(weight.WeighedObject):
                 (self.obj.host, self.weight))
 
 
-class BaseHostWeigher(weight.BaseWeigher):
+class BaseHostWeigher(base_weight.BaseWeigher):
     """Base class for host weights."""
     pass
 
 
-class HostWeightHandler(weight.BaseWeightHandler):
+class HostWeightHandler(base_weight.BaseWeightHandler):
     object_class = WeighedHost
 
     def __init__(self, namespace):

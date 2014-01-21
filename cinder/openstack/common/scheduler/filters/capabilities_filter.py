@@ -13,10 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
+from cinder.openstack.common.gettextutils import _  # noqa
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler.filters import extra_specs_ops
-
 
 LOG = logging.getLogger(__name__)
 
@@ -25,13 +27,14 @@ class CapabilitiesFilter(filters.BaseHostFilter):
     """HostFilter to work with resource (instance & volume) type records."""
 
     def _satisfies_extra_specs(self, capabilities, resource_type):
-        """Check that the capabilities provided by the services
-        satisfy the extra specs associated with the instance type"""
+        """Check that the capabilities provided by the services satisfy
+        the extra specs associated with the resource type.
+        """
         extra_specs = resource_type.get('extra_specs', [])
         if not extra_specs:
             return True
 
-        for key, req in extra_specs.iteritems():
+        for key, req in six.iteritems(extra_specs):
             # Either not scope format, or in capabilities scope
             scope = key.split(':')
             if len(scope) > 1 and scope[0] != "capabilities":
@@ -40,7 +43,7 @@ class CapabilitiesFilter(filters.BaseHostFilter):
                 del scope[0]
 
             cap = capabilities
-            for index in range(0, len(scope)):
+            for index in range(len(scope)):
                 try:
                     cap = cap.get(scope[index], None)
                 except AttributeError:
@@ -48,16 +51,20 @@ class CapabilitiesFilter(filters.BaseHostFilter):
                 if cap is None:
                     return False
             if not extra_specs_ops.match(cap, req):
+                LOG.debug(_("extra_spec requirement '%(req)s' does not match "
+                          "'%(cap)s'"), {'req': req, 'cap': cap})
                 return False
         return True
 
     def host_passes(self, host_state, filter_properties):
-        """Return a list of hosts that can create instance_type."""
+        """Return a list of hosts that can create resource_type."""
         # Note(zhiteng) Currently only Cinder and Nova are using
         # this filter, so the resource type is either instance or
         # volume.
         resource_type = filter_properties.get('resource_type')
         if not self._satisfies_extra_specs(host_state.capabilities,
                                            resource_type):
+            LOG.debug(_("%(host_state)s fails resource_type extra_specs "
+                      "requirements"), {'host_state': host_state})
             return False
         return True
