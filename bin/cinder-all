@@ -69,7 +69,7 @@ if __name__ == '__main__':
     except (Exception, SystemExit):
         LOG.exception(_('Failed to load osapi_volume'))
 
-    for binary in ['cinder-volume', 'cinder-scheduler']:
+    for binary in ['cinder-volume', 'cinder-scheduler', 'cinder-backup']:
         try:
             servers.append(service.Service.create(binary=binary))
         except (Exception, SystemExit):
