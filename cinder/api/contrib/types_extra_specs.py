@@ -17,6 +17,7 @@
 
 import webob
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
@@ -81,8 +82,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         self._check_type(context, type_id)
-
         specs = body['extra_specs']
+        self._check_key_names(specs.keys())
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     specs)
@@ -143,6 +144,13 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                             'volume_type_extra_specs.delete',
                             notifier_api.INFO, notifier_info)
         return webob.Response(status_int=202)
+
+    def _check_key_names(self, keys):
+        if not common.validate_key_names(keys):
+            expl = _('Key names can only contain alphanumeric characters, '
+                     'underscores, periods, colons and hyphens.')
+
+            raise webob.exc.HTTPBadRequest(explanation=expl)
 
 
 class Types_extra_specs(extensions.ExtensionDescriptor):
