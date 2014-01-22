@@ -393,6 +393,11 @@ class NoValidHost(CinderException):
     message = _("No valid host was found. %(reason)s")
 
 
+class NoMoreTargets(CinderException):
+    """No more available targets."""
+    pass
+
+
 class WillNotSchedule(CinderException):
     message = _("Host %(host)s is not up or doesn't exist.")
 

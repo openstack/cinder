@@ -30,7 +30,6 @@ from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql import func
 
 from cinder.common import sqlalchemyutils
-from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.openstack.common.db import exception as db_exc
@@ -145,7 +144,7 @@ def require_volume_exists(f):
     """
 
     def wrapper(context, volume_id, *args, **kwargs):
-        db.volume_get(context, volume_id)
+        volume_get(context, volume_id)
         return f(context, volume_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
@@ -159,7 +158,7 @@ def require_snapshot_exists(f):
     """
 
     def wrapper(context, snapshot_id, *args, **kwargs):
-        db.api.snapshot_get(context, snapshot_id)
+        snapshot_get(context, snapshot_id)
         return f(context, snapshot_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
@@ -964,7 +963,7 @@ def volume_allocate_iscsi_target(context, volume_id, host):
         # NOTE(vish): if with_lockmode isn't supported, as in sqlite,
         #             then this has concurrency issues
         if not iscsi_target_ref:
-            raise db.NoMoreTargets()
+            raise exception.NoMoreTargets()
 
         iscsi_target_ref.volume_id = volume_id
         session.add(iscsi_target_ref)
