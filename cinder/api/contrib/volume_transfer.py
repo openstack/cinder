@@ -68,7 +68,7 @@ class CreateDeserializer(wsgi.MetadataXMLDeserializer):
         transfer = {}
         transfer_node = self.find_first_child_named(node, 'transfer')
 
-        attributes = ['volume_id', 'display_name']
+        attributes = ['volume_id', 'name']
 
         for attr in attributes:
             if transfer_node.getAttribute(attr):
