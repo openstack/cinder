@@ -8,8 +8,11 @@ tgtadm: CommandFilter, tgtadm, root
 tgt-admin: CommandFilter, tgt-admin, root
 cinder-rtstool: CommandFilter, cinder-rtstool, root
 
-# cinder/volume/driver.py: 'vgs', '--noheadings', '-o', 'name'
-vgs: CommandFilter, vgs, root
+# LVM related show commands
+pvs: EnvFilter, env, root, LC_ALL=C, pvs
+vgs: EnvFilter, env, root, LC_ALL=C, vgs
+lvs: EnvFilter, env, root, LC_ALL=C, lvs
+lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 
 # cinder/volume/driver.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
 # cinder/volume/driver.py: 'lvcreate', '-L', ...
@@ -20,9 +23,6 @@ dd: CommandFilter, dd, root
 
 # cinder/volume/driver.py: 'lvremove', '-f', %s/%s % ...
 lvremove: CommandFilter, lvremove, root
-
-# cinder/volume/driver.py: 'lvdisplay', '--noheading', '-C', '-o', 'Attr',..
-lvdisplay: CommandFilter, lvdisplay, root
 
 # cinder/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
 lvrename: CommandFilter, lvrename, root
@@ -47,8 +47,11 @@ chown: CommandFilter, chown, root
 # cinder/volume/driver.py
 dmsetup: CommandFilter, dmsetup, root
 ln: CommandFilter, ln, root
-qemu-img: CommandFilter, qemu-img, root
-env: CommandFilter, env, root
+
+# cinder/image/image_utils.py
+qemu-img: EnvFilter, env, root, LC_ALL=C, qemu-img
+qemu-img_convert: CommandFilter, qemu-img, root
+
 udevadm: CommandFilter, udevadm, root
 
 # cinder/volume/driver.py: utils.read_file_as_root()
@@ -62,11 +65,9 @@ du: CommandFilter, du, root
 truncate: CommandFilter, truncate, root
 chmod: CommandFilter, chmod, root
 rm: CommandFilter, rm, root
-lvs: CommandFilter, lvs, root
 find: CommandFilter, find, root
 
 # cinder/volume/drivers/glusterfs.py
-mv: CommandFilter, mv, root
 chgrp: CommandFilter, chgrp, root
 
 # cinder/volumes/drivers/hds/hds.py:
@@ -83,6 +84,7 @@ systool: CommandFilter, systool, root
 blockdev: CommandFilter, blockdev, root
 
 # cinder/volume/drivers/gpfs.py
+mv: CommandFilter, mv, root
 mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
 mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
 mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root

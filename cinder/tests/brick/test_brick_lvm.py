@@ -64,16 +64,19 @@ class BrickLvmTestCase(test.TestCase):
         cmd_string = ', '.join(cmd)
         data = "\n"
 
-        if 'vgs, --noheadings, --unit=g, -o, name' == cmd_string:
+        if ('env, LC_ALL=C, vgs, --noheadings, --unit=g, -o, name' ==
+                cmd_string):
             data = "  fake-volumes\n"
             data += "  some-other-vg\n"
-        elif 'vgs, --noheadings, -o, name, fake-volumes' == cmd_string:
+        elif ('env, LC_ALL=C, vgs, --noheadings, -o, name, fake-volumes' ==
+                cmd_string):
             data = "  fake-volumes\n"
-        elif 'vgs, --version' in cmd_string:
+        elif 'env, LC_ALL=C, vgs, --version' in cmd_string:
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
-        elif 'vgs, --noheadings, -o uuid, fake-volumes' in cmd_string:
+        elif ('env, LC_ALL=C, vgs, --noheadings, -o uuid, fake-volumes' in
+              cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
-        elif 'vgs, --noheadings, --unit=g, ' \
+        elif 'env, LC_ALL=C, vgs, --noheadings, --unit=g, ' \
              '-o, name,size,free,lv_count,uuid, ' \
              '--separator, :, --nosuffix' in cmd_string:
             data = "  fake-volumes:10.00:10.00:0:"\
@@ -84,23 +87,25 @@ class BrickLvmTestCase(test.TestCase):
                     "lWyauW-dKpG-Rz7E-xtKY-jeju-QsYU-SLG7Z2\n"
             data += "  fake-volumes-3:10.00:10.00:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
-        elif 'lvs, --noheadings, --unit=g, -o, vg_name,name,size'\
-                in cmd_string:
+        elif ('env, LC_ALL=C, lvs, --noheadings, '
+              '--unit=g, -o, vg_name,name,size' in cmd_string):
             data = "  fake-volumes fake-1 1.00g\n"
             data += "  fake-volumes fake-2 1.00g\n"
-        elif 'lvdisplay, --noheading, -C, -o, Attr' in cmd_string:
+        elif ('env, LC_ALL=C, lvdisplay, --noheading, -C, -o, Attr' in
+              cmd_string):
             if 'test-volumes' in cmd_string:
                 data = '  wi-a-'
             else:
                 data = '  owi-a-'
-        elif 'pvs, --noheadings' in cmd_string \
+        elif 'env, LC_ALL=C, pvs, --noheadings' in cmd_string \
                 and 'fake-volumes' in cmd_string:
             data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
-        elif 'pvs, --noheadings' in cmd_string:
+        elif 'env, LC_ALL=C, pvs, --noheadings' in cmd_string:
             data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
             data += "  fake-volumes-2:/dev/sdb:10.00g:8.99g\n"
             data += "  fake-volumes-3:/dev/sdc:10.00g:8.99g\n"
-        elif 'lvs, --noheadings, --unit=g, -o, size,data_percent, ' \
+        elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g, -o, ' \
+             'size,data_percent, ' \
              '--separator, :' in cmd_string:
             data = "  9:12\n"
         elif 'lvcreate, -T, -L, ' in cmd_string:
