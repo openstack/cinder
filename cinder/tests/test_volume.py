@@ -2220,10 +2220,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         if not exc:
             self.assertEqual(volume['volume_type_id'], vol_type['id'])
             self.assertEqual(volume['status'], 'available')
+            self.assertEqual(volume['host'], 'newhost')
             self.assertEqual(volumes_in_use, 1)
         else:
             self.assertEqual(volume['volume_type_id'], old_vol_type['id'])
             self.assertEqual(volume['status'], 'available')
+            self.assertEqual(volume['host'], CONF.host)
             self.assertEqual(volumes_in_use, 0)
 
     def test_retype_volume_driver_success(self):
