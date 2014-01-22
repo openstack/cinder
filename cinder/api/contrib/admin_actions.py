@@ -20,6 +20,7 @@ from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import strutils
 from cinder import volume
 
@@ -81,10 +82,21 @@ class AdminController(wsgi.Controller):
         msg = _("Updating %(resource)s '%(id)s' with '%(update)r'")
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
+
+        notifier_info = dict(id=id, update=update)
+        notifier_api.notify(context, 'volumeStatusUpdate',
+                            self.collection + '.reset_status.start',
+                            notifier_api.INFO, notifier_info)
+
         try:
             self._update(context, id, update)
         except exception.NotFound as e:
             raise exc.HTTPNotFound(e)
+
+        notifier_api.notify(context, 'volumeStatusUpdate',
+                            self.collection + '.reset_status.end',
+                            notifier_api.INFO, notifier_info)
+
         return webob.Response(status_int=202)
 
     @wsgi.action('os-force_delete')
