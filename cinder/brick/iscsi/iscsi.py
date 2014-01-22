@@ -250,8 +250,8 @@ class TgtAdm(TargetAdmin):
         except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to update iscsi target %(name)s: %(e)s") %
                       {'name': name, 'e': str(e)})
-            LOG.debug("StdOut from tgt-admin --update: %s" % out)
-            LOG.debug("StdErr from tgt-admin --update: %s" % err)
+            LOG.debug("StdOut from tgt-admin --update: %s", e.stdout)
+            LOG.debug("StdErr from tgt-admin --update: %s", e.stderr)
             raise exception.ISCSITargetUpdateFailed(name=name)
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
