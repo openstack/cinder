@@ -64,9 +64,6 @@ core_opts = [
                                                     '..',
                                                     '..')),
                help='Directory where the cinder python module is installed'),
-    cfg.StrOpt('bindir',
-               default='$pybasedir/bin',
-               help='Directory where cinder binaries are installed'),
     cfg.StrOpt('state_path',
                default='$pybasedir',
                help="Top-level directory for maintaining cinder's state"), ]
@@ -170,9 +167,6 @@ global_opts = [
                default='month',
                help='time period to generate volume usages for.  '
                     'Time period must be hour, day, month or year'),
-    cfg.StrOpt('root_helper',
-               default='sudo',
-               help='Deprecated: command to use for running commands as root'),
     cfg.StrOpt('rootwrap_config',
                default='/etc/cinder/rootwrap.conf',
                help='Path to the rootwrap configuration file to use for '
