@@ -30,6 +30,9 @@ bug that had no unit test, a new passing unit test should be added. If a
 submitted bug fix does have a unit test, be sure to add a new one that fails
 without the patch and passes with the patch.
 
+Cinder is transitioning to use mock, rather than mox, and so new tests should
+use mock only.
+
 For more information on creating unit tests and utilizing the testing
 infrastructure in OpenStack Cinder, please read the Cinder testing
 `README.rst <https://github.com/openstack/cinder/blob/master/cinder/testing/README.rst>`_.
