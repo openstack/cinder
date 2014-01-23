@@ -180,14 +180,14 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                          'volume_id': src_vref['id'],
                          'id': 'tmp-snap-%s' % src_vref['id'],
                          'volume': src_vref}
-        self.create_snapshot(temp_snapshot)
+        self._create_snapshot(temp_snapshot)
         try:
             self._copy_volume_from_snapshot(temp_snapshot,
                                             volume_info,
                                             src_vref['size'])
 
         finally:
-            self.delete_snapshot(temp_snapshot)
+            self._delete_snapshot(temp_snapshot)
 
         return {'provider_location': src_vref['provider_location']}
 
@@ -205,6 +205,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         return {'provider_location': volume['provider_location']}
 
+    @utils.synchronized('glusterfs', external=False)
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -283,6 +284,11 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
     @utils.synchronized('glusterfs', external=False)
     def create_snapshot(self, snapshot):
+        """Apply locking to the create snapshot operation."""
+
+        return self._create_snapshot(snapshot)
+
+    def _create_snapshot(self, snapshot):
         """Create a snapshot.
 
         If volume is attached, call to Nova to create snapshot,
@@ -451,7 +457,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         LOG.debug(_('volume id: %s') % snapshot['volume_id'])
 
         path_to_disk = self._local_path_volume(snapshot['volume'])
-        self._create_snapshot(snapshot, path_to_disk)
+        self._create_snapshot_offline(snapshot, path_to_disk)
 
     def _create_qcow2_snap_file(self, snapshot, backing_filename,
                                 new_snap_path):
@@ -480,7 +486,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                    new_snap_path]
         self._execute(*command, run_as_root=True)
 
-    def _create_snapshot(self, snapshot, path_to_disk):
+    def _create_snapshot_offline(self, snapshot, path_to_disk):
         """Create snapshot (offline case)."""
 
         # Requires volume status = 'available'
@@ -535,6 +541,10 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
     @utils.synchronized('glusterfs', external=False)
     def delete_snapshot(self, snapshot):
+        """Apply locking to the delete snapshot operation."""
+        self._delete_snapshot(snapshot)
+
+    def _delete_snapshot(self, snapshot):
         """Delete a snapshot.
 
         If volume status is 'available', delete snapshot here in Cinder
