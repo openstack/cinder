@@ -35,6 +35,7 @@ Volume backups can be created, restored, deleted and listed.
 
 from oslo.config import cfg
 
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
 from cinder import manager
@@ -71,6 +72,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.az = CONF.storage_availability_zone
         self.volume_managers = {}
         self._setup_volume_drivers()
+        self.backup_rpcapi = backup_rpcapi.BackupAPI()
         super(BackupManager, self).__init__(service_name='backup',
                                             *args, **kwargs)
 
@@ -296,22 +298,20 @@ class BackupManager(manager.SchedulerDependentManager):
         expected_status = 'restoring-backup'
         actual_status = volume['status']
         if actual_status != expected_status:
-            err = _('Restore backup aborted: expected volume status '
-                    '%(expected_status)s but got %(actual_status)s.') % {
-                        'expected_status': expected_status,
-                        'actual_status': actual_status
-                    }
+            err = (_('Restore backup aborted, expected volume status '
+                     '%(expected_status)s but got %(actual_status)s.') %
+                   {'expected_status': expected_status,
+                    'actual_status': actual_status})
             self.db.backup_update(context, backup_id, {'status': 'available'})
             raise exception.InvalidVolume(reason=err)
 
         expected_status = 'restoring'
         actual_status = backup['status']
         if actual_status != expected_status:
-            err = _('Restore backup aborted: expected backup status '
-                    '%(expected_status)s but got %(actual_status)s.') % {
-                        'expected_status': expected_status,
-                        'actual_status': actual_status
-                    }
+            err = (_('Restore backup aborted: expected backup status '
+                     '%(expected_status)s but got %(actual_status)s.') %
+                   {'expected_status': expected_status,
+                    'actual_status': actual_status})
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             self.db.volume_update(context, volume_id, {'status': 'error'})
@@ -420,3 +420,151 @@ class BackupManager(manager.SchedulerDependentManager):
         context = context.elevated()
         self.db.backup_destroy(context, backup_id)
         LOG.info(_('Delete backup finished, backup %s deleted.'), backup_id)
+
+    def export_record(self, context, backup_id):
+        """Export all volume backup metadata details to allow clean import.
+
+        Export backup metadata so it could be re-imported into the database
+        without any prerequisite in the backup database.
+
+        :param context: running context
+        :param backup_id: backup id to export
+        :returns: backup_record - a description of how to import the backup
+        :returns: contains 'backup_url' - how to import the backup, and
+        :returns: 'backup_service' describing the needed driver.
+        :raises: InvalidBackup
+        """
+        LOG.info(_('Export record started, backup: %s.'), backup_id)
+
+        backup = self.db.backup_get(context, backup_id)
+
+        expected_status = 'available'
+        actual_status = backup['status']
+        if actual_status != expected_status:
+            err = (_('Export backup aborted, expected backup status '
+                     '%(expected_status)s but got %(actual_status)s.') %
+                   {'expected_status': expected_status,
+                    'actual_status': actual_status})
+            raise exception.InvalidBackup(reason=err)
+
+        backup_record = {}
+        backup_record['backup_service'] = backup['service']
+        backup_service = self._map_service_to_driver(backup['service'])
+        configured_service = self.driver_name
+        if backup_service != configured_service:
+            err = (_('Export record aborted, the backup service currently'
+                     ' configured [%(configured_service)s] is not the'
+                     ' backup service that was used to create this'
+                     ' backup [%(backup_service)s].') %
+                   {'configured_service': configured_service,
+                    'backup_service': backup_service})
+            raise exception.InvalidBackup(reason=err)
+
+        # Call driver to create backup description string
+        try:
+            utils.require_driver_initialized(self.driver)
+            backup_service = self.service.get_backup_driver(context)
+            backup_url = backup_service.export_record(backup)
+            backup_record['backup_url'] = backup_url
+        except Exception as err:
+            msg = unicode(err)
+            raise exception.InvalidBackup(reason=msg)
+
+        LOG.info(_('Export record finished, backup %s exported.'), backup_id)
+        return backup_record
+
+    def import_record(self,
+                      context,
+                      backup_id,
+                      backup_service,
+                      backup_url,
+                      backup_hosts):
+        """Import all volume backup metadata details to the backup db.
+
+        :param context: running context
+        :param backup_id: The new backup id for the import
+        :param backup_service: The needed backup driver for import
+        :param backup_url: An identifier string to locate the backup
+        :param backup_hosts: Potential hosts to execute the import
+        :raises: InvalidBackup
+        :raises: ServiceNotFound
+        """
+        LOG.info(_('Import record started, backup_url: %s.'), backup_url)
+
+        # Can we import this backup?
+        if (backup_service != self.driver_name):
+            # No, are there additional potential backup hosts in the list?
+            if len(backup_hosts) > 0:
+                # try the next host on the list, maybe he can import
+                first_host = backup_hosts.pop()
+                self.backup_rpcapi.import_record(context,
+                                                 first_host,
+                                                 backup_id,
+                                                 backup_service,
+                                                 backup_url,
+                                                 backup_hosts)
+            else:
+                # empty list - we are the last host on the list, fail
+                err = _('Import record failed, cannot find backup '
+                        'service to perform the import. Request service '
+                        '%(service)s') % {'service': backup_service}
+                self.db.backup_update(context, backup_id, {'status': 'error',
+                                                           'fail_reason': err})
+                raise exception.ServiceNotFound(service_id=backup_service)
+        else:
+            # Yes...
+            try:
+                utils.require_driver_initialized(self.driver)
+                backup_service = self.service.get_backup_driver(context)
+                backup_options = backup_service.import_record(backup_url)
+            except Exception as err:
+                msg = unicode(err)
+                self.db.backup_update(context,
+                                      backup_id,
+                                      {'status': 'error',
+                                      'fail_reason': msg})
+                raise exception.InvalidBackup(reason=msg)
+
+            required_import_options = ['display_name',
+                                       'display_description',
+                                       'container',
+                                       'size',
+                                       'service_metadata',
+                                       'service',
+                                       'object_count']
+
+            backup_update = {}
+            backup_update['status'] = 'available'
+            backup_update['service'] = self.driver_name
+            backup_update['availability_zone'] = self.az
+            backup_update['host'] = self.host
+            for entry in required_import_options:
+                if entry not in backup_options:
+                    msg = (_('Backup metadata received from driver for '
+                             'import is missing %s.'), entry)
+                    self.db.backup_update(context,
+                                          backup_id,
+                                          {'status': 'error',
+                                           'fail_reason': msg})
+                    raise exception.InvalidBackup(reason=msg)
+                backup_update[entry] = backup_options[entry]
+            # Update the database
+            self.db.backup_update(context, backup_id, backup_update)
+
+            # Verify backup
+            try:
+                backup_service.verify(backup_id)
+            except NotImplementedError:
+                LOG.warn(_('Backup service %(service)s does not support '
+                           'verify. Backup id %(id)s is not verified. '
+                           'Skipping verify.') % {'service': self.driver_name,
+                                                  'id': backup_id})
+            except exception.InvalidBackup as err:
+                with excutils.save_and_reraise_exception():
+                    self.db.backup_update(context, backup_id,
+                                          {'status': 'error',
+                                           'fail_reason':
+                                           unicode(err)})
+
+            LOG.info(_('Import record id %s metadata from driver '
+                       'finished.') % backup_id)

@@ -71,5 +71,8 @@
     "backup:delete": [],
     "backup:get": [],
     "backup:get_all": [],
-    "backup:restore": []
+    "backup:restore": [],
+    "backup:backup-import": [["rule:admin_api"]],
+    "backup:backup-export": [["rule:admin_api"]]
+
 }

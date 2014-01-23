@@ -96,6 +96,16 @@ class API(base.Base):
                 return True
         return False
 
+    def _list_backup_services(self):
+        """List all enabled backup services.
+
+        :returns: list -- hosts for services that are enabled for backup.
+        """
+        topic = CONF.backup_topic
+        ctxt = context.get_admin_context()
+        services = self.db.service_get_all_by_topic(ctxt, topic)
+        return [srv['host'] for srv in services if not srv['disabled']]
+
     def create(self, context, name, description, volume_id,
                container, availability_zone=None):
         """Make the RPC call to create a volume backup."""
@@ -197,3 +207,68 @@ class API(base.Base):
              'volume_id': volume_id, }
 
         return d
+
+    def export_record(self, context, backup_id):
+        """Make the RPC call to export a volume backup.
+
+        Call backup manager to execute backup export.
+
+        :param context: running context
+        :param backup_id: backup id to export
+        :returns: dictionary -- a description of how to import the backup
+        :returns: contains 'backup_url' and 'backup_service'
+        :raises: InvalidBackup
+        """
+        check_policy(context, 'backup-export')
+        backup = self.get(context, backup_id)
+        if backup['status'] != 'available':
+            msg = (_('Backup status must be available and not %s.') %
+                   backup['status'])
+            raise exception.InvalidBackup(reason=msg)
+
+        LOG.debug("Calling RPCAPI with context: "
+                  "%(ctx)s, host: %(host)s, backup: %(id)s.",
+                  {'ctx': context,
+                   'host': backup['host'],
+                   'id': backup['id']})
+        export_data = self.backup_rpcapi.export_record(context,
+                                                       backup['host'],
+                                                       backup['id'])
+
+        return export_data
+
+    def import_record(self, context, backup_service, backup_url):
+        """Make the RPC call to import a volume backup.
+
+        :param context: running context
+        :param backup_service: backup service name
+        :param backup_url: backup description to be used by the backup driver
+        :raises: InvalidBackup
+        :raises: ServiceNotFound
+        """
+        check_policy(context, 'backup-import')
+
+        # NOTE(ronenkat): since we don't have a backup-scheduler
+        # we need to find a host that support the backup service
+        # that was used to create the backup.
+        # We  send it to the first backup service host, and the backup manager
+        # on that host will forward it to other hosts on the hosts list if it
+        # cannot support correct service itself.
+        hosts = self._list_backup_services()
+        if len(hosts) == 0:
+            raise exception.ServiceNotFound(service_id=backup_service)
+
+        options = {'user_id': context.user_id,
+                   'project_id': context.project_id,
+                   'volume_id': '0000-0000-0000-0000',
+                   'status': 'creating', }
+        backup = self.db.backup_create(context, options)
+        first_host = hosts.pop()
+        self.backup_rpcapi.import_record(context,
+                                         first_host,
+                                         backup['id'],
+                                         backup_service,
+                                         backup_url,
+                                         hosts)
+
+        return backup
