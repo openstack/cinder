@@ -35,7 +35,7 @@ class BrickLvmTestCase(test.TestCase):
     def setUp(self):
         self._mox = mox.Mox()
         self.configuration = mox.MockObject(conf.Configuration)
-        self.configuration.volume_group_name = 'fake-volumes'
+        self.configuration.volume_group_name = 'fake-vg'
         super(BrickLvmTestCase, self).setUp()
 
         #Stub processutils.execute for static methods
@@ -66,44 +66,42 @@ class BrickLvmTestCase(test.TestCase):
 
         if ('env, LC_ALL=C, vgs, --noheadings, --unit=g, -o, name' ==
                 cmd_string):
-            data = "  fake-volumes\n"
+            data = "  fake-vg\n"
             data += "  some-other-vg\n"
-        elif ('env, LC_ALL=C, vgs, --noheadings, -o, name, fake-volumes' ==
+        elif ('env, LC_ALL=C, vgs, --noheadings, -o, name, fake-vg' ==
                 cmd_string):
-            data = "  fake-volumes\n"
+            data = "  fake-vg\n"
         elif 'env, LC_ALL=C, vgs, --version' in cmd_string:
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
-        elif ('env, LC_ALL=C, vgs, --noheadings, -o uuid, fake-volumes' in
+        elif ('env, LC_ALL=C, vgs, --noheadings, -o uuid, fake-vg' in
               cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
         elif 'env, LC_ALL=C, vgs, --noheadings, --unit=g, ' \
              '-o, name,size,free,lv_count,uuid, ' \
              '--separator, :, --nosuffix' in cmd_string:
-            data = "  fake-volumes:10.00:10.00:0:"\
+            data = "  fake-vg:10.00:10.00:0:"\
                    "kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
-            if 'fake-volumes' in cmd_string:
+            if 'fake-vg' in cmd_string:
                 return (data, "")
-            data += "  fake-volumes-2:10.00:10.00:0:"\
+            data += "  fake-vg-2:10.00:10.00:0:"\
                     "lWyauW-dKpG-Rz7E-xtKY-jeju-QsYU-SLG7Z2\n"
-            data += "  fake-volumes-3:10.00:10.00:0:"\
+            data += "  fake-vg-3:10.00:10.00:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
         elif ('env, LC_ALL=C, lvs, --noheadings, '
               '--unit=g, -o, vg_name,name,size' in cmd_string):
-            data = "  fake-volumes fake-1 1.00g\n"
-            data += "  fake-volumes fake-2 1.00g\n"
+            data = "  fake-vg fake-1 1.00g\n"
+            data += "  fake-vg fake-2 1.00g\n"
         elif ('env, LC_ALL=C, lvdisplay, --noheading, -C, -o, Attr' in
               cmd_string):
             if 'test-volumes' in cmd_string:
                 data = '  wi-a-'
             else:
                 data = '  owi-a-'
-        elif 'env, LC_ALL=C, pvs, --noheadings' in cmd_string \
-                and 'fake-volumes' in cmd_string:
-            data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
         elif 'env, LC_ALL=C, pvs, --noheadings' in cmd_string:
-            data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
-            data += "  fake-volumes-2:/dev/sdb:10.00g:8.99g\n"
-            data += "  fake-volumes-3:/dev/sdc:10.00g:8.99g\n"
+            data = "  fake-vg:/dev/sda:10.00:1.00\n"
+            data += "  fake-vg:/dev/sdb:10.00:1.00\n"
+            data += "  fake-vg:/dev/sdc:10.00:8.99\n"
+            data += "  fake-vg-2:/dev/sdd:10.00:9.99\n"
         elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g, -o, ' \
              'size,data_percent, ' \
              '--separator, :' in cmd_string:
@@ -129,23 +127,28 @@ class BrickLvmTestCase(test.TestCase):
 
         self.assertEqual(out[0]['name'], 'fake-1')
         self.assertEqual(out[0]['size'], '1.00g')
-        self.assertEqual(out[0]['vg'], 'fake-volumes')
+        self.assertEqual(out[0]['vg'], 'fake-vg')
 
     def test_get_volume(self):
         self.assertEqual(self.vg.get_volume('fake-1')['name'], 'fake-1')
 
     def test_get_all_physical_volumes(self):
-        pvs = self.vg.get_all_physical_volumes('sudo')
+        # Filtered VG version
+        pvs = self.vg.get_all_physical_volumes('sudo', 'fake-vg')
         self.assertEqual(len(pvs), 3)
+
+        # Non-Filtered, all VG's
+        pvs = self.vg.get_all_physical_volumes('sudo')
+        self.assertEqual(len(pvs), 4)
 
     def test_get_physical_volumes(self):
         pvs = self.vg.get_physical_volumes()
-        self.assertEqual(len(pvs), 1)
+        self.assertEqual(len(pvs), 3)
 
     def test_get_volume_groups(self):
         self.assertEqual(len(self.vg.get_all_volume_groups('sudo')), 3)
         self.assertEqual(len(self.vg.get_all_volume_groups('sudo',
-                                                           'fake-volumes')), 1)
+                                                           'fake-vg')), 1)
 
     def test_thin_support(self):
         # lvm.supports_thin() is a static method and doesn't
@@ -227,7 +230,7 @@ class BrickLvmTestCase(test.TestCase):
 
     def test_thin_pool_creation(self):
 
-        # The size of fake-volumes volume group is 10g, so the calculated thin
+        # The size of fake-vg volume group is 10g, so the calculated thin
         # pool size should be 9.5g (95% of 10g).
         self.assertEqual("9.5g", self.vg.create_thin_pool())
 
@@ -237,7 +240,7 @@ class BrickLvmTestCase(test.TestCase):
             self.assertEqual(size, self.vg.create_thin_pool(size_str=size))
 
     def test_thin_pool_free_space(self):
-        # The size of fake-volumes-pool is 9g and the allocated data sums up to
+        # The size of fake-vg-pool is 9g and the allocated data sums up to
         # 12% so the calculated free space should be 7.92
         self.assertEqual(float("7.92"),
                          self.vg._get_thin_pool_free_space("fake-vg",
@@ -263,7 +266,7 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(self.vg.vg_thin_pool, pool_name)
 
     def test_lv_has_snapshot(self):
-        self.assertTrue(self.vg.lv_has_snapshot('fake-volumes'))
+        self.assertTrue(self.vg.lv_has_snapshot('fake-vg'))
         self.assertFalse(self.vg.lv_has_snapshot('test-volumes'))
 
     def test_activate_lv(self):
@@ -271,7 +274,7 @@ class BrickLvmTestCase(test.TestCase):
         self.vg._supports_lvchange_ignoreskipactivation = True
 
         self.vg._execute('lvchange', '-a', 'y', '--yes', '-K',
-                         'fake-volumes/my-lv',
+                         'fake-vg/my-lv',
                          root_helper='sudo', run_as_root=True)
 
         self._mox.ReplayAll()
@@ -279,3 +282,6 @@ class BrickLvmTestCase(test.TestCase):
         self.vg.activate_lv('my-lv')
 
         self._mox.VerifyAll()
+
+    def test_get_mirrored_available_capacity(self):
+        self.assertEqual(self.vg.vg_mirror_free_space(1), 2.0)

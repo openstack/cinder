@@ -2684,6 +2684,13 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
             # host to test the check of dest VG existence.
             return [{'name': 'cinder-volumes-2'}]
 
+        def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
+            return [{}]
+
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_all_physical_volumes',
+                       _fake_get_all_physical_volumes)
+
         self.stubs.Set(self.volume.driver, '_execute', fake_execute)
 
         self.stubs.Set(volutils, 'copy_volume',
@@ -2877,6 +2884,9 @@ class ISCSITestCase(DriverTestCase):
 
     def test_get_volume_stats(self):
 
+        def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
+            return [{}]
+
         def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
             return [{'name': 'cinder-volumes',
                      'size': '5.52',
@@ -2887,6 +2897,11 @@ class ISCSITestCase(DriverTestCase):
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_volume_groups',
                        _fake_get_all_volume_groups)
+
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_all_physical_volumes',
+                       _fake_get_all_physical_volumes)
+
         self.volume.driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
 
         self.volume.driver._update_volume_stats()
@@ -2925,12 +2940,19 @@ class ISERTestCase(ISCSITestCase):
         self.configuration.iser_port = 3260
 
     def test_get_volume_stats(self):
+        def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
+            return [{}]
+
         def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
             return [{'name': 'cinder-volumes',
                      'size': '5.52',
                      'available': '0.52',
                      'lv_count': '2',
                      'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
+
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_all_physical_volumes',
+                       _fake_get_all_physical_volumes)
 
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_volume_groups',

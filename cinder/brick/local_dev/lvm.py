@@ -92,6 +92,7 @@ class LVM(executor.Executor):
                 self.vg_thin_pool = pool_name
 
             self.activate_lv(self.vg_thin_pool)
+        self.pv_list = self.get_all_physical_volumes(root_helper, vg_name)
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
@@ -306,23 +307,21 @@ class LVM(executor.Executor):
         if no_suffix:
             cmd.append('--nosuffix')
 
-        if vg_name is not None:
-            cmd.append(vg_name)
-
         (out, err) = putils.execute(*cmd,
                                     root_helper=root_helper,
                                     run_as_root=True)
 
-        pv_list = []
-        if out is not None:
-            pvs = out.split()
-            for pv in pvs:
-                fields = pv.split(':')
-                pv_list.append({'vg': fields[0],
-                                'name': fields[1],
-                                'size': fields[2],
-                                'available': fields[3]})
+        pvs = out.split()
+        if vg_name is not None:
+            pvs = [pv for pv in pvs if vg_name == pv.split(':')[0]]
 
+        pv_list = []
+        for pv in pvs:
+            fields = pv.split(':')
+            pv_list.append({'vg': fields[0],
+                            'name': fields[1],
+                            'size': float(fields[2]),
+                            'available': float(fields[3])})
         return pv_list
 
     def get_physical_volumes(self):
@@ -626,3 +625,28 @@ class LVM(executor.Executor):
             LOG.error(_('StdOut  :%s') % err.stdout)
             LOG.error(_('StdErr  :%s') % err.stderr)
             raise
+
+    def vg_mirror_free_space(self, mirror_count):
+        free_capacity = 0.0
+
+        disks = []
+        for pv in self.pv_list:
+            disks.append(float(pv['available']))
+
+        while True:
+            disks = sorted([a for a in disks if a > 0.0], reverse=True)
+            if len(disks) <= mirror_count:
+                break
+            # consume the smallest disk
+            disk = disks[-1]
+            disks = disks[:-1]
+            # match extents for each mirror on the largest disks
+            for index in list(range(mirror_count)):
+                disks[index] -= disk
+            free_capacity += disk
+
+        return free_capacity
+
+    def vg_mirror_size(self, mirror_count):
+        return (float(self.vg_free_space) /
+                (mirror_count + 1))
