@@ -184,6 +184,10 @@ class TgtAdm(TargetAdmin):
             old_persist_file = os.path.join(volumes_dir, old_name)
 
         try:
+            # with the persistent tgts we create them
+            # by creating the entry in the persist file
+            # and then doing an update to get the target
+            # created.
             self.update_iscsi_target(name)
 
             # Grab targets list for debug
@@ -198,7 +202,8 @@ class TgtAdm(TargetAdmin):
                                        'target',
                                        run_as_root=True)
             LOG.debug("Targets after update: %s" % out)
-        except putils.ProcessExecutionError as e:
+        except (putils.ProcessExecutionError,
+                exception.ISCSITargetUpdateFailed) as e:
             LOG.warning(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
                         % {'vol_id': vol_id, 'e': str(e)})
@@ -250,8 +255,8 @@ class TgtAdm(TargetAdmin):
         except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to update iscsi target %(name)s: %(e)s") %
                       {'name': name, 'e': str(e)})
-            LOG.debug("StdOut from tgt-admin --update: %s", e.stdout)
-            LOG.debug("StdErr from tgt-admin --update: %s", e.stderr)
+            LOG.error("StdOut from tgt-admin --update: %s", e.stdout)
+            LOG.error("StdErr from tgt-admin --update: %s", e.stderr)
             raise exception.ISCSITargetUpdateFailed(name=name)
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
