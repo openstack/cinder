@@ -30,7 +30,7 @@ from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier
 from cinder import quota
-from cinder.volume.flows import create_volume
+from cinder.volume.flows.api import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 
 

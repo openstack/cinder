@@ -38,7 +38,7 @@ from cinder import quota
 from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
-from cinder.volume.flows import create_volume
+from cinder.volume.flows.api import create_volume
 from cinder.volume import qos_specs
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
