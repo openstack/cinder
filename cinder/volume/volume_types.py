@@ -133,20 +133,6 @@ def get_default_volume_type():
     return vol_type
 
 
-def is_key_value_present(volume_type_id, key, value, volume_type=None):
-    if volume_type_id is None:
-        return False
-
-    if volume_type is None:
-        volume_type = get_volume_type(context.get_admin_context(),
-                                      volume_type_id)
-    if (volume_type.get('extra_specs') is None or
-            volume_type['extra_specs'].get(key) != value):
-        return False
-    else:
-        return True
-
-
 def get_volume_type_extra_specs(volume_type_id, key=False):
     volume_type = get_volume_type(context.get_admin_context(),
                                   volume_type_id)
