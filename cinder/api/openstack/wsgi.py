@@ -1164,8 +1164,7 @@ class Fault(webob.exc.HTTPException):
         fault_data = {
             fault_name: {
                 'code': code,
-                'message': gettextutils.get_localized_message(explanation,
-                                                              locale)}}
+                'message': gettextutils.translate(explanation, locale)}}
         if code == 413:
             retry = self.wrapped_exc.headers.get('Retry-After', None)
             if retry:
@@ -1228,7 +1227,7 @@ class OverLimitFault(webob.exc.HTTPException):
 
         def translate(msg):
             locale = request.best_match_language()
-            return gettextutils.get_localized_message(msg, locale)
+            return gettextutils.translate(msg, locale)
 
         self.content['overLimitFault']['message'] = \
             translate(self.content['overLimitFault']['message'])
