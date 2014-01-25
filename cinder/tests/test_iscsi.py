@@ -47,6 +47,7 @@ class TargetAdminTestCase(object):
         self.stubs.Set(iscsi.TgtAdm, '_verify_backing_lun',
                        self.fake_verify_backing_lun)
         self.driver = driver.ISCSIDriver()
+        self.flags(iscsi_target_prefix='iqn.2011-09.org.foo.bar:')
 
     def fake_verify_backing_lun(obj, iqn, tid):
         return True
@@ -113,7 +114,7 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.script_template = "\n".join([
             'tgt-admin --update iqn.2011-09.org.foo.bar:blaa',
             'tgt-admin --force '
-            '--delete iqn.2010-10.org.openstack:volume-blaa',
+            '--delete iqn.2011-09.org.foo.bar:volume-blaa',
             'tgtadm --lld iscsi --op show --mode target'])
 
     def tearDown(self):
@@ -198,7 +199,7 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.script_template = "\n".join([
             'cinder-rtstool create '
             '/foo iqn.2011-09.org.foo.bar:blaa test_id test_pass',
-            'cinder-rtstool delete iqn.2010-10.org.openstack:volume-blaa'])
+            'cinder-rtstool delete iqn.2011-09.org.foo.bar:volume-blaa'])
 
 
 class ISERTgtAdmTestCase(TgtAdmTestCase):
