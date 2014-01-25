@@ -272,10 +272,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume_ref = self.db.volume_update(
                     context, volume_ref['id'], model_update)
             if sourcevol_ref is not None:
-                self.db.volume_glance_metadata_copy_from_volume_to_volume(
-                    context,
-                    source_volid,
-                    volume_id)
+                try:
+                    self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                        context,
+                        source_volid,
+                        volume_id)
+                except exception.GlanceMetadataNotFound:
+                    LOG.debug(_("no glance metadata found for volume: %s"),
+                              volume_id)
+                    sys.exc_clear()
 
             LOG.debug(_("volume %s: creating export"), volume_ref['name'])
             model_update = self.driver.create_export(context, volume_ref)
@@ -289,9 +294,14 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         if snapshot_id:
             # Copy any Glance metadata from the original volume
-            self.db.volume_glance_metadata_copy_to_volume(context,
-                                                          volume_ref['id'],
-                                                          snapshot_id)
+            try:
+                self.db.volume_glance_metadata_copy_to_volume(context,
+                                                              volume_ref['id'],
+                                                              snapshot_id)
+            except exception.GlanceMetadataNotFound:
+                LOG.debug(_("no glance metadata found for volume: %s"),
+                          volume_ref['id'])
+                sys.exc_clear()
 
         if image_id and not cloned:
             if image_meta:
@@ -487,7 +497,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # only shows the trace for the exception
         try:
             self.db.volume_glance_metadata_copy_to_snapshot(
-                            context, snapshot_ref['id'], volume_id)
+                context, snapshot_ref['id'], volume_id)
         except exception.CinderException as ex:
             LOG.exception(_("Failed updating %(snapshot_id)s"
                             " metadata using the provided volumes"
