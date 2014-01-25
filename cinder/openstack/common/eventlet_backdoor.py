@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2012 OpenStack Foundation.
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -31,7 +29,7 @@ import eventlet.backdoor
 import greenlet
 from oslo.config import cfg
 
-from cinder.openstack.common.gettextutils import _  # noqa
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 help_for_backdoor_port = (
@@ -66,7 +64,7 @@ def _dont_use_this():
 
 
 def _find_objects(t):
-    return filter(lambda o: isinstance(o, t), gc.get_objects())
+    return [o for o in gc.get_objects() if isinstance(o, t)]
 
 
 def _print_greenthreads():

@@ -23,6 +23,7 @@ import os
 import random
 import signal
 import sys
+import threading
 import time
 
 try:
@@ -34,7 +35,6 @@ except ImportError:
     UnsupportedOperation = None
 
 import eventlet
-from eventlet import event
 from oslo.config import cfg
 
 from cinder.openstack.common import eventlet_backdoor
@@ -206,10 +206,16 @@ class ServiceWrapper(object):
 
 
 class ProcessLauncher(object):
-    def __init__(self):
+    def __init__(self, wait_interval=0.01):
+        """Constructor.
+
+        :param wait_interval: The interval to sleep for between checks
+                              of child process exit.
+        """
         self.children = {}
         self.sigcaught = None
         self.running = True
+        self.wait_interval = wait_interval
         rfd, self.writepipe = os.pipe()
         self.readpipe = eventlet.greenio.GreenPipe(rfd, 'r')
         self.handle_signal()
@@ -367,7 +373,7 @@ class ProcessLauncher(object):
                 # Yield to other threads if no children have exited
                 # Sleep for a short time to avoid excessive CPU usage
                 # (see bug #1095346)
-                eventlet.greenthread.sleep(.01)
+                eventlet.greenthread.sleep(self.wait_interval)
                 continue
             while self.running and len(wrap.children) < wrap.workers:
                 self._start_child(wrap)
@@ -413,11 +419,10 @@ class Service(object):
         self.tg = threadgroup.ThreadGroup(threads)
 
         # signal that the service is done shutting itself down:
-        self._done = event.Event()
+        self._done = threading.Event()
 
     def reset(self):
-        # NOTE(Fengqian): docs for Event.reset() recommend against using it
-        self._done = event.Event()
+        self._done = threading.Event()
 
     def start(self):
         pass
@@ -426,8 +431,7 @@ class Service(object):
         self.tg.stop()
         self.tg.wait()
         # Signal that service cleanup is done:
-        if not self._done.ready():
-            self._done.send()
+        self._done.set()
 
     def wait(self):
         self._done.wait()
@@ -438,7 +442,7 @@ class Services(object):
     def __init__(self):
         self.services = []
         self.tg = threadgroup.ThreadGroup()
-        self.done = event.Event()
+        self.done = threading.Event()
 
     def add(self, service):
         self.services.append(service)
@@ -452,8 +456,7 @@ class Services(object):
 
         # Each service has performed cleanup, now signal that the run_service
         # wrapper threads can now die:
-        if not self.done.ready():
-            self.done.send()
+        self.done.set()
 
         # reap threads:
         self.tg.stop()
@@ -463,7 +466,7 @@ class Services(object):
 
     def restart(self):
         self.stop()
-        self.done = event.Event()
+        self.done = threading.Event()
         for restart_service in self.services:
             restart_service.reset()
             self.tg.add_thread(self.run_service, restart_service, self.done)
