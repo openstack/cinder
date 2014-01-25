@@ -62,17 +62,17 @@ if __name__ == '__main__':
     LOG = logging.getLogger('cinder.all')
 
     utils.monkey_patch()
-    servers = []
+    launcher = service.process_launcher()
     # cinder-api
     try:
-        servers.append(service.WSGIService('osapi_volume'))
+        server = service.WSGIService('osapi_volume')
+        launcher.launch_service(server, workers=server.workers or 1)
     except (Exception, SystemExit):
         LOG.exception(_('Failed to load osapi_volume'))
 
     for binary in ['cinder-volume', 'cinder-scheduler', 'cinder-backup']:
         try:
-            servers.append(service.Service.create(binary=binary))
+            launcher.launch_service(service.Service.create(binary=binary))
         except (Exception, SystemExit):
             LOG.exception(_('Failed to load %s'), binary)
-    service.serve(*servers)
-    service.wait()
+    launcher.wait()

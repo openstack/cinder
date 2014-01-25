@@ -74,7 +74,7 @@ class Server(object):
     default_pool_size = 1000
 
     def __init__(self, name, app, host=None, port=None, pool_size=None,
-                 protocol=eventlet.wsgi.HttpProtocol):
+                 protocol=eventlet.wsgi.HttpProtocol, backlog=128):
         """Initialize, but do not start, a WSGI server.
 
         :param name: Pretty name for logging.
@@ -95,6 +95,13 @@ class Server(object):
         self._pool = eventlet.GreenPool(pool_size or self.default_pool_size)
         self._logger = logging.getLogger("eventlet.wsgi.server")
         self._wsgi_logger = logging.WritableLogger(self._logger)
+
+        if backlog < 1:
+            raise exception.InvalidInput(
+                reason='The backlog must be more than 1')
+        self._socket = self._get_socket(self._host,
+                                        self._port,
+                                        backlog=backlog)
 
     def _get_socket(self, host, port, backlog):
         bind_addr = (host, port)
@@ -194,13 +201,6 @@ class Server(object):
         :raises: cinder.exception.InvalidInput
 
         """
-        if backlog < 1:
-            raise exception.InvalidInput(
-                reason='The backlog must be more than 1')
-
-        self._socket = self._get_socket(self._host,
-                                        self._port,
-                                        backlog=backlog)
         self._server = eventlet.spawn(self._start)
         (self._host, self._port) = self._socket.getsockname()[0:2]
         LOG.info(_("Started %(name)s on %(host)s:%(port)s") %
@@ -224,7 +224,10 @@ class Server(object):
 
         """
         LOG.info(_("Stopping WSGI server."))
-        self._server.kill()
+        if self._server is not None:
+            # Resize pool to stop new requests from being processed
+            self._pool.resize(0)
+            self._server.kill()
 
     def wait(self):
         """Block, until the server has stopped.
@@ -235,7 +238,8 @@ class Server(object):
 
         """
         try:
-            self._server.wait()
+            if self._server is not None:
+                self._server.wait()
         except greenlet.GreenletExit:
             LOG.info(_("WSGI server has stopped."))
 
