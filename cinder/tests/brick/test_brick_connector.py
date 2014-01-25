@@ -186,6 +186,8 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                              ('iscsiadm -m node -T %s -p %s --op update'
                               ' -n node.startup -v automatic' % (iqn,
                               location)),
+                             ('iscsiadm -m node --rescan'),
+                             ('iscsiadm -m session --rescan'),
                              ('tee -a /sys/block/sdb/device/delete'),
                              ('iscsiadm -m node -T %s -p %s --op update'
                               ' -n node.startup -v manual' % (iqn, location)),
@@ -199,7 +201,6 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         self.assertEqual(expected_commands, self.cmds)
 
     def test_connect_volume_with_multipath(self):
-
         location = '10.0.2.15:3260'
         name = 'volume-00000001'
         iqn = 'iqn.2010-10.org.openstack:%s' % name
@@ -213,7 +214,7 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                        lambda *args, **kwargs: "%s %s" % (location, iqn))
         self.stubs.Set(self.connector_with_multipath,
                        '_get_target_portals_from_iscsiadm_output',
-                       lambda x: [location])
+                       lambda x: [[location, iqn]])
         self.stubs.Set(self.connector_with_multipath,
                        '_connect_to_iscsi_portal',
                        lambda x: None)
@@ -250,7 +251,9 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         test_output = '''10.15.84.19:3260 iqn.1992-08.com.netapp:sn.33615311
                          10.15.85.19:3260 iqn.1992-08.com.netapp:sn.33615311'''
         res = connector._get_target_portals_from_iscsiadm_output(test_output)
-        expected = ['10.15.84.19:3260', '10.15.85.19:3260']
+        ip_iqn1 = ['10.15.84.19:3260', 'iqn.1992-08.com.netapp:sn.33615311']
+        ip_iqn2 = ['10.15.85.19:3260', 'iqn.1992-08.com.netapp:sn.33615311']
+        expected = [ip_iqn1, ip_iqn2]
         self.assertEqual(expected, res)
 
     def test_get_multipath_device_name(self):
@@ -288,12 +291,16 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
     def test_disconnect_volume_multipath_iscsi(self):
         result = []
 
-        def fake_disconnect_mpath(properties):
+        def fake_disconnect_from_iscsi_portal(properties):
             result.append(properties)
         iqn1 = 'iqn.2013-01.ro.com.netapp:node.netapp01'
         iqn2 = 'iqn.2013-01.ro.com.netapp:node.netapp02'
         iqns = [iqn1, iqn2]
-        dev = ('ip-10.0.0.1:3260-iscsi-%s-lun-0' % iqn1)
+        portal = '10.0.0.1:3260'
+        dev = ('ip-%s-iscsi-%s-lun-0' % (portal, iqn1))
+        self.stubs.Set(self.connector,
+                       '_get_target_portals_from_iscsiadm_output',
+                       lambda x: [[portal, iqn1]])
         self.stubs.Set(self.connector, '_rescan_iscsi', lambda: None)
         self.stubs.Set(self.connector, '_rescan_multipath', lambda: None)
         self.stubs.Set(self.connector.driver, 'get_all_block_devices',
@@ -302,27 +309,37 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                        lambda x: '/dev/mapper/md-3')
         self.stubs.Set(self.connector, '_get_multipath_iqn',
                        lambda x: iqns.pop())
-        self.stubs.Set(self.connector, '_disconnect_mpath',
-                       fake_disconnect_mpath)
-        fake_property = {'target_iqn': "You'll-never-find-this-iqn"}
+        self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
+                       fake_disconnect_from_iscsi_portal)
+        fake_property = {'target_portal': portal,
+                         'target_iqn': iqn1}
         self.connector._disconnect_volume_multipath_iscsi(fake_property,
                                                           'fake/multipath')
-        self.assertEqual([fake_property], result)
+        # Target in use by other mp devices, don't disconnect
+        self.assertEqual([], result)
 
     def test_disconnect_volume_multipath_iscsi_without_other_mp_devices(self):
         result = []
 
-        def fake_disconnect_mpath(properties):
+        def fake_disconnect_from_iscsi_portal(properties):
             result.append(properties)
+        portal = '10.0.2.15:3260'
+        name = 'volume-00000001'
+        iqn = 'iqn.2010-10.org.openstack:%s' % name
+        self.stubs.Set(self.connector,
+                       '_get_target_portals_from_iscsiadm_output',
+                       lambda x: [[portal, iqn]])
         self.stubs.Set(self.connector, '_rescan_iscsi', lambda: None)
         self.stubs.Set(self.connector, '_rescan_multipath', lambda: None)
         self.stubs.Set(self.connector.driver, 'get_all_block_devices',
                        lambda: [])
-        self.stubs.Set(self.connector, '_disconnect_mpath',
-                       fake_disconnect_mpath)
-        fake_property = {'target_iqn': "You'll-never-find-this-iqn"}
+        self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
+                       fake_disconnect_from_iscsi_portal)
+        fake_property = {'target_portal': portal,
+                         'target_iqn': iqn}
         self.connector._disconnect_volume_multipath_iscsi(fake_property,
                                                           'fake/multipath')
+        # Target not in use by other mp devices, disconnect
         self.assertEqual([fake_property], result)
 
 
