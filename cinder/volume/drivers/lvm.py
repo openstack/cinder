@@ -761,7 +761,13 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         # update the iSCSI target
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume['name'])
-        self.tgtadm.update_iscsi_target(iscsi_name)
+        try:
+            self.tgtadm.update_iscsi_target(iscsi_name)
+        except brick_exception.ISCSITargetUpdateFailed as e:
+            msg = (_('Failed to initialize iscsi '
+                     'connection for target: %s.') % iscsi_name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         # continue with the base class behaviour
         return driver.ISCSIDriver.initialize_connection(self,
