@@ -230,8 +230,8 @@ class ExtractVolumeRequestTask(base.CinderTask):
 
         def validate_snap_size(size):
             if snapshot and size < snapshot['volume_size']:
-                msg = _("Volume size %(size)s cannot be lesser than"
-                        " the snapshot size %(snap_size)s. "
+                msg = _("Volume size %(size)sGB cannot be smaller than"
+                        " the snapshot size %(snap_size)sGB. "
                         "They must be >= original snapshot size.")
                 msg = msg % {'size': size,
                              'snap_size': snapshot['volume_size']}
@@ -239,8 +239,8 @@ class ExtractVolumeRequestTask(base.CinderTask):
 
         def validate_source_size(size):
             if source_volume and size < source_volume['size']:
-                msg = _("Clones currently disallowed when "
-                        "%(size)s < %(source_size)s. "
+                msg = _("Volume size %(size)sGB cannot be smaller than "
+                        "original volume size  %(source_size)sGB. "
                         "They must be >= original volume size.")
                 msg = msg % {'size': size,
                              'source_size': source_volume['size']}
@@ -290,17 +290,17 @@ class ExtractVolumeRequestTask(base.CinderTask):
         image_size = utils.as_int(image_meta['size'], quiet=False)
         image_size_in_gb = (image_size + GB - 1) / GB
         if image_size_in_gb > size:
-            msg = _('Size of specified image %(image_size)s'
-                    ' is larger than volume size %(volume_size)s.')
+            msg = _('Size of specified image %(image_size)sGB'
+                    ' is larger than volume size %(volume_size)sGB.')
             msg = msg % {'image_size': image_size_in_gb, 'volume_size': size}
             raise exception.InvalidInput(reason=msg)
 
         # Check image min_disk requirement is met for the particular volume
         min_disk = image_meta.get('min_disk', 0)
         if size < min_disk:
-            msg = _('Image minDisk size %(min_disk)s is larger'
-                    ' than the volume size %(volume_size)s.')
-            msg = msg % {'min_disk': min_disk, 'volume_size': size}
+            msg = _('Volume size %(volume_size)sGB cannot be smaller'
+                    ' than the image minDisk size %(min_disk)sGB.')
+            msg = msg % {'volume_size': size, 'min_disk': min_disk}
             raise exception.InvalidInput(reason=msg)
 
     @staticmethod
