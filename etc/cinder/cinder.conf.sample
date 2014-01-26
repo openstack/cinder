@@ -1156,6 +1156,59 @@
 
 
 #
+# Options defined in cinder.volume.drivers.ibm.storwize_svc
+#
+
+# Storage system storage pool for volumes (string value)
+#storwize_svc_volpool_name=volpool
+
+# Storage system space-efficiency parameter for volumes
+# (percentage) (integer value)
+#storwize_svc_vol_rsize=2
+
+# Storage system threshold for volume capacity warnings
+# (percentage) (integer value)
+#storwize_svc_vol_warning=0
+
+# Storage system autoexpand parameter for volumes (True/False)
+# (boolean value)
+#storwize_svc_vol_autoexpand=true
+
+# Storage system grain size parameter for volumes
+# (32/64/128/256) (integer value)
+#storwize_svc_vol_grainsize=256
+
+# Storage system compression option for volumes (boolean
+# value)
+#storwize_svc_vol_compression=false
+
+# Enable Easy Tier for volumes (boolean value)
+#storwize_svc_vol_easytier=true
+
+# The I/O group in which to allocate volumes (integer value)
+#storwize_svc_vol_iogrp=0
+
+# Maximum number of seconds to wait for FlashCopy to be
+# prepared. Maximum value is 600 seconds (10 minutes) (integer
+# value)
+#storwize_svc_flashcopy_timeout=120
+
+# Connection protocol (iSCSI/FC) (string value)
+#storwize_svc_connection_protocol=iSCSI
+
+# Configure CHAP authentication for iSCSI connections
+# (Default: Enabled) (boolean value)
+#storwize_svc_iscsi_chap_enabled=true
+
+# Connect with multipath (FC only; iSCSI multipath is
+# controlled by Nova) (boolean value)
+#storwize_svc_multipath_enabled=false
+
+# Allows vdisk to multi host mapping (boolean value)
+#storwize_svc_multihostmap_enabled=true
+
+
+#
 # Options defined in cinder.volume.drivers.lvm
 #
 
@@ -1521,59 +1574,6 @@
 # SolidFire API port. Useful if the device api is behind a
 # proxy on a different port. (integer value)
 #sf_api_port=443
-
-
-#
-# Options defined in cinder.volume.drivers.storwize_svc
-#
-
-# Storage system storage pool for volumes (string value)
-#storwize_svc_volpool_name=volpool
-
-# Storage system space-efficiency parameter for volumes
-# (percentage) (integer value)
-#storwize_svc_vol_rsize=2
-
-# Storage system threshold for volume capacity warnings
-# (percentage) (integer value)
-#storwize_svc_vol_warning=0
-
-# Storage system autoexpand parameter for volumes (True/False)
-# (boolean value)
-#storwize_svc_vol_autoexpand=true
-
-# Storage system grain size parameter for volumes
-# (32/64/128/256) (integer value)
-#storwize_svc_vol_grainsize=256
-
-# Storage system compression option for volumes (boolean
-# value)
-#storwize_svc_vol_compression=false
-
-# Enable Easy Tier for volumes (boolean value)
-#storwize_svc_vol_easytier=true
-
-# The I/O group in which to allocate volumes (integer value)
-#storwize_svc_vol_iogrp=0
-
-# Maximum number of seconds to wait for FlashCopy to be
-# prepared. Maximum value is 600 seconds (10 minutes) (integer
-# value)
-#storwize_svc_flashcopy_timeout=120
-
-# Connection protocol (iSCSI/FC) (string value)
-#storwize_svc_connection_protocol=iSCSI
-
-# Configure CHAP authentication for iSCSI connections
-# (Default: Enabled) (boolean value)
-#storwize_svc_iscsi_chap_enabled=true
-
-# Connect with multipath (FC only; iSCSI multipath is
-# controlled by Nova) (boolean value)
-#storwize_svc_multipath_enabled=false
-
-# Allows vdisk to multi host mapping (boolean value)
-#storwize_svc_multihostmap_enabled=true
 
 
 #

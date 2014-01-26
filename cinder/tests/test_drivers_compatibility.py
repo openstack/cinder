@@ -31,7 +31,7 @@ SOLARIS_MODULE = "cinder.volume.drivers.san.solaris.SolarisISCSIDriver"
 LEFTHAND_MODULE = "cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver"
 NFS_MODULE = "cinder.volume.drivers.nfs.NfsDriver"
 SOLIDFIRE_MODULE = "cinder.volume.drivers.solidfire.SolidFireDriver"
-STORWIZE_SVC_MODULE = "cinder.volume.drivers.storwize_svc.StorwizeSVCDriver"
+STORWIZE_MODULE = "cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver"
 WINDOWS_MODULE = "cinder.volume.drivers.windows.windows.WindowsDriver"
 XIV_DS8K_MODULE = "cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver"
 ZADARA_MODULE = "cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver"
@@ -133,11 +133,16 @@ class VolumeDriverCompatibility(test.TestCase):
 
     def test_storwize_svc_old(self):
         self._load_driver('cinder.volume.storwize_svc.StorwizeSVCDriver')
-        self.assertEqual(self._driver_module_name(), STORWIZE_SVC_MODULE)
+        self.assertEqual(self._driver_module_name(), STORWIZE_MODULE)
+
+    def test_storwize_svc_old2(self):
+        self._load_driver('cinder.volume.drivers.storwize_svc.'
+                          'StorwizeSVCDriver')
+        self.assertEqual(self._driver_module_name(), STORWIZE_MODULE)
 
     def test_storwize_svc_new(self):
-        self._load_driver(STORWIZE_SVC_MODULE)
-        self.assertEqual(self._driver_module_name(), STORWIZE_SVC_MODULE)
+        self._load_driver(STORWIZE_MODULE)
+        self.assertEqual(self._driver_module_name(), STORWIZE_MODULE)
 
     def test_windows_old(self):
         self._load_driver('cinder.volume.windows.WindowsDriver')

@@ -1,0 +1,638 @@
+# Copyright 2013 IBM Corp.
+# Copyright 2012 OpenStack Foundation
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+#
+"""
+Volume driver for IBM Storwize family and SVC storage systems.
+
+Notes:
+1. If you specify both a password and a key file, this driver will use the
+   key file only.
+2. When using a key file for authentication, it is up to the user or
+   system administrator to store the private key in a safe manner.
+3. The defaults for creating volumes are "-rsize 2% -autoexpand
+   -grainsize 256 -warning 0".  These can be changed in the configuration
+   file or by using volume types(recommended only for advanced users).
+
+Limitations:
+1. The driver expects CLI output in English, error messages may be in a
+   localized format.
+2. Clones and creating volumes from snapshots, where the source and target
+   are of different sizes, is not supported.
+
+"""
+
+from oslo.config import cfg
+
+from cinder import context
+from cinder import exception
+from cinder.openstack.common import excutils
+from cinder.openstack.common import log as logging
+from cinder import units
+from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
+from cinder.volume.drivers.san import san
+from cinder.volume import volume_types
+
+LOG = logging.getLogger(__name__)
+
+storwize_svc_opts = [
+    cfg.StrOpt('storwize_svc_volpool_name',
+               default='volpool',
+               help='Storage system storage pool for volumes'),
+    cfg.IntOpt('storwize_svc_vol_rsize',
+               default=2,
+               help='Storage system space-efficiency parameter for volumes '
+                    '(percentage)'),
+    cfg.IntOpt('storwize_svc_vol_warning',
+               default=0,
+               help='Storage system threshold for volume capacity warnings '
+                    '(percentage)'),
+    cfg.BoolOpt('storwize_svc_vol_autoexpand',
+                default=True,
+                help='Storage system autoexpand parameter for volumes '
+                     '(True/False)'),
+    cfg.IntOpt('storwize_svc_vol_grainsize',
+               default=256,
+               help='Storage system grain size parameter for volumes '
+                    '(32/64/128/256)'),
+    cfg.BoolOpt('storwize_svc_vol_compression',
+                default=False,
+                help='Storage system compression option for volumes'),
+    cfg.BoolOpt('storwize_svc_vol_easytier',
+                default=True,
+                help='Enable Easy Tier for volumes'),
+    cfg.IntOpt('storwize_svc_vol_iogrp',
+               default=0,
+               help='The I/O group in which to allocate volumes'),
+    cfg.IntOpt('storwize_svc_flashcopy_timeout',
+               default=120,
+               help='Maximum number of seconds to wait for FlashCopy to be '
+                    'prepared. Maximum value is 600 seconds (10 minutes)'),
+    cfg.StrOpt('storwize_svc_connection_protocol',
+               default='iSCSI',
+               help='Connection protocol (iSCSI/FC)'),
+    cfg.BoolOpt('storwize_svc_iscsi_chap_enabled',
+                default=True,
+                help='Configure CHAP authentication for iSCSI connections '
+                     '(Default: Enabled)'),
+    cfg.BoolOpt('storwize_svc_multipath_enabled',
+                default=False,
+                help='Connect with multipath (FC only; iSCSI multipath is '
+                     'controlled by Nova)'),
+    cfg.BoolOpt('storwize_svc_multihostmap_enabled',
+                default=True,
+                help='Allows vdisk to multi host mapping'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(storwize_svc_opts)
+
+
+class StorwizeSVCDriver(san.SanDriver):
+    """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
+
+    Version history:
+    1.0 - Initial driver
+    1.1 - FC support, create_cloned_volume, volume type support,
+          get_volume_stats, minor bug fixes
+    1.2.0 - Added retype
+    1.2.1 - Code refactor, improved exception handling
+    """
+
+    VERSION = "1.2.1"
+
+    def __init__(self, *args, **kwargs):
+        super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(storwize_svc_opts)
+        self._helpers = storwize_helpers.StorwizeHelpers(self._run_ssh)
+        self._state = {'storage_nodes': {},
+                       'enabled_protocols': set(),
+                       'compression_enabled': False,
+                       'available_iogrps': [],
+                       'system_name': None,
+                       'system_id': None,
+                       'extent_size': None,
+                       'code_level': None,
+                       }
+
+    def do_setup(self, ctxt):
+        """Check that we have all configuration details from the storage."""
+        LOG.debug(_('enter: do_setup'))
+
+        # Get storage system name, id, and code level
+        self._state.update(self._helpers.get_system_info())
+
+        # Validate that the pool exists
+        pool = self.configuration.storwize_svc_volpool_name
+        try:
+            attributes = self._helpers.get_pool_attrs(pool)
+        except exception.VolumeBackendAPIException:
+            msg = _('Failed getting details for pool %s') % pool
+            raise exception.InvalidInput(reason=msg)
+        self._state['extent_size'] = attributes['extent_size']
+
+        # Check if compression is supported
+        self._state['compression_enabled'] = \
+            self._helpers.compression_enabled()
+
+        # Get the available I/O groups
+        self._state['available_iogrps'] = \
+            self._helpers.get_available_io_groups()
+
+        # Get the iSCSI and FC names of the Storwize/SVC nodes
+        self._state['storage_nodes'] = self._helpers.get_node_info()
+
+        # Add the iSCSI IP addresses and WWPNs to the storage node info
+        self._helpers.add_iscsi_ip_addrs(self._state['storage_nodes'])
+        self._helpers.add_fc_wwpns(self._state['storage_nodes'])
+
+        # For each node, check what connection modes it supports.  Delete any
+        # nodes that do not support any types (may be partially configured).
+        to_delete = []
+        for k, node in self._state['storage_nodes'].iteritems():
+            if ((len(node['ipv4']) or len(node['ipv6']))
+                    and len(node['iscsi_name'])):
+                node['enabled_protocols'].append('iSCSI')
+                self._state['enabled_protocols'].add('iSCSI')
+            if len(node['WWPN']):
+                node['enabled_protocols'].append('FC')
+                self._state['enabled_protocols'].add('FC')
+            if not len(node['enabled_protocols']):
+                to_delete.append(k)
+        for delkey in to_delete:
+            del self._state['storage_nodes'][delkey]
+
+        # Make sure we have at least one node configured
+        if not len(self._state['storage_nodes']):
+            msg = _('do_setup: No configured nodes.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        LOG.debug(_('leave: do_setup'))
+
+    def check_for_setup_error(self):
+        """Ensure that the flags are set properly."""
+        LOG.debug(_('enter: check_for_setup_error'))
+
+        # Check that we have the system ID information
+        if self._state['system_name'] is None:
+            exception_msg = (_('Unable to determine system name'))
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+        if self._state['system_id'] is None:
+            exception_msg = (_('Unable to determine system id'))
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+        if self._state['extent_size'] is None:
+            exception_msg = (_('Unable to determine pool extent size'))
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        required_flags = ['san_ip', 'san_ssh_port', 'san_login',
+                          'storwize_svc_volpool_name']
+        for flag in required_flags:
+            if not self.configuration.safe_get(flag):
+                raise exception.InvalidInput(reason=_('%s is not set') % flag)
+
+        # Ensure that either password or keyfile were set
+        if not (self.configuration.san_password or
+                self.configuration.san_private_key):
+            raise exception.InvalidInput(
+                reason=_('Password or SSH private key is required for '
+                         'authentication: set either san_password or '
+                         'san_private_key option'))
+
+        # Check that flashcopy_timeout is not more than 10 minutes
+        flashcopy_timeout = self.configuration.storwize_svc_flashcopy_timeout
+        if not (flashcopy_timeout > 0 and flashcopy_timeout <= 600):
+            raise exception.InvalidInput(
+                reason=_('Illegal value %d specified for '
+                         'storwize_svc_flashcopy_timeout: '
+                         'valid values are between 0 and 600')
+                % flashcopy_timeout)
+
+        opts = self._helpers.build_default_opts(self.configuration)
+        self._helpers.check_vdisk_opts(self._state, opts)
+
+        LOG.debug(_('leave: check_for_setup_error'))
+
+    def ensure_export(self, ctxt, volume):
+        """Check that the volume exists on the storage.
+
+        The system does not "export" volumes as a Linux iSCSI target does,
+        and therefore we just check that the volume exists on the storage.
+        """
+        volume_defined = self._helpers.is_vdisk_defined(volume['name'])
+        if not volume_defined:
+            LOG.error(_('ensure_export: Volume %s not found on storage')
+                      % volume['name'])
+
+    def create_export(self, ctxt, volume):
+        model_update = None
+        return model_update
+
+    def remove_export(self, ctxt, volume):
+        pass
+
+    def validate_connector(self, connector):
+        """Check connector for at least one enabled protocol (iSCSI/FC)."""
+        valid = False
+        if ('iSCSI' in self._state['enabled_protocols'] and
+                'initiator' in connector):
+            valid = True
+        if 'FC' in self._state['enabled_protocols'] and 'wwpns' in connector:
+            valid = True
+        if not valid:
+            msg = (_('The connector does not contain the required '
+                     'information.'))
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+    def _get_vdisk_params(self, type_id, volume_type=None):
+        return self._helpers.get_vdisk_params(self.configuration, self._state,
+                                              type_id, volume_type=volume_type)
+
+    def initialize_connection(self, volume, connector):
+        """Perform the necessary work so that an iSCSI/FC connection can
+        be made.
+
+        To be able to create an iSCSI/FC connection from a given host to a
+        volume, we must:
+        1. Translate the given iSCSI name or WWNN to a host name
+        2. Create new host on the storage system if it does not yet exist
+        3. Map the volume to the host if it is not already done
+        4. Return the connection information for relevant nodes (in the
+           proper I/O group)
+
+        """
+
+        LOG.debug(_('enter: initialize_connection: volume %(vol)s with '
+                    'connector %(conn)s') % {'vol': str(volume),
+                                             'conn': str(connector)})
+
+        vol_opts = self._get_vdisk_params(volume['volume_type_id'])
+        host_name = connector['host']
+        volume_name = volume['name']
+
+        # Check if a host object is defined for this host name
+        host_name = self._helpers.get_host_from_connector(connector)
+        if host_name is None:
+            # Host does not exist - add a new host to Storwize/SVC
+            host_name = self._helpers.create_host(connector)
+
+        if vol_opts['protocol'] == 'iSCSI':
+            chap_secret = self._helpers.get_chap_secret_for_host(host_name)
+            chap_enabled = self.configuration.storwize_svc_iscsi_chap_enabled
+            if chap_enabled and chap_secret is None:
+                chap_secret = self._helpers.add_chap_secret_to_host(host_name)
+            elif not chap_enabled and chap_secret:
+                LOG.warning(_('CHAP secret exists for host but CHAP is '
+                              'disabled'))
+
+        volume_attributes = self._helpers.get_vdisk_attributes(volume_name)
+        if volume_attributes is None:
+            msg = (_('initialize_connection: Failed to get attributes'
+                     ' for volume %s') % volume_name)
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        multihostmap = self.configuration.storwize_svc_multihostmap_enabled
+        lun_id = self._helpers.map_vol_to_host(volume_name, host_name,
+                                               multihostmap)
+        try:
+            preferred_node = volume_attributes['preferred_node_id']
+            IO_group = volume_attributes['IO_group_id']
+        except KeyError as e:
+            LOG.error(_('Did not find expected column name in '
+                        'lsvdisk: %s') % str(e))
+            msg = (_('initialize_connection: Missing volume '
+                     'attribute for volume %s') % volume_name)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            # Get preferred node and other nodes in I/O group
+            preferred_node_entry = None
+            io_group_nodes = []
+            for node in self._state['storage_nodes'].itervalues():
+                if vol_opts['protocol'] not in node['enabled_protocols']:
+                    continue
+                if node['id'] == preferred_node:
+                    preferred_node_entry = node
+                if node['IO_group'] == IO_group:
+                    io_group_nodes.append(node)
+
+            if not len(io_group_nodes):
+                msg = (_('initialize_connection: No node found in '
+                         'I/O group %(gid)s for volume %(vol)s') %
+                       {'gid': IO_group, 'vol': volume_name})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            if not preferred_node_entry and not vol_opts['multipath']:
+                # Get 1st node in I/O group
+                preferred_node_entry = io_group_nodes[0]
+                LOG.warn(_('initialize_connection: Did not find a preferred '
+                           'node for volume %s') % volume_name)
+
+            properties = {}
+            properties['target_discovered'] = False
+            properties['target_lun'] = lun_id
+            properties['volume_id'] = volume['id']
+            if vol_opts['protocol'] == 'iSCSI':
+                type_str = 'iscsi'
+                if len(preferred_node_entry['ipv4']):
+                    ipaddr = preferred_node_entry['ipv4'][0]
+                else:
+                    ipaddr = preferred_node_entry['ipv6'][0]
+                properties['target_portal'] = '%s:%s' % (ipaddr, '3260')
+                properties['target_iqn'] = preferred_node_entry['iscsi_name']
+                if chap_secret:
+                    properties['auth_method'] = 'CHAP'
+                    properties['auth_username'] = connector['initiator']
+                    properties['auth_password'] = chap_secret
+            else:
+                type_str = 'fibre_channel'
+                conn_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
+                if len(conn_wwpns) == 0:
+                    msg = (_('Could not get FC connection information for the '
+                             'host-volume connection. Is the host configured '
+                             'properly for FC connections?'))
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+                if not vol_opts['multipath']:
+                    if preferred_node_entry['WWPN'] in conn_wwpns:
+                        properties['target_wwn'] = preferred_node_entry['WWPN']
+                    else:
+                        properties['target_wwn'] = conn_wwpns[0]
+                else:
+                    properties['target_wwn'] = conn_wwpns
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.terminate_connection(volume, connector)
+                LOG.error(_('initialize_connection: Failed to collect return '
+                            'properties for volume %(vol)s and connector '
+                            '%(conn)s.\n') % {'vol': str(volume),
+                                              'conn': str(connector)})
+
+        LOG.debug(_('leave: initialize_connection:\n volume: %(vol)s\n '
+                    'connector %(conn)s\n properties: %(prop)s')
+                  % {'vol': str(volume),
+                     'conn': str(connector),
+                     'prop': str(properties)})
+
+        return {'driver_volume_type': type_str, 'data': properties, }
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Cleanup after an iSCSI connection has been terminated.
+
+        When we clean up a terminated connection between a given connector
+        and volume, we:
+        1. Translate the given connector to a host name
+        2. Remove the volume-to-host mapping if it exists
+        3. Delete the host if it has no more mappings (hosts are created
+           automatically by this driver when mappings are created)
+        """
+        LOG.debug(_('enter: terminate_connection: volume %(vol)s with '
+                    'connector %(conn)s') % {'vol': str(volume),
+                                             'conn': str(connector)})
+
+        vol_name = volume['name']
+        if 'host' in connector:
+            host_name = self._helpers.get_host_from_connector(connector)
+            if host_name is None:
+                msg = (_('terminate_connection: Failed to get host name from'
+                         ' connector.'))
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+        else:
+            # See bug #1244257
+            host_name = None
+
+        self._helpers.unmap_vol_from_host(vol_name, host_name)
+
+        LOG.debug(_('leave: terminate_connection: volume %(vol)s with '
+                    'connector %(conn)s') % {'vol': str(volume),
+                                             'conn': str(connector)})
+
+    def create_volume(self, volume):
+        opts = self._get_vdisk_params(volume['volume_type_id'])
+        pool = self.configuration.storwize_svc_volpool_name
+        return self._helpers.create_vdisk(volume['name'], str(volume['size']),
+                                          'gb', pool, opts)
+
+    def delete_volume(self, volume):
+        self._helpers.delete_vdisk(volume['name'], False)
+
+    def create_snapshot(self, snapshot):
+        ctxt = context.get_admin_context()
+        source_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
+        opts = self._get_vdisk_params(source_vol['volume_type_id'])
+        self._helpers.create_copy(snapshot['volume_name'], snapshot['name'],
+                                  snapshot['volume_id'], self.configuration,
+                                  opts, False)
+
+    def delete_snapshot(self, snapshot):
+        self._helpers.delete_vdisk(snapshot['name'], False)
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        if volume['size'] != snapshot['volume_size']:
+            msg = (_('create_volume_from_snapshot: Source and destination '
+                     'size differ.'))
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        opts = self._get_vdisk_params(volume['volume_type_id'])
+        self._helpers.create_copy(snapshot['name'], volume['name'],
+                                  snapshot['id'], self.configuration,
+                                  opts, True)
+
+    def create_cloned_volume(self, tgt_volume, src_volume):
+        if src_volume['size'] != tgt_volume['size']:
+            msg = (_('create_cloned_volume: Source and destination '
+                     'size differ.'))
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        opts = self._get_vdisk_params(tgt_volume['volume_type_id'])
+        self._helpers.create_copy(src_volume['name'], tgt_volume['name'],
+                                  src_volume['id'], self.configuration,
+                                  opts, True)
+
+    def extend_volume(self, volume, new_size):
+        LOG.debug(_('enter: extend_volume: volume %s') % volume['id'])
+        ret = self._helpers.ensure_vdisk_no_fc_mappings(volume['name'],
+                                                        allow_snaps=False)
+        if not ret:
+            msg = (_('extend_volume: Extending a volume with snapshots is not '
+                     'supported.'))
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        extend_amt = int(new_size) - volume['size']
+        self._helpers.extend_vdisk(volume['name'], extend_amt)
+        LOG.debug(_('leave: extend_volume: volume %s') % volume['id'])
+
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate directly if source and dest are managed by same storage.
+
+        The method uses the migratevdisk method, which returns almost
+        immediately, if the source and target pools have the same extent_size.
+        Otherwise, it uses addvdiskcopy and rmvdiskcopy, which require waiting
+        for the copy operation to complete.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.debug(_('enter: migrate_volume: id=%(id)s, host=%(host)s') %
+                  {'id': volume['id'], 'host': host['host']})
+
+        false_ret = (False, None)
+        dest_pool = self._helpers.can_migrate_to_host(host, self._state)
+        if dest_pool is None:
+            return false_ret
+
+        if 'extent_size' not in host['capabilities']:
+            return false_ret
+        if host['capabilities']['extent_size'] == self._state['extent_size']:
+            # If source and dest pools have the same extent size, migratevdisk
+            self._helpers.migrate_vdisk(volume['name'], dest_pool)
+        else:
+            # If source and dest pool extent size differ, add/delete vdisk copy
+            ctxt = context.get_admin_context()
+            if volume['volume_type_id'] is not None:
+                volume_type_id = volume['volume_type_id']
+                vol_type = volume_types.get_volume_type(ctxt, volume_type_id)
+            else:
+                vol_type = None
+            self._helpers.migrate_volume_vdiskcopy(volume['name'], dest_pool,
+                                                   vol_type,
+                                                   self._state,
+                                                   self.configuration)
+
+        LOG.debug(_('leave: migrate_volume: id=%(id)s, host=%(host)s') %
+                  {'id': volume['id'], 'host': host['host']})
+        return (True, None)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+        Returns a boolean indicating whether the retype occurred.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.debug(_('enter: retype: id=%(id)s, new_type=%(new_type)s,'
+                    'diff=%(diff)s, host=%(host)s') % {'id': volume['id'],
+                                                       'new_type': new_type,
+                                                       'diff': diff,
+                                                       'host': host})
+
+        ignore_keys = ['protocol', 'multipath']
+        no_copy_keys = ['warning', 'autoexpand', 'easytier', 'iogrp']
+        copy_keys = ['rsize', 'grainsize', 'compression']
+        all_keys = ignore_keys + no_copy_keys + copy_keys
+        old_opts = self._get_vdisk_params(volume['volume_type_id'])
+        new_opts = self._get_vdisk_params(new_type['id'],
+                                          volume_type=new_type)
+
+        vdisk_changes = []
+        need_copy = False
+        for key in all_keys:
+            if old_opts[key] != new_opts[key]:
+                if key in copy_keys:
+                    need_copy = True
+                    break
+                elif key in no_copy_keys:
+                    vdisk_changes.append(key)
+
+        dest_location = host['capabilities'].get('location_info')
+        if self._stats['location_info'] != dest_location:
+            need_copy = True
+
+        if need_copy:
+            dest_pool = self._helpers.can_migrate_to_host(host, self._state)
+            if dest_pool is None:
+                return False
+
+            self._helpers.migrate_volume_vdiskcopy(volume['name'], dest_pool,
+                                                   new_type,
+                                                   self._state,
+                                                   self.configuration)
+        else:
+            self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
+                                               new_opts, self._state)
+
+        LOG.debug(_('exit: retype: ild=%(id)s, new_type=%(new_type)s,'
+                    'diff=%(diff)s, host=%(host)s') % {'id': volume['id'],
+                                                       'new_type': new_type,
+                                                       'diff': diff,
+                                                       'host': host['host']})
+        return True
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+
+        If we haven't gotten stats yet or 'refresh' is True,
+        run update the stats first.
+        """
+        if not self._stats or refresh:
+            self._update_volume_stats()
+
+        return self._stats
+
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+
+        LOG.debug(_("Updating volume stats"))
+        data = {}
+
+        data['vendor_name'] = 'IBM'
+        data['driver_version'] = self.VERSION
+        data['storage_protocol'] = list(self._state['enabled_protocols'])
+
+        data['total_capacity_gb'] = 0  # To be overwritten
+        data['free_capacity_gb'] = 0   # To be overwritten
+        data['reserved_percentage'] = self.configuration.reserved_percentage
+        data['QoS_support'] = False
+
+        pool = self.configuration.storwize_svc_volpool_name
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        if not backend_name:
+            backend_name = '%s_%s' % (self._state['system_name'], pool)
+        data['volume_backend_name'] = backend_name
+
+        attributes = self._helpers.get_pool_attrs(pool)
+        if not attributes:
+            LOG.error(_('Could not get pool data from the storage'))
+            exception_message = (_('_update_volume_stats: '
+                                   'Could not get storage pool data'))
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        data['total_capacity_gb'] = (float(attributes['capacity']) /
+                                     units.GiB)
+        data['free_capacity_gb'] = (float(attributes['free_capacity']) /
+                                    units.GiB)
+        data['easytier_support'] = attributes['easy_tier'] in ['on', 'auto']
+        data['compression_support'] = self._state['compression_enabled']
+        data['extent_size'] = self._state['extent_size']
+        data['location_info'] = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
+                                 {'sys_id': self._state['system_id'],
+                                  'pool': pool})
+
+        self._stats = data

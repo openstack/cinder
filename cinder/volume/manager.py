@@ -103,7 +103,9 @@ MAPPING = {
     'cinder.volume.drivers.solidfire.SolidFire':
     'cinder.volume.drivers.solidfire.SolidFireDriver',
     'cinder.volume.storwize_svc.StorwizeSVCDriver':
-    'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver',
+    'cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver',
+    'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver':
+    'cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver',
     'cinder.volume.windows.WindowsDriver':
     'cinder.volume.drivers.windows.windows.WindowsDriver',
     'cinder.volume.drivers.windows.WindowsDriver':
