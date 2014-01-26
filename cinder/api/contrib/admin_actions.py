@@ -173,11 +173,7 @@ class VolumeAdminController(AdminController):
             volume = self._get(context, id)
         except exception.NotFound:
             raise exc.HTTPNotFound()
-        try:
-            params = body['os-migrate_volume_completion']
-        except KeyError:
-            raise exc.HTTPBadRequest("Body does not contain "
-                                     "'os-migrate_volume_completion'")
+        params = body['os-migrate_volume_completion']
         try:
             new_volume_id = params['new_volume']
         except KeyError:

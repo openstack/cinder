@@ -653,12 +653,15 @@ class AdminActionsTest(test.TestCase):
                                   force_host_copy=1)
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
-                                  expected_status, expected_id):
+                                  expected_status, expected_id, no_body=False):
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        body_dict = {'new_volume': new_volume['id'], 'error': error}
-        req.body = jsonutils.dumps({'os-migrate_volume_completion': body_dict})
+        body = {'new_volume': new_volume['id'], 'error': error}
+        if no_body:
+            req.body = jsonutils.dumps({'': body})
+        else:
+            req.body = jsonutils.dumps({'os-migrate_volume_completion': body})
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         resp_dict = ast.literal_eval(resp.body)
@@ -706,6 +709,16 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
                                                 expected_status, expected_id)
+
+    def test_migrate_volume_comp_no_action(self):
+        admin_ctx = context.get_admin_context()
+        volume = db.volume_create(admin_ctx, {'id': 'fake1'})
+        new_volume = db.volume_create(admin_ctx, {'id': 'fake2'})
+        expected_status = 400
+        expected_id = None
+        ctx = context.RequestContext('fake', 'fake')
+        self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
+                                       expected_status, expected_id, True)
 
     def test_migrate_volume_comp_from_nova(self):
         admin_ctx = context.get_admin_context()
