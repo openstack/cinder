@@ -109,12 +109,13 @@ class StorwizeSSH(object):
 
     def mkhost(self, host_name, port_type, port_name):
         port = self._create_port_arg(port_type, port_name)
-        ssh_cmd = ['svctask', 'mkhost', '-force'] + port + ['-name', host_name]
+        ssh_cmd = ['svctask', 'mkhost', '-force'] + port
+        ssh_cmd += ['-name', '"%s"' % host_name]
         return self.run_ssh_check_created(ssh_cmd)
 
     def addhostport(self, host, port_type, port_name):
         port = self._create_port_arg(port_type, port_name)
-        ssh_cmd = ['svctask', 'addhostport', '-force'] + port + [host]
+        ssh_cmd = ['svctask', 'addhostport', '-force'] + port + ['"%s"' % host]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lshost(self, host=None):
@@ -122,11 +123,11 @@ class StorwizeSSH(object):
         ssh_cmd = ['svcinfo', 'lshost', '-delim', '!']
         if host:
             with_header = False
-            ssh_cmd.append(host)
+            ssh_cmd.append('"%s"' % host)
         return self.run_ssh_info(ssh_cmd, with_header=with_header)
 
     def add_chap_secret(self, secret, host):
-        ssh_cmd = ['svctask', 'chhost', '-chapsecret', secret, host]
+        ssh_cmd = ['svctask', 'chhost', '-chapsecret', secret, '"%s"' % host]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsiscsiauth(self):
@@ -137,7 +138,7 @@ class StorwizeSSH(object):
         if wwpn:
             ssh_cmd = ['svcinfo', 'lsfabric', '-wwpn', wwpn, '-delim', '!']
         elif host:
-            ssh_cmd = ['svcinfo', 'lsfabric', '-host', host]
+            ssh_cmd = ['svcinfo', 'lsfabric', '-host', '"%s"' % host]
         else:
             msg = (_('Must pass wwpn or host to lsfabric.'))
             LOG.error(msg)
@@ -149,7 +150,7 @@ class StorwizeSSH(object):
 
         If vdisk already mapped and multihostmap is True, use the force flag.
         """
-        ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', host,
+        ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host,
                    '-scsi', lun, vdisk]
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
         if 'successfully created' in out:
@@ -171,7 +172,7 @@ class StorwizeSSH(object):
         return self.run_ssh_check_created(ssh_cmd)
 
     def rmvdiskhostmap(self, host, vdisk):
-        ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', host, vdisk]
+        ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', '"%s"' % host, vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsvdiskhostmap(self, vdisk):
@@ -179,11 +180,11 @@ class StorwizeSSH(object):
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def lshostvdiskmap(self, host):
-        ssh_cmd = ['svcinfo', 'lshostvdiskmap', '-delim', '!', host]
+        ssh_cmd = ['svcinfo', 'lshostvdiskmap', '-delim', '!', '"%s"' % host]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def rmhost(self, host):
-        ssh_cmd = ['svctask', 'rmhost', host]
+        ssh_cmd = ['svctask', 'rmhost', '"%s"' % host]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def mkvdisk(self, name, size, units, pool, opts, params):
