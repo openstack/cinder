@@ -18,7 +18,6 @@ from lxml import etree
 import webob
 
 from cinder.api.contrib import extended_snapshot_attributes
-from cinder import exception
 from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
@@ -96,17 +95,6 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
             self.assertSnapshotAttributes(snapshot,
                                           project_id='fake',
                                           progress='0%')
-
-    def test_no_instance_passthrough_404(self):
-
-        def fake_snapshot_get(*args, **kwargs):
-            raise exception.InstanceNotFound(instance_id='fake')
-
-        self.stubs.Set(volume.api.API, 'get_snapshot', fake_snapshot_get)
-        url = '/v2/fake/snapshots/70f6db34-de8d-4fbd-aafb-4065bdfa6115'
-        res = self._make_request(url)
-
-        self.assertEqual(res.status_int, 404)
 
 
 class ExtendedSnapshotAttributesXmlTest(ExtendedSnapshotAttributesTest):
