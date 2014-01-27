@@ -290,11 +290,13 @@ class XMLDeserializer(TextDeserializer):
 
     def extract_text(self, node):
         """Get the text field contained by the given node."""
-        if len(node.childNodes) == 1:
-            child = node.childNodes[0]
+        text = []
+        # Cannot assume entire text will be in a single child node because SAX
+        # parsers may split contiguous character data into multiple chunks
+        for child in node.childNodes:
             if child.nodeType == child.TEXT_NODE:
-                return child.nodeValue
-        return ""
+                text.append(child.nodeValue)
+        return ''.join(text)
 
     def find_attribute_or_element(self, parent, name):
         """Get an attribute value; fallback to an element if not found."""
