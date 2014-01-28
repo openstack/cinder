@@ -18,10 +18,12 @@ Tests For Scheduler Host Filters.
 import mock
 
 from cinder import context
+from cinder import db
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common.scheduler import filters
 from cinder import test
 from cinder.tests.scheduler import fakes
+from cinder.tests import utils
 
 
 class HostFiltersTestCase(test.TestCase):
@@ -90,3 +92,171 @@ class HostFiltersTestCase(test.TestCase):
                                     'updated_at': None,
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_affinity_different_filter_passes(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host2',
+                                   {'free_capacity_gb': '1000',
+                                    'updated_at': None,
+                                    'service': service})
+        volume = utils.create_volume(self.context, host='host1')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': [vol_id], }}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_no_list_passes(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host2', {})
+        volume = utils.create_volume(self.context, host='host2')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': vol_id}}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_fails(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host1')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': [vol_id], }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_handles_none(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': None}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_handles_deleted_instance(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host1')
+        vol_id = volume.id
+        db.volume_destroy(utils.get_test_admin_context(), vol_id)
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': [vol_id], }}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_fail_nonuuid_hint(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': "NOT-a-valid-UUID", }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_handles_multiple_uuids(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume1 = utils.create_volume(self.context, host='host2')
+        vol_id1 = volume1.id
+        volume2 = utils.create_volume(self.context, host='host3')
+        vol_id2 = volume2.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': [vol_id1, vol_id2], }}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_different_filter_handles_invalid_uuids(self):
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host2')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': [vol_id, "NOT-a-valid-UUID"], }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_no_list_passes(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host1')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': vol_id}}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_passes(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host1')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': [vol_id], }}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_fails(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host2')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': [vol_id], }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_handles_none(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': None}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_handles_deleted_instance(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume = utils.create_volume(self.context, host='host2')
+        vol_id = volume.id
+        db.volume_destroy(utils.get_test_admin_context(), vol_id)
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': [vol_id], }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_fail_nonuuid_hint(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': "NOT-a-valid-UUID", }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
