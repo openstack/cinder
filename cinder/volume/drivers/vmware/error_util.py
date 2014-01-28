@@ -45,3 +45,25 @@ class VimFaultException(exception.VolumeBackendAPIException):
     def __init__(self, fault_list, msg):
         exception.VolumeBackendAPIException.__init__(self, msg)
         self.fault_list = fault_list
+
+
+class VMwareDriverException(exception.CinderException):
+    """Base class for all exceptions raised by the VMDK driver.
+
+    All exceptions raised by the vmdk driver should raise an exception
+    descended from this class as a root. This will allow the driver to
+    potentially trap problems related to its own internal configuration
+    before halting the cinder-volume node.
+    """
+    message = _("VMware VMDK driver exception.")
+
+
+class VMwaredriverConfigurationException(VMwareDriverException):
+    """Base class for all configuration exceptions.
+    """
+    message = _("VMware VMDK driver configuration error.")
+
+
+class PbmDefaultPolicyDoesNotExist(VMwaredriverConfigurationException):
+    message = _("The configured default PBM policy is not defined on "
+                "vCenter Server.")
