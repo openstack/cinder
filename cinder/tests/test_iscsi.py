@@ -29,7 +29,7 @@ class TargetAdminTestCase(object):
         self.cmds = []
 
         self.tid = 1
-        self.target_name = 'iqn.2011-09.org.foo.bar:blaa'
+        self.target_name = 'iqn.2011-09.org.foo.bar:volume-blaa'
         self.lun = 10
         self.path = '/foo'
         self.vol_id = 'blaa'
@@ -112,9 +112,9 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.flags(iscsi_helper='tgtadm')
         self.flags(volumes_dir=self.persist_tempdir)
         self.script_template = "\n".join([
-            'tgt-admin --update iqn.2011-09.org.foo.bar:blaa',
+            'tgt-admin --update %(target_name)s',
             'tgt-admin --force '
-            '--delete iqn.2011-09.org.foo.bar:volume-blaa',
+            '--delete %(target_name)s',
             'tgtadm --lld iscsi --op show --mode target'])
 
     def tearDown(self):
@@ -198,8 +198,8 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.flags(iscsi_helper='lioadm')
         self.script_template = "\n".join([
             'cinder-rtstool create '
-            '/foo iqn.2011-09.org.foo.bar:blaa test_id test_pass',
-            'cinder-rtstool delete iqn.2011-09.org.foo.bar:volume-blaa'])
+            '%(path)s %(target_name)s test_id test_pass',
+            'cinder-rtstool delete %(target_name)s'])
 
 
 class ISERTgtAdmTestCase(TgtAdmTestCase):
