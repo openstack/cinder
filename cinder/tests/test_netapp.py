@@ -545,7 +545,8 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
     def _custom_setup(self):
         self.stubs.Set(
-            ssc_utils, 'refresh_cluster_ssc', lambda a, b, c: None)
+            ssc_utils, 'refresh_cluster_ssc',
+            lambda a, b, c, synchronous: None)
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(httplib, 'HTTPConnection',
