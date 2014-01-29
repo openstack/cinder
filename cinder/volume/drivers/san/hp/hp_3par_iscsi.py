@@ -1,7 +1,5 @@
-#    (c) Copyright 2012-2013 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2012-2014 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
-#
-#    Copyright 2012 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,7 +15,7 @@
 #
 """
 Volume driver for HP 3PAR Storage array.
-This driver requires 3.1.2 MU2 firmware on the 3PAR array, using
+This driver requires 3.1.2 MU3 firmware on the 3PAR array, using
 the 2.x version of the hp3parclient.
 
 You will need to install the python hp3parclient.
@@ -58,10 +56,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.2.3 - log exceptions before raising
         1.2.4 - Fixed iSCSI active path bug #1224594
         1.2.5 - Added metadata during attach/detach bug #1258033
+        1.2.6 - Use least-used iscsi n:s:p for iscsi volume attach bug #1269515
+                This update now requires 3.1.2 MU3 firmware
 
     """
 
-    VERSION = "1.2.5"
+    VERSION = "1.2.6"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -257,11 +257,18 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
             # we have to make sure we have a host
             host = self._create_host(volume, connector)
+            least_used_nsp = self._get_least_used_nsp_for_host(host['name'])
 
             # now that we have a host, create the VLUN
-            vlun = self.common.create_vlun(volume, host)
+            vlun = self.common.create_vlun(volume, host, least_used_nsp)
 
-            iscsi_ip = self._get_iscsi_ip(host['name'])
+            if least_used_nsp is None:
+                msg = _("Least busy iSCSI port not found, "
+                        "using first iSCSI port in list.")
+                LOG.warn(msg)
+                iscsi_ip = self.iscsi_ips.keys()[0]
+            else:
+                iscsi_ip = self._get_ip_using_nsp(least_used_nsp)
 
             iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
             iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
@@ -348,38 +355,34 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def remove_export(self, context, volume):
         pass
 
-    def _get_iscsi_ip(self, hostname):
-        """Get an iSCSI IP address to use.
+    def _get_least_used_nsp_for_host(self, hostname):
+        """Get the least used NSP for the current host.
 
-        Steps to determine which IP address to use.
-          * If only one IP address, return it
-          * If there is an active vlun, return the IP associated with it
-          * Return IP with fewest active vluns
+        Steps to determine which NSP to use.
+            * If only one iSCSI NSP, return it
+            * If there is already an active vlun to this host, return its NSP
+            * Return NSP with fewest active vluns
         """
-        if len(self.iscsi_ips) == 1:
-            return self.iscsi_ips.keys()[0]
 
+        iscsi_nsps = self._get_iscsi_nsps()
+        # If there's only one path, use it
+        if len(iscsi_nsps) == 1:
+            return iscsi_nsps[0]
+
+        # Try to reuse an existing iscsi path to the host
         vluns = self.common.client.getVLUNs()
-        # see if there is already a path to the
-        # host, if so use it
         for vlun in vluns['members']:
             if vlun['active']:
                 if vlun['hostname'] == hostname:
-                    # this host already has a path, so use it
-                    nsp = self.common.build_nsp(vlun['portPos'])
-                    return self._get_ip_using_nsp(nsp)
+                    temp_nsp = self.common.build_nsp(vlun['portPos'])
+                    if temp_nsp in iscsi_nsps:
+                        # this host already has an iscsi path, so use it
+                        return temp_nsp
 
-        # no current path find least used port
+        # Calculate the least used iscsi nsp
         least_used_nsp = self._get_least_used_nsp(vluns['members'],
                                                   self._get_iscsi_nsps())
-
-        if least_used_nsp is None:
-            msg = _("Least busy iSCSI port not found, "
-                    "using first iSCSI port in list.")
-            LOG.warn(msg)
-            return self.iscsi_ips.keys()[0]
-
-        return self._get_ip_using_nsp(least_used_nsp)
+        return least_used_nsp
 
     def _get_iscsi_nsps(self):
         """Return the list of candidate nsps."""
@@ -389,7 +392,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         return nsps
 
     def _get_ip_using_nsp(self, nsp):
-        """Return IP assiciated with given nsp."""
+        """Return IP associated with given nsp."""
         for (key, value) in self.iscsi_ips.items():
             if value['nsp'] == nsp:
                 return key

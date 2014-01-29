@@ -1,5 +1,5 @@
 #
-#    (c) Copyright 2013 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2013-2014 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -481,8 +481,8 @@ class HP3PARBaseDriver():
         else:
             del self._hosts[hostname]
 
-    def fake_create_3par_vlun(self, volume, hostname):
-        self.driver.common.client.createVLUN(volume, 19, hostname)
+    def fake_create_3par_vlun(self, volume, hostname, nsp):
+        self.driver.common.client.createVLUN(volume, 19, hostname, nsp)
 
     def fake_get_ports(self):
         ports = self.FAKE_FC_PORTS
@@ -1233,52 +1233,90 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         ports = self.driver.common.get_ports()['members']
         self.assertEqual(len(ports), 3)
 
-    def test_get_iscsi_ip_active(self):
+    def test_get_least_used_nsp_for_host_single(self):
         self.flags(lock_path=self.tempdir)
-
-        #record set up
         self.clear_mox()
 
-        getPorts = self.mox.CreateMock(FakeHP3ParClient.getPorts)
-        self.stubs.Set(FakeHP3ParClient, "getPorts", getPorts)
+        self.driver.common.client.getPorts = mock.Mock(
+            return_value=PORTS_RET)
 
-        getVLUNs = self.mox.CreateMock(FakeHP3ParClient.getVLUNs)
-        self.stubs.Set(FakeHP3ParClient, "getVLUNs", getVLUNs)
+        self.driver.common.client.getVLUNs = mock.Mock(
+            return_value=VLUNS1_RET)
 
-        getPorts().AndReturn(PORTS_RET)
-        getVLUNs().AndReturn(VLUNS2_RET)
-        self.mox.ReplayAll()
+        #Setup a single ISCSI IP
+        iscsi_ips = ["10.10.220.253"]
+        self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
 
-        config = self.setup_configuration()
-        config.hp3par_iscsi_ips = ['10.10.220.253', '10.10.220.252']
-        self.setup_driver(config, set_up_fakes=False)
-        self.mox.ReplayAll()
+        self.driver.initialize_iscsi_ports()
 
-        ip = self.driver._get_iscsi_ip('fakehost')
-        self.assertEqual(ip, '10.10.220.252')
+        nsp = self.driver._get_least_used_nsp_for_host('newhost')
+        self.assertEqual(nsp, "1:8:1")
 
-    def test_get_iscsi_ip(self):
+    def test_get_least_used_nsp_for_host_new(self):
         self.flags(lock_path=self.tempdir)
-
-        #record driver set up
         self.clear_mox()
-        getPorts = self.mox.CreateMock(FakeHP3ParClient.getPorts)
-        self.stubs.Set(FakeHP3ParClient, "getPorts", getPorts)
 
-        getVLUNs = self.mox.CreateMock(FakeHP3ParClient.getVLUNs)
-        self.stubs.Set(FakeHP3ParClient, "getVLUNs", getVLUNs)
+        self.driver.common.client.getPorts = mock.Mock(
+            return_value=PORTS_RET)
 
-        getPorts().AndReturn(PORTS_RET)
-        getVLUNs().AndReturn(VLUNS1_RET)
-        self.mox.ReplayAll()
+        self.driver.common.client.getVLUNs = mock.Mock(
+            return_value=VLUNS1_RET)
 
-        config = self.setup_configuration()
-        config.iscsi_ip_address = '10.10.10.10'
-        config.hp3par_iscsi_ips = ['10.10.220.253', '10.10.220.252']
-        self.setup_driver(config, set_up_fakes=False)
+        #Setup two ISCSI IPs
+        iscsi_ips = ["10.10.220.252", "10.10.220.253"]
+        self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
 
-        ip = self.driver._get_iscsi_ip('fakehost')
-        self.assertEqual(ip, '10.10.220.252')
+        self.driver.initialize_iscsi_ports()
+
+        # Host 'newhost' does not yet have any iscsi paths,
+        # so the 'least used' is returned
+        nsp = self.driver._get_least_used_nsp_for_host('newhost')
+        self.assertEqual(nsp, "1:8:2")
+
+    def test_get_least_used_nsp_for_host_reuse(self):
+        self.flags(lock_path=self.tempdir)
+        self.clear_mox()
+
+        self.driver.common.client.getPorts = mock.Mock(
+            return_value=PORTS_RET)
+
+        self.driver.common.client.getVLUNs = mock.Mock(
+            return_value=VLUNS1_RET)
+
+        #Setup two ISCSI IPs
+        iscsi_ips = ["10.10.220.252", "10.10.220.253"]
+        self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
+
+        self.driver.initialize_iscsi_ports()
+
+        # hosts 'foo' and 'bar' already have active iscsi paths
+        # the same one should be used
+        nsp = self.driver._get_least_used_nsp_for_host('foo')
+        self.assertEqual(nsp, "1:8:2")
+
+        nsp = self.driver._get_least_used_nsp_for_host('bar')
+        self.assertEqual(nsp, "1:8:1")
+
+    def test_get_least_used_nps_for_host_fc(self):
+        # Ensure that with an active FC path setup
+        # an ISCSI path is used
+        self.flags(lock_path=self.tempdir)
+        self.clear_mox()
+
+        self.driver.common.client.getPorts = mock.Mock(
+            return_value=PORTS1_RET)
+        self.driver.common.client.getVLUNs = mock.Mock(
+            return_value=VLUNS5_RET)
+
+        #Setup two ISCSI IPs
+        iscsi_ips = ["10.10.220.252", "10.10.220.253"]
+        self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
+
+        self.driver.initialize_iscsi_ports()
+
+        nsp = self.driver._get_least_used_nsp_for_host('newhost')
+        self.assertNotEqual(nsp, "0:6:3")
+        self.assertEqual(nsp, "1:8:1")
 
     def test_invalid_iscsi_ip(self):
         self.flags(lock_path=self.tempdir)
@@ -1442,4 +1480,9 @@ VLUNS4_RET = ({'members':
                 {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
                  'active': True},
                 {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1},
+                 'active': True}]})
+VLUNS5_RET = ({'members':
+               [{'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},
+                 'active': True},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
                  'active': True}]})
