@@ -1075,7 +1075,7 @@ exit
                 fc_paths = host['FCPaths']
                 for fc in fc_paths:
                     for wwn in wwns:
-                        if wwn == fc['WWN']:
+                        if wwn == fc['wwn']:
                             return host['name']
 
     def terminate_connection(self, volume, hostname, wwn=None, iqn=None):
