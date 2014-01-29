@@ -750,30 +750,6 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     def _iscsi_authentication(self, chap, name, password):
         return "%s %s %s" % (chap, name, password)
 
-    def initialize_connection(self, volume, connector):
-        """Initializes the connection and returns connection info.
-
-        This function overrides the base class implementation so that the iSCSI
-        target can be updated.  This is necessary in the event that a user
-        extended the volume before attachement.
-        """
-
-        # update the iSCSI target
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                               volume['name'])
-        try:
-            self.tgtadm.update_iscsi_target(iscsi_name)
-        except brick_exception.ISCSITargetUpdateFailed as e:
-            msg = (_('Failed to initialize iscsi '
-                     'connection for target: %s.') % iscsi_name)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # continue with the base class behaviour
-        return driver.ISCSIDriver.initialize_connection(self,
-                                                        volume,
-                                                        connector)
-
 
 class LVMISERDriver(LVMISCSIDriver, driver.ISERDriver):
     """Executes commands relating to ISER volumes.
