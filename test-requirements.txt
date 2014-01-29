@@ -9,7 +9,7 @@ mox>=0.5.3
 MySQL-python
 psycopg2
 sphinx>=1.1.2,<1.2
-python-subunit
-testtools>=0.9.32
+python-subunit>=0.0.18
+testtools>=0.9.34
 testrepository>=0.0.17
 oslo.sphinx
