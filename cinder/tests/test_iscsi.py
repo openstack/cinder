@@ -89,13 +89,13 @@ class TargetAdminTestCase(object):
         self.verify_cmds(cmds)
 
     def run_commands(self):
-        tgtadm = self.driver.get_target_admin()
-        tgtadm.set_execute(self.fake_execute)
-        tgtadm.create_iscsi_target(self.target_name, self.tid,
-                                   self.lun, self.path)
-        tgtadm.show_target(self.tid, iqn=self.target_name)
-        tgtadm.remove_iscsi_target(self.tid, self.lun, self.vol_id,
-                                   self.vol_name)
+        target_helper = self.driver.get_target_helper()
+        target_helper.set_execute(self.fake_execute)
+        target_helper.create_iscsi_target(self.target_name, self.tid,
+                                          self.lun, self.path)
+        target_helper.show_target(self.tid, iqn=self.target_name)
+        target_helper.remove_iscsi_target(self.tid, self.lun, self.vol_id,
+                                          self.vol_name)
 
     def test_target_admin(self):
         self.clear_cmds()

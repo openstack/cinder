@@ -684,7 +684,7 @@ class ISCSIDriver(VolumeDriver):
         """
 
         if CONF.iscsi_helper == 'lioadm':
-            self.tgtadm.initialize_connection(volume, connector)
+            self.target_helper.initialize_connection(volume, connector)
 
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
@@ -739,7 +739,7 @@ class ISCSIDriver(VolumeDriver):
         data['QoS_support'] = False
         self._stats = data
 
-    def get_target_admin(self):
+    def get_target_helper(self):
         root_helper = utils.get_root_helper()
         if CONF.iscsi_helper == 'iseradm':
             return iscsi.ISERTgtAdm(root_helper, CONF.volumes_dir,
@@ -858,7 +858,7 @@ class ISERDriver(ISCSIDriver):
         data['QoS_support'] = False
         self._stats = data
 
-    def get_target_admin(self):
+    def get_target_helper(self):
         root_helper = utils.get_root_helper()
 
         if CONF.iser_helper == 'fake':

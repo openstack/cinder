@@ -44,14 +44,14 @@ class BlockDeviceDriver(driver.ISCSIDriver):
     VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
-        self.tgtadm = self.get_target_admin()
+        self.target_helper = self.get_target_helper()
 
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
 
     def set_execute(self, execute):
         super(BlockDeviceDriver, self).set_execute(execute)
-        self.tgtadm.set_execute(execute)
+        self.target_helper.set_execute(execute)
 
     def check_for_setup_error(self):
         pass
@@ -87,7 +87,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
         # TODO(jdg): In the future move all of the dependent stuff into the
         # corresponding target admin class
-        if not isinstance(self.tgtadm, iscsi.TgtAdm):
+        if not isinstance(self.target_helper, iscsi.TgtAdm):
             lun = 0
             self._ensure_iscsi_targets(context, volume['host'])
             iscsi_target = self.db.volume_allocate_iscsi_target(context,
@@ -104,11 +104,11 @@ class BlockDeviceDriver(driver.ISCSIDriver):
                                                chap_password)
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
-        tid = self.tgtadm.create_iscsi_target(iscsi_name,
-                                              iscsi_target,
-                                              0,
-                                              volume_path,
-                                              chap_auth)
+        tid = self.target_helper.create_iscsi_target(iscsi_name,
+                                                     iscsi_target,
+                                                     0,
+                                                     volume_path,
+                                                     chap_auth)
         model_update['provider_location'] = self._iscsi_location(
             self.configuration.iscsi_ip_address, tid, iscsi_name, lun,
             volume_path)
@@ -122,7 +122,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
         # TODO(jdg): In the future move all of the dependent stuff into the
         # corresponding target admin class
 
-        if isinstance(self.tgtadm, iscsi.LioAdm):
+        if isinstance(self.target_helper, iscsi.LioAdm):
             try:
                 iscsi_target = self.db.volume_get_iscsi_target_num(
                     context,
@@ -131,10 +131,12 @@ class BlockDeviceDriver(driver.ISCSIDriver):
                 LOG.info(_("Skipping remove_export. No iscsi_target "
                            "provisioned for volume: %s"), volume['id'])
                 return
-            self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'],
-                                            volume['name'])
+            self.target_helper.remove_iscsi_target(iscsi_target,
+                                                   0,
+                                                   volume['id'],
+                                                   volume['name'])
             return
-        elif not isinstance(self.tgtadm, iscsi.TgtAdm):
+        elif not isinstance(self.target_helper, iscsi.TgtAdm):
             try:
                 iscsi_target = self.db.volume_get_iscsi_target_num(
                     context,
@@ -152,13 +154,13 @@ class BlockDeviceDriver(driver.ISCSIDriver):
             iqn = location[1]
             # ietadm show will exit with an error
             # this export has already been removed
-            self.tgtadm.show_target(iscsi_target, iqn=iqn)
+            self.target_helper.show_target(iscsi_target, iqn=iqn)
         except Exception:
             LOG.info(_("Skipping remove_export. No iscsi_target "
                        "is presently exported for volume: %s"), volume['id'])
             return
-        self.tgtadm.remove_iscsi_target(iscsi_target, 0, volume['id'],
-                                        volume['name'])
+        self.target_helper.remove_iscsi_target(iscsi_target, 0, volume['id'],
+                                               volume['name'])
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume.
@@ -169,7 +171,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
         # TODO(jdg): In the future move all of the dependent stuff into the
         # corresponding target admin class
 
-        if isinstance(self.tgtadm, iscsi.LioAdm):
+        if isinstance(self.target_helper, iscsi.LioAdm):
             try:
                 volume_info = self.db.volume_get(context, volume['id'])
                 (auth_method,
@@ -187,11 +189,11 @@ class BlockDeviceDriver(driver.ISCSIDriver):
                                    volume['name'])
             volume_path = self.local_path(volume)
             iscsi_target = 1
-            self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
-                                            0, volume_path, chap_auth,
-                                            check_exit_code=False)
+            self.target_helper.create_iscsi_target(iscsi_name, iscsi_target,
+                                                   0, volume_path, chap_auth,
+                                                   check_exit_code=False)
             return
-        if not isinstance(self.tgtadm, iscsi.TgtAdm):
+        if not isinstance(self.target_helper, iscsi.TgtAdm):
             try:
                 iscsi_target = self.db.volume_get_iscsi_target_num(
                     context,
@@ -215,10 +217,10 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
-        self.tgtadm.create_iscsi_target(iscsi_name, iscsi_target,
-                                        0, volume_path, chap_auth,
-                                        check_exit_code=False,
-                                        old_name=old_name)
+        self.target_helper.create_iscsi_target(iscsi_name, iscsi_target,
+                                               0, volume_path, chap_auth,
+                                               check_exit_code=False,
+                                               old_name=old_name)
 
     def _iscsi_location(self, ip, target, iqn, lun=None, device=None):
         return "%s:%s,%s %s %s %s" % (ip, self.configuration.iscsi_port,
@@ -232,7 +234,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
         # corresponding target admin class
-        if not isinstance(self.tgtadm, iscsi.TgtAdm):
+        if not isinstance(self.target_helper, iscsi.TgtAdm):
             host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
                                                                     host)
             if host_iscsi_targets >= self.configuration.iscsi_num_targets:
