@@ -78,27 +78,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
         self.counter = float(0)
         self.stubs.Set(time, 'time', self.time_inc)
 
-    def test_exception_to_unicode(self):
-        class FakeException(Exception):
-            def __str__(self):
-                raise UnicodeError()
-
-        exc = Exception('error message')
-        ret = create_volume._exception_to_unicode(exc)
-        self.assertEqual(unicode, type(ret))
-        self.assertEqual(ret, 'error message')
-
-        exc = Exception('\xa5 error message')
-        ret = create_volume._exception_to_unicode(exc)
-        self.assertEqual(unicode, type(ret))
-        self.assertEqual(ret, ' error message')
-
-        unicodeExc = FakeException('\xa5 error message')
-        ret = create_volume._exception_to_unicode(unicodeExc)
-        self.assertEqual(unicode, type(ret))
-        self.assertEqual(ret, _("Caught '%(exception)s' exception.") %
-                         {'exception': 'FakeException'})
-
     def test_cast_create_volume(self):
 
         props = {}
@@ -107,9 +86,10 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'snapshot_id': None,
                 'image_id': None}
 
-        task = create_volume.VolumeCastTask(fake_scheduler_rpc_api(spec, self),
-                                            fake_volume_api(spec, self),
-                                            fake_db())
+        task = create_volume.VolumeCastTask(
+            fake_scheduler_rpc_api(spec, self),
+            fake_volume_api(spec, self),
+            fake_db())
 
         task._cast_create_volume(self.ctxt, spec, props)
 
@@ -118,9 +98,10 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'snapshot_id': 3,
                 'image_id': 4}
 
-        task = create_volume.VolumeCastTask(fake_scheduler_rpc_api(spec, self),
-                                            fake_volume_api(spec, self),
-                                            fake_db())
+        task = create_volume.VolumeCastTask(
+            fake_scheduler_rpc_api(spec, self),
+            fake_volume_api(spec, self),
+            fake_db())
 
         task._cast_create_volume(self.ctxt, spec, props)
 

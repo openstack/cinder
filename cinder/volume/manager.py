@@ -54,7 +54,7 @@ from cinder.openstack.common import uuidutils
 from cinder import quota
 from cinder import utils
 from cinder.volume.configuration import Configuration
-from cinder.volume.flows.api import create_volume
+from cinder.volume.flows.manager import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -302,7 +302,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             # NOTE(flaper87): Driver initialization is
             # verified by the task itself.
-            flow_engine = create_volume.get_manager_flow(
+            flow_engine = create_volume.get_flow(
                 context,
                 self.db,
                 self.driver,
