@@ -18,6 +18,8 @@
 from lxml import etree
 import webob
 
+import mock
+
 from cinder.api.contrib import types_extra_specs
 from cinder import exception
 from cinder.openstack.common.notifier import api as notifier_api
@@ -143,6 +145,54 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
+    @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
+    def test_create_key_allowed_chars(
+            self, volume_type_extra_specs_update_or_create):
+        mock_return_value = {"key1": "value1",
+                             "key2": "value2",
+                             "key3": "value3",
+                             "key4": "value4",
+                             "key5": "value5"}
+        volume_type_extra_specs_update_or_create.\
+            return_value = mock_return_value
+
+        body = {"extra_specs": {"other_alphanum.-_:": "value1"}}
+
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+
+        req = fakes.HTTPRequest.blank(self.api_path)
+        res_dict = self.controller.create(req, 1, body)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual('value1',
+                         res_dict['extra_specs']['other_alphanum.-_:'])
+
+    @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
+    def test_create_too_many_keys_allowed_chars(
+            self, volume_type_extra_specs_update_or_create):
+        mock_return_value = {"key1": "value1",
+                             "key2": "value2",
+                             "key3": "value3",
+                             "key4": "value4",
+                             "key5": "value5"}
+        volume_type_extra_specs_update_or_create.\
+            return_value = mock_return_value
+
+        body = {"extra_specs": {"other_alphanum.-_:": "value1",
+                                "other2_alphanum.-_:": "value2",
+                                "other3_alphanum.-_:": "value3"}}
+
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+
+        req = fakes.HTTPRequest.blank(self.api_path)
+        res_dict = self.controller.create(req, 1, body)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual('value1',
+                         res_dict['extra_specs']['other_alphanum.-_:'])
+        self.assertEqual('value2',
+                         res_dict['extra_specs']['other2_alphanum.-_:'])
+        self.assertEqual('value3',
+                         res_dict['extra_specs']['other3_alphanum.-_:'])
+
     def test_update_item(self):
         self.stubs.Set(cinder.db,
                        'volume_type_extra_specs_update_or_create',
@@ -192,6 +242,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def _extra_specs_create_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
         req.method = 'POST'
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, '1', body)
 
@@ -204,6 +255,14 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
     def test_create_malformed_entity(self):
         body = {'extra_specs': 'string'}
+        self._extra_specs_create_bad_body(body=body)
+
+    def test_create_invalid_key(self):
+        body = {"extra_specs": {"ke/y1": "value1"}}
+        self._extra_specs_create_bad_body(body=body)
+
+    def test_create_invalid_too_many_key(self):
+        body = {"key1": "value1", "ke/y2": "value2", "key3": "value3"}
         self._extra_specs_create_bad_body(body=body)
 
 
