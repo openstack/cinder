@@ -54,10 +54,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         1.2.2 - Added try/finally around client login/logout.
         1.2.3 - Added ability to add WWNs to host.
         1.2.4 - Added metadata during attach/detach bug #1258033.
+        1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
 
     """
 
-    VERSION = "1.2.4"
+    VERSION = "1.3.0"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -232,19 +233,22 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         the same wwn but with a different hostname, return the hostname
         used by 3PAR.
         """
-        if domain is not None:
-            command = ['createhost', '-persona', persona_id, '-domain', domain,
-                       hostname]
-        else:
-            command = ['createhost', '-persona', persona_id, hostname]
+        # first search for an existing host
+        host_found = None
         for wwn in wwns:
-            command.append(wwn)
+            host_found = self.common.client.findHost(wwn=wwn)
+            if host_found is not None:
+                break
 
-        out = self.common._cli_run(command)
-        if out and len(out) > 1:
-            return self.common.parse_create_host_error(hostname, out)
-
-        return hostname
+        if host_found is not None:
+            self.common.hosts_naming_dict[hostname] = host_found
+            return host_found
+        else:
+            persona_id = int(persona_id)
+            self.common.client.createHost(hostname, FCWwns=wwns,
+                                          optional={'domain': domain,
+                                                    'persona': persona_id})
+            return hostname
 
     def _modify_3par_fibrechan_host(self, hostname, wwn):
         mod_request = {'pathOperation': self.common.client.HOST_EDIT_ADD,
