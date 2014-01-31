@@ -14,7 +14,6 @@
 
 """Exceptions for the Brick library."""
 
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 
