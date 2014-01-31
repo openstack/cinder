@@ -181,6 +181,9 @@ class TgtAdm(TargetAdmin):
         f = open(volume_path, 'w+')
         f.write(volume_conf)
         f.close()
+        LOG.debug(_('Created volume path %(vp)s,\n'
+                    'content: %(vc)%')
+                  % {'vp': volume_path, 'vc': volume_conf})
 
         old_persist_file = None
         old_name = kwargs.get('old_name', None)
@@ -255,6 +258,11 @@ class TgtAdm(TargetAdmin):
         LOG.info(_('Removing iscsi_target for: %s') % vol_id)
         vol_uuid_file = vol_name
         volume_path = os.path.join(self.volumes_dir, vol_uuid_file)
+        if not os.path.exists(volume_path):
+            LOG.warning(_('Volume path %s does not exist, '
+                          'nothing to remove.') % volume_path)
+            return
+
         if os.path.isfile(volume_path):
             iqn = '%s%s' % (self.iscsi_target_prefix,
                             vol_uuid_file)
