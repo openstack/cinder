@@ -192,7 +192,10 @@ class TgtAdm(TargetAdmin):
             # by creating the entry in the persist file
             # and then doing an update to get the target
             # created.
-            self.update_iscsi_target(name)
+            (out, err) = self._execute('tgt-admin', '--update', name,
+                                       run_as_root=True)
+            LOG.debug("StdOut from tgt-admin --update: %s", out)
+            LOG.debug("StdErr from tgt-admin --update: %s", err)
 
             # Grab targets list for debug
             # Consider adding a check for lun 0 and 1 for tgtadm
@@ -206,8 +209,7 @@ class TgtAdm(TargetAdmin):
                                        'target',
                                        run_as_root=True)
             LOG.debug("Targets after update: %s" % out)
-        except (putils.ProcessExecutionError,
-                exception.ISCSITargetUpdateFailed) as e:
+        except putils.ProcessExecutionError as e:
             LOG.warning(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
                         % {'vol_id': vol_id, 'e': str(e)})
@@ -248,20 +250,6 @@ class TgtAdm(TargetAdmin):
             os.unlink(old_persist_file)
 
         return tid
-
-    def update_iscsi_target(self, name):
-
-        LOG.info(_('Updating iscsi target: %s') % name)
-
-        try:
-            (out, err) = self._execute('tgt-admin', '--update', name,
-                                       run_as_root=True)
-        except putils.ProcessExecutionError as e:
-            LOG.error(_("Failed to update iscsi target %(name)s: %(e)s") %
-                      {'name': name, 'e': str(e)})
-            LOG.error("StdOut from tgt-admin --update: %s", e.stdout)
-            LOG.error("StdErr from tgt-admin --update: %s", e.stderr)
-            raise exception.ISCSITargetUpdateFailed(name=name)
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_('Removing iscsi_target for: %s') % vol_id)
@@ -453,9 +441,6 @@ class FakeIscsiHelper(object):
     def create_iscsi_target(self, *args, **kwargs):
         self.tid += 1
         return self.tid
-
-    def update_iscsi_target(self, name):
-        return
 
 
 class LioAdm(TargetAdmin):
