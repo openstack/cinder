@@ -613,28 +613,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                               {'volume_id': volume_id, 'model': model_update})
                 raise exception.ExportFailure(reason=ex)
 
-        # Persist any driver exported model information.
-        model_update = None
-        try:
-            LOG.debug(_("Volume %s: creating export"), volume_ref['id'])
-            model_update = self.driver.create_export(context, volume_ref)
-            if model_update:
-                self.db.volume_update(context, volume_ref['id'], model_update)
-        except exception.CinderException as ex:
-            # If somehow the read *or* create export failed we want to ensure
-            # that the failure is logged (but not try rescheduling since
-            # the volume at this point has been created).
-            #
-            # NOTE(harlowja): Notice that since the model_update is initially
-            # empty, the only way it will still be empty is if there is no
-            # model_update (which we don't care about) or there was an
-            # model_update and updating failed.
-            if model_update:
-                LOG.exception(_("Failed updating model of volume %(volume_id)s"
-                              " with driver provided model %(model)s") %
-                              {'volume_id': volume_id, 'model': model_update})
-                raise exception.ExportFailure(reason=ex)
-
         return volume_ref
 
 

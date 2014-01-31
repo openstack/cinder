@@ -47,6 +47,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
         1.11 - Adds mode parameter to attach_volume()
                to support volume read-only attaching.
         1.12 - Adds retype.
+        1.13 - Adds create_export.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -195,3 +196,11 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                                 reservations=reservations),
                   topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
                   version='1.12')
+
+    def create_export(self, ctxt, volume):
+        return self.call(ctxt, self.make_msg('create_export',
+                                             volume_id=volume['id']),
+                         topic=rpc.queue_get_for(ctxt,
+                                                 self.topic,
+                                                 volume['host']),
+                         version='1.13')

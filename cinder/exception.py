@@ -660,3 +660,7 @@ class GlusterfsNoSharesMounted(VolumeDriverException):
 
 class GlusterfsNoSuitableShareFound(VolumeDriverException):
     message = _("There is no share which can host %(volume_size)sG")
+
+
+class RemoveExportException(VolumeDriverException):
+    message = _("Failed to remove export for volume %(volume)s: %(reason)s")

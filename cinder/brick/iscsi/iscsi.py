@@ -53,10 +53,6 @@ class TargetAdmin(executor.Executor):
         """Create a iSCSI target and logical unit."""
         raise NotImplementedError()
 
-    def update_iscsi_target(self, name):
-        """Update an iSCSI target."""
-        raise NotImplementedError()
-
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         """Remove a iSCSI target and logical unit."""
         raise NotImplementedError()
@@ -368,9 +364,6 @@ class IetAdm(TargetAdmin):
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
         return tid
 
-    def update_iscsi_target(self, name):
-        pass
-
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_('Removing iscsi_target for volume: %s') % vol_id)
         self._delete_logicalunit(tid, lun, **kwargs)
@@ -524,9 +517,6 @@ class LioAdm(TargetAdmin):
             raise exception.NotFound()
 
         return tid
-
-    def update_iscsi_target(self, name):
-        pass
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_('Removing iscsi_target: %s') % vol_id)
