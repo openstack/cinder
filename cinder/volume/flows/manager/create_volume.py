@@ -165,57 +165,6 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                 LOG.exception(_("Volume %s: rescheduling failed"), volume_id)
 
 
-class ExtractSchedulerSpecTask(flow_utils.CinderTask):
-    """Extracts a spec object from a partial and/or incomplete request spec.
-
-    Reversion strategy: N/A
-    """
-
-    default_provides = set(['request_spec'])
-
-    def __init__(self, db, **kwargs):
-        super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION],
-                                                       **kwargs)
-        self.db = db
-
-    def _populate_request_spec(self, context, volume_id, snapshot_id,
-                               image_id):
-        # Create the full request spec using the volume_id.
-        #
-        # NOTE(harlowja): this will fetch the volume from the database, if
-        # the volume has been deleted before we got here then this should fail.
-        #
-        # In the future we might want to have a lock on the volume_id so that
-        # the volume can not be deleted while its still being created?
-        if not volume_id:
-            msg = _("No volume_id provided to populate a request_spec from")
-            raise exception.InvalidInput(reason=msg)
-        volume_ref = self.db.volume_get(context, volume_id)
-        volume_type_id = volume_ref.get('volume_type_id')
-        vol_type = self.db.volume_type_get(context, volume_type_id)
-        return {
-            'volume_id': volume_id,
-            'snapshot_id': snapshot_id,
-            'image_id': image_id,
-            'volume_properties': {
-                'size': utils.as_int(volume_ref.get('size'), quiet=False),
-                'availability_zone': volume_ref.get('availability_zone'),
-                'volume_type_id': volume_type_id,
-            },
-            'volume_type': list(dict(vol_type).iteritems()),
-        }
-
-    def execute(self, context, request_spec, volume_id, snapshot_id,
-                image_id):
-        # For RPC version < 1.2 backward compatibility
-        if request_spec is None:
-            request_spec = self._populate_request_spec(context, volume_id,
-                                                       snapshot_id, image_id)
-        return {
-            'request_spec': request_spec,
-        }
-
-
 class ExtractVolumeRefTask(flow_utils.CinderTask):
     """Extracts volume reference for given volume id."""
 
