@@ -422,13 +422,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_("Failed to update usages deleting volume"))
 
         # Delete glance metadata if it exists
-        try:
-            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
-            LOG.debug(_("volume %s: glance metadata deleted"),
-                      volume_ref['id'])
-        except exception.GlanceMetadataNotFound:
-            LOG.debug(_("no glance metadata found for volume %s"),
-                      volume_ref['id'])
+        self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
 
         self.db.volume_destroy(context, volume_id)
         LOG.info(_("volume %s: deleted successfully"), volume_ref['id'])
