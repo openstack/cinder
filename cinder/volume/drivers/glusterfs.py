@@ -603,6 +603,12 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                 # file as base.
                 msg = _('No base file found for %s.') % snapshot_path
                 raise exception.GlusterfsException(msg)
+
+            base_path = os.path.join(
+                self._local_volume_dir(snapshot['volume']), base_file)
+            base_file_img_info = self._qemu_img_info(base_path)
+            new_base_file = base_file_img_info.backing_file
+
             base_id = None
             info_path = self._local_path_volume(snapshot['volume']) + '.info'
             snap_info = self._read_info_file(info_path)
@@ -621,7 +627,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                 'active_file': active_file,
                 'snapshot_file': snapshot_file,
                 'base_file': base_file,
-                'base_id': base_id
+                'base_id': base_id,
+                'new_base_file': new_base_file
             }
 
             return self._delete_snapshot_online(context,
@@ -731,8 +738,15 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             # info['base'] => snapshot_file
 
             file_to_delete = info['base_file']
+            if info['base_id'] is None:
+                # Passing base=none to blockRebase ensures that
+                # libvirt blanks out the qcow2 backing file pointer
+                new_base = None
+            else:
+                new_base = info['new_base_file']
+                snap_info[info['base_id']] = info['snapshot_file']
 
-            delete_info = {'file_to_merge': info['base_file'],
+            delete_info = {'file_to_merge': new_base,
                            'merge_target_file': None,  # current
                            'type': 'qcow2',
                            'volume_id': snapshot['volume']['id']}
