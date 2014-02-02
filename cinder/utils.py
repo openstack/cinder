@@ -30,6 +30,7 @@ import pyclbr
 import random
 import re
 import shutil
+import stat
 import sys
 import tempfile
 import time
@@ -820,3 +821,13 @@ def require_driver_initialized(func):
             raise exception.DriverNotInitialized(driver=driver_name)
         return func(self, *args, **kwargs)
     return wrapper
+
+
+def get_file_mode(path):
+    """This primarily exists to make unit testing easier."""
+    return stat.S_IMODE(os.stat(path).st_mode)
+
+
+def get_file_gid(path):
+    """This primarily exists to make unit testing easier."""
+    return os.stat(path).st_gid

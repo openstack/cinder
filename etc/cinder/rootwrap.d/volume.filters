@@ -67,6 +67,7 @@ find: CommandFilter, find, root
 
 # cinder/volume/drivers/glusterfs.py
 mv: CommandFilter, mv, root
+chgrp: CommandFilter, chgrp, root
 
 # cinder/volumes/drivers/hds/hds.py:
 hus-cmd: CommandFilter, hus-cmd, root
