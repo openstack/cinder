@@ -107,6 +107,10 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
+        if self._encrypted_type_in_use(context, type_id):
+            expl = _('Cannot create encryption specs. Volume type in use.')
+            raise webob.exc.HTTPBadRequest(explanation=expl)
+
         if not self.is_valid_body(body, 'encryption'):
             expl = _('Create body is not valid.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
