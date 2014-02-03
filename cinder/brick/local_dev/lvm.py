@@ -431,6 +431,10 @@ class LVM(executor.Executor):
             size_str = self._calculate_thin_pool_size()
 
         cmd = ['lvcreate', '-T', '-L', size_str, vg_pool_name]
+        LOG.debug(_('Created thin pool \'%(pool)s\' with size %(size)s of '
+                    'total %(free)sg') % {'pool': vg_pool_name,
+                                          'size': size_str,
+                                          'free': self.vg_free_space})
 
         self._execute(*cmd,
                       root_helper=self._root_helper,
