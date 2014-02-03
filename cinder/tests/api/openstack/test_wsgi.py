@@ -245,6 +245,29 @@ class XMLDeserializerTest(test.TestCase):
         self.assertEqual(deserializer.deserialize(xml), as_dict)
 
 
+class MetadataXMLDeserializerTest(test.TestCase):
+    def test_xml_meta_parsing_special_character(self):
+        """Test that when a SaxParser splits a string containing special
+        characters into multiple childNodes there are no issues extracting
+        the text.
+        """
+        meta_xml_str = """
+            <metadata>
+                <meta key="key3">value&amp;3</meta>
+                <meta key="key2">value2</meta>
+                <meta key="key1">value1</meta>
+            </metadata>
+            """.strip()
+        meta_expected = {'key1': 'value1',
+                         'key2': 'value2',
+                         'key3': 'value&3'}
+        meta_deserializer = wsgi.MetadataXMLDeserializer()
+        document = wsgi.utils.safe_minidom_parse_string(meta_xml_str)
+        root_node = document.childNodes[0]
+        meta_extracted = meta_deserializer.extract_metadata(root_node)
+        self.assertEqual(meta_expected, meta_extracted)
+
+
 class ResourceTest(test.TestCase):
     def test_resource_call(self):
         class Controller(object):
