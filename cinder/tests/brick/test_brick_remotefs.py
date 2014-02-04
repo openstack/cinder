@@ -13,8 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import mox
 
+from cinder.brick import exception
 from cinder.brick.remotefs import remotefs
 from cinder.openstack.common import log as logging
 from cinder import test
@@ -53,7 +55,8 @@ class BrickRemoteFsTestCase(test.TestCase):
         client._execute('mount', check_exit_code=0).AndReturn(("", ""))
         client._execute('mkdir', '-p', self.TEST_MNT_POINT,
                         check_exit_code=0).AndReturn(("", ""))
-        client._execute('mount', '-t', 'nfs', self.TEST_EXPORT,
+        client._execute('mount', '-t', 'nfs', '-o', 'vers=4,minorversion=1',
+                        self.TEST_EXPORT,
                         self.TEST_MNT_POINT,
                         root_helper='sudo', run_as_root=True,
                         check_exit_code=0).AndReturn(("", ""))
@@ -62,6 +65,81 @@ class BrickRemoteFsTestCase(test.TestCase):
         client.mount(self.TEST_EXPORT)
 
         mox.VerifyAll()
+
+    def test_mount_nfs_with_specific_vers(self):
+        opts = ['vers=2,nointr', 'nfsvers=3,lock', 'nolock,v2', 'v4.0']
+        for opt in opts:
+            client = remotefs.RemoteFsClient(
+                'nfs', 'sudo', nfs_mount_point_base=self.TEST_MNT_BASE,
+                nfs_mount_options=opt)
+
+            client._read_mounts = mock.Mock(return_value=[])
+            client._execute = mock.Mock(return_value=True)
+
+            client.mount(self.TEST_EXPORT)
+            client._execute.assert_any_call('mkdir', '-p', self.TEST_MNT_POINT,
+                                            check_exit_code=0)
+            client._execute.assert_any_call('mount', '-t', 'nfs', '-o',
+                                            opt, self.TEST_EXPORT,
+                                            self.TEST_MNT_POINT,
+                                            root_helper='sudo',
+                                            run_as_root=True,
+                                            check_exit_code=0)
+
+    def test_mount_nfs_with_fallback_no_vers(self):
+        def execute(*args, **kwargs):
+            if 'mkdir' in args:
+                return True
+            elif 'mount' in args:
+                if 'lock,nointr,vers=4,minorversion=1' in args:
+                    raise Exception()
+                else:
+                    return True
+            else:
+                self.fail(_("Unexpected call to _execute."))
+
+        opts = 'lock,nointr'
+        client = remotefs.RemoteFsClient(
+            'nfs', 'sudo', nfs_mount_point_base=self.TEST_MNT_BASE,
+            nfs_mount_options=opts)
+
+        client._read_mounts = mock.Mock(return_value=[])
+        client._execute = mock.Mock(wraps=execute)
+
+        client.mount(self.TEST_EXPORT)
+        client._execute.assert_any_call('mkdir', '-p', self.TEST_MNT_POINT,
+                                        check_exit_code=0)
+        client._execute.assert_any_call('mount', '-t', 'nfs', '-o',
+                                        'lock,nointr,vers=4,minorversion=1',
+                                        self.TEST_EXPORT,
+                                        self.TEST_MNT_POINT,
+                                        root_helper='sudo',
+                                        run_as_root=True,
+                                        check_exit_code=0)
+        client._execute.assert_any_call('mount', '-t', 'nfs', '-o',
+                                        'lock,nointr',
+                                        self.TEST_EXPORT,
+                                        self.TEST_MNT_POINT,
+                                        root_helper='sudo',
+                                        run_as_root=True,
+                                        check_exit_code=0)
+
+    def test_mount_nfs_with_fallback_all_fail(self):
+        def execute(*args, **kwargs):
+            if 'mkdir' in args:
+                return True
+            else:
+                raise Exception(_("mount failed."))
+
+        opts = 'lock,nointr'
+        client = remotefs.RemoteFsClient(
+            'nfs', 'sudo', nfs_mount_point_base=self.TEST_MNT_BASE,
+            nfs_mount_options=opts)
+
+        client._read_mounts = mock.Mock(return_value=[])
+        client._execute = mock.Mock(wraps=execute)
+        self.assertRaises(exception.BrickException, client.mount,
+                          self.TEST_EXPORT)
 
     def test_mount_nfs_should_not_remount(self):
         mox = self._mox
