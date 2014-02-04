@@ -1601,8 +1601,8 @@
 # upon connection related issues. (integer value)
 #vmware_api_retry_count=10
 
-# The interval used for polling remote tasks invoked on VMware
-# ESX/VC server. (integer value)
+# The interval (in seconds) for polling remote tasks invoked
+# on VMware ESX/VC server. (integer value)
 #vmware_task_poll_interval=5
 
 # Name for the folder in the VC datacenter that will contain
