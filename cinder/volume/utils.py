@@ -193,15 +193,15 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     if volume_clear_size is None:
         volume_clear_size = CONF.volume_clear_size
 
+    if volume_clear_size == 0:
+        volume_clear_size = volume_size
+
     LOG.info(_("Performing secure delete on volume: %s") % volume_path)
 
     if volume_clear == 'zero':
-        if volume_clear_size == 0:
-            return copy_volume('/dev/zero', volume_path, volume_size,
-                               CONF.volume_dd_blocksize,
-                               sync=True, execute=utils.execute)
-        else:
-            clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % volume_clear_size]
+        return copy_volume('/dev/zero', volume_path, volume_clear_size,
+                           CONF.volume_dd_blocksize,
+                           sync=True, execute=utils.execute)
     elif volume_clear == 'shred':
         clear_cmd = ['shred', '-n3']
         if volume_clear_size:
