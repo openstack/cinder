@@ -28,6 +28,7 @@ from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.volume import api as volume_api
+from cinder.volume import utils as volutils
 
 CONF = cfg.CONF
 
@@ -264,6 +265,9 @@ class AdminActionsTest(test.TestCase):
 
     def test_force_delete_snapshot(self):
         self.stubs.Set(os.path, 'exists', lambda x: True)
+        self.stubs.Set(volutils, 'clear_volume',
+                       lambda a, b, volume_clear=CONF.volume_clear,
+                       volume_clear_size=CONF.volume_clear_size: None)
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is creating

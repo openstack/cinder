@@ -250,8 +250,12 @@ class BlockDeviceDriver(driver.ISCSIDriver):
         if not dev_path or dev_path not in \
                 self.configuration.available_devices:
             return
-        if os.path.exists(dev_path):
-            self.clear_volume(volume)
+        if os.path.exists(dev_path) and \
+                self.configuration.volume_clear != 'none':
+            volutils.clear_volume(
+                self._get_device_size(dev_path), dev_path,
+                volume_clear=self.configuration.volume_clear,
+                volume_clear_size=self.configuration.volume_clear_size)
 
     def local_path(self, volume):
         if volume['provider_location']:
@@ -259,37 +263,6 @@ class BlockDeviceDriver(driver.ISCSIDriver):
             return path[3]
         else:
             return None
-
-    def clear_volume(self, volume):
-        """unprovision old volumes to prevent data leaking between users."""
-        vol_path = self.local_path(volume)
-        clear_size = self.configuration.volume_clear_size
-        size_in_m = self._get_device_size(vol_path)
-
-        if self.configuration.volume_clear == 'none':
-            return
-
-        LOG.info(_("Performing secure delete on volume: %s") % volume['id'])
-
-        if self.configuration.volume_clear == 'zero':
-            if clear_size == 0:
-                return volutils.copy_volume(
-                    '/dev/zero', vol_path, size_in_m,
-                    self.configuration.volume_dd_blocksize,
-                    sync=True, execute=self._execute)
-            else:
-                clear_cmd = ['shred', '-n0', '-z', '-s%dMiB' % clear_size]
-        elif self.configuration.volume_clear == 'shred':
-            clear_cmd = ['shred', '-n3']
-            if clear_size:
-                clear_cmd.append('-s%dMiB' % clear_size)
-        else:
-            LOG.error(_("Error unrecognized volume_clear option: %s"),
-                      self.configuration.volume_clear)
-            return
-
-        clear_cmd.append(vol_path)
-        self._execute(*clear_cmd, run_as_root=True)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""

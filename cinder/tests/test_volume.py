@@ -21,7 +21,6 @@ Tests for Volume Code.
 import contextlib
 import datetime
 import os
-import re
 import shutil
 import socket
 import tempfile
@@ -101,7 +100,7 @@ class BaseVolumeTestCase(test.TestCase):
         self.volume_params = {
             'status': 'creating',
             'host': CONF.host,
-            'size': 0}
+            'size': 1}
         self.stubs.Set(iscsi.TgtAdm, '_get_target', self.fake_get_target)
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_volume_groups',
@@ -135,6 +134,14 @@ class BaseVolumeTestCase(test.TestCase):
 
 
 class VolumeTestCase(BaseVolumeTestCase):
+
+    def setUp(self):
+        super(VolumeTestCase, self).setUp()
+        self.stubs.Set(volutils, 'clear_volume',
+                       lambda a, b, volume_clear=mox.IgnoreArg(),
+                       volume_clear_size=mox.IgnoreArg(),
+                       lvm_type=mox.IgnoreArg(): None)
+
     def test_init_host_clears_downloads(self):
         """Test that init_host will unwedge a volume stuck in downloading."""
         volume = tests_utils.create_volume(self.context, status='downloading',
@@ -250,7 +257,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'snapshot_id': None,
             'user_id': 'fake',
             'launched_at': 'DONTCARE',
-            'size': 0,
+            'size': 1,
         }
         self.assertDictMatch(msg['payload'], expected)
         msg = test_notifier.NOTIFICATIONS[1]
@@ -1386,7 +1393,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             result_dict['snapshot_metadata'][0].key:
             result_dict['snapshot_metadata'][0].value}
         self.assertEqual(result_meta, test_meta)
-
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.assertRaises(exception.NotFound,
                           db.snapshot_get,
@@ -2719,80 +2725,52 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
 class LVMVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
+    FAKE_VOLUME = {'name': 'test1',
+                   'id': 'test1'}
 
-    def test_clear_volume(self):
+    def test_delete_volume_invalid_parameter(self):
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-        self.mox.StubOutWithMock(volutils, 'copy_volume')
         self.mox.StubOutWithMock(os.path, 'exists')
-        self.mox.StubOutWithMock(utils, 'execute')
-
-        fake_volume = {'name': 'test1',
-                       'volume_name': 'test1',
-                       'id': 'test1'}
-
-        os.path.exists(mox.IgnoreArg()).AndReturn(True)
-        volutils.copy_volume('/dev/zero', mox.IgnoreArg(), 123 * 1024,
-                             mox.IgnoreArg(), execute=lvm_driver._execute,
-                             sync=True)
-
-        os.path.exists(mox.IgnoreArg()).AndReturn(True)
-        volutils.copy_volume('/dev/zero', mox.IgnoreArg(), 123 * 1024,
-                             mox.IgnoreArg(), execute=lvm_driver._execute,
-                             sync=True)
 
         os.path.exists(mox.IgnoreArg()).AndReturn(True)
 
         self.mox.ReplayAll()
-
-        # Test volume has 'size' field
-        volume = dict(fake_volume, size=123)
-        lvm_driver.clear_volume(volume)
-
-        # Test volume has 'volume_size' field
-        volume = dict(fake_volume, volume_size=123)
-        lvm_driver.clear_volume(volume)
 
         # Test volume without 'size' field and 'volume_size' field
-        volume = dict(fake_volume)
         self.assertRaises(exception.InvalidParameterValue,
-                          lvm_driver.clear_volume,
-                          volume)
+                          lvm_driver._delete_volume,
+                          self.FAKE_VOLUME)
 
-    def test_clear_volume_badopt(self):
+    def test_delete_volume_bad_path(self):
         configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.volume_clear = 'non_existent_volume_clearer'
+        configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0
+        volume = dict(self.FAKE_VOLUME, size=1)
         lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-        self.mox.StubOutWithMock(volutils, 'copy_volume')
+
         self.mox.StubOutWithMock(os.path, 'exists')
-
-        fake_volume = {'name': 'test1',
-                       'volume_name': 'test1',
-                       'id': 'test1',
-                       'size': 123}
-
-        os.path.exists(mox.IgnoreArg()).AndReturn(True)
-
+        os.path.exists(mox.IgnoreArg()).AndReturn(False)
         self.mox.ReplayAll()
 
-        volume = dict(fake_volume)
-        self.assertRaises(exception.InvalidConfigurationValue,
-                          lvm_driver.clear_volume,
-                          volume)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          lvm_driver._delete_volume, volume)
 
-    def test_clear_volume_thinlvm_snap(self):
+    def test_delete_volume_thinlvm_snap(self):
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.volume_clear = 'zero'
         configuration.volume_clear_size = 0
         configuration.lvm_type = 'thin'
-        lvm_driver = lvm.LVMISCSIDriver(configuration=configuration)
+        lvm_driver = lvm.LVMISCSIDriver(configuration=configuration,
+                                        vg_obj=mox.MockAnything())
 
         # Ensures that copy_volume is not called for ThinLVM
         self.mox.StubOutWithMock(volutils, 'copy_volume')
+        self.mox.StubOutWithMock(volutils, 'clear_volume')
         self.mox.StubOutWithMock(lvm_driver, '_execute')
+        self.mox.ReplayAll()
 
         uuid = '00000000-0000-0000-0000-c3aa7ee01536'
 
@@ -2800,32 +2778,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                          'id': uuid,
                          'size': 123}
 
-        lvm_driver.clear_volume(fake_snapshot, is_snapshot=True)
-
-    def test_clear_volume_lvm_snap(self):
-        self.stubs.Set(os.path, 'exists', lambda x: True)
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.volume_clear = 'zero'
-        configuration.volume_clear_size = 0
-        lvm_driver = lvm.LVMISCSIDriver(configuration=configuration)
-
-        uuid = '00000000-0000-0000-0000-90ed32cdeed3'
-        name = 'snapshot-' + uuid
-        mangle_name = '_' + re.sub(r'-', r'--', name)
-
-        def fake_copy_volume(srcstr, deststr, size, blocksize, **kwargs):
-            self.assertEqual(deststr,
-                             '/dev/mapper/cinder--volumes-%s-cow' %
-                             mangle_name)
-            return True
-
-        self.stubs.Set(volutils, 'copy_volume', fake_copy_volume)
-
-        fake_snapshot = {'name': 'snapshot-' + uuid,
-                         'id': uuid,
-                         'size': 123}
-
-        lvm_driver.clear_volume(fake_snapshot, is_snapshot=True)
+        lvm_driver._delete_volume(fake_snapshot, is_snapshot=True)
 
 
 class ISCSITestCase(DriverTestCase):

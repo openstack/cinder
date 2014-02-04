@@ -66,7 +66,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         TEST_VOLUME2 = {'provider_location': None}
         self.mox.StubOutWithMock(self.drv, 'local_path')
         self.drv.local_path(TEST_VOLUME2).AndReturn(None)
-        self.mox.StubOutWithMock(self.drv, 'clear_volume')
+        self.mox.StubOutWithMock(volutils, 'clear_volume')
         self.mox.ReplayAll()
         self.drv.delete_volume(TEST_VOLUME2)
 
@@ -76,8 +76,12 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         path = self.drv.local_path(TEST_VOLUME1).AndReturn('/dev/loop1')
         self.mox.StubOutWithMock(os.path, 'exists')
         os.path.exists(path).AndReturn(True)
-        self.mox.StubOutWithMock(self.drv, 'clear_volume')
-        self.drv.clear_volume(TEST_VOLUME1)
+        self.mox.StubOutWithMock(volutils, 'clear_volume')
+        self.mox.StubOutWithMock(self.drv, '_get_device_size')
+        size = self.drv._get_device_size(path).AndReturn(1024)
+        volutils.clear_volume(size, path,
+                              volume_clear=mox.IgnoreArg(),
+                              volume_clear_size=mox.IgnoreArg())
         self.mox.ReplayAll()
         self.drv.delete_volume(TEST_VOLUME1)
 
@@ -85,7 +89,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         TEST_VOLUME2 = {'provider_location': '1 2 3 /dev/loop0'}
         self.mox.StubOutWithMock(self.drv, 'local_path')
         self.drv.local_path(TEST_VOLUME2).AndReturn('/dev/loop0')
-        self.mox.StubOutWithMock(self.drv, 'clear_volume')
+        self.mox.StubOutWithMock(volutils, 'clear_volume')
         self.mox.ReplayAll()
         self.drv.delete_volume(TEST_VOLUME2)
 
