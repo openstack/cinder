@@ -182,7 +182,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.12'
+    RPC_API_VERSION = '1.13'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -247,7 +247,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             sum = 0
             self.stats.update({'allocated_capacity_gb': sum})
             for volume in volumes:
-                if volume['status'] in ['available', 'in-use']:
+                if volume['status'] in ['in-use']:
                     # calculate allocated capacity for driver
                     sum += volume['size']
                     self.stats['allocated_capacity_gb'] = sum
@@ -393,7 +393,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.VolumeIsBusy:
             LOG.error(_("Cannot delete volume %s: volume is busy"),
                       volume_ref['id'])
-            self.driver.ensure_export(context, volume_ref)
             self.db.volume_update(context, volume_ref['id'],
                                   {'status': 'available'})
             return True
@@ -641,7 +640,6 @@ class VolumeManager(manager.SchedulerDependentManager):
     def detach_volume(self, context, volume_id):
         """Updates db to show volume is detached."""
         # TODO(vish): refactor this into a more general "unreserve"
-        # TODO(sleepsonthefloor): Is this 'elevated' appropriate?
 
         volume = self.db.volume_get(context, volume_id)
         self._notify_about_volume_usage(context, volume, "detach.start")
@@ -662,11 +660,29 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_admin_metadata_delete(context.elevated(), volume_id,
                                              'attached_mode')
 
-        # Check for https://bugs.launchpad.net/cinder/+bug/1065702
+        # NOTE(jdg): We used to do an ensure export here to
+        # catch upgrades while volumes were attached (E->F)
+        # this was necessary to convert in-use volumes from
+        # int ID's to UUID's.  Don't need this any longer
+
+        # We're going to remove the export here
+        # (delete the iscsi target)
         volume = self.db.volume_get(context, volume_id)
-        if (volume['provider_location'] and
-                volume['name'] not in volume['provider_location']):
-            self.driver.ensure_export(context, volume)
+        try:
+            utils.require_driver_initialized(self.driver)
+            LOG.debug(_("volume %s: removing export"), volume_id)
+            self.driver.remove_export(context, volume)
+        except exception.DriverNotInitialized as ex:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Error detaching volume %(volume)s, "
+                                "due to uninitialized driver."),
+                              {"volume": volume_id})
+        except Exception as ex:
+            LOG.exception(_("Error detaching volume %(volume)s, "
+                            "due to remove export failure."),
+                          {"volume": volume_id})
+            raise exception.RemoveExportException(volume=volume_id, reason=ex)
+
         self._notify_about_volume_usage(context, volume, "detach.end")
 
     def copy_volume_to_image(self, context, volume_id, image_meta):
@@ -684,7 +700,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             utils.require_driver_initialized(self.driver)
 
             volume = self.db.volume_get(context, volume_id)
-            self.driver.ensure_export(context.elevated(), volume)
             image_service, image_id = \
                 glance.get_remote_image_service(context, image_meta['id'])
             self.driver.copy_volume_to_image(context, volume, image_service,
@@ -745,12 +760,34 @@ class VolumeManager(manager.SchedulerDependentManager):
         # before going forward. The exception will be caught
         # and the volume status updated.
         utils.require_driver_initialized(self.driver)
+        try:
+            self.driver.validate_connector(connector)
+        except Exception as err:
+            err_msg = (_('Unable to fetch connection information from '
+                         'backend: %(err)s') % {'err': str(err)})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
         volume = self.db.volume_get(context, volume_id)
-        self.driver.validate_connector(connector)
+        model_update = None
+        try:
+            LOG.debug(_("Volume %s: creating export"), volume_id)
+            model_update = self.driver.create_export(context, volume)
+            if model_update:
+                volume = self.db.volume_update(context,
+                                               volume_id,
+                                               model_update)
+        except exception.CinderException as ex:
+            if model_update:
+                LOG.exception(_("Failed updating model of volume %(volume_id)s"
+                              " with driver provided model %(model)s") %
+                              {'volume_id': volume_id, 'model': model_update})
+                raise exception.ExportFailure(reason=ex)
+
         try:
             conn_info = self.driver.initialize_connection(volume, connector)
         except Exception as err:
+            self.driver.remove_export(context, volume)
             err_msg = (_('Unable to fetch connection information from '
                          'backend: %(err)s') % {'err': str(err)})
             LOG.error(err_msg)

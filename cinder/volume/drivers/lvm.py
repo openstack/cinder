@@ -645,6 +645,7 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 LOG.info(_("Skipping remove_export. No iscsi_target "
                            "provisioned for volume: %s"), volume['id'])
                 return
+
         else:
             iscsi_target = 0
 

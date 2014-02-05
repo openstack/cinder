@@ -373,8 +373,10 @@ class VolumeDriver(object):
         """Attach the volume."""
         if remote:
             rpcapi = volume_rpcapi.VolumeAPI()
+            rpcapi.create_export(context, volume)
             conn = rpcapi.initialize_connection(context, volume, properties)
         else:
+            self.create_export(context, volume)
             conn = self.initialize_connection(volume, properties)
 
         # Use Brick's code to do attach/detach

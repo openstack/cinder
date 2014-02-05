@@ -938,15 +938,25 @@ class VolumeTestCase(BaseVolumeTestCase):
                           image_id='fake_id',
                           source_volume='fake_id')
 
-    @mock.patch.object(db, 'volume_get')
     @mock.patch.object(db, 'volume_admin_metadata_get')
+    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_fetchqos(self,
-                                            _mock_volume_admin_metadata_get,
-                                            _mock_volume_get):
+                                            _mock_volume_update,
+                                            _mock_volume_get,
+                                            _mock_volume_admin_metadata_get):
         """Make sure initialize_connection returns correct information."""
-        _mock_volume_get.return_value = {'volume_type_id': 'fake_type_id',
-                                         'volume_admin_metadata': {}}
-        _mock_volume_admin_metadata_get.return_value = {}
+        _fake_admin_meta = {'fake-key': 'fake-value'}
+        _fake_volume = {'volume_type_id': 'fake_type_id',
+                        'name': 'fake_name',
+                        'host': 'fake_host',
+                        'id': 'fake_volume_id',
+                        'volume_admin_metadata': _fake_admin_meta}
+
+        _mock_volume_get.return_value = _fake_volume
+        _mock_volume_update.return_value = _fake_volume
+        _mock_volume_admin_metadata_get.return_value = _fake_admin_meta
+
         connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
         qos_values = {'consumer': 'front-end',
                       'specs': {
