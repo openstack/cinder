@@ -401,7 +401,7 @@ class LVM(executor.Executor):
         self.update_volume_group_info()
 
         # leave 5% free for metadata
-        return "%sg" % (float(self.vg_free_space) * 0.95)
+        return "%sg" % (self.vg_free_space * 0.95)
 
     def create_thin_pool(self, name=None, size_str=None):
         """Creates a thin provisioning pool for this VG.
@@ -637,5 +637,4 @@ class LVM(executor.Executor):
         return free_capacity
 
     def vg_mirror_size(self, mirror_count):
-        return (float(self.vg_free_space) /
-                (mirror_count + 1))
+        return (self.vg_free_space / (mirror_count + 1))
