@@ -1,4 +1,4 @@
-SQLAlchemy>=0.7.3,<=0.7.9
+SQLAlchemy>=0.7.8,<0.7.99
 amqplib>=0.6.1
 anyjson>=0.2.4
 argparse
