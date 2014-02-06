@@ -63,8 +63,8 @@ vmdk_opts = [
                     'retried upon connection related issues.'),
     cfg.IntOpt('vmware_task_poll_interval',
                default=5,
-               help='The interval used for polling remote tasks invoked on '
-                    'VMware ESX/VC server.'),
+               help='The interval (in seconds) for polling remote tasks '
+                    'invoked on VMware ESX/VC server.'),
     cfg.StrOpt('vmware_volume_folder',
                default='cinder-volumes',
                help='Name for the folder in the VC datacenter that will '
