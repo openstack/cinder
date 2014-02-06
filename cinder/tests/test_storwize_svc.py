@@ -533,7 +533,7 @@ port_speed!N/A
         volume_info['uid'] = ('ABCDEF' * 3) + ('0' * 14) + volume_info['id']
 
         if 'name' in kwargs:
-            volume_info['name'] = kwargs['name'].strip('\'\'')
+            volume_info['name'] = kwargs['name'].strip('\'\"')
         else:
             volume_info['name'] = 'vdisk' + volume_info['id']
 
@@ -603,7 +603,7 @@ port_speed!N/A
 
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol_name = kwargs['obj'].strip('\'\'')
+        vol_name = kwargs['obj'].strip('\'\"')
 
         if vol_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
@@ -623,7 +623,7 @@ port_speed!N/A
     def _cmd_expandvdisksize(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol_name = kwargs['obj'].strip('\'\'')
+        vol_name = kwargs['obj'].strip('\'\"')
 
         # Assume unit is gb
         if 'size' not in kwargs:
@@ -816,7 +816,7 @@ port_speed!N/A
     def _cmd_addhostport(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        host_name = kwargs['obj'].strip('\'\'')
+        host_name = kwargs['obj'].strip('\'\"')
 
         if host_name not in self._hosts_list:
             return self._errors['CMMVC5753E']
@@ -828,11 +828,11 @@ port_speed!N/A
     def _cmd_chhost(self, **kwargs):
         if 'chapsecret' not in kwargs:
             return self._errors['CMMVC5707E']
-        secret = kwargs['obj'].strip('\'\'')
+        secret = kwargs['obj'].strip('\'\"')
 
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        host_name = kwargs['obj'].strip('\'\'')
+        host_name = kwargs['obj'].strip('\'\"')
 
         if host_name not in self._hosts_list:
             return self._errors['CMMVC5753E']
@@ -845,7 +845,7 @@ port_speed!N/A
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
 
-        host_name = kwargs['obj'].strip('\'\'')
+        host_name = kwargs['obj'].strip('\'\"')
         if host_name not in self._hosts_list:
             return self._errors['CMMVC5753E']
 
@@ -875,9 +875,10 @@ port_speed!N/A
             else:
                 return ('', '')
         else:
-            if kwargs['obj'] not in self._hosts_list:
+            host_name = kwargs['obj'].strip('\'\"')
+            if host_name not in self._hosts_list:
                 return self._errors['CMMVC5754E']
-            host = self._hosts_list[kwargs['obj']]
+            host = self._hosts_list[host_name]
             rows = []
             rows.append(['id', host['id']])
             rows.append(['name', host['host_name']])
@@ -931,15 +932,15 @@ port_speed!N/A
 
         if 'host' not in kwargs:
             return self._errors['CMMVC5707E']
-        mapping_info['host'] = kwargs['host'].strip('\'\'')
+        mapping_info['host'] = kwargs['host'].strip('\'\"')
 
         if 'scsi' not in kwargs:
             return self._errors['CMMVC5707E']
-        mapping_info['lun'] = kwargs['scsi'].strip('\'\'')
+        mapping_info['lun'] = kwargs['scsi'].strip('\'\"')
 
         if 'obj' not in kwargs:
             return self._errors['CMMVC5707E']
-        mapping_info['vol'] = kwargs['obj'].strip('\'\'')
+        mapping_info['vol'] = kwargs['obj'].strip('\'\"')
 
         if mapping_info['vol'] not in self._volumes_list:
             return self._errors['CMMVC5753E']
@@ -967,11 +968,11 @@ port_speed!N/A
     def _cmd_rmvdiskhostmap(self, **kwargs):
         if 'host' not in kwargs:
             return self._errors['CMMVC5707E']
-        host = kwargs['host'].strip('\'\'')
+        host = kwargs['host'].strip('\'\"')
 
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol = kwargs['obj'].strip('\'\'')
+        vol = kwargs['obj'].strip('\'\"')
 
         mapping_ids = []
         for v in self._mappings_list.itervalues():
@@ -992,7 +993,7 @@ port_speed!N/A
 
     # List information about host->vdisk mappings
     def _cmd_lshostvdiskmap(self, **kwargs):
-        host_name = kwargs['obj']
+        host_name = kwargs['obj'].strip('\'\"')
 
         if host_name not in self._hosts_list:
             return self._errors['CMMVC5754E']
@@ -1044,13 +1045,13 @@ port_speed!N/A
 
         if 'source' not in kwargs:
             return self._errors['CMMVC5707E']
-        source = kwargs['source'].strip('\'\'')
+        source = kwargs['source'].strip('\'\"')
         if source not in self._volumes_list:
             return self._errors['CMMVC5754E']
 
         if 'target' not in kwargs:
             return self._errors['CMMVC5707E']
-        target = kwargs['target'].strip('\'\'')
+        target = kwargs['target'].strip('\'\"')
         if target not in self._volumes_list:
             return self._errors['CMMVC5754E']
 
@@ -1211,8 +1212,8 @@ port_speed!N/A
     def _cmd_migratevdisk(self, **kwargs):
         if 'mdiskgrp' not in kwargs or 'vdisk' not in kwargs:
             return self._errors['CMMVC5707E']
-        mdiskgrp = kwargs['mdiskgrp'].strip('\'\'')
-        vdisk = kwargs['vdisk'].strip('\'\'')
+        mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
+        vdisk = kwargs['vdisk'].strip('\'\"')
 
         if vdisk in self._volumes_list:
             curr_mdiskgrp = self._volumes_list
@@ -1244,13 +1245,13 @@ port_speed!N/A
     def _cmd_addvdiskcopy(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol_name = kwargs['obj'].strip('\'\'')
+        vol_name = kwargs['obj'].strip('\'\"')
         if vol_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
         vol = self._volumes_list[vol_name]
         if 'mdiskgrp' not in kwargs:
             return self._errors['CMMVC5707E']
-        mdiskgrp = kwargs['mdiskgrp'].strip('\'\'')
+        mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
 
         copy_info = {}
         copy_info['id'] = self._find_unused_id(vol['copies'])
@@ -1297,7 +1298,7 @@ port_speed!N/A
         if 'copy' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
         else:
-            copy_id = kwargs['copy'].strip('\'\'')
+            copy_id = kwargs['copy'].strip('\'\"')
             if copy_id not in vol['copies']:
                 return self._errors['CMMVC6353E']
             copy = vol['copies'][copy_id]
@@ -1325,10 +1326,10 @@ port_speed!N/A
     def _cmd_rmvdiskcopy(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol_name = kwargs['obj'].strip('\'\'')
+        vol_name = kwargs['obj'].strip('\'\"')
         if 'copy' not in kwargs:
             return self._errors['CMMVC5707E']
-        copy_id = kwargs['copy'].strip('\'\'')
+        copy_id = kwargs['copy'].strip('\'\"')
         if vol_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
         vol = self._volumes_list[vol_name]
@@ -1341,7 +1342,7 @@ port_speed!N/A
     def _cmd_chvdisk(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol_name = kwargs['obj'].strip('\'\'')
+        vol_name = kwargs['obj'].strip('\'\"')
         vol = self._volumes_list[vol_name]
         kwargs.pop('obj')
 
@@ -1363,7 +1364,7 @@ port_speed!N/A
     def _cmd_movevdisk(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
-        vol_name = kwargs['obj'].strip('\'\'')
+        vol_name = kwargs['obj'].strip('\'\"')
         vol = self._volumes_list[vol_name]
 
         if 'iogrp' not in kwargs:
@@ -1505,6 +1506,7 @@ class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
     def _run_ssh(self, cmd, check_exit_code=True, attempts=1):
         try:
             LOG.debug(_('Run CLI command: %s') % cmd)
+            utils.check_ssh_injection(cmd)
             ret = self.fake_storage.execute_command(cmd, check_exit_code)
             (stdout, stderr) = ret
             LOG.debug(_('CLI output:\n stdout: %(stdout)s\n stderr: '
@@ -2329,7 +2331,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                             self.driver._state['extent_size'])
         self.driver.migrate_volume(ctxt, volume, host)
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        print('AVISHAY ' + str(attrs))
         self.assertIn('openstack3', attrs['mdisk_grp_name'])
         self.driver.delete_volume(volume)
 
