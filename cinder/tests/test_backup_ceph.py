@@ -27,7 +27,6 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import test
-from cinder import units
 from cinder.volume.drivers import rbd as rbddriver
 
 LOG = logging.getLogger(__name__)
@@ -66,8 +65,10 @@ def common_mocks(f):
         # NOTE(dosaboy): mock out eventlet.sleep() so that it does nothing.
         @mock.patch('eventlet.sleep')
         @mock.patch('time.time')
-        @mock.patch('cinder.backup.drivers.ceph.rbd')
-        @mock.patch('cinder.backup.drivers.ceph.rados')
+        # NOTE(dosaboy): set spec to empty object so that hasattr calls return
+        #                False by default.
+        @mock.patch('cinder.backup.drivers.ceph.rbd', spec=object)
+        @mock.patch('cinder.backup.drivers.ceph.rados', spec=object)
         def _common_inner_inner2(mock_rados, mock_rbd, mock_time, mock_sleep,
                                  mock_popen):
             mock_time.side_effect = inst.time_inc
@@ -193,12 +194,6 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_get_rbd_support(self):
-
-        # We need a blank class for this one.
-        class mock_rbd(object):
-            pass
-
-        self.service.rbd = mock_rbd
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_LAYERING'))
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_STRIPINGV2'))
 
@@ -477,6 +472,10 @@ class BackupCephTestCase(test.TestCase):
         self.mock_rbd.Image.read = mock.Mock()
         self.mock_rbd.Image.read.side_effect = mock_read_data
 
+        self.mock_rbd.Image.size = mock.Mock()
+        self.mock_rbd.Image.size.return_value = \
+            self.chunk_size * self.num_chunks
+
         with mock.patch.object(self.service, '_discard_bytes') as \
                 mock_discard_bytes:
             with tempfile.NamedTemporaryFile() as test_file:
@@ -632,110 +631,133 @@ class BackupCephTestCase(test.TestCase):
             self.assertEqual(RAISED_EXCEPTIONS, [MockImageNotFoundException])
 
     @common_mocks
-    def test_diff_restore_allowed_true(self):
-        restore_point = 'restore.foo'
-        is_allowed = (True, restore_point)
-
-        rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
-
-        self.mock_rbd.Image.size = mock.Mock()
-        self.mock_rbd.Image.size.return_value = self.volume_size * units.GiB
-
-        with mock.patch.object(self.service, '_get_restore_point') as \
-                mock_restore_point:
-            mock_restore_point.return_value = restore_point
-            with mock.patch.object(self.service, '_rbd_has_extents') as \
-                    mock_rbd_has_extents:
-                mock_rbd_has_extents.return_value = False
-                with mock.patch.object(self.service, '_rbd_image_exists') as \
-                        mock_rbd_image_exists:
-                    mock_rbd_image_exists.return_value = (True, 'foo')
-                    with mock.patch.object(self.service, '_file_is_rbd') as \
-                            mock_file_is_rbd:
-                        mock_file_is_rbd.return_value = True
-
-                        resp = \
-                            self.service._diff_restore_allowed('foo',
-                                                               self.backup,
-                                                               self.alt_volume,
-                                                               rbd_io,
-                                                               self.mock_rados)
-
-                        self.assertEqual(resp, is_allowed)
-                        self.assertTrue(mock_restore_point.called)
-                        self.assertTrue(mock_rbd_has_extents.called)
-                        self.assertTrue(mock_rbd_image_exists.called)
-                        self.assertTrue(mock_file_is_rbd.called)
-
-    @common_mocks
-    def test_diff_restore_allowed_false(self):
+    def test_diff_restore_allowed(self):
         not_allowed = (False, None)
+        backup_base = 'backup.base'
+        restore_point = 'backup.snap.1'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
+        args_vols_different = [backup_base, self.backup, self.alt_volume,
+                               rbd_io, self.mock_rados]
+        args_vols_same = [backup_base, self.backup, self.volume, rbd_io,
+                          self.mock_rados]
 
-        test_args = ['base_foo', self.backup, self.volume, rbd_io,
-                     self.mock_rados]
-
-        resp = self.service._diff_restore_allowed(*test_args)
-        self.assertEqual(resp, not_allowed)
-
-        test_args = ['base_foo', self.backup, self.alt_volume, rbd_io,
-                     self.mock_rados]
-
+        # 1. destination volume is not an rbd
         with mock.patch.object(self.service, '_file_is_rbd') as \
                 mock_file_is_rbd:
             mock_file_is_rbd.return_value = False
-            resp = self.service._diff_restore_allowed(*test_args)
+            resp = self.service._diff_restore_allowed(*args_vols_different)
             self.assertEqual(resp, not_allowed)
             self.assertTrue(mock_file_is_rbd.called)
 
+        # 1. destination volume is an rbd
+        # 2. backup base is not diff-format
         with mock.patch.object(self.service, '_file_is_rbd') as \
                 mock_file_is_rbd:
             mock_file_is_rbd.return_value = True
             with mock.patch.object(self.service, '_rbd_image_exists') as \
                     mock_rbd_image_exists:
-                mock_rbd_image_exists.return_value = False, None
-                resp = self.service._diff_restore_allowed(*test_args)
+                mock_rbd_image_exists.return_value = (False, backup_base)
+                resp = self.service._diff_restore_allowed(*args_vols_different)
                 self.assertEqual(resp, not_allowed)
                 self.assertTrue(mock_file_is_rbd.called)
                 self.assertTrue(mock_rbd_image_exists.called)
 
+        # 1. destination volume is an rbd
+        # 2. backup base is diff-format
+        # 3. restore point does not exist
+        # 4. source and destination volumes are different
         with mock.patch.object(self.service, '_file_is_rbd') as \
                 mock_file_is_rbd:
             mock_file_is_rbd.return_value = True
             with mock.patch.object(self.service, '_rbd_image_exists') as \
                     mock_rbd_image_exists:
-                mock_rbd_image_exists.return_value = True, None
+                mock_rbd_image_exists.return_value = (True, backup_base)
                 with mock.patch.object(self.service, '_get_restore_point') as \
                         mock_get_restore_point:
                     mock_get_restore_point.return_value = None
 
-                    resp = self.service._diff_restore_allowed(*test_args)
+                    args = args_vols_different
+                    resp = self.service._diff_restore_allowed(*args)
 
                     self.assertEqual(resp, not_allowed)
                     self.assertTrue(mock_file_is_rbd.called)
                     self.assertTrue(mock_rbd_image_exists.called)
                     self.assertTrue(mock_get_restore_point.called)
 
+        # 1. destination volume is an rbd
+        # 2. backup base is diff-format
+        # 3. restore point does not exist
+        # 4. source and destination volumes are the same
         with mock.patch.object(self.service, '_file_is_rbd') as \
                 mock_file_is_rbd:
             mock_file_is_rbd.return_value = True
             with mock.patch.object(self.service, '_rbd_image_exists') as \
                     mock_rbd_image_exists:
-                mock_rbd_image_exists.return_value = True, None
+                mock_rbd_image_exists.return_value = (True, backup_base)
                 with mock.patch.object(self.service, '_get_restore_point') as \
                         mock_get_restore_point:
-                    mock_get_restore_point.return_value = 'foo.restore_point'
+                    mock_get_restore_point.return_value = None
+
+                    resp = self.service._diff_restore_allowed(*args_vols_same)
+
+                    self.assertEqual(resp, not_allowed)
+                    self.assertTrue(mock_file_is_rbd.called)
+                    self.assertTrue(mock_rbd_image_exists.called)
+                    self.assertTrue(mock_get_restore_point.called)
+
+        # 1. destination volume is an rbd
+        # 2. backup base is diff-format
+        # 3. restore point exists
+        # 4. source and destination volumes are different
+        # 5. destination volume has data on it - full copy is mandated
+        with mock.patch.object(self.service, '_file_is_rbd') as \
+                mock_file_is_rbd:
+            mock_file_is_rbd.return_value = True
+            with mock.patch.object(self.service, '_rbd_image_exists') as \
+                    mock_rbd_image_exists:
+                mock_rbd_image_exists.return_value = (True, backup_base)
+                with mock.patch.object(self.service, '_get_restore_point') as \
+                        mock_get_restore_point:
+                    mock_get_restore_point.return_value = restore_point
                     with mock.patch.object(self.service, '_rbd_has_extents') \
                             as mock_rbd_has_extents:
                         mock_rbd_has_extents.return_value = True
 
-                        resp = self.service._diff_restore_allowed(*test_args)
+                        args = args_vols_different
+                        resp = self.service._diff_restore_allowed(*args)
 
-                        self.assertEqual(resp, (False, 'foo.restore_point'))
+                        self.assertEqual(resp, (False, restore_point))
                         self.assertTrue(mock_file_is_rbd.called)
                         self.assertTrue(mock_rbd_image_exists.called)
                         self.assertTrue(mock_get_restore_point.called)
                         self.assertTrue(mock_rbd_has_extents.called)
+
+        # 1. destination volume is an rbd
+        # 2. backup base is diff-format
+        # 3. restore point exists
+        # 4. source and destination volumes are different
+        # 5. destination volume no data on it
+        with mock.patch.object(self.service, '_file_is_rbd') as \
+                mock_file_is_rbd:
+            mock_file_is_rbd.return_value = True
+            with mock.patch.object(self.service, '_rbd_image_exists') as \
+                    mock_rbd_image_exists:
+                mock_rbd_image_exists.return_value = (True, backup_base)
+                with mock.patch.object(self.service, '_get_restore_point') as \
+                        mock_restore_point:
+                    mock_restore_point.return_value = restore_point
+                    with mock.patch.object(self.service, '_rbd_has_extents') \
+                            as mock_rbd_has_extents:
+                        mock_rbd_has_extents.return_value = False
+
+                        args = args_vols_different
+                        resp = self.service._diff_restore_allowed(*args)
+
+                        self.assertEqual(resp, (True, restore_point))
+                        self.assertTrue(mock_restore_point.called)
+                        self.assertTrue(mock_rbd_has_extents.called)
+                        self.assertTrue(mock_rbd_image_exists.called)
+                        self.assertTrue(mock_file_is_rbd.called)
 
     @common_mocks
     @mock.patch('fcntl.fcntl')
