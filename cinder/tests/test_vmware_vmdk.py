@@ -162,6 +162,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
             def __init__(self):
                 self.counter1 = 0
+                self.counter2 = 0
 
             @api.Retry(max_retry_count=2, inc_sleep_time=0.001,
                        exceptions=(Exception))
@@ -169,9 +170,16 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                 self.counter1 += 1
                 raise exception.CinderException('Fail')
 
+            @api.Retry(max_retry_count=2)
+            def success(self):
+                self.counter2 += 1
+                return self.counter2
+
         test_obj = TestClass()
         self.assertRaises(exception.CinderException, test_obj.fail)
         self.assertEqual(test_obj.counter1, 3)
+        ret = test_obj.success()
+        self.assertEqual(1, ret)
 
     def test_create_session(self):
         """Test create_session."""

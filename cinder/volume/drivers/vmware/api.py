@@ -20,8 +20,6 @@ Session and API call management for VMware ESX/VC server.
 Provides abstraction over cinder.volume.drivers.vmware.vim.Vim SOAP calls.
 """
 
-from eventlet import event
-
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.vmware import error_util
@@ -67,32 +65,29 @@ class Retry(object):
 
     def __call__(self, f):
 
-        def _func(done, *args, **kwargs):
+        def _func(*args, **kwargs):
             try:
                 result = f(*args, **kwargs)
-                done.send(result)
             except self._exceptions as excep:
                 LOG.exception(_("Failure while invoking function: "
                                 "%(func)s. Error: %(excep)s.") %
                               {'func': f.__name__, 'excep': excep})
                 if (self._max_retry_count != -1 and
                         self._retry_count >= self._max_retry_count):
-                    done.send_exception(excep)
+                    raise excep
                 else:
                     self._retry_count += 1
                     self._sleep_time += self._inc_sleep_time
                     return self._sleep_time
             except Exception as excep:
-                done.send_exception(excep)
-            return 0
+                raise excep
+            # got result. Stop the loop.
+            raise loopingcall.LoopingCallDone(result)
 
         def func(*args, **kwargs):
-            done = event.Event()
-            loop = loopingcall.DynamicLoopingCall(_func, done, *args, **kwargs)
-            loop.start(periodic_interval_max=self._max_sleep_time)
-            result = done.wait()
-            loop.stop()
-            return result
+            loop = loopingcall.DynamicLoopingCall(_func, *args, **kwargs)
+            timer = loop.start(periodic_interval_max=self._max_sleep_time)
+            return timer.wait()
 
         return func
 
@@ -231,15 +226,10 @@ class VMwareAPISession(object):
         :param task: Managed object reference of the task
         :return: Task info upon successful completion of the task
         """
-        done = event.Event()
-        loop = loopingcall.FixedIntervalLoopingCall(self._poll_task,
-                                                    task, done)
-        loop.start(self._task_poll_interval)
-        task_info = done.wait()
-        loop.stop()
-        return task_info
+        loop = loopingcall.FixedIntervalLoopingCall(self._poll_task, task)
+        return loop.start(self._task_poll_interval).wait()
 
-    def _poll_task(self, task, done):
+    def _poll_task(self, task):
         """Poll the given task.
 
         If the task completes successfully then returns task info.
@@ -260,36 +250,29 @@ class VMwareAPISession(object):
                 return
             elif task_info.state == 'success':
                 LOG.debug(_("Task %s status: success.") % task)
-                done.send(task_info)
             else:
                 error_msg = str(task_info.error.localizedMessage)
                 LOG.exception(_("Task: %(task)s failed with error: %(err)s.") %
                               {'task': task, 'err': error_msg})
-                done.send_exception(error_util.VimFaultException([],
-                                    error_msg))
+                raise error_util.VimFaultException([], error_msg)
         except Exception as excep:
             LOG.exception(_("Task: %(task)s failed with error: %(err)s.") %
                           {'task': task, 'err': excep})
-            done.send_exception(excep)
+            raise excep
+        # got the result. So stop the loop.
+        raise loopingcall.LoopingCallDone(task_info)
 
     def wait_for_lease_ready(self, lease):
-        done = event.Event()
-        loop = loopingcall.FixedIntervalLoopingCall(self._poll_lease,
-                                                    lease,
-                                                    done)
-        loop.start(self._task_poll_interval)
-        done.wait()
-        loop.stop()
+        loop = loopingcall.FixedIntervalLoopingCall(self._poll_lease, lease)
+        return loop.start(self._task_poll_interval).wait()
 
-    def _poll_lease(self, lease, done):
+    def _poll_lease(self, lease):
         try:
             state = self.invoke_api(vim_util, 'get_object_property',
                                     self.vim, lease, 'state')
             if state == 'ready':
                 # done
                 LOG.debug(_("Lease is ready."))
-                done.send()
-                return
             elif state == 'initializing':
                 LOG.debug(_("Lease initializing..."))
                 return
@@ -298,11 +281,13 @@ class VMwareAPISession(object):
                                             self.vim, lease, 'error')
                 LOG.exception(error_msg)
                 excep = error_util.VimFaultException([], error_msg)
-                done.send_exception(excep)
+                raise excep
             else:
                 # unknown state - complain
                 error_msg = _("Error: unknown lease state %s.") % state
                 raise error_util.VimFaultException([], error_msg)
         except Exception as excep:
             LOG.exception(excep)
-            done.send_exception(excep)
+            raise excep
+        # stop the loop since state is ready
+        raise loopingcall.LoopingCallDone()
