@@ -170,9 +170,10 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
 
     default_provides = 'volume_ref'
 
-    def __init__(self, db):
+    def __init__(self, db, host):
         super(ExtractVolumeRefTask, self).__init__(addons=[ACTION])
         self.db = db
+        self.host = host
 
     def execute(self, context, volume_id):
         # NOTE(harlowja): this will fetch the volume from the database, if
@@ -181,6 +182,10 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         # In the future we might want to have a lock on the volume_id so that
         # the volume can not be deleted while its still being created?
         volume_ref = self.db.volume_get(context, volume_id)
+
+        # NOTE(vish): so we don't have to get volume from db again before
+        # passing it to the driver.
+        volume_ref['host'] = self.host
 
         return volume_ref
 
@@ -288,19 +293,18 @@ class NotifyVolumeActionTask(flow_utils.CinderTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, db, host, event_suffix):
+    def __init__(self, db, event_suffix):
         super(NotifyVolumeActionTask, self).__init__(addons=[ACTION,
                                                              event_suffix])
         self.db = db
         self.event_suffix = event_suffix
-        self.host = host
 
     def execute(self, context, volume_ref):
         volume_id = volume_ref['id']
         try:
             volume_utils.notify_about_volume_usage(context, volume_ref,
                                                    self.event_suffix,
-                                                   host=self.host)
+                                                   host=volume_ref['host'])
         except exception.CinderException:
             # If notification sending of volume database entry reading fails
             # then we shouldn't error out the whole workflow since this is
@@ -319,7 +323,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
     default_provides = 'volume'
 
-    def __init__(self, db, host, driver):
+    def __init__(self, db, driver):
         super(CreateVolumeFromSpecTask, self).__init__(addons=[ACTION])
         self.db = db
         self.driver = driver
@@ -331,7 +335,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             'source_vol': self._create_from_source_volume,
             'image': self._create_from_image,
         }
-        self.host = host
 
     def _handle_bootable_volume_glance_meta(self, context, volume_id,
                                             **kwargs):
@@ -590,10 +593,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
                   'functor': common.make_pretty_name(create_functor)})
 
-        # NOTE(vish): so we don't have to get volume from db again before
-        # passing it to the driver.
-        volume_ref['host'] = self.host
-
         # Call the given functor to make the volume.
         model_update = create_functor(context, volume_ref=volume_ref,
                                       **volume_spec)
@@ -628,8 +627,8 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, db, host, event_suffix):
-        super(CreateVolumeOnFinishTask, self).__init__(db, host, event_suffix)
+    def __init__(self, db, event_suffix):
+        super(CreateVolumeOnFinishTask, self).__init__(db, event_suffix)
         self.status_translation = {
             'migration_target_creating': 'migration_target',
         }
@@ -697,16 +696,16 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
         'volume_id': volume_id,
     }
 
-    volume_flow.add(ExtractVolumeRefTask(db))
+    volume_flow.add(ExtractVolumeRefTask(db, host))
 
     if allow_reschedule and request_spec:
         volume_flow.add(OnFailureRescheduleTask(reschedule_context,
                                                 db, scheduler_rpcapi))
 
     volume_flow.add(ExtractVolumeSpecTask(db),
-                    NotifyVolumeActionTask(db, host, "create.start"),
-                    CreateVolumeFromSpecTask(db, host, driver),
-                    CreateVolumeOnFinishTask(db, host, "create.end"))
+                    NotifyVolumeActionTask(db, "create.start"),
+                    CreateVolumeFromSpecTask(db, driver),
+                    CreateVolumeOnFinishTask(db, "create.end"))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(volume_flow, store=create_what)
