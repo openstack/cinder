@@ -237,13 +237,10 @@
 # value)
 #api_paste_config=api-paste.ini
 
-# Directory where the cinder python module is installed
-# (string value)
-#pybasedir=/usr/lib/python/site-packages
-
 # Top-level directory for maintaining cinder's state (string
 # value)
-#state_path=$pybasedir
+# Deprecated group/name - [DEFAULT]/pybasedir
+#state_path=/var/lib/cinder
 
 # ip address of this host (string value)
 #my_ip=10.0.0.1

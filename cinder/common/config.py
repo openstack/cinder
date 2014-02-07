@@ -25,7 +25,6 @@ stepping stone.
 
 """
 
-import os
 import socket
 
 from oslo.config import cfg
@@ -59,13 +58,9 @@ core_opts = [
     cfg.StrOpt('api_paste_config',
                default="api-paste.ini",
                help='File name for the paste.deploy config for cinder-api'),
-    cfg.StrOpt('pybasedir',
-               default=os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                    '..',
-                                                    '..')),
-               help='Directory where the cinder python module is installed'),
     cfg.StrOpt('state_path',
-               default='$pybasedir',
+               default='/var/lib/cinder',
+               deprecated_name='pybasedir',
                help="Top-level directory for maintaining cinder's state"), ]
 
 debug_opts = [
