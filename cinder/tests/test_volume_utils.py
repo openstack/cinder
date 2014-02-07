@@ -165,12 +165,13 @@ class ClearVolumeTestCase(test.TestCase):
         self.mox.ReplayAll()
         volume_utils.clear_volume(1024, "volume_path")
 
-    def test_clear_volume_zero_and_shred(self):
+    def test_clear_volume_zero(self):
         CONF.volume_clear = 'zero'
         CONF.volume_clear_size = 1
-        clear_cmd = ['shred', '-n0', '-z', '-s1MiB', "volume_path"]
-        self.mox.StubOutWithMock(utils, "execute")
-        utils.execute(*clear_cmd, run_as_root=True)
+        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
+        volume_utils.copy_volume("/dev/zero", "volume_path", 1,
+                                 CONF.volume_dd_blocksize, sync=True,
+                                 execute=utils.execute)
         self.mox.ReplayAll()
         volume_utils.clear_volume(1024, "volume_path")
 
