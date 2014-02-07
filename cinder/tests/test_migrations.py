@@ -150,10 +150,14 @@ class TestMigrations(test.TestCase):
         # Set-up a dict of types for those column types that
         # are not uniform for all databases.
         self.bool_type = {}
+        self.time_type = {}
         for (key, engine) in self.engines.items():
             self.bool_type[engine.name] = sqlalchemy.types.BOOLEAN
+            self.time_type[engine.name] = sqlalchemy.types.DATETIME
             if engine.name == 'mysql':
                 self.bool_type[engine.name] = sqlalchemy.dialects.mysql.TINYINT
+            if engine.name == 'postgresql':
+                self.time_type[engine.name] = sqlalchemy.types.TIMESTAMP
 
         # We start each test case with a completely blank slate.
         self._reset_databases()
@@ -563,11 +567,11 @@ class TestMigrations(test.TestCase):
                                        autoload=True)
 
             self.assertIsInstance(backups.c.created_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(backups.c.updated_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(backups.c.deleted_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(backups.c.deleted.type,
                                   self.bool_type[engine.name])
             self.assertIsInstance(backups.c.id.type,
@@ -625,11 +629,11 @@ class TestMigrations(test.TestCase):
                                                  autoload=True)
 
             self.assertIsInstance(snapshot_metadata.c.created_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(snapshot_metadata.c.updated_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(snapshot_metadata.c.deleted_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(snapshot_metadata.c.deleted.type,
                                   self.bool_type[engine.name])
             self.assertIsInstance(snapshot_metadata.c.deleted.type,
@@ -666,11 +670,11 @@ class TestMigrations(test.TestCase):
                                          autoload=True)
 
             self.assertIsInstance(transfers.c.created_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(transfers.c.updated_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(transfers.c.deleted_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(transfers.c.deleted.type,
                                   self.bool_type[engine.name])
             self.assertIsInstance(transfers.c.id.type,
@@ -684,7 +688,7 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(transfers.c.crypt_hash.type,
                                   sqlalchemy.types.VARCHAR)
             self.assertIsInstance(transfers.c.expires_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
 
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 9)
 
@@ -927,11 +931,11 @@ class TestMigrations(test.TestCase):
                                          metadata,
                                          autoload=True)
             self.assertIsInstance(qos_specs.c.created_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(qos_specs.c.updated_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(qos_specs.c.deleted_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(qos_specs.c.deleted.type,
                                   self.bool_type[engine.name])
             self.assertIsInstance(qos_specs.c.id.type,
@@ -993,11 +997,11 @@ class TestMigrations(test.TestCase):
                                                      autoload=True)
 
             self.assertIsInstance(volume_admin_metadata.c.created_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(volume_admin_metadata.c.updated_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(volume_admin_metadata.c.deleted_at.type,
-                                  sqlalchemy.types.DATETIME)
+                                  self.time_type[engine.name])
             self.assertIsInstance(volume_admin_metadata.c.deleted.type,
                                   self.bool_type[engine.name])
             self.assertIsInstance(volume_admin_metadata.c.id.type,
