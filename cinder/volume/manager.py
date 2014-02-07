@@ -1218,7 +1218,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 retyped = self.driver.retype(context, volume_ref, new_type,
                                              diff, host)
                 if retyped:
-                    LOG.info(_("Volume %s: retyped succesfully"), volume_id)
+                    LOG.info(_("Volume %s: retyped successfully"), volume_id)
             except Exception as ex:
                 retyped = False
                 LOG.error(_("Volume %s: driver error when trying to retype, "

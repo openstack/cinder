@@ -28,7 +28,7 @@ number and the weighing has the opposite effect of the default.
 The default behavior is to place new volume to the host allocated the least
 space.  This weigher is intended to simulate the behavior of SimpleScheduler.
 If you prefer to place volumes to host allocated the most space, you can
-set the 'allocated_capacity_weight_multiplier' option to a postive number
+set the 'allocated_capacity_weight_multiplier' option to a positive number
 and the weighing has the opposite effect of the default.
 """
 
