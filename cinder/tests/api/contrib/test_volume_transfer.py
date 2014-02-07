@@ -33,7 +33,6 @@ import cinder.volume
 
 
 LOG = logging.getLogger(__name__)
-volume_transfer_api = API()
 
 
 class VolumeTransferAPITestCase(test.TestCase):
@@ -41,14 +40,14 @@ class VolumeTransferAPITestCase(test.TestCase):
 
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
+        self.volume_transfer_api = API()
 
-    @staticmethod
-    def _create_transfer(volume_id=1,
+    def _create_transfer(self, volume_id=1,
                          display_name='test_transfer'):
         """Create a transfer object."""
-        return volume_transfer_api.create(context.get_admin_context(),
-                                          volume_id,
-                                          display_name)
+        return self.volume_transfer_api.create(context.get_admin_context(),
+                                               volume_id,
+                                               display_name)
 
     @staticmethod
     def _create_volume(display_name='test_volume',

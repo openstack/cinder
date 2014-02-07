@@ -17,12 +17,12 @@ import json
 import uuid
 
 import mock
+from oslo import messaging
 import webob
 
 from cinder.api.contrib import volume_actions
 from cinder import exception
 from cinder.openstack.common import jsonutils
-from cinder.openstack.common.rpc import common as rpc_common
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
@@ -522,7 +522,7 @@ class VolumeImageActionsTest(test.TestCase):
     def test_copy_volume_to_image_remoteerror(self):
         def stub_upload_volume_to_image_service_raise(self, context, volume,
                                                       metadata, force):
-            raise rpc_common.RemoteError
+            raise messaging.RemoteError
         self.stubs.Set(volume_api.API,
                        "copy_volume_to_image",
                        stub_upload_volume_to_image_service_raise)

@@ -20,6 +20,7 @@ Scheduler Service
 """
 
 from oslo.config import cfg
+from oslo import messaging
 
 from cinder import context
 from cinder import db
@@ -28,8 +29,8 @@ from cinder import manager
 from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.notifier import api as notifier
 from cinder import quota
+from cinder import rpc
 from cinder.scheduler.flows import create_volume
 from cinder.volume import rpcapi as volume_rpcapi
 
@@ -51,6 +52,8 @@ class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
     RPC_API_VERSION = '1.5'
+
+    target = messaging.Target(version=RPC_API_VERSION)
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -232,5 +235,6 @@ class SchedulerManager(manager.Manager):
                        method=method,
                        reason=ex)
 
-        notifier.notify(context, notifier.publisher_id("scheduler"),
-                        'scheduler.' + method, notifier.ERROR, payload)
+        rpc.get_notifier("scheduler").error(context,
+                                            'scheduler.' + method,
+                                            payload)

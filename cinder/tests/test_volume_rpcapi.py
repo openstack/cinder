@@ -15,14 +15,13 @@
 """
 Unit Tests for cinder.volume.rpcapi
 """
-
+import copy
 
 from oslo.config import cfg
 
 from cinder import context
 from cinder import db
 from cinder.openstack.common import jsonutils
-from cinder.openstack.common import rpc
 from cinder import test
 from cinder.volume import rpcapi as volume_rpcapi
 
@@ -70,44 +69,53 @@ class VolumeRpcAPITestCase(test.TestCase):
         rpcapi = rpcapi_class()
         expected_retval = 'foo' if method == 'call' else None
 
-        expected_version = kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+        target = {
+            "version": kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+        }
 
         if 'request_spec' in kwargs:
             spec = jsonutils.to_primitive(kwargs['request_spec'])
             kwargs['request_spec'] = spec
 
-        expected_msg = rpcapi.make_msg(method, **kwargs)
-        if 'volume' in expected_msg['args']:
-            volume = expected_msg['args']['volume']
-            del expected_msg['args']['volume']
-            expected_msg['args']['volume_id'] = volume['id']
-        if 'snapshot' in expected_msg['args']:
-            snapshot = expected_msg['args']['snapshot']
-            del expected_msg['args']['snapshot']
-            expected_msg['args']['snapshot_id'] = snapshot['id']
-        if 'host' in expected_msg['args']:
-            del expected_msg['args']['host']
-        if 'dest_host' in expected_msg['args']:
-            dest_host = expected_msg['args']['dest_host']
+        expected_msg = copy.deepcopy(kwargs)
+        if 'volume' in expected_msg:
+            volume = expected_msg['volume']
+            del expected_msg['volume']
+            expected_msg['volume_id'] = volume['id']
+        if 'snapshot' in expected_msg:
+            snapshot = expected_msg['snapshot']
+            del expected_msg['snapshot']
+            expected_msg['snapshot_id'] = snapshot['id']
+        if 'host' in expected_msg:
+            del expected_msg['host']
+        if 'dest_host' in expected_msg:
+            dest_host = expected_msg['dest_host']
             dest_host_dict = {'host': dest_host.host,
                               'capabilities': dest_host.capabilities}
-            del expected_msg['args']['dest_host']
-            expected_msg['args']['host'] = dest_host_dict
-        if 'new_volume' in expected_msg['args']:
-            volume = expected_msg['args']['new_volume']
-            del expected_msg['args']['new_volume']
-            expected_msg['args']['new_volume_id'] = volume['id']
-
-        expected_msg['version'] = expected_version
+            del expected_msg['dest_host']
+            expected_msg['host'] = dest_host_dict
+        if 'new_volume' in expected_msg:
+            volume = expected_msg['new_volume']
+            del expected_msg['new_volume']
+            expected_msg['new_volume_id'] = volume['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
         else:
             host = kwargs['volume']['host']
-        expected_topic = '%s.%s' % (CONF.volume_topic, host)
+
+        target['server'] = host
+        target['topic'] = '%s.%s' % (CONF.volume_topic, host)
 
         self.fake_args = None
         self.fake_kwargs = None
+
+        real_prepare = rpcapi.client.prepare
+
+        def _fake_prepare_method(*args, **kwds):
+            for kwd in kwds:
+                self.assertEqual(kwds[kwd], target[kwd])
+            return rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
@@ -115,14 +123,19 @@ class VolumeRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        self.stubs.Set(rpc, rpc_method, _fake_rpc_method)
+        self.stubs.Set(rpcapi.client, "prepare", _fake_prepare_method)
+        self.stubs.Set(rpcapi.client, rpc_method, _fake_rpc_method)
 
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
         self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, expected_topic, expected_msg]
+        expected_args = [ctxt, method]
+
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(arg, expected_arg)
+
+        for kwarg, value in self.fake_kwargs.items():
+            self.assertEqual(value, expected_msg[kwarg])
 
     def test_create_volume(self):
         self._test_volume_api('create_volume',

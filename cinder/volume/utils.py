@@ -22,9 +22,9 @@ from oslo.config import cfg
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
+from cinder import rpc
 from cinder import units
 from cinder import utils
 
@@ -65,9 +65,8 @@ def notify_about_volume_usage(context, volume, event_suffix,
 
     usage_info = _usage_from_volume(context, volume, **extra_usage_info)
 
-    notifier_api.notify(context, 'volume.%s' % host,
-                        'volume.%s' % event_suffix,
-                        notifier_api.INFO, usage_info)
+    rpc.get_notifier("volume", host).info(context, 'volume.%s' % event_suffix,
+                                          usage_info)
 
 
 def _usage_from_snapshot(context, snapshot_ref, **extra_usage_info):
@@ -98,9 +97,9 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
 
     usage_info = _usage_from_snapshot(context, snapshot, **extra_usage_info)
 
-    notifier_api.notify(context, 'snapshot.%s' % host,
-                        'snapshot.%s' % event_suffix,
-                        notifier_api.INFO, usage_info)
+    rpc.get_notifier('snapshot', host).info(context,
+                                            'snapshot.%s' % event_suffix,
+                                            usage_info)
 
 
 def _calculate_count(size_in_m, blocksize):

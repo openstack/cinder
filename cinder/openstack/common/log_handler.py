@@ -15,15 +15,15 @@ import logging
 
 from oslo.config import cfg
 
-from cinder.openstack.common import notifier
+from cinder import rpc
 
 
 class PublishErrorsHandler(logging.Handler):
     def emit(self, record):
+        # NOTE(flaper87): This will have to be changed in the
+        # future. Leaving for backwar compatibility
         if ('cinder.openstack.common.notifier.log_notifier' in
                 cfg.CONF.notification_driver):
             return
-        notifier.api.notify(None, 'error.publisher',
-                            'error_notification',
-                            notifier.api.ERROR,
-                            dict(error=record.msg))
+        rpc.get_notifier('error.publisher').info('error_notification',
+                                                 dict(error=record.msg))

@@ -21,7 +21,6 @@ inline callbacks.
 
 """
 
-
 import os
 import shutil
 import tempfile
@@ -30,6 +29,7 @@ import uuid
 import fixtures
 import mox
 from oslo.config import cfg
+from oslo.messaging import conffixture as messaging_conffixture
 import stubout
 import testtools
 from testtools import matchers
@@ -39,9 +39,10 @@ from cinder.db import migration
 from cinder.openstack.common.db.sqlalchemy import session
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
+from cinder import rpc
 from cinder import service
 from cinder.tests import conf_fixture
-
+from cinder.tests import fake_notifier
 
 test_opts = [
     cfg.StrOpt('sqlite_clean_db',
@@ -130,6 +131,17 @@ class TestCase(testtools.TestCase):
 
         self.log_fixture = self.useFixture(fixtures.FakeLogger())
 
+        rpc.add_extra_exmods("cinder.tests")
+        self.addCleanup(rpc.clear_extra_exmods)
+        self.addCleanup(rpc.cleanup)
+
+        fs = '%(levelname)s [%(name)s] %(message)s'
+        self.messaging_conf = messaging_conffixture.ConfFixture(CONF)
+        self.messaging_conf.transport_driver = 'fake'
+        self.messaging_conf.response_timeout = 15
+        self.useFixture(self.messaging_conf)
+        rpc.init(CONF)
+
         conf_fixture.set_defaults(CONF)
         CONF([], default_config_files=[])
 
@@ -162,6 +174,8 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self.mox.VerifyAll)
         self.injected = []
         self._services = []
+
+        fake_notifier.stub_notifier(self.stubs)
 
         CONF.set_override('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture

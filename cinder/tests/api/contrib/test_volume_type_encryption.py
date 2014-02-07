@@ -18,10 +18,9 @@ import webob
 
 from cinder import context
 from cinder import db
-from cinder.openstack.common.notifier import api as notifier_api
-from cinder.openstack.common.notifier import test_notifier
 from cinder import test
 from cinder.tests.api import fakes
+from cinder.tests import fake_notifier
 
 
 def return_volume_type_encryption(context, volume_type_id):
@@ -52,13 +51,11 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def setUp(self):
         super(VolumeTypeEncryptionTest, self).setUp()
-        self.flags(host='fake',
-                   notification_driver=[test_notifier.__name__])
+        self.flags(host='fake')
         self.api_path = '/v2/fake/os-volume-types/1/encryption'
         """to reset notifier drivers left over from other api/contrib tests"""
-        notifier_api._reset_drivers()
-        test_notifier.NOTIFICATIONS = []
-        self.addCleanup(notifier_api._reset_drivers)
+        fake_notifier.reset()
+        self.addCleanup(fake_notifier.reset)
 
     def _get_response(self, volume_type, admin=True,
                       url='/v2/fake/types/%s/encryption',
@@ -167,7 +164,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                'provider': provider,
                                'volume_type_id': volume_type['id']}}
 
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         res = self._get_response(volume_type)
         res_dict = json.loads(res.body)
         self.assertEqual(200, res.status_code)
@@ -182,7 +179,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res_dict = json.loads(res.body)
 
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
         # check response
         self.assertIn('encryption', res_dict)
@@ -237,7 +234,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res_dict = json.loads(res.body)
 
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.assertEqual(404, res.status_code)
 
         expected = {

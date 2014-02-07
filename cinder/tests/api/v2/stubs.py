@@ -17,6 +17,7 @@ import datetime
 
 from cinder import exception as exc
 
+
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 FAKE_UUIDS = {}
 

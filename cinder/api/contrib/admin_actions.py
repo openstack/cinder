@@ -20,8 +20,8 @@ from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import strutils
+from cinder import rpc
 from cinder import volume
 
 
@@ -84,18 +84,17 @@ class AdminController(wsgi.Controller):
                         'update': update})
 
         notifier_info = dict(id=id, update=update)
-        notifier_api.notify(context, 'volumeStatusUpdate',
-                            self.collection + '.reset_status.start',
-                            notifier_api.INFO, notifier_info)
+        notifier = rpc.get_notifier('volumeStatusUpdate')
+        notifier.info(context, self.collection + '.reset_status.start',
+                      notifier_info)
 
         try:
             self._update(context, id, update)
         except exception.NotFound as e:
             raise exc.HTTPNotFound(e)
 
-        notifier_api.notify(context, 'volumeStatusUpdate',
-                            self.collection + '.reset_status.end',
-                            notifier_api.INFO, notifier_info)
+        notifier.info(context, self.collection + '.reset_status.end',
+                      notifier_info)
 
         return webob.Response(status_int=202)
 

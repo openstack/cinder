@@ -17,7 +17,10 @@
 
 """Tests for the testing base code."""
 
-from cinder.openstack.common import rpc
+from oslo.config import cfg
+from oslo import messaging
+
+from cinder import rpc
 from cinder import test
 
 
@@ -37,7 +40,7 @@ class IsolationTestCase(test.TestCase):
             def __getattribute__(*args):
                 assert False, "I should never get called."
 
-        connection = rpc.create_connection(new=True)
-        proxy = NeverCalled()
-        connection.create_consumer('volume', proxy, fanout=False)
-        connection.consume_in_thread()
+        server = rpc.get_server(messaging.Target(topic='volume',
+                                                 server=cfg.CONF.host),
+                                endpoints=[NeverCalled()])
+        server.start()

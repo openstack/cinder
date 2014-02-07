@@ -14,12 +14,13 @@
 
 import webob
 
+from oslo import messaging
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.rpc import common as rpc_common
 from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
@@ -259,7 +260,7 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
         except ValueError as error:
             raise webob.exc.HTTPBadRequest(explanation=unicode(error))
-        except rpc_common.RemoteError as error:
+        except messaging.RemoteError as error:
             msg = "%(err_type)s: %(err_msg)s" % {'err_type': error.exc_type,
                                                  'err_msg': error.value}
             raise webob.exc.HTTPBadRequest(explanation=msg)
