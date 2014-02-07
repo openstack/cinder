@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -26,13 +24,13 @@ For some wrappers that add message versioning to rpc, see:
 """
 
 import inspect
-import logging
 
 from oslo.config import cfg
 
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import local
+from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -61,7 +59,7 @@ rpc_opts = [
                          'exceptions',
                          ],
                 help='Modules of exceptions that are permitted to be recreated'
-                     'upon receiving exception data from an rpc call.'),
+                     ' upon receiving exception data from an rpc call.'),
     cfg.BoolOpt('fake_rabbit',
                 default=False,
                 help='If passed, use a fake RabbitMQ provider'),
@@ -227,7 +225,7 @@ def notify(context, topic, msg, envelope=False):
 
 
 def cleanup():
-    """Clean up resoruces in use by implementation.
+    """Clean up resources in use by implementation.
 
     Clean up any resources that have been allocated by the RPC implementation.
     This is typically open connections to a messaging service.  This function
@@ -286,7 +284,7 @@ def queue_get_for(context, topic, host):
     Messages sent to the 'foo.<host>' topic are sent to the nova-foo service on
     <host>.
     """
-    return '%s:%s' % (topic, host) if host else topic
+    return '%s.%s' % (topic, host) if host else topic
 
 
 _RPCIMPL = None

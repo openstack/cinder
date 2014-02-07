@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Copyright 2013 Cloudscaling Group, Inc
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -55,8 +53,8 @@ class RedisExchange(mm_common.Exchange):
 
 
 class RedisTopicExchange(RedisExchange):
-    """
-    Exchange where all topic keys are split, sending to second half.
+    """Exchange where all topic keys are split, sending to second half.
+
     i.e. "compute.host" sends a message to "compute" running on "host"
     """
     def run(self, topic):
@@ -77,9 +75,7 @@ class RedisTopicExchange(RedisExchange):
 
 
 class RedisFanoutExchange(RedisExchange):
-    """
-    Return a list of all hosts.
-    """
+    """Return a list of all hosts."""
     def run(self, topic):
         topic = topic.split('~', 1)[1]
         hosts = self.redis.smembers(topic)
@@ -90,16 +86,14 @@ class RedisFanoutExchange(RedisExchange):
 
 
 class MatchMakerRedis(mm_common.HeartbeatMatchMakerBase):
-    """
-    MatchMaker registering and looking-up hosts with a Redis server.
-    """
+    """MatchMaker registering and looking-up hosts with a Redis server."""
     def __init__(self):
         super(MatchMakerRedis, self).__init__()
 
         if not redis:
             raise ImportError("Failed to import module redis.")
 
-        self.redis = redis.StrictRedis(
+        self.redis = redis.Redis(
             host=CONF.matchmaker_redis.host,
             port=CONF.matchmaker_redis.port,
             password=CONF.matchmaker_redis.password)

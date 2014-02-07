@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Copyright 2011 OpenStack Foundation
 #    Copyright 2011 - 2012, Red Hat, Inc.
 #
@@ -22,7 +20,9 @@ import time
 import eventlet
 import greenlet
 from oslo.config import cfg
+import six
 
+from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
@@ -30,6 +30,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common.rpc import amqp as rpc_amqp
 from cinder.openstack.common.rpc import common as rpc_common
 
+qpid_codec = importutils.try_import("qpid.codec010")
 qpid_messaging = importutils.try_import("qpid.messaging")
 qpid_exceptions = importutils.try_import("qpid.messaging.exceptions")
 
@@ -78,6 +79,8 @@ qpid_opts = [
 ]
 
 cfg.CONF.register_opts(qpid_opts)
+
+JSON_CONTENT_TYPE = 'application/json; charset=utf8'
 
 
 def raise_invalid_topology_version(conf):
@@ -146,31 +149,59 @@ class ConsumerBase(object):
 
         self.address = "%s ; %s" % (node_name, jsonutils.dumps(addr_opts))
 
-        self.reconnect(session)
+        self.connect(session)
+
+    def connect(self, session):
+        """Declare the receiver on connect."""
+        self._declare_receiver(session)
 
     def reconnect(self, session):
-        """Re-declare the receiver after a qpid reconnect"""
+        """Re-declare the receiver after a qpid reconnect."""
+        self._declare_receiver(session)
+
+    def _declare_receiver(self, session):
         self.session = session
         self.receiver = session.receiver(self.address)
         self.receiver.capacity = 1
 
+    def _unpack_json_msg(self, msg):
+        """Load the JSON data in msg if msg.content_type indicates that it
+           is necessary.  Put the loaded data back into msg.content and
+           update msg.content_type appropriately.
+
+        A Qpid Message containing a dict will have a content_type of
+        'amqp/map', whereas one containing a string that needs to be converted
+        back from JSON will have a content_type of JSON_CONTENT_TYPE.
+
+        :param msg: a Qpid Message object
+        :returns: None
+        """
+        if msg.content_type == JSON_CONTENT_TYPE:
+            msg.content = jsonutils.loads(msg.content)
+            msg.content_type = 'amqp/map'
+
     def consume(self):
-        """Fetch the message and pass it to the callback object"""
+        """Fetch the message and pass it to the callback object."""
         message = self.receiver.fetch()
         try:
+            self._unpack_json_msg(message)
             msg = rpc_common.deserialize_msg(message.content)
             self.callback(msg)
         except Exception:
             LOG.exception(_("Failed to process message... skipping it."))
         finally:
+            # TODO(sandy): Need support for optional ack_on_error.
             self.session.acknowledge(message)
 
     def get_receiver(self):
         return self.receiver
 
+    def get_node_name(self):
+        return self.address.split(';')[0]
+
 
 class DirectConsumer(ConsumerBase):
-    """Queue/consumer class for 'direct'"""
+    """Queue/consumer class for 'direct'."""
 
     def __init__(self, conf, session, msg_id, callback):
         """Init a 'direct' queue.
@@ -203,7 +234,7 @@ class DirectConsumer(ConsumerBase):
 
 
 class TopicConsumer(ConsumerBase):
-    """Consumer class for 'topic'"""
+    """Consumer class for 'topic'."""
 
     def __init__(self, conf, session, topic, callback, name=None,
                  exchange_name=None):
@@ -234,7 +265,7 @@ class TopicConsumer(ConsumerBase):
 
 
 class FanoutConsumer(ConsumerBase):
-    """Consumer class for 'fanout'"""
+    """Consumer class for 'fanout'."""
 
     def __init__(self, conf, session, topic, callback):
         """Init a 'fanout' queue.
@@ -243,6 +274,7 @@ class FanoutConsumer(ConsumerBase):
         'topic' is the topic to listen on
         'callback' is the callback to call when messages are received
         """
+        self.conf = conf
 
         link_opts = {"exclusive": True}
 
@@ -261,7 +293,7 @@ class FanoutConsumer(ConsumerBase):
 
 
 class Publisher(object):
-    """Base Publisher class"""
+    """Base Publisher class."""
 
     def __init__(self, conf, session, node_name, node_opts=None):
         """Init the Publisher class with the exchange_name, routing_key,
@@ -295,18 +327,46 @@ class Publisher(object):
         self.reconnect(session)
 
     def reconnect(self, session):
-        """Re-establish the Sender after a reconnection"""
+        """Re-establish the Sender after a reconnection."""
         self.sender = session.sender(self.address)
 
+    def _pack_json_msg(self, msg):
+        """Qpid cannot serialize dicts containing strings longer than 65535
+           characters.  This function dumps the message content to a JSON
+           string, which Qpid is able to handle.
+
+        :param msg: May be either a Qpid Message object or a bare dict.
+        :returns: A Qpid Message with its content field JSON encoded.
+        """
+        try:
+            msg.content = jsonutils.dumps(msg.content)
+        except AttributeError:
+            # Need to have a Qpid message so we can set the content_type.
+            msg = qpid_messaging.Message(jsonutils.dumps(msg))
+        msg.content_type = JSON_CONTENT_TYPE
+        return msg
+
     def send(self, msg):
-        """Send a message"""
+        """Send a message."""
+        try:
+            # Check if Qpid can encode the message
+            check_msg = msg
+            if not hasattr(check_msg, 'content_type'):
+                check_msg = qpid_messaging.Message(msg)
+            content_type = check_msg.content_type
+            enc, dec = qpid_messaging.message.get_codec(content_type)
+            enc(check_msg.content)
+        except qpid_codec.CodecException:
+            # This means the message couldn't be serialized as a dict.
+            msg = self._pack_json_msg(msg)
         self.sender.send(msg)
 
 
 class DirectPublisher(Publisher):
-    """Publisher class for 'direct'"""
+    """Publisher class for 'direct'."""
     def __init__(self, conf, session, msg_id):
         """Init a 'direct' publisher."""
+
         if conf.qpid_topology_version == 1:
             node_name = msg_id
             node_opts = {"type": "direct"}
@@ -321,9 +381,9 @@ class DirectPublisher(Publisher):
 
 
 class TopicPublisher(Publisher):
-    """Publisher class for 'topic'"""
+    """Publisher class for 'topic'."""
     def __init__(self, conf, session, topic):
-        """init a 'topic' publisher.
+        """Init a 'topic' publisher.
         """
         exchange_name = rpc_amqp.get_control_exchange(conf)
 
@@ -338,9 +398,9 @@ class TopicPublisher(Publisher):
 
 
 class FanoutPublisher(Publisher):
-    """Publisher class for 'fanout'"""
+    """Publisher class for 'fanout'."""
     def __init__(self, conf, session, topic):
-        """init a 'fanout' publisher.
+        """Init a 'fanout' publisher.
         """
 
         if conf.qpid_topology_version == 1:
@@ -357,9 +417,9 @@ class FanoutPublisher(Publisher):
 
 
 class NotifyPublisher(Publisher):
-    """Publisher class for notifications"""
+    """Publisher class for notifications."""
     def __init__(self, conf, session, topic):
-        """init a 'topic' publisher.
+        """Init a 'topic' publisher.
         """
         exchange_name = rpc_amqp.get_control_exchange(conf)
         node_opts = {"durable": True}
@@ -433,7 +493,7 @@ class Connection(object):
         return self.consumers[str(receiver)]
 
     def reconnect(self):
-        """Handles reconnecting and re-establishing sessions and queues"""
+        """Handles reconnecting and re-establishing sessions and queues."""
         attempt = 0
         delay = 1
         while True:
@@ -450,7 +510,7 @@ class Connection(object):
             try:
                 self.connection_create(broker)
                 self.connection.open()
-            except qpid_exceptions.ConnectionError, e:
+            except qpid_exceptions.ConnectionError as e:
                 msg_dict = dict(e=e, delay=delay)
                 msg = _("Unable to connect to AMQP server: %(e)s. "
                         "Sleeping %(delay)s seconds") % msg_dict
@@ -467,7 +527,7 @@ class Connection(object):
             consumers = self.consumers
             self.consumers = {}
 
-            for consumer in consumers.itervalues():
+            for consumer in six.itervalues(consumers):
                 consumer.reconnect(self.session)
                 self._register_consumer(consumer)
 
@@ -478,20 +538,26 @@ class Connection(object):
             try:
                 return method(*args, **kwargs)
             except (qpid_exceptions.Empty,
-                    qpid_exceptions.ConnectionError), e:
+                    qpid_exceptions.ConnectionError) as e:
                 if error_callback:
                     error_callback(e)
                 self.reconnect()
 
     def close(self):
-        """Close/release this connection"""
+        """Close/release this connection."""
         self.cancel_consumer_thread()
         self.wait_on_proxy_callbacks()
-        self.connection.close()
+        try:
+            self.connection.close()
+        except Exception:
+            # NOTE(dripton) Logging exceptions that happen during cleanup just
+            # causes confusion; there's really nothing useful we can do with
+            # them.
+            pass
         self.connection = None
 
     def reset(self):
-        """Reset a connection so it can be used again"""
+        """Reset a connection so it can be used again."""
         self.cancel_consumer_thread()
         self.wait_on_proxy_callbacks()
         self.session.close()
@@ -515,7 +581,7 @@ class Connection(object):
         return self.ensure(_connect_error, _declare_consumer)
 
     def iterconsume(self, limit=None, timeout=None):
-        """Return an iterator that will consume from all queues/consumers"""
+        """Return an iterator that will consume from all queues/consumers."""
 
         def _error_callback(exc):
             if isinstance(exc, qpid_exceptions.Empty):
@@ -539,7 +605,7 @@ class Connection(object):
             yield self.ensure(_error_callback, _consume)
 
     def cancel_consumer_thread(self):
-        """Cancel a consumer thread"""
+        """Cancel a consumer thread."""
         if self.consumer_thread is not None:
             self.consumer_thread.kill()
             try:
@@ -554,7 +620,7 @@ class Connection(object):
             proxy_cb.wait()
 
     def publisher_send(self, cls, topic, msg):
-        """Send to a publisher based on the publisher class"""
+        """Send to a publisher based on the publisher class."""
 
         def _connect_error(exc):
             log_info = {'topic': topic, 'err_str': str(exc)}
@@ -584,15 +650,15 @@ class Connection(object):
                               topic, callback)
 
     def declare_fanout_consumer(self, topic, callback):
-        """Create a 'fanout' consumer"""
+        """Create a 'fanout' consumer."""
         self.declare_consumer(FanoutConsumer, topic, callback)
 
     def direct_send(self, msg_id, msg):
-        """Send a 'direct' message"""
+        """Send a 'direct' message."""
         self.publisher_send(DirectPublisher, msg_id, msg)
 
     def topic_send(self, topic, msg, timeout=None):
-        """Send a 'topic' message"""
+        """Send a 'topic' message."""
         #
         # We want to create a message with attributes, e.g. a TTL. We
         # don't really need to keep 'msg' in its JSON format any longer
@@ -607,24 +673,25 @@ class Connection(object):
         self.publisher_send(TopicPublisher, topic, qpid_message)
 
     def fanout_send(self, topic, msg):
-        """Send a 'fanout' message"""
+        """Send a 'fanout' message."""
         self.publisher_send(FanoutPublisher, topic, msg)
 
     def notify_send(self, topic, msg, **kwargs):
-        """Send a notify message on a topic"""
+        """Send a notify message on a topic."""
         self.publisher_send(NotifyPublisher, topic, msg)
 
     def consume(self, limit=None):
-        """Consume from all queues/consumers"""
+        """Consume from all queues/consumers."""
         it = self.iterconsume(limit=limit)
         while True:
             try:
-                it.next()
+                six.next(it)
             except StopIteration:
                 return
 
     def consume_in_thread(self):
-        """Consumer from all queues/consumers in a greenthread"""
+        """Consumer from all queues/consumers in a greenthread."""
+        @excutils.forever_retry_uncaught_exceptions
         def _consumer_thread():
             try:
                 self.consume()
@@ -635,7 +702,7 @@ class Connection(object):
         return self.consumer_thread
 
     def create_consumer(self, topic, proxy, fanout=False):
-        """Create a consumer that calls a method in a proxy object"""
+        """Create a consumer that calls a method in a proxy object."""
         proxy_cb = rpc_amqp.ProxyCallback(
             self.conf, proxy,
             rpc_amqp.get_connection_pool(self.conf, Connection))
@@ -651,7 +718,7 @@ class Connection(object):
         return consumer
 
     def create_worker(self, topic, proxy, pool_name):
-        """Create a worker that calls a method in a proxy object"""
+        """Create a worker that calls a method in a proxy object."""
         proxy_cb = rpc_amqp.ProxyCallback(
             self.conf, proxy,
             rpc_amqp.get_connection_pool(self.conf, Connection))
@@ -665,7 +732,7 @@ class Connection(object):
         return consumer
 
     def join_consumer_pool(self, callback, pool_name, topic,
-                           exchange_name=None):
+                           exchange_name=None, ack_on_error=True):
         """Register as a member of a group of consumers for a given topic from
         the specified exchange.
 
@@ -679,6 +746,7 @@ class Connection(object):
             callback=callback,
             connection_pool=rpc_amqp.get_connection_pool(self.conf,
                                                          Connection),
+            wait_for_consumers=not ack_on_error
         )
         self.proxy_callbacks.append(callback_wrapper)
 
@@ -694,7 +762,7 @@ class Connection(object):
 
 
 def create_connection(conf, new=True):
-    """Create a connection"""
+    """Create a connection."""
     return rpc_amqp.create_connection(
         conf, new,
         rpc_amqp.get_connection_pool(conf, Connection))

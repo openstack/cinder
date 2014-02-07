@@ -103,7 +103,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             host = kwargs['host']
         else:
             host = kwargs['volume']['host']
-        expected_topic = '%s:%s' % (CONF.volume_topic, host)
+        expected_topic = '%s.%s' % (CONF.volume_topic, host)
 
         self.fake_args = None
         self.fake_kwargs = None
