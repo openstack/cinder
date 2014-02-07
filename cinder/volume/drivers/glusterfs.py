@@ -1147,9 +1147,42 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         return self.base
 
     def backup_volume(self, context, backup, backup_service):
-        """Create a new backup from an existing volume."""
-        raise NotImplementedError()
+        """Create a new backup from an existing volume.
 
-    def restore_backup(self, context, backup, volume, backup_service):
-        """Restore an existing backup to a new or existing volume."""
-        raise NotImplementedError()
+        Allow a backup to occur only if no snapshots exist.
+        Check both Cinder and the file on-disk.  The latter is only
+        a safety mechanism to prevent further damage if the snapshot
+        information is already inconsistent.
+        """
+
+        snapshots = self.db.snapshot_get_all_for_volume(context,
+                                                        backup['volume_id'])
+        snap_error_msg = _('Backup is not supported for GlusterFS '
+                           'volumes with snapshots.')
+        if len(snapshots) > 0:
+            raise exception.InvalidVolume(snap_error_msg)
+
+        volume = self.db.volume_get(context, backup['volume_id'])
+
+        volume_dir = self._local_volume_dir(volume)
+        active_file_path = os.path.join(
+            volume_dir,
+            self.get_active_image_from_info(volume))
+
+        info = self._qemu_img_info(active_file_path)
+
+        if info.backing_file is not None:
+            msg = _('No snapshots found in database, but '
+                    '%(path)s has backing file '
+                    '%(backing_file)s!') % {'path': active_file_path,
+                                            'backing_file': info.backing_file}
+            LOG.error(msg)
+            raise exception.InvalidVolume(snap_error_msg)
+
+        if info.file_format != 'raw':
+            msg = _('Backup is only supported for raw-formatted '
+                    'GlusterFS volumes.')
+            raise exception.InvalidVolume(msg)
+
+        return super(GlusterfsDriver, self).backup_volume(
+            context, backup, backup_service)
