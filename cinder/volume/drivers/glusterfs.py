@@ -23,11 +23,13 @@ import time
 
 from oslo.config import cfg
 
+from cinder.brick.remotefs import remotefs
 from cinder import compute
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import units
 from cinder import utils
 from cinder.volume.drivers import nfs
@@ -68,12 +70,25 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     driver_volume_type = 'glusterfs'
     driver_prefix = 'glusterfs'
     volume_backend_name = 'GlusterFS'
-    VERSION = '1.1.0'
+    VERSION = '1.1.1'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, execute=processutils.execute, *args, **kwargs):
+        self._remotefsclient = None
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
         self._nova = None
+        self.base = getattr(self.configuration,
+                            'glusterfs_mount_point_base',
+                            CONF.glusterfs_mount_point_base)
+        self._remotefsclient = remotefs.RemoteFsClient(
+            'glusterfs',
+            execute,
+            glusterfs_mount_point_base=self.base)
+
+    def set_execute(self, execute):
+        super(GlusterfsDriver, self).set_execute(execute)
+        if self._remotefsclient:
+            self._remotefsclient.set_execute(execute)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -906,7 +921,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         return {
             'driver_volume_type': 'glusterfs',
-            'data': data
+            'data': data,
+            'mount_point_base': self._get_mount_point_base()
         }
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -1095,8 +1111,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         """Return mount point for share.
         :param glusterfs_share: example 172.18.194.100:/var/glusterfs
         """
-        return os.path.join(self.configuration.glusterfs_mount_point_base,
-                            self._get_hash_str(glusterfs_share))
+        return self._remotefsclient.get_mount_point(glusterfs_share)
 
     def _get_available_capacity(self, glusterfs_share):
         """Calculate available space on the GlusterFS share.
@@ -1127,3 +1142,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             command.extend(self.shares[glusterfs_share].split())
 
         self._do_mount(command, ensure, glusterfs_share)
+
+    def _get_mount_point_base(self):
+        return self.base
