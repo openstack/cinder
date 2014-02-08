@@ -427,7 +427,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         data['storage_protocol'] = 'iSCSI'
         data['vendor_name'] = 'Hewlett-Packard'
 
-        result_xml = self._cliq_run_xml("getClusterInfo", {})
+        result_xml = self._cliq_run_xml("getClusterInfo", {'searchDepth': 1})
         cluster_node = result_xml.find("response/cluster")
         total_capacity = cluster_node.attrib.get("spaceTotal")
         free_capacity = cluster_node.attrib.get("unprovisionedSpace")
