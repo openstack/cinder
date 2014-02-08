@@ -229,7 +229,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         LOG.debug(msg % msg_fmt)
         iqn = self._get_iscsi_service_details()
         target_details_list = self._get_target_details()
-        msg = _("Succesfully fetched target details for LUN %(name)s and "
+        msg = _("Successfully fetched target details for LUN %(name)s and "
                 "initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)

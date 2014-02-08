@@ -89,7 +89,7 @@ def get_flow(context, db, driver, request_spec=None,
     1. Inject keys & values for dependent tasks.
     2. Extracts a scheduler specification from the provided inputs.
     3. Attaches 2 activated only on *failure* tasks (one to update the db
-       status and one to notify on the MQ of the failure that occured).
+       status and one to notify on the MQ of the failure that occurred).
     4. Uses provided driver to to then select and continue processing of
        volume request.
     """

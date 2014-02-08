@@ -71,10 +71,10 @@ class CinderExceptionTestCase(test.TestCase):
         self.flags(fatal_exception_format_errors=False)
 
         class FakeCinderException(exception.CinderException):
-            message = "default message: %(mispelled_code)s"
+            message = "default message: %(misspelled_code)s"
 
         exc = FakeCinderException(code=500)
-        self.assertEqual(unicode(exc), 'default message: %(mispelled_code)s')
+        self.assertEqual(unicode(exc), 'default message: %(misspelled_code)s')
 
     def test_default_error_code(self):
         class FakeCinderException(exception.CinderException):
