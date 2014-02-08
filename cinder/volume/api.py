@@ -760,8 +760,32 @@ class API(base.Base):
                                                    'size': volume['size']})
             raise exception.InvalidInput(reason=msg)
 
+        try:
+            reservations = QUOTAS.reserve(context, gigabytes=+size_increase)
+        except exception.OverQuota as exc:
+            self.db.volume_update(context, volume['id'],
+                                  {'status': 'error_extending'})
+            usages = exc.kwargs['usages']
+            quotas = exc.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            msg = _("Quota exceeded for %(s_pid)s, tried to extend volume by "
+                    "%(s_size)sG, (%(d_consumed)dG of %(d_quota)dG already "
+                    "consumed).")
+            LOG.error(msg % {'s_pid': context.project_id,
+                             's_size': size_increase,
+                             'd_consumed': _consumed('gigabytes'),
+                             'd_quota': quotas['gigabytes']})
+            raise exception.VolumeSizeExceedsAvailableQuota(
+                requested=size_increase,
+                consumed=_consumed('gigabytes'),
+                quota=quotas['gigabytes'])
+
         self.update(context, volume, {'status': 'extending'})
-        self.volume_rpcapi.extend_volume(context, volume, new_size)
+        self.volume_rpcapi.extend_volume(context, volume, new_size,
+                                         reservations)
 
     @wrap_check_policy
     def migrate_volume(self, context, volume, host, force_host_copy):
