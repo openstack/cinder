@@ -223,9 +223,8 @@ class TgtAdm(TargetAdmin):
             LOG.error(_("Failed to create iscsi target for volume "
                         "id:%(vol_id)s. Please ensure your tgtd config file "
                         "contains 'include %(volumes_dir)s/*'") % {
-                            'vol_id': vol_id,
-                            'volumes_dir': volumes_dir,
-                        })
+                      'vol_id': vol_id,
+                      'volumes_dir': volumes_dir, })
             raise exception.NotFound()
 
         # NOTE(jdg): Sometimes we have some issues with the backing lun
@@ -278,7 +277,15 @@ class TgtAdm(TargetAdmin):
                       % {'vol_id': vol_id, 'e': str(e)})
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
-        os.unlink(volume_path)
+        # NOTE(jdg): This *should* be there still but incase
+        # it's not we don't care, so just ignore it if was
+        # somehow deleted between entry of this method
+        # and here
+        if os.path.exists(volume_path):
+            os.unlink(volume_path)
+        else:
+            LOG.debug('Volume path %s not found at end, '
+                      'of remove_iscsi_target.' % volume_path)
 
     def show_target(self, tid, iqn=None, **kwargs):
         if iqn is None:

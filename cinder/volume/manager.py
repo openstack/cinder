@@ -637,6 +637,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             self._notify_about_volume_usage(context, volume, "attach.end")
         return do_attach()
 
+    @locked_volume_operation
     def detach_volume(self, context, volume_id):
         """Updates db to show volume is detached."""
         # TODO(vish): refactor this into a more general "unreserve"
