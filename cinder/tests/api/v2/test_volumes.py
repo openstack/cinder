@@ -116,7 +116,8 @@ class VolumeApiTest(test.TestCase):
                          'source_volid': None,
                          'status': 'fakestatus',
                          'user_id': 'fakeuser',
-                         'volume_type': 'vol_type_name'}}
+                         'volume_type': 'vol_type_name',
+                         'encrypted': False}}
         self.assertEqual(res_dict, ex)
 
     def test_volume_create_with_type(self):
@@ -204,6 +205,7 @@ class VolumeApiTest(test.TestCase):
                          'bootable': 'false',
                          'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
+                         'encrypted': False,
                          'id': '1',
                          'links':
                          [{'href': 'http://localhost/v2/fake/volumes/1',
@@ -273,6 +275,7 @@ class VolumeApiTest(test.TestCase):
             'volume': {
                 'status': 'fakestatus',
                 'description': 'displaydesc',
+                'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'Updated Test Name',
@@ -322,6 +325,7 @@ class VolumeApiTest(test.TestCase):
         expected = {'volume': {
             'status': 'fakestatus',
             'description': 'displaydesc',
+            'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
             'name': 'displayname',
@@ -382,6 +386,7 @@ class VolumeApiTest(test.TestCase):
         expected = {'volume': {
             'status': 'fakestatus',
             'description': 'displaydesc',
+            'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
             'name': 'displayname',
@@ -483,6 +488,7 @@ class VolumeApiTest(test.TestCase):
                 {
                     'status': 'fakestatus',
                     'description': 'displaydesc',
+                    'encrypted': False,
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
                     'name': 'displayname',
@@ -541,6 +547,7 @@ class VolumeApiTest(test.TestCase):
                 {
                     'status': 'fakestatus',
                     'description': 'displaydesc',
+                    'encrypted': False,
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
                     'name': 'displayname',
@@ -873,6 +880,7 @@ class VolumeApiTest(test.TestCase):
             'volume': {
                 'status': 'fakestatus',
                 'description': 'displaydesc',
+                'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'displayname',
@@ -921,6 +929,7 @@ class VolumeApiTest(test.TestCase):
             'volume': {
                 'status': 'fakestatus',
                 'description': 'displaydesc',
+                'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'displayname',
@@ -977,6 +986,7 @@ class VolumeApiTest(test.TestCase):
             'volume': {
                 'status': 'fakestatus',
                 'description': 'displaydesc',
+                'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'displayname',
@@ -1011,6 +1021,26 @@ class VolumeApiTest(test.TestCase):
             }
         }
         self.assertEqual(res_dict, expected)
+
+    def test_volume_show_with_encrypted_volume(self):
+        def stub_volume_get(self, context, volume_id):
+            return stubs.stub_volume(volume_id, encryption_key_id='fake_id')
+
+        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
+
+        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        res_dict = self.controller.show(req, 1)
+        self.assertEqual(res_dict['volume']['encrypted'], True)
+
+    def test_volume_show_with_unencrypted_volume(self):
+        def stub_volume_get(self, context, volume_id):
+            return stubs.stub_volume(volume_id, encryption_key_id=None)
+
+        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
+
+        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        res_dict = self.controller.show(req, 1)
+        self.assertEqual(res_dict['volume']['encrypted'], False)
 
     def test_volume_delete(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)

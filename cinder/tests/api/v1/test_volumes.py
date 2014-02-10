@@ -90,6 +90,7 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'Volume Test Desc',
                                'availability_zone': 'zone1:host1',
                                'display_name': 'Volume Test Name',
+                               'encrypted': False,
                                'attachments': [{'device': '/',
                                                 'server_id': 'fakeuuid',
                                                 'host_name': None,
@@ -104,7 +105,8 @@ class VolumeApiTest(test.TestCase):
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
-                               'size': 100}}
+                               'size': 100,
+                               'encrypted': False}}
         self.assertEqual(res_dict, expected)
 
     def test_volume_create_with_type(self):
@@ -180,6 +182,7 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'Volume Test Desc',
                                'availability_zone': 'nova',
                                'display_name': 'Volume Test Name',
+                               'encrypted': False,
                                'attachments': [{'device': '/',
                                                 'server_id': 'fakeuuid',
                                                 'host_name': None,
@@ -247,6 +250,7 @@ class VolumeApiTest(test.TestCase):
             'display_description': 'displaydesc',
             'availability_zone': 'fakeaz',
             'display_name': 'Updated Test Name',
+            'encrypted': False,
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -282,6 +286,7 @@ class VolumeApiTest(test.TestCase):
             'display_description': 'displaydesc',
             'availability_zone': 'fakeaz',
             'display_name': 'displayname',
+            'encrypted': False,
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -331,6 +336,7 @@ class VolumeApiTest(test.TestCase):
             'display_description': 'displaydesc',
             'availability_zone': 'fakeaz',
             'display_name': 'Updated Test Name',
+            'encrypted': False,
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -386,6 +392,7 @@ class VolumeApiTest(test.TestCase):
                                  'display_description': 'displaydesc',
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
+                                 'encrypted': False,
                                  'attachments': [{'device': '/',
                                                   'server_id': 'fakeuuid',
                                                   'host_name': None,
@@ -425,6 +432,7 @@ class VolumeApiTest(test.TestCase):
                                  'display_description': 'displaydesc',
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
+                                 'encrypted': False,
                                  'attachments': [{'device': '/',
                                                   'server_id': 'fakeuuid',
                                                   'host_name': None,
@@ -453,6 +461,7 @@ class VolumeApiTest(test.TestCase):
                                  'display_description': 'displaydesc',
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
+                                 'encrypted': False,
                                  'attachments': [{'device': '/',
                                                   'server_id': 'fakeuuid',
                                                   'host_name': None,
@@ -492,6 +501,7 @@ class VolumeApiTest(test.TestCase):
                                  'display_description': 'displaydesc',
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
+                                 'encrypted': False,
                                  'attachments': [{'device': '/',
                                                   'server_id': 'fakeuuid',
                                                   'host_name': None,
@@ -642,6 +652,7 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
+                               'encrypted': False,
                                'attachments': [{'device': '/',
                                                 'server_id': 'fakeuuid',
                                                 'host_name': None,
@@ -673,6 +684,7 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
+                               'encrypted': False,
                                'attachments': [],
                                'bootable': 'false',
                                'volume_type': 'vol_type_name',
@@ -698,6 +710,7 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
+                               'encrypted': False,
                                'attachments': [{'device': '/',
                                                 'server_id': 'fakeuuid',
                                                 'host_name': None,
@@ -772,6 +785,7 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
+                               'encrypted': False,
                                'attachments': [{'device': '/',
                                                 'server_id': 'fakeuuid',
                                                 'host_name': None,
@@ -788,6 +802,26 @@ class VolumeApiTest(test.TestCase):
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
+
+    def test_volume_show_with_encrypted_volume(self):
+        def stub_volume_get(self, context, volume_id):
+            return stubs.stub_volume(volume_id, encryption_key_id='fake_id')
+
+        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
+
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        res_dict = self.controller.show(req, 1)
+        self.assertEqual(res_dict['volume']['encrypted'], True)
+
+    def test_volume_show_with_unencrypted_volume(self):
+        def stub_volume_get(self, context, volume_id):
+            return stubs.stub_volume(volume_id, encryption_key_id=None)
+
+        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
+
+        req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        res_dict = self.controller.show(req, 1)
+        self.assertEqual(res_dict['volume']['encrypted'], False)
 
     def test_volume_delete(self):
         self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
