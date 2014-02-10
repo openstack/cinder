@@ -1,5 +1,5 @@
 #
-#    (c) Copyright 2013-2014 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2013 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -40,7 +40,7 @@ HP3PAR_SAN_SSH_CON_TIMEOUT = 44
 HP3PAR_SAN_SSH_PRIVATE = 'foobar'
 
 
-class HP3PARBaseDriver():
+class HP3PARBaseDriver(object):
 
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
@@ -281,7 +281,8 @@ class HP3PARBaseDriver():
                 self.VOLUME_3PAR_NAME,
                 'osv-0DM4qZEVSKON-AAAAAAAAA',
                 HP3PAR_CPG,
-                HP3PAR_CPG_SNAP, True),
+                {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
+                 'online': True}),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
@@ -543,33 +544,33 @@ class HP3PARBaseDriver():
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getPorts.return_value = {
-            'members': [{
-                'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},
-                'protocol': 2,
-                'IPAddr': '10.10.120.252',
-                'linkState': 4,
-                'device': [],
-                'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
-                'mode': 2,
-                'HWAddr': '2C27D75375D2',
-                'type': 8}, {
-                    'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
-                    'protocol': 2,
-                    'IPAddr': '10.10.220.253',
-                    'linkState': 4,
-                    'device': [],
-                    'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
-                    'mode': 2,
-                    'HWAddr': '2C27D75375D6',
-                    'type': 8}, {
-                        'portWWN': '20210002AC00383D',
-                        'protocol': 1,
-                        'linkState': 4,
-                        'mode': 2,
-                        'device': ['cage2'],
-                        'nodeWWN': '20210002AC00383D',
-                        'type': 2,
-                        'portPos': {'node': 0, 'slot': 6, 'cardPort': 3}}]}
+            'members': [
+                {'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},
+                 'protocol': 2,
+                 'IPAddr': '10.10.120.252',
+                 'linkState': 4,
+                 'device': [],
+                 'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
+                 'mode': 2,
+                 'HWAddr': '2C27D75375D2',
+                 'type': 8},
+                {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                 'protocol': 2,
+                 'IPAddr': '10.10.220.253',
+                 'linkState': 4,
+                 'device': [],
+                 'iSCSIName': 'iqn.2000-05.com.3pardata:21810002ac00383d',
+                 'mode': 2,
+                 'HWAddr': '2C27D75375D6',
+                 'type': 8},
+                {'portWWN': '20210002AC00383D',
+                 'protocol': 1,
+                 'linkState': 4,
+                 'mode': 2,
+                 'device': ['cage2'],
+                 'nodeWWN': '20210002AC00383D',
+                 'type': 2,
+                 'portPos': {'node': 0, 'slot': 6, 'cardPort': 3}}]}
 
         ports = self.driver.common.get_ports()['members']
         self.assertEqual(len(ports), 3)
@@ -607,7 +608,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getCPG(HP3PAR_CPG),
-            mock.call.setHighConnections(),
             mock.call.logout()]
         mock_client.assert_has_calls(expected)
         mock_client.reset_mock()
@@ -909,7 +909,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getCPG(HP3PAR_CPG),
-            mock.call.setHighConnections(),
             mock.call.logout(),
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getPorts(),
@@ -1046,11 +1045,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
         mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
         mock_client.getCPG.return_value = {}
-        mock_client.getHost.side_effect = [{
-            'name': self.FAKE_HOST, 'FCPaths': []}, {
-                'name': self.FAKE_HOST,
-                'FCPaths': [{'wwn': '123456789012345'}, {
-                    'wwn': '123456789054321'}]}]
+        mock_client.getHost.side_effect = [
+            {'name': self.FAKE_HOST, 'FCPaths': []},
+            {'name': self.FAKE_HOST,
+             'FCPaths': [{'wwn': '123456789012345'},
+                         {'wwn': '123456789054321'}]}]
 
         host = self.driver._create_host(self.volume, self.connector)
 
@@ -1151,25 +1150,25 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         config.iscsi_ip_address = '10.10.10.10'
         mock_conf = {
             'getPorts.return_value': {
-                'members': [{
-                    'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
-                    'protocol': 2,
-                    'IPAddr': '10.10.220.252',
-                    'linkState': 4,
-                    'device': [],
-                    'iSCSIName': self.TARGET_IQN,
-                    'mode': 2,
-                    'HWAddr': '2C27D75375D2',
-                    'type': 8}, {
-                        'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
-                        'protocol': 2,
-                        'IPAddr': '10.10.220.253',
-                        'linkState': 4,
-                        'device': [],
-                        'iSCSIName': self.TARGET_IQN,
-                        'mode': 2,
-                        'HWAddr': '2C27D75375D6',
-                        'type': 8}]}}
+                'members': [
+                    {'portPos': {'node': 1, 'slot': 8, 'cardPort': 2},
+                     'protocol': 2,
+                     'IPAddr': '10.10.220.252',
+                     'linkState': 4,
+                     'device': [],
+                     'iSCSIName': self.TARGET_IQN,
+                     'mode': 2,
+                     'HWAddr': '2C27D75375D2',
+                     'type': 8},
+                    {'portPos': {'node': 1, 'slot': 8, 'cardPort': 1},
+                     'protocol': 2,
+                     'IPAddr': '10.10.220.253',
+                     'linkState': 4,
+                     'device': [],
+                     'iSCSIName': self.TARGET_IQN,
+                     'mode': 2,
+                     'HWAddr': '2C27D75375D6',
+                     'type': 8}]}}
 
         # no valid ip addr should be configured.
         self.assertRaises(exception.InvalidInput,
