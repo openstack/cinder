@@ -109,9 +109,11 @@ MAPPING = {
     'cinder.volume.drivers.windows.WindowsDriver':
     'cinder.volume.drivers.windows.windows.WindowsDriver',
     'cinder.volume.xiv.XIVDriver':
-    'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver',
+    'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
     'cinder.volume.drivers.xiv.XIVDriver':
-    'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver',
+    'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
+    'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver':
+    'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
     'cinder.volume.zadara.ZadaraVPSAISCSIDriver':
     'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver',
     'cinder.volume.driver.ISCSIDriver':
