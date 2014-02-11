@@ -38,11 +38,9 @@ import ast
 import base64
 import json
 import pprint
-from random import randint
 import re
 import uuid
 
-from eventlet import greenthread
 import hp3parclient
 from hp3parclient import client
 from hp3parclient import exceptions as hpexceptions
@@ -52,14 +50,12 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
-from cinder import utils
 from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '2.0.0'
+MIN_CLIENT_VERSION = '2.9.0'
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -113,10 +109,11 @@ class HP3PARCommon(object):
         1.2.5 - Raise Ex when deleting snapshot with dependencies bug #1250249
         1.2.6 - Allow optional specifying n:s:p for vlun creation bug #1269515
                 This update now requires 3.1.2 MU3 firmware
+        1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
 
     """
 
-    VERSION = "1.2.6"
+    VERSION = "1.3.0"
 
     stats = {}
 
@@ -143,7 +140,6 @@ class HP3PARCommon(object):
     hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs']
 
     def __init__(self, config):
-        self.sshpool = None
         self.config = config
         self.hosts_naming_dict = dict()
         self.client = None
@@ -163,10 +159,19 @@ class HP3PARCommon(object):
         client_version = hp3parclient.version
 
         if (client_version < MIN_CLIENT_VERSION):
-            ex_msg = (_('Invalid hp3parclient version. Version %s or greater '
-                        'required.') % MIN_CLIENT_VERSION)
+            ex_msg = (_('Invalid hp3parclient version found (%(found)s). '
+                        'Version %(minimum)s or greater required.')
+                      % {'found': client_version,
+                         'minimum': MIN_CLIENT_VERSION})
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
+
+        cl.setSSHOptions(self.config.san_ip,
+                         self.config.san_login,
+                         self.config.san_password,
+                         port=self.config.san_ssh_port,
+                         conn_timeout=self.config.ssh_conn_timeout,
+                         privatekey=self.config.san_private_key)
 
         return cl
 
@@ -201,7 +206,7 @@ class HP3PARCommon(object):
         try:
             # make sure the default CPG exists
             self.validate_cpg(self.config.hp3par_cpg)
-            self._set_connections()
+            self.client.setHighConnections()
         finally:
             self.client_logout()
 
@@ -212,14 +217,6 @@ class HP3PARCommon(object):
             err = (_("CPG (%s) doesn't exist on array") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
-
-    def _set_connections(self):
-        """Set the number of concurrent connections.
-
-        The 3PAR WS API server has a limit of concurrent connections.
-        This is setting the number to the highest allowed, 15 connections.
-        """
-        self._cli_run(['setwsapi', '-sru', 'high'])
 
     def get_domain(self, cpg_name):
         try:
@@ -236,12 +233,12 @@ class HP3PARCommon(object):
 
     def extend_volume(self, volume, new_size):
         volume_name = self._get_3par_vol_name(volume['id'])
-        old_size = volume.size
+        old_size = volume['size']
         growth_size = int(new_size) - old_size
         LOG.debug("Extending Volume %s from %s to %s, by %s GB." %
                   (volume_name, old_size, new_size, growth_size))
         try:
-            self._cli_run(['growvv', '-f', volume_name, '%dg' % growth_size])
+            self.client.growVolume(volume_name, growth_size)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error extending volume %s") % volume)
@@ -298,96 +295,6 @@ class HP3PARCommon(object):
 
         capacity = int(round(capacity / MiB))
         return capacity
-
-    def _cli_run(self, cmd):
-        """Runs a CLI command over SSH, without doing any result parsing."""
-        LOG.debug("SSH CMD = %s " % cmd)
-
-        (stdout, stderr) = self._run_ssh(cmd, False)
-        # we have to strip out the input and exit lines
-        tmp = stdout.split("\r\n")
-        out = tmp[5:len(tmp) - 2]
-        return out
-
-    def _ssh_execute(self, ssh, cmd, check_exit_code=True):
-        """We have to do this in order to get CSV output from the CLI command.
-
-        We first have to issue a command to tell the CLI that we want the
-        output to be formatted in CSV, then we issue the real command.
-        """
-        LOG.debug(_('Running cmd (SSH): %s'), cmd)
-
-        channel = ssh.invoke_shell()
-        stdin_stream = channel.makefile('wb')
-        stdout_stream = channel.makefile('rb')
-        stderr_stream = channel.makefile('rb')
-
-        stdin_stream.write('''setclienv csvtable 1
-%s
-exit
-''' % cmd)
-
-        # stdin.write('process_input would go here')
-        # stdin.flush()
-
-        # NOTE(justinsb): This seems suspicious...
-        # ...other SSH clients have buffering issues with this approach
-        stdout = stdout_stream.read()
-        stderr = stderr_stream.read()
-        stdin_stream.close()
-        stdout_stream.close()
-        stderr_stream.close()
-
-        exit_status = channel.recv_exit_status()
-
-        # exit_status == -1 if no exit code was returned
-        if exit_status != -1:
-            LOG.debug(_('Result was %s') % exit_status)
-            if check_exit_code and exit_status != 0:
-                msg = _("command %s failed") % cmd
-                LOG.error(msg)
-                raise processutils.ProcessExecutionError(exit_code=exit_status,
-                                                         stdout=stdout,
-                                                         stderr=stderr,
-                                                         cmd=cmd)
-        channel.close()
-        return (stdout, stderr)
-
-    def _run_ssh(self, cmd_list, check_exit=True, attempts=1):
-        utils.check_ssh_injection(cmd_list)
-        command = ' '. join(cmd_list)
-
-        if not self.sshpool:
-            self.sshpool = utils.SSHPool(self.config.san_ip,
-                                         self.config.san_ssh_port,
-                                         self.config.ssh_conn_timeout,
-                                         self.config.san_login,
-                                         password=self.config.san_password,
-                                         privatekey=
-                                         self.config.san_private_key,
-                                         min_size=
-                                         self.config.ssh_min_pool_conn,
-                                         max_size=
-                                         self.config.ssh_max_pool_conn)
-        try:
-            total_attempts = attempts
-            with self.sshpool.item() as ssh:
-                while attempts > 0:
-                    attempts -= 1
-                    try:
-                        return self._ssh_execute(ssh, command,
-                                                 check_exit_code=check_exit)
-                    except Exception as e:
-                        LOG.error(e)
-                        greenthread.sleep(randint(20, 500) / 100.0)
-                msg = (_("SSH Command failed after '%(total_attempts)r' "
-                         "attempts : '%(command)s'") %
-                       {'total_attempts': total_attempts, 'command': command})
-                LOG.error(msg)
-                raise exception.CinderException(message=msg)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_("Error running ssh command: %s") % command)
 
     def _delete_3par_host(self, hostname):
         self.client.deleteHost(hostname)
@@ -568,41 +475,24 @@ exit
     def _set_qos_rule(self, qos, vvs_name):
         max_io = self._get_qos_value(qos, 'maxIOPS')
         max_bw = self._get_qos_value(qos, 'maxBWS')
-        cmd = ['setqos']
-        if max_io is not None:
-            cmd.extend(['-io', '%s' % max_io])
-        if max_bw is not None:
-            cmd.extend(['-bw', '%sM' % max_bw])
-        cmd.append('vvset:' + vvs_name)
-        self._cli_run(cmd)
+        self.client.setQOSRule(vvs_name, max_io, max_bw)
 
     def _add_volume_to_volume_set(self, volume, volume_name,
                                   cpg, vvs_name, qos):
         if vvs_name is not None:
             # Admin has set a volume set name to add the volume to
-            out = self._cli_run(['createvvset', '-add', vvs_name, volume_name])
-            if out and len(out) == 1:
-                if 'does not exist' in out[0]:
-                    msg = _('VV Set %s does not exist.') % vvs_name
-                    LOG.error(msg)
-                    raise exception.InvalidInput(reason=msg)
+            try:
+                self.client.addVolumeToVolumeSet(vvs_name, volume_name)
+            except hpexceptions.HTTPNotFound:
+                msg = _('VV Set %s does not exist.') % vvs_name
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
         else:
             vvs_name = self._get_3par_vvs_name(volume['id'])
             domain = self.get_domain(cpg)
-            if domain is not None:
-                self._cli_run(['createvvset', '-domain', domain, vvs_name])
-            else:
-                self._cli_run(['createvvset', vvs_name])
+            self.client.createVolumeSet(vvs_name, domain)
             self._set_qos_rule(qos, vvs_name)
-            self._cli_run(['createvvset', '-add', vvs_name, volume_name])
-
-    def _remove_volume_set(self, vvs_name):
-        # Must first clear the QoS rules before removing the volume set
-        self._cli_run(['setqos', '-clear', 'vvset:%s' % (vvs_name)])
-        self._cli_run(['removevvset', '-f', vvs_name])
-
-    def _remove_volume_from_volume_set(self, volume_name, vvs_name):
-        self._cli_run(['removevvset', '-f', vvs_name, volume_name])
+            self.client.addVolumeToVolumeSet(vvs_name, volume_name)
 
     def get_cpg(self, volume, allowSnap=False):
         volume_name = self._get_3par_vol_name(volume['id'])
@@ -768,16 +658,9 @@ exit
     def _copy_volume(self, src_name, dest_name, cpg=None, snap_cpg=None,
                      tpvv=True):
         # Virtual volume sets are not supported with the -online option
-        cmd = ['createvvcopy', '-p', src_name, '-online']
-        if snap_cpg:
-            cmd.extend(['-snp_cpg', snap_cpg])
-        if tpvv:
-            cmd.append('-tpvv')
-        if cpg:
-            cmd.append(cpg)
-        cmd.append(dest_name)
-        LOG.debug('Creating clone of a volume with %s' % cmd)
-        self._cli_run(cmd)
+        LOG.debug('Creating clone of a volume %s' % src_name)
+        self.client.copyVolume(src_name, dest_name, cpg,
+                               snap_cpg, tpvv)
 
     def get_next_word(self, s, search_string):
         """Return the next word.
@@ -815,26 +698,6 @@ exit
             LOG.error(str(ex))
             raise exception.CinderException(ex)
 
-    def _get_vvset_from_3par(self, volume_name):
-        """Get Virtual Volume Set from 3PAR.
-
-        The only way to do this currently is to try and delete the volume
-        to get the error message.
-
-        NOTE(walter-boring): don't call this unless you know the volume is
-        already in a vvset!
-        """
-        cmd = ['removevv', '-f', volume_name]
-        LOG.debug("Issuing remove command to find vvset name %s" % cmd)
-        out = self._cli_run(cmd)
-        vvset_name = None
-        if out and len(out) > 1:
-            if out[1].startswith("Attempt to delete "):
-                words = out[1].split(" ")
-                vvset_name = words[len(words) - 1]
-
-        return vvset_name
-
     def delete_volume(self, volume):
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
@@ -847,19 +710,19 @@ exit
                 if ex.get_code() == 34:
                     # This is a special case which means the
                     # volume is part of a volume set.
-                    vvset_name = self._get_vvset_from_3par(volume_name)
+                    vvset_name = self.client.findVolumeSet(volume_name)
                     LOG.debug("Returned vvset_name = %s" % vvset_name)
                     if vvset_name is not None and \
                        vvset_name.startswith('vvs-'):
                         # We have a single volume per volume set, so
                         # remove the volume set.
-                        self._remove_volume_set(
+                        self.client.deleteVolumeSet(
                             self._get_3par_vvs_name(volume['id']))
                     elif vvset_name is not None:
                         # We have a pre-defined volume set just remove the
                         # volume and leave the volume set.
-                        self._remove_volume_from_volume_set(volume_name,
-                                                            vvset_name)
+                        self.client.removeVolumeFromVolumeSet(vvset_name,
+                                                              volume_name)
                     self.client.deleteVolume(volume_name)
                 else:
                     LOG.error(str(ex))
@@ -998,8 +861,7 @@ exit
             volume_name = self._get_3par_vol_name(volume['id'])
             if value is None:
                 value = ''
-            cmd = ['setvv', '-setkv', key + '=' + value, volume_name]
-            self._cli_run(cmd)
+            self.client.setVolumeMetaData(volume_name, key, value)
         except Exception as ex:
             msg = _('Failure in update_volume_key_value_pair:%s') % str(ex)
             LOG.error(msg)
@@ -1013,8 +875,7 @@ exit
                    self._get_3par_vol_name(volume['id']), str(key)))
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
-            cmd = ['setvv', '-clrkey', key, volume_name]
-            self._cli_run(cmd)
+            self.client.removeVolumeMetaData(volume_name, key)
         except Exception as ex:
             msg = _('Failure in clear_volume_key_value_pair:%s') % str(ex)
             LOG.error(msg)

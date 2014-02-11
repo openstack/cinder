@@ -58,10 +58,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.2.5 - Added metadata during attach/detach bug #1258033
         1.2.6 - Use least-used iscsi n:s:p for iscsi volume attach bug #1269515
                 This update now requires 3.1.2 MU3 firmware
+        1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
 
     """
 
-    VERSION = "1.2.6"
+    VERSION = "1.3.0"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -302,16 +303,21 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         the same iqn but with a different hostname, return the hostname
         used by 3PAR.
         """
-        if domain is not None:
-            cmd = ['createhost', '-iscsi', '-persona', persona_id, '-domain',
-                   domain, hostname, iscsi_iqn]
+        # first search for an existing host
+        host_found = self.common.client.findHost(iqn=iscsi_iqn)
+        if host_found is not None:
+            self.common.hosts_naming_dict[hostname] = host_found
+            return host_found
         else:
-            cmd = ['createhost', '-iscsi', '-persona', persona_id, hostname,
-                   iscsi_iqn]
-        out = self.common._cli_run(cmd)
-        if out and len(out) > 1:
-            return self.common.parse_create_host_error(hostname, out)
-        return hostname
+            if isinstance(iscsi_iqn, str) or isinstance(iscsi_iqn, unicode):
+                iqn = [iscsi_iqn]
+            else:
+                iqn = iscsi_iqn
+            persona_id = int(persona_id)
+            self.common.client.createHost(hostname, iscsiNames=iqn,
+                                          optional={'domain': domain,
+                                                    'persona': persona_id})
+            return hostname
 
     def _modify_3par_iscsi_host(self, hostname, iscsi_iqn):
         mod_request = {'pathOperation': self.common.client.HOST_EDIT_ADD,
