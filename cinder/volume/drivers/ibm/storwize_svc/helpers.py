@@ -200,6 +200,7 @@ class StorwizeHelpers(object):
                         host_name = name
                     elif ('wwpns' in connector and
                           len(connector['wwpns']) and
+                          wwpn and
                           wwpn.lower() in
                           [str(x).lower for x in connector['wwpns']]):
                         host_name = name
