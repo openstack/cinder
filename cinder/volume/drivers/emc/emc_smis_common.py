@@ -1,5 +1,4 @@
-# Copyright (c) 2012 EMC Corporation.
-# Copyright (c) 2012 OpenStack Foundation
+# Copyright (c) 2012 - 2014 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -29,6 +28,7 @@ from xml.dom.minidom import parseString
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import units
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -41,6 +41,9 @@ except ImportError:
                'Install PyWBEM using the python-pywbem package.'))
 
 CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_emc_config.xml'
+EMC_ROOT = 'root/emc'
+PROVISIONING = 'storagetype:provisioning'
+POOL = 'storagetype:pool'
 
 emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
@@ -64,6 +67,7 @@ class EMCSMISCommon():
              'volume_backend_name': None}
 
     def __init__(self, prtcl, configuration=None):
+
         self.protocol = prtcl
         self.configuration = configuration
         self.configuration.append_config_values(emc_opts)
@@ -75,7 +79,6 @@ class EMCSMISCommon():
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VNX) volume."""
-
         LOG.debug(_('Entering create_volume.'))
         volumesize = int(volume['size']) * units.GiB
         volumename = volume['name']
@@ -86,14 +89,14 @@ class EMCSMISCommon():
 
         self.conn = self._get_ecom_connection()
 
-        storage_type = self._get_storage_type()
+        storage_type = self._get_storage_type(volume)
 
         LOG.debug(_('Create Volume: %(volume)s  '
                   'Storage type: %(storage_type)s')
                   % {'volume': volumename,
                      'storage_type': storage_type})
 
-        pool, storage_system = self._find_pool(storage_type)
+        pool, storage_system = self._find_pool(storage_type[POOL])
 
         LOG.debug(_('Create Volume: %(volume)s  Pool: %(pool)s  '
                   'Storage System: %(storage_system)s')
@@ -112,19 +115,22 @@ class EMCSMISCommon():
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
+        provisioning = self._get_provisioning(storage_type)
+
         LOG.debug(_('Create Volume: %(name)s  Method: '
                   'CreateOrModifyElementFromStoragePool  ConfigServicie: '
                   '%(service)s  ElementName: %(name)s  InPool: %(pool)s  '
-                  'ElementType: 5  Size: %(size)lu')
+                  'ElementType: %(provisioning)s  Size: %(size)lu')
                   % {'service': str(configservice),
                      'name': volumename,
                      'pool': str(pool),
+                     'provisioning': provisioning,
                      'size': volumesize})
 
         rc, job = self.conn.InvokeMethod(
             'CreateOrModifyElementFromStoragePool',
             configservice, ElementName=volumename, InPool=pool,
-            ElementType=self._getnum(5, '16'),
+            ElementType=self._getnum(provisioning, '16'),
             Size=self._getnum(volumesize, '64'))
 
         LOG.debug(_('Create Volume: %(volumename)s  Return code: %(rc)lu')
@@ -141,10 +147,28 @@ class EMCSMISCommon():
                              'error': errordesc})
                 raise exception.VolumeBackendAPIException(data=errordesc)
 
+        # Find the newly created volume
+        associators = self.conn.Associators(
+            job['Job'],
+            resultClass='EMC_StorageVolume')
+        volpath = associators[0].path
+        name = {}
+        name['classname'] = volpath.classname
+        keys = {}
+        keys['CreationClassName'] = volpath['CreationClassName']
+        keys['SystemName'] = volpath['SystemName']
+        keys['DeviceID'] = volpath['DeviceID']
+        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
+        name['keybindings'] = keys
+
         LOG.debug(_('Leaving create_volume: %(volumename)s  '
-                  'Return code: %(rc)lu')
+                  'Return code: %(rc)lu '
+                  'volume instance: %(name)s')
                   % {'volumename': volumename,
-                     'rc': rc})
+                     'rc': rc,
+                     'name': name})
+
+        return name
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -227,14 +251,29 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
+        # Find the newly created volume
+        associators = self.conn.Associators(
+            job['Job'],
+            resultClass='EMC_StorageVolume')
+        volpath = associators[0].path
+        name = {}
+        name['classname'] = volpath.classname
+        keys = {}
+        keys['CreationClassName'] = volpath['CreationClassName']
+        keys['SystemName'] = volpath['SystemName']
+        keys['DeviceID'] = volpath['DeviceID']
+        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
+        name['keybindings'] = keys
+
         LOG.debug(_('Create Volume from Snapshot: Volume: %(volumename)s  '
                   'Snapshot: %(snapshotname)s.  Successfully clone volume '
                   'from snapshot.  Finding the clone relationship.')
                   % {'volumename': volumename,
                      'snapshotname': snapshotname})
 
+        volume['provider_location'] = str(name)
         sync_name, storage_system = self._find_storage_sync_sv_sv(
-            volumename, snapshotname)
+            volume, snapshot)
 
         # Remove the Clone relationshop so it can be used as a regular lun
         # 8 - Detach operation
@@ -281,6 +320,8 @@ class EMCSMISCommon():
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
+
+        return name
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
@@ -351,14 +392,29 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
+        # Find the newly created volume
+        associators = self.conn.Associators(
+            job['Job'],
+            resultClass='EMC_StorageVolume')
+        volpath = associators[0].path
+        name = {}
+        name['classname'] = volpath.classname
+        keys = {}
+        keys['CreationClassName'] = volpath['CreationClassName']
+        keys['SystemName'] = volpath['SystemName']
+        keys['DeviceID'] = volpath['DeviceID']
+        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
+        name['keybindings'] = keys
+
         LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
                   'Source Volume: %(srcname)s.  Successfully cloned volume '
                   'from source volume.  Finding the clone relationship.')
                   % {'volumename': volumename,
                      'srcname': srcname})
 
+        volume['provider_location'] = str(name)
         sync_name, storage_system = self._find_storage_sync_sv_sv(
-            volumename, srcname)
+            volume, src_vref)
 
         # Remove the Clone relationshop so it can be used as a regular lun
         # 8 - Detach operation
@@ -405,6 +461,8 @@ class EMCSMISCommon():
                   % {'volumename': volumename,
                      'srcname': srcname,
                      'rc': rc})
+
+        return name
 
     def delete_volume(self, volume):
         """Deletes an EMC volume."""
@@ -467,7 +525,7 @@ class EMCSMISCommon():
                   % {'volumename': volumename,
                      'rc': rc})
 
-    def create_snapshot(self, snapshot):
+    def create_snapshot(self, snapshot, volume):
         """Creates a snapshot."""
         LOG.debug(_('Entering create_snapshot.'))
 
@@ -479,10 +537,8 @@ class EMCSMISCommon():
 
         self.conn = self._get_ecom_connection()
 
-        volume = {}
-        volume['name'] = volumename
-        volume['provider_location'] = None
         vol_instance = self._find_lun(volume)
+
         device_id = vol_instance['DeviceID']
         storage_system = vol_instance['SystemName']
         LOG.debug(_('Device ID: %(deviceid)s: Storage System: '
@@ -532,11 +588,27 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
+        # Find the newly created volume
+        associators = self.conn.Associators(
+            job['Job'],
+            resultClass='EMC_StorageVolume')
+        volpath = associators[0].path
+        name = {}
+        name['classname'] = volpath.classname
+        keys = {}
+        keys['CreationClassName'] = volpath['CreationClassName']
+        keys['SystemName'] = volpath['SystemName']
+        keys['DeviceID'] = volpath['DeviceID']
+        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
+        name['keybindings'] = keys
+
         LOG.debug(_('Leaving create_snapshot: Snapshot: %(snapshot)s '
                   'Volume: %(volume)s  Return code: %(rc)lu.') %
                   {'snapshot': snapshotname, 'volume': volumename, 'rc': rc})
 
-    def delete_snapshot(self, snapshot):
+        return name
+
+    def delete_snapshot(self, snapshot, volume):
         """Deletes a snapshot."""
         LOG.debug(_('Entering delete_snapshot.'))
 
@@ -554,7 +626,7 @@ class EMCSMISCommon():
                      'volume': volumename})
 
         sync_name, storage_system =\
-            self._find_storage_sync_sv_sv(snapshotname, volumename, False)
+            self._find_storage_sync_sv_sv(snapshot, volume, False)
         if sync_name is None:
             LOG.error(_('Snapshot: %(snapshot)s: volume: %(volume)s '
                       'not found on the array. No snapshot to delete.')
@@ -613,22 +685,6 @@ class EMCSMISCommon():
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
-
-    def create_export(self, context, volume):
-        """Driver entry point to get the export info for a new volume."""
-        self.conn = self._get_ecom_connection()
-        volumename = volume['name']
-        LOG.info(_('Create export: %(volume)s')
-                 % {'volume': volumename})
-        vol_instance = self._find_lun(volume)
-        device_id = vol_instance['DeviceID']
-
-        LOG.debug(_('create_export: Volume: %(volume)s  Device ID: '
-                  '%(device_id)s')
-                  % {'volume': volumename,
-                     'device_id': device_id})
-
-        return {'provider_location': device_id}
 
     # Mapping method for VNX
     def _expose_paths(self, configservice, vol_instance,
@@ -854,22 +910,98 @@ class EMCSMISCommon():
         self.conn = self._get_ecom_connection()
         self._unmap_lun(volume, connector)
 
+    def extend_volume(self, volume, new_size):
+        """Extends an existing  volume."""
+        LOG.debug(_('Entering extend_volume.'))
+        volumesize = int(new_size) * units.GiB
+        volumename = volume['name']
+
+        LOG.info(_('Extend Volume: %(volume)s  New size: %(size)lu')
+                 % {'volume': volumename,
+                    'size': volumesize})
+
+        self.conn = self._get_ecom_connection()
+
+        storage_type = self._get_storage_type(volume)
+
+        vol_instance = self._find_lun(volume)
+
+        device_id = vol_instance['DeviceID']
+        storage_system = vol_instance['SystemName']
+        LOG.debug(_('Device ID: %(deviceid)s: Storage System: '
+                  '%(storagesystem)s')
+                  % {'deviceid': device_id,
+                     'storagesystem': storage_system})
+
+        configservice = self._find_storage_configuration_service(
+            storage_system)
+        if configservice is None:
+            exception_message = (_("Error Extend Volume: %(volumename)s. "
+                                 "Storage Configuration Service not found.")
+                                 % {'volumename': volumename})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        provisioning = self._get_provisioning(storage_type)
+
+        LOG.debug(_('Extend Volume: %(name)s  Method: '
+                  'CreateOrModifyElementFromStoragePool  ConfigServicie: '
+                  '%(service)s ElementType: %(provisioning)s  Size: %(size)lu'
+                  'Volume path: %(volumepath)s')
+                  % {'service': str(configservice),
+                     'name': volumename,
+                     'provisioning': provisioning,
+                     'size': volumesize,
+                     'volumepath': vol_instance.path})
+
+        rc, job = self.conn.InvokeMethod(
+            'CreateOrModifyElementFromStoragePool',
+            configservice, ElementType=self._getnum(provisioning, '16'),
+            Size=self._getnum(volumesize, '64'),
+            TheElement=vol_instance.path)
+
+        LOG.debug(_('Extend Volume: %(volumename)s  Return code: %(rc)lu')
+                  % {'volumename': volumename,
+                     'rc': rc})
+
+        if rc != 0L:
+            rc, errordesc = self._wait_for_job_complete(job)
+            if rc != 0L:
+                LOG.error(_('Error Extend Volume: %(volumename)s.  '
+                          'Return code: %(rc)lu.  Error: %(error)s')
+                          % {'volumename': volumename,
+                             'rc': rc,
+                             'error': errordesc})
+                raise exception.VolumeBackendAPIException(data=errordesc)
+
+        LOG.debug(_('Leaving extend_volume: %(volumename)s  '
+                  'Return code: %(rc)lu ')
+                  % {'volumename': volumename,
+                     'rc': rc})
+
     def update_volume_stats(self):
         """Retrieve stats info."""
         LOG.debug(_("Updating volume stats"))
-        self.conn = self._get_ecom_connection()
-        storage_type = self._get_storage_type()
-
-        pool, storagesystem = self._find_pool(storage_type, True)
-
-        self.stats['total_capacity_gb'] = pool['TotalManagedSpace']
-        self.stats['free_capacity_gb'] = pool['RemainingManagedSpace']
+        self.stats['total_capacity_gb'] = 'unknown'
+        self.stats['free_capacity_gb'] = 'unknown'
 
         return self.stats
 
-    def _get_storage_type(self, filename=None):
+    def _get_storage_type(self, volume, filename=None):
+        """Get storage type.
+
+        Look for user input volume type first.
+        If not available, fall back to finding it in conf file.
+        """
+        specs = self._get_volumetype_extraspecs(volume)
+        if not specs:
+            specs = self._get_storage_type_conffile()
+        LOG.debug(_("Storage Type: %s") % (specs))
+        return specs
+
+    def _get_storage_type_conffile(self, filename=None):
         """Get the storage type from the config file."""
-        if filename is None:
+        if filename == None:
             filename = self.configuration.cinder_emc_config_file
 
         file = open(filename, 'r')
@@ -881,8 +1013,11 @@ class EMCSMISCommon():
             storageType = storageTypes[0].toxml()
             storageType = storageType.replace('<StorageType>', '')
             storageType = storageType.replace('</StorageType>', '')
-            LOG.debug(_("Found Storage Type: %s") % (storageType))
-            return storageType
+            LOG.debug(_("Found Storage Type in config file: %s")
+                      % (storageType))
+            specs = {}
+            specs[POOL] = storageType
+            return specs
         else:
             exception_message = (_("Storage type not found."))
             LOG.error(exception_message)
@@ -1085,30 +1220,13 @@ class EMCSMISCommon():
 
     def _find_lun(self, volume):
         foundinstance = None
-        try:
-            device_id = volume['provider_location']
-        except Exception:
-            device_id = None
 
         volumename = volume['name']
-
-        names = self.conn.EnumerateInstanceNames('EMC_StorageVolume')
-
-        for n in names:
-            if device_id is not None:
-                if n['DeviceID'] == device_id:
-                    vol_instance = self.conn.GetInstance(n)
-                    foundinstance = vol_instance
-                    break
-                else:
-                    continue
-
-            else:
-                vol_instance = self.conn.GetInstance(n)
-                if vol_instance['ElementName'] == volumename:
-                    foundinstance = vol_instance
-                    volume['provider_location'] = foundinstance['DeviceID']
-                    break
+        loc = volume['provider_location']
+        name = eval(loc)
+        instancename = self._getinstancename(name['classname'],
+                                             name['keybindings'])
+        foundinstance = self.conn.GetInstance(instancename)
 
         if foundinstance is None:
             LOG.debug(_("Volume %(volumename)s not found on the array.")
@@ -1121,33 +1239,24 @@ class EMCSMISCommon():
 
         return foundinstance
 
-    def _find_storage_sync_sv_sv(self, snapshotname, volumename,
+    def _find_storage_sync_sv_sv(self, snapshot, volume,
                                  waitforsync=True):
         foundsyncname = None
         storage_system = None
         percent_synced = 0
 
+        snapshotname = snapshot['name']
+        volumename = volume['name']
         LOG.debug(_("Source: %(volumename)s  Target: %(snapshotname)s.")
                   % {'volumename': volumename, 'snapshotname': snapshotname})
 
-        names = self.conn.EnumerateInstanceNames(
-            'SE_StorageSynchronized_SV_SV')
-
-        for n in names:
-            snapshot_instance = self.conn.GetInstance(n['SyncedElement'],
-                                                      LocalOnly=False)
-            if snapshotname != snapshot_instance['ElementName']:
-                continue
-
-            vol_instance = self.conn.GetInstance(n['SystemElement'],
-                                                 LocalOnly=False)
-            if vol_instance['ElementName'] == volumename:
-                foundsyncname = n
-                storage_system = vol_instance['SystemName']
-                if waitforsync:
-                    sync_instance = self.conn.GetInstance(n, LocalOnly=False)
-                    percent_synced = sync_instance['PercentSynced']
-                break
+        snapshot_instance = self._find_lun(snapshot)
+        volume_instance = self._find_lun(volume)
+        storage_system = volume_instance['SystemName']
+        classname = 'SE_StorageSynchronized_SV_SV'
+        bindings = {'SyncedElement': snapshot_instance.path,
+                    'SystemElement': volume_instance.path}
+        foundsyncname = self._getinstancename(classname, bindings)
 
         if foundsyncname is None:
             LOG.debug(_("Source: %(volumename)s  Target: %(snapshotname)s. "
@@ -1293,7 +1402,7 @@ class EMCSMISCommon():
         return foundCtrl
 
     # Find out how many volumes are mapped to a host
-    # associated to the LunMaskingSCSIProtocolController
+    # assoociated to the LunMaskingSCSIProtocolController
     def get_num_volumes_mapped(self, volume, connector):
         numVolumesMapped = 0
         volumename = volume['name']
@@ -1510,6 +1619,18 @@ class EMCSMISCommon():
 
         return result
 
+    def _getinstancename(self, classname, bindings):
+        instancename = None
+        try:
+            instancename = pywbem.CIMInstanceName(
+                classname,
+                namespace=EMC_ROOT,
+                keybindings=bindings)
+        except NameError:
+            instancename = None
+
+        return instancename
+
     # Find target WWNs
     def get_target_wwns(self, storage_system, connector):
         target_wwns = []
@@ -1543,8 +1664,8 @@ class EMCSMISCommon():
             for targetendpoint in endpoints:
                 wwn = targetendpoint['Name']
                 # Add target wwn to the list if it is not already there
-                if not any(d.get('wwn', None) == wwn for d in target_wwns):
-                    target_wwns.append({'wwn': wwn})
+                if not any(d == wwn for d in target_wwns):
+                    target_wwns.append(wwn)
                 LOG.debug(_('Add target WWN: %s.') % wwn)
 
         LOG.debug(_('Target WWNs: %s.') % target_wwns)
@@ -1569,3 +1690,29 @@ class EMCSMISCommon():
                      'foundInstances': str(foundInstances)})
 
         return foundInstances
+
+    def _get_volumetype_extraspecs(self, volume):
+        specs = {}
+        type_id = volume['volume_type_id']
+        if type_id is not None:
+            specs = volume_types.get_volume_type_extra_specs(type_id)
+            # If specs['storagetype:pool'] not defined,
+            # set specs to {} so we can ready from config file later
+            if POOL not in specs:
+                specs = {}
+
+        return specs
+
+    def _get_provisioning(self, storage_type):
+        # provisioning is thin (5) by default
+        provisioning = 5
+        thick_str = 'thick'
+        try:
+            type_prov = storage_type[PROVISIONING]
+            if type_prov.lower() == thick_str.lower():
+                provisioning = 2
+        except KeyError:
+            # Default to thin if not defined
+            pass
+
+        return provisioning
