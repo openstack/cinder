@@ -32,6 +32,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder import units
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -123,46 +124,52 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def _delete_volume(self, volume, is_snapshot=False):
         """Deletes a logical volume."""
+        if self.configuration.volume_clear != 'none' and \
+                self.configuration.lvm_type != 'thin':
+            self._clear_volume(volume, is_snapshot)
 
-        # zero out old volumes to prevent data leaking between users
-        # TODO(ja): reclaiming space should be done lazy and low priority
-        if not self.configuration.lvm_type == 'thin' and \
-                self.configuration.volume_clear != 'none':
-            if is_snapshot:
-                # if the volume to be cleared is a snapshot of another volume
-                # we need to clear out the volume using the -cow instead of the
-                # directly volume path.  We need to skip this if we are using
-                # thin provisioned LVs.
-                # bug# lp1191812
-                dev_path = self.local_path(volume) + "-cow"
-            else:
-                dev_path = self.local_path(volume)
-
-            # TODO(jdg): Maybe we could optimize this for snaps by looking at
-            # the cow table and only overwriting what's necessary?
-            # for now we're still skipping on snaps due to hang issue
-            if not os.path.exists(dev_path):
-                msg = (_('Volume device file path %s does not exist.')
-                       % dev_path)
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            size_in_g = volume.get('size', volume.get('volume_size', None))
-            if size_in_g is None:
-                msg = (_("Size for volume: %s not found, "
-                         "cannot secure delete.") % volume['id'])
-                LOG.error(msg)
-                raise exception.InvalidParameterValue(msg)
-            vol_size = size_in_g * 1024
-
-            volutils.clear_volume(
-                vol_size, dev_path,
-                volume_clear=self.configuration.volume_clear,
-                volume_clear_size=self.configuration.volume_clear_size)
         name = volume['name']
         if is_snapshot:
             name = self._escape_snapshot(volume['name'])
         self.vg.delete(name)
+
+    def _clear_volume(self, volume, is_snapshot=False):
+        # zero out old volumes to prevent data leaking between users
+        # TODO(ja): reclaiming space should be done lazy and low priority
+        if is_snapshot:
+            # if the volume to be cleared is a snapshot of another volume
+            # we need to clear out the volume using the -cow instead of the
+            # directly volume path.  We need to skip this if we are using
+            # thin provisioned LVs.
+            # bug# lp1191812
+            dev_path = self.local_path(volume) + "-cow"
+        else:
+            dev_path = self.local_path(volume)
+
+        # TODO(jdg): Maybe we could optimize this for snaps by looking at
+        # the cow table and only overwriting what's necessary?
+        # for now we're still skipping on snaps due to hang issue
+        if not os.path.exists(dev_path):
+            msg = (_('Volume device file path %s does not exist.')
+                   % dev_path)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        size_in_g = volume.get('size', volume.get('volume_size', None))
+        if size_in_g is None:
+            msg = (_("Size for volume: %s not found, "
+                     "cannot secure delete.") % volume['id'])
+            LOG.error(msg)
+            raise exception.InvalidParameterValue(msg)
+
+        # clear_volume expects sizes in MiB, we store integer GiB
+        # be sure to convert before passing in
+        vol_sz_in_meg = size_in_g * units.KiB
+
+        volutils.clear_volume(
+            vol_sz_in_meg, dev_path,
+            volume_clear=self.configuration.volume_clear,
+            volume_clear_size=self.configuration.volume_clear_size)
 
     def _escape_snapshot(self, snapshot_name):
         # Linux LVM reserves name that starts with snapshot, so that
@@ -200,9 +207,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # ThinLVM snapshot LVs.
         self.vg.activate_lv(snapshot['name'], is_snapshot=True)
 
+       # copy_volume expects sizes in MiB, we store integer GiB
+       # be sure to convert before passing in
         volutils.copy_volume(self.local_path(snapshot),
                              self.local_path(volume),
-                             snapshot['volume_size'] * 1024,
+                             snapshot['volume_size'] * units.KiB,
                              self.configuration.volume_dd_blocksize,
                              execute=self._execute)
 
@@ -290,11 +299,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
 
+       # copy_volume expects sizes in MiB, we store integer GiB
+       # be sure to convert before passing in
         try:
             volutils.copy_volume(
                 self.local_path(temp_snapshot),
                 self.local_path(volume),
-                src_vref['size'] * 1024,
+                src_vref['size'] * units.KiB,
                 self.configuration.volume_dd_blocksize,
                 execute=self._execute)
         finally:
