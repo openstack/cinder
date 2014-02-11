@@ -769,3 +769,41 @@ class SolidFireDriver(SanISCSIDriver):
             raise exception.SolidFireAPIDataException(data=data)
 
         LOG.debug(_("Leaving SolidFire transfer volume"))
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+        Returns a boolean indicating whether the retype occurred.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities (Not Used).
+
+        """
+        qos = {}
+        attributes = {}
+
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(volume['id'], params)
+
+        if sf_vol is None:
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        attributes = sf_vol['attributes']
+        attributes['retyped_at'] = timeutils.strtime()
+        params = {'volumeID': sf_vol['volumeID']}
+        qos = self._set_qos_by_volume_type(ctxt, new_type['id'])
+
+        if qos:
+            params['qos'] = qos
+            for k, v in qos.items():
+                attributes[k] = str(v)
+            params['attributes'] = attributes
+
+        self._issue_api_request('ModifyVolume', params)
+        return True

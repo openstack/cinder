@@ -124,7 +124,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'enable512e': True,
                              'access': "readWrite",
                              'status': "active",
-                             'attributes': None,
+                             'attributes': {},
                              'qos': None,
                              'iqn': test_name}]}}
             return result
@@ -221,7 +221,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                     'created_at': timeutils.utcnow()}
 
         sfv = SolidFireDriver(configuration=self.configuration)
-        model_update = sfv.create_volume(testvol)
+        sfv.create_volume(testvol)
         sfv.create_snapshot(testsnap)
 
     def test_create_clone(self):
@@ -479,3 +479,75 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertEqual(qos, {'minIOPS': 100,
                                'maxIOPS': 200,
                                'burstIOPS': 300})
+
+    def test_retype(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:minIOPS": "500",
+                                                 "qos:burstIOPS": "2000",
+                                                 "qos:maxIOPS": "1000"})
+        diff = {'encryption': {}, 'qos_specs': {},
+                'extra_specs': {'qos:burstIOPS': ('10000', u'2000'),
+                                'qos:minIOPS': ('1000', u'500'),
+                                'qos:maxIOPS': ('10000', u'1000')}}
+        host = None
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.assertTrue(sfv.retype(self.ctxt,
+                                   testvol,
+                                   type_ref, diff, host))
+
+    def test_retype_with_qos_spec(self):
+        test_type = {'name': 'sf-1',
+                     'qos_specs_id': 'fb0576d7-b4b5-4cad-85dc-ca92e6a497d1',
+                     'deleted': False,
+                     'created_at': '2014-02-06 04:58:11',
+                     'updated_at': None,
+                     'extra_specs': {},
+                     'deleted_at': None,
+                     'id': 'e730e97b-bc7d-4af3-934a-32e59b218e81'}
+
+        test_qos_spec = {'id': 'asdfafdasdf',
+                         'specs': {'minIOPS': '1000',
+                                   'maxIOPS': '2000',
+                                   'burstIOPS': '3000'}}
+
+        qos_specs
+
+        def _fake_get_volume_type(ctxt, type_id):
+            return test_type
+
+        def _fake_get_qos_spec(ctxt, spec_id):
+            return test_qos_spec
+
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        self.stubs.Set(volume_types, 'get_volume_type',
+                       _fake_get_volume_type)
+        self.stubs.Set(qos_specs, 'get_qos_specs',
+                       _fake_get_qos_spec)
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+
+        diff = {'encryption': {}, 'extra_specs': {},
+                'qos_specs': {'burstIOPS': ('10000', '2000'),
+                              'minIOPS': ('1000', '500'),
+                              'maxIOPS': ('10000', '1000')}}
+        host = None
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.assertTrue(sfv.retype(self.ctxt,
+                                   testvol,
+                                   test_type, diff, host))
