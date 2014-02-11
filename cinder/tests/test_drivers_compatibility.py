@@ -28,7 +28,6 @@ SHEEPDOG_MODULE = "cinder.volume.drivers.sheepdog.SheepdogDriver"
 NEXENTA_MODULE = "cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver"
 SAN_MODULE = "cinder.volume.drivers.san.san.SanISCSIDriver"
 SOLARIS_MODULE = "cinder.volume.drivers.san.solaris.SolarisISCSIDriver"
-LEFTHAND_MODULE = "cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver"
 NFS_MODULE = "cinder.volume.drivers.nfs.NfsDriver"
 SOLIDFIRE_MODULE = "cinder.volume.drivers.solidfire.SolidFireDriver"
 STORWIZE_MODULE = "cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver"
@@ -36,6 +35,8 @@ WINDOWS_MODULE = "cinder.volume.drivers.windows.windows.WindowsDriver"
 XIV_DS8K_MODULE = "cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver"
 ZADARA_MODULE = "cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver"
 NETAPP_MODULE = "cinder.volume.drivers.netapp.common.Deprecated"
+LEFTHAND_REST_MODULE = ("cinder.volume.drivers.san.hp.hp_lefthand_iscsi."
+                        "HPLeftHandISCSIDriver")
 
 
 class VolumeDriverCompatibility(test.TestCase):
@@ -102,14 +103,6 @@ class VolumeDriverCompatibility(test.TestCase):
     def test_solaris_new(self):
         self._load_driver(SOLARIS_MODULE)
         self.assertEqual(self._driver_module_name(), SOLARIS_MODULE)
-
-    def test_hp_lefthand_old(self):
-        self._load_driver('cinder.volume.san.HpSanISCSIDriver')
-        self.assertEqual(self._driver_module_name(), LEFTHAND_MODULE)
-
-    def test_hp_lefthand_new(self):
-        self._load_driver(LEFTHAND_MODULE)
-        self.assertEqual(self._driver_module_name(), LEFTHAND_MODULE)
 
     def test_nfs_old(self):
         self._load_driver('cinder.volume.nfs.NfsDriver')
@@ -198,3 +191,12 @@ class VolumeDriverCompatibility(test.TestCase):
         self._load_driver(
             'cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver')
         self.assertEqual(self._driver_module_name(), NETAPP_MODULE)
+
+    def test_hp_lefthand_rest_old(self):
+        self._load_driver(
+            'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver')
+        self.assertEqual(self._driver_module_name(), LEFTHAND_REST_MODULE)
+
+    def test_hp_lefthand_rest_new(self):
+        self._load_driver(LEFTHAND_REST_MODULE)
+        self.assertEqual(self._driver_module_name(), LEFTHAND_REST_MODULE)

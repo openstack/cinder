@@ -94,8 +94,6 @@ MAPPING = {
     'cinder.volume.drivers.san.san.SanISCSIDriver',
     'cinder.volume.san.SolarisISCSIDriver':
     'cinder.volume.drivers.san.solaris.SolarisISCSIDriver',
-    'cinder.volume.san.HpSanISCSIDriver':
-    'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver',
     'cinder.volume.nfs.NfsDriver':
     'cinder.volume.drivers.nfs.NfsDriver',
     'cinder.volume.solidfire.SolidFire':
@@ -133,7 +131,9 @@ MAPPING = {
     'cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver':
     'cinder.volume.drivers.netapp.common.Deprecated',
     'cinder.volume.drivers.huawei.HuaweiISCSIDriver':
-    'cinder.volume.drivers.huawei.HuaweiVolumeDriver'}
+    'cinder.volume.drivers.huawei.HuaweiVolumeDriver',
+    'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver':
+    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver'}
 
 
 def locked_volume_operation(f):
