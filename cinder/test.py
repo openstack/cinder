@@ -196,6 +196,11 @@ class TestCase(testtools.TestCase):
         for k, v in kw.iteritems():
             CONF.set_override(k, v)
 
+    def log_level(self, level):
+        """Set logging level to the specified value."""
+        log_root = logging.getLogger(None).logger
+        log_root.setLevel(level)
+
     def start_service(self, name, host=None, **kwargs):
         host = host and host or uuid.uuid4().hex
         kwargs.setdefault('host', host)
