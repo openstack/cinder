@@ -41,6 +41,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import units
+from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -109,9 +110,10 @@ class StorwizeSVCDriver(san.SanDriver):
           get_volume_stats, minor bug fixes
     1.2.0 - Added retype
     1.2.1 - Code refactor, improved exception handling
+    1.2.2 - Fix bug #1274123 (races in host-related functions)
     """
 
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
@@ -260,6 +262,7 @@ class StorwizeSVCDriver(san.SanDriver):
         return self._helpers.get_vdisk_params(self.configuration, self._state,
                                               type_id, volume_type=volume_type)
 
+    @utils.synchronized('storwize-host', external=True)
     def initialize_connection(self, volume, connector):
         """Perform the necessary work so that an iSCSI/FC connection can
         be made.
@@ -390,6 +393,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         return {'driver_volume_type': type_str, 'data': properties, }
 
+    @utils.synchronized('storwize-host', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an iSCSI connection has been terminated.
 
