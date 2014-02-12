@@ -763,8 +763,6 @@ class API(base.Base):
         try:
             reservations = QUOTAS.reserve(context, gigabytes=+size_increase)
         except exception.OverQuota as exc:
-            self.db.volume_update(context, volume['id'],
-                                  {'status': 'error_extending'})
             usages = exc.kwargs['usages']
             quotas = exc.kwargs['quotas']
 
