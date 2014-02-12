@@ -26,6 +26,7 @@ from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
 from cinder.volume.drivers.san.hp import hp_3par_iscsi as hpdriver
+from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -65,7 +66,12 @@ class HP3PARBaseDriver(object):
                       'protocol': 1,
                       'mode': 2,
                       'linkState': 4}]
-    QOS = {'qos:maxIOPS': '1000', 'qos:maxBWS': '50'}
+    QOS = {'qos:maxIOPS': '1000', 'qos:maxBWS': '50',
+           'qos:minIOPS': '100', 'qos:minBWS': '25',
+           'qos:latency': '25', 'qos:priority': 'low'}
+    QOS_SPECS = {'maxIOPS': '1000', 'maxBWS': '50',
+                 'minIOPS': '100', 'minBWS': '25',
+                 'latency': '25', 'priority': 'low'}
     VVS_NAME = "myvvs"
     FAKE_ISCSI_PORT = {'portPos': {'node': 8, 'slot': 1, 'cardPort': 1},
                        'protocol': 2,
@@ -113,8 +119,12 @@ class HP3PARBaseDriver(object):
     volume_type = {'name': 'gold',
                    'deleted': False,
                    'updated_at': None,
-                   'extra_specs': {'qos:maxBWS': '50',
-                                   'qos:maxIOPS': '1000'},
+                   'extra_specs': {'qos:maxIOPS': '1000',
+                                   'qos:maxBWS': '50',
+                                   'qos:minIOPS': '100',
+                                   'qos:minBWS': '25',
+                                   'qos:latency': '25',
+                                   'qos:priority': 'low'},
                    'deleted_at': None,
                    'id': 'gold'}
 
@@ -575,6 +585,59 @@ class HP3PARBaseDriver(object):
         ports = self.driver.common.get_ports()['members']
         self.assertEqual(len(ports), 3)
 
+    def test_get_by_qos_spec_with_scoping(self):
+        self.setup_driver()
+        qos_ref = qos_specs.create(self.ctxt, 'qos-specs-1', self.QOS)
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:maxIOPS": "100",
+                                                 "qos:maxBWS": "50",
+                                                 "qos:minIOPS": "10",
+                                                 "qos:minBWS": "20",
+                                                 "qos:latency": "5",
+                                                 "qos:priority": "high"})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+        type_ref = volume_types.get_volume_type(self.ctxt, type_ref['id'])
+        qos = self.driver.common._get_qos_by_volume_type(type_ref)
+        self.assertEqual(qos, {'maxIOPS': '1000', 'maxBWS': '50',
+                               'minIOPS': '100', 'minBWS': '25',
+                               'latency': '25', 'priority': 'low'})
+
+    def test_get_by_qos_spec(self):
+        self.setup_driver()
+        qos_ref = qos_specs.create(self.ctxt, 'qos-specs-1', self.QOS_SPECS)
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:maxIOPS": "100",
+                                                 "qos:maxBWS": "50",
+                                                 "qos:minIOPS": "10",
+                                                 "qos:minBWS": "20",
+                                                 "qos:latency": "5",
+                                                 "qos:priority": "high"})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+        type_ref = volume_types.get_volume_type(self.ctxt, type_ref['id'])
+        qos = self.driver.common._get_qos_by_volume_type(type_ref)
+        self.assertEqual(qos, {'maxIOPS': '1000', 'maxBWS': '50',
+                               'minIOPS': '100', 'minBWS': '25',
+                               'latency': '25', 'priority': 'low'})
+
+    def test_get_by_qos_by_type_only(self):
+        self.setup_driver()
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:maxIOPS": "100",
+                                                 "qos:maxBWS": "50",
+                                                 "qos:minIOPS": "10",
+                                                 "qos:minBWS": "20",
+                                                 "qos:latency": "5",
+                                                 "qos:priority": "high"})
+        type_ref = volume_types.get_volume_type(self.ctxt, type_ref['id'])
+        qos = self.driver.common._get_qos_by_volume_type(type_ref)
+        self.assertEqual(qos, {'maxIOPS': '100', 'maxBWS': '50',
+                               'minIOPS': '10', 'minBWS': '20',
+                               'latency': '5', 'priority': 'high'})
+
 
 class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
@@ -593,6 +656,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
     def setup_driver(self, config=None, mock_conf=None):
 
+        self.ctxt = context.get_admin_context()
         mock_client = self.setup_mock_client(
             conf=config,
             m_conf=mock_conf,
@@ -888,6 +952,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def setup_driver(self, config=None, mock_conf=None):
 
+        self.ctxt = context.get_admin_context()
         # setup_mock_client default config, if necessary
         if mock_conf is None:
             mock_conf = {
