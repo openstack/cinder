@@ -136,6 +136,20 @@ class API(base.Base):
                availability_zone=None, source_volume=None,
                scheduler_hints=None, backup_source_volume=None):
 
+        if source_volume and volume_type:
+            if volume_type['id'] != source_volume['volume_type_id']:
+                msg = _("Invalid volume_type provided (requested type "
+                        "must match source volume, or be omitted). "
+                        "You should omit the argument.")
+                raise exception.InvalidInput(reason=msg)
+
+        if snapshot and volume_type:
+            if volume_type['id'] != snapshot['volume_type_id']:
+                msg = _("Invalid volume_type provided (requested type "
+                        "must match source snapshot, or be omitted). "
+                        "You should omit the argument.")
+                raise exception.InvalidInput(reason=msg)
+
         def check_volume_az_zone(availability_zone):
             try:
                 return self._valid_availability_zone(availability_zone)
@@ -219,7 +233,7 @@ class API(base.Base):
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
 
-        if volume['migration_status'] != None:
+        if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
             msg = _("Volume cannot be deleted while migrating")
             raise exception.InvalidVolume(reason=msg)
@@ -459,7 +473,7 @@ class API(base.Base):
                          force=False, metadata=None):
         check_policy(context, 'create_snapshot', volume)
 
-        if volume['migration_status'] != None:
+        if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
             msg = _("Snapshot cannot be created while volume is migrating")
             raise exception.InvalidVolume(reason=msg)
@@ -796,7 +810,7 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         # Make sure volume is not part of a migration
-        if volume['migration_status'] != None:
+        if volume['migration_status'] is not None:
             msg = _("Volume is already part of an active migration")
             raise exception.InvalidVolume(reason=msg)
 
