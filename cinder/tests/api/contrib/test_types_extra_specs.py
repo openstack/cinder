@@ -75,10 +75,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         """to reset notifier drivers left over from other api/contrib tests"""
         notifier_api._reset_drivers()
         test_notifier.NOTIFICATIONS = []
-
-    def tearDown(self):
-        notifier_api._reset_drivers()
-        super(VolumeTypesExtraSpecsTest, self).tearDown()
+        self.addCleanup(notifier_api._reset_drivers)
 
     def test_index(self):
         self.stubs.Set(cinder.db, 'volume_type_extra_specs_get',

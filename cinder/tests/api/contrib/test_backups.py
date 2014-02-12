@@ -50,9 +50,6 @@ class BackupsAPITestCase(test.TestCase):
         self.context.project_id = 'fake'
         self.context.user_id = 'fake'
 
-    def tearDown(self):
-        super(BackupsAPITestCase, self).tearDown()
-
     @staticmethod
     def _create_backup(volume_id=1,
                        display_name='test_backup',

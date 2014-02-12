@@ -42,9 +42,6 @@ class VolumeTransferAPITestCase(test.TestCase):
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
 
-    def tearDown(self):
-        super(VolumeTransferAPITestCase, self).tearDown()
-
     @staticmethod
     def _create_transfer(volume_id=1,
                          display_name='test_transfer'):
