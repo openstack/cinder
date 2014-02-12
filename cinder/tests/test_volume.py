@@ -2659,7 +2659,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_diff_driver(self):
-        capabilities = {'location_info': 'FooDriver:foo:bar'}
+        capabilities = {'location_info': 'FooDriver:foo:bar:default:0'}
         host = {'capabilities': capabilities}
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
@@ -2668,7 +2668,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_diff_host(self):
-        capabilities = {'location_info': 'LVMVolumeDriver:foo:bar'}
+        capabilities = {'location_info': 'LVMVolumeDriver:foo:bar:default:0'}
         host = {'capabilities': capabilities}
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
