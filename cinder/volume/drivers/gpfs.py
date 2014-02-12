@@ -25,6 +25,7 @@ from oslo.config import cfg
 
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import units
@@ -575,11 +576,31 @@ class GPFSDriver(driver.VolumeDriver):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        raise NotImplementedError()
+        volume = self.db.volume_get(context, backup['volume_id'])
+        volume_path = self.local_path(volume)
+        LOG.debug(_('Begin backup of volume %s.') % volume['name'])
+
+        # create a snapshot that will be used as the backup source
+        backup_path = '%s_%s.snap' % (volume_path, backup['id'])
+        self._create_gpfs_snap(volume_path, backup_path)
+        self._gpfs_redirect(volume_path)
+        try:
+            with fileutils.file_open(backup_path) as backup_file:
+                backup_service.backup(backup, backup_file)
+        finally:
+            # clean up snapshot file.  If it is a clone parent, delete
+            # will fail silently, but be cleaned up when volume is
+            # eventually removed.  This ensures we do not accumulate
+            # more than gpfs_max_clone_depth snap files.
+            self._delete_gpfs_file(backup_path)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        raise NotImplementedError()
+        LOG.debug(_('Begin restore of backup %s.') % backup['id'])
+
+        volume_path = self.local_path(volume)
+        with fileutils.file_open(volume_path, 'wb') as volume_file:
+            backup_service.restore(backup, volume['id'], volume_file)
 
     def _mkfs(self, volume, fs, label=None):
         if fs == 'swap':
