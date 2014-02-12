@@ -19,10 +19,10 @@ Volume driver for NetApp NFS storage.
 import copy
 import os
 import re
-import socket
 from threading import Timer
 import time
 import urlparse
+import uuid
 
 from cinder import exception
 from cinder.image import image_utils
@@ -38,6 +38,7 @@ from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_img_cache_opts
+from cinder.volume.drivers.netapp.options import netapp_nfs_extra_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp import ssc_utils
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -221,7 +222,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
         """Fetch the image from image_service and write it to the volume."""
         super(NetAppNFSDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
-        LOG.info(_('Copied image to volume %s'), volume['name'])
+        LOG.info(_('Copied image to volume %s using regular download.'),
+                 volume['name'])
         self._register_image_in_cache(volume, image_id)
 
     def _register_image_in_cache(self, volume, image_id):
@@ -260,7 +262,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             dir = self._get_mount_point_for_share(share)
             file_path = '%s/%s' % (dir, dst)
             if not os.path.exists(file_path):
-                LOG.info(_('Cloning img from cache for %s'), dst)
+                LOG.info(_('Cloning from cache to destination %s'), dst)
                 self._clone_volume(src, dst, volume_id=None, share=share)
         _do_clone()
 
@@ -392,7 +394,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 post_clone = self._post_clone_image(volume)
         except Exception as e:
             msg = e.msg if getattr(e, 'msg', None) else e.__str__()
-            LOG.warn(_('Unexpected exception in cloning image'
+            LOG.info(_('Image cloning unsuccessful for image'
                        ' %(image_id)s. Message: %(msg)s')
                      % {'image_id': image_id, 'msg': msg})
             vol_path = self.local_path(volume)
@@ -428,7 +430,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _direct_nfs_clone(self, volume, image_location, image_id):
         """Clone directly in nfs share."""
-        LOG.info(_('Cloning image %s directly in share'), image_id)
+        LOG.info(_('Checking image clone %s from glance share.'), image_id)
         cloned = False
         image_location = self._construct_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
@@ -514,24 +516,31 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     retry_seconds = retry_seconds - sleep_interval
 
     def _is_cloneable_share(self, image_location):
-        """Finds if the image at location is cloneable.
+        """Finds if the image at location is cloneable."""
+        conn, dr = self._check_get_nfs_path_segs(image_location)
+        return self._check_share_in_use(conn, dr)
 
-             WebNFS url format with relative-path is supported.
-             Accepting all characters in path-names and checking
-             against the mounted shares which will contain only
-             allowed path segments.
+    def _check_get_nfs_path_segs(self, image_location):
+        """Checks if the nfs path format is matched.
+
+            WebNFS url format with relative-path is supported.
+            Accepting all characters in path-names and checking
+            against the mounted shares which will contain only
+            allowed path segments. Returns connection and dir details.
         """
-
-        nfs_loc_pattern =\
-            '^nfs://(([\w\-\.]+:{1}[\d]+|[\w\-\.]+)(/[^\/].*)*(/[^\/\\\\]+)$)'
-        matched = re.match(nfs_loc_pattern, image_location, flags=0)
-        if not matched:
-            LOG.debug(_('Image location not in the'
-                        ' expected format %s'), image_location)
-            return None
-        conn = matched.group(2)
-        dir = matched.group(3) or '/'
-        return self._check_share_in_use(conn, dir)
+        conn, dr = None, None
+        if image_location:
+            nfs_loc_pattern =\
+                ('^nfs://(([\w\-\.]+:{1}[\d]+|[\w\-\.]+)(/[^\/].*)'
+                 '*(/[^\/\\\\]+)$)')
+            matched = re.match(nfs_loc_pattern, image_location, flags=0)
+            if not matched:
+                LOG.debug(_('Image location not in the'
+                            ' expected format %s'), image_location)
+            else:
+                conn = matched.group(2)
+                dr = matched.group(3) or '/'
+        return (conn, dr)
 
     def _share_match_for_ip(self, ip, shares):
         """Returns the share that is served by ip.
@@ -547,7 +556,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         try:
             if conn:
                 host = conn.split(':')[0]
-                ip = self._resolve_hostname(host)
+                ip = na_utils.resolve_hostname(host)
                 share_candidates = []
                 for sh in self._mounted_shares:
                     sh_exp = sh.split(':')[1]
@@ -572,6 +581,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
         """
 
         direct_url, locations = image_location
+        if not direct_url and not locations:
+            raise exception.NotFound(_('Image location not present.'))
 
         # Locations will be always a list of one until
         # bp multiple-image-locations is introduced
@@ -604,11 +615,29 @@ class NetAppNFSDriver(nfs.NfsDriver):
         """Checks if share is compatible with volume to host it."""
         raise NotImplementedError()
 
-    def _resolve_hostname(self, hostname):
-        """Resolves hostname to IP address."""
-        res = socket.getaddrinfo(hostname, None)[0]
-        family, socktype, proto, canonname, sockaddr = res
-        return sockaddr[0]
+    def _check_share_can_hold_size(self, share, size):
+        """Checks if volume can hold image with size."""
+        tot_size, tot_available, tot_allocated = self._get_capacity_info(share)
+        if tot_available < size:
+            msg = _("Container size smaller than required file size.")
+            raise exception.VolumeDriverException(msg)
+
+    def _move_nfs_file(self, source_path, dest_path):
+        """Moves source to destination."""
+        @utils.synchronized(dest_path, external=True)
+        def _move_file(src, dst):
+            if os.path.exists(dst):
+                LOG.warn(_("Destination %s already exists."), dst)
+                return False
+            self._execute('mv', src, dst, run_as_root=True)
+            return True
+
+        try:
+            return _move_file(source_path, dest_path)
+        except Exception as e:
+            LOG.warn(_('Exception moving file %(src)s. Message - %(e)s')
+                     % {'src': source_path, 'e': e})
+        return False
 
 
 class NetAppDirectNfsDriver (NetAppNFSDriver):
@@ -695,6 +724,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def __init__(self, *args, **kwargs):
         super(NetAppDirectCmodeNfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(netapp_cluster_opts)
+        self.configuration.append_config_values(netapp_nfs_extra_opts)
 
     def _do_custom_setup(self, client):
         """Do the customized set up on client for cluster mode."""
@@ -804,8 +834,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         net_if_iter.add_new_child('max-records', '10')
         query = NaElement('query')
         net_if_iter.add_child_elem(query)
-        query.add_node_with_children('net-interface-info',
-                                     **{'address': self._resolve_hostname(ip)})
+        query.add_node_with_children(
+            'net-interface-info', **{'address': na_utils.resolve_hostname(ip)})
         result = self._invoke_successfully(net_if_iter)
         if result.get_child_content('num-records') and\
                 int(result.get_child_content('num-records')) >= 1:
@@ -857,7 +887,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                                    %(vserver)s and junction path %(junction)s
                                    """) % msg_fmt)
 
-    def _clone_file(self, volume, src_path, dest_path, vserver=None):
+    def _clone_file(self, volume, src_path, dest_path, vserver=None,
+                    dest_exists=False):
         """Clones file on vserver."""
         msg = _("""Cloning with params volume %(volume)s, src %(src_path)s,
                     dest %(dest_path)s, vserver %(vserver)s""")
@@ -868,6 +899,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             'clone-create',
             **{'volume': volume, 'source-path': src_path,
                 'destination-path': dest_path})
+        major, minor = self._client.get_api_version()
+        if major == 1 and minor >= 20 and dest_exists:
+            clone_create.add_new_child('destination-exists', 'true')
         self._invoke_successfully(clone_create, vserver)
 
     def _update_volume_stats(self):
@@ -946,7 +980,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             for sh in self._mounted_shares:
                 host = sh.split(':')[0]
                 junction = sh.split(':')[1]
-                ip = self._resolve_hostname(host)
+                ip = na_utils.resolve_hostname(host)
                 if (self._ip_in_ifs(ip, vs_ifs) and
                         junction == vol.id['junction_path']):
                     mnt_share_vols.add(vol)
@@ -1058,6 +1092,171 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             netapp_vol = self._get_vol_for_share(share)
             if netapp_vol:
                 self._update_stale_vols(volume=netapp_vol)
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        copy_success = False
+        try:
+            major, minor = self._client.get_api_version()
+            col_path = self.configuration.netapp_copyoffload_tool_path
+            if (major == 1 and minor >= 20 and col_path):
+                self._try_copyoffload(context, volume, image_service, image_id)
+                copy_success = True
+                LOG.info(_('Copied image %(img)s to volume %(vol)s using copy'
+                           ' offload workflow.')
+                         % {'img': image_id, 'vol': volume['id']})
+            else:
+                LOG.debug(_("Copy offload either not configured or"
+                            " unsupported."))
+        except Exception as e:
+            LOG.exception(_('Copy offload workflow unsuccessful. %s'), e)
+        finally:
+            if not copy_success:
+                super(NetAppDirectCmodeNfsDriver, self).copy_image_to_volume(
+                    context, volume, image_service, image_id)
+            if self.ssc_enabled:
+                sh = self._get_provider_location(volume['id'])
+                self._update_stale_vols(self._get_vol_for_share(sh))
+
+    def _try_copyoffload(self, context, volume, image_service, image_id):
+        """Tries server side file copy offload."""
+        copied = False
+        cache_result = self._find_image_in_cache(image_id)
+        if cache_result:
+            copied = self._copy_from_cache(volume, image_id, cache_result)
+        if not cache_result or not copied:
+            self._copy_from_img_service(context, volume, image_service,
+                                        image_id)
+
+    def _get_ip_verify_on_cluster(self, host):
+        """Verifies if host on same cluster and returns ip."""
+        ip = na_utils.resolve_hostname(host)
+        vserver = self._get_vserver_for_ip(ip)
+        if not vserver:
+            raise exception.NotFound(_("No vserver owning the ip %s.") % ip)
+        return ip
+
+    def _copy_from_cache(self, volume, image_id, cache_result):
+        """Try copying image file_name from cached file_name."""
+        LOG.debug(_("Trying copy from cache using copy offload."))
+        copied = False
+        for res in cache_result:
+            try:
+                (share, file_name) = res
+                LOG.debug(_("Found cache file_name on share %s."), share)
+                if share != self._get_provider_location(volume['id']):
+                    col_path = self.configuration.netapp_copyoffload_tool_path
+                    src_ip = self._get_ip_verify_on_cluster(
+                        share.split(':')[0])
+                    src_path = os.path.join(share.split(':')[1], file_name)
+                    dst_ip = self._get_ip_verify_on_cluster(self._get_host_ip(
+                        volume['id']))
+                    dst_path = os.path.join(
+                        self._get_export_path(volume['id']), volume['name'])
+                    self._execute(col_path, src_ip, dst_ip,
+                                  src_path, dst_path, run_as_root=False,
+                                  check_exit_code=0)
+                    self._register_image_in_cache(volume, image_id)
+                    LOG.debug(_("Copied image from cache to volume %s using"
+                                " copy offload."), volume['id'])
+                else:
+                    self._clone_file_dst_exists(share, file_name,
+                                                volume['name'],
+                                                dest_exists=True)
+                    LOG.debug(_("Copied image from cache to volume %s using"
+                                " cloning."), volume['id'])
+                self._post_clone_image(volume)
+                copied = True
+                break
+            except Exception as e:
+                LOG.exception(_('Error in workflow copy from cache. %s.'), e)
+        return copied
+
+    def _clone_file_dst_exists(self, share, src_name, dst_name,
+                               dest_exists=False):
+        """Clone file even if dest exists."""
+        (vserver, exp_volume) = self._get_vserver_and_exp_vol(share=share)
+        self._clone_file(exp_volume, src_name, dst_name, vserver,
+                         dest_exists=dest_exists)
+
+    def _copy_from_img_service(self, context, volume, image_service,
+                               image_id):
+        """Copies from the image service using copy offload."""
+        LOG.debug(_("Trying copy from image service using copy offload."))
+        image_loc = image_service.get_location(context, image_id)
+        image_loc = self._construct_image_nfs_url(image_loc)
+        conn, dr = self._check_get_nfs_path_segs(image_loc)
+        if conn:
+            src_ip = self._get_ip_verify_on_cluster(conn.split(':')[0])
+        else:
+            raise exception.NotFound(_("Source host details not found."))
+        (__, ___, img_file) = image_loc.rpartition('/')
+        src_path = os.path.join(dr, img_file)
+        dst_ip = self._get_ip_verify_on_cluster(self._get_host_ip(
+            volume['id']))
+        # tmp file is required to deal with img formats
+        tmp_img_file = str(uuid.uuid4())
+        col_path = self.configuration.netapp_copyoffload_tool_path
+        img_info = image_service.show(context, image_id)
+        dst_share = self._get_provider_location(volume['id'])
+        self._check_share_can_hold_size(dst_share, img_info['size'])
+
+        try:
+            # If src and dst share not equal
+            if (('%s:%s' % (src_ip, dr)) !=
+                    ('%s:%s' % (dst_ip, self._get_export_path(volume['id'])))):
+                dst_img_serv_path = os.path.join(
+                    self._get_export_path(volume['id']), tmp_img_file)
+                self._execute(col_path, src_ip, dst_ip, src_path,
+                              dst_img_serv_path, run_as_root=False,
+                              check_exit_code=0)
+            else:
+                self._clone_file_dst_exists(dst_share, img_file, tmp_img_file)
+            dst_dir = self._get_mount_point_for_share(dst_share)
+            dst_img_local = os.path.join(dst_dir, tmp_img_file)
+            self._discover_file_till_timeout(dst_img_local, timeout=120)
+            LOG.debug(_('Copied image %(img)s to tmp file %(tmp)s.')
+                      % {'img': image_id, 'tmp': tmp_img_file})
+            dst_img_cache_local = os.path.join(dst_dir,
+                                               'img-cache-%s' % (image_id))
+            if img_info['disk_format'] == 'raw':
+                LOG.debug(_('Image is raw %s.'), image_id)
+                self._clone_file_dst_exists(dst_share, tmp_img_file,
+                                            volume['name'], dest_exists=True)
+                self._move_nfs_file(dst_img_local, dst_img_cache_local)
+                LOG.debug(_('Copied raw image %(img)s to volume %(vol)s.')
+                          % {'img': image_id, 'vol': volume['id']})
+            else:
+                LOG.debug(_('Image will be converted to raw %s.'), image_id)
+                img_conv = str(uuid.uuid4())
+                dst_img_conv_local = os.path.join(dst_dir, img_conv)
+
+                # Checking against image size which is approximate check
+                self._check_share_can_hold_size(dst_share, img_info['size'])
+                try:
+                    image_utils.convert_image(dst_img_local,
+                                              dst_img_conv_local, 'raw')
+                    data = image_utils.qemu_img_info(dst_img_conv_local)
+                    if data.file_format != "raw":
+                        raise exception.InvalidResults(
+                            _("Converted to raw, but format is now %s.")
+                            % data.file_format)
+                    else:
+                        self._clone_file_dst_exists(dst_share, img_conv,
+                                                    volume['name'],
+                                                    dest_exists=True)
+                        self._move_nfs_file(dst_img_conv_local,
+                                            dst_img_cache_local)
+                        LOG.debug(_('Copied locally converted raw image'
+                                    ' %(img)s to volume %(vol)s.')
+                                  % {'img': image_id, 'vol': volume['id']})
+                finally:
+                    if os.path.exists(dst_img_conv_local):
+                        self._delete_file(dst_img_conv_local)
+            self._post_clone_image(volume)
+        finally:
+            if os.path.exists(dst_img_local):
+                self._delete_file(dst_img_local)
 
 
 class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):

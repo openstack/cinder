@@ -1368,6 +1368,12 @@
 # NFS share. (integer value)
 #expiry_thres_minutes=720
 
+# This option specifies the path of the NetApp copy offload
+# tool binary. Ensure that the binary has execute permissions
+# set which allow the effective user of the cinder-volume
+# process to execute the file. (string value)
+#netapp_copyoffload_tool_path=<None>
+
 # The quantity to be multiplied by the requested volume size
 # to ensure enough space is available on the virtual storage
 # server (Vserver) to fulfill the volume creation request.

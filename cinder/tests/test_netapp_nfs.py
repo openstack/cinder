@@ -16,6 +16,7 @@
 """Unit tests for the NetApp-specific NFS driver module."""
 
 from lxml import etree
+import mock
 import mox
 from mox import IgnoreArg
 from mox import IsA
@@ -29,6 +30,7 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
+from cinder.volume.drivers.netapp import utils
 
 
 from oslo.config import cfg
@@ -751,8 +753,8 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
     def test_check_share_in_use_incorrect_host(self):
         drv = self._driver
         mox = self.mox
-        mox.StubOutWithMock(drv, '_resolve_hostname')
-        drv._resolve_hostname(IgnoreArg()).AndRaise(Exception())
+        mox.StubOutWithMock(utils, 'resolve_hostname')
+        utils.resolve_hostname(IgnoreArg()).AndRaise(Exception())
         mox.ReplayAll()
         share = drv._check_share_in_use('incorrect:8989', '/dir')
         mox.VerifyAll()
@@ -763,9 +765,9 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv = self._driver
         mox = self.mox
         drv._mounted_shares = ['127.0.0.1:/dir/share']
-        mox.StubOutWithMock(drv, '_resolve_hostname')
+        mox.StubOutWithMock(utils, 'resolve_hostname')
         mox.StubOutWithMock(drv, '_share_match_for_ip')
-        drv._resolve_hostname(IgnoreArg()).AndReturn('10.22.33.44')
+        utils.resolve_hostname(IgnoreArg()).AndReturn('10.22.33.44')
         drv._share_match_for_ip(
             '10.22.33.44', ['127.0.0.1:/dir/share']).AndReturn('share')
         mox.ReplayAll()
@@ -792,6 +794,202 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         location = drv._construct_image_nfs_url(img_loc)
         if location != "nfs://host/path/image-id":
             self.fail("Unexpected direct url.")
+
+
+class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
+    """Test direct NetApp C Mode driver only and not inherit."""
+
+    def setUp(self):
+        super(NetappDirectCmodeNfsDriverOnlyTestCase, self).setUp()
+        self._custom_setup()
+
+    def _custom_setup(self):
+        kwargs = {}
+        kwargs['netapp_mode'] = 'proxy'
+        kwargs['configuration'] = create_configuration()
+        self._driver = netapp_nfs.NetAppDirectCmodeNfsDriver(**kwargs)
+        self._driver.ssc_enabled = True
+        self._driver.configuration.netapp_copyoffload_tool_path = 'cof_path'
+
+    def test_copy_img_to_vol_copyoffload_success(self):
+        drv = self._driver
+        context = object()
+        volume = {'id': 'vol_id', 'name': 'name'}
+        image_service = object()
+        image_id = 'image_id'
+        drv._client = mock.Mock()
+        drv._client.get_api_version = mock.Mock(return_value=(1, 20))
+        drv._try_copyoffload = mock.Mock()
+        drv._get_provider_location = mock.Mock(return_value='share')
+        drv._get_vol_for_share = mock.Mock(return_value='vol')
+        drv._update_stale_vols = mock.Mock()
+
+        drv.copy_image_to_volume(context, volume, image_service, image_id)
+        drv._try_copyoffload.assert_called_once_with(context, volume,
+                                                     image_service,
+                                                     image_id)
+        drv._update_stale_vols.assert_called_once_with('vol')
+
+    def test_copy_img_to_vol_copyoffload_failure(self):
+        drv = self._driver
+        context = object()
+        volume = {'id': 'vol_id', 'name': 'name'}
+        image_service = object()
+        image_id = 'image_id'
+        drv._client = mock.Mock()
+        drv._client.get_api_version = mock.Mock(return_value=(1, 20))
+        drv._try_copyoffload = mock.Mock(side_effect=Exception())
+        netapp_nfs.NetAppNFSDriver.copy_image_to_volume = mock.Mock()
+        drv._get_provider_location = mock.Mock(return_value='share')
+        drv._get_vol_for_share = mock.Mock(return_value='vol')
+        drv._update_stale_vols = mock.Mock()
+
+        drv.copy_image_to_volume(context, volume, image_service, image_id)
+        drv._try_copyoffload.assert_called_once_with(context, volume,
+                                                     image_service,
+                                                     image_id)
+        netapp_nfs.NetAppNFSDriver.copy_image_to_volume.\
+            assert_called_once_with(context, volume, image_service, image_id)
+        drv._update_stale_vols.assert_called_once_with('vol')
+
+    def test_copyoffload_frm_cache_success(self):
+        drv = self._driver
+        context = object()
+        volume = {'id': 'vol_id', 'name': 'name'}
+        image_service = object()
+        image_id = 'image_id'
+        drv._find_image_in_cache = mock.Mock(return_value=[('share', 'img')])
+        drv._copy_from_cache = mock.Mock(return_value=True)
+
+        drv._try_copyoffload(context, volume, image_service, image_id)
+        drv._copy_from_cache.assert_called_once_with(volume,
+                                                     image_id,
+                                                     [('share', 'img')])
+
+    def test_copyoffload_frm_img_service_success(self):
+        drv = self._driver
+        context = object()
+        volume = {'id': 'vol_id', 'name': 'name'}
+        image_service = object()
+        image_id = 'image_id'
+        drv._client = mock.Mock()
+        drv._client.get_api_version = mock.Mock(return_value=(1, 20))
+        drv._find_image_in_cache = mock.Mock(return_value=[])
+        drv._copy_from_img_service = mock.Mock()
+
+        drv._try_copyoffload(context, volume, image_service, image_id)
+        drv._copy_from_img_service.assert_called_once_with(context,
+                                                           volume,
+                                                           image_service,
+                                                           image_id)
+
+    def test_cache_copyoffload_workflow_success(self):
+        drv = self._driver
+        volume = {'id': 'vol_id', 'name': 'name', 'size': 1}
+        image_id = 'image_id'
+        cache_result = [('ip1:/openstack', 'img-cache-imgid')]
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
+        drv._get_host_ip = mock.Mock(return_value='ip2')
+        drv._get_export_path = mock.Mock(return_value='/exp_path')
+        drv._execute = mock.Mock()
+        drv._register_image_in_cache = mock.Mock()
+        drv._get_provider_location = mock.Mock(return_value='/share')
+        drv._post_clone_image = mock.Mock()
+
+        copied = drv._copy_from_cache(volume, image_id, cache_result)
+        self.assertTrue(copied)
+        drv._get_ip_verify_on_cluster.assert_any_call('ip1')
+        drv._get_export_path.assert_called_with('vol_id')
+        drv._execute.assert_called_once_with('cof_path', 'ip1', 'ip1',
+                                             '/openstack/img-cache-imgid',
+                                             '/exp_path/name',
+                                             run_as_root=False,
+                                             check_exit_code=0)
+        drv._post_clone_image.assert_called_with(volume)
+        drv._get_provider_location.assert_called_with('vol_id')
+
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    def test_img_service_raw_copyoffload_workflow_success(self,
+                                                          mock_qemu_img_info):
+        drv = self._driver
+        volume = {'id': 'vol_id', 'name': 'name', 'size': 1}
+        image_id = 'image_id'
+        context = object()
+        image_service = mock.Mock()
+        image_service.get_location.return_value = ('nfs://ip1/openstack/img',
+                                                   None)
+        image_service.show.return_value = {'size': 1,
+                                           'disk_format': 'raw'}
+
+        drv._check_get_nfs_path_segs = mock.Mock(return_value=
+                                                 ('ip1', '/openstack'))
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
+        drv._get_host_ip = mock.Mock(return_value='ip2')
+        drv._get_export_path = mock.Mock(return_value='/exp_path')
+        drv._get_provider_location = mock.Mock(return_value='share')
+        drv._execute = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(return_value='mnt_point')
+        drv._discover_file_till_timeout = mock.Mock(return_value=True)
+        img_inf = mock.Mock()
+        img_inf.file_format = 'raw'
+        mock_qemu_img_info.return_value = img_inf
+        drv._check_share_can_hold_size = mock.Mock()
+        drv._move_nfs_file = mock.Mock(return_value=True)
+        drv._delete_file = mock.Mock()
+        drv._clone_file_dst_exists = mock.Mock()
+        drv._post_clone_image = mock.Mock()
+
+        drv._copy_from_img_service(context, volume, image_service, image_id)
+        drv._get_ip_verify_on_cluster.assert_any_call('ip1')
+        drv._get_export_path.assert_called_with('vol_id')
+        drv._check_share_can_hold_size.assert_called_with('share', 1)
+
+        assert drv._execute.call_count == 1
+        drv._post_clone_image.assert_called_with(volume)
+
+    @mock.patch.object(image_utils, 'convert_image')
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    @mock.patch('os.path.exists')
+    def test_img_service_qcow2_copyoffload_workflow_success(self, mock_exists,
+                                                            mock_qemu_img_info,
+                                                            mock_cvrt_image):
+        drv = self._driver
+        volume = {'id': 'vol_id', 'name': 'name', 'size': 1}
+        image_id = 'image_id'
+        context = object()
+        image_service = mock.Mock()
+        image_service.get_location.return_value = ('nfs://ip1/openstack/img',
+                                                   None)
+        image_service.show.return_value = {'size': 1,
+                                           'disk_format': 'qcow2'}
+        drv._check_get_nfs_path_segs = mock.Mock(return_value=
+                                                 ('ip1', '/openstack'))
+
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
+        drv._get_host_ip = mock.Mock(return_value='ip2')
+        drv._get_export_path = mock.Mock(return_value='/exp_path')
+        drv._get_provider_location = mock.Mock(return_value='share')
+        drv._execute = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(return_value='mnt_point')
+        img_inf = mock.Mock()
+        img_inf.file_format = 'raw'
+        mock_qemu_img_info.return_value = img_inf
+        drv._check_share_can_hold_size = mock.Mock()
+
+        drv._move_nfs_file = mock.Mock(return_value=True)
+        drv._delete_file = mock.Mock()
+        drv._clone_file_dst_exists = mock.Mock()
+        drv._post_clone_image = mock.Mock()
+
+        drv._copy_from_img_service(context, volume, image_service, image_id)
+        drv._get_ip_verify_on_cluster.assert_any_call('ip1')
+        drv._get_export_path.assert_called_with('vol_id')
+        drv._check_share_can_hold_size.assert_called_with('share', 1)
+        assert mock_cvrt_image.call_count == 1
+        assert drv._execute.call_count == 1
+        assert drv._delete_file.call_count == 2
+        drv._clone_file_dst_exists.call_count == 1
+        drv._post_clone_image.assert_called_with(volume)
 
 
 class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):

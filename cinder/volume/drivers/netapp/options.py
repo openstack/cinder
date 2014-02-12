@@ -162,6 +162,13 @@ netapp_eseries_opts = [
                      'currently supported. Specify the value of this option to'
                      ' be a comma separated list of disk pool names to be used'
                      ' for provisioning.')), ]
+netapp_nfs_extra_opts = [
+    cfg.StrOpt('netapp_copyoffload_tool_path',
+               default=None,
+               help=('This option specifies the path of the NetApp copy '
+                     'offload tool binary. Ensure that the binary has execute '
+                     'permissions set which allow the effective user of the '
+                     'cinder-volume process to execute the file.')), ]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
@@ -173,3 +180,4 @@ CONF.register_opts(netapp_7mode_opts)
 CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_img_cache_opts)
 CONF.register_opts(netapp_eseries_opts)
+CONF.register_opts(netapp_nfs_extra_opts)
