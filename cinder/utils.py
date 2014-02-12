@@ -22,7 +22,6 @@
 
 import contextlib
 import datetime
-import functools
 import hashlib
 import inspect
 import os
@@ -812,17 +811,6 @@ def brick_get_connector(protocol, driver=None,
                                                 *args, **kwargs)
 
 
-def require_driver_initialized(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        # we can't do anything if the driver didn't init
-        if not self.driver.initialized:
-            driver_name = self.driver.__class__.__name__
-            raise exception.DriverNotInitialized(driver=driver_name)
-        return func(self, *args, **kwargs)
-    return wrapper
-
-
 def get_file_mode(path):
     """This primarily exists to make unit testing easier."""
     return stat.S_IMODE(os.stat(path).st_mode)
@@ -831,3 +819,18 @@ def get_file_mode(path):
 def get_file_gid(path):
     """This primarily exists to make unit testing easier."""
     return os.stat(path).st_gid
+
+
+def require_driver_initialized(driver):
+    """Verifies if `driver` is initialized
+
+    If the driver is not initialized, an exception will be raised.
+
+    :params driver: The driver instance.
+    :raises: `exception.DriverNotInitialized`
+    """
+    # we can't do anything if the driver didn't init
+    if not driver.initialized:
+        driver_name = driver.__class__.__name__
+        LOG.error(_("Volume driver %s not initialized") % driver_name)
+        raise exception.DriverNotInitialized()

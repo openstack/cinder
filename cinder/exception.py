@@ -127,7 +127,7 @@ class ImageNotAuthorized(CinderException):
 
 
 class DriverNotInitialized(CinderException):
-    message = _("Volume driver '%(driver)s' not initialized.")
+    message = _("Volume driver not ready.")
 
 
 class Invalid(CinderException):

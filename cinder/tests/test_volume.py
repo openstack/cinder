@@ -140,6 +140,73 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['status'], "error")
         self.volume.delete_volume(self.context, volume_id)
 
+    @mock.patch.object(QUOTAS, 'reserve')
+    @mock.patch.object(QUOTAS, 'commit')
+    @mock.patch.object(QUOTAS, 'rollback')
+    def test_create_driver_not_initialized(self, reserve, commit, rollback):
+        self.volume.driver._initialized = False
+
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
+            return ["RESERVATION"]
+
+        def fake_commit_and_rollback(context, reservations, project_id=None):
+            pass
+
+        reserve.return_value = fake_reserve
+        commit.return_value = fake_commit_and_rollback
+        rollback.return_value = fake_commit_and_rollback
+
+        volume = tests_utils.create_volume(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            **self.volume_params)
+
+        volume_id = volume['id']
+        self.assertIsNone(volume['encryption_key_id'])
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.create_volume,
+                          self.context, volume_id)
+
+        # NOTE(flaper87): The volume status should be error_deleting.
+        volume = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(volume.status, "error")
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
+    @mock.patch.object(QUOTAS, 'reserve')
+    @mock.patch.object(QUOTAS, 'commit')
+    @mock.patch.object(QUOTAS, 'rollback')
+    def test_delete_driver_not_initialized(self, reserve, commit, rollback):
+        # NOTE(flaper87): Set initialized to False
+        self.volume.driver._initialized = False
+
+        def fake_reserve(context, expire=None, project_id=None, **deltas):
+            return ["RESERVATION"]
+
+        def fake_commit_and_rollback(context, reservations, project_id=None):
+            pass
+
+        reserve.return_value = fake_reserve
+        commit.return_value = fake_commit_and_rollback
+        rollback.return_value = fake_commit_and_rollback
+
+        volume = tests_utils.create_volume(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            **self.volume_params)
+
+        volume_id = volume['id']
+        self.assertIsNone(volume['encryption_key_id'])
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.delete_volume,
+                          self.context, volume_id)
+
+        # NOTE(flaper87): The volume status should be error.
+        volume = db.volume_get(context.get_admin_context(), volume_id)
+        self.assertEqual(volume.status, "error_deleting")
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
     def test_create_delete_volume(self):
         """Test volume can be created and deleted."""
         # Need to stub out reserve, commit, and rollback
@@ -439,6 +506,30 @@ class VolumeTestCase(BaseVolumeTestCase):
                                        volume_dst['id']).snapshot_id)
 
         self.volume.delete_volume(self.context, volume_dst['id'])
+        self.volume.delete_snapshot(self.context, snapshot_id)
+        self.volume.delete_volume(self.context, volume_src['id'])
+
+    def test_create_snapshot_driver_not_initialized(self):
+        volume_src = tests_utils.create_volume(self.context,
+                                               **self.volume_params)
+        self.volume.create_volume(self.context, volume_src['id'])
+        snapshot_id = self._create_snapshot(volume_src['id'])['id']
+
+        # NOTE(flaper87): Set initialized to False
+        self.volume.driver._initialized = False
+
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.create_snapshot,
+                          self.context, volume_src['id'],
+                          snapshot_id)
+
+        # NOTE(flaper87): The volume status should be error.
+        snapshot = db.snapshot_get(context.get_admin_context(), snapshot_id)
+        self.assertEqual(snapshot.status, "error")
+
+        # NOTE(flaper87): Set initialized to True,
+        # lets cleanup the mess
+        self.volume.driver._initialized = True
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_src['id'])
 
@@ -1516,6 +1607,29 @@ class VolumeTestCase(BaseVolumeTestCase):
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
 
+    def test_extend_volume_driver_not_initialized(self):
+        """Test volume can be extended at API level."""
+        # create a volume and assign to host
+        volume = tests_utils.create_volume(self.context, size=2,
+                                           status='available',
+                                           host=CONF.host)
+        self.volume.create_volume(self.context, volume['id'])
+
+        # NOTE(flaper87): Set initialized to False
+        self.volume.driver._initialized = False
+
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.extend_volume,
+                          self.context, volume['id'], 3)
+
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEqual(volume.status, 'error_extending')
+
+        # NOTE(flaper87): Set initialized to True,
+        # lets cleanup the mess.
+        self.volume.driver._initialized = True
+        self.volume.delete_volume(self.context, volume['id'])
+
     def test_extend_volume_manager(self):
         """Test volume can be extended at the manager level."""
         def fake_reserve(context, expire=None, project_id=None, **deltas):
@@ -1772,6 +1886,25 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEqual(volume['host'], 'newhost')
         self.assertEqual(volume['migration_status'], None)
+
+    def test_migrate_driver_not_initialized(self):
+        volume = tests_utils.create_volume(self.context, size=0,
+                                           host=CONF.host)
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+
+        self.volume.driver._initialized = False
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.migrate_volume,
+                          self.context, volume['id'],
+                          host_obj, True)
+
+        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEqual(volume.migration_status, 'error')
+
+        # NOTE(flaper87): Set initialized to True,
+        # lets cleanup the mess.
+        self.volume.driver._initialized = True
+        self.volume.delete_volume(self.context, volume['id'])
 
     def test_update_volume_readonly_flag(self):
         """Test volume readonly flag can be updated at API level."""
