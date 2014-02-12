@@ -42,7 +42,7 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
         rval = dict((snapshot['id'], snapshot) for snapshot in snapshots)
         return rval
 
-    def _extend_snapshot(self, context, snapshot, data):
+    def _extend_snapshot(self, snapshot, data):
         for attr in ['project_id', 'progress']:
             key = "%s:%s" % (Extended_snapshot_attributes.alias, attr)
             snapshot[key] = data[attr]
@@ -60,7 +60,8 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
                 explanation = _("Snapshot not found.")
                 raise exc.HTTPNotFound(explanation=explanation)
 
-            self._extend_snapshot(context, resp_obj.obj['snapshot'], snapshot)
+            self._extend_snapshot(snapshot=resp_obj.obj['snapshot'],
+                                  data=snapshot)
 
     @wsgi.extends
     def detail(self, req, resp_obj):
@@ -78,7 +79,8 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
                 except KeyError:
                     continue
 
-                self._extend_snapshot(context, snapshot_object, snapshot_data)
+                self._extend_snapshot(snapshot=snapshot_object,
+                                      data=snapshot_data)
 
 
 class Extended_snapshot_attributes(extensions.ExtensionDescriptor):
