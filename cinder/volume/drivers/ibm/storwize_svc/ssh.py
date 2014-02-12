@@ -135,10 +135,11 @@ class StorwizeSSH(object):
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def lsfabric(self, wwpn=None, host=None):
+        ssh_cmd = ['svcinfo', 'lsfabric', '-delim', '!']
         if wwpn:
-            ssh_cmd = ['svcinfo', 'lsfabric', '-wwpn', wwpn, '-delim', '!']
+            ssh_cmd.extend(['-wwpn', wwpn])
         elif host:
-            ssh_cmd = ['svcinfo', 'lsfabric', '-host', '"%s"' % host]
+            ssh_cmd.extend(['-host', '"%s"' % host])
         else:
             msg = (_('Must pass wwpn or host to lsfabric.'))
             LOG.error(msg)

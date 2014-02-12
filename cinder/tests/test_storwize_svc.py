@@ -491,12 +491,12 @@ port_speed!N/A
         return self._print_info_cmd(rows=rows, **kwargs)
 
     def _cmd_lsfabric(self, **kwargs):
-        host_name = kwargs['host'] if 'host' in kwargs else None
+        host_name = kwargs['host'].strip('\'\"') if 'host' in kwargs else None
         target_wwpn = kwargs['wwpn'] if 'wwpn' in kwargs else None
         host_infos = []
 
         for hv in self._hosts_list.itervalues():
-            if not host_name or hv['host_name'].startswith(host_name):
+            if (not host_name) or (hv['host_name'] == host_name):
                 for mv in self._mappings_list.itervalues():
                     if mv['host'] == hv['host_name']:
                         if not target_wwpn or target_wwpn in hv['wwpns']:
@@ -1988,6 +1988,18 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             opts = {'storage_protocol': '<in> ' + protocol}
             types[protocol] = volume_types.create(ctxt, protocol, opts)
 
+        expected = {'FC': {'driver_volume_type': 'fibre_channel',
+                           'data': {'target_lun': '0',
+                                    'target_wwn': 'AABBCCDDEEFF0011',
+                                    'target_discovered': False}},
+                    'iSCSI': {'driver_volume_type': 'iscsi',
+                              'data': {'target_discovered': False,
+                                       'target_iqn':
+                                       'iqn.1982-01.com.ibm:1234.sim.node1',
+                                       'target_portal': '1.234.56.78:3260',
+                                       'target_lun': '0',
+                                       'auth_method': 'CHAP'}}}
+
         for protocol in ['FC', 'iSCSI']:
             volume1['volume_type_id'] = types[protocol]['id']
             volume2['volume_type_id'] = types[protocol]['id']
@@ -2003,10 +2015,18 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self._assert_vol_exists(volume2['name'], True)
 
             # Initialize connection from the first volume to a host
-            self.driver.initialize_connection(volume1, self._connector)
+            ret = self.driver.initialize_connection(volume1, self._connector)
+            self.assertEqual(ret['driver_volume_type'],
+                             expected[protocol]['driver_volume_type'])
+            for k, v in expected[protocol]['data'].iteritems():
+                self.assertEqual(ret['data'][k], v)
 
             # Initialize again, should notice it and do nothing
-            self.driver.initialize_connection(volume1, self._connector)
+            ret = self.driver.initialize_connection(volume1, self._connector)
+            self.assertEqual(ret['driver_volume_type'],
+                             expected[protocol]['driver_volume_type'])
+            for k, v in expected[protocol]['data'].iteritems():
+                self.assertEqual(ret['data'][k], v)
 
             # Try to delete the 1st volume (should fail because it is mapped)
             self.assertRaises(exception.VolumeBackendAPIException,
