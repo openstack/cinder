@@ -46,6 +46,7 @@ def stub_volume(id, **kwargs):
         'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
                                   {'key': 'readonly', 'value': 'False'}],
         'bootable': False,
+        'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'volume_type': {'name': 'vol_type_name'}}
 
     volume.update(kwargs)

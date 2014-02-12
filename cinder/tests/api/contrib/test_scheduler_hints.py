@@ -32,6 +32,8 @@ class SchedulerHintsTestCase(test.TestCase):
         self.fake_instance = stubs.stub_volume(1, uuid=UUID)
         self.fake_instance['created_at'] =\
             datetime.datetime(2013, 1, 1, 1, 1, 1)
+        self.fake_instance['launched_at'] =\
+            datetime.datetime(2013, 1, 1, 1, 1, 1)
         self.flags(
             osapi_volume_extension=[
                 'cinder.api.contrib.select_extensions'],

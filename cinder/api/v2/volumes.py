@@ -29,6 +29,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
 from cinder import volume as cinder_volume
+from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 
@@ -444,6 +445,8 @@ class VolumeController(wsgi.Controller):
 
         try:
             volume = self.volume_api.get(context, id)
+            volume_utils.notify_about_volume_usage(context, volume,
+                                                   'update.start')
             self.volume_api.update(context, volume, update_dict)
         except exception.NotFound:
             msg = _("Volume could not be found")
@@ -452,6 +455,9 @@ class VolumeController(wsgi.Controller):
         volume.update(update_dict)
 
         self._add_visible_admin_metadata(context, volume)
+
+        volume_utils.notify_about_volume_usage(context, volume,
+                                               'update.end')
 
         return self._view_builder.detail(req, volume)
 

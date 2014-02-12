@@ -25,6 +25,8 @@ from cinder.api.v1 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.openstack.common.notifier import api as notifier_api
+from cinder.openstack.common.notifier import test_notifier
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
@@ -60,10 +62,18 @@ class VolumeApiTest(test.TestCase):
         fake_image.stub_out_image_service(self.stubs)
         self.controller = volumes.VolumeController(self.ext_mgr)
 
+        self.flags(host='fake',
+                   notification_driver=[test_notifier.__name__])
+        test_notifier.NOTIFICATIONS = []
+
         self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stubs.stub_service_get_all_by_topic)
         self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
+
+    def tearDown(self):
+        notifier_api._reset_drivers()
+        super(VolumeApiTest, self).tearDown()
 
     def test_volume_create(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
@@ -230,6 +240,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
             'status': 'fakestatus',
@@ -253,6 +264,7 @@ class VolumeApiTest(test.TestCase):
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
 
     def test_volume_update_metadata(self):
         self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
@@ -263,6 +275,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
             'status': 'fakestatus',
@@ -288,6 +301,7 @@ class VolumeApiTest(test.TestCase):
             'size': 1
         }}
         self.assertEqual(res_dict, expected)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
 
     def test_volume_update_with_admin_metadata(self):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -308,6 +322,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
@@ -333,6 +348,7 @@ class VolumeApiTest(test.TestCase):
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
+        self.assertEqual(len(test_notifier.NOTIFICATIONS), 2)
 
     def test_update_empty_body(self):
         body = {}
