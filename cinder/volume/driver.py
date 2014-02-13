@@ -22,7 +22,6 @@ import time
 
 from oslo.config import cfg
 
-from cinder.brick.iscsi import iscsi
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
@@ -30,6 +29,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import utils
+from cinder.volume import iscsi
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 
@@ -739,23 +739,25 @@ class ISCSIDriver(VolumeDriver):
         data['QoS_support'] = False
         self._stats = data
 
-    def get_target_helper(self):
+    def get_target_helper(self, db):
         root_helper = utils.get_root_helper()
         if CONF.iscsi_helper == 'iseradm':
             return iscsi.ISERTgtAdm(root_helper, CONF.volumes_dir,
-                                    CONF.iscsi_target_prefix)
+                                    CONF.iscsi_target_prefix, db=db)
         elif CONF.iscsi_helper == 'tgtadm':
             return iscsi.TgtAdm(root_helper,
                                 CONF.volumes_dir,
-                                CONF.iscsi_target_prefix)
+                                CONF.iscsi_target_prefix,
+                                db=db)
         elif CONF.iscsi_helper == 'fake':
             return iscsi.FakeIscsiHelper()
         elif CONF.iscsi_helper == 'lioadm':
             return iscsi.LioAdm(root_helper,
                                 CONF.lio_initiator_iqns,
-                                CONF.iscsi_target_prefix)
+                                CONF.iscsi_target_prefix, db=db)
         else:
-            return iscsi.IetAdm(root_helper, CONF.iet_conf, CONF.iscsi_iotype)
+            return iscsi.IetAdm(root_helper, CONF.iet_conf, CONF.iscsi_iotype,
+                                db=db)
 
 
 class FakeISCSIDriver(ISCSIDriver):
@@ -858,14 +860,14 @@ class ISERDriver(ISCSIDriver):
         data['QoS_support'] = False
         self._stats = data
 
-    def get_target_helper(self):
+    def get_target_helper(self, db):
         root_helper = utils.get_root_helper()
 
         if CONF.iser_helper == 'fake':
             return iscsi.FakeIscsiHelper()
         else:
             return iscsi.ISERTgtAdm(root_helper,
-                                    CONF.volumes_dir)
+                                    CONF.volumes_dir, db=db)
 
 
 class FakeISERDriver(FakeISCSIDriver):
