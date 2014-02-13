@@ -280,7 +280,7 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("New volume size must be specified as an integer.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        size = body['os-extend']['new_size']
+        size = int(body['os-extend']['new_size'])
         self.volume_api.extend(context, volume, size)
         return webob.Response(status_int=202)
 
