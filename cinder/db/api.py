@@ -452,12 +452,14 @@ def volume_type_encryption_delete(context, volume_type_id):
     return IMPL.volume_type_encryption_delete(context, volume_type_id)
 
 
-# TODO(joel-coffman): split into two functions -- update and create
-def volume_type_encryption_update_or_create(context, volume_type_id,
-                                            encryption_specs):
-    return IMPL.volume_type_encryption_update_or_create(context,
-                                                        volume_type_id,
-                                                        encryption_specs)
+def volume_type_encryption_create(context, volume_type_id, encryption_specs):
+    return IMPL.volume_type_encryption_create(context, volume_type_id,
+                                              encryption_specs)
+
+
+def volume_type_encryption_update(context, volume_type_id, encryption_specs):
+    return IMPL.volume_type_encryption_update(context, volume_type_id,
+                                              encryption_specs)
 
 
 def volume_type_encryption_volume_get(context, volume_type_id, session=None):

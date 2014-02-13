@@ -407,7 +407,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_create(ctxt,
                               {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
                                'name': 'LUKS'})
-        db.volume_type_encryption_update_or_create(
+        db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
             {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
@@ -432,7 +432,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_create(ctxt,
                               {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
                                'name': 'LUKS'})
-        db.volume_type_encryption_update_or_create(
+        db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
             {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
@@ -893,7 +893,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_create(ctxt,
                               {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
                                'name': 'LUKS'})
-        db.volume_type_encryption_update_or_create(
+        db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
             {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
@@ -947,7 +947,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_create(ctxt,
                               {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
                                'name': 'LUKS'})
-        db.volume_type_encryption_update_or_create(
+        db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
             {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})

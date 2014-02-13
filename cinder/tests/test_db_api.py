@@ -565,11 +565,11 @@ class DBAPIEncryptionTestCase(BaseTest):
     def setUp(self):
         super(DBAPIEncryptionTestCase, self).setUp()
         self.created = \
-            [db.volume_type_encryption_update_or_create(self.ctxt, 'fake_type',
-                                                        values)
+            [db.volume_type_encryption_create(self.ctxt,
+                                              values['volume_type_id'], values)
              for values in self._get_values()]
 
-    def _get_values(self, one=False):
+    def _get_values(self, one=False, updated=False):
         base_values = {
             'cipher': 'fake_cipher',
             'key_size': 256,
@@ -577,21 +577,43 @@ class DBAPIEncryptionTestCase(BaseTest):
             'volume_type_id': 'fake_type',
             'control_location': 'front-end',
         }
+        updated_values = {
+            'cipher': 'fake_updated_cipher',
+            'key_size': 512,
+            'provider': 'fake_updated_provider',
+            'volume_type_id': 'fake_type',
+            'control_location': 'front-end',
+        }
+
         if one:
             return base_values
+
+        if updated:
+            values = updated_values
+        else:
+            values = base_values
 
         def compose(val, step):
             if isinstance(val, str):
                 step = str(step)
             return val + step
 
-        return [dict([(k, compose(v, i)) for k, v in base_values.items()])
+        return [dict([(k, compose(v, i)) for k, v in values.items()])
                 for i in range(1, 4)]
 
-    def test_volume_type_encryption_update_or_create(self):
+    def test_volume_type_encryption_create(self):
         values = self._get_values()
         for i, encryption in enumerate(self.created):
-            self._assertEqualObjects(values[i], encryption,
+            self._assertEqualObjects(values[i], encryption, self._ignored_keys)
+
+    def test_volume_type_encryption_update(self):
+        update_values = self._get_values(updated=True)
+        self.updated = \
+            [db.volume_type_encryption_update(self.ctxt,
+                                              values['volume_type_id'], values)
+             for values in update_values]
+        for i, encryption in enumerate(self.updated):
+            self._assertEqualObjects(update_values[i], encryption,
                                      self._ignored_keys)
 
     def test_volume_type_encryption_get(self):
@@ -602,6 +624,13 @@ class DBAPIEncryptionTestCase(BaseTest):
             self._assertEqualObjects(encryption, encryption_get,
                                      self._ignored_keys)
 
+    def test_volume_type_update_with_no_create(self):
+        self.assertRaises(exception.VolumeTypeEncryptionNotFound,
+                          db.volume_type_encryption_update,
+                          self.ctxt,
+                          'fake_no_create_type',
+                          {'cipher': 'fake_updated_cipher'})
+
     def test_volume_type_encryption_delete(self):
         values = {
             'cipher': 'fake_cipher',
@@ -611,9 +640,8 @@ class DBAPIEncryptionTestCase(BaseTest):
             'control_location': 'front-end',
         }
 
-        encryption = db.volume_type_encryption_update_or_create(self.ctxt,
-                                                                'fake_type',
-                                                                values)
+        encryption = db.volume_type_encryption_create(self.ctxt, 'fake_type',
+                                                      values)
         self._assertEqualObjects(values, encryption, self._ignored_keys)
 
         db.volume_type_encryption_delete(self.ctxt,
