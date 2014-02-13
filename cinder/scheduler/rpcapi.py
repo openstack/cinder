@@ -36,6 +36,7 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
               to create_volume()
         1.3 - Add migrate_volume_to_host() method
         1.4 - Add retype method
+        1.5 - Add manage_existing method
     '''
 
     RPC_API_VERSION = '1.0'
@@ -83,6 +84,17 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
             request_spec=request_spec_p,
             filter_properties=filter_properties),
             version='1.4')
+
+    def manage_existing(self, ctxt, topic, volume_id,
+                        request_spec=None, filter_properties=None):
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        return self.cast(ctxt, self.make_msg(
+            'manage_existing',
+            topic=topic,
+            volume_id=volume_id,
+            request_spec=request_spec_p,
+            filter_properties=filter_properties),
+            version='1.5')
 
     def update_service_capabilities(self, ctxt,
                                     service_name, host,

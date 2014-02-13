@@ -55,6 +55,7 @@ from cinder import quota
 from cinder import utils
 from cinder.volume.configuration import Configuration
 from cinder.volume.flows.manager import create_volume
+from cinder.volume.flows.manager import manage_existing
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -163,7 +164,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.14'
+    RPC_API_VERSION = '1.15'
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -353,7 +354,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         return volume_ref['id']
 
     @locked_volume_operation
-    def delete_volume(self, context, volume_id):
+    def delete_volume(self, context, volume_id, unmanage_only=False):
         """Deletes and unexports volume."""
         context = context.elevated()
         volume_ref = self.db.volume_get(context, volume_id)
@@ -381,7 +382,10 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.debug(_("volume %s: removing export"), volume_ref['id'])
             self.driver.remove_export(context, volume_ref)
             LOG.debug(_("volume %s: deleting"), volume_ref['id'])
-            self.driver.delete_volume(volume_ref)
+            if unmanage_only:
+                self.driver.unmanage(volume_ref)
+            else:
+                self.driver.delete_volume(volume_ref)
         except exception.VolumeIsBusy:
             LOG.error(_("Cannot delete volume %s: volume is busy"),
                       volume_ref['id'])
@@ -1252,6 +1256,28 @@ class VolumeManager(manager.SchedulerDependentManager):
         if new_reservations:
             QUOTAS.commit(context, new_reservations, project_id=project_id)
         self.publish_service_capabilities(context)
+
+    def manage_existing(self, ctxt, volume_id, ref=None):
+        LOG.debug('manage_existing: managing %s' % ref)
+        try:
+            flow_engine = manage_existing.get_flow(
+                ctxt,
+                self.db,
+                self.driver,
+                self.host,
+                volume_id,
+                ref)
+        except Exception:
+            LOG.exception(_("Failed to create manage_existing flow."))
+            raise exception.CinderException(
+                _("Failed to create manage existing flow."))
+        flow_engine.run()
+
+        # Fetch created volume from storage
+        volume_ref = flow_engine.storage.fetch('volume')
+        # Update volume stats
+        self.stats['allocated_capacity_gb'] += volume_ref['size']
+        return volume_ref['id']
 
     def _add_or_delete_fc_connection(self, conn_info, zone_op):
         """Add or delete connection control to fibre channel network.

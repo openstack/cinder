@@ -191,7 +191,7 @@ class API(base.Base):
         return volume
 
     @wrap_check_policy
-    def delete(self, context, volume, force=False):
+    def delete(self, context, volume, force=False, unmanage_only=False):
         if context.is_admin and context.project_id != volume['project_id']:
             project_id = volume['project_id']
         else:
@@ -254,7 +254,7 @@ class API(base.Base):
         self.db.volume_update(context, volume_id, {'status': 'deleting',
                                                    'terminated_at': now})
 
-        self.volume_rpcapi.delete_volume(context, volume)
+        self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
 
     @wrap_check_policy
     def update(self, context, volume, fields):
@@ -980,6 +980,47 @@ class API(base.Base):
         self.scheduler_rpcapi.retype(context, CONF.volume_topic, volume['id'],
                                      request_spec=request_spec,
                                      filter_properties={})
+
+    def manage_existing(self, context, host, ref, name=None, description=None,
+                        volume_type=None, metadata=None,
+                        availability_zone=None):
+        if availability_zone is None:
+            elevated = context.elevated()
+            try:
+                service = self.db.service_get_by_host_and_topic(
+                    elevated, host, CONF.volume_topic)
+            except exception.ServiceNotFound:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_('Unable to find service for given host.'))
+            availability_zone = service.get('availability_zone')
+
+        volume_type_id = volume_type['id'] if volume_type else None
+        volume_properties = {
+            'size': 0,
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'status': 'creating',
+            'attach_status': 'detached',
+            # Rename these to the internal name.
+            'display_description': description,
+            'display_name': name,
+            'host': host,
+            'availability_zone': availability_zone,
+            'volume_type_id': volume_type_id,
+            'metadata': metadata
+        }
+
+        # Call the scheduler to ensure that the host exists and that it can
+        # accept the volume
+        volume = self.db.volume_create(context, volume_properties)
+        request_spec = {'volume_properties': volume,
+                        'volume_type': volume_type,
+                        'volume_id': volume['id'],
+                        'ref': ref}
+        self.scheduler_rpcapi.manage_existing(context, CONF.volume_topic,
+                                              volume['id'],
+                                              request_spec=request_spec)
+        return volume
 
 
 class HostAPI(base.Base):

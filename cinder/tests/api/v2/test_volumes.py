@@ -32,8 +32,8 @@ from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests.image import fake as fake_image
+from cinder import utils
 from cinder.volume import api as volume_api
-
 
 CONF = cfg.CONF
 
@@ -1134,8 +1134,9 @@ class VolumeApiTest(test.TestCase):
         volume = dict(volume_admin_metadata=admin_metadata,
                       volume_metadata=metadata)
         admin_ctx = context.get_admin_context()
-        self.controller._add_visible_admin_metadata(admin_ctx,
-                                                    volume)
+        utils.add_visible_admin_metadata(admin_ctx, volume,
+                                         self.controller.volume_api)
+
         self.assertEqual(volume['volume_metadata'],
                          [{"key": "key", "value": "value"},
                           {"key": "readonly", "value": "visible"},
@@ -1148,8 +1149,8 @@ class VolumeApiTest(test.TestCase):
         volume = dict(admin_metadata=admin_metadata,
                       metadata=metadata)
         admin_ctx = context.get_admin_context()
-        self.controller._add_visible_admin_metadata(admin_ctx,
-                                                    volume)
+        utils.add_visible_admin_metadata(admin_ctx, volume,
+                                         self.controller.volume_api)
         self.assertEqual(volume['metadata'],
                          {'key': 'value',
                           'attached_mode': 'visible',

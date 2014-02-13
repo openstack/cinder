@@ -49,6 +49,7 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
         1.12 - Adds retype.
         1.13 - Adds create_export.
         1.14 - Adds reservation parameter to extend_volume().
+        1.15 - Adds manage_existing and unmanage_only flag to delete_volume.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -79,11 +80,13 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                                           host),
                   version='1.4')
 
-    def delete_volume(self, ctxt, volume):
+    def delete_volume(self, ctxt, volume, unmanage_only=False):
         self.cast(ctxt,
                   self.make_msg('delete_volume',
-                                volume_id=volume['id']),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+                                volume_id=volume['id'],
+                                unmanage_only=unmanage_only),
+                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
+                  version='1.15')
 
     def create_snapshot(self, ctxt, volume, snapshot):
         self.cast(ctxt, self.make_msg('create_snapshot',
@@ -206,3 +209,12 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                                                  self.topic,
                                                  volume['host']),
                          version='1.13')
+
+    def manage_existing(self, ctxt, volume, ref):
+        return self.cast(ctxt, self.make_msg('manage_existing',
+                                             volume_id=volume['id'],
+                                             ref=ref),
+                         topic=rpc.queue_get_for(ctxt,
+                                                 self.topic,
+                                                 volume['host']),
+                         version='1.15')

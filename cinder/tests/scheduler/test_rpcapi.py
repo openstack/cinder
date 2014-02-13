@@ -109,3 +109,14 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.4')
+
+    @mock.patch('cinder.openstack.common.rpc.cast')
+    def test_manage_existing(self, _mock_rpc_method):
+        self._test_scheduler_api('manage_existing',
+                                 rpc_method='cast',
+                                 _mock_method=_mock_rpc_method,
+                                 topic='topic',
+                                 volume_id='volume_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='1.5')

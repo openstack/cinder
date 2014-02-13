@@ -57,6 +57,8 @@
     "volume_extension:quotas:show": [],
     "volume_extension:quotas:update": [],
     "volume_extension:quota_classes": [],
+    "volume_extension:volume_manage": [["rule:admin_api"]],
+    "volume_extension:volume_unmanage": [["rule:admin_api"]],
 
     "limits_extension:used_limits": [],
 

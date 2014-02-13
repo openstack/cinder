@@ -154,7 +154,9 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_delete_volume(self):
         self._test_volume_api('delete_volume',
                               rpc_method='cast',
-                              volume=self.fake_volume)
+                              volume=self.fake_volume,
+                              unmanage_only=False,
+                              version='1.15')
 
     def test_create_snapshot(self):
         self._test_volume_api('create_snapshot',
@@ -268,3 +270,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                               migration_policy='never',
                               reservations=None,
                               version='1.12')
+
+    def test_manage_existing(self):
+        self._test_volume_api('manage_existing',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              ref={'lv_name': 'foo'},
+                              version='1.15')

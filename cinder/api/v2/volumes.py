@@ -153,58 +153,10 @@ class VolumeController(wsgi.Controller):
 
     _view_builder_class = volume_views.ViewBuilder
 
-    _visible_admin_metadata_keys = ['readonly', 'attached_mode']
-
     def __init__(self, ext_mgr):
         self.volume_api = cinder_volume.API()
         self.ext_mgr = ext_mgr
         super(VolumeController, self).__init__()
-
-    def _add_visible_admin_metadata(self, context, volume):
-        if context is None:
-            return
-
-        visible_admin_meta = {}
-
-        if context.is_admin:
-            volume_tmp = volume
-        else:
-            try:
-                volume_tmp = self.volume_api.get(context.elevated(),
-                                                 volume['id'])
-            except Exception:
-                return
-
-        if volume_tmp.get('volume_admin_metadata'):
-            for item in volume_tmp['volume_admin_metadata']:
-                if item['key'] in self._visible_admin_metadata_keys:
-                    visible_admin_meta[item['key']] = item['value']
-        # avoid circular ref when volume is a Volume instance
-        elif (volume_tmp.get('admin_metadata') and
-                isinstance(volume_tmp.get('admin_metadata'), dict)):
-            for key in self._visible_admin_metadata_keys:
-                if key in volume_tmp['admin_metadata'].keys():
-                    visible_admin_meta[key] = volume_tmp['admin_metadata'][key]
-
-        if not visible_admin_meta:
-            return
-
-        # NOTE(zhiyan): update visible administration metadata to
-        # volume metadata, administration metadata will rewrite existing key.
-        if volume.get('volume_metadata'):
-            orig_meta = list(volume.get('volume_metadata'))
-            for item in orig_meta:
-                if item['key'] in visible_admin_meta.keys():
-                    item['value'] = visible_admin_meta.pop(item['key'])
-            for key, value in visible_admin_meta.iteritems():
-                orig_meta.append({'key': key, 'value': value})
-            volume['volume_metadata'] = orig_meta
-        # avoid circular ref when vol is a Volume instance
-        elif (volume.get('metadata') and
-                isinstance(volume.get('metadata'), dict)):
-            volume['metadata'].update(visible_admin_meta)
-        else:
-            volume['metadata'] = visible_admin_meta
 
     @wsgi.serializers(xml=VolumeTemplate)
     def show(self, req, id):
@@ -218,7 +170,7 @@ class VolumeController(wsgi.Controller):
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
 
-        self._add_visible_admin_metadata(context, vol)
+        utils.add_visible_admin_metadata(context, vol, self.volume_api)
 
         return self._view_builder.detail(req, vol)
 
@@ -279,7 +231,7 @@ class VolumeController(wsgi.Controller):
         volumes = [dict(vol.iteritems()) for vol in volumes]
 
         for volume in volumes:
-            self._add_visible_admin_metadata(context, volume)
+            utils.add_visible_admin_metadata(context, volume, self.volume_api)
 
         limited_list = common.limited(volumes, req)
 
@@ -398,7 +350,7 @@ class VolumeController(wsgi.Controller):
         #             a dict to avoid an error.
         new_volume = dict(new_volume.iteritems())
 
-        self._add_visible_admin_metadata(context, new_volume)
+        utils.add_visible_admin_metadata(context, new_volume, self.volume_api)
 
         retval = self._view_builder.detail(req, new_volume)
 
@@ -455,7 +407,7 @@ class VolumeController(wsgi.Controller):
 
         volume.update(update_dict)
 
-        self._add_visible_admin_metadata(context, volume)
+        utils.add_visible_admin_metadata(context, volume, self.volume_api)
 
         volume_utils.notify_about_volume_usage(context, volume,
                                                'update.end')

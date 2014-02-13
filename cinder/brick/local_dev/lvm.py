@@ -667,3 +667,17 @@ class LVM(executor.Executor):
 
     def vg_mirror_size(self, mirror_count):
         return (self.vg_free_space / (mirror_count + 1))
+
+    def rename_volume(self, lv_name, new_name):
+        """Change the name of an existing volume."""
+
+        try:
+            self._execute('lvrename', self.vg_name, lv_name, new_name,
+                          root_helper=self._root_helper,
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_('Error renaming logical volume'))
+            LOG.error(_('Cmd     :%s') % err.cmd)
+            LOG.error(_('StdOut  :%s') % err.stdout)
+            LOG.error(_('StdErr  :%s') % err.stderr)
+            raise
