@@ -394,10 +394,6 @@ class NoMoreTargets(CinderException):
     pass
 
 
-class WillNotSchedule(CinderException):
-    message = _("Host %(host)s is not up or doesn't exist.")
-
-
 class QuotaError(CinderException):
     message = _("Quota exceeded: code=%(code)s")
     code = 413
