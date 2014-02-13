@@ -37,7 +37,7 @@ nova_opts = [
     cfg.StrOpt('nova_endpoint_template',
                default=None,
                help='Override service catalog lookup with template for nova '
-                    'endpoint e.g. http://localhost:8774/v2/%(tenant_id)s'),
+                    'endpoint e.g. http://localhost:8774/v2/%(project_id)s'),
     cfg.StrOpt('nova_endpoint_admin_template',
                default=None,
                help='Same as nova_endpoint_template, but for admin endpoint.'),
