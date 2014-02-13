@@ -18,6 +18,7 @@ Tests for volume backup to IBM Tivoli Storage Manager (TSM).
 """
 
 import datetime
+import json
 import os
 import posix
 
@@ -32,11 +33,15 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 SIM = None
+VOLUME_PATH = '/dev/null'
 
 
 class TSMBackupSimulator:
-    # The simulator simulates the execution of the 'dsmc' command.
-    # This allows the TSM backup test to succeed even if TSM is not installed.
+    """Simulates TSM dsmc command.
+
+    The simulator simulates the execution of the 'dsmc' command.
+    This allows the TSM backup test to succeed even if TSM is not installed.
+    """
     def __init__(self):
         self._backup_list = {}
         self._hardlinks = []
@@ -122,7 +127,8 @@ class TSMBackupSimulator:
 
     def _cmd_to_dict(self, arg_list):
         """Convert command for kwargs (assumes a properly formed command)."""
-
+        path = arg_list[-1]
+        other = arg_list[-2]
         ret = {'cmd': arg_list[0],
                'type': arg_list[1],
                'path': arg_list[-1]}
@@ -137,7 +143,7 @@ class TSMBackupSimulator:
         return ret
 
     def _exec_dsmc_cmd(self, cmd):
-        # simulates the execution of the dsmc command
+        """Simulates the execution of the dsmc command."""
         cmd_switch = {'backup': self._cmd_backup,
                       'restore': self._cmd_restore,
                       'delete': self._cmd_delete}
@@ -152,7 +158,7 @@ class TSMBackupSimulator:
         return (out, err, ret)
 
     def exec_cmd(self, cmd):
-        # simulates the execution of dsmc, rm, and ln commands
+        """Simulates the execution of dsmc, rm, and ln commands."""
         if cmd[0] == 'dsmc':
             out, err, ret = self._exec_dsmc_cmd(cmd)
         elif cmd[0] == 'ln':
@@ -204,11 +210,27 @@ def fake_exec(*cmd, **kwargs):
     return (out, err)
 
 
-def fake_stat(path):
-    # Simulate stat to retun the mode of a block device
+def fake_stat_image(path):
+    # Simulate stat to return the mode of a block device
     # make sure that st_mode (the first in the sequence(
     # matches the mode of a block device
     return posix.stat_result((25008, 5753, 5L, 1, 0, 6, 0,
+                              1375881199, 1375881197, 1375881197))
+
+
+def fake_stat_file(path):
+    # Simulate stat to return the mode of a block device
+    # make sure that st_mode (the first in the sequence(
+    # matches the mode of a block device
+    return posix.stat_result((33188, 5753, 5L, 1, 0, 6, 0,
+                              1375881199, 1375881197, 1375881197))
+
+
+def fake_stat_illegal(path):
+    # Simulate stat to return the mode of a block device
+    # make sure that st_mode (the first in the sequence(
+    # matches the mode of a block device
+    return posix.stat_result((17407, 5753, 5L, 1, 0, 6, 0,
                               1375881199, 1375881197, 1375881197))
 
 
@@ -221,7 +243,7 @@ class BackupTSMTestCase(test.TestCase):
         self.ctxt = context.get_admin_context()
         self.driver = tsm.TSMBackupDriver(self.ctxt)
         self.stubs.Set(utils, 'execute', fake_exec)
-        self.stubs.Set(os, 'stat', fake_stat)
+        self.stubs.Set(os, 'stat', fake_stat_image)
 
     def tearDown(self):
         super(BackupTSMTestCase, self).tearDown()
@@ -232,42 +254,106 @@ class BackupTSMTestCase(test.TestCase):
                'status': 'available'}
         return db.volume_create(self.ctxt, vol)['id']
 
-    def _create_backup_db_entry(self, backup_id):
+    def _create_backup_db_entry(self, backup_id, mode):
+        if mode == 'file':
+            backup_path = VOLUME_PATH
+        else:
+            backup_path = '/dev/backup-%s' % backup_id
+        service_metadata = json.dumps({'backup_mode': mode,
+                                       'backup_path': backup_path})
         backup = {'id': backup_id,
                   'size': 1,
                   'container': 'test-container',
-                  'volume_id': '1234-5678-1234-8888'}
+                  'volume_id': '1234-5678-1234-8888',
+                  'service_metadata': service_metadata}
         return db.backup_create(self.ctxt, backup)['id']
 
-    def test_backup(self):
-        volume_id = '1234-5678-1234-8888'
+    def test_backup_image(self):
+        volume_id = '1234-5678-1234-7777'
+        mode = 'image'
         self._create_volume_db_entry(volume_id)
 
         backup_id1 = 123
         backup_id2 = 456
-        self._create_backup_db_entry(backup_id1)
-        self._create_backup_db_entry(backup_id2)
+        backup_id3 = 666
+        self._create_backup_db_entry(backup_id1, mode)
+        self._create_backup_db_entry(backup_id2, mode)
+        self._create_backup_db_entry(backup_id3, mode)
 
-        volume_file = open('/dev/null', 'rw')
+        with open(VOLUME_PATH, 'rw') as volume_file:
+            # Create two backups of the volume
+            backup1 = db.backup_get(self.ctxt, backup_id1)
+            self.driver.backup(backup1, volume_file)
+            backup2 = db.backup_get(self.ctxt, backup_id2)
+            self.driver.backup(backup2, volume_file)
 
-        # Create two backups of the volume
-        backup1 = db.backup_get(self.ctxt, 123)
-        self.driver.backup(backup1, volume_file)
-        backup2 = db.backup_get(self.ctxt, 456)
-        self.driver.backup(backup2, volume_file)
+            # Create a backup that fails
+            fail_back = db.backup_get(self.ctxt, backup_id3)
+            self.sim.error_injection('backup', 'fail')
+            self.assertRaises(exception.InvalidBackup,
+                              self.driver.backup, fail_back, volume_file)
 
-        # Create a backup that fails
-        self._create_backup_db_entry(666)
-        fail_back = db.backup_get(self.ctxt, 666)
-        self.sim.error_injection('backup', 'fail')
-        self.assertRaises(exception.InvalidBackup,
-                          self.driver.backup, fail_back, volume_file)
+            # Try to restore one, then the other
+            self.driver.restore(backup1, volume_id, volume_file)
+            self.driver.restore(backup2, volume_id, volume_file)
 
-        # Try to restore one, then the other
-        backup1 = db.backup_get(self.ctxt, 123)
-        self.driver.restore(backup1, volume_id, volume_file)
-        self.driver.restore(backup2, volume_id, volume_file)
+            # Delete both backups
+            self.driver.delete(backup2)
+            self.driver.delete(backup1)
 
-        # Delete both backups
-        self.driver.delete(backup2)
-        self.driver.delete(backup1)
+    def test_backup_file(self):
+        volume_id = '1234-5678-1234-8888'
+        mode = 'file'
+        self.stubs.Set(os, 'stat', fake_stat_file)
+        self._create_volume_db_entry(volume_id)
+
+        backup_id1 = 123
+        backup_id2 = 456
+        self._create_backup_db_entry(backup_id1, mode)
+        self._create_backup_db_entry(backup_id2, mode)
+
+        with open(VOLUME_PATH, 'rw') as volume_file:
+            # Create two backups of the volume
+            backup1 = db.backup_get(self.ctxt, 123)
+            self.driver.backup(backup1, volume_file)
+            backup2 = db.backup_get(self.ctxt, 456)
+            self.driver.backup(backup2, volume_file)
+
+            # Create a backup that fails
+            self._create_backup_db_entry(666, mode)
+            fail_back = db.backup_get(self.ctxt, 666)
+            self.sim.error_injection('backup', 'fail')
+            self.assertRaises(exception.InvalidBackup,
+                              self.driver.backup, fail_back, volume_file)
+
+            # Try to restore one, then the other
+            self.driver.restore(backup1, volume_id, volume_file)
+            self.driver.restore(backup2, volume_id, volume_file)
+
+            # Delete both backups
+            self.driver.delete(backup1)
+            self.driver.delete(backup2)
+
+    def test_backup_invalid_mode(self):
+        volume_id = '1234-5678-1234-9999'
+        mode = 'illegal'
+        self.stubs.Set(os, 'stat', fake_stat_illegal)
+        self._create_volume_db_entry(volume_id)
+
+        backup_id1 = 123
+        self._create_backup_db_entry(backup_id1, mode)
+
+        with open(VOLUME_PATH, 'rw') as volume_file:
+            # Create two backups of the volume
+            backup1 = db.backup_get(self.ctxt, 123)
+            self.assertRaises(exception.InvalidBackup,
+                              self.driver.backup, backup1, volume_file)
+
+            self.assertRaises(exception.InvalidBackup,
+                              self.driver.restore,
+                              backup1,
+                              volume_id,
+                              volume_file)
+
+            self.assertRaises(exception.InvalidBackup,
+                              self.driver.delete, backup1)
