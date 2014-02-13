@@ -378,7 +378,7 @@ class GPFSDriverTestCase(test.TestCase):
         backing file: %s
         """ % (volume['name'], new_vol_size, new_vol_size * units.GiB, volpath)
         mox.StubOutWithMock(image_utils, 'resize_image')
-        image_utils.resize_image(volpath, new_vol_size)
+        image_utils.resize_image(volpath, new_vol_size, run_as_root=True)
 
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
         img_info = imageutils.QemuImgInfo(qemu_img_info_output)
@@ -395,8 +395,8 @@ class GPFSDriverTestCase(test.TestCase):
         volpath = os.path.join(self.volumes_path, volume['name'])
 
         mox.StubOutWithMock(image_utils, 'resize_image')
-        image_utils.resize_image(volpath, new_vol_size).AndRaise(
-            processutils.ProcessExecutionError('error'))
+        image_utils.resize_image(volpath, new_vol_size, run_as_root=True).\
+            AndRaise(processutils.ProcessExecutionError('error'))
         mox.ReplayAll()
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -537,8 +537,7 @@ class GPFSDriverTestCase(test.TestCase):
         data.virtual_size = 1 * units.GiB
         return data
 
-    def _fake_qemu_image_resize(self, path, size):
-        LOG.info('wtf')
+    def _fake_qemu_image_resize(self, path, size, run_as_root=False):
         pass
 
     def _fake_delete_gpfs_file(self, fchild):

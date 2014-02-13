@@ -65,10 +65,10 @@ def convert_image(source, dest, out_format):
     utils.execute(*cmd, run_as_root=True)
 
 
-def resize_image(source, size):
+def resize_image(source, size, run_as_root=False):
     """Changes the virtual size of the image."""
     cmd = ('qemu-img', 'resize', source, '%sG' % size)
-    utils.execute(*cmd, run_as_root=False)
+    utils.execute(*cmd, run_as_root=run_as_root)
 
 
 def fetch(context, image_service, image_id, path, _user_id, _project_id):
