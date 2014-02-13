@@ -91,6 +91,7 @@ mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
 mmchattr: CommandFilter, /usr/lpp/mmfs/bin/mmchattr, root
 mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
 mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
+mmlspool: CommandFilter, /usr/lpp/mmfs/bin/mmlspool, root
 find: CommandFilter, find, root
 mkfs: CommandFilter, mkfs, root
 

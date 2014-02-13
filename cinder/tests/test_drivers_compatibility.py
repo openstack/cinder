@@ -31,6 +31,7 @@ XIV_DS8K_MODULE = "cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver"
 NETAPP_MODULE = "cinder.volume.drivers.netapp.common.Deprecated"
 LEFTHAND_REST_MODULE = ("cinder.volume.drivers.san.hp.hp_lefthand_iscsi."
                         "HPLeftHandISCSIDriver")
+GPFS_MODULE = "cinder.volume.drivers.ibm.gpfs.GPFSDriver"
 
 
 class VolumeDriverCompatibility(test.TestCase):
@@ -135,3 +136,11 @@ class VolumeDriverCompatibility(test.TestCase):
     def test_hp_lefthand_rest_new(self):
         self._load_driver(LEFTHAND_REST_MODULE)
         self.assertEqual(self._driver_module_name(), LEFTHAND_REST_MODULE)
+
+    def test_gpfs_old(self):
+        self._load_driver('cinder.volume.drivers.gpfs.GPFSDriver')
+        self.assertEqual(self._driver_module_name(), GPFS_MODULE)
+
+    def test_gpfs_new(self):
+        self._load_driver(GPFS_MODULE)
+        self.assertEqual(self._driver_module_name(), GPFS_MODULE)
