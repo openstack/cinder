@@ -672,3 +672,20 @@ class GlusterfsNoSuitableShareFound(VolumeDriverException):
 
 class RemoveExportException(VolumeDriverException):
     message = _("Failed to remove export for volume %(volume)s: %(reason)s")
+
+
+# HP MSA
+class HPMSAVolumeDriverException(VolumeDriverException):
+    message = _("HP MSA Volume Driver exception")
+
+
+class HPMSAInvalidVDisk(HPMSAVolumeDriverException):
+    message = _("VDisk doesn't exist (%(vdisk)s)")
+
+
+class HPMSAConnectionError(HPMSAVolumeDriverException):
+    message = _("Unable to connect to MSA array")
+
+
+class HPMSANotEnoughSpace(HPMSAVolumeDriverException):
+    message = _("Not enough space on VDisk (%(vdisk)s)")

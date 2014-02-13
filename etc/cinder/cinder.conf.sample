@@ -1540,6 +1540,14 @@
 
 
 #
+# Options defined in cinder.volume.drivers.san.hp.hp_msa_common
+#
+
+# The VDisk to use for volume creation. (string value)
+#msa_vdisk=OpenStack
+
+
+#
 # Options defined in cinder.volume.drivers.san.san
 #
 
