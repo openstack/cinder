@@ -145,29 +145,32 @@
 # Options defined in cinder.backup.drivers.ceph
 #
 
-# Ceph config file to use. (string value)
+# Ceph configuration file to use. (string value)
 #backup_ceph_conf=/etc/ceph/ceph.conf
 
-# the Ceph user to connect with (string value)
+# The Ceph user to connect with. Default here is to use the
+# same user as for Cinder volumes. If not using cephx this
+# should be set to None. (string value)
 #backup_ceph_user=cinder
 
-# the chunk size in bytes that a backup will be broken into
-# before transfer to backup store (integer value)
+# The chunk size, in bytes, that a backup is broken into
+# before transfer to the Ceph object store. (integer value)
 #backup_ceph_chunk_size=134217728
 
-# the Ceph pool to backup to (string value)
+# The Ceph pool where volume backups are stored. (string
+# value)
 #backup_ceph_pool=backups
 
-# RBD stripe unit to use when creating a backup image (integer
-# value)
+# RBD stripe unit to use when creating a backup image.
+# (integer value)
 #backup_ceph_stripe_unit=0
 
-# RBD stripe count to use when creating a backup image
+# RBD stripe count to use when creating a backup image.
 # (integer value)
 #backup_ceph_stripe_count=0
 
-# If True, always discard excess bytes when restoring volumes.
-# (boolean value)
+# If True, always discard excess bytes when restoring volumes
+# i.e. pad with zeroes. (boolean value)
 #restore_discard_excess_bytes=true
 
 
