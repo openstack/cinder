@@ -28,6 +28,7 @@ from cinder.api.openstack import wsgi
 from cinder import context
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common.middleware import request_id
 from cinder import wsgi as base_wsgi
 
 
@@ -91,6 +92,9 @@ class CinderKeystoneContext(base_wsgi.Middleware):
             project_id = req.headers['X_TENANT']
 
         project_name = req.headers.get('X_TENANT_NAME')
+
+        req_id = req.environ.get(request_id.ENV_REQUEST_ID)
+
         # Get the auth token
         auth_token = req.headers.get('X_AUTH_TOKEN',
                                      req.headers.get('X_STORAGE_TOKEN'))
@@ -115,7 +119,8 @@ class CinderKeystoneContext(base_wsgi.Middleware):
                                      roles=roles,
                                      auth_token=auth_token,
                                      remote_address=remote_address,
-                                     service_catalog=service_catalog)
+                                     service_catalog=service_catalog,
+                                     request_id=req_id)
 
         req.environ['cinder.context'] = ctx
         return self.application
