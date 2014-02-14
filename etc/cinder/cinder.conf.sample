@@ -1062,6 +1062,25 @@
 
 
 #
+# Options defined in cinder.volume.drivers.emc.emc_vnx_cli
+#
+
+# Naviseccli Path (string value)
+#naviseccli_path=
+
+# ISCSI pool name (string value)
+#storage_vnx_pool_name=<None>
+
+# Default Time Out For CLI operations in minutes (integer
+# value)
+#default_timeout=20
+
+# Default max number of LUNs in a storage group (integer
+# value)
+#max_luns_per_storage_group=256
+
+
+#
 # Options defined in cinder.volume.drivers.eqlx
 #
 
