@@ -231,11 +231,6 @@ class StorwizeSSH(object):
                     '-unit', 'gb', vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def migratevdisk(self, vdisk, dest_pool):
-        ssh_cmd = ['svctask', 'migratevdisk', '-mdiskgrp', dest_pool,
-                   '-vdisk', vdisk]
-        self.run_ssh_assert_no_output(ssh_cmd)
-
     def mkfcmap(self, source, target, full_copy):
         ssh_cmd = ['svctask', 'mkfcmap', '-source', source, '-target',
                    target, '-autodelete']

@@ -40,6 +40,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder import units
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
@@ -114,21 +115,24 @@ class StorwizeSVCDriver(san.SanDriver):
     1.2.3 - Fix Fibre Channel connectivity: bug #1279758 (add delim to
             lsfabric, clear unused data from connections, ensure matching
             WWPNs by comparing lower case
+    1.2.4 - Fix bug #1278035 (async migration/retype)
     """
 
-    VERSION = "1.2.3"
+    VERSION = "1.2.4"
+    VDISKCOPYOPS_INTERVAL = 600
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(storwize_svc_opts)
         self._helpers = storwize_helpers.StorwizeHelpers(self._run_ssh)
+        self._vdiskcopyops = {}
+        self._vdiskcopyops_loop = None
         self._state = {'storage_nodes': {},
                        'enabled_protocols': set(),
                        'compression_enabled': False,
                        'available_iogrps': [],
                        'system_name': None,
                        'system_id': None,
-                       'extent_size': None,
                        'code_level': None,
                        }
 
@@ -142,11 +146,10 @@ class StorwizeSVCDriver(san.SanDriver):
         # Validate that the pool exists
         pool = self.configuration.storwize_svc_volpool_name
         try:
-            attributes = self._helpers.get_pool_attrs(pool)
+            self._helpers.get_pool_attrs(pool)
         except exception.VolumeBackendAPIException:
             msg = _('Failed getting details for pool %s') % pool
             raise exception.InvalidInput(reason=msg)
-        self._state['extent_size'] = attributes['extent_size']
 
         # Check if compression is supported
         self._state['compression_enabled'] = \
@@ -184,6 +187,28 @@ class StorwizeSVCDriver(san.SanDriver):
             msg = _('do_setup: No configured nodes.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
+
+        # Build the list of in-progress vdisk copy operations
+        if ctxt is None:
+            admin_context = context.get_admin_context()
+        else:
+            admin_context = ctxt.elevated()
+        volumes = self.db.volume_get_all_by_host(admin_context, self.host)
+
+        for volume in volumes:
+            metadata = self.db.volume_admin_metadata_get(admin_context,
+                                                         volume['id'])
+            curr_ops = metadata.get('vdiskcopyops', None)
+            if curr_ops:
+                ops = [tuple(x.split(':')) for x in curr_ops.split(';')]
+                self._vdiskcopyops[volume['id']] = ops
+
+        # if vdiskcopy exists in database, start the looping call
+        if len(self._vdiskcopyops) >= 1:
+            self._vdiskcopyops_loop = loopingcall.LoopingCall(
+                self._check_volume_copy_ops)
+            self._vdiskcopyops_loop.start(interval=self.VDISKCOPYOPS_INTERVAL)
+
         LOG.debug(_('leave: do_setup'))
 
     def check_for_setup_error(self):
@@ -196,9 +221,6 @@ class StorwizeSVCDriver(san.SanDriver):
             raise exception.VolumeBackendAPIException(data=exception_msg)
         if self._state['system_id'] is None:
             exception_msg = (_('Unable to determine system id'))
-            raise exception.VolumeBackendAPIException(data=exception_msg)
-        if self._state['extent_size'] is None:
-            exception_msg = (_('Unable to determine pool extent size'))
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
         required_flags = ['san_ip', 'san_ssh_port', 'san_login',
@@ -285,7 +307,6 @@ class StorwizeSVCDriver(san.SanDriver):
                                              'conn': str(connector)})
 
         vol_opts = self._get_vdisk_params(volume['volume_type_id'])
-        host_name = connector['host']
         volume_name = volume['name']
 
         # Delete irrelevant connection information that later could result
@@ -453,7 +474,12 @@ class StorwizeSVCDriver(san.SanDriver):
 
     def create_snapshot(self, snapshot):
         ctxt = context.get_admin_context()
-        source_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
+        try:
+            source_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
+        except Exception:
+            msg = (_('create_snapshot: get source volume failed.'))
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
         opts = self._get_vdisk_params(source_vol['volume_type_id'])
         self._helpers.create_copy(snapshot['volume_name'], snapshot['name'],
                                   snapshot['volume_id'], self.configuration,
@@ -500,13 +526,112 @@ class StorwizeSVCDriver(san.SanDriver):
         self._helpers.extend_vdisk(volume['name'], extend_amt)
         LOG.debug(_('leave: extend_volume: volume %s') % volume['id'])
 
+    def _add_vdisk_copy_op(self, ctxt, volume, new_op):
+        metadata = self.db.volume_admin_metadata_get(ctxt.elevated(),
+                                                     volume['id'])
+        curr_ops = metadata.get('vdiskcopyops', None)
+        if curr_ops:
+            curr_ops_list = [tuple(x.split(':')) for x in curr_ops.split(';')]
+            new_ops_list = curr_ops_list.append(new_op)
+        else:
+            new_ops_list = [new_op]
+        new_ops_str = ';'.join([':'.join(x) for x in new_ops_list])
+        self.db.volume_admin_metadata_update(ctxt.elevated(), volume['id'],
+                                             {'vdiskcopyops': new_ops_str},
+                                             False)
+        if volume['id'] in self._vdiskcopyops:
+            self._vdiskcopyops[volume['id']].append(new_op)
+        else:
+            self._vdiskcopyops[volume['id']] = [new_op]
+
+        # We added the first copy operation, so start the looping call
+        if len(self._vdiskcopyops) == 1:
+            self._vdiskcopyops_loop = loopingcall.LoopingCall(
+                self._check_volume_copy_ops)
+            self._vdiskcopyops_loop.start(interval=self.VDISKCOPYOPS_INTERVAL)
+
+    def _rm_vdisk_copy_op(self, ctxt, volume, orig_copy_id, new_copy_id):
+        try:
+            self._vdiskcopyops[volume['id']].remove((orig_copy_id,
+                                                     new_copy_id))
+            if not len(self._vdiskcopyops[volume['id']]):
+                del self._vdiskcopyops[volume['id']]
+            if not len(self._vdiskcopyops):
+                self._vdiskcopyops_loop.stop()
+                self._vdiskcopyops_loop = None
+        except IndexError:
+            msg = (_('_rm_vdisk_copy_op: Volume %s does not have any '
+                     'registered vdisk copy operations.') % volume['id'])
+            LOG.error(msg)
+            return
+        except ValueError:
+            msg = (_('_rm_vdisk_copy_op: Volume %(vol)s does not have the '
+                     'specified vdisk copy operation: orig=%(orig)s '
+                     'new=%(new)s.')
+                   % {'vol': volume['id'], 'orig': orig_copy_id,
+                      'new': new_copy_id})
+            LOG.error(msg)
+            return
+
+        metadata = self.db.volume_admin_metadata_get(ctxt.elevated(),
+                                                     volume['id'])
+        curr_ops = metadata.get('vdiskcopyops', None)
+        if not curr_ops:
+            msg = (_('_rm_vdisk_copy_op: Volume metadata %s does not have any '
+                     'registered vdisk copy operations.') % volume['id'])
+            LOG.error(msg)
+            return
+        curr_ops_list = [tuple(x.split(':')) for x in curr_ops.split(';')]
+        try:
+            curr_ops_list.remove((orig_copy_id, new_copy_id))
+        except ValueError:
+            msg = (_('_rm_vdisk_copy_op: Volume %(vol)s metadata does not '
+                     'have the specified vdisk copy operation: orig=%(orig)s '
+                     'new=%(new)s.')
+                   % {'vol': volume['id'], 'orig': orig_copy_id,
+                      'new': new_copy_id})
+            LOG.error(msg)
+            return
+
+        if len(curr_ops_list):
+            new_ops_str = ';'.join([':'.join(x) for x in curr_ops_list])
+            self.db.volume_admin_metadata_update(ctxt.elevated(), volume['id'],
+                                                 {'vdiskcopyops': new_ops_str},
+                                                 False)
+        else:
+            self.db.volume_admin_metadata_delete(ctxt.elevated(), volume['id'],
+                                                 'vdiskcopyops')
+
+    def _check_volume_copy_ops(self):
+        LOG.debug(_("enter: update volume copy status"))
+        ctxt = context.get_admin_context()
+        copy_items = self._vdiskcopyops.items()
+        for vol_id, copy_ops in copy_items:
+            volume = self.db.volume_get(ctxt, vol_id)
+            for copy_op in copy_ops:
+                try:
+                    synced = self._helpers.is_vdisk_copy_synced(volume['name'],
+                                                                copy_op[1])
+                except Exception:
+                    msg = (_('_check_volume_copy_ops: Volume %(vol)s does not '
+                             'have the specified vdisk copy operation: '
+                             'orig=%(orig)s new=%(new)s.')
+                           % {'vol': volume['id'], 'orig': copy_op[0],
+                              'new': copy_op[1]})
+                    LOG.info(msg)
+                else:
+                    if synced:
+                        self._helpers.rm_vdisk_copy(volume['name'], copy_op[0])
+                        self._rm_vdisk_copy_op(ctxt, volume, copy_op[0],
+                                               copy_op[1])
+        LOG.debug(_("exit: update volume copy status"))
+
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage.
 
-        The method uses the migratevdisk method, which returns almost
-        immediately, if the source and target pools have the same extent_size.
-        Otherwise, it uses addvdiskcopy and rmvdiskcopy, which require waiting
-        for the copy operation to complete.
+        We create a new vdisk copy in the desired pool, and add the original
+        vdisk copy to the admin_metadata of the volume to be deleted. The
+        deletion will occur using a periodic task once the new copy is synced.
 
         :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
@@ -522,24 +647,17 @@ class StorwizeSVCDriver(san.SanDriver):
         if dest_pool is None:
             return false_ret
 
-        if 'extent_size' not in host['capabilities']:
-            return false_ret
-        if host['capabilities']['extent_size'] == self._state['extent_size']:
-            # If source and dest pools have the same extent size, migratevdisk
-            self._helpers.migrate_vdisk(volume['name'], dest_pool)
+        ctxt = context.get_admin_context()
+        if volume['volume_type_id'] is not None:
+            volume_type_id = volume['volume_type_id']
+            vol_type = volume_types.get_volume_type(ctxt, volume_type_id)
         else:
-            # If source and dest pool extent size differ, add/delete vdisk copy
-            ctxt = context.get_admin_context()
-            if volume['volume_type_id'] is not None:
-                volume_type_id = volume['volume_type_id']
-                vol_type = volume_types.get_volume_type(ctxt, volume_type_id)
-            else:
-                vol_type = None
-            self._helpers.migrate_volume_vdiskcopy(volume['name'], dest_pool,
-                                                   vol_type,
-                                                   self._state,
-                                                   self.configuration)
+            vol_type = None
 
+        new_op = self._helpers.add_vdisk_copy(volume['name'], dest_pool,
+                                              vol_type, self._state,
+                                              self.configuration)
+        self._add_vdisk_copy_op(ctxt, volume, new_op)
         LOG.debug(_('leave: migrate_volume: id=%(id)s, host=%(host)s') %
                   {'id': volume['id'], 'host': host['host']})
         return (True, None)
@@ -590,10 +708,10 @@ class StorwizeSVCDriver(san.SanDriver):
             if dest_pool is None:
                 return False
 
-            self._helpers.migrate_volume_vdiskcopy(volume['name'], dest_pool,
-                                                   new_type,
-                                                   self._state,
-                                                   self.configuration)
+            new_op = self._helpers.add_vdisk_copy(volume['name'], dest_pool,
+                                                  new_type, self._state,
+                                                  self.configuration)
+            self._add_vdisk_copy_op(ctxt, volume, new_op)
         else:
             self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
                                                new_opts, self._state)
@@ -650,7 +768,6 @@ class StorwizeSVCDriver(san.SanDriver):
                                     units.GiB)
         data['easytier_support'] = attributes['easy_tier'] in ['on', 'auto']
         data['compression_support'] = self._state['compression_enabled']
-        data['extent_size'] = self._state['extent_size']
         data['location_info'] = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
                                  {'sys_id': self._state['system_id'],
                                   'pool': pool})

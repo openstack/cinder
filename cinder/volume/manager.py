@@ -189,7 +189,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
-            db=self.db)
+            db=self.db,
+            host=self.host)
 
     def _add_to_threadpool(self, func, *args, **kwargs):
         self._tp.spawn_n(func, *args, **kwargs)
