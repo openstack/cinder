@@ -46,9 +46,10 @@ class HPLeftHandISCSIDriver(VolumeDriver):
 
     Version history:
         1.0.0 - Initial driver
+        1.0.1 - Added support for retype
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
@@ -135,3 +136,8 @@ class HPLeftHandISCSIDriver(VolumeDriver):
     @utils.synchronized('lefthand', external=True)
     def remove_export(self, context, volume):
         return self.proxy.remove_export(context, volume)
+
+    @utils.synchronized('lefthand', external=True)
+    def retype(self, context, volume, new_type, diff, host):
+        """Convert the volume to be of the new type."""
+        return self.proxy.retype(context, volume, new_type, diff, host)

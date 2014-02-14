@@ -18,6 +18,7 @@ import mock
 
 from hplefthandclient import exceptions as hpexceptions
 
+from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
@@ -974,8 +975,10 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         volume_with_vt['volume_type_id'] = self.volume_type_id
 
         # get the extra specs of interest from this volume's volume type
-        extra_specs = self.driver.proxy._get_extra_specs(
-            volume_with_vt,
+        volume_extra_specs = self.driver.proxy._get_volume_extra_specs(
+            volume_with_vt)
+        extra_specs = self.driver.proxy._get_lh_extra_specs(
+            volume_extra_specs,
             hp_lefthand_rest_proxy.extra_specs_key_map.keys())
 
         # map the extra specs key/value pairs to key/value pairs
@@ -1000,8 +1003,10 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 'hplh:ao': 'true'}}
 
         # get the extra specs of interest from this volume's volume type
-        extra_specs = self.driver.proxy._get_extra_specs(
-            volume_with_vt,
+        volume_extra_specs = self.driver.proxy._get_volume_extra_specs(
+            volume_with_vt)
+        extra_specs = self.driver.proxy._get_lh_extra_specs(
+            volume_extra_specs,
             hp_lefthand_rest_proxy.extra_specs_key_map.keys())
 
         # map the extra specs key/value pairs to key/value pairs
@@ -1012,3 +1017,134 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # {'isAdaptiveOptimizationEnabled': True}
         # without hplh:data_pl since r-07 is an invalid value
         self.assertDictMatch({'isAdaptiveOptimizationEnabled': True}, optional)
+
+    def test_retype_with_no_LH_extra_specs(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        ctxt = context.get_admin_context()
+
+        host = {'host': self.serverName}
+        key_specs_old = {'foo': False, 'bar': 2, 'error': True}
+        key_specs_new = {'foo': True, 'bar': 5, 'error': False}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = dict.copy(self.volume)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getVolumeByName('fakevolume')]
+
+        # validate call chain
+        mock_client.assert_has_calls(expected)
+
+    def test_retype_with_only_LH_extra_specs(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        ctxt = context.get_admin_context()
+
+        host = {'host': self.serverName}
+        key_specs_old = {'hplh:provisioning': 'thin'}
+        key_specs_new = {'hplh:provisioning': 'full', 'hplh:ao': 'true'}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = dict.copy(self.volume)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getVolumeByName('fakevolume'),
+            mock.call.modifyVolume(
+                1, {
+                    'isThinProvisioned': False,
+                    'isAdaptiveOptimizationEnabled': True})]
+
+        # validate call chain
+        mock_client.assert_has_calls(expected)
+
+    def test_retype_with_both_extra_specs(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        ctxt = context.get_admin_context()
+
+        host = {'host': self.serverName}
+        key_specs_old = {'hplh:provisioning': 'full', 'foo': 'bar'}
+        key_specs_new = {'hplh:provisioning': 'thin', 'foo': 'foobar'}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = dict.copy(self.volume)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getVolumeByName('fakevolume'),
+            mock.call.modifyVolume(1, {'isThinProvisioned': True})]
+
+        # validate call chain
+        mock_client.assert_has_calls(expected)
+
+    def test_retype_same_extra_specs(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        ctxt = context.get_admin_context()
+
+        host = {'host': self.serverName}
+        key_specs_old = {'hplh:provisioning': 'full', 'hplh:ao': 'true'}
+        key_specs_new = {'hplh:provisioning': 'full', 'hplh:ao': 'false'}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        volume = dict.copy(self.volume)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getVolumeByName('fakevolume'),
+            mock.call.modifyVolume(
+                1,
+                {'isAdaptiveOptimizationEnabled': False})]
+
+        # validate call chain
+        mock_client.assert_has_calls(expected)
