@@ -408,8 +408,8 @@
 #nova_catalog_admin_info=compute:nova:adminURL
 
 # Override service catalog lookup with template for nova
-# endpoint e.g. http://localhost:8774/v2/%(tenant_id)s (string
-# value)
+# endpoint e.g. http://localhost:8774/v2/%(project_id)s
+# (string value)
 #nova_endpoint_template=<None>
 
 # Same as nova_endpoint_template, but for admin endpoint.
