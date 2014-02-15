@@ -1104,7 +1104,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             conn_info = self.volume.initialize_connection(self.context,
                                                           'fake_volume_id',
                                                           connector)
-            self.assertEqual(None, conn_info['data']['qos_specs'])
+            self.assertIsNone(conn_info['data']['qos_specs'])
 
     def test_run_attach_detach_volume_for_instance(self):
         """Make sure volume can be attached and detached from instance."""
