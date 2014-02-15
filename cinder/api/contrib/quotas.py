@@ -56,7 +56,9 @@ class QuotaSetsController(wsgi.Controller):
         return dict(quota_set=quota_set)
 
     def _validate_quota_limit(self, limit):
-        if not isinstance(limit, int):
+        try:
+            limit = int(limit)
+        except ValueError:
             msg = _("Quota limit must be specified as an integer value.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
@@ -64,6 +66,8 @@ class QuotaSetsController(wsgi.Controller):
         if limit < -1:
             msg = _("Quota limit must be -1 or greater.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        return limit
 
     def _get_quotas(self, context, id, usages=False):
         values = QUOTAS.get_project_quotas(context, id, usages=usages)
@@ -115,8 +119,7 @@ class QuotaSetsController(wsgi.Controller):
             if key in NON_QUOTA_KEYS:
                 continue
 
-            self._validate_quota_limit(body['quota_set'][key])
-            value = int(body['quota_set'][key])
+            value = self._validate_quota_limit(body['quota_set'][key])
             try:
                 db.quota_update(context, project_id, key, value)
             except exception.ProjectQuotaNotFound:
