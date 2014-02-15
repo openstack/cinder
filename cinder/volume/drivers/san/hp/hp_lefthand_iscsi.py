@@ -47,9 +47,10 @@ class HPLeftHandISCSIDriver(VolumeDriver):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Added support for retype
+        1.0.2 - Added support for volume migrate
     """
 
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
@@ -141,3 +142,8 @@ class HPLeftHandISCSIDriver(VolumeDriver):
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
         return self.proxy.retype(context, volume, new_type, diff, host)
+
+    @utils.synchronized('lefthand', external=True)
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate directly if source and dest are managed by same storage."""
+        return self.proxy.migrate_volume(ctxt, volume, host)

@@ -1148,3 +1148,91 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         # validate call chain
         mock_client.assert_has_calls(expected)
+
+    def test_migrate_no_location(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        host = {'host': self.serverName, 'capabilities': {}}
+        (migrated, update) = self.driver.migrate_volume(
+            None,
+            self.volume,
+            host)
+        self.assertFalse(migrated)
+
+        # only startup code is called
+        mock_client.assert_has_calls(self.driver_startup_call_stack)
+        # and nothing else
+        self.assertEqual(
+            len(self.driver_startup_call_stack),
+            len(mock_client.method_calls))
+
+    def test_migrate_incorrect_vip(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_client.getClusterByName.return_value = {
+            "virtualIPAddresses": [{
+                "ipV4Address": "10.10.10.10",
+                "ipV4NetMask": "255.255.240.0"}]}
+
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        location = (self.driver.proxy.DRIVER_LOCATION % {
+            'cluster': 'New_CloudCluster',
+            'vip': '10.10.10.111'})
+
+        host = {
+            'host': self.serverName,
+            'capabilities': {'location_info': location}}
+        (migrated, update) = self.driver.migrate_volume(
+            None,
+            self.volume,
+            host)
+        self.assertFalse(migrated)
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getClusterByName('New_CloudCluster')]
+
+        mock_client.assert_has_calls(expected)
+        # and nothing else
+        self.assertEqual(
+            len(expected),
+            len(mock_client.method_calls))
+
+    def test_migrate_with_location(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_client.getClusterByName.return_value = {
+            "virtualIPAddresses": [{
+                "ipV4Address": "10.10.10.111",
+                "ipV4NetMask": "255.255.240.0"}]}
+
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id,
+                                                    'iscsiSessions': None}
+
+        location = (self.driver.proxy.DRIVER_LOCATION % {
+            'cluster': 'New_CloudCluster',
+            'vip': '10.10.10.111'})
+
+        host = {
+            'host': self.serverName,
+            'capabilities': {'location_info': location}}
+        (migrated, update) = self.driver.migrate_volume(
+            None,
+            self.volume,
+            host)
+        self.assertTrue(migrated)
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getClusterByName('New_CloudCluster'),
+            mock.call.getVolumeByName('fakevolume'),
+            mock.call.modifyVolume(1, {'clusterName': 'New_CloudCluster'})]
+
+        mock_client.assert_has_calls(expected)
+        # and nothing else
+        self.assertEqual(
+            len(expected),
+            len(mock_client.method_calls))

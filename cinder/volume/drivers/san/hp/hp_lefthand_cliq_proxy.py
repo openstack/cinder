@@ -458,8 +458,19 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         :param volume: A dictionary describing the volume to migrate
         :param new_type: A dictionary describing the volume type to convert to
         :param diff: A dictionary with the difference between the two types
+        """
+        return False
+
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate the volume to the specified host.
+
+        Returns a boolean indicating whether the migration occurred, as well as
+        model_update.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
         :param host: A dictionary describing the host to migrate to, where
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        return False
+        return (False, None)
