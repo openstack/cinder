@@ -936,13 +936,8 @@ class CephBackupDriver(BackupDriver):
         """
         not_allowed = (False, None)
 
-        # If the volume we are restoring to is the volume the backup was made
-        # from, force a full restore since a diff will not work in this case.
-        if volume['id'] == backup['volume_id']:
-            LOG.debug(_("dest volume is original volume - forcing full copy"))
-            return not_allowed
-
         if self._file_is_rbd(volume_file):
+            # NOTE(dosaboy): base_name here must be diff format.
             rbd_exists, base_name = self._rbd_image_exists(base_name,
                                                            backup['volume_id'],
                                                            rados_client)
@@ -954,6 +949,16 @@ class CephBackupDriver(BackupDriver):
             # that the backup was not performed using diff/incremental methods
             # so we enforce full copy.
             restore_point = self._get_restore_point(base_name, backup['id'])
+
+            # If the volume we are restoring to is the volume the backup was
+            # made from, force a full restore since a diff will not work in
+            # this case.
+            if volume['id'] == backup['volume_id']:
+                msg = _("Destination volume is same as backup source volume - "
+                        "forcing full copy")
+                LOG.debug(msg)
+                return False, restore_point
+
             if restore_point:
                 # If the destination volume has extents we cannot allow a diff
                 # restore.
