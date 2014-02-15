@@ -1,5 +1,4 @@
-# Copyright (c) 2012 EMC Corporation.
-# Copyright (c) 2012 OpenStack Foundation
+# Copyright (c) 2012 - 2014 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,6 +18,7 @@ ISCSI Drivers for EMC VNX and VMAX arrays based on SMI-S.
 """
 
 
+from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
@@ -28,9 +28,15 @@ LOG = logging.getLogger(__name__)
 
 
 class EMCSMISISCSIDriver(driver.ISCSIDriver):
-    """EMC ISCSI Drivers for VMAX and VNX using SMI-S."""
+    """EMC ISCSI Drivers for VMAX and VNX using SMI-S.
 
-    VERSION = "1.0.0"
+    Version history:
+        1.0.0 - Initial driver
+        1.1.0 - Multiple pools and thick/thin provisioning,
+                performance enhancement.
+    """
+
+    VERSION = "1.1.0"
 
     def __init__(self, *args, **kwargs):
 
@@ -44,15 +50,33 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VNX) volume."""
-        self.common.create_volume(volume)
+        volpath = self.common.create_volume(volume)
+
+        ctxt = context.get_admin_context()
+        model_update = {}
+        volume['provider_location'] = str(volpath)
+        model_update['provider_location'] = volume['provider_location']
+        return model_update
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        self.common.create_volume_from_snapshot(volume, snapshot)
+        volpath = self.common.create_volume_from_snapshot(volume, snapshot)
+
+        ctxt = context.get_admin_context()
+        model_update = {}
+        volume['provider_location'] = str(volpath)
+        model_update['provider_location'] = volume['provider_location']
+        return model_update
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a cloned volume."""
-        self.common.create_cloned_volume(volume, src_vref)
+        volpath = self.common.create_cloned_volume(volume, src_vref)
+
+        ctxt = context.get_admin_context()
+        model_update = {}
+        volume['provider_location'] = str(volpath)
+        model_update['provider_location'] = volume['provider_location']
+        return model_update
 
     def delete_volume(self, volume):
         """Deletes an EMC volume."""
@@ -60,11 +84,28 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        self.common.create_snapshot(snapshot)
+        ctxt = context.get_admin_context()
+        volumename = snapshot['volume_name']
+        index = volumename.index('-')
+        volumeid = volumename[index + 1:]
+        volume = self.db.volume_get(ctxt, volumeid)
+
+        volpath = self.common.create_snapshot(snapshot, volume)
+
+        model_update = {}
+        snapshot['provider_location'] = str(volpath)
+        model_update['provider_location'] = snapshot['provider_location']
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        self.common.delete_snapshot(snapshot)
+        ctxt = context.get_admin_context()
+        volumename = snapshot['volume_name']
+        index = volumename.index('-')
+        volumeid = volumename[index + 1:]
+        volume = self.db.volume_get(ctxt, volumeid)
+
+        self.common.delete_snapshot(snapshot, volume)
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
@@ -72,7 +113,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
     def create_export(self, context, volume):
         """Driver entry point to get the export info for a new volume."""
-        return self.common.create_export(context, volume)
+        pass
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume."""
@@ -220,6 +261,10 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         """Disallow connection from connector."""
         self.common.terminate_connection(volume, connector)
 
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        self.common.extend_volume(volume, new_size)
+
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
 
@@ -237,4 +282,5 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or 'EMCSMISISCSIDriver'
         data['storage_protocol'] = 'iSCSI'
+        data['driver_version'] = self.VERSION
         self._stats = data
