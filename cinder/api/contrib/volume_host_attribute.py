@@ -57,7 +57,7 @@ class Volume_host_attribute(extensions.ExtensionDescriptor):
     name = "VolumeHostAttribute"
     alias = "os-vol-host-attr"
     namespace = ("http://docs.openstack.org/volume/ext/"
-                 "volume_host_attribute/api/v1")
+                 "volume_host_attribute/api/v2")
     updated = "2011-11-03T00:00:00+00:00"
 
     def get_controller_extensions(self):

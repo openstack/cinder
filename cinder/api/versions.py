@@ -52,8 +52,8 @@ _KNOWN_VERSIONS = {
     },
     "v1.0": {
         "id": "v1.0",
-        "status": "CURRENT",
-        "updated": "2012-01-04T11:33:21Z",
+        "status": "SUPPORTED",
+        "updated": "2014-06-28T12:20:21Z",
         "links": [
             {
                 "rel": "describedby",
@@ -139,7 +139,7 @@ class AtomSerializer(wsgi.XMLDictSerializer):
     def __init__(self, metadata=None, xmlns=None):
         self.metadata = metadata or {}
         if not xmlns:
-            self.xmlns = wsgi.XMLNS_ATOM
+            self.xmlns = wsgi.XML_NS_ATOM
         else:
             self.xmlns = xmlns
 

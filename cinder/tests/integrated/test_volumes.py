@@ -35,7 +35,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
     def _start_api_service(self):
         self.osapi = service.WSGIService("osapi_volume")
         self.osapi.start()
-        self.auth_url = 'http://%s:%s/v1' % (self.osapi.host, self.osapi.port)
+        self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
         LOG.warn(self.auth_url)
 
     def _get_flags(self):
@@ -179,16 +179,16 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
     def test_create_and_update_volume(self):
         # Create vol1
         created_volume = self.api.post_volume({'volume': {
-            'size': 1, 'display_name': 'vol1'}})
-        self.assertEqual(created_volume['display_name'], 'vol1')
+            'size': 1, 'name': 'vol1'}})
+        self.assertEqual(created_volume['name'], 'vol1')
         created_volume_id = created_volume['id']
 
         # update volume
-        body = {'volume': {'display_name': 'vol-one'}}
+        body = {'volume': {'name': 'vol-one'}}
         updated_volume = self.api.put_volume(created_volume_id, body)
-        self.assertEqual(updated_volume['display_name'], 'vol-one')
+        self.assertEqual(updated_volume['name'], 'vol-one')
 
         # check for update
         found_volume = self.api.get_volume(created_volume_id)
         self.assertEqual(created_volume_id, found_volume['id'])
-        self.assertEqual(found_volume['display_name'], 'vol-one')
+        self.assertEqual(found_volume['name'], 'vol-one')

@@ -116,7 +116,7 @@ global_opts = [
                help='The topic that volume backup nodes listen on'),
     cfg.BoolOpt('enable_v1_api',
                 default=True,
-                help=_("Deploy v1 of the Cinder API.")),
+                help=_("DEPRECATED: Deploy v1 of the Cinder API.")),
     cfg.BoolOpt('enable_v2_api',
                 default=True,
                 help=_("Deploy v2 of the Cinder API.")),

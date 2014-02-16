@@ -55,7 +55,7 @@ class Volume_tenant_attribute(extensions.ExtensionDescriptor):
     name = "VolumeTenantAttribute"
     alias = "os-vol-tenant-attr"
     namespace = ("http://docs.openstack.org/volume/ext/"
-                 "volume_tenant_attribute/api/v1")
+                 "volume_tenant_attribute/api/v2")
     updated = "2011-11-03T00:00:00+00:00"
 
     def get_controller_extensions(self):

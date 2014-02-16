@@ -36,7 +36,7 @@ from cinder.volume import api as volume_api
 
 CONF = cfg.CONF
 
-NS = '{http://docs.openstack.org/api/openstack-volume/2.0/content}'
+NS = '{http://docs.openstack.org/api/openstack-block-storage/2.0/content}'
 
 TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
 

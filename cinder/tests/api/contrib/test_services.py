@@ -400,27 +400,27 @@ class ServicesTest(test.TestCase):
 
     def test_services_enable_with_service_key(self):
         body = {'host': 'host1', 'service': 'cinder-volume'}
-        req = fakes.HTTPRequest.blank('/v1/fake/os-services/enable')
+        req = fakes.HTTPRequest.blank('/v2/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
 
         self.assertEqual(res_dict['status'], 'enabled')
 
     def test_services_enable_with_binary_key(self):
         body = {'host': 'host1', 'binary': 'cinder-volume'}
-        req = fakes.HTTPRequest.blank('/v1/fake/os-services/enable')
+        req = fakes.HTTPRequest.blank('/v2/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
 
         self.assertEqual(res_dict['status'], 'enabled')
 
     def test_services_disable_with_service_key(self):
-        req = fakes.HTTPRequest.blank('/v1/fake/os-services/disable')
+        req = fakes.HTTPRequest.blank('/v2/fake/os-services/disable')
         body = {'host': 'host1', 'service': 'cinder-volume'}
         res_dict = self.controller.update(req, "disable", body)
 
         self.assertEqual(res_dict['status'], 'disabled')
 
     def test_services_disable_with_binary_key(self):
-        req = fakes.HTTPRequest.blank('/v1/fake/os-services/disable')
+        req = fakes.HTTPRequest.blank('/v2/fake/os-services/disable')
         body = {'host': 'host1', 'binary': 'cinder-volume'}
         res_dict = self.controller.update(req, "disable", body)
 

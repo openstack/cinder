@@ -121,7 +121,7 @@ class VolumeHostAttributeTest(test.TestCase):
         res = req.get_response(app())
         vol = etree.XML(res.body)
         host_key = ('{http://docs.openstack.org/volume/ext/'
-                    'volume_host_attribute/api/v1}host')
+                    'volume_host_attribute/api/v2}host')
         self.assertEqual(vol.get(host_key), 'host001')
 
     def test_list_volumes_detail_xml(self):
@@ -133,5 +133,5 @@ class VolumeHostAttributeTest(test.TestCase):
         res = req.get_response(app())
         vol = list(etree.XML(res.body))[0]
         host_key = ('{http://docs.openstack.org/volume/ext/'
-                    'volume_host_attribute/api/v1}host')
+                    'volume_host_attribute/api/v2}host')
         self.assertEqual(vol.get(host_key), 'host001')

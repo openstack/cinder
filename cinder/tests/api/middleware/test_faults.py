@@ -186,14 +186,14 @@ class TestFaults(test.TestCase):
         self.assertEqual(fault.status_int, 400)
 
     def test_xml_serializer(self):
-        """Ensure that a v1.1 request responds with a v1 xmlns."""
-        request = webob.Request.blank('/v1',
+        """Ensure that a v2 request responds with a v2 xmlns."""
+        request = webob.Request.blank('/v2',
                                       headers={"Accept": "application/xml"})
 
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='scram'))
         response = request.get_response(fault)
 
-        self.assertIn(common.XML_NS_V1, response.body)
+        self.assertIn(common.XML_NS_V2, response.body)
         self.assertEqual(response.content_type, "application/xml")
         self.assertEqual(response.status_int, 400)
 
@@ -275,5 +275,86 @@ class FaultsXMLSerializationTestV11(test.TestCase):
                     <message>sorry</message>
                 </itemNotFound>
             """) % common.XML_NS_V1)
+
+        self.assertEqual(expected.toxml(), actual.toxml())
+
+
+class FaultsXMLSerializationTestV2(test.TestCase):
+    """Tests covering `cinder.api.openstack.faults:Fault` class."""
+
+    def _prepare_xml(self, xml_string):
+        xml_string = xml_string.replace("  ", "")
+        xml_string = xml_string.replace("\n", "")
+        xml_string = xml_string.replace("\t", "")
+        return xml_string
+
+    def test_400_fault(self):
+        metadata = {'attributes': {"badRequest": 'code'}}
+        serializer = wsgi.XMLDictSerializer(metadata=metadata,
+                                            xmlns=common.XML_NS_V2)
+
+        fixture = {
+            "badRequest": {
+                "message": "scram",
+                "code": 400,
+            },
+        }
+
+        output = serializer.serialize(fixture)
+        actual = minidom.parseString(self._prepare_xml(output))
+
+        expected = minidom.parseString(self._prepare_xml("""
+                <badRequest code="400" xmlns="%s">
+                    <message>scram</message>
+                </badRequest>
+            """) % common.XML_NS_V2)
+
+        self.assertEqual(expected.toxml(), actual.toxml())
+
+    def test_413_fault(self):
+        metadata = {'attributes': {"overLimit": 'code'}}
+        serializer = wsgi.XMLDictSerializer(metadata=metadata,
+                                            xmlns=common.XML_NS_V2)
+
+        fixture = {
+            "overLimit": {
+                "message": "sorry",
+                "code": 413,
+                "retryAfter": 4,
+            },
+        }
+
+        output = serializer.serialize(fixture)
+        actual = minidom.parseString(self._prepare_xml(output))
+
+        expected = minidom.parseString(self._prepare_xml("""
+                <overLimit code="413" xmlns="%s">
+                    <message>sorry</message>
+                    <retryAfter>4</retryAfter>
+                </overLimit>
+            """) % common.XML_NS_V2)
+
+        self.assertEqual(expected.toxml(), actual.toxml())
+
+    def test_404_fault(self):
+        metadata = {'attributes': {"itemNotFound": 'code'}}
+        serializer = wsgi.XMLDictSerializer(metadata=metadata,
+                                            xmlns=common.XML_NS_V2)
+
+        fixture = {
+            "itemNotFound": {
+                "message": "sorry",
+                "code": 404,
+            },
+        }
+
+        output = serializer.serialize(fixture)
+        actual = minidom.parseString(self._prepare_xml(output))
+
+        expected = minidom.parseString(self._prepare_xml("""
+                <itemNotFound code="404" xmlns="%s">
+                    <message>sorry</message>
+                </itemNotFound>
+            """) % common.XML_NS_V2)
 
         self.assertEqual(expected.toxml(), actual.toxml())

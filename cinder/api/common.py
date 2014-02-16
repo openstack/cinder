@@ -46,7 +46,8 @@ CONF.register_opts(api_common_opts)
 LOG = logging.getLogger(__name__)
 
 
-XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
+XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
+XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
 
 
 # Regex that matches alphanumeric characters, periods, hypens,

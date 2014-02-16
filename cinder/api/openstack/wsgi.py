@@ -33,8 +33,9 @@ from cinder import utils
 from cinder import wsgi
 
 
-XMLNS_V1 = 'http://docs.openstack.org/volume/api/v1'
-XMLNS_ATOM = 'http://www.w3.org/2005/Atom'
+XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
+XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
+XML_NS_ATOM = 'http://www.w3.org/2005/Atom'
 
 LOG = logging.getLogger(__name__)
 
@@ -1168,7 +1169,7 @@ class Fault(webob.exc.HTTPException):
         # 'code' is an attribute on the fault tag itself
         metadata = {'attributes': {fault_name: 'code'}}
 
-        xml_serializer = XMLDictSerializer(metadata, XMLNS_V1)
+        xml_serializer = XMLDictSerializer(metadata, XML_NS_V2)
 
         content_type = req.best_match_content_type()
         serializer = {
@@ -1229,7 +1230,7 @@ class OverLimitFault(webob.exc.HTTPException):
         self.content['overLimitFault']['details'] = \
             translate(self.content['overLimitFault']['details'])
 
-        xml_serializer = XMLDictSerializer(metadata, XMLNS_V1)
+        xml_serializer = XMLDictSerializer(metadata, XML_NS_V2)
         serializer = {
             'application/xml': xml_serializer,
             'application/json': JSONDictSerializer(),
