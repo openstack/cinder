@@ -13,54 +13,23 @@ This README file attempts to provide current and prospective contributors with
 everything they need to know in order to start creating unit tests and
 utilizing the convenience code provided in cinder.testing.
 
-Note: the content for the rest of this file will be added as the work items in
-the following blueprint are completed:
-  https://blueprints.launchpad.net/cinder/+spec/consolidate-testing-infrastructure
+For more detailed information on cinder unit tests visit:
+http://docs.openstack.org/developer/cinder/devref/unit_tests.html
 
-
-Test Types: Unit vs. Functional vs. Integration
+Running Tests
 -----------------------------------------------
 
-TBD
+In the root of the cinder source code run the run_tests.sh script. This will
+offer to create a virtual environment and populate it with dependencies.
+If you don't have dependencies installed that are needed for compiling cinder's
+direct dependencies, you'll have to use your operating system's method of
+installing extra dependencies. To get help using this script execute it with
+the -h parameter to get options `./run_tests.sh -h`
 
 Writing Unit Tests
 ------------------
 
-TBD
-
-Using Fakes
-~~~~~~~~~~~
-
-TBD
-
-test.TestCase
--------------
-The TestCase class from cinder.test (generally imported as test) will
-automatically manage self.stubs using the stubout module and self.mox
-using the mox module during the setUp step. They will automatically
-verify and clean up during the tearDown step.
-
-If using test.TestCase, calling the super class setUp is required and
-calling the super class tearDown is required to be last if tearDown
-is overridden.
-
-Writing Functional Tests
-------------------------
-
-TBD
-
-Writing Integration Tests
--------------------------
-
-TBD
-
-Tests and assertRaises
-----------------------
-When asserting that a test should raise an exception, test against the
-most specific exception possible. An overly broad exception type (like
-Exception) can mask errors in the unit test itself.
-
-Example::
-
-    self.assertRaises(exception.InstanceNotFound, db.instance_get_by_uuid,
-                      elevated, instance_uuid)
+- All new unit tests are to be written in python-mock.
+- Old tests that are still written in mox should be updated to use python-mock.
+    Usage of mox has been deprecated for writing Cinder unit tests.
+- use addCleanup in favor of tearDown
