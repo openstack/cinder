@@ -12,9 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import StringIO
-
 from oslo.config import cfg
+import six
 import webob
 
 from cinder.api.middleware import sizelimit
@@ -31,14 +30,14 @@ class TestLimitingReader(test.TestCase):
     def test_limiting_reader(self):
         BYTES = 1024
         bytes_read = 0
-        data = StringIO.StringIO("*" * BYTES)
+        data = six.StringIO("*" * BYTES)
         for chunk in sizelimit.LimitingReader(data, BYTES):
             bytes_read += len(chunk)
 
         self.assertEqual(bytes_read, BYTES)
 
         bytes_read = 0
-        data = StringIO.StringIO("*" * BYTES)
+        data = six.StringIO("*" * BYTES)
         reader = sizelimit.LimitingReader(data, BYTES)
         byte = reader.read(1)
         while len(byte) != 0:
@@ -52,7 +51,7 @@ class TestLimitingReader(test.TestCase):
 
         def _consume_all_iter():
             bytes_read = 0
-            data = StringIO.StringIO("*" * BYTES)
+            data = six.StringIO("*" * BYTES)
             for chunk in sizelimit.LimitingReader(data, BYTES - 1):
                 bytes_read += len(chunk)
 
@@ -61,7 +60,7 @@ class TestLimitingReader(test.TestCase):
 
         def _consume_all_read():
             bytes_read = 0
-            data = StringIO.StringIO("*" * BYTES)
+            data = six.StringIO("*" * BYTES)
             reader = sizelimit.LimitingReader(data, BYTES - 1)
             byte = reader.read(1)
             while len(byte) != 0:

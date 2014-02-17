@@ -20,7 +20,8 @@ import copy
 import httplib
 from lxml import etree
 from mox import IgnoreArg
-import StringIO
+
+import six
 
 from cinder import exception
 from cinder import test
@@ -38,8 +39,8 @@ class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class FakeHttplibSocket(object):
     """A fake socket implementation for httplib.HTTPResponse."""
     def __init__(self, value):
-        self._rbuffer = StringIO.StringIO(value)
-        self._wbuffer = StringIO.StringIO('')
+        self._rbuffer = six.StringIO(value)
+        self._wbuffer = six.StringIO('')
         oldclose = self._wbuffer.close
 
         def newclose():

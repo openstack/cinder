@@ -21,7 +21,8 @@ Tests for NetApp volume driver
 import BaseHTTPServer
 import httplib
 from lxml import etree
-import StringIO
+
+import six
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -61,8 +62,8 @@ class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class FakeHttplibSocket(object):
     """A fake socket implementation for httplib.HTTPResponse."""
     def __init__(self, value):
-        self._rbuffer = StringIO.StringIO(value)
-        self._wbuffer = StringIO.StringIO('')
+        self._rbuffer = six.StringIO(value)
+        self._wbuffer = six.StringIO('')
         oldclose = self._wbuffer.close
 
         def newclose():

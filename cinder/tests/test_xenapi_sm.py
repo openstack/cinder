@@ -16,10 +16,10 @@
 
 
 import contextlib
-import StringIO
 
 import mock
 import mox
+import six
 
 from cinder.db import api as db_api
 from cinder import exception
@@ -497,7 +497,7 @@ class ToolsTest(test.TestCase):
     def test_stripped_first_line_of(self):
         mock_context_manager = mock.Mock()
         mock_context_manager.__enter__ = mock.Mock(
-            return_value=StringIO.StringIO('  blah  \n second line \n'))
+            return_value=six.StringIO('  blah  \n second line \n'))
         mock_context_manager.__exit__ = mock.Mock(return_value=False)
         mock_open = mock.Mock(return_value=mock_context_manager)
 

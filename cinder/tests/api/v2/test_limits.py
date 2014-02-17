@@ -18,9 +18,9 @@ Tests dealing with HTTP rate-limiting.
 """
 
 import httplib
-import StringIO
 
 from lxml import etree
+import six
 import webob
 from xml.dom import minidom
 
@@ -639,7 +639,7 @@ class FakeHttplibSocket(object):
 
     def __init__(self, response_string):
         """Initialize new `FakeHttplibSocket`."""
-        self._buffer = StringIO.StringIO(response_string)
+        self._buffer = six.StringIO(response_string)
 
     def makefile(self, _mode, _other):
         """Returns the socket's internal buffer."""
