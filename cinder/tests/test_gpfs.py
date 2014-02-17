@@ -59,6 +59,7 @@ class GPFSDriverTestCase(test.TestCase):
         super(GPFSDriverTestCase, self).setUp()
         self.volumes_path = tempfile.mkdtemp(prefix="gpfs_")
         self.images_dir = '%s/images' % self.volumes_path
+        self.addCleanup(self._cleanup, self.images_dir, self.volumes_path)
 
         if not os.path.exists(self.volumes_path):
             os.mkdir(self.volumes_path)
@@ -80,13 +81,12 @@ class GPFSDriverTestCase(test.TestCase):
         self.context.project_id = 'fake'
         CONF.gpfs_images_dir = self.images_dir
 
-    def tearDown(self):
-        try:
-            os.rmdir(self.images_dir)
-            os.rmdir(self.volumes_path)
-        except OSError:
-            pass
-        super(GPFSDriverTestCase, self).tearDown()
+    def _cleanup(self, images_dir, volumes_path):
+            try:
+                os.rmdir(images_dir)
+                os.rmdir(volumes_path)
+            except OSError:
+                pass
 
     def test_different(self):
         self.assertTrue(gpfs._different((True, False)))

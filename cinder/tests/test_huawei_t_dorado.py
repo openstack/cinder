@@ -1029,7 +1029,11 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         super(HuaweiTISCSIDriverTestCase, self).setUp()
 
         self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
+
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.addCleanup(os.remove, self.fake_conf_file)
+
         create_fake_conf_file(self.fake_conf_file)
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.cinder_huawei_conf_file = self.fake_conf_file
@@ -1045,12 +1049,6 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         Curr_test[0] = 'T'
         self.driver = HuaweiVolumeDriver(configuration=self.configuration)
         self.driver.do_setup(None)
-
-    def tearDown(self):
-        if os.path.exists(self.fake_conf_file):
-            os.remove(self.fake_conf_file)
-        shutil.rmtree(self.tmp_dir)
-        super(HuaweiTISCSIDriverTestCase, self).tearDown()
 
     def test_conf_invalid(self):
         # Test config file not found
@@ -1424,7 +1422,11 @@ class HuaweiTFCDriverTestCase(test.TestCase):
         super(HuaweiTFCDriverTestCase, self).setUp()
 
         self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
+
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.addCleanup(os.remove, self.fake_conf_file)
+
         create_fake_conf_file(self.fake_conf_file)
         modify_conf(self.fake_conf_file, 'Storage/Protocol', 'FC')
         self.configuration = mox.MockObject(conf.Configuration)
@@ -1441,12 +1443,6 @@ class HuaweiTFCDriverTestCase(test.TestCase):
         Curr_test[0] = 'T'
         self.driver = HuaweiVolumeDriver(configuration=self.configuration)
         self.driver.do_setup(None)
-
-    def tearDown(self):
-        if os.path.exists(self.fake_conf_file):
-            os.remove(self.fake_conf_file)
-        shutil.rmtree(self.tmp_dir)
-        super(HuaweiTFCDriverTestCase, self).tearDown()
 
     def test_validate_connector_failed(self):
         invalid_connector = {'host': 'testhost'}
@@ -1658,9 +1654,12 @@ class SSHMethodTestCase(test.TestCase):
 
     def setUp(self):
         super(SSHMethodTestCase, self).setUp()
-
         self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
+
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.addCleanup(os.remove, self.fake_conf_file)
+
         create_fake_conf_file(self.fake_conf_file)
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.cinder_huawei_conf_file = self.fake_conf_file
@@ -1673,12 +1672,6 @@ class SSHMethodTestCase(test.TestCase):
         Curr_test[0] = 'T'
         self.driver = HuaweiVolumeDriver(configuration=self.configuration)
         self.driver.do_setup(None)
-
-    def tearDown(self):
-        if os.path.exists(self.fake_conf_file):
-            os.remove(self.fake_conf_file)
-        shutil.rmtree(self.tmp_dir)
-        super(SSHMethodTestCase, self).tearDown()
 
     def test_reach_max_connection_limit(self):
         self.stubs.Set(FakeChannel, 'recv', self._fake_recv1)

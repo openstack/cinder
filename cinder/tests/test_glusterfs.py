@@ -95,11 +95,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             glusterfs.GlusterfsDriver(configuration=self._configuration,
                                       db=FakeDb())
         self._driver.shares = {}
-
-    def tearDown(self):
-        self._mox.UnsetStubs()
-        self.stubs.UnsetAll()
-        super(GlusterFsDriverTestCase, self).tearDown()
+        self.addCleanup(self._mox.UnsetStubs)
 
     def stub_out_not_replaying(self, obj, attr_name):
         attr_to_replace = getattr(obj, attr_name)

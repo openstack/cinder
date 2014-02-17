@@ -173,6 +173,7 @@ class BackupCephTestCase(test.TestCase):
 
         # Create a file with some data in it.
         self.volume_file = tempfile.NamedTemporaryFile()
+        self.addCleanup(self.volume_file.close)
         for i in xrange(0, self.num_chunks):
             data = os.urandom(self.chunk_size)
             self.checksum.update(data)
@@ -194,10 +195,6 @@ class BackupCephTestCase(test.TestCase):
         self.counter = float(0)
 
         self.callstack = []
-
-    def tearDown(self):
-        self.volume_file.close()
-        super(BackupCephTestCase, self).tearDown()
 
     @common_mocks
     def test_get_rbd_support(self):

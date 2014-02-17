@@ -44,6 +44,8 @@ class QuotaIntegrationTestCase(test.TestCase):
         self.volume_type = db.volume_type_create(
             context.get_admin_context(),
             dict(name=self.volume_type_name))
+        self.addCleanup(db.volume_type_destroy, context.get_admin_context(),
+                        self.volume_type['id'])
 
         self.flags(quota_volumes=2,
                    quota_snapshots=2,
@@ -59,12 +61,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         # conflicts with the test cases here that are setting up their own
         # defaults.
         db.quota_class_destroy_all_by_name(self.context, 'default')
-
-    def tearDown(self):
-        db.volume_type_destroy(context.get_admin_context(),
-                               self.volume_type['id'])
-        super(QuotaIntegrationTestCase, self).tearDown()
-        cinder.tests.image.fake.FakeImageService_reset()
+        self.addCleanup(cinder.tests.image.fake.FakeImageService_reset)
 
     def _create_volume(self, size=1):
         """Create a test volume."""

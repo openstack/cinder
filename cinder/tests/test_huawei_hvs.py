@@ -504,7 +504,10 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
     def setUp(self):
         super(HVSRESTiSCSIDriverTestCase, self).setUp()
         self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.addCleanup(os.remove, self.fake_conf_file)
+
         self.create_fake_conf_file()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.cinder_huawei_conf_file = self.fake_conf_file
@@ -516,12 +519,6 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
         self.driver = FakeHVSiSCSIStorage(configuration=self.configuration)
         self.driver.do_setup({})
         self.driver.common.test_normal = True
-
-    def tearDown(self):
-        if os.path.exists(self.fake_conf_file):
-            os.remove(self.fake_conf_file)
-        shutil.rmtree(self.tmp_dir)
-        super(HVSRESTiSCSIDriverTestCase, self).tearDown()
 
     def test_log_in_success(self):
         deviceid = self.driver.common.login()
@@ -699,7 +696,10 @@ class HVSRESTFCDriverTestCase(test.TestCase):
     def setUp(self):
         super(HVSRESTFCDriverTestCase, self).setUp()
         self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.addCleanup(os.remove, self.fake_conf_file)
+
         self.create_fake_conf_file()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.cinder_huawei_conf_file = self.fake_conf_file
@@ -710,12 +710,6 @@ class HVSRESTFCDriverTestCase(test.TestCase):
         self.driver = FakeHVSFCStorage(configuration=self.configuration)
         self.driver.do_setup({})
         self.driver.common.test_normal = True
-
-    def tearDown(self):
-        if os.path.exists(self.fake_conf_file):
-            os.remove(self.fake_conf_file)
-        shutil.rmtree(self.tmp_dir)
-        super(HVSRESTFCDriverTestCase, self).tearDown()
 
     def test_log_in_Success(self):
         deviceid = self.driver.common.login()

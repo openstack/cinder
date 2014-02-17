@@ -119,6 +119,7 @@ class ScalityDriverTestCase(test.TestCase):
         super(ScalityDriverTestCase, self).setUp()
 
         self.tempdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tempdir)
 
         self.TEST_MOUNT = self.tempdir
         self.TEST_VOLPATH = os.path.join(self.TEST_MOUNT,
@@ -137,12 +138,9 @@ class ScalityDriverTestCase(test.TestCase):
 
         self._create_fake_mount()
         self._create_fake_config()
-        self._configure_driver()
+        self.addCleanup(self._remove_fake_config)
 
-    def tearDown(self):
-        shutil.rmtree(self.tempdir)
-        self._remove_fake_config()
-        super(ScalityDriverTestCase, self).tearDown()
+        self._configure_driver()
 
     def test_setup_no_config(self):
         """Missing SOFS configuration shall raise an error."""
