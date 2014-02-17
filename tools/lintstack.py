@@ -18,13 +18,13 @@
 
 from __future__ import print_function
 
-import cStringIO as StringIO
 import json
 import re
 import sys
 
 from pylint import lint
 from pylint.reporters import text
+from six.moves import cStringIO as StringIO
 
 # Note(maoy): E1103 is error code related to partial type inference
 ignore_codes = ["E1103"]
@@ -127,7 +127,7 @@ class ErrorKeys(object):
 
 
 def run_pylint():
-    buff = StringIO.StringIO()
+    buff = StringIO()
     reporter = text.ParseableTextReporter(output=buff)
     args = ["--include-ids=y", "-E", "cinder"]
     lint.Run(args, reporter=reporter, exit=False)
