@@ -83,50 +83,23 @@ CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 
 MAPPING = {
-    'cinder.volume.driver.RBDDriver': 'cinder.volume.drivers.rbd.RBDDriver',
-    'cinder.volume.driver.SheepdogDriver':
-    'cinder.volume.drivers.sheepdog.SheepdogDriver',
-    'cinder.volume.nexenta.volume.NexentaDriver':
-    'cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver',
     'cinder.volume.drivers.nexenta.volume.NexentaDriver':
     'cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver',
-    'cinder.volume.san.SanISCSIDriver':
-    'cinder.volume.drivers.san.san.SanISCSIDriver',
-    'cinder.volume.san.SolarisISCSIDriver':
-    'cinder.volume.drivers.san.solaris.SolarisISCSIDriver',
-    'cinder.volume.nfs.NfsDriver':
-    'cinder.volume.drivers.nfs.NfsDriver',
-    'cinder.volume.solidfire.SolidFire':
-    'cinder.volume.drivers.solidfire.SolidFireDriver',
     'cinder.volume.drivers.solidfire.SolidFire':
     'cinder.volume.drivers.solidfire.SolidFireDriver',
-    'cinder.volume.storwize_svc.StorwizeSVCDriver':
-    'cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver',
     'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver':
     'cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver',
-    'cinder.volume.windows.WindowsDriver':
-    'cinder.volume.drivers.windows.windows.WindowsDriver',
     'cinder.volume.drivers.windows.WindowsDriver':
     'cinder.volume.drivers.windows.windows.WindowsDriver',
-    'cinder.volume.xiv.XIVDriver':
-    'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
     'cinder.volume.drivers.xiv.XIVDriver':
     'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
     'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver':
     'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
-    'cinder.volume.zadara.ZadaraVPSAISCSIDriver':
-    'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver',
     'cinder.volume.driver.ISCSIDriver':
     'cinder.volume.drivers.lvm.LVMISCSIDriver',
-    'cinder.volume.netapp.NetAppISCSIDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
     'cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver':
     'cinder.volume.drivers.netapp.common.Deprecated',
-    'cinder.volume.netapp.NetAppCmodeISCSIDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
     'cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
-    'cinder.volume.netapp_nfs.NetAppNFSDriver':
     'cinder.volume.drivers.netapp.common.Deprecated',
     'cinder.volume.drivers.netapp.nfs.NetAppNFSDriver':
     'cinder.volume.drivers.netapp.common.Deprecated',
