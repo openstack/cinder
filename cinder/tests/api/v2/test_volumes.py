@@ -59,6 +59,7 @@ def stub_snapshot_get(self, context, snapshot_id):
 class VolumeApiTest(test.TestCase):
     def setUp(self):
         super(VolumeApiTest, self).setUp()
+        self.addCleanup(fake_notifier.reset)
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
         fake_image.stub_out_image_service(self.stubs)
@@ -66,16 +67,11 @@ class VolumeApiTest(test.TestCase):
 
         self.flags(host='fake',
                    notification_driver=[fake_notifier.__name__])
-
         self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)
         self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stubs.stub_service_get_all_by_topic)
         self.maxDiff = None
-
-    def tearDown(self):
-        super(VolumeApiTest, self).tearDown()
-        fake_notifier.reset()
 
     def test_volume_create(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)

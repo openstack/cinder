@@ -104,7 +104,3 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_db())
 
         task._cast_create_volume(self.ctxt, spec, props)
-
-    def tearDown(self):
-        self.stubs.UnsetAll()
-        super(CreateVolumeFlowTestCase, self).tearDown()

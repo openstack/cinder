@@ -48,6 +48,7 @@ class UsageInfoTestCase(test.TestCase):
 
     def setUp(self):
         super(UsageInfoTestCase, self).setUp()
+        self.addCleanup(fake_notifier.reset)
         self.flags(host='fake', notification_driver=["test"])
         self.volume = importutils.import_object(CONF.volume_manager)
         self.user_id = 'fake'
@@ -55,10 +56,6 @@ class UsageInfoTestCase(test.TestCase):
         self.snapshot_id = 'fake'
         self.volume_size = 0
         self.context = context.RequestContext(self.user_id, self.project_id)
-
-    def tearDown(self):
-        super(UsageInfoTestCase, self).tearDown()
-        fake_notifier.reset()
 
     def _create_volume(self, params={}):
         """Create a test volume."""
