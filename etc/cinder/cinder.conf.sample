@@ -148,6 +148,16 @@
 
 
 #
+# Options defined in cinder.backup.driver
+#
+
+# Backup metadata version to be used when backing up volume
+# metadata. If this number is bumped, make sure the service
+# doing the restore supports the new version. (integer value)
+#backup_metadata_version=1
+
+
+#
 # Options defined in cinder.backup.drivers.ceph
 #
 

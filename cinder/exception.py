@@ -477,6 +477,14 @@ class BackupOperationError(Invalid):
     message = _("An error has occurred during backup operation")
 
 
+class BackupMetadataUnsupportedVersion(BackupDriverException):
+    message = _("Unsupported backup metadata version requested")
+
+
+class VolumeMetadataBackupExists(BackupDriverException):
+    message = _("Metadata backup already exists for this volume")
+
+
 class BackupRBDOperationFailed(BackupDriverException):
     message = _("Backup RBD operation failed")
 

@@ -107,7 +107,7 @@ class SwiftBackupDriver(BackupDriver):
         raise ValueError(unicode(err))
 
     def __init__(self, context, db_driver=None):
-        self.context = context
+        super(SwiftBackupDriver, self).__init__(context, db_driver)
         self.swift_url = '%s%s' % (CONF.backup_swift_url,
                                    self.context.project_id)
         self.az = CONF.storage_availability_zone
@@ -134,8 +134,6 @@ class SwiftBackupDriver(BackupDriver):
                                          preauthurl=self.swift_url,
                                          preauthtoken=self.context.auth_token,
                                          starting_backoff=self.swift_backoff)
-
-        super(SwiftBackupDriver, self).__init__(db_driver)
 
     def _check_container_exists(self, container):
         LOG.debug(_('_check_container_exists: container: %s') % container)
@@ -327,8 +325,16 @@ class SwiftBackupDriver(BackupDriver):
                               {'object_count': object_id})
         LOG.debug(_('backup %s finished.') % backup['id'])
 
-    def backup(self, backup, volume_file):
-        """Backup the given volume to swift using the given backup metadata."""
+    def backup(self, backup, volume_file, backup_metadata=False):
+        """Backup the given volume to Swift."""
+
+        # TODO(dosaboy): this needs implementing (see backup.drivers.ceph for
+        #                an example)
+        if backup_metadata:
+            msg = _("Volume metadata backup requested but this driver does "
+                    "not yet support this feature.")
+            raise exception.InvalidBackup(reason=msg)
+
         object_meta, container = self._prepare_backup(backup)
         while True:
             data = volume_file.read(self.data_block_size_bytes)

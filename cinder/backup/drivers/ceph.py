@@ -93,6 +93,65 @@ CONF = cfg.CONF
 CONF.register_opts(service_opts)
 
 
+class VolumeMetadataBackup(object):
+
+    def __init__(self, client, backup_id):
+        self._client = client
+        self._backup_id = backup_id
+
+    @property
+    def name(self):
+        return strutils.safe_encode("backup.%s.meta" % (self._backup_id))
+
+    @property
+    def exists(self):
+        meta_obj = rados.Object(self._client.ioctx, self.name)
+        return self._exists(meta_obj)
+
+    def _exists(self, obj):
+        try:
+            obj.stat()
+        except rados.ObjectNotFound:
+            return False
+        else:
+            return True
+
+    def set(self, json_meta):
+        """Write JSON metadata to a new object.
+
+        This should only be called once per backup. Raises
+        VolumeMetadataBackupExists if the object already exists.
+        """
+        meta_obj = rados.Object(self._client.ioctx, self.name)
+        if self._exists(meta_obj):
+            msg = _("Metadata backup object '%s' already exists") % (self.name)
+            raise exception.VolumeMetadataBackupExists(msg)
+
+        meta_obj.write(json_meta)
+
+    def get(self):
+        """Get metadata backup object.
+
+        Returns None if the object does not exist.
+        """
+        meta_obj = rados.Object(self._client.ioctx, self.name)
+        if not self._exists(meta_obj):
+            msg = _("Metadata backup object %s does not exist") % (self.name)
+            LOG.debug(msg)
+            return None
+
+        return meta_obj.read()
+
+    def remove_if_exists(self):
+        meta_obj = rados.Object(self._client.ioctx, self.name)
+        try:
+            meta_obj.remove()
+        except rados.ObjectNotFound:
+            msg = (_("Metadata backup object '%s' not found - ignoring") %
+                   (self.name))
+            LOG.debug(msg)
+
+
 class CephBackupDriver(BackupDriver):
     """Backup Cinder volumes to Ceph Object Store.
 
@@ -106,10 +165,9 @@ class CephBackupDriver(BackupDriver):
     """
 
     def __init__(self, context, db_driver=None, execute=None):
-        super(CephBackupDriver, self).__init__(db_driver)
+        super(CephBackupDriver, self).__init__(context, db_driver)
         self.rbd = rbd
         self.rados = rados
-        self.context = context
         self.chunk_size = CONF.backup_ceph_chunk_size
         self._execute = execute or utils.execute
 
@@ -737,8 +795,30 @@ class CephBackupDriver(BackupDriver):
 
         return int(volume['size']) * units.GiB
 
-    def backup(self, backup, volume_file):
-        """Backup the given volume to Ceph object store.
+    def _backup_metadata(self, backup):
+        """Backup volume metadata.
+
+        NOTE(dosaboy): the metadata we are backing up is obtained from a
+                       versioned api so we should not alter it in any way here.
+                       We must also be sure that the service that will perform
+                       the restore is compatible with version used.
+        """
+        json_meta = self.get_metadata(backup['volume_id'])
+        if not json_meta:
+            LOG.debug("No volume metadata to backup")
+            return
+
+        LOG.debug("Backing up volume metadata")
+        try:
+            with rbd_driver.RADOSClient(self) as client:
+                vol_meta_backup = VolumeMetadataBackup(client, backup['id'])
+                vol_meta_backup.set(json_meta)
+        except exception.VolumeMetadataBackupExists as e:
+            msg = _("Failed to backup volume metadata - %s") % (str(e))
+            raise exception.BackupOperationError(msg)
+
+    def backup(self, backup, volume_file, backup_metadata=True):
+        """Backup volume and metadata (if available) to Ceph object store.
 
         If the source volume is an RBD we will attempt to do an
         incremental/differential backup, otherwise a full copy is performed.
@@ -773,6 +853,14 @@ class CephBackupDriver(BackupDriver):
 
         self.db.backup_update(self.context, backup_id,
                               {'container': self._ceph_backup_pool})
+
+        if backup_metadata:
+            try:
+                self._backup_metadata(backup)
+            except exception.BackupOperationError:
+                # Cleanup.
+                self.delete(backup)
+                raise
 
         LOG.debug(_("Backup '%s' finished.") % (backup_id))
 
@@ -1008,8 +1096,30 @@ class CephBackupDriver(BackupDriver):
             self._full_restore(backup_id, backup_volume_id, volume_file,
                                volume_name, length, src_snap=restore_point)
 
+    def _restore_metadata(self, backup, volume_id):
+        """Restore volume metadata from backup.
+
+        If this backup has associated metadata, save it to the restore target
+        otherwise do nothing.
+        """
+        try:
+            with rbd_driver.RADOSClient(self) as client:
+                meta_bak = VolumeMetadataBackup(client, backup['id'])
+                meta = meta_bak.get()
+                if meta is not None:
+                    self.put_metadata(volume_id, meta)
+                else:
+                    LOG.debug(_("Volume has no backed up metadata"))
+        except exception.BackupMetadataUnsupportedVersion:
+            msg = _("Metadata restore failed due to incompatible version")
+            LOG.error(msg)
+            raise exception.BackupOperationError(msg)
+
     def restore(self, backup, volume_id, volume_file):
-        """Restore the given volume backup from Ceph object store."""
+        """Restore volume from backup in Ceph object store.
+
+        If volume metadata is available this will also be restored.
+        """
         target_volume = self.db.volume_get(self.context, volume_id)
         LOG.debug(_('Starting restore from Ceph backup=%(src)s to '
                     'volume=%(dest)s') %
@@ -1027,6 +1137,8 @@ class CephBackupDriver(BackupDriver):
             else:
                 os.fsync(fileno)
 
+            self._restore_metadata(backup, volume_id)
+
             LOG.debug(_('Restore finished successfully.'))
         except exception.BackupOperationError as e:
             LOG.error(_('Restore finished with error - %s') % (e))
@@ -1037,12 +1149,20 @@ class CephBackupDriver(BackupDriver):
         backup_id = backup['id']
         LOG.debug(_('Delete started for backup=%s') % backup['id'])
 
+        delete_failed = False
         try:
             self._try_delete_base_image(backup['id'], backup['volume_id'])
         except self.rbd.ImageNotFound:
-            msg = _("RBD image not found but continuing anyway so "
-                    "that db entry can be removed")
+            msg = _("RBD image not found but continuing anyway so that we can "
+                    "attempt to delete metadata backup and db entry can be "
+                    "removed")
             LOG.warning(msg)
+            delete_failed = True
+
+        with rbd_driver.RADOSClient(self) as client:
+            VolumeMetadataBackup(client, backup['id']).remove_if_exists()
+
+        if delete_failed:
             LOG.info(_("Delete '%s' finished with warning") % (backup_id))
         else:
             LOG.debug(_("Delete '%s' finished") % (backup_id))
