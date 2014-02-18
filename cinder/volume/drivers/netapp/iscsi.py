@@ -603,7 +603,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         if curr_size_bytes != new_size_bytes:
             lun_geometry = self._get_lun_geometry(path)
             if (lun_geometry and lun_geometry.get("max_resize")
-                    and lun_geometry.get("max_resize") >= new_size_bytes):
+                    and int(lun_geometry.get("max_resize")) >=
+                    int(new_size_bytes)):
                 self._do_direct_resize(path, new_size_bytes)
             else:
                 self._do_sub_clone_resize(path, new_size_bytes)
