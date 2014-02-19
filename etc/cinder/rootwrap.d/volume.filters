@@ -85,7 +85,7 @@ systool: CommandFilter, systool, root
 # cinder/volume/drivers/block_device.py
 blockdev: CommandFilter, blockdev, root
 
-# cinder/volume/drivers/gpfs.py
+# cinder/volume/drivers/ibm/gpfs.py
 mv: CommandFilter, mv, root
 mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
 mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
@@ -94,8 +94,11 @@ mmchattr: CommandFilter, /usr/lpp/mmfs/bin/mmchattr, root
 mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
 mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
 mmlspool: CommandFilter, /usr/lpp/mmfs/bin/mmlspool, root
-find: CommandFilter, find, root
 mkfs: CommandFilter, mkfs, root
+
+# cinder/volume/drivers/ibm/gpfs.py
+# cinder/volume/drivers/ibm/ibmnas.py
+find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -inum, \d+
 
 # cinder/brick/initiator/connector.py:
 aoe-revalidate: CommandFilter, aoe-revalidate, root
