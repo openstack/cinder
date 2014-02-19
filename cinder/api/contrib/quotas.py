@@ -32,6 +32,7 @@ NON_QUOTA_KEYS = ['tenant_id', 'id']
 
 authorize_update = extensions.extension_authorizer('volume', 'quotas:update')
 authorize_show = extensions.extension_authorizer('volume', 'quotas:show')
+authorize_delete = extensions.extension_authorizer('volume', 'quotas:delete')
 
 
 class QuotaTemplate(xmlutil.TemplateBuilder):
@@ -133,6 +134,17 @@ class QuotaSetsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize_show(context)
         return self._format_quota_set(id, QUOTAS.get_defaults(context))
+
+    @wsgi.serializers(xml=QuotaTemplate)
+    def delete(self, req, id):
+
+        context = req.environ['cinder.context']
+        authorize_delete(context)
+
+        try:
+            db.quota_destroy_all_by_project(context, id)
+        except exception.AdminRequired:
+            raise webob.exc.HTTPForbidden()
 
 
 class Quotas(extensions.ExtensionDescriptor):
