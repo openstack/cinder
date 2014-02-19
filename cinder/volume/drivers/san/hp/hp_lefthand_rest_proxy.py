@@ -83,9 +83,10 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
     Version history:
         1.0.0 - Initial REST iSCSI proxy
+        1.0.1 - Added support for retype
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
     device_stats = {}
 
@@ -131,8 +132,9 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         """Creates a volume."""
         try:
             # get the extra specs of interest from this volume's volume type
-            extra_specs = self._get_extra_specs(
-                volume,
+            volume_extra_specs = self._get_volume_extra_specs(volume)
+            extra_specs = self._get_lh_extra_specs(
+                volume_extra_specs,
                 extra_specs_key_map.keys())
 
             # map the extra specs key/value pairs to key/value pairs
@@ -285,18 +287,23 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         except Exception as ex:
             raise exception.VolumeBackendAPIException(str(ex))
 
-    def _get_extra_specs(self, volume, valid_keys):
-        """Get extra specs of interest (valid_keys) from volume type."""
+    def _get_volume_extra_specs(self, volume):
+        """Get extra specs from a volume."""
         extra_specs = {}
         type_id = volume.get('volume_type_id', None)
         if type_id is not None:
             ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
-            specs = volume_type.get('extra_specs')
-            for key, value in specs.iteritems():
-                if key in valid_keys:
-                    extra_specs[key] = value
+            extra_specs = volume_type.get('extra_specs')
         return extra_specs
+
+    def _get_lh_extra_specs(self, extra_specs, valid_keys):
+        """Get LeftHand extra_specs (valid_keys only)."""
+        extra_specs_of_interest = {}
+        for key, value in extra_specs.iteritems():
+            if key in valid_keys:
+                extra_specs_of_interest[key] = value
+        return extra_specs_of_interest
 
     def _map_extra_specs(self, extra_specs):
         """Map the extra spec key/values to LeftHand key/values."""
@@ -361,3 +368,53 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
     def remove_export(self, context, volume):
         pass
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+        Returns a boolean indicating whether the retype occurred.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to retype
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.debug(_('enter: retype: id=%(id)s, new_type=%(new_type)s,'
+                    'diff=%(diff)s, host=%(host)s') % {'id': volume['id'],
+                                                       'new_type': new_type,
+                                                       'diff': diff,
+                                                       'host': host})
+        try:
+            volume_info = self.client.getVolumeByName(volume['name'])
+        except hpexceptions.HTTPNotFound:
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        try:
+            # pick out the LH extra specs
+            new_extra_specs = dict(new_type).get('extra_specs')
+            lh_extra_specs = self._get_lh_extra_specs(
+                new_extra_specs,
+                extra_specs_key_map.keys())
+
+            LOG.debug(_('LH specs=%(specs)s') % {'specs': lh_extra_specs})
+
+            # only set the ones that have changed
+            changed_extra_specs = {}
+            for key, value in lh_extra_specs.iteritems():
+                (old, new) = diff['extra_specs'][key]
+                if old != new:
+                    changed_extra_specs[key] = value
+
+            # map extra specs to LeftHand options
+            options = self._map_extra_specs(changed_extra_specs)
+            if len(options) > 0:
+                self.client.modifyVolume(volume_info['id'], options)
+            return True
+
+        except Exception as ex:
+            LOG.warning("%s" % str(ex))
+
+        return False
