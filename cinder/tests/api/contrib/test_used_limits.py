@@ -45,6 +45,7 @@ class UsedLimitsTestCase(test.TestCase):
         quota_map = {
             'totalVolumesUsed': 'volumes',
             'totalGigabytesUsed': 'gigabytes',
+            'totalSnapshotsUsed': 'snapshots',
         }
 
         limits = {}
