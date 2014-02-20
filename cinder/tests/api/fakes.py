@@ -83,19 +83,6 @@ def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
     return mapper
 
 
-def stub_out_rate_limiting(stubs):
-    def fake_rate_init(self, app):
-        # super(limits.RateLimitingMiddleware, self).__init__(app)
-        self.application = app
-
-    # FIXME(ja): unsure about limits in volumes
-    # stubs.Set(cinder.api.openstack.compute.limits.RateLimitingMiddleware,
-    #     '__init__', fake_rate_init)
-
-    # stubs.Set(cinder.api.openstack.compute.limits.RateLimitingMiddleware,
-    #     '__call__', fake_wsgi)
-
-
 def stub_out_key_pair_funcs(stubs, have_key_pair=True):
     def key_pair(context, user_id):
         return [dict(name='key', public_key='public_key')]
