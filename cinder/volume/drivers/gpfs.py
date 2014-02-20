@@ -133,6 +133,10 @@ class GPFSDriver(driver.VolumeDriver):
             return True
         return False
 
+    def _set_rw_permission(self, path, modebits='660'):
+        """Set permission bits for the path."""
+        self._execute('chmod', modebits, path, run_as_root=True)
+
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         self._check_gpfs_state()
@@ -209,7 +213,6 @@ class GPFSDriver(driver.VolumeDriver):
 
         sizestr = self._sizestr(size)
         self._execute('truncate', '-s', sizestr, path, run_as_root=True)
-        self._execute('chmod', '666', path, run_as_root=True)
 
     def _allocate_file_blocks(self, path, size):
         """Preallocate file blocks by writing zeros."""
@@ -260,7 +263,7 @@ class GPFSDriver(driver.VolumeDriver):
 
         # Create a sparse file first; allocate blocks later if requested
         self._create_sparse_file(volume_path, volume_size)
-
+        self._set_rw_permission(volume_path)
         # Set the attributes prior to allocating any blocks so that
         # they are allocated according to the policy
         v_metadata = volume.get('volume_metadata')
@@ -284,6 +287,7 @@ class GPFSDriver(driver.VolumeDriver):
         volume_path = self.local_path(volume)
         snapshot_path = self.local_path(snapshot)
         self._create_gpfs_copy(src=snapshot_path, dest=volume_path)
+        self._set_rw_permission(volume_path)
         self._gpfs_redirect(volume_path)
         virt_size = self._resize_volume_file(volume, volume['size'])
         return {'size': math.ceil(virt_size / units.GiB)}
@@ -292,6 +296,7 @@ class GPFSDriver(driver.VolumeDriver):
         src = self.local_path(src_vref)
         dest = self.local_path(volume)
         self._create_gpfs_clone(src, dest)
+        self._set_rw_permission(dest)
         virt_size = self._resize_volume_file(volume, volume['size'])
         return {'size': math.ceil(virt_size / units.GiB)}
 
@@ -361,17 +366,14 @@ class GPFSDriver(driver.VolumeDriver):
         if(self._gpfs_redirect(src) and self._gpfs_redirect(dest)):
             self._execute('rm', '-f', snap, run_as_root=True)
 
-    def _create_gpfs_copy(self, src, dest, modebits='666'):
+    def _create_gpfs_copy(self, src, dest):
         self._execute('mmclone', 'copy', src, dest, run_as_root=True)
-        self._execute('chmod', modebits, dest, run_as_root=True)
 
-    def _create_gpfs_snap(self, src, dest=None, modebits='644'):
+    def _create_gpfs_snap(self, src, dest=None):
         if dest is None:
             self._execute('mmclone', 'snap', src, run_as_root=True)
-            self._execute('chmod', modebits, src, run_as_root=True)
         else:
             self._execute('mmclone', 'snap', src, dest, run_as_root=True)
-            self._execute('chmod', modebits, dest, run_as_root=True)
 
     def _is_gpfs_parent_file(self, gpfs_file):
         out, _ = self._execute('mmclone', 'show', gpfs_file, run_as_root=True)
@@ -384,6 +386,7 @@ class GPFSDriver(driver.VolumeDriver):
         volume_path = os.path.join(self.configuration.gpfs_mount_point_base,
                                    snapshot['volume_name'])
         self._create_gpfs_snap(src=volume_path, dest=snapshot_path)
+        self._set_rw_permission(snapshot_path, modebits='640')
         self._gpfs_redirect(volume_path)
 
     def delete_snapshot(self, snapshot):
@@ -499,7 +502,7 @@ class GPFSDriver(driver.VolumeDriver):
         vol_path = self.local_path(volume)
         # if the image is not already a GPFS snap file make it so
         if not self._is_gpfs_parent_file(image_path):
-            self._create_gpfs_snap(image_path, modebits='666')
+            self._create_gpfs_snap(image_path)
 
         data = image_utils.qemu_img_info(image_path)
 
@@ -515,15 +518,14 @@ class GPFSDriver(driver.VolumeDriver):
                 LOG.debug('Clone image to vol %s using copyfile' %
                           volume['id'])
                 shutil.copyfile(image_path, vol_path)
-                self._execute('chmod', '666', vol_path, run_as_root=True)
 
         # if image is not raw convert it to raw into vol_path destination
         else:
             LOG.debug('Clone image to vol %s using qemu convert' %
                       volume['id'])
             image_utils.convert_image(image_path, vol_path, 'raw')
-            self._execute('chmod', '666', vol_path, run_as_root=True)
 
+        self._set_rw_permission(vol_path)
         self._resize_volume_file(volume, volume['size'])
 
         return {'provider_location': None}, True
@@ -552,7 +554,7 @@ class GPFSDriver(driver.VolumeDriver):
         """Resize volume file to new size."""
         vol_path = self.local_path(volume)
         try:
-            image_utils.resize_image(vol_path, new_size)
+            image_utils.resize_image(vol_path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
             LOG.error(_("Failed to resize volume "
                         "%(volume_id)s, error: %(error)s") %
