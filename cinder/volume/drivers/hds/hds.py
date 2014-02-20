@@ -97,7 +97,7 @@ def _xml_read(root, element, check=None):
         if check:
             raise exception.ParameterNotFound(param=element)
         return None
-    except ETree.ParseError as e:
+    except ETree.ParseError:
         if check:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("XML exception reading parameter: %s") % element)
@@ -361,14 +361,14 @@ class HUSDriver(driver.ISCSIDriver):
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
         (arid, lun) = _loc_info(volume['provider_location'])['id_lu']
-        out = self.bend.extend_vol(self.config['hus_cmd'],
-                                   HDS_VERSION,
-                                   self.config['mgmt_ip0'],
-                                   self.config['mgmt_ip1'],
-                                   self.config['username'],
-                                   self.config['password'],
-                                   arid, lun,
-                                   '%s' % (new_size * 1024))
+        self.bend.extend_vol(self.config['hus_cmd'],
+                             HDS_VERSION,
+                             self.config['mgmt_ip0'],
+                             self.config['mgmt_ip1'],
+                             self.config['username'],
+                             self.config['password'],
+                             arid, lun,
+                             '%s' % (new_size * 1024))
         LOG.debug(_("LUN %(lun)s extended to %(size)s GB.")
                   % {'lun': lun,
                      'size': new_size})
@@ -383,25 +383,25 @@ class HUSDriver(driver.ISCSIDriver):
         (arid, lun) = info['id_lu']
         if 'tgt' in info.keys():  # connected?
             (_portal, iqn, loc, ctl, port) = info['tgt']
-            _out = self.bend.del_iscsi_conn(self.config['hus_cmd'],
-                                            HDS_VERSION,
-                                            self.config['mgmt_ip0'],
-                                            self.config['mgmt_ip1'],
-                                            self.config['username'],
-                                            self.config['password'],
-                                            arid, lun, ctl, port, iqn,
-                                            '')
+            self.bend.del_iscsi_conn(self.config['hus_cmd'],
+                                     HDS_VERSION,
+                                     self.config['mgmt_ip0'],
+                                     self.config['mgmt_ip1'],
+                                     self.config['username'],
+                                     self.config['password'],
+                                     arid, lun, ctl, port, iqn,
+                                     '')
         name = self.hus_name
         LOG.debug(_("delete lun %(lun)s on %(name)s")
                   % {'lun': lun,
                      'name': name})
-        _out = self.bend.delete_lu(self.config['hus_cmd'],
-                                   HDS_VERSION,
-                                   self.config['mgmt_ip0'],
-                                   self.config['mgmt_ip1'],
-                                   self.config['username'],
-                                   self.config['password'],
-                                   arid, lun)
+        self.bend.delete_lu(self.config['hus_cmd'],
+                            HDS_VERSION,
+                            self.config['mgmt_ip0'],
+                            self.config['mgmt_ip1'],
+                            self.config['username'],
+                            self.config['password'],
+                            arid, lun)
 
     def remove_export(self, context, volume):
         """Disconnect a volume from an attached instance."""
@@ -448,14 +448,14 @@ class HUSDriver(driver.ISCSIDriver):
         (arid, lun) = info['id_lu']
         (_portal, iqn, loc, ctl, port) = info['tgt']
 
-        _out = self.bend.del_iscsi_conn(self.config['hus_cmd'],
-                                        HDS_VERSION,
-                                        self.config['mgmt_ip0'],
-                                        self.config['mgmt_ip1'],
-                                        self.config['username'],
-                                        self.config['password'],
-                                        arid, lun, ctl, port, iqn,
-                                        connector['initiator'])
+        self.bend.del_iscsi_conn(self.config['hus_cmd'],
+                                 HDS_VERSION,
+                                 self.config['mgmt_ip0'],
+                                 self.config['mgmt_ip1'],
+                                 self.config['username'],
+                                 self.config['password'],
+                                 arid, lun, ctl, port, iqn,
+                                 connector['initiator'])
         self._update_vol_location(volume['id'], loc)
         return {'provider_location': loc}
 
@@ -512,13 +512,13 @@ class HUSDriver(driver.ISCSIDriver):
         if loc is None:         # to take care of spurious input
             return              # which could cause exception.
         (arid, lun) = loc.split('.')
-        _out = self.bend.delete_lu(self.config['hus_cmd'],
-                                   HDS_VERSION,
-                                   self.config['mgmt_ip0'],
-                                   self.config['mgmt_ip1'],
-                                   self.config['username'],
-                                   self.config['password'],
-                                   arid, lun)
+        self.bend.delete_lu(self.config['hus_cmd'],
+                            HDS_VERSION,
+                            self.config['mgmt_ip0'],
+                            self.config['mgmt_ip1'],
+                            self.config['username'],
+                            self.config['password'],
+                            arid, lun)
         LOG.debug(_("LUN %s is deleted.") % lun)
         return
 

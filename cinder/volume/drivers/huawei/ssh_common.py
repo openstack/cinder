@@ -409,8 +409,6 @@ class TseriesCommon():
 
         """
 
-        maxpool_id = None
-        maxpool_size = 0.0
         nameindex, sizeindex = ((1, 4) if luntype == 'Thin' else (5, 3))
         pools_dev = sorted(pools_dev, key=lambda x: float(x[sizeindex]))
         while len(pools_dev) > 0:

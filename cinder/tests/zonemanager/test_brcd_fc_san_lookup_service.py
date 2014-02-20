@@ -81,7 +81,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
     def test_get_device_mapping_from_network(self, get_nameserver_info_mock):
         initiator_list = ['10008c7cff523b01']
         target_list = ['20240002ac000a50', '20240002ac000a40']
-        with mock.patch.object(self.client, 'connect') as client_connect_mock:
+        with mock.patch.object(self.client, 'connect'):
             get_nameserver_info_mock.return_value = (nsshow_data)
             device_map = self.get_device_mapping_from_network(
                 initiator_list, target_list)

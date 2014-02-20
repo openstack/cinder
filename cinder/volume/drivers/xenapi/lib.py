@@ -513,7 +513,7 @@ class NFSBasedVolumeOperations(object):
         glance_host, glance_port, glance_use_ssl = glance_server
 
         try:
-            result = self.glance_plugin.upload_vhd(
+            self.glance_plugin.upload_vhd(
                 vdi_uuids, image_id, glance_host, glance_port, glance_use_ssl,
                 os.path.join(sr_base_path, sr_uuid), auth_token, dict())
         finally:

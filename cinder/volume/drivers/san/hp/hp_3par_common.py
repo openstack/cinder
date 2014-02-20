@@ -227,8 +227,8 @@ class HP3PARCommon(object):
 
     def validate_cpg(self, cpg_name):
         try:
-            cpg = self.client.getCPG(cpg_name)
-        except hpexceptions.HTTPNotFound as ex:
+            self.client.getCPG(cpg_name)
+        except hpexceptions.HTTPNotFound:
             err = (_("CPG (%s) doesn't exist on array") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)

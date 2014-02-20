@@ -376,7 +376,7 @@ class QoSSpecsTestCase(test.TestCase):
                  'key2': 'value2',
                  'key3': 'value3',
                  'consumer': 'back-end'}
-        id = self._create_qos_specs(one_time_value, input)
+        self._create_qos_specs(one_time_value, input)
         specs = qos_specs.get_qos_specs_by_name(self.ctxt,
                                                 one_time_value)
         self.assertEqual(specs['specs']['key1'], one_time_value)

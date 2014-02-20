@@ -818,7 +818,6 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
         extra_specs = {}
         mock_volume_extra_specs.return_value = extra_specs
         fake_share = 'localhost:myshare'
-        fake_qos_policy = 'qos_policy_1'
         with mock.patch.object(drv, '_ensure_shares_mounted'):
             with mock.patch.object(drv, '_find_shares',
                                    return_value=['localhost:myshare']):

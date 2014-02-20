@@ -394,7 +394,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         Error checking done by manage_existing_get_size is not repeated.
         """
         lv_name = existing_ref['lv_name']
-        lv = self.vg.get_volume(lv_name)
+        self.vg.get_volume(lv_name)
 
         # Attempt to rename the LV to match the OpenStack internal name.
         try:

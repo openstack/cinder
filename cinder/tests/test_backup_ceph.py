@@ -459,7 +459,6 @@ class BackupCephTestCase(test.TestCase):
     def test_backup_vol_length_0(self):
         volume_id = str(uuid.uuid4())
         self._create_volume_db_entry(volume_id, 0)
-        volume = db.volume_get(self.ctxt, volume_id)
 
         backup_id = str(uuid.uuid4())
         self._create_backup_db_entry(backup_id, volume_id, 1)

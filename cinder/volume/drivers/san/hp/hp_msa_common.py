@@ -67,7 +67,7 @@ class HPMSACommon(object):
                    {'host': self.config.san_ip, 'err': ex})
             LOG.error(msg)
             raise exception.HPMSAConnectionError(reason=msg)
-        except msa.HPMSAAuthenticationError as e:
+        except msa.HPMSAAuthenticationError:
             msg = _("Failed to log on MSA Array (invalid login?)")
             LOG.error(msg)
             raise exception.HPMSAConnectionError(reason=msg)

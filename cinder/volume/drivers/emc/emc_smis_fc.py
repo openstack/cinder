@@ -50,7 +50,6 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
         """Creates a EMC(VMAX/VNX) volume."""
         volpath = self.common.create_volume(volume)
 
-        ctxt = context.get_admin_context()
         model_update = {}
         volume['provider_location'] = str(volpath)
         model_update['provider_location'] = volume['provider_location']
@@ -60,7 +59,6 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
         """Creates a volume from a snapshot."""
         volpath = self.common.create_volume_from_snapshot(volume, snapshot)
 
-        ctxt = context.get_admin_context()
         model_update = {}
         volume['provider_location'] = str(volpath)
         model_update['provider_location'] = volume['provider_location']
@@ -70,7 +68,6 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
         """Creates a cloned volume."""
         volpath = self.common.create_cloned_volume(volume, src_vref)
 
-        ctxt = context.get_admin_context()
         model_update = {}
         volume['provider_location'] = str(volpath)
         model_update['provider_location'] = volume['provider_location']

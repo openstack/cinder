@@ -22,7 +22,7 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    snapshots = Table('snapshots', meta, autoload=True)
+    Table('snapshots', meta, autoload=True)
 
     # New table
     snapshot_metadata = Table(

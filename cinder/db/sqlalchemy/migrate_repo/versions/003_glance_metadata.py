@@ -27,16 +27,14 @@ def upgrade(migrate_engine):
     # Just for the ForeignKey and column creation to succeed, these are not the
     # actual definitions of tables .
     #
-    volumes = Table('volumes',
-                    meta,
-                    Column('id', Integer(),
-                           primary_key=True, nullable=False),
-                    mysql_engine='InnoDB')
-    snapshots = Table('snapshots',
-                      meta,
-                      Column('id', Integer(),
-                             primary_key=True, nullable=False),
-                      mysql_engine='InnoDB')
+    Table('volumes',
+          meta,
+          Column('id', Integer(), primary_key=True, nullable=False),
+          mysql_engine='InnoDB')
+    Table('snapshots',
+          meta,
+          Column('id', Integer(), primary_key=True, nullable=False),
+          mysql_engine='InnoDB')
     # Create new table
     volume_glance_metadata = Table(
         'volume_glance_metadata',

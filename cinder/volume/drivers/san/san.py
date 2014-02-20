@@ -118,7 +118,6 @@ class SanDriver(driver.VolumeDriver):
                                          max_size=max_size)
         last_exception = None
         try:
-            total_attempts = attempts
             with self.sshpool.item() as ssh:
                 while attempts > 0:
                     attempts -= 1

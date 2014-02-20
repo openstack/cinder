@@ -313,7 +313,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         cliq_args['volumeName'] = volume['name']
         cliq_args['prompt'] = 'false'  # Don't confirm
         try:
-            volume_info = self._cliq_get_volume_info(volume['name'])
+            self._cliq_get_volume_info(volume['name'])
         except processutils.ProcessExecutionError:
             LOG.error(_("Volume did not exist. It will not be deleted"))
             return
@@ -325,7 +325,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         cliq_args['snapshotName'] = snapshot['name']
         cliq_args['prompt'] = 'false'  # Don't confirm
         try:
-            volume_info = self._cliq_get_snapshot_info(snapshot['name'])
+            self._cliq_get_snapshot_info(snapshot['name'])
         except processutils.ProcessExecutionError:
             LOG.error(_("Snapshot did not exist. It will not be deleted"))
             return

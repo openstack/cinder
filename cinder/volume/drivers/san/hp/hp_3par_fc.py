@@ -291,7 +291,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         domain = self.common.get_domain(cpg)
         try:
             host = self.common._get_3par_host(hostname)
-        except hpexceptions.HTTPNotFound as ex:
+        except hpexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
             persona_id = self.common.get_persona_type(volume)
             # host doesn't exist, we have to create it

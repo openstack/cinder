@@ -664,12 +664,12 @@ class ResourceTest(test.TestCase):
 
         def extension1(req):
             called.append('pre1')
-            resp_obj = yield
+            yield
             called.append('post1')
 
         def extension2(req):
             called.append('pre2')
-            resp_obj = yield
+            yield
             called.append('post2')
 
         extensions = [extension1, extension2]
@@ -769,11 +769,11 @@ class ResourceTest(test.TestCase):
         called = []
 
         def extension1(req):
-            resp_obj = yield
+            yield
             called.append(1)
 
         def extension2(req):
-            resp_obj = yield
+            yield
             called.append(2)
 
         ext1 = extension1(None)
@@ -798,11 +798,11 @@ class ResourceTest(test.TestCase):
         called = []
 
         def extension1(req):
-            resp_obj = yield
+            yield
             called.append(1)
 
         def extension2(req):
-            resp_obj = yield
+            yield
             called.append(2)
             yield 'foo'
 
@@ -927,19 +927,19 @@ class ValidBodyTest(test.TestCase):
         self.assertTrue(self.controller.is_valid_body(body, 'foo'))
 
     def test_is_valid_body_none(self):
-        resource = wsgi.Resource(controller=None)
+        wsgi.Resource(controller=None)
         self.assertFalse(self.controller.is_valid_body(None, 'foo'))
 
     def test_is_valid_body_empty(self):
-        resource = wsgi.Resource(controller=None)
+        wsgi.Resource(controller=None)
         self.assertFalse(self.controller.is_valid_body({}, 'foo'))
 
     def test_is_valid_body_no_entity(self):
-        resource = wsgi.Resource(controller=None)
+        wsgi.Resource(controller=None)
         body = {'bar': {}}
         self.assertFalse(self.controller.is_valid_body(body, 'foo'))
 
     def test_is_valid_body_malformed_entity(self):
-        resource = wsgi.Resource(controller=None)
+        wsgi.Resource(controller=None)
         body = {'foo': 'bar'}
         self.assertFalse(self.controller.is_valid_body(body, 'foo'))

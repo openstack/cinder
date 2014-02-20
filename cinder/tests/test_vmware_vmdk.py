@@ -308,7 +308,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._driver.volumeops = self._volumeops
 
         backing = FakeMor('VirtualMachine', 'my_vm')
-        task = FakeMor('Task', 'my_task')
+        FakeMor('Task', 'my_task')
 
         m.StubOutWithMock(self._volumeops, 'get_backing')
         m.StubOutWithMock(self._volumeops, 'delete_backing')
@@ -1468,7 +1468,6 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         m.StubOutWithMock(self._driver, '_get_folder_ds_summary')
         folder = FakeMor('Folder', 'my_fol')
         summary = FakeDatastoreSummary(1, 1, datastore1)
-        size = 1
         self._driver._get_folder_ds_summary(volume, resource_pool,
                                             [datastore1]).AndReturn((folder,
                                                                      summary))

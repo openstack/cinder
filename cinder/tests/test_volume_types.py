@@ -84,9 +84,7 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_get_default_volume_type(self):
         """Ensures default volume type can be retrieved."""
-        type_ref = volume_types.create(self.ctxt,
-                                       conf_fixture.def_vol_type,
-                                       {})
+        volume_types.create(self.ctxt, conf_fixture.def_vol_type, {})
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type.get('name'),
                          conf_fixture.def_vol_type)
@@ -95,7 +93,6 @@ class VolumeTypeTestCase(test.TestCase):
         """Ensures proper exception raised if default volume type
         is not in database.
         """
-        session = db_api.get_session()
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type, {})
 

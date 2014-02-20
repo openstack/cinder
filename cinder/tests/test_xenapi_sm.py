@@ -121,8 +121,7 @@ class DriverTestCase(test.TestCase):
         ops.delete_volume('server', 'path', 'sr_uuid', 'vdi_uuid')
 
         mock.ReplayAll()
-        result = drv.delete_volume(dict(
-            provider_location='sr_uuid/vdi_uuid'))
+        drv.delete_volume(dict(provider_location='sr_uuid/vdi_uuid'))
         mock.VerifyAll()
 
     def test_create_export_does_not_raise_exception(self):

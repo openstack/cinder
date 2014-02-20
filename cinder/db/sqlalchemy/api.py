@@ -1759,7 +1759,7 @@ def snapshot_metadata_update(context, snapshot_id, metadata, delete):
             try:
                 meta_ref = _snapshot_metadata_get_item(context, snapshot_id,
                                                        meta_key, session)
-            except exception.SnapshotMetadataNotFound as e:
+            except exception.SnapshotMetadataNotFound:
                 meta_ref = models.SnapshotMetadata()
                 item.update({"key": meta_key, "snapshot_id": snapshot_id})
 
@@ -2054,7 +2054,7 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
             try:
                 spec_ref = _volume_type_extra_specs_get_item(
                     context, volume_type_id, key, session)
-            except exception.VolumeTypeExtraSpecsNotFound as e:
+            except exception.VolumeTypeExtraSpecsNotFound:
                 spec_ref = models.VolumeTypeExtraSpecs()
             spec_ref.update({"key": key, "value": value,
                              "volume_type_id": volume_type_id,
@@ -2328,7 +2328,7 @@ def qos_specs_update(context, qos_specs_id, specs):
             try:
                 spec_ref = _qos_specs_get_item(
                     context, qos_specs_id, key, session)
-            except exception.QoSSpecsKeyNotFound as e:
+            except exception.QoSSpecsKeyNotFound:
                 spec_ref = models.QualityOfServiceSpecs()
             id = None
             if spec_ref.get('id', None):
@@ -2794,7 +2794,6 @@ def transfer_accept(context, transfer_id, user_id, project_id):
         volume_id = transfer_ref['volume_id']
         volume_ref = _volume_get(context, volume_id, session=session)
         if volume_ref['status'] != 'awaiting-transfer':
-            volume_status = volume_ref['status']
             msg = _('Transfer %(transfer_id)s: Volume id %(volume_id)s in '
                     'unexpected state %(status)s, expected '
                     'awaiting-transfer') % {'transfer_id': transfer_id,

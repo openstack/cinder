@@ -71,7 +71,6 @@ def is_xml_item_exist(xml_root, item, attrib_key=None):
     :return: True of False
     """
     items_list = get_xml_item(xml_root, item)
-    value = []
     if attrib_key:
         for tmp_dict in items_list:
             if tmp_dict['attrib'].get(attrib_key, None):
