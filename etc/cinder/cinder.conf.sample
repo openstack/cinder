@@ -1219,6 +1219,19 @@
 
 
 #
+# Options defined in cinder.volume.drivers.ibm.xiv_ds8k
+#
+
+# Proxy driver that connects to the IBM Storage Array (string
+# value)
+#xiv_ds8k_proxy=xiv_ds8k_openstack.nova_proxy.XIVDS8KNovaProxy
+
+# Connection type to the IBM Storage Array
+# (fibre_channel|iscsi) (string value)
+#xiv_ds8k_connection_type=iscsi
+
+
+#
 # Options defined in cinder.volume.drivers.lvm
 #
 
@@ -1684,19 +1697,6 @@
 
 # Base path to the storage repository (string value)
 #xenapi_sr_base_path=/var/run/sr-mount
-
-
-#
-# Options defined in cinder.volume.drivers.xiv_ds8k
-#
-
-# Proxy driver that connects to the IBM Storage Array (string
-# value)
-#xiv_ds8k_proxy=xiv_ds8k_openstack.nova_proxy.XIVDS8KNovaProxy
-
-# Connection type to the IBM Storage Array
-# (fibre_channel|iscsi) (string value)
-#xiv_ds8k_connection_type=iscsi
 
 
 #

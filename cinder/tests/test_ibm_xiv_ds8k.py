@@ -25,7 +25,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers import xiv_ds8k
+from cinder.volume.drivers.ibm import xiv_ds8k
 
 
 FAKE = "fake"
@@ -122,7 +122,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         configuration = mox.MockObject(conf.Configuration)
         configuration.san_is_local = False
         configuration.xiv_ds8k_proxy = \
-            'cinder.tests.test_xiv_ds8k.XIVDS8KFakeProxyDriver'
+            'cinder.tests.test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver'
         configuration.xiv_ds8k_connection_type = 'iscsi'
         configuration.san_ip = FAKE
         configuration.san_login = FAKE
@@ -130,7 +130,8 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         configuration.san_password = FAKE
         configuration.append_config_values(mox.IgnoreArg())
 
-        self.driver = xiv_ds8k.XIVDS8KDriver(configuration=configuration)
+        self.driver = xiv_ds8k.XIVDS8KDriver(
+            configuration=configuration)
 
     def test_initialized_should_set_xiv_ds8k_info(self):
         """Test that the san flags are passed to the IBM proxy."""
