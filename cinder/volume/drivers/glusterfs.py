@@ -501,6 +501,8 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                    new_snap_path]
         self._execute(*command, run_as_root=True)
 
+        self._set_rw_permissions_for_all(new_snap_path)
+
     def _create_snapshot_offline(self, snapshot, path_to_disk):
         """Create snapshot (offline case)."""
 
