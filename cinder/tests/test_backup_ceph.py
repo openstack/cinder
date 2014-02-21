@@ -922,9 +922,6 @@ class VolumeMetadataBackupTestCase(test.TestCase):
         self.backup_id = str(uuid.uuid4())
         self.mb = ceph.VolumeMetadataBackup(mock.Mock(), self.backup_id)
 
-    def tearDown(self):
-        super(VolumeMetadataBackupTestCase, self).tearDown()
-
     @common_meta_backup_mocks
     def test_name(self):
         self.assertEqual(self.mb.name, 'backup.%s.meta' % (self.backup_id))

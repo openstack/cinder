@@ -24,12 +24,6 @@ from cinder.tests import utils as testutils
 class FinishVolumeMigrationTestCase(test.TestCase):
     """Test cases for finish_volume_migration."""
 
-    def setUp(self):
-        super(FinishVolumeMigrationTestCase, self).setUp()
-
-    def tearDown(self):
-        super(FinishVolumeMigrationTestCase, self).tearDown()
-
     def test_finish_volume_migration(self):
         ctxt = context.RequestContext(user_id='user_id',
                                       project_id='project_id',

@@ -40,11 +40,6 @@ CONF.register_opts(more_volume_opts)
 
 
 class VolumeConfigurationTest(test.TestCase):
-    def setUp(self):
-        super(VolumeConfigurationTest, self).setUp()
-
-    def tearDown(self):
-        super(VolumeConfigurationTest, self).tearDown()
 
     def test_group_grafts_opts(self):
         c = configuration.Configuration(volume_opts, config_group='foo')

@@ -43,9 +43,6 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                                            project_id='project_id',
                                            is_admin=True)
 
-    def tearDown(self):
-        super(QualityOfServiceSpecsTableTestCase, self).tearDown()
-
     def _create_qos_specs(self, name, values=None):
         """Create a transfer object."""
         if values:

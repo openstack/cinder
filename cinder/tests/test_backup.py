@@ -53,9 +53,6 @@ class BackupTestCase(test.TestCase):
         self.ctxt = context.get_admin_context()
         self.backup_mgr.driver.set_initialized()
 
-    def tearDown(self):
-        super(BackupTestCase, self).tearDown()
-
     def _create_backup_db_entry(self, volume_id=1, display_name='test_backup',
                                 display_description='this is a test backup',
                                 container='volumebackups',

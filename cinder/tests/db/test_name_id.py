@@ -33,9 +33,6 @@ class NameIDsTestCase(test.TestCase):
         self.ctxt = context.RequestContext(user_id='user_id',
                                            project_id='project_id')
 
-    def tearDown(self):
-        super(NameIDsTestCase, self).tearDown()
-
     def test_name_id_same(self):
         """New volume should have same 'id' and 'name_id'."""
         vol_ref = testutils.create_volume(self.ctxt, size=1)
