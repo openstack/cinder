@@ -308,7 +308,7 @@ def snapshot_metadata_get(context, snapshot_id):
 
 def snapshot_metadata_delete(context, snapshot_id, key):
     """Delete the given metadata item."""
-    IMPL.snapshot_metadata_delete(context, snapshot_id, key)
+    return IMPL.snapshot_metadata_delete(context, snapshot_id, key)
 
 
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
@@ -327,7 +327,7 @@ def volume_metadata_get(context, volume_id):
 
 def volume_metadata_delete(context, volume_id, key):
     """Delete the given metadata item."""
-    IMPL.volume_metadata_delete(context, volume_id, key)
+    return IMPL.volume_metadata_delete(context, volume_id, key)
 
 
 def volume_metadata_update(context, volume_id, metadata, delete):
@@ -345,12 +345,13 @@ def volume_admin_metadata_get(context, volume_id):
 
 def volume_admin_metadata_delete(context, volume_id, key):
     """Delete the given metadata item."""
-    IMPL.volume_admin_metadata_delete(context, volume_id, key)
+    return IMPL.volume_admin_metadata_delete(context, volume_id, key)
 
 
 def volume_admin_metadata_update(context, volume_id, metadata, delete):
     """Update metadata if it exists, otherwise create it."""
-    IMPL.volume_admin_metadata_update(context, volume_id, metadata, delete)
+    return IMPL.volume_admin_metadata_update(context, volume_id, metadata,
+                                             delete)
 
 
 ##################
@@ -427,7 +428,7 @@ def volume_type_extra_specs_get(context, volume_type_id):
 
 def volume_type_extra_specs_delete(context, volume_type_id, key):
     """Delete the given extra specs item."""
-    IMPL.volume_type_extra_specs_delete(context, volume_type_id, key)
+    return IMPL.volume_type_extra_specs_delete(context, volume_type_id, key)
 
 
 def volume_type_extra_specs_update_or_create(context,
@@ -436,9 +437,9 @@ def volume_type_extra_specs_update_or_create(context,
     """Create or update volume type extra specs. This adds or modifies the
     key/value pairs specified in the extra specs dict argument
     """
-    IMPL.volume_type_extra_specs_update_or_create(context,
-                                                  volume_type_id,
-                                                  extra_specs)
+    return IMPL.volume_type_extra_specs_update_or_create(context,
+                                                         volume_type_id,
+                                                         extra_specs)
 
 
 ###################
@@ -516,12 +517,12 @@ def qos_specs_disassociate_all(context, qos_specs_id):
 
 def qos_specs_delete(context, qos_specs_id):
     """Delete the qos_specs."""
-    IMPL.qos_specs_delete(context, qos_specs_id)
+    return IMPL.qos_specs_delete(context, qos_specs_id)
 
 
 def qos_specs_item_delete(context, qos_specs_id, key):
     """Delete specified key in the qos_specs."""
-    IMPL.qos_specs_item_delete(context, qos_specs_id, key)
+    return IMPL.qos_specs_item_delete(context, qos_specs_id, key)
 
 
 def qos_specs_update(context, qos_specs_id, specs):
@@ -530,7 +531,7 @@ def qos_specs_update(context, qos_specs_id, specs):
     This adds or modifies the key/value pairs specified in the
     specs dict argument for a given qos_specs.
     """
-    IMPL.qos_specs_update(context, qos_specs_id, specs)
+    return IMPL.qos_specs_update(context, qos_specs_id, specs)
 
 
 ###################
