@@ -16,7 +16,7 @@
 """
 Volume driver common utilities for HP 3PAR Storage array
 
-The 3PAR drivers requires 3.1.2 MU3 firmware on the 3PAR array.
+The 3PAR drivers requires 3.1.3 firmware on the 3PAR array.
 
 You will need to install the python hp3parclient.
 sudo pip install hp3parclient
@@ -55,7 +55,7 @@ from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '2.9.0'
+MIN_CLIENT_VERSION = '3.0.0'
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -110,10 +110,11 @@ class HP3PARCommon(object):
         1.2.6 - Allow optional specifying n:s:p for vlun creation bug #1269515
                 This update now requires 3.1.2 MU3 firmware
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
+        2.0.0 - Update hp3parclient API uses 3.0.x
 
     """
 
-    VERSION = "1.3.0"
+    VERSION = "2.0.0"
 
     stats = {}
 
@@ -206,7 +207,6 @@ class HP3PARCommon(object):
         try:
             # make sure the default CPG exists
             self.validate_cpg(self.config.hp3par_cpg)
-            self.client.setHighConnections()
         finally:
             self.client_logout()
 
@@ -426,6 +426,7 @@ class HP3PARCommon(object):
 
         try:
             self._delete_3par_host(hostname)
+            self._remove_hosts_naming_dict_host(hostname)
         except hpexceptions.HTTPConflict as ex:
             # host will only be removed after all vluns
             # have been removed
@@ -433,6 +434,15 @@ class HP3PARCommon(object):
                 pass
             else:
                 raise
+
+    def _remove_hosts_naming_dict_host(self, hostname):
+        items = self.hosts_naming_dict.items()
+        lkey = None
+        for key, value in items:
+            if value == hostname:
+                lkey = key
+        if lkey is not None:
+            del self.hosts_naming_dict[lkey]
 
     def _get_volume_type(self, type_id):
         ctxt = context.get_admin_context()
@@ -659,8 +669,11 @@ class HP3PARCommon(object):
                      tpvv=True):
         # Virtual volume sets are not supported with the -online option
         LOG.debug('Creating clone of a volume %s' % src_name)
-        self.client.copyVolume(src_name, dest_name, cpg,
-                               snap_cpg, tpvv)
+        optional = {'tpvv': tpvv, 'online': True}
+        if snap_cpg is not None:
+            optional['snapCPG'] = snap_cpg
+
+        self.client.copyVolume(src_name, dest_name, cpg, optional)
 
     def get_next_word(self, s, search_string):
         """Return the next word.
@@ -706,6 +719,21 @@ class HP3PARCommon(object):
             # volume set name in the error.
             try:
                 self.client.deleteVolume(volume_name)
+            except hpexceptions.HTTPBadRequest as ex:
+                if ex.get_code() == 29:
+                    if self.client.isOnlinePhysicalCopy(volume_name):
+                        LOG.debug(_("Found an online copy for %(volume)s")
+                                  % {'volume': volume_name})
+                        # the volume is in process of being cloned.
+                        # stopOnlinePhysicalCopy will also delete
+                        # the volume once it stops the copy.
+                        self.client.stopOnlinePhysicalCopy(volume_name)
+                    else:
+                        LOG.error(str(ex))
+                        raise ex
+                else:
+                    LOG.error(str(ex))
+                    raise ex
             except hpexceptions.HTTPConflict as ex:
                 if ex.get_code() == 34:
                     # This is a special case which means the

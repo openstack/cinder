@@ -15,11 +15,11 @@
 #
 """
 Volume driver for HP 3PAR Storage array.
-This driver requires 3.1.2 MU3 firmware on the 3PAR array, using
-the 2.x version of the hp3parclient.
+This driver requires 3.1.3 firmware on the 3PAR array, using
+the 3.x version of the hp3parclient.
 
 You will need to install the python hp3parclient.
-sudo pip install --upgrade "hp3parclient>=2.0"
+sudo pip install --upgrade "hp3parclient>=3.0"
 
 Set the following in the cinder.conf file to enable the
 3PAR iSCSI Driver along with the required flags:
@@ -59,10 +59,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.2.6 - Use least-used iscsi n:s:p for iscsi volume attach bug #1269515
                 This update now requires 3.1.2 MU3 firmware
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
+        2.0.0 - Update hp3parclient API uses 3.0.x
 
     """
 
-    VERSION = "1.3.0"
+    VERSION = "2.0.0"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -431,7 +432,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     @utils.synchronized('3par', external=True)
     def extend_volume(self, volume, new_size):
-        self.common.extend_volume(volume, new_size)
+        self.common.client_login()
+        try:
+            self.common.extend_volume(volume, new_size)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def attach_volume(self, context, volume, instance_uuid, host_name,
