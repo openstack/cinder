@@ -50,6 +50,8 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder import units
+from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 
@@ -111,10 +113,11 @@ class HP3PARCommon(object):
                 This update now requires 3.1.2 MU3 firmware
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
         2.0.0 - Update hp3parclient API uses 3.0.x
+        2.0.1 - Updated to use qos_specs, added new qos settings and personas
 
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.1"
 
     stats = {}
 
@@ -136,8 +139,12 @@ class HP3PARCommon(object):
                             '9 - EGENERA',
                             '10 - ONTAP-legacy',
                             '11 - VMware',
-                            '12 - OpenVMS']
-    hp_qos_keys = ['maxIOPS', 'maxBWS']
+                            '12 - OpenVMS',
+                            '13 - HPUX',
+                            '15 - WindowsServer']
+    hp_qos_keys = ['minIOPS', 'maxIOPS', 'minBWS', 'maxBWS', 'latency',
+                   'priority']
+    qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
     hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs']
 
     def __init__(self, config):
@@ -462,13 +469,24 @@ class HP3PARCommon(object):
 
     def _get_qos_by_volume_type(self, volume_type):
         qos = {}
+        qos_specs_id = volume_type.get('qos_specs_id')
         specs = volume_type.get('extra_specs')
-        for key, value in specs.iteritems():
+
+        #NOTE(kmartin): We prefer the qos_specs association
+        # and override any existing extra-specs settings
+        # if present.
+        if qos_specs_id is not None:
+            kvs = qos_specs.get_qos_specs(context.get_admin_context(),
+                                          qos_specs_id)['specs']
+        else:
+            kvs = specs
+
+        for key, value in kvs.iteritems():
             if 'qos:' in key:
                 fields = key.split(':')
                 key = fields[1]
             if key in self.hp_qos_keys:
-                qos[key] = int(value)
+                qos[key] = value
         return qos
 
     def _get_keys_by_volume_type(self, volume_type):
@@ -483,9 +501,40 @@ class HP3PARCommon(object):
         return hp3par_keys
 
     def _set_qos_rule(self, qos, vvs_name):
+        min_io = self._get_qos_value(qos, 'minIOPS')
         max_io = self._get_qos_value(qos, 'maxIOPS')
+        min_bw = self._get_qos_value(qos, 'minBWS')
         max_bw = self._get_qos_value(qos, 'maxBWS')
-        self.client.setQOSRule(vvs_name, max_io, max_bw)
+        latency = self._get_qos_value(qos, 'latency')
+        priority = self._get_qos_value(qos, 'priority', 'normal')
+
+        qosRule = {}
+        if min_io:
+            qosRule['ioMinGoal'] = int(min_io)
+            if max_io is None:
+                qosRule['ioMaxLimit'] = int(min_io)
+        if max_io:
+            qosRule['ioMaxLimit'] = int(max_io)
+            if min_io is None:
+                qosRule['ioMinGoal'] = int(max_io)
+        if min_bw:
+            qosRule['bwMinGoalKB'] = int(min_bw) * units.KiB
+            if max_bw is None:
+                qosRule['bwMaxLimitKB'] = int(min_bw) * units.KiB
+        if max_bw:
+            qosRule['bwMaxLimitKB'] = int(max_bw) * units.KiB
+            if min_bw is None:
+                qosRule['bwMinGoalKB'] = int(max_bw) * units.KiB
+        if latency:
+            qosRule['latencyGoal'] = int(latency)
+        if priority:
+            qosRule['priority'] = self.qos_priority_level.get(priority.lower())
+
+        try:
+            self.client.createQoSRules(vvs_name, qosRule)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Error creating QOS rule %s") % qosRule)
 
     def _add_volume_to_volume_set(self, volume, volume_name,
                                   cpg, vvs_name, qos):
@@ -501,8 +550,14 @@ class HP3PARCommon(object):
             vvs_name = self._get_3par_vvs_name(volume['id'])
             domain = self.get_domain(cpg)
             self.client.createVolumeSet(vvs_name, domain)
-            self._set_qos_rule(qos, vvs_name)
-            self.client.addVolumeToVolumeSet(vvs_name, volume_name)
+            try:
+                self._set_qos_rule(qos, vvs_name)
+                self.client.addVolumeToVolumeSet(vvs_name, volume_name)
+            except Exception as ex:
+                # Cleanup the volume set if unable to create the qos rule
+                # or add the volume to the volume set
+                self.client.deleteVolumeSet(vvs_name)
+                raise exception.CinderException(ex.get_description())
 
     def get_cpg(self, volume, allowSnap=False):
         volume_name = self._get_3par_vol_name(volume['id'])
