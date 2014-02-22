@@ -43,6 +43,7 @@ class ServicesIndexTemplate(xmlutil.TemplateBuilder):
         elem.set('status')
         elem.set('state')
         elem.set('update_at')
+        elem.set('disabled_reason')
 
         return xmlutil.MasterTemplate(root, 1)
 
@@ -59,11 +60,16 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
         root.set('disabled')
         root.set('binary')
         root.set('status')
+        root.set('disabled_reason')
 
         return xmlutil.MasterTemplate(root, 1)
 
 
 class ServiceController(wsgi.Controller):
+    def __init__(self, ext_mgr=None):
+        self.ext_mgr = ext_mgr
+        super(ServiceController, self).__init__()
+
     @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
         """Return a list of all running services.
@@ -72,6 +78,7 @@ class ServiceController(wsgi.Controller):
         """
         context = req.environ['cinder.context']
         authorize(context)
+        detailed = self.ext_mgr.is_loaded('os-extended-services')
         now = timeutils.utcnow()
         services = db.service_get_all(context)
 
@@ -102,11 +109,25 @@ class ServiceController(wsgi.Controller):
             active = 'enabled'
             if svc['disabled']:
                 active = 'disabled'
-            svcs.append({"binary": svc['binary'], 'host': svc['host'],
-                         'zone': svc['availability_zone'],
-                         'status': active, 'state': art,
-                         'updated_at': svc['updated_at']})
+            ret_fields = {'binary': svc['binary'], 'host': svc['host'],
+                          'zone': svc['availability_zone'],
+                          'status': active, 'state': art,
+                          'updated_at': svc['updated_at']}
+            if detailed:
+                ret_fields['disabled_reason'] = svc['disabled_reason']
+            svcs.append(ret_fields)
         return {'services': svcs}
+
+    def _is_valid_as_reason(self, reason):
+        if not reason:
+            return False
+        try:
+            utils.check_string_length(reason.strip(), 'Disabled reason',
+                                      min_length=1, max_length=255)
+        except exception.InvalidInput:
+            return False
+
+        return True
 
     @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
@@ -114,10 +135,17 @@ class ServiceController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
+        ext_loaded = self.ext_mgr.is_loaded('os-extended-services')
+        ret_val = {}
         if id == "enable":
             disabled = False
-        elif id == "disable":
+            status = "enabled"
+            if ext_loaded:
+                ret_val['disabled_reason'] = None
+        elif (id == "disable" or
+                (id == "disable-log-reason" and ext_loaded)):
             disabled = True
+            status = "disabled"
         else:
             raise webob.exc.HTTPNotFound("Unknown action")
 
@@ -125,6 +153,15 @@ class ServiceController(wsgi.Controller):
             host = body['host']
         except (TypeError, KeyError):
             raise webob.exc.HTTPBadRequest()
+
+        ret_val['disabled'] = disabled
+        if id == "disable-log-reason" and ext_loaded:
+            reason = body.get('disabled_reason')
+            if not self._is_valid_as_reason(reason):
+                msg = _('Disabled reason contains invalid characters '
+                        'or is too long')
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            ret_val['disabled_reason'] = reason
 
         # NOTE(uni): deprecating service request key, binary takes precedence
         # Still keeping service key here for API compatibility sake.
@@ -139,16 +176,13 @@ class ServiceController(wsgi.Controller):
             if not svc:
                 raise webob.exc.HTTPNotFound('Unknown service')
 
-            db.service_update(context, svc['id'], {'disabled': disabled})
+            db.service_update(context, svc['id'], ret_val)
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound("service not found")
 
-        status = id + 'd'
-        return {'host': host,
-                'service': service,
-                'disabled': disabled,
-                'binary': binary,
-                'status': status}
+        ret_val.update({'host': host, 'service': service,
+                        'binary': binary, 'status': status})
+        return ret_val
 
 
 class Services(extensions.ExtensionDescriptor):
@@ -161,7 +195,7 @@ class Services(extensions.ExtensionDescriptor):
 
     def get_resources(self):
         resources = []
-        resource = extensions.ResourceExtension('os-services',
-                                                ServiceController())
+        controller = ServiceController(self.ext_mgr)
+        resource = extensions.ResourceExtension('os-services', controller)
         resources.append(resource)
         return resources

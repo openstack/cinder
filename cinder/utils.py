@@ -34,6 +34,7 @@ import tempfile
 from eventlet import pools
 from oslo.config import cfg
 import paramiko
+import six
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
@@ -768,3 +769,25 @@ def get_file_mode(path):
 def get_file_gid(path):
     """This primarily exists to make unit testing easier."""
     return os.stat(path).st_gid
+
+
+def check_string_length(value, name, min_length=0, max_length=None):
+    """Check the length of specified string
+    :param value: the value of the string
+    :param name: the name of the string
+    :param min_length: the min_length of the string
+    :param max_length: the max_length of the string
+    """
+    if not isinstance(value, six.string_types):
+        msg = _("%s is not a string or unicode") % name
+        raise exception.InvalidInput(message=msg)
+
+    if len(value) < min_length:
+        msg = _("%(name)s has a minimum character requirement of "
+                "%(min_length)s.") % {'name': name, 'min_length': min_length}
+        raise exception.InvalidInput(message=msg)
+
+    if max_length and len(value) > max_length:
+        msg = _("%(name)s has more than %(max_length)s "
+                "characters.") % {'name': name, 'max_length': max_length}
+        raise exception.InvalidInput(message=msg)

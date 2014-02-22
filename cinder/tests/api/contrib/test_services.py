@@ -14,7 +14,10 @@
 #    under the License.
 
 
+import webob.exc
+
 from cinder.api.contrib import services
+from cinder.api import extensions
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -31,28 +34,32 @@ fake_services_list = [{'binary': 'cinder-scheduler',
                        'id': 1,
                        'disabled': True,
                        'updated_at': datetime(2012, 10, 29, 13, 42, 2),
-                       'created_at': datetime(2012, 9, 18, 2, 46, 27)},
+                       'created_at': datetime(2012, 9, 18, 2, 46, 27),
+                       'disabled_reason': 'test1'},
                       {'binary': 'cinder-volume',
                        'host': 'host1',
                        'availability_zone': 'cinder',
                        'id': 2,
                        'disabled': True,
                        'updated_at': datetime(2012, 10, 29, 13, 42, 5),
-                       'created_at': datetime(2012, 9, 18, 2, 46, 27)},
+                       'created_at': datetime(2012, 9, 18, 2, 46, 27),
+                       'disabled_reason': 'test2'},
                       {'binary': 'cinder-scheduler',
                        'host': 'host2',
                        'availability_zone': 'cinder',
                        'id': 3,
                        'disabled': False,
                        'updated_at': datetime(2012, 9, 19, 6, 55, 34),
-                       'created_at': datetime(2012, 9, 18, 2, 46, 28)},
+                       'created_at': datetime(2012, 9, 18, 2, 46, 28),
+                       'disabled_reason': ''},
                       {'binary': 'cinder-volume',
                        'host': 'host2',
                        'availability_zone': 'cinder',
                        'id': 4,
                        'disabled': True,
                        'updated_at': datetime(2012, 9, 18, 8, 3, 38),
-                       'created_at': datetime(2012, 9, 18, 2, 46, 28)},
+                       'created_at': datetime(2012, 9, 18, 2, 46, 28),
+                       'disabled_reason': 'test4'},
                       ]
 
 
@@ -138,7 +145,9 @@ class ServicesTest(test.TestCase):
         self.stubs.Set(policy, "enforce", fake_policy_enforce)
 
         self.context = context.get_admin_context()
-        self.controller = services.ServiceController()
+        self.ext_mgr = extensions.ExtensionManager()
+        self.ext_mgr.extensions = {}
+        self.controller = services.ServiceController(self.ext_mgr)
 
     def tearDown(self):
         super(ServicesTest, self).tearDown()
@@ -165,6 +174,34 @@ class ServicesTest(test.TestCase):
                      'updated_at': datetime(2012, 9, 18, 8, 3, 38)}]}
         self.assertEqual(res_dict, response)
 
+    def test_services_detail(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = FakeRequest()
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-scheduler',
+                    'host': 'host1', 'zone': 'cinder',
+                    'status': 'disabled', 'state': 'up',
+                    'updated_at': datetime(2012, 10, 29, 13, 42, 2),
+                    'disabled_reason': 'test1'},
+                    {'binary': 'cinder-volume',
+                     'host': 'host1', 'zone': 'cinder',
+                     'status': 'disabled', 'state': 'up',
+                     'updated_at': datetime(2012, 10, 29, 13, 42, 5),
+                     'disabled_reason': 'test2'},
+                    {'binary': 'cinder-scheduler', 'host': 'host2',
+                     'zone': 'cinder',
+                     'status': 'enabled', 'state': 'down',
+                     'updated_at': datetime(2012, 9, 19, 6, 55, 34),
+                     'disabled_reason': ''},
+                    {'binary': 'cinder-volume', 'host': 'host2',
+                     'zone': 'cinder',
+                     'status': 'disabled', 'state': 'down',
+                     'updated_at': datetime(2012, 9, 18, 8, 3, 38),
+                     'disabled_reason': 'test4'}]}
+        self.assertEqual(res_dict, response)
+
     def test_services_list_with_host(self):
         req = FakeRequestWithHost()
         res_dict = self.controller.index(req)
@@ -180,6 +217,27 @@ class ServicesTest(test.TestCase):
                                   'status': 'disabled', 'state': 'up',
                                   'updated_at': datetime(2012, 10, 29,
                                                          13, 42, 5)}]}
+        self.assertEqual(res_dict, response)
+
+    def test_services_detail_with_host(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = FakeRequestWithHost()
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-scheduler',
+                                  'host': 'host1',
+                                  'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'up',
+                                  'updated_at': datetime(2012, 10,
+                                                         29, 13, 42, 2),
+                                  'disabled_reason': 'test1'},
+                                 {'binary': 'cinder-volume', 'host': 'host1',
+                                  'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'up',
+                                  'updated_at': datetime(2012, 10, 29,
+                                                         13, 42, 5),
+                                  'disabled_reason': 'test2'}]}
         self.assertEqual(res_dict, response)
 
     def test_services_list_with_service(self):
@@ -202,6 +260,30 @@ class ServicesTest(test.TestCase):
                                                          8, 3, 38)}]}
         self.assertEqual(res_dict, response)
 
+    def test_services_detail_with_service(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = FakeRequestWithService()
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-volume',
+                                  'host': 'host1',
+                                  'zone': 'cinder',
+                                  'status': 'disabled',
+                                  'state': 'up',
+                                  'updated_at': datetime(2012, 10, 29,
+                                                         13, 42, 5),
+                                  'disabled_reason': 'test2'},
+                                 {'binary': 'cinder-volume',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'disabled',
+                                  'state': 'down',
+                                  'updated_at': datetime(2012, 9, 18,
+                                                         8, 3, 38),
+                                  'disabled_reason': 'test4'}]}
+        self.assertEqual(res_dict, response)
+
     def test_services_list_with_binary(self):
         req = FakeRequestWithBinary()
         res_dict = self.controller.index(req)
@@ -222,6 +304,30 @@ class ServicesTest(test.TestCase):
                                                          8, 3, 38)}]}
         self.assertEqual(res_dict, response)
 
+    def test_services_detail_with_binary(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = FakeRequestWithBinary()
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-volume',
+                                  'host': 'host1',
+                                  'zone': 'cinder',
+                                  'status': 'disabled',
+                                  'state': 'up',
+                                  'updated_at': datetime(2012, 10, 29,
+                                                         13, 42, 5),
+                                  'disabled_reason': 'test2'},
+                                 {'binary': 'cinder-volume',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'disabled',
+                                  'state': 'down',
+                                  'updated_at': datetime(2012, 9, 18,
+                                                         8, 3, 38),
+                                  'disabled_reason': 'test4'}]}
+        self.assertEqual(res_dict, response)
+
     def test_services_list_with_host_service(self):
         req = FakeRequestWithHostService()
         res_dict = self.controller.index(req)
@@ -235,6 +341,22 @@ class ServicesTest(test.TestCase):
                                                          13, 42, 5)}]}
         self.assertEqual(res_dict, response)
 
+    def test_services_detail_with_host_service(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = FakeRequestWithHostService()
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-volume',
+                                  'host': 'host1',
+                                  'zone': 'cinder',
+                                  'status': 'disabled',
+                                  'state': 'up',
+                                  'updated_at': datetime(2012, 10, 29,
+                                                         13, 42, 5),
+                                  'disabled_reason': 'test2'}]}
+        self.assertEqual(res_dict, response)
+
     def test_services_list_with_host_binary(self):
         req = FakeRequestWithHostBinary()
         res_dict = self.controller.index(req)
@@ -246,6 +368,22 @@ class ServicesTest(test.TestCase):
                                   'state': 'up',
                                   'updated_at': datetime(2012, 10, 29,
                                                          13, 42, 5)}]}
+        self.assertEqual(res_dict, response)
+
+    def test_services_detail_with_host_binary(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = FakeRequestWithHostBinary()
+        res_dict = self.controller.index(req)
+
+        response = {'services': [{'binary': 'cinder-volume',
+                                  'host': 'host1',
+                                  'zone': 'cinder',
+                                  'status': 'disabled',
+                                  'state': 'up',
+                                  'updated_at': datetime(2012, 10, 29,
+                                                         13, 42, 5),
+                                  'disabled_reason': 'test2'}]}
         self.assertEqual(res_dict, response)
 
     def test_services_enable_with_service_key(self):
@@ -275,3 +413,40 @@ class ServicesTest(test.TestCase):
         res_dict = self.controller.update(req, "disable", body)
 
         self.assertEqual(res_dict['status'], 'disabled')
+
+    def test_services_disable_log_reason(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = (
+            fakes.HTTPRequest.blank('v1/fake/os-services/disable-log-reason'))
+        body = {'host': 'host1',
+                'binary': 'cinder-scheduler',
+                'disabled_reason': 'test-reason',
+                }
+        res_dict = self.controller.update(req, "disable-log-reason", body)
+
+        self.assertEqual(res_dict['status'], 'disabled')
+        self.assertEqual(res_dict['disabled_reason'], 'test-reason')
+
+    def test_services_disable_log_reason_none(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = (
+            fakes.HTTPRequest.blank('v1/fake/os-services/disable-log-reason'))
+        body = {'host': 'host1',
+                'binary': 'cinder-scheduler',
+                'disabled_reason': None,
+                }
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update,
+                          req, "disable-log-reason", body)
+
+    def test_invalid_reason_field(self):
+        reason = ' '
+        self.assertFalse(self.controller._is_valid_as_reason(reason))
+        reason = 'a' * 256
+        self.assertFalse(self.controller._is_valid_as_reason(reason))
+        reason = 'it\'s a valid reason.'
+        self.assertTrue(self.controller._is_valid_as_reason(reason))
+        reason = None
+        self.assertFalse(self.controller._is_valid_as_reason(reason))

@@ -900,3 +900,18 @@ class BrickUtils(test.TestCase):
         utils.brick_get_connector('aoe')
         utils.brick_get_connector('local')
         self.mox.VerifyAll()
+
+
+class StringLengthTestCase(test.TestCase):
+    def test_check_string_length(self):
+        self.assertIsNone(utils.check_string_length(
+                          'test', 'name', max_length=255))
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_string_length,
+                          11, 'name', max_length=255)
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_string_length,
+                          '', 'name', min_length=1)
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_string_length,
+                          'a' * 256, 'name', max_length=255)
