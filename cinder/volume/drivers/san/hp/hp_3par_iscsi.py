@@ -60,10 +60,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 This update now requires 3.1.2 MU3 firmware
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
         2.0.0 - Update hp3parclient API uses 3.0.x
+        2.0.2 - Add back-end assisted volume migrate
 
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.2"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -446,3 +447,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
         self.common.detach_volume(volume)
+
+    @utils.synchronized('3par', external=True)
+    def migrate_volume(self, context, volume, host):
+        self.common.client_login()
+        try:
+            return self.common.migrate_volume(volume, host)
+        finally:
+            self.common.client_logout()

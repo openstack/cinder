@@ -184,6 +184,7 @@ class HP3PARBaseDriver(object):
         PORT_STATE_READY=client.HP3ParClient.PORT_STATE_READY,
         PORT_PROTO_ISCSI=client.HP3ParClient.PORT_PROTO_ISCSI,
         PORT_PROTO_FC=client.HP3ParClient.PORT_PROTO_FC,
+        TASK_DONE=client.HP3ParClient.TASK_DONE,
         HOST_EDIT_ADD=client.HP3ParClient.HOST_EDIT_ADD)
     def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None):
 
@@ -275,6 +276,8 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
+        mock_client.copyVolume.return_value = {'taskid': 1}
+
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
@@ -296,6 +299,151 @@ class HP3PARBaseDriver(object):
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
+
+    def test_migrate_volume(self):
+
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getStorageSystemInfo.return_value': {
+                'serialNumber': '1234'},
+            'getTask.return_value': {
+                'status': 1},
+            'getCPG.return_value': {},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': {}
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'available',
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+
+        volume_name_3par = self.driver.common._encode_name(volume['id'])
+
+        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        host = {'host': 'stack@3parfc1',
+                'capabilities': {'location_info': loc_info}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+        self.assertIsNotNone(result)
+        self.assertEqual((True, None), result)
+
+        osv_matcher = 'osv-' + volume_name_3par
+        omv_matcher = 'omv-' + volume_name_3par
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getStorageSystemInfo(),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getCPG('CPG-FC1'),
+            mock.call.copyVolume(osv_matcher, omv_matcher, mock.ANY, mock.ANY),
+            mock.call.getTask(mock.ANY),
+            mock.call.getVolume(osv_matcher),
+            mock.call.deleteVolume(osv_matcher),
+            mock.call.modifyVolume(omv_matcher, {'newName': osv_matcher}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    def test_migrate_volume_diff_host(self):
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getStorageSystemInfo.return_value': {
+                'serialNumber': 'different'},
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'available',
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+
+        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        host = {'host': 'stack@3parfc1',
+                'capabilities': {'location_info': loc_info}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+        self.assertIsNotNone(result)
+        self.assertEqual((False, None), result)
+
+    def test_migrate_volume_diff_domain(self):
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getStorageSystemInfo.return_value': {
+                'serialNumber': '1234'},
+            'getTask.return_value': {
+                'status': 1},
+            'getCPG.side_effect':
+            lambda x: {'OpenStackCPG': {'domain': 'OpenStack'}}.get(x, {})
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'available',
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+
+        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        host = {'host': 'stack@3parfc1',
+                'capabilities': {'location_info': loc_info}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+        self.assertIsNotNone(result)
+        self.assertEqual((False, None), result)
+
+    def test_migrate_volume_attached(self):
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getStorageSystemInfo.return_value': {
+                'serialNumber': '1234'},
+            'getTask.return_value': {
+                'status': 1}
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'in-use',
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+
+        volume_name_3par = self.driver.common._encode_name(volume['id'])
+
+        mock_client.getVLUNs.return_value = {
+            'members': [{'volumeName': 'osv-' + volume_name_3par}]}
+
+        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        host = {'host': 'stack@3parfc1',
+                'capabilities': {'location_info': loc_info}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+        self.assertIsNotNone(result)
+        self.assertEqual((False, None), result)
 
     def test_attach_volume(self):
 
@@ -733,7 +881,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getCPG.return_value = self.cpgs[0]
-
+        mock_client.getStorageSystemInfo.return_value = {'serialNumber':
+                                                         '1234'}
         stats = self.driver.get_volume_stats(True)
         self.assertEqual(stats['storage_protocol'], 'FC')
         self.assertEqual(stats['total_capacity_gb'], 'infinite')
@@ -742,6 +891,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getStorageSystemInfo(),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
@@ -1021,7 +1171,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getCPG.return_value = self.cpgs[0]
-
+        mock_client.getStorageSystemInfo.return_value = {'serialNumber':
+                                                         '1234'}
         stats = self.driver.get_volume_stats(True)
         self.assertEqual(stats['storage_protocol'], 'iSCSI')
         self.assertEqual(stats['total_capacity_gb'], 'infinite')
@@ -1030,6 +1181,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getStorageSystemInfo(),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)

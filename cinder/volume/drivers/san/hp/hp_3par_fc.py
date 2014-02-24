@@ -56,10 +56,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         1.2.4 - Added metadata during attach/detach bug #1258033.
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
         2.0.0 - Update hp3parclient API uses 3.0.x
+        2.0.2 - Add back-end assisted volume migrate
 
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.2"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -334,3 +335,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
         self.common.detach_volume(volume)
+
+    @utils.synchronized('3par', external=True)
+    def migrate_volume(self, context, volume, host):
+        self.common.client_login()
+        try:
+            return self.common.migrate_volume(volume, host)
+        finally:
+            self.common.client_logout()
