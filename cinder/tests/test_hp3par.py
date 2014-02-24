@@ -794,7 +794,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         'data': {
             'target_lun': 90,
             'target_wwn': ['0987654321234', '123456789000987'],
-            'target_discovered': True}}
+            'target_discovered': True,
+            'initiator_target_map': {'123456789012345':
+                                     ['0987654321234', '123456789000987'],
+                                     '123456789054321':
+                                     ['0987654321234', '123456789000987'],
+                                     }}}
 
     def setUp(self):
         super(TestHP3PARFCDriver, self).setUp()
@@ -875,6 +880,32 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.assert_has_calls(expected)
 
         self.assertDictMatch(result, self.properties)
+
+    def test_terminate_connection(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVLUN.return_value = {'lun': None, 'type': 0}
+        mock_client.getPorts.return_value = {
+            'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]}
+
+        self.driver.terminate_connection(
+            self.volume,
+            self.connector,
+            force=True)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVLUN(self.VOLUME_3PAR_NAME),
+            mock.call.deleteVLUN(
+                self.VOLUME_3PAR_NAME,
+                None,
+                self.FAKE_HOST),
+            mock.call.deleteHost(self.FAKE_HOST),
+            mock.call.getPorts(),
+            mock.call.logout()]
+
+        mock_client.assert_has_calls(expected)
 
     def test_get_volume_stats(self):
         # setup_mock_client drive with default configuration
