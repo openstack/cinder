@@ -18,6 +18,7 @@
 import errno
 import os
 
+import mock
 import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA
@@ -588,22 +589,19 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_delete_should_not_delete_if_provider_location_not_provided(self):
         """delete_volume shouldn't delete if provider_location missed."""
-        mox = self._mox
         drv = self._driver
 
-        self.stub_out_not_replaying(drv, '_ensure_share_mounted')
+        self.stubs.Set(drv, '_ensure_share_mounted', mock.Mock())
+        self.stubs.Set(drv, 'local_path', mock.Mock())
 
         volume = DumbVolume()
         volume['name'] = 'volume-123'
         volume['provider_location'] = None
 
-        mox.StubOutWithMock(drv, '_execute')
+        with mock.patch.object(drv, '_execute') as mock_execute:
+            drv.delete_volume(volume)
 
-        mox.ReplayAll()
-
-        drv.delete_volume(volume)
-
-        mox.VerifyAll()
+            self.assertEqual(mock_execute.call_count, 0)
 
     def test_get_volume_stats(self):
         """get_volume_stats must fill the correct values."""
