@@ -159,7 +159,9 @@ class TestNexentaISCSIDriver(test.TestCase):
             'capabilities': {
                 'vendor_name': 'Nexenta',
                 'location_info': 'NexentaISCSIDriver:1.1.1.1:cinder',
-                'free_capacity_gb': 1
+                'free_capacity_gb': 1,
+                'iscsi_target_portal_port': 3260,
+                'nms_url': 'http://admin:password@1.1.1.1:2000'
             }
         }
         snapshot = {
@@ -173,19 +175,26 @@ class TestNexentaISCSIDriver(test.TestCase):
         src = '%(volume)s/%(zvol)s@%(snapshot)s' % {
             'volume': 'cinder',
             'zvol': volume['name'],
-            'snapshot': snapshot['name']}
+            'snapshot': snapshot['name']
+        }
         dst = '1.1.1.1:cinder'
         cmd = ' '.join(['rrmgr -s zfs -c 1 -q -e -w 1024 -n 2', src, dst])
 
         self.nms_mock.appliance.execute(cmd)
 
-        self.nms_mock.snapshot.destroy('cinder/%(volume)s@%(snapshot)s' % {
-                                       'volume': volume['name'],
-                                       'snapshot': snapshot['name']}, '')
+        snapshot_name = 'cinder/%(volume)s@%(snapshot)s' % {
+            'volume': volume['name'],
+            'snapshot': snapshot['name']
+        }
+        self.nms_mock.snapshot.destroy(snapshot_name, '')
         volume_name = 'cinder/%s' % volume['name']
         self.nms_mock.zvol.get_child_props(volume_name,
                                            'origin').AndReturn(None)
         self.nms_mock.zvol.destroy(volume_name, '')
+        self.nms_mock.snapshot.destroy('cinder/%(volume)s@%(snapshot)s' % {
+            'volume': volume['name'],
+            'snapshot': snapshot['name']
+        }, '')
 
         self.mox.ReplayAll()
         self.drv.migrate_volume(None, volume, host)

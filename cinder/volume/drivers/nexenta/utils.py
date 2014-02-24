@@ -116,3 +116,8 @@ def parse_nms_url(url):
     else:
         host, port = host_and_port, '2000'
     return auto, scheme, user, password, host, port, '/rest/nms/'
+
+
+def get_migrate_snapshot_name(volume):
+    """Return name for snapshot that will be used to migrate the volume."""
+    return 'cinder-migrate-snapshot-%(id)s' % volume

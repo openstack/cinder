@@ -30,7 +30,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.1.3'
+VERSION = '1.2.1'
 LOG = logging.getLogger(__name__)
 
 
@@ -46,6 +46,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.1.2 - Optimized create_cloned_volume, replaced zfs send recv with zfs
                 clone.
         1.1.3 - Extended volume stats provided by _update_volume_stats method.
+        1.2.0 - Added volume migration with storage assist method.
+        1.2.1 - Fixed bug #1263258: now migrate_volume update provider_location
+                of migrated volume; after migrating volume migrate_volume
+                destroy snapshot on migration destination.
     """
 
     VERSION = VERSION
@@ -71,6 +75,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
+        self.iscsi_target_portal_port = \
+            self.configuration.nexenta_iscsi_target_portal_port
 
     @property
     def backend_name(self):
@@ -122,11 +128,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Check if snapshot is created for cloning."""
         name = snapshot.split('@')[-1]
         return name.startswith('cinder-clone-snapshot-')
-
-    @staticmethod
-    def _get_migrate_snapshot_name(volume):
-        """Return name for snapshot that will be used to migrate the volume."""
-        return 'cinder-migrate-snapshot-%(id)s' % volume
 
     def create_volume(self, volume):
         """Create a zvol on appliance.
@@ -213,6 +214,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                                    tcp_buf_size=self.rrmgr_tcp_buf_size,
                                    connections=self.rrmgr_connections)
 
+    @staticmethod
+    def get_nms_for_url(url):
+        """Returns initialized nms object for url."""
+        auto, scheme, user, password, host, port, path =\
+            utils.parse_nms_url(url)
+        return jsonrpc.NexentaJSONProxy(scheme, host, port, path, user,
+                                        password, auto=auto)
+
     def migrate_volume(self, ctxt, volume, host):
         """Migrate if volume and host are managed by Nexenta appliance.
 
@@ -228,14 +237,23 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if volume['status'] != 'available':
             return false_ret
 
-        if 'location_info' not in host['capabilities']:
+        if 'capabilities' not in host:
             return false_ret
 
-        dst_parts = host['capabilities']['location_info'].split(':')
+        capabilities = host['capabilities']
 
-        if host['capabilities']['vendor_name'] != 'Nexenta' or \
-           dst_parts[0] != self.__class__.__name__ or \
-           host['capabilities']['free_capacity_gb'] < volume['size']:
+        if 'location_info' not in capabilities or \
+                'iscsi_target_portal_port' not in capabilities or \
+                'nms_url' not in capabilities:
+            return false_ret
+
+        iscsi_target_portal_port = capabilities['iscsi_target_portal_port']
+        nms_url = capabilities['nms_url']
+        dst_parts = capabilities['location_info'].split(':')
+
+        if capabilities.get('vendor_name') != 'Nexenta' or \
+                dst_parts[0] != self.__class__.__name__ or \
+                capabilities['free_capacity_gb'] < volume['size']:
             return false_ret
 
         dst_host, dst_volume = dst_parts[1:]
@@ -246,19 +264,22 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             if bind.index(dst_host) != -1:
                 ssh_bound = True
                 break
-        if not(ssh_bound):
+        if not ssh_bound:
             LOG.warning(_("Remote NexentaStor appliance at %s should be "
                           "SSH-bound."), dst_host)
 
         # Create temporary snapshot of volume on NexentaStor Appliance.
-        snapshot = {'volume_name': volume['name'],
-                    'name': self._get_migrate_snapshot_name(volume)}
+        snapshot = {
+            'volume_name': volume['name'],
+            'name': utils.get_migrate_snapshot_name(volume)
+        }
         self.create_snapshot(snapshot)
 
         src = '%(volume)s/%(zvol)s@%(snapshot)s' % {
             'volume': self.volume,
             'zvol': volume['name'],
-            'snapshot': snapshot['name']}
+            'snapshot': snapshot['name']
+        }
         dst = ':'.join([dst_host, dst_volume])
 
         try:
@@ -282,7 +303,23 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                           "NexentaStor Appliance: %(exc)s"),
                         {'volume': volume['name'], 'exc': exc})
 
-        return (True, None)
+        dst_nms = self.get_nms_for_url(nms_url)
+        dst_snapshot = '%s/%s@%s' % (dst_volume, volume['name'],
+                                     snapshot['name'])
+        try:
+            dst_nms.snapshot.destroy(dst_snapshot, '')
+        except nexenta.NexentaException as exc:
+            LOG.warning(_("Cannot delete temporary destination snapshot "
+                          "%(dst)s on NexentaStor Appliance: %(exc)s"),
+                        {'dst': dst_snapshot, 'exc': exc})
+
+        provider_location = '%(host)s:%(port)s,1 %(name)s 0' % {
+            'host': dst_host,
+            'port': iscsi_target_portal_port,
+            'name': self._get_target_name(volume['name'])
+        }
+
+        return True, {'provider_location': provider_location}
 
     def create_snapshot(self, snapshot):
         """Create snapshot of existing zvol on appliance.
@@ -558,5 +595,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'reserved_percentage': 0,
             'QoS_support': False,
             'volume_backend_name': self.backend_name,
-            'location_info': location_info
+            'location_info': location_info,
+            'iscsi_target_portal_port': self.iscsi_target_portal_port,
+            'nms_url': self.nms.url
         }
