@@ -60,9 +60,28 @@ volume_opts = [
                      'of the nfs man page for details.')),
 ]
 
+nas_opts = [
+    cfg.StrOpt('nas_ip',
+               default='',
+               help='IP address or Hostname of NAS system.'),
+    cfg.StrOpt('nas_login',
+               default='admin',
+               help='User name to connect to NAS system.'),
+    cfg.StrOpt('nas_password',
+               default='',
+               help='Password to connect to NAS system.',
+               secret=True),
+    cfg.IntOpt('nas_ssh_port',
+               default=22,
+               help='SSH port to use to connect to NAS system.'),
+    cfg.StrOpt('nas_private_key',
+               default='',
+               help='Filename of private key to use for SSH authentication.'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
+CONF.register_opts(nas_opts)
 
 
 class RemoteFsDriver(driver.VolumeDriver):
