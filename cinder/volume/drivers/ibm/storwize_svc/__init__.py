@@ -111,9 +111,12 @@ class StorwizeSVCDriver(san.SanDriver):
     1.2.0 - Added retype
     1.2.1 - Code refactor, improved exception handling
     1.2.2 - Fix bug #1274123 (races in host-related functions)
+    1.2.3 - Fix Fibre Channel connectivity: bug #1279758 (add delim to
+            lsfabric, clear unused data from connections, ensure matching
+            WWPNs by comparing lower case
     """
 
-    VERSION = "1.2.2"
+    VERSION = "1.2.3"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCDriver, self).__init__(*args, **kwargs)
@@ -284,6 +287,19 @@ class StorwizeSVCDriver(san.SanDriver):
         vol_opts = self._get_vdisk_params(volume['volume_type_id'])
         host_name = connector['host']
         volume_name = volume['name']
+
+        # Delete irrelevant connection information that later could result
+        # in unwanted behaviour. For example, if FC is used yet the hosts
+        # return iSCSI data, the driver will try to create the iSCSI connection
+        # which can result in a nice error about reaching the per-host maximum
+        # iSCSI initiator limit.
+        # First make a copy so we don't mess with a caller's connector.
+        connector = connector.copy()
+        if vol_opts['protocol'] == 'FC':
+            connector.pop('initiator', None)
+        elif vol_opts['protocol'] == 'iSCSI':
+            connector.pop('wwnns', None)
+            connector.pop('wwpns', None)
 
         # Check if a host object is defined for this host name
         host_name = self._helpers.get_host_from_connector(connector)

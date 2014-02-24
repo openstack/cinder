@@ -170,7 +170,8 @@ class StorwizeHelpers(object):
         wwpns = []
         resp = self.ssh.lsfabric(host=host)
         for wwpn in resp.select('local_wwpn'):
-            wwpns.append(wwpn)
+            if wwpn is not None:
+                wwpns.append(wwpn)
         return wwpns
 
     def get_host_from_connector(self, connector):
@@ -184,13 +185,16 @@ class StorwizeHelpers(object):
                 resp = self.ssh.lsfabric(wwpn=wwpn)
                 for wwpn_info in resp:
                     try:
-                        if wwpn_info['remote_wwpn'] == wwpn:
+                        if (wwpn_info['remote_wwpn'] and
+                                wwpn_info['name'] and
+                                wwpn_info['remote_wwpn'].lower() ==
+                                wwpn.lower()):
                             host_name = wwpn_info['name']
                     except KeyError:
                         self.handle_keyerror('lsfabric', str(wwpn_info))
 
         # That didn't work, so try exhaustive search
-        if not host_name:
+        if host_name is None:
             hosts_info = self.ssh.lshost()
             for name in hosts_info.select('name'):
                 resp = self.ssh.lshost(host=name)
@@ -202,7 +206,7 @@ class StorwizeHelpers(object):
                           len(connector['wwpns']) and
                           wwpn and
                           wwpn.lower() in
-                          [str(x).lower for x in connector['wwpns']]):
+                          [str(x).lower() for x in connector['wwpns']]):
                         host_name = name
 
         LOG.debug(_('leave: get_host_from_connector: host %s') % host_name)
@@ -445,7 +449,8 @@ class StorwizeHelpers(object):
                 # protocol is a special case where the user asks for a given
                 # protocol and we want both the scheduler and the driver to act
                 # on the value.
-                if scope == 'capabilities' and key == 'storage_protocol':
+                if ((not scope or scope == 'capabilities') and
+                        key == 'storage_protocol'):
                     scope = None
                     key = 'protocol'
                     words = value.split()
