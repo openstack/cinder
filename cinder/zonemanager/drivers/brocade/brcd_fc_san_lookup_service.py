@@ -1,0 +1,276 @@
+#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    All Rights Reserved.
+#
+#    Copyright 2014 OpenStack Foundation
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+#
+
+
+import paramiko
+
+from oslo.config import cfg
+
+from cinder import exception
+from cinder.openstack.common import excutils
+from cinder.openstack.common import log as logging
+from cinder import utils
+import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
+from cinder.zonemanager.drivers.fc_common import FCCommon
+
+LOG = logging.getLogger(__name__)
+
+
+CONF = cfg.CONF
+CONF.import_opt('fc_fabric_names', 'cinder.zonemanager.drivers.fc_common')
+
+
+class BrcdFCSanLookupService(FCCommon):
+
+    def __init__(self, **kwargs):
+        """Initializing the client."""
+        super(BrcdFCSanLookupService, self).__init__(**kwargs)
+        self.configuration = kwargs.get('configuration', None)
+        self.create_configuration()
+        self.client = paramiko.SSHClient()
+        self.client.load_system_host_keys()
+        self.client.set_missing_host_key_policy(paramiko.WarningPolicy())
+
+    def create_configuration(self):
+        """Configuration specific to SAN context values."""
+        config = self.configuration
+
+        fc_fabric_opts = []
+        fabric_names = config.fc_fabric_names.split(',')
+        LOG.debug(_('Fabric Names: %s'), fabric_names)
+
+        # There can be more than one SAN in the network and we need to
+        # get credentials for each for SAN context lookup later.
+        if len(fabric_names) > 0:
+            for fabric_name in fabric_names:
+                fc_fabric_opts.append(cfg.StrOpt('fc_fabric_address_'
+                                                 + fabric_name,
+                                                 default='',
+                                                 help='Management IP '
+                                                 'of fabric'))
+                fc_fabric_opts.append(cfg.StrOpt('fc_fabric_user_'
+                                                 + fabric_name,
+                                                 default='',
+                                                 help='Fabric user ID'))
+                fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password_'
+                                                 + fabric_name,
+                                                 default='',
+                                                 help='Password for user',
+                                                 secret=True))
+                fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port_'
+                                                 + fabric_name, default=22,
+                                                 help='Connecting port'))
+                fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn_'
+                                                 + fabric_name,
+                                                 default=fabric_name,
+                                                 help='Principal switch WWN '
+                                                 'of the fabric'))
+            config.append_config_values(fc_fabric_opts)
+
+    def get_device_mapping_from_network(self,
+                                        initiator_wwn_list,
+                                        target_wwn_list):
+        """Provides the initiator/target map for available SAN contexts.
+
+        Looks up nameserver of each fc SAN configured to find logged in devices
+        and returns a map of initiator and target port WWNs for each fabric.
+
+        :param initiator_wwn_list: List of initiator port WWN
+        :param target_wwn_list: List of target port WWN
+        :returns List -- device wwn map in following format
+            {
+                <San name>: {
+                    'initiator_port_wwn_list':
+                    ('200000051e55a100', '200000051e55a121'..)
+                    'target_port_wwn_list':
+                    ('100000051e55a100', '100000051e55a121'..)
+                }
+            }
+        :raises Exception when connection to fabric is failed
+        """
+        device_map = {}
+        formatted_target_list = []
+        formatted_initiator_list = []
+        fabric_map = {}
+        fabric_names = self.configuration.fc_fabric_names
+        fabrics = None
+        if not fabric_names:
+            raise exception.InvalidParameterValue(
+                err=_("Missing Fibre Channel SAN configuration "
+                      "param - fc_fabric_names"))
+
+        fabrics = fabric_names.split(',')
+        LOG.debug(_("FC Fabric List: %s"), fabrics)
+        if fabrics:
+            for t in target_wwn_list:
+                formatted_target_list.append(self.get_formatted_wwn(t))
+
+            for i in initiator_wwn_list:
+                formatted_initiator_list.append(self.
+                                                get_formatted_wwn(i))
+
+            for fabric_name in fabrics:
+                fabric_ip = self.configuration.safe_get('fc_fabric_address_'
+                                                        + fabric_name)
+                fabric_user = self.configuration.safe_get('fc_fabric_user_'
+                                                          + fabric_name)
+                fabric_pwd = self.configuration.safe_get('fc_fabric_password_'
+                                                         + fabric_name)
+                fabric_port = self.configuration.safe_get(
+                    'fc_fabric_port_' + fabric_name)
+                fabric_principal_wwn = self.configuration.safe_get(
+                    'principal_switch_wwn_'
+                    + fabric_name)
+
+                # Get name server data from fabric and find the targets
+                # logged in
+                nsinfo = ''
+                try:
+                    LOG.debug(_("Getting name server data for "
+                                "fabric %s"), fabric_ip)
+                    self.client.connect(
+                        fabric_ip, fabric_port, fabric_user, fabric_pwd)
+                    nsinfo = self.get_nameserver_info()
+                except exception.FCSanLookupServiceException:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(_("Failed collecting name server info from "
+                                    "fabric %s") % fabric_ip)
+                except Exception as e:
+                    msg = _("SSH connection failed "
+                            "for %(fabric) with error: %(err)"
+                            ) % {'fabric': fabric_ip, 'err': str(e)}
+                    LOG.error(msg)
+                    raise exception.FCSanLookupServiceException(message=msg)
+                finally:
+                    self.close_connection()
+                LOG.debug(_("Lookup service:nsinfo-%s"), nsinfo)
+                LOG.debug(_("Lookup service:initiator list from "
+                            "caller-%s"), formatted_initiator_list)
+                LOG.debug(_("Lookup service:target list from "
+                            "caller-%s"), formatted_target_list)
+                visible_targets = filter(lambda x: x in formatted_target_list,
+                                         nsinfo)
+                visible_initiators = filter(lambda x: x in
+                                            formatted_initiator_list, nsinfo)
+
+                if visible_targets:
+                    LOG.debug(_("Filtered targets is: %s"), visible_targets)
+                    # getting rid of the : before returning
+                    for idx, elem in enumerate(visible_targets):
+                        elem = str(elem).replace(':', '')
+                        visible_targets[idx] = elem
+                else:
+                    LOG.debug(_("No targets are in the nameserver for SAN %s"),
+                              fabric_name)
+
+                if visible_initiators:
+                    # getting rid of the : before returning ~sk
+                    for idx, elem in enumerate(visible_initiators):
+                        elem = str(elem).replace(':', '')
+                        visible_initiators[idx] = elem
+                else:
+                    LOG.debug(_("No initiators are in the nameserver "
+                                "for SAN %s"), fabric_name)
+
+                fabric_map = {
+                    'initiator_port_wwn_list': visible_initiators,
+                    'target_port_wwn_list': visible_targets
+                }
+                device_map[fabric_principal_wwn] = fabric_map
+        LOG.debug(_("Device map for SAN context: %s"), device_map)
+        return device_map
+
+    def get_nameserver_info(self):
+        """Get name server data from fabric.
+
+        This method will return the connected node port wwn list(local
+        and remote) for the given switch fabric
+        """
+        cli_output = None
+        nsinfo_list = []
+        try:
+            cli_output = self._get_switch_data(ZoneConstant.NS_SHOW)
+        except exception.FCSanLookupServiceException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Failed collecting nsshow info for fabric"))
+        if cli_output:
+            nsinfo_list = self._parse_ns_output(cli_output)
+        try:
+            cli_output = self._get_switch_data(ZoneConstant.NS_CAM_SHOW)
+        except exception.FCSanLookupServiceException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Failed collecting nscamshow"))
+        if cli_output:
+            nsinfo_list.extend(self._parse_ns_output(cli_output))
+        LOG.debug(_("Connector returning nsinfo-%s"), nsinfo_list)
+        return nsinfo_list
+
+    def close_connection(self):
+        """This will close the client connection."""
+        self.client.close()
+        self.client = None
+
+    def _get_switch_data(self, cmd):
+        stdin, stdout, stderr = None, None, None
+        utils.check_ssh_injection([cmd])
+        try:
+            stdin, stdout, stderr = self.client.exec_command(cmd)
+            switch_data = stdout.readlines()
+        except paramiko.SSHException as e:
+            msg = (_("SSH Command failed with error '%(err)r' "
+                     "'%(command)s'") % {'err': str(e), 'command': cmd})
+            LOG.error(msg)
+            raise exception.FCSanLookupServiceException(message=msg)
+        finally:
+            if (stdin):
+                stdin.flush()
+                stdin.close()
+            if (stdout):
+                stdout.close()
+            if (stderr):
+                stderr.close()
+        return switch_data
+
+    def _parse_ns_output(self, switch_data):
+        """Parses name server data.
+
+        Parses nameserver raw data and adds the device port wwns to the list
+
+        :returns list of device port wwn from ns info
+        """
+        nsinfo_list = []
+        for line in switch_data:
+            if not(" NL " in line or " N " in line):
+                continue
+            linesplit = line.split(';')
+            if len(linesplit) > 2:
+                node_port_wwn = linesplit[2]
+                nsinfo_list.append(node_port_wwn)
+            else:
+                msg = _("Malformed nameserver string: %s") % line
+                LOG.error(msg)
+                raise exception.InvalidParameterValue(err=msg)
+        return nsinfo_list
+
+    def get_formatted_wwn(self, wwn_str):
+        """Utility API that formats WWN to insert ':'."""
+        if (len(wwn_str) != 16):
+            return wwn_str.lower()
+        else:
+            return (':'.join([wwn_str[i:i + 2]
+                              for i in range(0, len(wwn_str), 2)])).lower()

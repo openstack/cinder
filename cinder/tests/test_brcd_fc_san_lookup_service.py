@@ -1,0 +1,142 @@
+#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    All Rights Reserved.
+#
+#    Copyright 2014 OpenStack Foundation
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+#
+
+
+"""Unit tests for brcd fc san lookup service."""
+
+import mock
+import paramiko
+
+from oslo.config import cfg
+
+from cinder import exception
+from cinder.openstack.common import log as logging
+from cinder import test
+from cinder.volume import configuration as conf
+from cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
+    import BrcdFCSanLookupService
+import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
+from mock import patch
+
+LOG = logging.getLogger(__name__)
+
+nsshow = '20:1a:00:05:1e:e8:e3:29'
+switch_data = [' N 011a00;2,3;20:1a:00:05:1e:e8:e3:29;\
+                 20:1a:00:05:1e:e8:e3:29;na']
+nsshow_data = ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50']
+_device_map_to_verify = {
+    '100000051e55a100': {
+        'initiator_port_wwn_list': ['10008c7cff523b01'],
+        'target_port_wwn_list': ['20240002ac000a50']}}
+
+
+class TestBrcdFCSanLookupService(BrcdFCSanLookupService, test.TestCase):
+
+    def setUp(self):
+        super(TestBrcdFCSanLookupService, self).setUp()
+        self.client = paramiko.SSHClient()
+        self.configuration = conf.Configuration(None)
+        self.configuration.set_default('fc_fabric_names', 'BRCD_FAB_2')
+        self.create_configuration()
+
+    # override some of the functions
+    def __init__(self, *args, **kwargs):
+        test.TestCase.__init__(self, *args, **kwargs)
+
+    def create_configuration(self):
+        fc_fabric_opts = []
+        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_address_BRCD_FAB_2',
+                                         default='10.24.49.100', help=''))
+        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_user_BRCD_FAB_2',
+                                         default='admin', help=''))
+        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password_BRCD_FAB_2',
+                                         default='password', help='',
+                                         secret=True))
+        fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port_BRCD_FAB_2',
+                                         default=22, help=''))
+        fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn_BRCD_FAB_2',
+                                         default='100000051e55a100', help=''))
+        self.configuration.append_config_values(fc_fabric_opts)
+
+    @patch.object(BrcdFCSanLookupService, 'get_nameserver_info')
+    def test_get_device_mapping_from_network(self, get_nameserver_info_mock):
+        initiator_list = ['10008c7cff523b01']
+        target_list = ['20240002ac000a50', '20240002ac000a40']
+        with mock.patch.object(self.client, 'connect') \
+                as client_connect_mock:
+            get_nameserver_info_mock.return_value = (nsshow_data)
+            device_map = self.get_device_mapping_from_network(
+                initiator_list, target_list)
+            self.assertDictMatch(device_map, _device_map_to_verify)
+
+    @patch.object(BrcdFCSanLookupService, '_get_switch_data')
+    def test_get_nameserver_info(self, get_switch_data_mock):
+        ns_info_list = []
+        ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29',
+                                 '20:1a:00:05:1e:e8:e3:29']
+        get_switch_data_mock.return_value = (switch_data)
+        ns_info_list = self.get_nameserver_info()
+        self.assertEqual(ns_info_list, ns_info_list_expected)
+
+    def test__get_switch_data(self):
+        cmd = ZoneConstant.NS_SHOW
+
+        with mock.patch.object(self.client, 'exec_command') \
+                as exec_command_mock:
+            exec_command_mock.return_value = (Stream(),
+                                              Stream(nsshow),
+                                              Stream())
+            switch_data = self._get_switch_data(cmd)
+            self.assertEqual(switch_data, nsshow)
+            exec_command_mock.assert_called_once_with(cmd)
+
+    def test__parse_ns_output(self):
+        invalid_switch_data = [' N 011a00;20:1a:00:05:1e:e8:e3:29']
+        return_wwn_list = []
+        expected_wwn_list = ['20:1a:00:05:1e:e8:e3:29']
+        return_wwn_list = self._parse_ns_output(switch_data)
+        self.assertEqual(return_wwn_list, expected_wwn_list)
+        self.assertRaises(exception.InvalidParameterValue,
+                          self._parse_ns_output, invalid_switch_data)
+
+    def test_get_formatted_wwn(self):
+        wwn_list = ['10008c7cff523b01']
+        return_wwn_list = []
+        expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
+        return_wwn_list.append(self.get_formatted_wwn(wwn_list[0]))
+        self.assertEqual(return_wwn_list, expected_wwn_list)
+
+
+class Channel(object):
+    def recv_exit_status(self):
+        return 0
+
+
+class Stream(object):
+    def __init__(self, buffer=''):
+        self.buffer = buffer
+        self.channel = Channel()
+
+    def readlines(self):
+        return self.buffer
+
+    def close(self):
+        pass
+
+    def flush(self):
+        self.buffer = ''
