@@ -50,7 +50,8 @@ class TestFCSanLookupService(FCSanLookupService, test.TestCase):
         configuration = conf.Configuration(None)
         # fill up config
         configuration.fc_san_lookup_service = (
-            'cinder.tests.test_brcd_lookup_service.FakeBrcdFCSanLookupService')
+            'cinder.tests.zonemanager.test_brcd_lookup_service.'
+            'FakeBrcdFCSanLookupService')
         return configuration
 
     def test_get_device_mapping_from_network(self):

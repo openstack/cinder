@@ -37,6 +37,7 @@ from oslo.config import cfg
 from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.volume import configuration as config
 
 LOG = logging.getLogger(__name__)
 
@@ -48,14 +49,24 @@ zone_manager_opts = [
     cfg.StrOpt('zoning_policy',
                default='initiator-target',
                help='Zoning policy configured by user'),
+    cfg.StrOpt('fc_fabric_names',
+               default=None,
+               help='Comma separated list of fibre channel fabric names.'
+               ' This list of names is used to retrieve other SAN credentials'
+               ' for connecting to each SAN fabric'),
+    cfg.StrOpt('fc_san_lookup_service',
+               default='cinder.zonemanager.drivers.brocade'
+               '.brcd_fc_san_lookup_service.BrcdFCSanLookupService',
+               help='FC San Lookup Service'),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(zone_manager_opts)
+CONF.register_opts(zone_manager_opts, 'fc-zone-manager')
 
 
 class ZoneManager:
     """Manages Connection control during attach/detach."""
+
     driver = None
     fabric_names = []
 
@@ -69,10 +80,11 @@ class ZoneManager:
         zone_driver = self.configuration.zone_driver
         LOG.debug(_("Zone Driver from config: {%s}"), zone_driver)
 
+        zm_config = config.Configuration(zone_manager_opts, 'fc-zone-manager')
         # Initialize vendor specific implementation of  FCZoneDriver
         self.driver = importutils.import_object(
             zone_driver,
-            configuration=self.configuration)
+            configuration=zm_config)
 
     def get_zoning_state_ref_count(self, initiator_wwn, target_wwn):
         """Zone management state check.
@@ -103,7 +115,7 @@ class ZoneManager:
                 LOG.debug(_("Target List :%s"), {initiator: target_list})
 
                 # get SAN context for the target list
-                fabric_map = self.driver.get_san_context(target_list)
+                fabric_map = self.get_san_context(target_list)
                 LOG.debug(_("Fabric Map after context lookup:%s"), fabric_map)
                 # iterate over each SAN and apply connection control
                 for fabric in fabric_map.keys():
@@ -147,7 +159,7 @@ class ZoneManager:
                          {initiator: target_list})
 
                 # get SAN context for the target list
-                fabric_map = self.driver.get_san_context(target_list)
+                fabric_map = self.get_san_context(target_list)
                 LOG.debug(_("Delete connection Fabric Map from SAN "
                             "context: %s"), fabric_map)
 
@@ -174,6 +186,16 @@ class ZoneManager:
                                         'err': str(e)}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
+
+    def get_san_context(self, target_wwn_list):
+        """SAN lookup for end devices.
+
+        Look up each SAN configured and return a map of SAN (fabric IP)
+        to list of target WWNs visible to the fabric.
+        """
+        fabric_map = self.driver.get_san_context(target_wwn_list)
+        LOG.debug(_("Got SAN context:%s"), fabric_map)
+        return fabric_map
 
     def get_valid_initiator_target_map(self, initiator_target_map,
                                        add_control):

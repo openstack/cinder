@@ -19,20 +19,15 @@
 
 import paramiko
 
-from oslo.config import cfg
-
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
 from cinder.zonemanager.drivers.fc_common import FCCommon
 
 LOG = logging.getLogger(__name__)
-
-
-CONF = cfg.CONF
-CONF.import_opt('fc_fabric_names', 'cinder.zonemanager.drivers.fc_common')
 
 
 class BrcdFCSanLookupService(FCCommon):
@@ -50,37 +45,14 @@ class BrcdFCSanLookupService(FCCommon):
         """Configuration specific to SAN context values."""
         config = self.configuration
 
-        fc_fabric_opts = []
         fabric_names = config.fc_fabric_names.split(',')
         LOG.debug(_('Fabric Names: %s'), fabric_names)
 
         # There can be more than one SAN in the network and we need to
         # get credentials for each for SAN context lookup later.
         if len(fabric_names) > 0:
-            for fabric_name in fabric_names:
-                fc_fabric_opts.append(cfg.StrOpt('fc_fabric_address_'
-                                                 + fabric_name,
-                                                 default='',
-                                                 help='Management IP '
-                                                 'of fabric'))
-                fc_fabric_opts.append(cfg.StrOpt('fc_fabric_user_'
-                                                 + fabric_name,
-                                                 default='',
-                                                 help='Fabric user ID'))
-                fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password_'
-                                                 + fabric_name,
-                                                 default='',
-                                                 help='Password for user',
-                                                 secret=True))
-                fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port_'
-                                                 + fabric_name, default=22,
-                                                 help='Connecting port'))
-                fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn_'
-                                                 + fabric_name,
-                                                 default=fabric_name,
-                                                 help='Principal switch WWN '
-                                                 'of the fabric'))
-            config.append_config_values(fc_fabric_opts)
+            self.fabric_configs = fabric_opts.load_fabric_configurations(
+                fabric_names)
 
     def get_device_mapping_from_network(self,
                                         initiator_wwn_list,
@@ -125,17 +97,17 @@ class BrcdFCSanLookupService(FCCommon):
                                                 get_formatted_wwn(i))
 
             for fabric_name in fabrics:
-                fabric_ip = self.configuration.safe_get('fc_fabric_address_'
-                                                        + fabric_name)
-                fabric_user = self.configuration.safe_get('fc_fabric_user_'
-                                                          + fabric_name)
-                fabric_pwd = self.configuration.safe_get('fc_fabric_password_'
-                                                         + fabric_name)
-                fabric_port = self.configuration.safe_get(
-                    'fc_fabric_port_' + fabric_name)
-                fabric_principal_wwn = self.configuration.safe_get(
-                    'principal_switch_wwn_'
-                    + fabric_name)
+                fabric_ip = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_address')
+                fabric_user = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_user')
+                fabric_pwd = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_password')
+                fabric_port = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_port')
+                fabric_principal_wwn = \
+                    self.fabric_configs[fabric_name].safe_get(
+                        'principal_switch_wwn')
 
                 # Get name server data from fabric and find the targets
                 # logged in

@@ -23,23 +23,14 @@ defined in this class.
 """
 
 
-from oslo.config import cfg
-
 from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.volume import configuration as config
+from cinder.zonemanager import fc_zone_manager
 
 
 LOG = logging.getLogger(__name__)
-lookup_service_opts = [
-    cfg.StrOpt('fc_san_lookup_service',
-               default='cinder.zonemanager.drivers.brocade'
-               '.brcd_fc_san_lookup_service.BrcdFCSanLookupService',
-               help='FC San Lookup Service'),
-]
-
-CONF = cfg.CONF
-CONF.register_opts(lookup_service_opts)
 
 
 class FCSanLookupService(object):
@@ -53,8 +44,9 @@ class FCSanLookupService(object):
 
     def __init__(self, **kwargs):
         self.configuration = kwargs.get('configuration', None)
-        if self.configuration:
-            self.configuration.append_config_values(lookup_service_opts)
+
+        opts = fc_zone_manager.zone_manager_opts
+        self.configuration = config.Configuration(opts, 'fc-zone-manager')
 
     def get_device_mapping_from_network(self, initiator_list, target_list):
         """Get device mapping from FC network.

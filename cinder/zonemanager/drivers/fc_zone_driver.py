@@ -30,24 +30,10 @@ interfaces.
 """
 
 
-from oslo.config import cfg
-
 from cinder.openstack.common import log as logging
 from cinder.zonemanager.drivers.fc_common import FCCommon
 
 LOG = logging.getLogger(__name__)
-
-fc_zone_opts = [
-    cfg.BoolOpt('zone_activate',
-                default=True,
-                help="Indicates whether zone should be activated or not"),
-    cfg.StrOpt('zone_name_prefix',
-               default="openstack",
-               help="A prefix to be used when naming zone"),
-]
-
-CONF = cfg.CONF
-CONF.register_opts(fc_zone_opts)
 
 
 class FCZoneDriver(FCCommon):

@@ -63,15 +63,16 @@ class BrcdFcZoneDriverBaseTest(object):
         configuration = conf.Configuration(fc_test_opts)
         # fill up config
         configuration.zoning_mode = 'fabric'
-        configuration.zone_driver = ('cinder.tests.test_brcd_fc_zone_driver'
-                                     '.FakeBrcdFCZoneDriver')
-        configuration.brcd_sb_connector = ('cinder.tests.'
+        configuration.zone_driver = ('cinder.tests.zonemanager.'
+                                     'test_brcd_fc_zone_driver.'
+                                     'FakeBrcdFCZoneDriver')
+        configuration.brcd_sb_connector = ('cinder.tests.zonemanager.'
                                            'test_brcd_fc_zone_driver'
                                            '.FakeBrcdFCZoneClientCLI')
         configuration.zoning_policy = 'initiator-target'
         configuration.zone_activate = True
         configuration.zone_name_prefix = 'openstack'
-        configuration.fc_san_lookup_service = ('cinder.tests.'
+        configuration.fc_san_lookup_service = ('cinder.tests.zonemanager.'
                                                'test_brcd_fc_zone_driver.'
                                                'FakeBrcdFCSanLookupService')
 

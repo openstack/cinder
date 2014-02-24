@@ -28,10 +28,9 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
-    import BrcdFCSanLookupService
-import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
-from mock import patch
+import cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
+    as brcd_lookup
+from cinder.zonemanager.drivers.brocade import fc_zone_constants
 
 LOG = logging.getLogger(__name__)
 
@@ -45,13 +44,16 @@ _device_map_to_verify = {
         'target_port_wwn_list': ['20240002ac000a50']}}
 
 
-class TestBrcdFCSanLookupService(BrcdFCSanLookupService, test.TestCase):
+class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
+                                 test.TestCase):
 
     def setUp(self):
         super(TestBrcdFCSanLookupService, self).setUp()
         self.client = paramiko.SSHClient()
         self.configuration = conf.Configuration(None)
-        self.configuration.set_default('fc_fabric_names', 'BRCD_FAB_2')
+        self.configuration.set_default('fc_fabric_names', 'BRCD_FAB_2',
+                                       'fc-zone-manager')
+        self.configuration.fc_fabric_names = 'BRCD_FAB_2'
         self.create_configuration()
 
     # override some of the functions
@@ -60,31 +62,33 @@ class TestBrcdFCSanLookupService(BrcdFCSanLookupService, test.TestCase):
 
     def create_configuration(self):
         fc_fabric_opts = []
-        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_address_BRCD_FAB_2',
+        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_address',
                                          default='10.24.49.100', help=''))
-        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_user_BRCD_FAB_2',
+        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_user',
                                          default='admin', help=''))
-        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password_BRCD_FAB_2',
+        fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password',
                                          default='password', help='',
                                          secret=True))
-        fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port_BRCD_FAB_2',
+        fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port',
                                          default=22, help=''))
-        fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn_BRCD_FAB_2',
+        fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn',
                                          default='100000051e55a100', help=''))
-        self.configuration.append_config_values(fc_fabric_opts)
+        self.fabric_configs = {}
+        config = conf.Configuration(fc_fabric_opts, 'BRCD_FAB_2')
+        self.fabric_configs['BRCD_FAB_2'] = config
 
-    @patch.object(BrcdFCSanLookupService, 'get_nameserver_info')
+    @mock.patch.object(brcd_lookup.BrcdFCSanLookupService,
+                       'get_nameserver_info')
     def test_get_device_mapping_from_network(self, get_nameserver_info_mock):
         initiator_list = ['10008c7cff523b01']
         target_list = ['20240002ac000a50', '20240002ac000a40']
-        with mock.patch.object(self.client, 'connect') \
-                as client_connect_mock:
+        with mock.patch.object(self.client, 'connect') as client_connect_mock:
             get_nameserver_info_mock.return_value = (nsshow_data)
             device_map = self.get_device_mapping_from_network(
                 initiator_list, target_list)
             self.assertDictMatch(device_map, _device_map_to_verify)
 
-    @patch.object(BrcdFCSanLookupService, '_get_switch_data')
+    @mock.patch.object(brcd_lookup.BrcdFCSanLookupService, '_get_switch_data')
     def test_get_nameserver_info(self, get_switch_data_mock):
         ns_info_list = []
         ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29',
@@ -94,7 +98,7 @@ class TestBrcdFCSanLookupService(BrcdFCSanLookupService, test.TestCase):
         self.assertEqual(ns_info_list, ns_info_list_expected)
 
     def test__get_switch_data(self):
-        cmd = ZoneConstant.NS_SHOW
+        cmd = fc_zone_constants.NS_SHOW
 
         with mock.patch.object(self.client, 'exec_command') \
                 as exec_command_mock:
