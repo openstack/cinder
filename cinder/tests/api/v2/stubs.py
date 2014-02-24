@@ -43,6 +43,7 @@ def stub_volume(id, **kwargs):
         'snapshot_id': None,
         'source_volid': None,
         'volume_type_id': '3e196c20-3c06-11e2-81c1-0800200c9a66',
+        'encryption_key_id': None,
         'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
                                   {'key': 'readonly', 'value': 'False'}],
         'bootable': False,

@@ -66,9 +66,14 @@ class ViewBuilder(common.ViewBuilder):
                 'metadata': self._get_volume_metadata(volume),
                 'links': self._get_links(request, volume['id']),
                 'user_id': volume.get('user_id'),
-                'bootable': str(volume.get('bootable')).lower()
+                'bootable': str(volume.get('bootable')).lower(),
+                'encrypted': self._is_volume_encrypted(volume)
             }
         }
+
+    def _is_volume_encrypted(self, volume):
+        """Determine if volume is encrypted."""
+        return volume.get('encryption_key_id') is not None
 
     def _get_attachments(self, volume):
         """Retrieve the attachments of the volume object."""

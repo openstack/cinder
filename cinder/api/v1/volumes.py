@@ -106,6 +106,8 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     d['snapshot_id'] = vol['snapshot_id']
     d['source_volid'] = vol['source_volid']
 
+    d['encrypted'] = vol['encryption_key_id'] is not None
+
     if image_id:
         d['image_id'] = image_id
 
