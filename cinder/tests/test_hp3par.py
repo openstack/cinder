@@ -547,6 +547,21 @@ class HP3PARBaseDriver(object):
                           self.driver.delete_snapshot,
                           self.snapshot)
 
+    def test_delete_snapshot_not_found(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        self.driver.create_snapshot(self.snapshot)
+
+        try:
+            ex = hpexceptions.HTTPNotFound("not found")
+            mock_client.deleteVolume = mock.Mock(side_effect=ex)
+            self.driver.delete_snapshot(self.snapshot)
+        except Exception:
+            self.fail("Deleting a snapshot that is missing should act as if "
+                      "it worked.")
+
     def test_create_volume_from_snapshot(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
