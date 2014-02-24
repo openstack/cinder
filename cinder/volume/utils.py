@@ -136,12 +136,12 @@ def _calculate_count(size_in_m, blocksize):
 
     # Check if volume_dd_blocksize is valid
     try:
-        # Rule out zero-sized/negative dd blocksize which
+        # Rule out zero-sized/negative/float dd blocksize which
         # cannot be caught by strutils
-        if blocksize.startswith(('-', '0')):
+        if blocksize.startswith(('-', '0')) or '.' in blocksize:
             raise ValueError
-        bs = strutils.to_bytes(blocksize)
-    except (ValueError, TypeError):
+        bs = strutils.string_to_bytes('%sB' % blocksize)
+    except ValueError:
         msg = (_("Incorrect value error: %(blocksize)s, "
                  "it may indicate that \'volume_dd_blocksize\' "
                  "was configured incorrectly. Fall back to default.")
@@ -150,9 +150,9 @@ def _calculate_count(size_in_m, blocksize):
         # Fall back to default blocksize
         CONF.clear_override('volume_dd_blocksize')
         blocksize = CONF.volume_dd_blocksize
-        bs = strutils.to_bytes(blocksize)
+        bs = strutils.string_to_bytes('%sB' % blocksize)
 
-    count = math.ceil(size_in_m * units.MiB / float(bs))
+    count = math.ceil(size_in_m * units.MiB / bs)
 
     return blocksize, int(count)
 
