@@ -17,4 +17,4 @@
 DB abstraction for Cinder
 """
 
-from cinder.db.api import *
+from cinder.db.api import *  # noqa
