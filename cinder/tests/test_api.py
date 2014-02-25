@@ -18,8 +18,8 @@
 """Unit tests for the API endpoint."""
 
 import httplib
-import StringIO
 
+import six
 import webob
 
 
@@ -27,7 +27,7 @@ class FakeHttplibSocket(object):
     """A fake socket implementation for httplib.HTTPResponse, trivial."""
     def __init__(self, response_string):
         self.response_string = response_string
-        self._buffer = StringIO.StringIO(response_string)
+        self._buffer = six.StringIO(response_string)
 
     def makefile(self, _mode, _other):
         """Returns the socket's internal buffer."""

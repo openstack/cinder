@@ -17,10 +17,10 @@
 """Test of Policy Engine For Cinder."""
 
 import os.path
-import StringIO
 import urllib2
 
 from oslo.config import cfg
+import six
 
 from cinder import context
 from cinder import exception
@@ -108,7 +108,7 @@ class PolicyTestCase(test.TestCase):
     def test_enforce_http_true(self):
 
         def fakeurlopen(url, post_data):
-            return StringIO.StringIO("True")
+            return six.StringIO("True")
         self.stubs.Set(urllib2, 'urlopen', fakeurlopen)
         action = "example:get_http"
         target = {}
@@ -118,7 +118,7 @@ class PolicyTestCase(test.TestCase):
     def test_enforce_http_false(self):
 
         def fakeurlopen(url, post_data):
-            return StringIO.StringIO("False")
+            return six.StringIO("False")
         self.stubs.Set(urllib2, 'urlopen', fakeurlopen)
         action = "example:get_http"
         target = {}

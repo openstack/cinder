@@ -35,10 +35,10 @@ import httplib
 import json
 import os
 import socket
-import StringIO
 
 import eventlet
 from oslo.config import cfg
+import six
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
@@ -199,7 +199,7 @@ class SwiftBackupDriver(BackupDriver):
         metadata['created_at'] = str(backup['created_at'])
         metadata['objects'] = object_list
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
-        reader = StringIO.StringIO(metadata_json)
+        reader = six.StringIO(metadata_json)
         etag = self.conn.put_object(container, filename, reader,
                                     content_length=reader.len)
         md5 = hashlib.md5(metadata_json).hexdigest()
@@ -285,7 +285,7 @@ class SwiftBackupDriver(BackupDriver):
             LOG.debug(_('not compressing data'))
             obj[object_name]['compression'] = 'none'
 
-        reader = StringIO.StringIO(data)
+        reader = six.StringIO(data)
         LOG.debug(_('About to put_object'))
         try:
             etag = self.conn.put_object(container, object_name, reader,
