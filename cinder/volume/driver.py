@@ -137,6 +137,7 @@ class VolumeDriver(object):
     def __init__(self, execute=utils.execute, *args, **kwargs):
         # NOTE(vish): db is set by Manager
         self.db = kwargs.get('db')
+        self.host = kwargs.get('host')
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(volume_opts)

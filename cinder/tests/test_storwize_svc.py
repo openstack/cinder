@@ -25,9 +25,11 @@ import re
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
+from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import test
+from cinder.tests import utils as testutils
 from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -36,17 +38,6 @@ from cinder.volume.drivers.ibm.storwize_svc import ssh
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
-
-
-class StorwizeSVCFakeDB:
-    def __init__(self):
-        self.volume = None
-
-    def volume_get(self, ctxt, vol_id):
-        return self.volume
-
-    def volume_set(self, vol):
-        self.volume = vol
 
 
 class StorwizeSVCManagementSimulator:
@@ -1564,7 +1555,10 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self._connector = utils.brick_get_connector_properties()
 
         self._reset_flags()
-        self.driver.db = StorwizeSVCFakeDB()
+        self.ctxt = context.get_admin_context()
+        db_driver = self.driver.configuration.db_driver
+        self.db = importutils.import_module(db_driver)
+        self.driver.db = self.db
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self.sleeppatch = mock.patch('eventlet.greenthread.sleep')
@@ -1688,8 +1682,17 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                     'volume_type_id': None,
                     'mdisk_grp_name': 'openstack'}
 
+    def _create_volume(self, **kwargs):
+        vol = testutils.create_volume(self.ctxt, **kwargs)
+        self.driver.create_volume(vol)
+        return vol
+
+    def _delete_volume(self, volume):
+        self.driver.delete_volume(volume)
+        self.db.volume_destroy(self.ctxt, volume['id'])
+
     def _create_test_vol(self, opts):
-        ctxt = context.get_admin_context()
+        ctxt = testutils.get_test_admin_context()
         type_ref = volume_types.create(ctxt, 'testtype', opts)
         volume = self._generate_vol_info(None, None)
         type_id = type_ref['id']
@@ -1704,9 +1707,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         return attrs
 
     def test_storwize_svc_snapshots(self):
-        vol1 = self._generate_vol_info(None, None)
-        self.driver.create_volume(vol1)
-        self.driver.db.volume_set(vol1)
+        vol1 = self._create_volume()
         snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
 
         # Test timeout and volume cleanup
@@ -1749,9 +1750,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snap1)
 
     def test_storwize_svc_create_volfromsnap_clone(self):
-        vol1 = self._generate_vol_info(None, None)
-        self.driver.create_volume(vol1)
-        self.driver.db.volume_set(vol1)
+        vol1 = self._create_volume()
         snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
         self.driver.create_snapshot(snap1)
         vol2 = self._generate_vol_info(None, None)
@@ -2193,9 +2192,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
     def test_storwize_svc_delete_volume_snapshots(self):
         # Create a volume with two snapshots
-        master = self._generate_vol_info(None, None)
-        self.driver.create_volume(master)
-        self.driver.db.volume_set(master)
+        master = self._create_volume()
 
         # Fail creating a snapshot - will force delete the snapshot
         if self.USESIM and False:
@@ -2286,9 +2283,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertAlmostEqual(stats['free_capacity_gb'], 3287.5)
 
     def test_storwize_svc_extend_volume(self):
-        volume = self._generate_vol_info(None, None)
-        self.driver.db.volume_set(volume)
-        self.driver.create_volume(volume)
+        volume = self._create_volume()
         self.driver.extend_volume(volume, '13')
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
         vol_size = int(attrs['capacity']) / units.GiB
@@ -2320,39 +2315,18 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         cap = {'location_info': 'StorwizeSVCDriver:foo:bar'}
         self._check_loc_info(cap, {'moved': False, 'model_update': None})
 
-    def test_storwize_svc_migrate_same_extent_size(self):
+    def test_storwize_svc_volume_migrate(self):
         # Make sure we don't call migrate_volume_vdiskcopy
-        with mock.patch.object(self.driver._helpers,
-                               'migrate_volume_vdiskcopy') as migr_vdiskcopy:
-            migr_vdiskcopy.side_effect = KeyError
-            self.driver.do_setup(None)
-            loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
-                   ':openstack2')
-            cap = {'location_info': loc, 'extent_size': '256'}
-            host = {'host': 'foo', 'capabilities': cap}
-            ctxt = context.get_admin_context()
-            volume = self._generate_vol_info(None, None)
-            volume['volume_type_id'] = None
-            self.driver.create_volume(volume)
-            self.driver.migrate_volume(ctxt, volume, host)
-            self.driver.delete_volume(volume)
-
-    def test_storwize_svc_migrate_diff_extent_size(self):
         self.driver.do_setup(None)
         loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
-               ':openstack3')
-        cap = {'location_info': loc, 'extent_size': '128'}
+               ':openstack2')
+        cap = {'location_info': loc, 'extent_size': '256'}
         host = {'host': 'foo', 'capabilities': cap}
         ctxt = context.get_admin_context()
-        volume = self._generate_vol_info(None, None)
+        volume = self._create_volume()
         volume['volume_type_id'] = None
-        self.driver.create_volume(volume)
-        self.assertNotEqual(cap['extent_size'],
-                            self.driver._state['extent_size'])
         self.driver.migrate_volume(ctxt, volume, host)
-        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        self.assertIn('openstack3', attrs['mdisk_grp_name'])
-        self.driver.delete_volume(volume)
+        self._delete_volume(volume)
 
     def test_storwize_svc_retype_no_copy(self):
         self.driver.do_setup(None)
@@ -2446,8 +2420,29 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
     def test_set_storage_code_level_success(self):
         res = self.driver._helpers.get_system_info()
-        self.assertEqual((7, 2, 0, 0), res['code_level'],
-                         'Get code level error')
+        if self.USESIM:
+            self.assertEqual((7, 2, 0, 0), res['code_level'],
+                             'Get code level error')
+
+    def test_storwize_vdisk_copy_ops(self):
+        ctxt = testutils.get_test_admin_context()
+        volume = self._create_volume()
+        driver = self.driver
+        dest_pool = self.driver.configuration.storwize_svc_volpool_name
+        new_ops = driver._helpers.add_vdisk_copy(volume['name'], dest_pool,
+                                                 None, self.driver._state,
+                                                 self.driver.configuration)
+        self.driver._add_vdisk_copy_op(ctxt, volume, new_ops)
+        admin_metadata = self.db.volume_admin_metadata_get(ctxt, volume['id'])
+        self.assertEqual(":".join(x for x in new_ops),
+                         admin_metadata['vdiskcopyops'],
+                         'Storwize driver add vdisk copy error.')
+        self.driver._check_volume_copy_ops()
+        self.driver._rm_vdisk_copy_op(ctxt, volume, new_ops[0], new_ops[1])
+        admin_metadata = self.db.volume_admin_metadata_get(ctxt, volume['id'])
+        self.assertEqual(None, admin_metadata.get('vdiskcopyops', None),
+                         'Storwize driver delete vdisk copy error')
+        self._delete_volume(volume)
 
 
 class CLIResponseTestCase(test.TestCase):

@@ -679,13 +679,8 @@ class StorwizeHelpers(object):
     def extend_vdisk(self, vdisk, amount):
         self.ssh.expandvdisksize(vdisk, amount)
 
-    def migrate_volume_vdiskcopy(self, vdisk, dest_pool, volume_type,
-                                 state, config):
-        """Migrate a volume using addvdiskcopy and rmvdiskcopy.
-
-        This will add a vdisk copy with the given volume type in the given
-        pool, wait until it syncs, and delete the original copy.
-        """
+    def add_vdisk_copy(self, vdisk, dest_pool, volume_type, state, config):
+        """Add a vdisk copy in the given pool."""
         this_pool = config.storwize_svc_volpool_name
         resp = self.ssh.lsvdiskcopy(vdisk)
         orig_copy_id = None
@@ -694,7 +689,7 @@ class StorwizeHelpers(object):
                 orig_copy_id = copy_id
 
         if orig_copy_id is None:
-            msg = (_('migrate_volume started without a vdisk copy in the '
+            msg = (_('add_vdisk_copy started without a vdisk copy in the '
                      'expected pool.'))
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -706,19 +701,16 @@ class StorwizeHelpers(object):
                                          volume_type=volume_type)
         params = self._get_vdisk_create_params(opts)
         new_copy_id = self.ssh.addvdiskcopy(vdisk, dest_pool, params)
+        return (orig_copy_id, new_copy_id)
 
-        sync = False
-        while not sync:
-            sync = self.ssh.lsvdiskcopy(vdisk, copy_id=new_copy_id)[0]['sync']
-            if sync == 'yes':
-                sync = True
-            else:
-                greenthread.sleep(10)
+    def is_vdisk_copy_synced(self, vdisk, copy_id):
+        sync = self.ssh.lsvdiskcopy(vdisk, copy_id=copy_id)[0]['sync']
+        if sync == 'yes':
+            return True
+        return False
 
-        self.ssh.rmvdiskcopy(vdisk, orig_copy_id)
-
-    def migrate_vdisk(self, vdisk, dest_pool):
-        self.ssh.migratevdisk(vdisk, dest_pool)
+    def rm_vdisk_copy(self, vdisk, copy_id):
+        self.ssh.rmvdiskcopy(vdisk, copy_id)
 
     @staticmethod
     def can_migrate_to_host(host, state):
