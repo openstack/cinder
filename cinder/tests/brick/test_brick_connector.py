@@ -179,8 +179,8 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                              ('iscsiadm -m node -T %s -p %s --login' %
                               (iqn, location)),
                              ('iscsiadm -m node -T %s -p %s --op update'
-                              ' -n node.startup -v automatic' % (iqn,
-                              location)),
+                              ' -n node.startup -v automatic'
+                              % (iqn, location)),
                              ('iscsiadm -m node --rescan'),
                              ('iscsiadm -m session --rescan'),
                              ('tee -a /sys/block/sdb/device/delete'),
@@ -579,7 +579,8 @@ class RemoteFsConnectorTestCase(ConnectorTestCase):
             'export': self.TEST_DEV,
             'name': '9c592d52-ce47-4263-8c21-4ecf3c029cdb'}
         self.connector = connector.RemoteFsConnector(
-            'nfs', root_helper='sudo', nfs_mount_point_base='/mnt/test')
+            'nfs', root_helper='sudo', nfs_mount_point_base='/mnt/test',
+            nfs_mount_options='vers=3')
 
     def tearDown(self):
         self.mox.VerifyAll()
@@ -594,7 +595,7 @@ class RemoteFsConnectorTestCase(ConnectorTestCase):
                         check_exit_code=0).AndReturn(("", ""))
         client._execute('mkdir', '-p', self.TEST_PATH,
                         check_exit_code=0).AndReturn(("", ""))
-        client._execute('mount', '-t', 'nfs',
+        client._execute('mount', '-t', 'nfs', '-o', 'vers=3',
                         self.TEST_DEV, self.TEST_PATH,
                         root_helper='sudo', run_as_root=True,
                         check_exit_code=0).AndReturn(("", ""))
