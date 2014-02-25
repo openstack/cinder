@@ -118,10 +118,11 @@ class HP3PARCommon(object):
         2.0.2 - Add back-end assisted volume migrate
         2.0.3 - Allow deleting missing snapshots bug #1283233
         2.0.4 - Allow volumes created from snapshots to be larger bug #1279478
+        2.0.5 - Fix extend volume units bug #1284368
 
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
 
     stats = {}
 
@@ -248,8 +249,9 @@ class HP3PARCommon(object):
         growth_size = int(new_size) - old_size
         LOG.debug("Extending Volume %s from %s to %s, by %s GB." %
                   (volume_name, old_size, new_size, growth_size))
+        growth_size_mib = growth_size * units.KiB
         try:
-            self.client.growVolume(volume_name, growth_size)
+            self.client.growVolume(volume_name, growth_size_mib)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error extending volume %s") % volume)
