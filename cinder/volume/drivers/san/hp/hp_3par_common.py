@@ -116,10 +116,11 @@ class HP3PARCommon(object):
         2.0.0 - Update hp3parclient API uses 3.0.x
         2.0.1 - Updated to use qos_specs, added new qos settings and personas
         2.0.2 - Add back-end assisted volume migrate
+        2.0.3 - Allow deleting missing snapshots bug #1283233
 
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     stats = {}
 
@@ -564,7 +565,7 @@ class HP3PARCommon(object):
                 # Cleanup the volume set if unable to create the qos rule
                 # or add the volume to the volume set
                 self.client.deleteVolumeSet(vvs_name)
-                raise exception.CinderException(ex.get_description())
+                raise exception.CinderException(ex)
 
     def get_cpg(self, volume, allowSnap=False):
         volume_name = self._get_3par_vol_name(volume['id'])
@@ -831,7 +832,9 @@ class HP3PARCommon(object):
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
-            LOG.error(str(ex))
+            msg = _("Delete volume id not found. Removing from cinder: "
+                    "%(id)s Ex: %(msg)s") % {'id': volume['id'], 'msg': ex}
+            LOG.warning(msg)
         except hpexceptions.HTTPForbidden as ex:
             LOG.error(str(ex))
             raise exception.NotAuthorized(ex.get_description())
@@ -898,7 +901,7 @@ class HP3PARCommon(object):
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
                     LOG.error(str(ex))
-                    raise exception.CinderException(ex.get_description())
+                    raise exception.CinderException(ex)
         except hpexceptions.HTTPForbidden as ex:
             LOG.error(str(ex))
             raise exception.NotAuthorized()
@@ -907,7 +910,7 @@ class HP3PARCommon(object):
             raise exception.NotFound()
         except Exception as ex:
             LOG.error(str(ex))
-            raise exception.CinderException(ex.get_description())
+            raise exception.CinderException(ex)
 
     def create_snapshot(self, snapshot):
         LOG.debug("Create Snapshot\n%s" % pprint.pformat(snapshot))
@@ -1129,8 +1132,11 @@ class HP3PARCommon(object):
             LOG.error(str(ex))
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
-            LOG.error(str(ex))
-            raise exception.NotFound()
+            # We'll let this act as if it worked
+            # it helps clean up the cinder entries.
+            msg = _("Delete Snapshot id not found. Removing from cinder: "
+                    "%(id)s Ex: %(msg)s") % {'id': snapshot['id'], 'msg': ex}
+            LOG.warning(msg)
         except hpexceptions.HTTPConflict as ex:
             LOG.error(str(ex))
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
