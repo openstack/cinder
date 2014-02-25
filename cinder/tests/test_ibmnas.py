@@ -162,11 +162,11 @@ class IBMNASDriverTestCase(test.TestCase):
         drv._create_ibmnas_snap = mock.drv._run_ssh.return_value.\
             drv._execute.return_value.drv._create_ibmnas_snap
         drv._create_ibmnas_snap.return_value = None
-        self.assertEqual(None, mock.drv._run_ssh().
-                         drv._execute().
-                         drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
-                                                 self.TEST_SNAP_PATH,
-                                                 None))
+        self.assertIsNone(mock.drv._run_ssh().
+                          drv._execute().
+                          drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
+                                                  self.TEST_SNAP_PATH,
+                                                  None))
 
     def test_create_ibmnas_copy(self):
         """Create ibmnas copy test case."""
@@ -180,11 +180,11 @@ class IBMNASDriverTestCase(test.TestCase):
         drv._create_ibmnas_copy = mock.drv._run_ssh.return_value.\
             drv._create_ibmnas_copy
         drv._create_ibmnas_copy.return_value = None
-        self.assertEqual(None, mock.drv._run_ssh().
-                         drv._create_ibmnas_copy(
-                             self.TEST_VOLUME_PATH,
-                             TEST_DEST_PATH,
-                             TEST_DEST_SNAP))
+        self.assertIsNone(mock.drv._run_ssh().
+                          drv._create_ibmnas_copy(
+                              self.TEST_VOLUME_PATH,
+                              TEST_DEST_PATH,
+                              TEST_DEST_SNAP))
 
     def test_resize_volume_file(self):
         """Resize volume file test case."""
@@ -210,11 +210,11 @@ class IBMNASDriverTestCase(test.TestCase):
             drv._resize_volume_file.return_value.\
             drv.extend_volume
         drv.extend_volume.return_value = None
-        self.assertEqual(None, mock.drv.local_path().
-                         drv._resize_volume_file().
-                         drv.extend_volume(
-                             self.TEST_LOCAL_PATH,
-                             self.TEST_EXTEND_SIZE_IN_GB))
+        self.assertIsNone(mock.drv.local_path().
+                          drv._resize_volume_file().
+                          drv.extend_volume(
+                              self.TEST_LOCAL_PATH,
+                              self.TEST_EXTEND_SIZE_IN_GB))
 
     def test_delete_snapfiles(self):
         """Delete_snapfiles assert test case."""
@@ -226,11 +226,11 @@ class IBMNASDriverTestCase(test.TestCase):
             drv._execute.return_value.\
             drv._delete_snapfiles
         drv._delete_snapfiles.return_value = None
-        self.assertEqual(None, mock.drv._run_ssh().
-                         drv._execute().
-                         drv._delete_snapfiles(
-                             self.TEST_VOLUME_PATH,
-                             self.TEST_MNT_POINT))
+        self.assertIsNone(mock.drv._run_ssh().
+                          drv._execute().
+                          drv._delete_snapfiles(
+                              self.TEST_VOLUME_PATH,
+                              self.TEST_MNT_POINT))
 
     def test_delete_volume_no_provider_location(self):
         """Delete volume with no provider location specified."""
@@ -242,7 +242,7 @@ class IBMNASDriverTestCase(test.TestCase):
         volume['provider_location'] = None
 
         result = drv.delete_volume(volume)
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_delete_volume(self):
         """Delete volume test case."""
@@ -284,15 +284,14 @@ class IBMNASDriverTestCase(test.TestCase):
             drv._create_ibmnas_snap.return_value.\
             drv.create_snapshot
         drv.create_snapshot.return_value = None
-        self.assertEqual(None,
-                         mock.drv._get_export_path(snapshot['volume_id']).
-                         drv._get_provider_location(snapshot['volume_id']).
-                         drv._get_mount_point_for_share(self.TEST_NFS_EXPORT).
-                         drv._create_ibmnas_snap(
-                             src=self.TEST_VOLUME_PATH,
-                             dest=self.TEST_SNAP_PATH,
-                             mount_path=self.TEST_MNT_POINT).
-                         drv.create_snapshot(snapshot))
+        self.assertIsNone(mock.drv._get_export_path(snapshot['volume_id']).
+                          drv._get_provider_location(snapshot['volume_id']).
+                          drv._get_mount_point_for_share(self.TEST_NFS_EXPORT).
+                          drv._create_ibmnas_snap(
+                              src=self.TEST_VOLUME_PATH,
+                              dest=self.TEST_SNAP_PATH,
+                              mount_path=self.TEST_MNT_POINT).
+                          drv.create_snapshot(snapshot))
 
     def test_delete_snapshot(self):
         """Delete snapshot simple test case."""
@@ -313,10 +312,10 @@ class IBMNASDriverTestCase(test.TestCase):
             drv._get_mount_point_for_share.return_value.drv._execute.\
             return_value.drv.delete_snapshot
         drv.delete_snapshot.return_value = None
-        self.assertEqual(None, mock.drv._get_provider_location(volume['id']).
-                         drv._get_mount_point_for_share(self.TEST_NFS_EXPORT).
-                         drv._execute().
-                         drv.delete_snapshot(snapshot))
+        self.assertIsNone(mock.drv._get_provider_location(volume['id']).
+                          drv._get_mount_point_for_share(self.TEST_NFS_EXPORT).
+                          drv._execute().
+                          drv.delete_snapshot(snapshot))
 
     def test_create_cloned_volume(self):
         """Clone volume with equal size test case."""

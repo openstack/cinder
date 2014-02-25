@@ -272,8 +272,7 @@ class TestHPMSACommon(test.TestCase):
     def test_assert_connector_ok(self):
         self.assertRaises(exception.InvalidInput,
                           self.common._assert_connector_ok, invalid_connector)
-        self.assertEqual(None,
-                         self.common._assert_connector_ok(connector))
+        self.assertIsNone(self.common._assert_connector_ok(connector))
 
     @mock.patch.object(msa.HPMSAClient, 'vdisk_stats')
     def test_update_volume_stats(self, mock_stats):
