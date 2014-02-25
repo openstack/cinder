@@ -70,10 +70,7 @@ class VolumeTypesManageApiTest(test.TestCase):
         """to reset notifier drivers left over from other api/contrib tests"""
         notifier_api._reset_drivers()
         test_notifier.NOTIFICATIONS = []
-
-    def tearDown(self):
-        notifier_api._reset_drivers()
-        super(VolumeTypesManageApiTest, self).tearDown()
+        self.addCleanup(notifier_api._reset_drivers)
 
     def test_volume_types_delete(self):
         self.stubs.Set(volume_types, 'get_volume_type',

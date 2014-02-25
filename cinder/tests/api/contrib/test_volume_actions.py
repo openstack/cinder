@@ -43,25 +43,21 @@ class VolumeActionsTest(test.TestCase):
         for _meth in self._methods:
             self.api_patchers[_meth] = mock.patch('cinder.volume.API.' + _meth)
             self.api_patchers[_meth].start()
+            self.addCleanup(self.api_patchers[_meth].stop)
             self.api_patchers[_meth].return_value = True
 
         vol = {'id': 'fake', 'host': 'fake', 'status': 'available', 'size': 1,
                'migration_status': None, 'volume_type_id': 'fake'}
         self.get_patcher = mock.patch('cinder.volume.API.get')
         self.mock_volume_get = self.get_patcher.start()
+        self.addCleanup(self.get_patcher.stop)
         self.mock_volume_get.return_value = vol
         self.update_patcher = mock.patch('cinder.volume.API.update')
         self.mock_volume_update = self.update_patcher.start()
+        self.addCleanup(self.update_patcher.stop)
         self.mock_volume_update.return_value = vol
 
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
-
-    def tearDown(self):
-        for patcher in self.api_patchers:
-            self.api_patchers[patcher].stop()
-        self.update_patcher.stop()
-        self.get_patcher.stop()
-        super(VolumeActionsTest, self).tearDown()
 
     def test_simple_api_actions(self):
         app = fakes.wsgi_app()
@@ -310,6 +306,7 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
             name = path.split('.')[-1]
             self.retype_patchers[name] = mock.patch(path)
             self.retype_mocks[name] = self.retype_patchers[name].start()
+            self.addCleanup(self.retype_patchers[name].stop)
 
         self.retype_mocks['get_volume_type'].side_effect = get_vol_type
         self.retype_mocks['get_volume_type_by_name'].side_effect = get_vol_type
@@ -317,11 +314,6 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
         self.retype_mocks['reserve'].return_value = None
 
         super(VolumeRetypeActionsTest, self).setUp()
-
-    def tearDown(self):
-        for name, patcher in self.retype_patchers.iteritems():
-            patcher.stop()
-        super(VolumeRetypeActionsTest, self).tearDown()
 
     def _retype_volume_exec(self, expected_status, new_type='foo'):
         req = webob.Request.blank('/v2/fake/volumes/1/action')

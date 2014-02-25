@@ -58,10 +58,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         """to reset notifier drivers left over from other api/contrib tests"""
         notifier_api._reset_drivers()
         test_notifier.NOTIFICATIONS = []
-
-    def tearDown(self):
-        notifier_api._reset_drivers()
-        super(VolumeTypeEncryptionTest, self).tearDown()
+        self.addCleanup(notifier_api._reset_drivers)
 
     def _get_response(self, volume_type, admin=True,
                       url='/v2/fake/types/%s/encryption',

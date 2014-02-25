@@ -732,9 +732,14 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
         """
         super(WsgiLimiterProxyTest, self).setUp()
         self.app = limits.WsgiLimiter(TEST_LIMITS)
-        self.oldHTTPConnection = (
+        oldHTTPConnection = (
             wire_HTTPConnection_to_WSGI("169.254.0.1:80", self.app))
         self.proxy = limits.WsgiLimiterProxy("169.254.0.1:80")
+        self.addCleanup(self._restore, oldHTTPConnection)
+
+    def _restore(self, oldHTTPConnection):
+        # restore original HTTPConnection object
+        httplib.HTTPConnection = oldHTTPConnection
 
     def test_200(self):
         """Successful request test."""
@@ -753,11 +758,6 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
                     "made to /delayed every minute.")
 
         self.assertEqual((delay, error), expected)
-
-    def tearDown(self):
-        # restore original HTTPConnection object
-        httplib.HTTPConnection = self.oldHTTPConnection
-        super(WsgiLimiterProxyTest, self).tearDown()
 
 
 class LimitsViewBuilderTest(test.TestCase):

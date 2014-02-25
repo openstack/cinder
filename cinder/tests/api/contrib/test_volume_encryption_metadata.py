@@ -72,10 +72,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
 
         self.ctxt = context.RequestContext('fake', 'fake')
         self.volume_id = self._create_volume(self.ctxt)
-
-    def tearDown(self):
-        db.volume_destroy(self.ctxt.elevated(), self.volume_id)
-        super(VolumeEncryptionMetadataTest, self).tearDown()
+        self.addCleanup(db.volume_destroy, self.ctxt.elevated(),
+                        self.volume_id)
 
     def test_index(self):
         self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
