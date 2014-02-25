@@ -325,7 +325,8 @@ class VolumeController(wsgi.Controller):
             volume['display_name'] = volume.get('name')
             del volume['name']
 
-        # NOTE(thingee): v2 API allows description instead of description
+        # NOTE(thingee): v2 API allows description instead of
+        #                display_description
         if volume.get('description'):
             volume['display_description'] = volume.get('description')
             del volume['description']
