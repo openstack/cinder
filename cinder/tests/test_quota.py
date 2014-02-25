@@ -18,6 +18,7 @@
 
 import datetime
 
+import mock
 from oslo.config import cfg
 
 from cinder import context
@@ -737,11 +738,10 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self.calls = []
 
-        timeutils.set_time_override()
-
-    def tearDown(self):
-        timeutils.clear_time_override()
-        super(DbQuotaDriverTestCase, self).tearDown()
+        patcher = mock.patch.object(timeutils, 'utcnow')
+        self.addCleanup(patcher.stop)
+        self.mock_utcnow = patcher.start()
+        self.mock_utcnow.return_value = datetime.datetime.utcnow()
 
     def test_get_defaults(self):
         # Use our pre-defined resources
@@ -1163,7 +1163,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         self.stubs.Set(sqa_api, '_quota_usage_create', fake_quota_usage_create)
         self.stubs.Set(sqa_api, '_reservation_create', fake_reservation_create)
 
-        timeutils.set_time_override()
+        patcher = mock.patch.object(timeutils, 'utcnow')
+        self.addCleanup(patcher.stop)
+        self.mock_utcnow = patcher.start()
+        self.mock_utcnow.return_value = datetime.datetime.utcnow()
 
     def _make_quota_usage(self, project_id, resource, in_use, reserved,
                           until_refresh, created_at, updated_at):

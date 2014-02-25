@@ -21,6 +21,7 @@ import socket
 import tempfile
 import uuid
 
+import mock
 import mox
 from oslo.config import cfg
 import paramiko
@@ -614,17 +615,16 @@ class AuditPeriodTest(test.TestCase):
     def setUp(self):
         super(AuditPeriodTest, self).setUp()
         #a fairly random time to test with
-        self.test_time = datetime.datetime(second=23,
-                                           minute=12,
-                                           hour=8,
-                                           day=5,
-                                           month=3,
-                                           year=2012)
-        timeutils.set_time_override(override_time=self.test_time)
-
-    def tearDown(self):
-        timeutils.clear_time_override()
-        super(AuditPeriodTest, self).tearDown()
+        test_time = datetime.datetime(second=23,
+                                      minute=12,
+                                      hour=8,
+                                      day=5,
+                                      month=3,
+                                      year=2012)
+        patcher = mock.patch.object(timeutils, 'utcnow')
+        self.addCleanup(patcher.stop)
+        self.mock_utcnow = patcher.start()
+        self.mock_utcnow.return_value = test_time
 
     def test_hour(self):
         begin, end = utils.last_completed_audit_period(unit='hour')
