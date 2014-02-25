@@ -38,6 +38,7 @@ from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume import configuration as config
+from cinder.zonemanager import fc_common
 
 LOG = logging.getLogger(__name__)
 
@@ -64,14 +65,16 @@ CONF = cfg.CONF
 CONF.register_opts(zone_manager_opts, 'fc-zone-manager')
 
 
-class ZoneManager:
+class ZoneManager(fc_common.FCCommon):
     """Manages Connection control during attach/detach."""
 
+    VERSION = "1.0"
     driver = None
     fabric_names = []
 
     def __init__(self, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
+        super(ZoneManager, self).__init__(**kwargs)
 
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:

@@ -20,5 +20,10 @@
 class FCCommon(object):
     """Common interface for FC operations."""
 
+    VERSION = "1.0"
+
     def __init__(self, **kwargs):
         pass
+
+    def get_version(self):
+        return self.VERSION

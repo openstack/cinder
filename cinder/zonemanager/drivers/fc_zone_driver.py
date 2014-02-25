@@ -31,12 +31,12 @@ interfaces.
 
 
 from cinder.openstack.common import log as logging
-from cinder.zonemanager.drivers.fc_common import FCCommon
+from cinder.zonemanager import fc_common
 
 LOG = logging.getLogger(__name__)
 
 
-class FCZoneDriver(FCCommon):
+class FCZoneDriver(fc_common.FCCommon):
     """Interface to manage Connection control during attach/detach."""
 
     def __init__(self, **kwargs):

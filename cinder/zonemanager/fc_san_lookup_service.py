@@ -20,6 +20,7 @@ Base Lookup Service for name server lookup to find the initiator to target port
 mapping for available SAN contexts.
 Vendor specific lookup classes are expected to implement the interfaces
 defined in this class.
+
 """
 
 
@@ -27,22 +28,26 @@ from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume import configuration as config
+from cinder.zonemanager import fc_common
 from cinder.zonemanager import fc_zone_manager
 
 
 LOG = logging.getLogger(__name__)
 
 
-class FCSanLookupService(object):
+class FCSanLookupService(fc_common.FCCommon):
     """Base Lookup Service.
 
     Base Lookup Service for name server lookup to find the initiator to
     target port mapping for available SAN contexts.
+
     """
 
     lookup_service = None
 
     def __init__(self, **kwargs):
+        super(FCSanLookupService, self).__init__(**kwargs)
+
         self.configuration = kwargs.get('configuration', None)
 
         opts = fc_zone_manager.zone_manager_opts

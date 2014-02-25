@@ -198,6 +198,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             db=self.db,
             host=self.host)
 
+        self.zonemanager = None
+
     def _add_to_threadpool(self, func, *args, **kwargs):
         self._tp.spawn_n(func, *args, **kwargs)
 
@@ -207,6 +209,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
 
         ctxt = context.get_admin_context()
+        if self.configuration.safe_get('zoning_mode') == 'fabric':
+            self.zonemanager = ZoneManager(configuration=self.configuration)
+            LOG.info(_("Starting FC Zone Manager %(zm_version)s,"
+                       " Driver %(drv_name)s %(drv_version)s") %
+                     {'zm_version': self.zonemanager.get_version(),
+                      'drv_name': self.zonemanager.driver.__class__.__name__,
+                      'drv_version': self.zonemanager.driver.get_version()})
+
         LOG.info(_("Starting volume driver %(driver_name)s (%(version)s)") %
                  {'driver_name': self.driver.__class__.__name__,
                   'version': self.driver.get_version()})
@@ -806,7 +816,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         vol_type = conn_info.get('driver_volume_type', None)
         mode = self.configuration.zoning_mode
         LOG.debug(_("Zoning Mode: %s"), mode)
-        if vol_type == 'fibre_channel' and mode == 'fabric':
+        if vol_type == 'fibre_channel' and self.zonemanager:
             self._add_or_delete_fc_connection(conn_info, 1)
         return conn_info
 
@@ -831,7 +841,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 vol_type = conn_info.get('driver_volume_type', None)
                 mode = self.configuration.zoning_mode
                 LOG.debug(_("Zoning Mode: %s"), mode)
-                if vol_type == 'fibre_channel' and mode == 'fabric':
+                if vol_type == 'fibre_channel' and self.zonemanager:
                     self._add_or_delete_fc_connection(conn_info, 0)
         except Exception as err:
             err_msg = (_('Unable to terminate volume connection: %(err)s')
@@ -1265,14 +1275,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         # target WWN is passed to ZoneManager to add or update zone config.
         LOG.debug(_("Zoning op: %s"), zone_op)
         if _initiator_target_map is not None:
-            kwargs = {'driver_volume_type': 'fibre_channel',
-                      'configuration': self.configuration}
-            zonemanager = ZoneManager(**kwargs)
             try:
                 if zone_op == 1:
-                    zonemanager.add_connection(_initiator_target_map)
+                    self.zonemanager.add_connection(_initiator_target_map)
                 elif zone_op == 0:
-                    zonemanager.delete_connection(_initiator_target_map)
+                    self.zonemanager.delete_connection(_initiator_target_map)
             except exception.ZoneManagerException as e:
                 with excutils.save_and_reraise_exception():
                     LOG.error(str(e))

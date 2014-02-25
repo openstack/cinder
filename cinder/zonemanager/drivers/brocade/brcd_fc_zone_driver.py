@@ -63,6 +63,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
         1.0 - Initial Brocade FC zone driver
     """
 
+    VERSION = "1.0"
+
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
