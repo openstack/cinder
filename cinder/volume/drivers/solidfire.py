@@ -683,7 +683,7 @@ class SolidFireDriver(SanISCSIDriver):
 
         data['total_capacity_gb'] = results['maxProvisionedSpace']
 
-        data['free_capacity_gb'] = float(free_capacity)
+        data['free_capacity_gb'] = float(free_capacity / units.GiB)
         data['reserved_percentage'] = 0
         data['QoS_support'] = True
         data['compression_percent'] =\
