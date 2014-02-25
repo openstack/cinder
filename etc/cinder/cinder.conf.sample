@@ -1111,7 +1111,24 @@
 
 
 #
-# Options defined in cinder.volume.drivers.gpfs
+# Options defined in cinder.volume.drivers.hds.hds
+#
+
+# configuration file for HDS cinder plugin for HUS (string
+# value)
+#hds_cinder_config_file=/opt/hds/hus/cinder_hus_conf.xml
+
+
+#
+# Options defined in cinder.volume.drivers.huawei
+#
+
+# config data for cinder huawei plugin (string value)
+#cinder_huawei_conf_file=/etc/cinder/cinder_huawei_conf.xml
+
+
+#
+# Options defined in cinder.volume.drivers.ibm.gpfs
 #
 
 # Specifies the path of the GPFS directory where Block Storage
@@ -1147,22 +1164,9 @@
 # may take a significantly longer time. (boolean value)
 #gpfs_sparse_volumes=true
 
-
-#
-# Options defined in cinder.volume.drivers.hds.hds
-#
-
-# configuration file for HDS cinder plugin for HUS (string
-# value)
-#hds_cinder_config_file=/opt/hds/hus/cinder_hus_conf.xml
-
-
-#
-# Options defined in cinder.volume.drivers.huawei
-#
-
-# config data for cinder huawei plugin (string value)
-#cinder_huawei_conf_file=/etc/cinder/cinder_huawei_conf.xml
+# Specifies the storage pool that volumes are assigned to.  By
+# default, the system storage pool is used. (string value)
+#gpfs_storage_pool=<None>
 
 
 #

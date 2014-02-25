@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import mox as mox_lib
+import mock
 import os
 import tempfile
 
@@ -24,7 +24,6 @@ from cinder import db
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import imageutils
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import test
@@ -32,7 +31,8 @@ from cinder.tests import utils as test_utils
 from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.gpfs import GPFSDriver
+from cinder.volume.drivers.ibm import gpfs
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -82,32 +82,32 @@ class GPFSDriverTestCase(test.TestCase):
             os.mkdir(self.images_dir)
         self.image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
 
-        self.driver = GPFSDriver(configuration=conf.Configuration(None))
+        self.driver = gpfs.GPFSDriver(configuration=conf.Configuration(None))
         self.driver.set_execute(self._execute_wrapper)
+        self.driver._cluster_id = '123456'
+        self.driver._gpfs_device = '/dev/gpfs'
+        self.driver._storage_pool = 'system'
+
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base=self.volumes_path)
-        self.volume = importutils.import_object(CONF.volume_manager)
-        self.volume.driver.set_execute(self._execute_wrapper)
-        self.volume.driver.set_initialized()
-        self.volume.stats = dict(allocated_capacity_gb=0)
 
-        self.stubs.Set(GPFSDriver, '_create_gpfs_snap',
+        self.stubs.Set(gpfs.GPFSDriver, '_create_gpfs_snap',
                        self._fake_gpfs_snap)
-        self.stubs.Set(GPFSDriver, '_create_gpfs_copy',
+        self.stubs.Set(gpfs.GPFSDriver, '_create_gpfs_copy',
                        self._fake_gpfs_copy)
-        self.stubs.Set(GPFSDriver, '_gpfs_redirect',
+        self.stubs.Set(gpfs.GPFSDriver, '_gpfs_redirect',
                        self._fake_gpfs_redirect)
-        self.stubs.Set(GPFSDriver, '_is_gpfs_parent_file',
+        self.stubs.Set(gpfs.GPFSDriver, '_is_gpfs_parent_file',
                        self._fake_is_gpfs_parent)
-        self.stubs.Set(GPFSDriver, '_is_gpfs_path',
+        self.stubs.Set(gpfs.GPFSDriver, '_is_gpfs_path',
                        self._fake_is_gpfs_path)
-        self.stubs.Set(GPFSDriver, '_delete_gpfs_file',
+        self.stubs.Set(gpfs.GPFSDriver, '_delete_gpfs_file',
                        self._fake_delete_gpfs_file)
-        self.stubs.Set(GPFSDriver, '_create_sparse_file',
+        self.stubs.Set(gpfs.GPFSDriver, '_create_sparse_file',
                        self._fake_create_sparse_file)
-        self.stubs.Set(GPFSDriver, '_allocate_file_blocks',
+        self.stubs.Set(gpfs.GPFSDriver, '_allocate_file_blocks',
                        self._fake_allocate_file_blocks)
-        self.stubs.Set(GPFSDriver, '_get_available_capacity',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_available_capacity',
                        self._fake_get_available_capacity)
         self.stubs.Set(image_utils, 'qemu_img_info',
                        self._fake_qemu_qcow2_image_info)
@@ -135,26 +135,25 @@ class GPFSDriverTestCase(test.TestCase):
         vol = test_utils.create_volume(self.context, host=CONF.host)
         volume_id = vol['id']
         self.assertTrue(os.path.exists(self.volumes_path))
-        self.volume.create_volume(self.context, volume_id)
+        self.driver.create_volume(vol)
         path = self.volumes_path + '/' + vol['name']
         self.assertTrue(os.path.exists(path))
-        self.volume.delete_volume(self.context, volume_id)
+        self.driver.delete_volume(vol)
         self.assertFalse(os.path.exists(path))
 
     def test_create_delete_volume_sparse_backing_file(self):
         """Create and delete vol with default sparse creation method."""
         CONF.gpfs_sparse_volumes = True
         vol = test_utils.create_volume(self.context, host=CONF.host)
-        volume_id = vol['id']
         self.assertTrue(os.path.exists(self.volumes_path))
-        self.volume.create_volume(self.context, volume_id)
+        self.driver.create_volume(vol)
         path = self.volumes_path + '/' + vol['name']
         self.assertTrue(os.path.exists(path))
-        self.volume.delete_volume(self.context, volume_id)
+        self.driver.delete_volume(vol)
         self.assertFalse(os.path.exists(path))
 
     def test_create_volume_with_attributes(self):
-        self.stubs.Set(GPFSDriver, '_gpfs_change_attributes',
+        self.stubs.Set(gpfs.GPFSDriver, '_gpfs_change_attributes',
                        self._fake_gpfs_change_attributes)
         attributes = {'dio': 'yes', 'data_pool_name': 'ssd_pool',
                       'replicas': '2', 'write_affinity_depth': '1',
@@ -163,23 +162,220 @@ class GPFSDriverTestCase(test.TestCase):
                       '1,1,1:2;2,1,1:2;2,0,3:4'}
         vol = test_utils.create_volume(self.context, host=CONF.host,
                                        metadata=attributes)
-        volume_id = vol['id']
         self.assertTrue(os.path.exists(self.volumes_path))
-        self.volume.create_volume(self.context, volume_id)
+        self.driver.create_volume(vol)
         path = self.volumes_path + '/' + vol['name']
         self.assertTrue(os.path.exists(path))
-        self.volume.delete_volume(self.context, volume_id)
+        self.driver.delete_volume(vol)
         self.assertFalse(os.path.exists(path))
 
-    def test_migrate_volume(self):
-        """Test volume migration done by driver."""
-        loc = 'GPFSDriver:cindertest:openstack'
+    def test_migrate_volume_local(self):
+        """Verify volume migration performed locally by driver."""
+        ctxt = self.context
+        migrated_by_driver = True
+        volume = test_utils.create_volume(ctxt, host=CONF.host)
+        with mock.patch('cinder.utils.execute'):
+            LOG.debug('Migrate same cluster, different path, '
+                      'move file to new path.')
+            loc = 'GPFSDriver:%s:testpath' % self.driver._cluster_id
+            cap = {'location_info': loc}
+            host = {'host': 'foo', 'capabilities': cap}
+            self.driver.create_volume(volume)
+            migr, updt = self.driver.migrate_volume(ctxt, volume, host)
+            self.assertEqual(migr, migrated_by_driver)
+            self.driver.delete_volume(volume)
+            LOG.debug('Migrate same cluster, different path, '
+                      'move file to new path, rv = %s.' % migr)
+
+            LOG.debug('Migrate same cluster, same path, no action taken.')
+            gpfs_base = self.driver.configuration.gpfs_mount_point_base
+            loc = 'GPFSDriver:%s:%s' % (self.driver._cluster_id, gpfs_base)
+            cap = {'location_info': loc}
+            host = {'host': 'foo', 'capabilities': cap}
+            self.driver.create_volume(volume)
+            migr, updt = self.driver.migrate_volume(ctxt, volume, host)
+            self.assertEqual(migr, migrated_by_driver)
+            self.driver.delete_volume(volume)
+            LOG.debug('Migrate same cluster, same path, no action taken, '
+                      'rv = %s' % migr)
+
+    def test_migrate_volume_generic(self):
+        """Verify cases where driver cannot perform migration locally."""
+        ctxt = self.context
+        migrated_by_driver = False
+        volume = test_utils.create_volume(ctxt, host=CONF.host)
+        with mock.patch('cinder.utils.execute'):
+            LOG.debug('Migrate request for different cluster, return false '
+                      'for generic migration.')
+            other_cluster_id = '000000'
+            loc = 'GPFSDriver:%s:testpath' % other_cluster_id
+            cap = {'location_info': loc}
+            host = {'host': 'foo', 'capabilities': cap}
+            self.driver.create_volume(volume)
+            migr, updt = self.driver.migrate_volume(ctxt, volume, host)
+            self.assertEqual(migr, migrated_by_driver)
+            self.driver.delete_volume(volume)
+            LOG.debug('Migrate request for different cluster, rv = %s.' % migr)
+
+            LOG.debug('Migrate request with no location info, return false '
+                      'for generic migration.')
+            host = {'host': 'foo', 'capabilities': {}}
+            self.driver.create_volume(volume)
+            migr, updt = self.driver.migrate_volume(ctxt, volume, host)
+            self.assertEqual(migr, migrated_by_driver)
+            self.driver.delete_volume(volume)
+            LOG.debug('Migrate request with no location info, rv = %s.' % migr)
+
+            LOG.debug('Migrate request with bad location info, return false '
+                      'for generic migration.')
+            bad_loc = 'GPFSDriver:testpath'
+            cap = {'location_info': bad_loc}
+            host = {'host': 'foo', 'capabilities': cap}
+            self.driver.create_volume(volume)
+            migr, updt = self.driver.migrate_volume(ctxt, volume, host)
+            self.assertEqual(migr, migrated_by_driver)
+            self.driver.delete_volume(volume)
+            LOG.debug('Migrate request with bad location info, rv = %s.' %
+                      migr)
+
+    def test_retype_volume_different_pool(self):
+        ctxt = self.context
+        loc = 'GPFSDriver:%s:testpath' % self.driver._cluster_id
         cap = {'location_info': loc}
         host = {'host': 'foo', 'capabilities': cap}
-        volume = test_utils.create_volume(self.context, host=CONF.host)
-        self.driver.create_volume(volume)
-        self.driver.migrate_volume(self.context, volume, host)
-        self.driver.delete_volume(volume)
+
+        key_specs_old = {'capabilities:storage_pool': 'bronze',
+                         'volume_backend_name': 'backend1'}
+        key_specs_new = {'capabilities:storage_pool': 'gold',
+                         'volume_backend_name': 'backend1'}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        diff, equal = volume_types.volume_types_diff(ctxt,
+                                                     old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        # set volume host to match target host
+        volume = test_utils.create_volume(ctxt, host=host['host'])
+        volume['volume_type_id'] = old_type['id']
+        with mock.patch('cinder.utils.execute'):
+            LOG.debug('Retype different pools, expected rv = True.')
+            self.driver.create_volume(volume)
+            rv = self.driver.retype(ctxt, volume, new_type, diff, host)
+            self.assertTrue(rv)
+            self.driver.delete_volume(volume)
+            LOG.debug('Retype different pools, rv = %s.' % rv)
+
+    def test_retype_volume_different_host(self):
+        ctxt = self.context
+        loc = 'GPFSDriver:%s:testpath' % self.driver._cluster_id
+        cap = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+
+        newloc = 'GPFSDriver:000000:testpath'
+        newcap = {'location_info': newloc}
+        newhost = {'host': 'foo', 'capabilities': newcap}
+
+        key_specs_old = {'capabilities:storage_pool': 'bronze',
+                         'volume_backend_name': 'backend1'}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        diff, equal = volume_types.volume_types_diff(ctxt,
+                                                     old_type_ref['id'],
+                                                     old_type_ref['id'])
+        # set volume host to be different from target host
+        volume = test_utils.create_volume(ctxt, host=CONF.host)
+        volume['volume_type_id'] = old_type['id']
+
+        with mock.patch('cinder.utils.execute'):
+            LOG.debug('Retype different hosts same cluster, '
+                      'expected rv = True.')
+            self.driver.db = mock.Mock()
+            self.driver.create_volume(volume)
+            rv = self.driver.retype(ctxt, volume, old_type, diff, host)
+            self.assertTrue(rv)
+            self.driver.delete_volume(volume)
+            LOG.debug('Retype different hosts same cluster, rv = %s.' % rv)
+
+            LOG.debug('Retype different hosts, different cluster, '
+                      'cannot migrate.  Expected rv = False.')
+            self.driver.create_volume(volume)
+            rv = self.driver.retype(ctxt, volume, old_type, diff, newhost)
+            self.assertFalse(rv)
+            self.driver.delete_volume(volume)
+            LOG.debug('Retype different hosts, different cluster, '
+                      'cannot migrate, rv = %s.' % rv)
+
+    def test_retype_volume_different_pool_and_host(self):
+        ctxt = self.context
+        loc = 'GPFSDriver:%s:testpath' % self.driver._cluster_id
+        cap = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+
+        key_specs_old = {'capabilities:storage_pool': 'bronze',
+                         'volume_backend_name': 'backend1'}
+        key_specs_new = {'capabilities:storage_pool': 'gold',
+                         'volume_backend_name': 'backend1'}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        diff, equal = volume_types.volume_types_diff(ctxt,
+                                                     old_type_ref['id'],
+                                                     new_type_ref['id'])
+
+        # set volume host to be different from target host
+        volume = test_utils.create_volume(ctxt, host=CONF.host)
+        volume['volume_type_id'] = old_type['id']
+
+        with mock.patch('cinder.utils.execute'):
+            # different host different pool
+            LOG.debug('Retype different pools and hosts, expected rv = True.')
+            self.driver.db = mock.Mock()
+            self.driver.create_volume(volume)
+            rv = self.driver.retype(ctxt, volume, new_type, diff, host)
+            self.assertTrue(rv)
+            self.driver.delete_volume(volume)
+            LOG.debug('Retype different pools and hosts, rv = %s.' % rv)
+
+    def test_retype_volume_different_backend(self):
+        ctxt = self.context
+        loc = 'GPFSDriver:%s:testpath' % self.driver._cluster_id
+        cap = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+
+        key_specs_old = {'capabilities:storage_pool': 'bronze',
+                         'volume_backend_name': 'backend1'}
+        key_specs_new = {'capabilities:storage_pool': 'gold',
+                         'volume_backend_name': 'backend2'}
+
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        diff, equal = volume_types.volume_types_diff(ctxt,
+                                                     old_type_ref['id'],
+                                                     new_type_ref['id'])
+        # set volume host to match target host
+        volume = test_utils.create_volume(ctxt, host=host['host'])
+        volume['volume_type_id'] = old_type['id']
+
+        with mock.patch('cinder.utils.execute'):
+            LOG.debug('Retype different backends, cannot migrate. '
+                      'Expected rv = False.')
+            self.driver.create_volume(volume)
+            rv = self.driver.retype(ctxt, volume, old_type, diff, host)
+            self.assertFalse(rv)
+            self.driver.delete_volume(volume)
+            LOG.debug('Retype different backends, cannot migrate, '
+                      'rv = %s.' % rv)
 
     def _create_snapshot(self, volume_id, size='0'):
         """Create a snapshot object."""
@@ -193,53 +389,43 @@ class GPFSDriverTestCase(test.TestCase):
 
     def test_create_delete_snapshot(self):
         volume_src = test_utils.create_volume(self.context, host=CONF.host)
-        self.volume.create_volume(self.context, volume_src['id'])
+        self.driver.create_volume(volume_src)
         snapCount = len(db.snapshot_get_all_for_volume(self.context,
                                                        volume_src['id']))
-        self.assertEqual(snapCount, 0)
         snapshot = self._create_snapshot(volume_src['id'])
-        snapshot_id = snapshot['id']
-        self.volume.create_snapshot(self.context, volume_src['id'],
-                                    snapshot_id)
+        self.driver.create_snapshot(snapshot)
         self.assertTrue(os.path.exists(os.path.join(self.volumes_path,
                                                     snapshot['name'])))
-        snapCount = len(db.snapshot_get_all_for_volume(self.context,
-                                                       volume_src['id']))
-        self.assertEqual(snapCount, 1)
-        self.volume.delete_snapshot(self.context, snapshot_id)
-        self.volume.delete_volume(self.context, volume_src['id'])
+        self.driver.delete_snapshot(snapshot)
+        self.driver.delete_volume(volume_src)
         self.assertFalse(os.path.exists(os.path.join(self.volumes_path,
                                                      snapshot['name'])))
-        snapCount = len(db.snapshot_get_all_for_volume(self.context,
-                                                       volume_src['id']))
-        self.assertEqual(snapCount, 0)
 
     def test_create_volume_from_snapshot(self):
         volume_src = test_utils.create_volume(self.context, host=CONF.host)
-        self.volume.create_volume(self.context, volume_src['id'])
+        self.driver.create_volume(volume_src)
         snapshot = self._create_snapshot(volume_src['id'])
         snapshot_id = snapshot['id']
-        self.volume.create_snapshot(self.context, volume_src['id'],
-                                    snapshot_id)
+        self.driver.create_snapshot(snapshot)
         self.assertTrue(os.path.exists(os.path.join(self.volumes_path,
                                                     snapshot['name'])))
         volume_dst = test_utils.create_volume(self.context, host=CONF.host,
                                               snapshot_id=snapshot_id)
-        self.volume.create_volume(self.context, volume_dst['id'], snapshot_id)
+        self.driver.create_volume_from_snapshot(volume_dst, snapshot)
         self.assertEqual(volume_dst['id'], db.volume_get(
                          context.get_admin_context(),
                          volume_dst['id']).id)
         self.assertEqual(snapshot_id, db.volume_get(
                          context.get_admin_context(),
                          volume_dst['id']).snapshot_id)
-        self.volume.delete_volume(self.context, volume_dst['id'])
+        self.driver.delete_volume(volume_dst)
 
-        self.volume.delete_snapshot(self.context, snapshot_id)
-        self.volume.delete_volume(self.context, volume_src['id'])
+        self.driver.delete_snapshot(snapshot)
+        self.driver.delete_volume(volume_src)
 
     def test_create_cloned_volume(self):
         volume_src = test_utils.create_volume(self.context, host=CONF.host)
-        self.volume.create_volume(self.context, volume_src['id'])
+        self.driver.create_volume(volume_src)
 
         volume_dst = test_utils.create_volume(self.context, host=CONF.host)
         volumepath = os.path.join(self.volumes_path, volume_dst['name'])
@@ -251,18 +437,13 @@ class GPFSDriverTestCase(test.TestCase):
                          volume_dst['id']).id)
 
         self.assertTrue(os.path.exists(volumepath))
-
-        self.volume.delete_volume(self.context, volume_src['id'])
-        self.volume.delete_volume(self.context, volume_dst['id'])
+        self.driver.delete_volume(volume_src)
+        self.driver.delete_volume(volume_dst)
 
     def test_create_volume_from_snapshot_method(self):
         volume_src = test_utils.create_volume(self.context, host=CONF.host)
-        self.volume.create_volume(self.context, volume_src['id'])
-
         snapshot = self._create_snapshot(volume_src['id'])
         snapshot_id = snapshot['id']
-        self.volume.create_snapshot(self.context, volume_src['id'],
-                                    snapshot_id)
         volume_dst = test_utils.create_volume(self.context, host=CONF.host)
         self.driver.create_volume_from_snapshot(volume_dst, snapshot)
         self.assertEqual(volume_dst['id'], db.volume_get(
@@ -271,10 +452,7 @@ class GPFSDriverTestCase(test.TestCase):
 
         volumepath = os.path.join(self.volumes_path, volume_dst['name'])
         self.assertTrue(os.path.exists(volumepath))
-
-        self.volume.delete_snapshot(self.context, snapshot_id)
-        self.volume.delete_volume(self.context, volume_dst['id'])
-        self.volume.delete_volume(self.context, volume_src['id'])
+        self.driver.delete_volume(volume_dst)
 
     def test_clone_image_to_volume_with_copy_on_write_mode(self):
         """Test the function of copy_image_to_volume
@@ -295,7 +473,7 @@ class GPFSDriverTestCase(test.TestCase):
                                 {})
 
         self.assertTrue(os.path.exists(volumepath))
-        self.volume.delete_volume(self.context, volume['id'])
+        self.driver.delete_volume(volume)
         self.assertFalse(os.path.exists(volumepath))
 
     def test_clone_image_to_volume_with_copy_mode(self):
@@ -317,7 +495,6 @@ class GPFSDriverTestCase(test.TestCase):
                                 {})
 
         self.assertTrue(os.path.exists(volumepath))
-        self.volume.delete_volume(self.context, volume['id'])
 
     def test_copy_image_to_volume_with_non_gpfs_image_dir(self):
         """Test the function of copy_image_to_volume
@@ -338,7 +515,6 @@ class GPFSDriverTestCase(test.TestCase):
                                              FakeImageService(),
                                              self.image_id)
             self.assertTrue(os.path.exists(volumepath))
-            self.volume.delete_volume(self.context, volume['id'])
 
     def test_copy_image_to_volume_with_illegal_image_format(self):
         """Test the function of copy_image_to_volume
@@ -359,8 +535,6 @@ class GPFSDriverTestCase(test.TestCase):
                           FakeImageService(),
                           self.image_id)
 
-        self.volume.delete_volume(self.context, volume['id'])
-
     def test_get_volume_stats(self):
         stats = self.driver.get_volume_stats()
         self.assertEqual(stats['volume_backend_name'], 'GPFS')
@@ -368,7 +542,27 @@ class GPFSDriverTestCase(test.TestCase):
 
     def test_extend_volume(self):
         new_vol_size = 15
-        mox = mox_lib.Mox()
+        volume = test_utils.create_volume(self.context, host=CONF.host)
+        with mock.patch('cinder.image.image_utils.resize_image'):
+            with mock.patch('cinder.image.image_utils.qemu_img_info'):
+                self.driver.extend_volume(volume, new_vol_size)
+
+    def test_extend_volume_with_failure(self):
+        new_vol_size = 15
+        volume = test_utils.create_volume(self.context, host=CONF.host)
+        volpath = os.path.join(self.volumes_path, volume['name'])
+
+        with mock.patch('cinder.image.image_utils.resize_image') as resize:
+            with mock.patch('cinder.image.image_utils.qemu_img_info'):
+                resize.side_effect = processutils.ProcessExecutionError('err')
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.driver.extend_volume,
+                                  volume,
+                                  new_vol_size)
+
+    def test_resize_volume(self):
+        new_vol_size = 15
+        new_vol_size_bytes = new_vol_size * units.GiB
         volume = test_utils.create_volume(self.context, host=CONF.host)
         volpath = os.path.join(self.volumes_path, volume['name'])
 
@@ -376,74 +570,56 @@ class GPFSDriverTestCase(test.TestCase):
         file format: raw
         virtual size: %sG (%s bytes)
         backing file: %s
-        """ % (volume['name'], new_vol_size, new_vol_size * units.GiB, volpath)
-        mox.StubOutWithMock(image_utils, 'resize_image')
-        image_utils.resize_image(volpath, new_vol_size, run_as_root=True)
-
-        mox.StubOutWithMock(image_utils, 'qemu_img_info')
+        """ % (volume['name'], new_vol_size, new_vol_size_bytes, volpath)
         img_info = imageutils.QemuImgInfo(qemu_img_info_output)
-        image_utils.qemu_img_info(volpath).AndReturn(img_info)
-        mox.ReplayAll()
 
-        self.driver.extend_volume(volume, new_vol_size)
-        mox.VerifyAll()
-
-    def test_extend_volume_with_failure(self):
-        new_vol_size = 15
-        mox = mox_lib.Mox()
-        volume = test_utils.create_volume(self.context, host=CONF.host)
-        volpath = os.path.join(self.volumes_path, volume['name'])
-
-        mox.StubOutWithMock(image_utils, 'resize_image')
-        image_utils.resize_image(volpath, new_vol_size, run_as_root=True).\
-            AndRaise(processutils.ProcessExecutionError('error'))
-        mox.ReplayAll()
-
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.extend_volume, volume, new_vol_size)
-        mox.VerifyAll()
+        with mock.patch('cinder.image.image_utils.resize_image'):
+            with mock.patch('cinder.image.image_utils.qemu_img_info') as info:
+                info.return_value = img_info
+                rv = self.driver._resize_volume_file(volume, new_vol_size)
+                self.assertEqual(rv, new_vol_size_bytes)
 
     def test_check_for_setup_error_ok(self):
-        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_state',
                        self._fake_gpfs_get_state_active)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_cluster_release_level',
                        self._fake_gpfs_compatible_cluster_release_level)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_filesystem_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_fs_release_level',
                        self._fake_gpfs_compatible_filesystem_release_level)
         self.driver.check_for_setup_error()
 
     def test_check_for_setup_error_gpfs_not_active(self):
-        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_state',
                        self._fake_gpfs_get_state_not_active)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
 
     def test_check_for_setup_error_not_gpfs_path(self):
-        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_state',
                        self._fake_gpfs_get_state_active)
-        self.stubs.Set(GPFSDriver, '_is_gpfs_path',
+        self.stubs.Set(gpfs.GPFSDriver, '_is_gpfs_path',
                        self._fake_is_not_gpfs_path)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_cluster_release_level',
                        self._fake_gpfs_compatible_cluster_release_level)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_filesystem_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_fs_release_level',
                        self._fake_gpfs_compatible_filesystem_release_level)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
 
     def test_check_for_setup_error_incompatible_cluster_version(self):
-        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_state',
                        self._fake_gpfs_get_state_active)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_cluster_release_level',
                        self._fake_gpfs_incompatible_cluster_release_level)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
 
     def test_check_for_setup_error_incompatible_filesystem_version(self):
-        self.stubs.Set(GPFSDriver, '_get_gpfs_state',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_state',
                        self._fake_gpfs_get_state_active)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_cluster_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_cluster_release_level',
                        self._fake_gpfs_compatible_cluster_release_level)
-        self.stubs.Set(GPFSDriver, '_get_gpfs_filesystem_release_level',
+        self.stubs.Set(gpfs.GPFSDriver, '_get_gpfs_fs_release_level',
                        self._fake_gpfs_incompatible_filesystem_release_level)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)

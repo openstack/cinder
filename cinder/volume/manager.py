@@ -112,7 +112,9 @@ MAPPING = {
     'cinder.volume.drivers.huawei.HuaweiISCSIDriver':
     'cinder.volume.drivers.huawei.HuaweiVolumeDriver',
     'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver':
-    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver'}
+    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver',
+    'cinder.volume.drivers.gpfs.GPFSDriver':
+    'cinder.volume.drivers.ibm.gpfs.GPFSDriver', }
 
 
 def locked_volume_operation(f):
