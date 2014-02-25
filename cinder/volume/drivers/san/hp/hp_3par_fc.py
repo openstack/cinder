@@ -57,10 +57,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
         2.0.0 - Update hp3parclient API uses 3.0.x
         2.0.2 - Add back-end assisted volume migrate
+        2.0.3 - Added initiator-target map for FC Zone Manager
 
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -203,16 +204,14 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             # now that we have a host, create the VLUN
             vlun = self.common.create_vlun(volume, host)
 
-            fc_ports = self.common.get_active_fc_target_ports()
-            wwns = []
-
-            for port in fc_ports:
-                wwns.append(port['portWWN'])
+            target_wwns, init_targ_map = self._build_initiator_target_map(
+                connector)
 
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {'target_lun': vlun['lun'],
                              'target_discovered': True,
-                             'target_wwn': wwns}}
+                             'target_wwn': target_wwns,
+                             'initiator_target_map': init_targ_map}}
             return info
         finally:
             self.common.client_logout()
@@ -225,8 +224,34 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             hostname = self.common._safe_hostname(connector['host'])
             self.common.terminate_connection(volume, hostname,
                                              wwn=connector['wwpns'])
+
+            target_wwns, init_targ_map = self._build_initiator_target_map(
+                connector)
+
+            info = {'driver_volume_type': 'fibre_channel',
+                    'data': {'target_wwn': target_wwns,
+                             'initiator_target_map': init_targ_map}}
+            return info
+
         finally:
             self.common.client_logout()
+
+    def _build_initiator_target_map(self, connector):
+        """Build the target_wwns and the initiator target map."""
+
+        fc_ports = self.common.get_active_fc_target_ports()
+        target_wwns = []
+
+        for port in fc_ports:
+            target_wwns.append(port['portWWN'])
+
+        initiator_wwns = connector['wwpns']
+
+        init_targ_map = {}
+        for initiator in initiator_wwns:
+            init_targ_map[initiator] = target_wwns
+
+        return target_wwns, init_targ_map
 
     def _create_3par_fibrechan_host(self, hostname, wwns, domain, persona_id):
         """Create a 3PAR host.
