@@ -66,7 +66,8 @@ fake_lun_addr = {"shelf": fake_shelf, "lun": fake_lun}
 
 fake_volume_type = {'id': 1}
 
-fake_volume = {"name": fake_volume_name,
+fake_volume = {"id": fake_volume_name,
+               "name": fake_volume_name,
                "size": fake_volume_size,
                "volume_type": fake_volume_type}
 
@@ -771,8 +772,8 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
             .AndReturn(self.fake_connection)
 
         self.mox.StubOutWithMock(self.driver, 'terminate_connection')
-        self.driver.terminate_connection(fake_volume, mox.IgnoreArg())\
-            .AndReturn(None)
+        self.driver.terminate_connection(fake_volume, mox.IgnoreArg(),
+                                         force=False).AndReturn(None)
 
         root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
 

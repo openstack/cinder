@@ -50,6 +50,7 @@ class VolumeAPI(object):
         1.13 - Adds create_export.
         1.14 - Adds reservation parameter to extend_volume().
         1.15 - Adds manage_existing and unmanage_only flag to delete_volume.
+        1.16 - Removes create_export.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -160,10 +161,6 @@ class VolumeAPI(object):
                    new_type_id=new_type_id, host=host_p,
                    migration_policy=migration_policy,
                    reservations=reservations)
-
-    def create_export(self, ctxt, volume):
-        cctxt = self.client.prepare(server=volume['host'], version='1.13')
-        return cctxt.call(ctxt, 'create_export', volume_id=volume['id'])
 
     def manage_existing(self, ctxt, volume, ref):
         cctxt = self.client.prepare(server=volume['host'], version='1.15')
