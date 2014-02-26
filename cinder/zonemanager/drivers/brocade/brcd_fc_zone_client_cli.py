@@ -178,7 +178,7 @@ class BrcdFCZoneClientCLI(object):
             self._cfg_trans_abort()
             msg = _("Creating and activating zone set failed: "
                     "(Zone set=%(cfg_name)s error=%(err)s)."
-                    ) % {'cfg_name': cfg_name, 'err': str(e)}
+                    ) % {'cfg_name': cfg_name, 'err': e}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -229,7 +229,7 @@ class BrcdFCZoneClientCLI(object):
                 self.activate_zoneset(active_zoneset_name)
         except Exception as e:
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
-                    ) % {'cmd': cmd, 'err': str(e)}
+                    ) % {'cmd': cmd, 'err': e}
             LOG.error(msg)
             self._cfg_trans_abort()
             raise exception.BrocadeZoningCliException(reason=msg)
@@ -330,7 +330,7 @@ class BrcdFCZoneClientCLI(object):
                 return False
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
-                    "error=%(err)s).") % {'cmd': cmd, 'err': str(e)}
+                    "error=%(err)s).") % {'cmd': cmd, 'err': e}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -343,7 +343,8 @@ class BrcdFCZoneClientCLI(object):
             return sw_data
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
-                    "error=%(err)s).") % {'cmd': cmd_list, 'err': str(e)}
+                    "error=%(err)s).") % {'cmd': cmd_list,
+                                          'err': e}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -460,7 +461,7 @@ class BrcdFCZoneClientCLI(object):
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 LOG.debug(_("Handling error case after "
-                            "SSH:%s"), str(last_exception))
+                            "SSH:%s"), last_exception)
                 try:
                     raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,
@@ -475,7 +476,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error executing command via ssh: %s"), str(e))
+                LOG.error(_("Error executing command via ssh: %s"), e)
         finally:
             if stdin:
                 stdin.flush()

@@ -177,7 +177,7 @@ class RemoteFsDriver(driver.VolumeDriver):
             except Exception as exc:
                 LOG.warning(_('Exception during mounting %s') % (exc,))
 
-        LOG.debug('Available shares %s' % str(self._mounted_shares))
+        LOG.debug('Available shares %s' % self._mounted_shares)
 
     def create_cloned_volume(self, volume, src_vref):
         raise NotImplementedError()

@@ -19,6 +19,7 @@ HP LeftHand SAN ISCSI Driver.
 The driver communicates to the backend aka Cliq via SSH to perform all the
 operations on the SAN.
 """
+
 from lxml import etree
 
 from cinder import exception
@@ -333,9 +334,9 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         except Exception as ex:
             in_use_msg = 'cannot be deleted because it is a clone point'
             if in_use_msg in ex.message:
-                raise exception.SnapshotIsBusy(str(ex))
+                raise exception.SnapshotIsBusy(ex)
 
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def local_path(self, volume):
         msg = _("local_path not supported")

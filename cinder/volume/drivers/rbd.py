@@ -585,7 +585,7 @@ class RBDDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
-        volume_name = str(volume['name'])
+        volume_name = volume['name']
         with RADOSClient(self) as client:
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
@@ -659,7 +659,7 @@ class RBDDriver(driver.VolumeDriver):
     def delete_snapshot(self, snapshot):
         """Deletes an rbd snapshot."""
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
-            snap = str(snapshot['name'])
+            snap = snapshot['name']
             if self._supports_layering():
                 try:
                     volume.unprotect_snap(snap)

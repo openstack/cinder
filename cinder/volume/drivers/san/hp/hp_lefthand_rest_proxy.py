@@ -123,7 +123,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             raise exception.DriverNotInitialized(
                 _('LeftHand cluster not found'))
         except Exception as ex:
-            raise exception.DriverNotInitialized(str(ex))
+            raise exception.DriverNotInitialized(ex)
 
     def check_for_setup_error(self):
         pass
@@ -160,7 +160,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
             return self._update_provider(volume_info)
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def delete_volume(self, volume):
         """Deletes a volume."""
@@ -170,7 +170,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         except hpexceptions.HTTPNotFound:
             LOG.error(_("Volume did not exist. It will not be deleted"))
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def extend_volume(self, volume, new_size):
         """Extend the size of an existing volume."""
@@ -181,7 +181,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             options = {'size': int(new_size) * units.GiB}
             self.client.modifyVolume(volume_info['id'], options)
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -193,7 +193,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                                        volume_info['id'],
                                        option)
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
@@ -205,12 +205,12 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         except hpexceptions.HTTPServerError as ex:
             in_use_msg = 'cannot be deleted because it is a clone point'
             if in_use_msg in ex.get_description():
-                raise exception.SnapshotIsBusy(str(ex))
+                raise exception.SnapshotIsBusy(ex)
 
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def get_volume_stats(self, refresh):
         """Gets volume stats."""
@@ -264,7 +264,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
             return {'driver_volume_type': 'iscsi', 'data': iscsi_properties}
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Unassign the volume from the host."""
@@ -275,7 +275,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 volume_info['id'],
                 server_info['id'])
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -286,14 +286,14 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 snap_info['id'])
             return self._update_provider(volume_info)
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def create_cloned_volume(self, volume, src_vref):
         try:
             volume_info = self.client.getVolumeByName(src_vref['name'])
             self.client.cloneVolume(volume['name'], volume_info['id'])
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(str(ex))
+            raise exception.VolumeBackendAPIException(ex)
 
     def _get_volume_extra_specs(self, volume):
         """Get extra specs from a volume."""
@@ -423,7 +423,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             return True
 
         except Exception as ex:
-            LOG.warning("%s" % str(ex))
+            LOG.warning("%s" % ex)
 
         return False
 
@@ -502,7 +502,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                        "management group.") % volume['name'])
             return false_ret
         except hpexceptions.HTTPServerError as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             return false_ret
 
         return (True, None)

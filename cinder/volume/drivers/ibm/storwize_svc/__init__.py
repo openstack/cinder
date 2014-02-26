@@ -303,8 +303,7 @@ class StorwizeSVCDriver(san.SanDriver):
         """
 
         LOG.debug(_('enter: initialize_connection: volume %(vol)s with '
-                    'connector %(conn)s') % {'vol': str(volume),
-                                             'conn': str(connector)})
+                    'connector %(conn)s') % {'vol': volume, 'conn': connector})
 
         vol_opts = self._get_vdisk_params(volume['volume_type_id'])
         volume_name = volume['name']
@@ -352,7 +351,7 @@ class StorwizeSVCDriver(san.SanDriver):
             IO_group = volume_attributes['IO_group_id']
         except KeyError as e:
             LOG.error(_('Did not find expected column name in '
-                        'lsvdisk: %s') % str(e))
+                        'lsvdisk: %s') % e)
             msg = (_('initialize_connection: Missing volume '
                      'attribute for volume %s') % volume_name)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -423,14 +422,12 @@ class StorwizeSVCDriver(san.SanDriver):
                 self.terminate_connection(volume, connector)
                 LOG.error(_('initialize_connection: Failed to collect return '
                             'properties for volume %(vol)s and connector '
-                            '%(conn)s.\n') % {'vol': str(volume),
-                                              'conn': str(connector)})
+                            '%(conn)s.\n') % {'vol': volume,
+                                              'conn': connector})
 
         LOG.debug(_('leave: initialize_connection:\n volume: %(vol)s\n '
                     'connector %(conn)s\n properties: %(prop)s')
-                  % {'vol': str(volume),
-                     'conn': str(connector),
-                     'prop': str(properties)})
+                  % {'vol': volume, 'conn': connector, 'prop': properties})
 
         return {'driver_volume_type': type_str, 'data': properties, }
 
@@ -456,8 +453,7 @@ class StorwizeSVCDriver(san.SanDriver):
            automatically by this driver when mappings are created)
         """
         LOG.debug(_('enter: terminate_connection: volume %(vol)s with '
-                    'connector %(conn)s') % {'vol': str(volume),
-                                             'conn': str(connector)})
+                    'connector %(conn)s') % {'vol': volume, 'conn': connector})
 
         vol_name = volume['name']
         if 'host' in connector:
@@ -482,8 +478,7 @@ class StorwizeSVCDriver(san.SanDriver):
         self._helpers.unmap_vol_from_host(vol_name, host_name)
 
         LOG.debug(_('leave: terminate_connection: volume %(vol)s with '
-                    'connector %(conn)s') % {'vol': str(volume),
-                                             'conn': str(connector)})
+                    'connector %(conn)s') % {'vol': volume, 'conn': connector})
 
         return info
 

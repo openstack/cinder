@@ -31,7 +31,6 @@ detach operation.
 
 """
 
-
 from oslo.config import cfg
 
 from cinder import exception
@@ -139,7 +138,7 @@ class ZoneManager(fc_common.FCCommon):
         except Exception as e:
             msg = _("Failed adding connection for fabric=%(fabric)s: "
                     "Error:%(err)s") % {'fabric': connected_fabric,
-                                        'err': str(e)}
+                                        'err': e}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
 
@@ -186,7 +185,7 @@ class ZoneManager(fc_common.FCCommon):
         except Exception as e:
             msg = _("Failed removing connection for fabric=%(fabric)s: "
                     "Error:%(err)s") % {'fabric': connected_fabric,
-                                        'err': str(e)}
+                                        'err': e}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
 

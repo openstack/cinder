@@ -157,11 +157,10 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 LOG.error(msg)
                 raise exception.FCZoneDriverException(msg)
         except exception.BrocadeZoningCliException as brocade_ex:
-            raise exception.FCZoneDriverException(str(brocade_ex))
+            raise exception.FCZoneDriverException(brocade_ex)
         except Exception as e:
-            LOG.error(str(e))
-            msg = _("Failed to add zoning configuration %s"
-                    ) % str(e)
+            LOG.error(e)
+            msg = _("Failed to add zoning configuration %s") % e
             raise exception.FCZoneDriverException(msg)
 
         cfgmap_from_fabric = self.get_active_zone_set(
@@ -220,11 +219,10 @@ class BrcdFCZoneDriver(FCZoneDriver):
                         zone_map, self.configuration.zone_activate)
                     cli_client.cleanup()
                 except exception.BrocadeZoningCliException as brocade_ex:
-                    raise exception.FCZoneDriverException(str(brocade_ex))
+                    raise exception.FCZoneDriverException(brocade_ex)
                 except Exception as e:
-                    LOG.error(str(e))
-                    msg = _("Failed to add zoning configuration %s"
-                            ) % str(e)
+                    LOG.error(e)
+                    msg = _("Failed to add zoning configuration %s") % e
                     raise exception.FCZoneDriverException(msg)
             LOG.debug(_("Zones added successfully: %s"), zone_map)
 
@@ -268,11 +266,10 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 LOG.error(msg)
                 raise exception.FCZoneDriverException(msg)
         except exception.BrocadeZoningCliException as brocade_ex:
-            raise exception.FCZoneDriverException(str(brocade_ex))
+            raise exception.FCZoneDriverException(brocade_ex)
         except Exception as e:
-            LOG.error(str(e))
-            msg = _("Failed to delete zoning configuration %s"
-                    ) % str(e)
+            LOG.error(e)
+            msg = _("Failed to delete zoning configuration %s") % e
             raise exception.FCZoneDriverException(msg)
 
         cfgmap_from_fabric = self.get_active_zone_set(
@@ -363,7 +360,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                         zone_name_string, self.configuration.zone_activate)
                 conn.cleanup()
             except Exception as e:
-                LOG.error(str(e))
+                LOG.error(e)
                 msg = _("Failed to update or delete zoning configuration")
                 raise exception.FCZoneDriverException(msg)
 
@@ -408,11 +405,10 @@ class BrcdFCZoneDriver(FCZoneDriver):
                         LOG.error(msg)
                         raise exception.FCZoneDriverException(msg)
                 except exception.BrocadeZoningCliException as brocade_ex:
-                    raise exception.FCZoneDriverException(str(brocade_ex))
+                    raise exception.FCZoneDriverException(brocade_ex)
                 except Exception as e:
-                    LOG.error(str(e))
-                    msg = _("Failed to get SAN context %s"
-                            ) % str(e)
+                    LOG.error(e)
+                    msg = _("Failed to get SAN context %s") % e
                     raise exception.FCZoneDriverException(msg)
 
                 # Get name server data from fabric and get the targets
@@ -425,9 +421,9 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 except exception.BrocadeZoningCliException as ex:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_("Error getting name server "
-                                    "info: %s"), str(ex))
+                                    "info: %s"), ex)
                 except Exception as e:
-                    msg = _("Failed to get name server info:%s") % str(e)
+                    msg = (_("Failed to get name server info:%s") % e)
                     LOG.error(msg)
                     raise exception.FCZoneDriverException(msg)
                 visible_targets = filter(
@@ -469,9 +465,9 @@ class BrcdFCZoneDriver(FCZoneDriver):
             cfgmap = conn.get_active_zone_set()
             conn.cleanup()
         except exception.BrocadeZoningCliException as brocade_ex:
-            raise exception.FCZoneDriverException(str(brocade_ex))
+            raise exception.FCZoneDriverException(brocade_ex)
         except Exception as e:
-            msg = _("Failed to access active zoning configuration:%s") % str(e)
+            msg = (_("Failed to access active zoning configuration:%s") % e)
             LOG.error(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug(_("Active zone set from fabric: %s"), cfgmap)

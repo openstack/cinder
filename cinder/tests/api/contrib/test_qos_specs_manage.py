@@ -82,7 +82,7 @@ def return_qos_specs_update(context, id, specs):
     if id == "777":
         raise exception.QoSSpecsNotFound(specs_id=id)
     elif id == "888":
-        raise exception.InvalidQoSSpecs(reason=str(id))
+        raise exception.InvalidQoSSpecs(reason=id)
     elif id == "999":
         raise exception.QoSSpecsUpdateFailed(specs_id=id,
                                              qos_specs=specs)

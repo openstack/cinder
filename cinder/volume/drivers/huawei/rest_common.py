@@ -473,8 +473,8 @@ class HVSCommon():
 
         LOG.debug(_('_mapping_hostgroup_and_lungroup: lun_group: %(lun_group)s'
                     'view_id: %(view_id)s')
-                  % {'lun_group': str(lungroup_id),
-                     'view_id': str(view_id)})
+                  % {'lun_group': lungroup_id,
+                     'view_id': view_id})
 
         try:
             if view_id is None:

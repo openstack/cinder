@@ -133,7 +133,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
                 except Exception as e:
                     msg = _("SSH connection failed "
                             "for %(fabric) with error: %(err)"
-                            ) % {'fabric': fabric_ip, 'err': str(e)}
+                            ) % {'fabric': fabric_ip, 'err': e}
                     LOG.error(msg)
                     raise exception.FCSanLookupServiceException(message=msg)
                 finally:
@@ -213,7 +213,8 @@ class BrcdFCSanLookupService(FCSanLookupService):
             switch_data = stdout.readlines()
         except paramiko.SSHException as e:
             msg = (_("SSH Command failed with error '%(err)r' "
-                     "'%(command)s'") % {'err': str(e), 'command': cmd})
+                     "'%(command)s'") % {'err': e,
+                                         'command': cmd})
             LOG.error(msg)
             raise exception.FCSanLookupServiceException(message=msg)
         finally:

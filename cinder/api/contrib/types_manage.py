@@ -67,14 +67,14 @@ class VolumeTypesManageController(wsgi.Controller):
                                 notifier_api.INFO, notifier_info)
 
         except exception.VolumeTypeExists as err:
-            notifier_err = dict(volume_types=vol_type, error_message=str(err))
+            notifier_err = dict(volume_types=vol_type, error_message=err)
             self._notify_volume_type_error(context,
                                            'volume_type.create',
                                            notifier_err)
 
-            raise webob.exc.HTTPConflict(explanation=str(err))
+            raise webob.exc.HTTPConflict(explanation=err)
         except exception.NotFound as err:
-            notifier_err = dict(volume_types=vol_type, error_message=str(err))
+            notifier_err = dict(volume_types=vol_type, error_message=err)
             self._notify_volume_type_error(context,
                                            'volume_type.create',
                                            notifier_err)
@@ -96,14 +96,14 @@ class VolumeTypesManageController(wsgi.Controller):
                                 'volume_type.delete',
                                 notifier_api.INFO, notifier_info)
         except exception.VolumeTypeInUse as err:
-            notifier_err = dict(id=id, error_message=str(err))
+            notifier_err = dict(id=id, error_message=err)
             self._notify_volume_type_error(context,
                                            'volume_type.delete',
                                            notifier_err)
             msg = 'Target volume type is still in use.'
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
-            notifier_err = dict(id=id, error_message=str(err))
+            notifier_err = dict(id=id, error_message=err)
             self._notify_volume_type_error(context,
                                            'volume_type.delete',
                                            notifier_err)

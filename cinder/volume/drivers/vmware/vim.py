@@ -183,7 +183,7 @@ class Vim(object):
                 fault_list = []
                 for child in detail.getChildren():
                     fault_list.append(child.get('type'))
-                raise error_util.VimFaultException(fault_list, str(excep))
+                raise error_util.VimFaultException(fault_list, excep)
 
             except AttributeError as excep:
                 raise error_util.VimAttributeException(_("No such SOAP method "

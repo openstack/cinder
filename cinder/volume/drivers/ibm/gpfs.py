@@ -317,7 +317,7 @@ class GPFSDriver(driver.VolumeDriver):
             self._cluster_id = self._get_gpfs_cluster_id()
         except Exception as setup_exception:
             msg = (_('Could not find GPFS cluster id: %s.') %
-                   str(setup_exception))
+                   setup_exception)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         try:
@@ -325,7 +325,7 @@ class GPFSDriver(driver.VolumeDriver):
             self._gpfs_device = self._get_filesystem_from_path(gpfs_base)
         except Exception as setup_exception:
             msg = (_('Could not find GPFS file system device: %s.') %
-                   str(setup_exception))
+                   setup_exception)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 

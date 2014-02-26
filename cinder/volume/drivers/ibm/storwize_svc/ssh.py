@@ -378,7 +378,8 @@ class CLIResponse(object):
                 if len(hds) != len(row):
                     msg = (_('Unexpected CLI response: header/row mismatch. '
                              'header: %(header)s, row: %(row)s')
-                           % {'header': str(hds), 'row': str(row)})
+                           % {'header': hds,
+                              'row': row})
                     raise exception.VolumeBackendAPIException(data=msg)
                 for k, v in zip(hds, row):
                     CLIResponse.append_dict(cur, k, v)

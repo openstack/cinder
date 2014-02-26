@@ -17,6 +17,7 @@
 import hashlib
 import mock
 import os
+import six
 import tempfile
 import uuid
 
@@ -813,7 +814,7 @@ class BackupCephTestCase(test.TestCase):
             self.service._restore_metadata(self.backup, self.volume_id)
         except exception.BackupOperationError as exc:
             msg = _("Metadata restore failed due to incompatible version")
-            self.assertEqual(str(exc), msg)
+            self.assertEqual(six.text_type(exc), msg)
         else:
             # Force a test failure
             self.assertFalse(True)
@@ -839,7 +840,7 @@ class BackupCephTestCase(test.TestCase):
                 msg = (_("Failed to backup volume metadata - Metadata backup "
                          "object 'backup.%s.meta' already exists") %
                        (self.backup_id))
-                self.assertEqual(str(e), msg)
+                self.assertEqual(six.text_type(e), msg)
             else:
                 # Make the test fail
                 self.assertFalse(True)

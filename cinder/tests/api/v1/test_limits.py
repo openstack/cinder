@@ -18,10 +18,10 @@ Tests dealing with HTTP rate-limiting.
 """
 
 import httplib
+import six
 from xml.dom import minidom
 
 from lxml import etree
-import six
 import webob
 
 from cinder.api.v1 import limits
@@ -362,7 +362,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
                                             '(POST, /bar*, /bar.*, 5, second);'
                                             '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
-            assert False, str(e)
+            assert False, e
 
         # Make sure the number of returned limits are correct
         self.assertEqual(len(l), 4)

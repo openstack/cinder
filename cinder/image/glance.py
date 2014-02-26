@@ -173,7 +173,7 @@ class GlanceClientWrapper(object):
                                                    'extra': extra,
                                                    }
                     LOG.exception(error_msg)
-                    raise exception.GlanceConnectionFailed(reason=str(e))
+                    raise exception.GlanceConnectionFailed(reason=e)
                 LOG.exception(error_msg)
                 time.sleep(1)
 

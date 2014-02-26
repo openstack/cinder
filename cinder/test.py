@@ -225,8 +225,8 @@ class TestCase(testtools.TestCase):
 
         """
         def raise_assertion(msg):
-            d1str = str(d1)
-            d2str = str(d2)
+            d1str = d1
+            d2str = d2
             base_msg = ('Dictionaries do not match. %(msg)s d1: %(d1str)s '
                         'd2: %(d2str)s' %
                         {'msg': msg, 'd1str': d1str, 'd2str': d2str})
