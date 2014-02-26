@@ -117,10 +117,11 @@ class HP3PARCommon(object):
         2.0.1 - Updated to use qos_specs, added new qos settings and personas
         2.0.2 - Add back-end assisted volume migrate
         2.0.3 - Allow deleting missing snapshots bug #1283233
+        2.0.4 - Allow volumes created from snapshots to be larger bug #1279478
 
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     stats = {}
 
@@ -735,7 +736,7 @@ class HP3PARCommon(object):
                 return status
             time.sleep(poll_interval_sec)
 
-    def _copy_volume(self, src_name, dest_name, cpg=None, snap_cpg=None,
+    def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
                      tpvv=True):
         # Virtual volume sets are not supported with the -online option
         LOG.debug(_('Creating clone of a volume %(src)s to %(dest)s.') %
@@ -848,15 +849,14 @@ class HP3PARCommon(object):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
-        TODO: support using the size from the user.
         """
         LOG.debug("Create Volume from Snapshot\n%s\n%s" %
                   (pprint.pformat(volume['display_name']),
                    pprint.pformat(snapshot['display_name'])))
 
-        if snapshot['volume_size'] != volume['size']:
-            err = "You cannot change size of the volume.  It must "
-            "be the same as the snapshot."
+        if volume['size'] < snapshot['volume_size']:
+            err = ("You cannot reduce size of the volume.  It must "
+                   "be greater than or equal to the snapshot.")
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
@@ -891,6 +891,25 @@ class HP3PARCommon(object):
                         'readOnly': False}
 
             self.client.createSnapshot(volume_name, snap_name, optional)
+
+            # Grow the snapshot if needed
+            growth_size = volume['size'] - snapshot['volume_size']
+            if growth_size > 0:
+                try:
+                    LOG.debug(_('Converting to base volume type: %s.') %
+                              volume['id'])
+                    self._convert_to_base_volume(volume)
+                    growth_size_mib = growth_size * units.GiB / units.MiB
+                    LOG.debug(_('Growing volume: %(id)s by %(size)s GiB.') %
+                              {'id': volume['id'], 'size': growth_size})
+                    self.client.growVolume(volume_name, growth_size_mib)
+                except Exception as ex:
+                    LOG.error(_("Error extending volume %(id)s. Ex: %(ex)s") %
+                              {'id': volume['id'], 'ex': str(ex)})
+                    # Delete the volume if unable to grow it
+                    self.client.deleteVolume(volume_name)
+                    raise exception.CinderException(ex)
+
             if qos or vvs_name is not None:
                 cpg = self._get_key_value(hp3par_keys, 'cpg',
                                           self.config.hp3par_cpg)
@@ -1020,45 +1039,59 @@ class HP3PARCommon(object):
         dbg = {'id': volume['id'], 'host': host['host']}
         LOG.debug(_('enter: migrate_volume: id=%(id)s, host=%(host)s.') % dbg)
 
+        false_ret = (False, None)
+
+        # Make sure volume is not attached
+        if volume['status'] != 'available':
+            LOG.debug(_('Volume is attached: migrate_volume: '
+                        'id=%(id)s, host=%(host)s.') % dbg)
+            return false_ret
+
+        if 'location_info' not in host['capabilities']:
+            return false_ret
+
+        info = host['capabilities']['location_info']
         try:
-            false_ret = (False, None)
+            (dest_type, dest_id, dest_cpg) = info.split(':')
+        except ValueError:
+            return false_ret
 
-            # Make sure volume is not attached
-            if volume['status'] != 'available':
-                LOG.debug(_('Volume is attached: migrate_volume: '
-                            'id=%(id)s, host=%(host)s.') % dbg)
-                return false_ret
+        sys_info = self.client.getStorageSystemInfo()
+        if not (dest_type == 'HP3PARDriver' and
+                dest_id == sys_info['serialNumber']):
+            LOG.debug(_('Dest does not match: migrate_volume: '
+                        'id=%(id)s, host=%(host)s.') % dbg)
+            return false_ret
 
-            if 'location_info' not in host['capabilities']:
-                return false_ret
+        type_info = self.get_volume_settings_from_type(volume)
 
-            info = host['capabilities']['location_info']
-            try:
-                (dest_type, dest_id, dest_cpg) = info.split(':')
-            except ValueError:
-                return false_ret
+        if dest_cpg == type_info['cpg']:
+            LOG.debug(_('CPGs are the same: migrate_volume: '
+                        'id=%(id)s, host=%(host)s.') % dbg)
+            return false_ret
 
-            sys_info = self.client.getStorageSystemInfo()
-            if not (dest_type == 'HP3PARDriver' and
-                    dest_id == sys_info['serialNumber']):
-                LOG.debug(_('Dest does not match: migrate_volume: '
-                            'id=%(id)s, host=%(host)s.') % dbg)
-                return false_ret
+        # Check to make sure CPGs are in the same domain
+        src_domain = self.get_domain(type_info['cpg'])
+        dst_domain = self.get_domain(dest_cpg)
+        if src_domain != dst_domain:
+            LOG.debug(_('CPGs in different domains: migrate_volume: '
+                        'id=%(id)s, host=%(host)s.') % dbg)
+            return false_ret
 
+        self._convert_to_base_volume(volume, new_cpg=dest_cpg)
+
+        # TODO(Ramy) When volume retype is available,
+        # use that to change the type
+        LOG.debug(_('leave: migrate_volume: id=%(id)s, host=%(host)s.') % dbg)
+        return (True, None)
+
+    def _convert_to_base_volume(self, volume, new_cpg=None):
+        try:
             type_info = self.get_volume_settings_from_type(volume)
-
-            if dest_cpg == type_info['cpg']:
-                LOG.debug(_('CPGs are the same: migrate_volume: '
-                            'id=%(id)s, host=%(host)s.') % dbg)
-                return false_ret
-
-            # Check to make sure CPGs are in the same domain
-            src_domain = self.get_domain(type_info['cpg'])
-            dst_domain = self.get_domain(dest_cpg)
-            if src_domain != dst_domain:
-                LOG.debug(_('CPGs in different domains: migrate_volume: '
-                            'id=%(id)s, host=%(host)s.') % dbg)
-                return false_ret
+            if new_cpg:
+                cpg = new_cpg
+            else:
+                cpg = type_info['cpg']
 
             # Change the name such that it is unique since 3PAR
             # names must be unique across all CPGs
@@ -1067,40 +1100,38 @@ class HP3PARCommon(object):
 
             # Create a physical copy of the volume
             task_id = self._copy_volume(volume_name, temp_vol_name,
-                                        dest_cpg, dest_cpg, type_info['tpvv'])
+                                        cpg, cpg, type_info['tpvv'])
 
-            LOG.debug(_('Copy volume scheduled: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug(_('Copy volume scheduled: convert_to_base_volume: '
+                        'id=%s.') % volume['id'])
 
             # Wait for the physical copy task to complete
             status = self._wait_for_task(task_id)
             if status['status'] is not self.client.TASK_DONE:
-                dbg['status'] = status
-                msg = _('Copy volume task failed: migrate_volume: '
-                        'id=%(id)s, host=%(host)s, status=%(status)s.') % dbg
+                dbg = {'status': status, 'id': volume['id']}
+                msg = _('Copy volume task failed: convert_to_base_volume: '
+                        'id=%(id)s, status=%(status)s.') % dbg
                 raise exception.CinderException(msg)
             else:
-                LOG.debug(_('Copy volume completed: migrate_volume: '
-                            'id=%(id)s, host=%(host)s.') % dbg)
+                LOG.debug(_('Copy volume completed: convert_to_base_volume: '
+                            'id=%s.') % volume['id'])
 
             comment = self._get_3par_vol_comment(volume_name)
             if comment:
                 self.client.modifyVolume(temp_vol_name, {'comment': comment})
-            LOG.debug(_('Migrated volume rename completed: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug(_('Volume rename completed: convert_to_base_volume: '
+                        'id=%s.') % volume['id'])
 
             # Delete source volume after the copy is complete
             self.client.deleteVolume(volume_name)
-            LOG.debug(_('Delete src volume completed: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug(_('Delete src volume completed: convert_to_base_volume: '
+                        'id=%s.') % volume['id'])
 
             # Rename the new volume to the original name
             self.client.modifyVolume(temp_vol_name, {'newName': volume_name})
 
-            # TODO(Ramy) When volume retype is available,
-            # use that to change the type
-            LOG.info(_('Completed: migrate_volume: '
-                       'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.info(_('Completed: convert_to_base_volume: '
+                       'id=%s.') % volume['id'])
         except hpexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array.") % volume_name
             LOG.error(msg)
@@ -1117,9 +1148,6 @@ class HP3PARCommon(object):
         except Exception as ex:
             LOG.error(str(ex))
             raise exception.CinderException(ex)
-
-        LOG.debug(_('leave: migrate_volume: id=%(id)s, host=%(host)s.') % dbg)
-        return (True, None)
 
     def delete_snapshot(self, snapshot):
         LOG.debug("Delete Snapshot id %s %s" % (snapshot['id'],

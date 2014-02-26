@@ -591,6 +591,73 @@ class HP3PARBaseDriver(object):
                           self.driver.create_volume_from_snapshot,
                           volume, self.snapshot)
 
+    def test_create_volume_from_snapshot_and_extend(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getTask.return_value': {
+                'status': 1},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': {}
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        volume = self.volume.copy()
+        volume['size'] = self.volume['size'] + 10
+        self.driver.create_volume_from_snapshot(volume, self.snapshot)
+
+        comment = (
+            '{"snapshot_id": "2f823bdc-e36e-4dc8-bd15-de1c7a28ff31",'
+            ' "display_name": "Foo Volume",'
+            ' "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7"}')
+
+        volume_name_3par = self.driver.common._encode_name(volume['id'])
+        osv_matcher = 'osv-' + volume_name_3par
+        omv_matcher = 'omv-' + volume_name_3par
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.createSnapshot(
+                self.VOLUME_3PAR_NAME,
+                'oss-L4I73ONuTci9Fd4ceij-MQ',
+                {
+                    'comment': comment,
+                    'readOnly': False}),
+            mock.call.copyVolume(osv_matcher, omv_matcher, mock.ANY, mock.ANY),
+            mock.call.getTask(mock.ANY),
+            mock.call.getVolume(osv_matcher),
+            mock.call.deleteVolume(osv_matcher),
+            mock.call.modifyVolume(omv_matcher, {'newName': osv_matcher}),
+            mock.call.growVolume(osv_matcher, 10 * 1024),
+            mock.call.logout()]
+
+        mock_client.assert_has_calls(expected)
+
+    def test_create_volume_from_snapshot_and_extend_copy_fail(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getTask.return_value': {
+                'status': 4,
+                'failure message': 'out of disk space'},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': {}
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        volume = self.volume.copy()
+        volume['size'] = self.volume['size'] + 10
+
+        self.assertRaises(exception.CinderException,
+                          self.driver.create_volume_from_snapshot,
+                          volume, self.snapshot)
+
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_from_snapshot_qos(self, _mock_volume_types):
         # setup_mock_client drive with default configuration
