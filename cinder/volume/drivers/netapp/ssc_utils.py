@@ -605,11 +605,14 @@ def get_volumes_for_specs(ssc_vols, specs):
 
 def check_ssc_api_permissions(na_server):
     """Checks backend ssc api permissions for the user."""
-    api_map = {'storage-disk-get-iter': ['disk type'],
-               'snapmirror-get-iter': ['data protection mirror'],
-               'sis-get-iter': ['deduplication', 'compression'],
-               'aggr-options-list-info': ['raid type'],
-               'volume-get-iter': ['volume information']}
+    api_map = {'storage-disk-get-iter': ['netapp:disk_type'],
+               'snapmirror-get-iter': ['netapp_mirrored',
+                                       'netapp_unmirrored'],
+               'sis-get-iter': ['netapp_dedup', 'netapp_nodedup',
+                                'netapp_compression',
+                                'netapp_nocompression'],
+               'aggr-options-list-info': ['netapp:raid_type'],
+               'volume-get-iter': []}
     failed_apis = na_utils.check_apis_on_cluster(na_server, api_map.keys())
     if failed_apis:
         if 'volume-get-iter' in failed_apis:
@@ -621,6 +624,6 @@ def check_ssc_api_permissions(na_server):
             for fail in failed_apis:
                 unsupp_ssc_features.extend(api_map[fail])
             LOG.warn(_("The user does not have access or sufficient"
-                       " privileges to use all ssc apis. The ssc"
-                       " features %s may not work as expected."),
+                       " privileges to use all netapp apis. The following"
+                       " extra_specs will fail or be ignored: %s"),
                      unsupp_ssc_features)
