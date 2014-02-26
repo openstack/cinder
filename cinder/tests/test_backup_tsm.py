@@ -109,8 +109,7 @@ class TSMBackupSimulator:
             ret_msg += ('Total number of objects deleted:  1\n'
                         'Total number of objects failed:  0')
             retcode = 0
-            for idx, backup in enumerate(self._backup_list[path]):
-                index = idx
+            index = len(self._backup_list[path]) - 1
             del self._backup_list[path][index]
             if not len(self._backup_list[path]):
                 del self._backup_list[path]
