@@ -1786,42 +1786,14 @@
 #zoning_mode=none
 
 
+[fc-zone-manager]
+
 #
 # Options defined in cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver
 #
 
 # Southbound connector for zoning operation (string value)
 #brcd_sb_connector=cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli.BrcdFCZoneClientCLI
-
-
-#
-# Options defined in cinder.zonemanager.drivers.fc_common
-#
-
-# Comma separated list of fibre channel fabric names. This
-# list of names is used to retrieve other SAN credentials for
-# connecting to each SAN fabric (string value)
-#fc_fabric_names=<None>
-
-
-#
-# Options defined in cinder.zonemanager.drivers.fc_zone_driver
-#
-
-# Indicates whether zone should be activated or not (boolean
-# value)
-#zone_activate=true
-
-# A prefix to be used when naming zone (string value)
-#zone_name_prefix=openstack
-
-
-#
-# Options defined in cinder.zonemanager.fc_san_lookup_service
-#
-
-# FC San Lookup Service (string value)
-#fc_san_lookup_service=cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service.BrcdFCSanLookupService
 
 
 #
@@ -1834,6 +1806,14 @@
 
 # Zoning policy configured by user (string value)
 #zoning_policy=initiator-target
+
+# Comma separated list of fibre channel fabric names. This
+# list of names is used to retrieve other SAN credentials for
+# connecting to each SAN fabric (string value)
+#fc_fabric_names=<None>
+
+# FC San Lookup Service (string value)
+#fc_san_lookup_service=cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service.BrcdFCSanLookupService
 
 
 [ssl]
@@ -2096,6 +2076,37 @@
 # binding method that must be present in tokens. (string
 # value)
 #enforce_token_bind=permissive
+
+
+[BRCD_FABRIC_EXAMPLE]
+
+#
+# Options defined in cinder.zonemanager.drivers.brocade.brcd_fabric_opts
+#
+
+# Management IP of fabric (string value)
+#fc_fabric_address=
+
+# Fabric user ID (string value)
+#fc_fabric_user=
+
+# Password for user (string value)
+#fc_fabric_password=
+
+# Connecting port (integer value)
+#fc_fabric_port=22
+
+# overridden zoning policy (string value)
+#zoning_policy=initiator-target
+
+# overridden zoning activation state (boolean value)
+#zone_activate=true
+
+# overridden zone name prefix (string value)
+#zone_name_prefix=<None>
+
+# Principal switch WWN of the fabric (string value)
+#principal_switch_wwn=<None>
 
 
 [matchmaker_ring]

@@ -37,6 +37,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
+from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
 
 LOG = logging.getLogger(__name__)
@@ -49,11 +50,7 @@ brcd_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(brcd_opts)
-CONF.import_opt('zone_activate', 'cinder.zonemanager.drivers.fc_zone_driver')
-CONF.import_opt('zone_name_prefix',
-                'cinder.zonemanager.drivers.fc_zone_driver')
-CONF.import_opt('fc_fabric_names', 'cinder.zonemanager.drivers.fc_common')
+CONF.register_opts(brcd_opts, 'fc-zone-manager')
 
 
 class BrcdFCZoneDriver(FCZoneDriver):
@@ -100,54 +97,12 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 CONF.register_opts(base_san_opts)
                 self.configuration.append_config_values(base_san_opts)
             fabric_names = self.configuration.fc_fabric_names.split(',')
-            fc_fabric_opts = []
+
             # There can be more than one SAN in the network and we need to
             # get credentials for each SAN.
             if fabric_names:
-                for fabric_name in fabric_names:
-                    fc_fabric_opts.append(cfg.StrOpt('fc_fabric_address_'
-                                                     + fabric_name,
-                                                     default='',
-                                                     help='Management IP'
-                                                     ' of fabric'))
-                    fc_fabric_opts.append(cfg.StrOpt('fc_fabric_user_'
-                                                     + fabric_name,
-                                                     default='',
-                                                     help='Fabric user ID'))
-                    fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password_'
-                                                     + fabric_name,
-                                                     default='',
-                                                     help='Password for user',
-                                                     secret=True))
-                    fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port_'
-                                                     + fabric_name,
-                                                     default=22,
-                                                     help='Connecting port'))
-                    fc_fabric_opts.append(cfg.StrOpt('zoning_policy_'
-                                                     + fabric_name,
-                                                     default=self.configuration
-                                                     .zoning_policy,
-                                                     help='overridden '
-                                                     'zoning policy'))
-                    fc_fabric_opts.append(cfg.BoolOpt('zone_activate_'
-                                                      + fabric_name,
-                                                      default=self
-                                                      .configuration
-                                                      .zone_activate,
-                                                      help='overridden zoning '
-                                                      'activation state'))
-                    fc_fabric_opts.append(cfg.StrOpt('zone_name_prefix_'
-                                                     + fabric_name,
-                                                     default=self.configuration
-                                                     .zone_name_prefix,
-                                                     help='overridden zone '
-                                                     'name prefix'))
-                    fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn_'
-                                                     + fabric_name,
-                                                     default=fabric_name,
-                                                     help='Principal switch '
-                                                     'WWN of the fabric'))
-                self.configuration.append_config_values(fc_fabric_opts)
+                self.fabric_configs = fabric_opts.load_fabric_configurations(
+                    fabric_names)
 
     def get_formatted_wwn(self, wwn_str):
         """Utility API that formats WWN to insert ':'."""
@@ -174,17 +129,13 @@ class BrcdFCZoneDriver(FCZoneDriver):
         LOG.debug(_("Add connection for Fabric:%s"), fabric)
         LOG.info(_("BrcdFCZoneDriver - Add connection "
                    "for I-T map: %s"), initiator_target_map)
-        fabric_ip = self.configuration.safe_get(
-            'fc_fabric_address_' + fabric)
-        fabric_user = self.configuration.safe_get(
-            'fc_fabric_user_' + fabric)
-        fabric_pwd = self.configuration.safe_get(
-            'fc_fabric_password_' + fabric)
-        fabric_port = self.configuration.safe_get(
-            'fc_fabric_port_' + fabric)
+        fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
+        fabric_user = self.fabric_configs[fabric].safe_get('fc_fabric_user')
+        fabric_pwd = self.fabric_configs[fabric].safe_get('fc_fabric_password')
+        fabric_port = self.fabric_configs[fabric].safe_get('fc_fabric_port')
         zoning_policy = self.configuration.zoning_policy
-        zoning_policy_fab = self.configuration.safe_get(
-            'zoning_policy_' + fabric)
+        zoning_policy_fab = self.fabric_configs[fabric].safe_get(
+            'zoning_policy')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
 
@@ -289,17 +240,13 @@ class BrcdFCZoneDriver(FCZoneDriver):
         LOG.debug(_("Delete connection for fabric:%s"), fabric)
         LOG.info(_("BrcdFCZoneDriver - Delete connection for I-T map: %s"),
                  initiator_target_map)
-        fabric_ip = self.configuration.safe_get(
-            'fc_fabric_address_' + fabric)
-        fabric_user = self.configuration.safe_get(
-            'fc_fabric_user_' + fabric)
-        fabric_pwd = self.configuration.safe_get(
-            'fc_fabric_password_' + fabric)
-        fabric_port = self.configuration.safe_get(
-            'fc_fabric_port_' + fabric)
+        fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
+        fabric_user = self.fabric_configs[fabric].safe_get('fc_fabric_user')
+        fabric_pwd = self.fabric_configs[fabric].safe_get('fc_fabric_password')
+        fabric_port = self.fabric_configs[fabric].safe_get('fc_fabric_port')
         zoning_policy = self.configuration.zoning_policy
-        zoning_policy_fab = self.configuration.safe_get(
-            'zoning_policy_' + fabric)
+        zoning_policy_fab = self.fabric_configs[fabric].safe_get(
+            'zoning_policy')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
 
@@ -436,14 +383,14 @@ class BrcdFCZoneDriver(FCZoneDriver):
             LOG.debug(_("Formatted Target wwn List:"
                         " %s"), formatted_target_list)
             for fabric_name in fabrics:
-                fabric_ip = self.configuration.safe_get(
-                    'fc_fabric_address_' + fabric_name)
-                fabric_user = self.configuration.safe_get(
-                    'fc_fabric_user_' + fabric_name)
-                fabric_pwd = self.configuration.safe_get(
-                    'fc_fabric_password_' + fabric_name)
-                fabric_port = self.configuration.safe_get(
-                    'fc_fabric_port_' + fabric_name)
+                fabric_ip = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_address')
+                fabric_user = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_user')
+                fabric_pwd = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_password')
+                fabric_port = self.fabric_configs[fabric_name].safe_get(
+                    'fc_fabric_port')
                 conn = None
                 try:
                     conn = importutils.import_object(
