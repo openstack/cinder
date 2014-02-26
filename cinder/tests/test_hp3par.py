@@ -24,6 +24,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder import units
 from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
 from cinder.volume.drivers.san.hp import hp_3par_iscsi as hpdriver
 from cinder.volume import qos_specs
@@ -773,9 +774,10 @@ class HP3PARBaseDriver(object):
         old_size = self.volume['size']
         new_size = old_size + grow_size
         self.driver.extend_volume(self.volume, str(new_size))
+        growth_size_mib = grow_size * units.KiB
 
         expected = [
-            mock.call.growVolume(self.VOLUME_3PAR_NAME, grow_size)]
+            mock.call.growVolume(self.VOLUME_3PAR_NAME, growth_size_mib)]
 
         mock_client.assert_has_calls(expected)
 
