@@ -88,3 +88,12 @@ class ViewBuilder(common.ViewBuilder):
             backups_dict['backups_links'] = backups_links
 
         return backups_dict
+
+    def export_summary(self, request, export):
+        """Generic view of an export."""
+        return {
+            'backup-record': {
+                'backup_service': export['backup_service'],
+                'backup_url': export['backup_url'],
+            },
+        }

@@ -65,9 +65,42 @@ class BackupAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                   topic=topic)
 
     def delete_backup(self, ctxt, host, backup_id):
-        LOG.debug("delete_backup  rpcapi backup_id %s", backup_id)
+        LOG.debug("delete_backup rpcapi backup_id %s", backup_id)
         topic = rpc.queue_get_for(ctxt, self.topic, host)
         self.cast(ctxt,
                   self.make_msg('delete_backup',
                                 backup_id=backup_id),
+                  topic=topic)
+
+    def export_record(self, ctxt, host, backup_id):
+        LOG.debug("export_record in rpcapi backup_id %(id)s "
+                  "on host %(host)s.",
+                  {'id': backup_id,
+                   'host': host})
+        topic = rpc.queue_get_for(ctxt, self.topic, host)
+        LOG.debug("export queue topic=%s" % topic)
+        return self.call(ctxt,
+                         self.make_msg('export_record',
+                                       backup_id=backup_id),
+                         topic=topic)
+
+    def import_record(self,
+                      ctxt,
+                      host,
+                      backup_id,
+                      backup_service,
+                      backup_url,
+                      backup_hosts):
+        LOG.debug("import_record rpcapi backup id $(id)s "
+                  "on host %(host)s "
+                  "for backup_url %(url)s." % {'id': backup_id,
+                                               'host': host,
+                                               'url': backup_url})
+        topic = rpc.queue_get_for(ctxt, self.topic, host)
+        self.cast(ctxt,
+                  self.make_msg('import_record',
+                                backup_id=backup_id,
+                                backup_service=backup_service,
+                                backup_url=backup_url,
+                                backup_hosts=backup_hosts),
                   topic=topic)

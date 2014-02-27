@@ -25,6 +25,14 @@ from cinder.openstack.common import jsonutils
 from cinder import test
 
 
+_backup_db_fields = ['id', 'user_id', 'project_id',
+                     'volume_id', 'host', 'availability_zone',
+                     'display_name', 'display_description',
+                     'container', 'status', 'fail_reason',
+                     'service_metadata', 'service', 'size',
+                     'object_count']
+
+
 class BackupBaseDriverTestCase(test.TestCase):
 
     def _create_volume_db_entry(self, id, size):
@@ -72,6 +80,26 @@ class BackupBaseDriverTestCase(test.TestCase):
     def test_get_put_metadata(self):
         json_metadata = self.driver.get_metadata(self.volume_id)
         self.driver.put_metadata(self.volume_id, json_metadata)
+
+    def test_export_record(self):
+        export_string = self.driver.export_record(self.backup)
+        export_dict = jsonutils.loads(export_string.decode("base64"))
+        # Make sure we don't lose data when converting to string
+        for key in _backup_db_fields:
+            self.assertTrue(key in export_dict)
+            self.assertEqual(self.backup[key], export_dict[key])
+
+    def test_import_record(self):
+        export_string = self.driver.export_record(self.backup)
+        imported_backup = self.driver.import_record(export_string)
+        # Make sure we don't lose data when converting from string
+        for key in _backup_db_fields:
+            self.assertTrue(key in imported_backup)
+            self.assertEqual(imported_backup[key], self.backup[key])
+
+    def test_verify(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver.verify, self.backup)
 
     def tearDown(self):
         super(BackupBaseDriverTestCase, self).tearDown()

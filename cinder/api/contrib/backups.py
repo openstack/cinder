@@ -29,7 +29,6 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import utils
 
-
 LOG = logging.getLogger(__name__)
 
 
@@ -50,6 +49,11 @@ def make_backup(elem):
 def make_backup_restore(elem):
     elem.set('backup_id')
     elem.set('volume_id')
+
+
+def make_backup_export_import_record(elem):
+    elem.set('backup_service')
+    elem.set('backup_url')
 
 
 class BackupTemplate(xmlutil.TemplateBuilder):
@@ -75,6 +79,16 @@ class BackupRestoreTemplate(xmlutil.TemplateBuilder):
     def construct(self):
         root = xmlutil.TemplateElement('restore', selector='restore')
         make_backup_restore(root)
+        alias = Backups.alias
+        namespace = Backups.namespace
+        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
+
+
+class BackupExportImportTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        root = xmlutil.TemplateElement('backup-record',
+                                       selector='backup-record')
+        make_backup_export_import_record(root)
         alias = Backups.alias
         namespace = Backups.namespace
         return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
@@ -111,6 +125,25 @@ class RestoreDeserializer(wsgi.MetadataXMLDeserializer):
         if restore_node.getAttribute('volume_id'):
             restore['volume_id'] = restore_node.getAttribute('volume_id')
         return restore
+
+
+class BackupImportDeserializer(wsgi.MetadataXMLDeserializer):
+    def default(self, string):
+        dom = utils.safe_minidom_parse_string(string)
+        backup = self._extract_backup(dom)
+        retval = {'body': {'backup-record': backup}}
+        return retval
+
+    def _extract_backup(self, node):
+        backup = {}
+        backup_node = self.find_first_child_named(node, 'backup-record')
+
+        attributes = ['backup_service', 'backup_url']
+
+        for attr in attributes:
+            if backup_node.getAttribute(attr):
+                backup[attr] = backup_node.getAttribute(attr)
+        return backup
 
 
 class BackupsController(wsgi.Controller):
@@ -260,6 +293,61 @@ class BackupsController(wsgi.Controller):
             req, dict(new_restore.iteritems()))
         return retval
 
+    @wsgi.response(200)
+    @wsgi.serializers(xml=BackupExportImportTemplate)
+    def export_record(self, req, id):
+        """Export a backup."""
+        LOG.debug(_('export record called for member %s.'), id)
+        context = req.environ['cinder.context']
+
+        try:
+            backup_info = self.backup_api.export_record(context, id)
+        except exception.BackupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.InvalidBackup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        retval = self._view_builder.export_summary(
+            req, dict(backup_info.iteritems()))
+        LOG.debug(_('export record output: %s.'), retval)
+        return retval
+
+    @wsgi.response(201)
+    @wsgi.serializers(xml=BackupTemplate)
+    @wsgi.deserializers(xml=BackupImportDeserializer)
+    def import_record(self, req, body):
+        """Import a backup."""
+        LOG.debug(_('Importing record from %s.'), body)
+        if not self.is_valid_body(body, 'backup-record'):
+            msg = _("Incorrect request body format.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        context = req.environ['cinder.context']
+        import_data = body['backup-record']
+        #Verify that body elements are provided
+        try:
+            backup_service = import_data['backup_service']
+            backup_url = import_data['backup_url']
+        except KeyError:
+            msg = _("Incorrect request body format.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        LOG.debug(_('Importing backup using %(service)s and url %(url)s.'),
+                  {'service': backup_service, 'url': backup_url})
+
+        try:
+            new_backup = self.backup_api.import_record(context,
+                                                       backup_service,
+                                                       backup_url)
+        except exception.BackupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.InvalidBackup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+        except exception.ServiceNotFound as error:
+            raise exc.HTTPInternalServerError(explanation=error.msg)
+
+        retval = self._view_builder.summary(req, dict(new_backup.iteritems()))
+        LOG.debug(_('import record output: %s.'), retval)
+        return retval
+
 
 class Backups(extensions.ExtensionDescriptor):
     """Backups support."""
@@ -273,7 +361,7 @@ class Backups(extensions.ExtensionDescriptor):
         resources = []
         res = extensions.ResourceExtension(
             Backups.alias, BackupsController(),
-            collection_actions={'detail': 'GET'},
-            member_actions={'restore': 'POST'})
+            collection_actions={'detail': 'GET', 'import_record': 'POST'},
+            member_actions={'restore': 'POST', 'export_record': 'GET'})
         resources.append(res)
         return resources

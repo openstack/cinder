@@ -263,3 +263,38 @@ class BackupDriver(base.Base):
     def delete(self, backup):
         """Delete a saved backup."""
         raise NotImplementedError()
+
+    def export_record(self, backup):
+        """Export backup record.
+
+        Default backup driver implementation.
+        Serialize the backup record describing the backup into a string.
+
+        :param backup: backup entry to export
+        :returns backup_url - a string describing the backup record
+        """
+        retval = jsonutils.dumps(backup)
+        return retval.encode("base64")
+
+    def import_record(self, backup_url):
+        """Import and verify backup record.
+
+        Default backup driver implementation.
+        De-serialize the backup record into a dictionary, so we can
+        update the database.
+
+        :param backup_url: driver specific backup record string
+        :returns dictionary object with database updates
+        """
+        return jsonutils.loads(backup_url.decode("base64"))
+
+    def verify(self, backup):
+        """Verify that the backup exists on the backend.
+
+        Verify that the backup is OK, possibly following an import record
+        operation.
+
+        :param backup: backup id of the backup to verify
+        :raises: InvalidBackup, NotImplementedError
+        """
+        raise NotImplementedError()
