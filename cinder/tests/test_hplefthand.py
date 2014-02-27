@@ -575,6 +575,24 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # validate call chain
         mock_cliq_run.assert_has_calls(expected)
 
+    def test_get_volume_stats(self):
+
+        # set up driver with default config
+        mock_cliq_run = self.setup_driver()
+        volume_stats = self.driver.get_volume_stats(True)
+
+        self.assertEqual(volume_stats['vendor_name'], 'Hewlett-Packard')
+        self.assertEqual(volume_stats['storage_protocol'], 'iSCSI')
+
+        expected = [
+            mock.call('getClusterInfo', {
+                'searchDepth': 1,
+                'clusterName': 'CloudCluster1',
+                'output': 'XML'}, True)]
+
+        # validate call chain
+        mock_cliq_run.assert_has_calls(expected)
+
 
 class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 

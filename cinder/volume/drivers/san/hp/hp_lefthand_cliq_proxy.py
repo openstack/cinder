@@ -69,9 +69,11 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         1.1.0 - Added create/delete snapshot, extend volume, create volume
                 from snapshot support.
         1.2.0 - Ported into the new HP LeftHand driver.
+        1.2.1 - Fixed bug #1279897, HP LeftHand CLIQ proxy may return incorrect
+                capacity values.
     """
 
-    VERSION = "1.2.0"
+    VERSION = "1.2.1"
 
     device_stats = {}
 
@@ -427,7 +429,10 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         data['storage_protocol'] = 'iSCSI'
         data['vendor_name'] = 'Hewlett-Packard'
 
-        result_xml = self._cliq_run_xml("getClusterInfo", {'searchDepth': 1})
+        result_xml = self._cliq_run_xml(
+            "getClusterInfo", {
+                'searchDepth': 1,
+                'clusterName': self.configuration.san_clustername})
         cluster_node = result_xml.find("response/cluster")
         total_capacity = cluster_node.attrib.get("spaceTotal")
         free_capacity = cluster_node.attrib.get("unprovisionedSpace")
