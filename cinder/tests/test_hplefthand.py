@@ -340,9 +340,6 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iqn.2003-10.com.lefthandnetworks:group01:25366:fakev',
             'volume_id': self.volume_id}
 
-    def tearDown(self):
-        super(TestHPLeftHandCLIQISCSIDriver, self).tearDown()
-
     def default_mock_conf(self):
 
         mock_conf = mock.Mock()
@@ -600,12 +597,6 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock.call.login('foo1', 'bar2'),
         mock.call.getClusterByName('CloudCluster1'),
         mock.call.getCluster(1)]
-
-    def setUp(self):
-        super(TestHPLeftHandRESTISCSIDriver, self).setUp()
-
-    def tearDown(self):
-        super(TestHPLeftHandRESTISCSIDriver, self).tearDown()
 
     def default_mock_conf(self):
 

@@ -162,13 +162,10 @@ class TestMigrations(test.TestCase):
         # We start each test case with a completely blank slate.
         self._reset_databases()
 
-    def tearDown(self):
-
         # We destroy the test data store between each test case,
         # and recreate it, which ensures that we have no side-effects
         # from the tests
-        self._reset_databases()
-        super(TestMigrations, self).tearDown()
+        self.addCleanup(self._reset_databases)
 
     def _reset_databases(self):
         def execute_cmd(cmd=None):
