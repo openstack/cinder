@@ -247,11 +247,15 @@ class Driver(driver.ISCSIDriver):
         try:
             return self._get_cached_volume(label)
         except KeyError:
-            for vol in self._client.list_volumes():
-                if vol.get('label') == label:
-                    self._cache_volume(vol)
-                    break
-            return self._get_cached_volume(label)
+            return self._get_latest_volume(uid)
+
+    def _get_latest_volume(self, uid):
+        label = utils.convert_uuid_to_es_fmt(uid)
+        for vol in self._client.list_volumes():
+            if vol.get('label') == label:
+                self._cache_volume(vol)
+                return self._get_cached_volume(label)
+        raise exception.NetAppDriverException(_("Volume %s not found."), uid)
 
     def _get_cached_volume(self, label):
         vol_id = self._objects['volumes']['label_ref'][label]
@@ -461,8 +465,9 @@ class Driver(driver.ISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         initiator_name = connector['initiator']
-        vol = self._get_volume(volume['id'])
-        iscsi_det = self._get_iscsi_service_details()
+        vol = self._get_latest_volume(volume['id'])
+        iscsi_details = self._get_iscsi_service_details()
+        iscsi_det = self._get_iscsi_portal_for_vol(vol, iscsi_details)
         mapping = self._map_volume_to_host(vol, initiator_name)
         lun_id = mapping['lun']
         self._cache_vol_mapping(mapping)
@@ -492,6 +497,7 @@ class Driver(driver.ISCSIDriver):
 
     def _get_iscsi_service_details(self):
         """Gets iscsi iqn, ip and port information."""
+        ports = []
         hw_inventory = self._client.list_hardware_inventory()
         iscsi_ports = hw_inventory.get('iscsiPorts')
         if iscsi_ports:
@@ -507,9 +513,23 @@ class Driver(driver.ISCSIDriver):
                     iscsi_det['ip'] =\
                         port['ipv4Data']['ipv4AddressData']['ipv4Address']
                     iscsi_det['iqn'] = port['iqn']
-                    iscsi_det['tcp_port'] = port.get('tcpListenPort', '3260')
-                    return iscsi_det
-        msg = _('No good iscsi portal information found for %s.')
+                    iscsi_det['tcp_port'] = port.get('tcpListenPort')
+                    iscsi_det['controller'] = port.get('controllerId')
+                    ports.append(iscsi_det)
+        if not ports:
+            msg = _('No good iscsi portals found for %s.')
+            raise exception.NetAppDriverException(
+                msg % self._client.get_system_id())
+        return ports
+
+    def _get_iscsi_portal_for_vol(self, volume, portals, anyController=True):
+        """Get the iscsi portal info relevant to volume."""
+        for portal in portals:
+            if portal.get('controller') == volume.get('currentManager'):
+                return portal
+        if anyController and portals:
+            return portals[0]
+        msg = _('No good iscsi portal found in supplied list for %s.')
         raise exception.NetAppDriverException(
             msg % self._client.get_system_id())
 
