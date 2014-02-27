@@ -464,7 +464,7 @@ class FakeDirectCmodeHTTPConnection(object):
         if data:
             req_str += '\r\n%s' % data
 
-        # NOTE(vish): normally the http transport normailizes from unicode
+        # NOTE(vish): normally the http transport normalizes from unicode
         sock = FakeHttplibSocket(req_str.decode("latin-1").encode("utf-8"))
         # NOTE(vish): stop the server from trying to look up address from
         #             the fake socket

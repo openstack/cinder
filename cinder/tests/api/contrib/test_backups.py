@@ -517,7 +517,7 @@ class BackupsAPITestCase(test.TestCase):
                              'disabled': 1,
                              'updated_at': timeutils.utcnow()}]
 
-        #dead service that last reported at 20th centry
+        #dead service that last reported at 20th century
         dead_service = [{'availability_zone': "fake_az", 'host': alt_host,
                          'disabled': 0, 'updated_at': '1989-04-16 02:55:44'}]
 
