@@ -185,7 +185,8 @@ class SwiftBackupDriver(BackupDriver):
         filename = '%s_metadata' % swift_object_name
         return filename
 
-    def _write_metadata(self, backup, volume_id, container, object_list):
+    def _write_metadata(self, backup, volume_id, container, object_list,
+                        volume_meta):
         filename = self._metadata_filename(backup)
         LOG.debug(_('_write_metadata started, container name: %(container)s,'
                     ' metadata filename: %(filename)s') %
@@ -198,6 +199,7 @@ class SwiftBackupDriver(BackupDriver):
         metadata['backup_description'] = backup['display_description']
         metadata['created_at'] = str(backup['created_at'])
         metadata['objects'] = object_list
+        metadata['volume_meta'] = volume_meta
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
         reader = six.StringIO(metadata_json)
         etag = self.conn.put_object(container, filename, reader,
@@ -253,7 +255,8 @@ class SwiftBackupDriver(BackupDriver):
                       'object_prefix': object_prefix,
                       'availability_zone': availability_zone,
                   })
-        object_meta = {'id': 1, 'list': [], 'prefix': object_prefix}
+        object_meta = {'id': 1, 'list': [], 'prefix': object_prefix,
+                       'volume_meta': None}
         return object_meta, container
 
     def _backup_chunk(self, backup, container, data, data_offset, object_meta):
@@ -314,26 +317,36 @@ class SwiftBackupDriver(BackupDriver):
         """Finalize the backup by updating its metadata on Swift."""
         object_list = object_meta['list']
         object_id = object_meta['id']
+        volume_meta = object_meta['volume_meta']
         try:
             self._write_metadata(backup,
                                  backup['volume_id'],
                                  container,
-                                 object_list)
+                                 object_list,
+                                 volume_meta)
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=str(err))
         self.db.backup_update(self.context, backup['id'],
                               {'object_count': object_id})
         LOG.debug(_('backup %s finished.') % backup['id'])
 
-    def backup(self, backup, volume_file, backup_metadata=False):
-        """Backup the given volume to Swift."""
+    def _backup_metadata(self, backup, object_meta):
+        """Backup volume metadata.
 
-        # TODO(dosaboy): this needs implementing (see backup.drivers.ceph for
-        #                an example)
-        if backup_metadata:
-            msg = _("Volume metadata backup requested but this driver does "
-                    "not yet support this feature.")
-            raise exception.InvalidBackup(reason=msg)
+        NOTE(dosaboy): the metadata we are backing up is obtained from a
+                       versioned api so we should not alter it in any way here.
+                       We must also be sure that the service that will perform
+                       the restore is compatible with version used.
+        """
+        json_meta = self.get_metadata(backup['volume_id'])
+        if not json_meta:
+            LOG.debug("No volume metadata to backup")
+            return
+
+        object_meta["volume_meta"] = json_meta
+
+    def backup(self, backup, volume_file, backup_metadata=True):
+        """Backup the given volume to Swift."""
 
         object_meta, container = self._prepare_backup(backup)
         while True:
@@ -343,6 +356,16 @@ class SwiftBackupDriver(BackupDriver):
                 break
             self._backup_chunk(backup, container, data,
                                data_offset, object_meta)
+
+        if backup_metadata:
+            try:
+                self._backup_metadata(backup, object_meta)
+            except Exception as err:
+                LOG.exception(_("Backup volume metadata to swift failed: %s")
+                              % six.text_type(err))
+                self.delete(backup)
+                raise
+
         self._finalize_backup(backup, container, object_meta)
 
     def _restore_v1(self, backup, volume_id, metadata, volume_file):
@@ -435,6 +458,18 @@ class SwiftBackupDriver(BackupDriver):
                    % metadata_version)
             raise exception.InvalidBackup(reason=err)
         restore_func(backup, volume_id, metadata, volume_file)
+
+        volume_meta = metadata.get('volume_meta', None)
+        try:
+            if volume_meta:
+                self.put_metadata(volume_id, volume_meta)
+            else:
+                LOG.debug("No volume metadata in this backup")
+        except exception.BackupMetadataUnsupportedVersion:
+            msg = _("Metadata restore failed due to incompatible version")
+            LOG.error(msg)
+            raise exception.BackupOperationError(msg)
+
         LOG.debug(_('restore %(backup_id)s to %(volume_id)s finished.') %
                   {'backup_id': backup_id, 'volume_id': volume_id})
 
