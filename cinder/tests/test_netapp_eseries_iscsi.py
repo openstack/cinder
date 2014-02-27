@@ -118,6 +118,32 @@ class FakeEseriesServerHandler(object):
                     "currentControllerId": "070000000000000000000001",
                     "protectionInformationCapable": false, "mapped": false,
                     "reconPriority": 1, "protectionType":
+                    "type1Protection"},
+                    {"extremeProtection": false, "pitBaseVolume": true,
+                    "dssMaxSegmentSize": 131072,
+                    "totalSizeInBytes": "1073741824", "raidLevel": "raid6",
+                    "volumeRef": "0200000060080E500023BB34000003FB515C2293",
+                    "listOfMappings": [], "sectorOffset": "15",
+                    "id": "0200000060080E500023BB34000003FB515C2293",
+                    "wwn": "60080E500023BB3400001FC352D14CB2",
+                    "capacity": "2147483648", "mgmtClientAttribute": 0,
+                    "label": "CFDXJ67BLJH25DXCZFZD4NSF54",
+                    "volumeFull": false,
+                    "blkSize": 512, "volumeCopyTarget": false,
+                    "volumeGroupRef":
+                    "0400000060080E500023BB3400001F9F52CECC3F",
+                    "preferredControllerId": "070000000000000000000001",
+                    "currentManager": "070000000000000000000001",
+                    "applicationTagOwned": false, "status": "optimal",
+                    "segmentSize": 131072, "volumeUse": "standardVolume",
+                    "action": "none", "preferredManager":
+                    "070000000000000000000001", "volumeHandle": 15,
+                    "offline": false, "preReadRedundancyCheckEnabled": false,
+                    "dssPreallocEnabled": false, "name": "bdm-vc-test-1",
+                    "worldWideName": "60080E500023BB3400001FC352D14CB2",
+                    "currentControllerId": "070000000000000000000001",
+                    "protectionInformationCapable": false, "mapped": false,
+                    "reconPriority": 1, "protectionType":
                     "type1Protection"}]"""
         elif re.match("^/storage-systems/[0-9a-zA-Z]+/volumes/[0-9A-Za-z]+$",
                       path):
@@ -680,7 +706,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
 
         maps = [{'lunMappingRef': 'hdkjsdhjsdh',
                  'mapRef': '8400000060080E500023C73400300381515BFBA3',
-                 'volumeRef': 'CFDXJ67BLJH25DXCZFZD4NSF54',
+                 'volumeRef': '0200000060080E500023BB34000003FB515C2293',
                  'lun': 2}]
         self.driver._get_host_mapping_for_vol_frm_array = mock.Mock(
             return_value=maps)
@@ -834,3 +860,21 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
                           self.driver._create_volume,
                           self.fake_eseries_pool_label,
                           self.fake_eseries_volume_label, self.fake_size_gb)
+
+    def test_portal_for_vol_controller(self):
+        volume = {'id': 'vol_id', 'currentManager': 'ctrl1'}
+        vol_nomatch = {'id': 'vol_id', 'currentManager': 'ctrl3'}
+        portals = [{'controller': 'ctrl2', 'iqn': 'iqn2'},
+                   {'controller': 'ctrl1', 'iqn': 'iqn1'}]
+        portal = self.driver._get_iscsi_portal_for_vol(volume, portals)
+        self.assertEqual(portal, {'controller': 'ctrl1', 'iqn': 'iqn1'})
+        portal = self.driver._get_iscsi_portal_for_vol(vol_nomatch, portals)
+        self.assertEqual(portal, {'controller': 'ctrl2', 'iqn': 'iqn2'})
+
+    def test_portal_for_vol_any_false(self):
+        vol_nomatch = {'id': 'vol_id', 'currentManager': 'ctrl3'}
+        portals = [{'controller': 'ctrl2', 'iqn': 'iqn2'},
+                   {'controller': 'ctrl1', 'iqn': 'iqn1'}]
+        self.assertRaises(exception.NetAppDriverException,
+                          self.driver._get_iscsi_portal_for_vol,
+                          vol_nomatch, portals, False)
