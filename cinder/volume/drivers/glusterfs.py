@@ -799,7 +799,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         # An update of progress = '90%' means that Nova is done
         seconds_elapsed = 0
         increment = 1
-        timeout = 600
+        timeout = 7200
         while True:
             s = db.snapshot_get(context, snapshot['id'])
 
