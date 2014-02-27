@@ -210,6 +210,9 @@ class Driver(driver.ISCSIDriver):
         vol_id = mapping['volumeRef']
         volume = self._objects['volumes']['ref_vol'][vol_id]
         volume['listOfMappings'] = volume.get('listOfMappings') or []
+        for mapp in volume['listOfMappings']:
+            if mapp['lunMappingRef'] == mapping['lunMappingRef']:
+                return
         volume['listOfMappings'].append(mapping)
 
     def _del_volume_frm_cache(self, label):
@@ -515,7 +518,15 @@ class Driver(driver.ISCSIDriver):
     def _map_volume_to_host(self, vol, initiator):
         """Maps the e-series volume to host with initiator."""
         host = self._get_or_create_host(initiator)
-        lun = self._get_free_lun(host)
+        vol_maps = self._get_host_mapping_for_vol_frm_array(vol)
+        for vol_map in vol_maps:
+            if vol_map.get('mapRef') == host['hostRef']:
+                return vol_map
+            else:
+                self._client.delete_volume_mapping(vol_map['lunMappingRef'])
+                self._del_vol_mapping_frm_cache(vol_map)
+        mappings = self._get_vol_mapping_for_host_frm_array(host['hostRef'])
+        lun = self._get_free_lun(host, mappings)
         return self._client.create_volume_mapping(vol['volumeRef'],
                                                   host['hostRef'], lun)
 
@@ -559,9 +570,10 @@ class Driver(driver.ISCSIDriver):
                 return ht
         raise exception.NotFound(_("Host type %s not supported.") % host_type)
 
-    def _get_free_lun(self, host):
+    def _get_free_lun(self, host, maps=None):
         """Gets free lun for given host."""
-        luns = self._get_vol_mapping_for_host_frm_array(host['hostRef'])
+        ref = host['hostRef']
+        luns = maps or self._get_vol_mapping_for_host_frm_array(ref)
         used_luns = set(map(lambda lun: int(lun['lun']), luns))
         for lun in xrange(self.MAX_LUNS_PER_HOST):
             if lun not in used_luns:
@@ -571,8 +583,15 @@ class Driver(driver.ISCSIDriver):
 
     def _get_vol_mapping_for_host_frm_array(self, host_ref):
         """Gets all volume mappings for given host from array."""
-        mappings = self._client.get_volume_mappings()
+        mappings = self._client.get_volume_mappings() or []
         host_maps = filter(lambda x: x.get('mapRef') == host_ref, mappings)
+        return host_maps
+
+    def _get_host_mapping_for_vol_frm_array(self, volume):
+        """Gets all host mappings for given volume from array."""
+        mappings = self._client.get_volume_mappings() or []
+        host_maps = filter(lambda x: x.get('volumeRef') == volume['volumeRef'],
+                           mappings)
         return host_maps
 
     def terminate_connection(self, volume, connector, **kwargs):
