@@ -15,13 +15,13 @@ paramiko>=1.9.0
 Paste
 PasteDeploy>=1.5.0
 python-glanceclient>=0.9.0
-python-keystoneclient>=0.5.0
+python-keystoneclient>=0.6.0
 python-novaclient>=2.15.0
 python-swiftclient>=1.6
 Routes>=1.12.3
-taskflow>=0.1.1,<0.2
+taskflow>=0.1.3,<0.2
 rtslib-fb>=2.1.39
-six>=1.4.1
+six>=1.5.2
 SQLAlchemy>=0.7.8,<=0.8.99
 sqlalchemy-migrate>=0.8.2
 stevedore>=0.14
