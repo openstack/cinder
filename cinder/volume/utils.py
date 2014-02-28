@@ -158,7 +158,7 @@ def _calculate_count(size_in_m, blocksize):
 
 
 def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
-                execute=utils.execute):
+                execute=utils.execute, ionice=None):
     # Use O_DIRECT to avoid thrashing the system buffer cache
     extra_flags = ['iflag=direct', 'oflag=direct']
 
@@ -177,15 +177,19 @@ def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
 
     blocksize, count = _calculate_count(size_in_m, blocksize)
 
+    cmd = ['dd', 'if=%s' % srcstr, 'of=%s' % deststr,
+           'count=%d' % count, 'bs=%s' % blocksize]
+    cmd.extend(extra_flags)
+
+    if ionice is not None:
+        cmd = ['ionice', ionice] + cmd
+
     # Perform the copy
-    execute('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-            'count=%d' % count,
-            'bs=%s' % blocksize,
-            *extra_flags, run_as_root=True)
+    execute(*cmd, run_as_root=True)
 
 
 def clear_volume(volume_size, volume_path, volume_clear=None,
-                 volume_clear_size=None):
+                 volume_clear_size=None, volume_clear_ionice=None):
     """Unprovision old volumes to prevent data leaking between users."""
     if volume_clear is None:
         volume_clear = CONF.volume_clear
@@ -196,12 +200,16 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     if volume_clear_size == 0:
         volume_clear_size = volume_size
 
+    if volume_clear_ionice is None:
+        volume_clear_ionice = CONF.volume_clear_ionice
+
     LOG.info(_("Performing secure delete on volume: %s") % volume_path)
 
     if volume_clear == 'zero':
         return copy_volume('/dev/zero', volume_path, volume_clear_size,
                            CONF.volume_dd_blocksize,
-                           sync=True, execute=utils.execute)
+                           sync=True, execute=utils.execute,
+                           ionice=volume_clear_ionice)
     elif volume_clear == 'shred':
         clear_cmd = ['shred', '-n3']
         if volume_clear_size:

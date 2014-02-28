@@ -999,6 +999,11 @@
 # (integer value)
 #volume_clear_size=0
 
+# The flag to pass to ionice to alter the i/o priority of the
+# process used to zero a volume after deletion, for example
+# "-c3" for idle only priority. (string value)
+#volume_clear_ionice=<None>
+
 # iscsi target user-land tool to use (string value)
 #iscsi_helper=tgtadm
 

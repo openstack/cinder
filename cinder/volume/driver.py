@@ -73,6 +73,11 @@ volume_opts = [
     cfg.IntOpt('volume_clear_size',
                default=0,
                help='Size in MiB to wipe at start of old volumes. 0 => all'),
+    cfg.StrOpt('volume_clear_ionice',
+               default=None,
+               help='The flag to pass to ionice to alter the i/o priority '
+                    'of the process used to zero a volume after deletion, '
+                    'for example "-c3" for idle only priority.'),
     cfg.StrOpt('iscsi_helper',
                default='tgtadm',
                help='iscsi target user-land tool to use'),
