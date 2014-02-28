@@ -17,6 +17,7 @@
 import os
 import shutil
 import tempfile
+import time
 from xml.dom.minidom import Document
 
 import mock
@@ -909,6 +910,8 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.stubs.Set(EMCSMISCommon, '_getinstancename',
                        instancename.fake_getinstancename)
+        self.stubs.Set(time, 'sleep',
+                       self.fake_sleep)
         driver = EMCSMISISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -960,6 +963,9 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         output.append(item)
         output.append(item2)
         return output
+
+    def fake_sleep(self, seconds):
+        return
 
     def test_get_volume_stats(self):
         self.driver.get_volume_stats(True)
@@ -1106,6 +1112,8 @@ class EMCSMISFCDriverTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.stubs.Set(EMCSMISCommon, '_getinstancename',
                        instancename.fake_getinstancename)
+        self.stubs.Set(time, 'sleep',
+                       self.fake_sleep)
         driver = EMCSMISFCDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -1149,6 +1157,9 @@ class EMCSMISFCDriverTestCase(test.TestCase):
     def fake_ecom_connection(self):
         conn = FakeEcomConnection()
         return conn
+
+    def fake_sleep(self, seconds):
+        return
 
     def test_get_volume_stats(self):
         self.driver.get_volume_stats(True)
