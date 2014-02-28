@@ -47,7 +47,7 @@ class CinderBase(models.TimestampMixin,
     deleted = Column(Boolean, default=False)
     metadata = None
 
-    def delete(self, session=None):
+    def delete(self, session):
         """Delete this object."""
         self.deleted = True
         self.deleted_at = timeutils.utcnow()

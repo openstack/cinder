@@ -42,7 +42,7 @@ def set_defaults(conf):
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('iscsi_num_targets', 8)
     conf.set_default('connection', 'sqlite://', group='database')
-    conf.set_default('sqlite_synchronous', False)
+    conf.set_default('sqlite_synchronous', False, group='database')
     conf.set_default('policy_file', 'cinder/tests/policy.json')
     conf.set_default(
         'xiv_ds8k_proxy',
