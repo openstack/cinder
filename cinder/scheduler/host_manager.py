@@ -190,10 +190,11 @@ class HostManager(object):
             pass
 
     def _choose_host_filters(self, filter_cls_names):
-        """Since the caller may specify which filters to use we need
-        to have an authoritative list of what is permissible. This
-        function checks the filter names against a predefined set
-        of acceptable filters.
+        """Return a list of available filter names.
+
+        This function checks input filter names against a predefined set
+        of acceptable filterss (all loaded filters).  If input is None,
+        it uses CONF.scheduler_default_filters instead.
         """
         if filter_cls_names is None:
             filter_cls_names = CONF.scheduler_default_filters
@@ -216,10 +217,11 @@ class HostManager(object):
         return good_filters
 
     def _choose_host_weighers(self, weight_cls_names):
-        """Since the caller may specify which weighers to use, we need
-        to have an authoritative list of what is permissible. This
-        function checks the weigher names against a predefined set
-        of acceptable weighers.
+        """Return a list of available weigher names.
+
+        This function checks input weigher names against a predefined set
+        of acceptable weighers (all loaded weighers).  If input is None,
+        it uses CONF.scheduler_default_weighers instead.
         """
         if weight_cls_names is None:
             weight_cls_names = CONF.scheduler_default_weighers
@@ -276,18 +278,19 @@ class HostManager(object):
         self.service_states[host] = capab_copy
 
     def get_all_host_states(self, context):
-        """Returns a dict of all the hosts the HostManager
-          knows about. Also, each of the consumable resources in HostState
-          are pre-populated and adjusted based on data in the db.
+        """Returns a dict of all the hosts the HostManager knows about.
 
-          For example:
+        Each of the consumable resources in HostState are
+        populated with capabilities scheduler received from RPC.
+
+        For example:
           {'192.168.1.100': HostState(), ...}
         """
 
         # Get resource usage across the available volume nodes:
         topic = CONF.volume_topic
         volume_services = db.service_get_all_by_topic(context, topic)
-        self.host_state_map.clear()
+        active_hosts = set()
         for service in volume_services:
             host = service['host']
             if not utils.service_is_up(service) or service['disabled']:
@@ -306,7 +309,15 @@ class HostManager(object):
                                                  service=
                                                  dict(service.iteritems()))
                 self.host_state_map[host] = host_state
-            # update host_state
+            # update attributes in host_state that scheduler is interested in
             host_state.update_from_volume_capability(capabilities)
+            active_hosts.add(host)
+
+        # remove non-active hosts from host_state_map
+        nonactive_hosts = set(self.host_state_map.keys()) - active_hosts
+        for host in nonactive_hosts:
+            LOG.info(_("Removing non-active host: %(host)s from "
+                       "scheduler cache.") % {'host': host})
+            del self.host_state_map[host]
 
         return self.host_state_map.itervalues()
