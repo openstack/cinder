@@ -37,14 +37,6 @@ XMLNS_ATOM = 'http://www.w3.org/2005/Atom'
 
 LOG = logging.getLogger(__name__)
 
-# The vendor content types should serialize identically to the non-vendor
-# content types. So to avoid littering the code with both options, we
-# map the vendor to the other when looking up the type
-_CONTENT_TYPE_MAP = {
-    'application/vnd.openstack.volume+json': 'application/json',
-    'application/vnd.openstack.volume+xml': 'application/xml',
-}
-
 SUPPORTED_CONTENT_TYPES = (
     'application/json',
     'application/vnd.openstack.volume+json',
