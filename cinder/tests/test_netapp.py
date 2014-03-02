@@ -341,6 +341,12 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
                 body = """<results status="passed"><lun-id-assigned>1
                 </lun-id-assigned>
                 </results>"""
+        elif 'lun-get-geometry' == api:
+                body = """<results status="passed"><bytes-per-sector>256
+                </bytes-per-sector><cylinders>512</cylinders><max-resize-size>
+                3221225472</max-resize-size><sectors-per-track>512
+                </sectors-per-track><size>2147483648</size>
+                <tracks-per-cylinder>256</tracks-per-cylinder></results>"""
         elif 'iscsi-service-get-iter' == api:
                 body = """<results status="passed"><attributes-list>
                 <iscsi-service-info>
@@ -636,6 +642,18 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             self.volume_clone_large, self.snapshot)
         self.driver.delete_snapshot(self.snapshot)
         self.driver.delete_volume(self.volume)
+
+    def test_extend_vol_same_size(self):
+        self.driver.create_volume(self.volume)
+        self.driver.extend_volume(self.volume, self.volume['size'])
+
+    def test_extend_vol_direct_resize(self):
+        self.driver.create_volume(self.volume)
+        self.driver.extend_volume(self.volume, 3)
+
+    def test_extend_vol_sub_lun_clone(self):
+        self.driver.create_volume(self.volume)
+        self.driver.extend_volume(self.volume, 4)
 
 
 class NetAppDriverNegativeTestCase(test.TestCase):
