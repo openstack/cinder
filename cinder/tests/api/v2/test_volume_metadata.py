@@ -123,7 +123,6 @@ class volumeMetaDataTest(test.TestCase):
     def setUp(self):
         super(volumeMetaDataTest, self).setUp()
         self.volume_api = volume_api.API()
-        fakes.stub_out_key_pair_funcs(self.stubs)
         self.stubs.Set(db, 'volume_get', return_volume)
         self.stubs.Set(db, 'volume_metadata_get',
                        return_volume_metadata)

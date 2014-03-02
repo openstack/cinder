@@ -122,7 +122,6 @@ class volumeMetaDataTest(test.TestCase):
     def setUp(self):
         super(volumeMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
-        fakes.stub_out_key_pair_funcs(self.stubs)
         self.stubs.Set(cinder.db, 'volume_get', return_volume)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
