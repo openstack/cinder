@@ -157,12 +157,14 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
                                                         connector)
         device_number = device_info['hostlunid']
         storage_system = device_info['storagesystem']
-        ports = self.common.get_target_wwns(storage_system, connector)
+        target_wwns, init_targ_map = self._build_initiator_target_map(
+            storage_system, connector)
 
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {'target_lun': device_number,
                          'target_discovered': True,
-                         'target_wwn': ports}}
+                         'target_wwn': target_wwns,
+                         'initiator_target_map': init_targ_map}}
 
         LOG.debug(_('Return FC data: %(data)s.')
                   % {'data': data})
@@ -172,6 +174,33 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         self.common.terminate_connection(volume, connector)
+
+        loc = volume['provider_location']
+        name = eval(loc)
+        storage_system = name['keybindings']['SystemName']
+        target_wwns, init_targ_map = self._build_initiator_target_map(
+            storage_system, connector)
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {'target_wwn': target_wwns,
+                         'initiator_target_map': init_targ_map}}
+
+        LOG.debug(_('Return FC data: %(data)s.')
+                  % {'data': data})
+
+        return data
+
+    def _build_initiator_target_map(self, storage_system, connector):
+        """Build the target_wwns and the initiator target map."""
+
+        target_wwns = self.common.get_target_wwns(storage_system, connector)
+
+        initiator_wwns = connector['wwpns']
+
+        init_targ_map = {}
+        for initiator in initiator_wwns:
+            init_targ_map[initiator] = target_wwns
+
+        return target_wwns, init_targ_map
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""

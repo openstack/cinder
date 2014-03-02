@@ -1186,17 +1186,58 @@ class EMCSMISFCDriverTestCase(test.TestCase):
         self.data.test_volume['volume_type_id'] = None
         self.driver.create_volume(self.data.test_volume)
 
-        output = {'driver_volume_type': 'fibre_channel',
-                  'data': {'target_lun': 0,
-                           'target_wwn': ['1234567890123', '0987654321321'],
-                           'target_discovered': True}}
+        output = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_lun': 0,
+                'target_wwn': ['1234567890123', '0987654321321'],
+                'target_discovered': True,
+                'initiator_target_map': {'123456789012345':
+                                         ['1234567890123', '0987654321321'],
+                                         '123456789054321':
+                                         ['1234567890123', '0987654321321'],
+                                         }}}
+
         connection_info = self.driver.initialize_connection(
             self.data.test_volume,
             self.data.connector)
         self.assertEqual(connection_info, output)
 
-        self.driver.terminate_connection(self.data.test_volume,
-                                         self.data.connector)
+        connection_info = self.driver.terminate_connection(
+            self.data.test_volume,
+            self.data.connector)
+
+        # Verify calls in terminate_connection are executed
+        conf_service = {}
+        conf_service['SystemName'] = self.data.storage_system
+        conf_service['CreationClassName'] =\
+            self.data.ctrlconf_service_creationclass
+
+        vol_instance = self.driver.common._find_lun(self.data.test_volume)
+
+        expected = [
+            mock.call._get_ecom_connection(),
+            mock.call.find_device_number(self.data.test_volume),
+            mock.call._find_lun(self.data.test_volume),
+            mock.call.self._find_controller_configuration_service(
+                self.data.storage_system),
+            mock.call._remove_members(conf_service, vol_instance),
+            mock.call.get_target_wwns(
+                self.data.storage_system,
+                self.data.connector)]
+
+        output = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_wwn': ['1234567890123', '0987654321321'],
+                'initiator_target_map': {'123456789012345':
+                                         ['1234567890123', '0987654321321'],
+                                         '123456789054321':
+                                         ['1234567890123', '0987654321321'],
+                                         }}}
+
+        self.assertEqual(connection_info, output)
+
         self.driver.delete_volume(self.data.test_volume)
 
     def test_create_volume_failed(self):
