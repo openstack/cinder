@@ -39,7 +39,6 @@ import base64
 import json
 import pprint
 import re
-import time
 import uuid
 
 import hp3parclient
@@ -51,6 +50,7 @@ from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder import units
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -119,10 +119,11 @@ class HP3PARCommon(object):
         2.0.3 - Allow deleting missing snapshots bug #1283233
         2.0.4 - Allow volumes created from snapshots to be larger bug #1279478
         2.0.5 - Fix extend volume units bug #1284368
+        2.0.6 - use loopingcall.wait instead of time.sleep
 
     """
 
-    VERSION = "2.0.5"
+    VERSION = "2.0.6"
 
     stats = {}
 
@@ -731,13 +732,6 @@ class HP3PARCommon(object):
             LOG.error(str(ex))
             raise exception.CinderException(str(ex))
 
-    def _wait_for_task(self, task_id, poll_interval_sec=1):
-        while True:
-            status = self.client.getTask(task_id)
-            if status['status'] is not self.client.TASK_ACTIVE:
-                return status
-            time.sleep(poll_interval_sec)
-
     def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
                      tpvv=True):
         # Virtual volume sets are not supported with the -online option
@@ -1108,9 +1102,22 @@ class HP3PARCommon(object):
                         'id=%s.') % volume['id'])
 
             # Wait for the physical copy task to complete
-            status = self._wait_for_task(task_id)
-            if status['status'] is not self.client.TASK_DONE:
-                dbg = {'status': status, 'id': volume['id']}
+            def _wait_for_task(task_id):
+                status = self.client.getTask(task_id)
+                LOG.debug("3PAR Task id %(id)s status = %(status)s" %
+                          {'id': task_id,
+                           'status': status['status']})
+                if status['status'] is not self.client.TASK_ACTIVE:
+                    self._task_status = status
+                    raise loopingcall.LoopingCallDone()
+
+            self._task_status = None
+            timer = loopingcall.FixedIntervalLoopingCall(
+                _wait_for_task, task_id)
+            timer.start(interval=1).wait()
+
+            if self._task_status['status'] is not self.client.TASK_DONE:
+                dbg = {'status': self._task_status, 'id': volume['id']}
                 msg = _('Copy volume task failed: convert_to_base_volume: '
                         'id=%(id)s, status=%(status)s.') % dbg
                 raise exception.CinderException(msg)
