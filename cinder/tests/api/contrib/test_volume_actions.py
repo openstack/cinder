@@ -209,14 +209,21 @@ class VolumeActionsTest(test.TestCase):
         self.stubs.Set(volume.API, 'update_readonly_flag',
                        fake_update_readonly_flag)
 
-        body = {'os-update_readonly_flag': {'readonly': True}}
-        req = webob.Request.blank('/v2/fake/volumes/1/action')
-        req.method = "POST"
-        req.body = jsonutils.dumps(body)
-        req.headers["content-type"] = "application/json"
+        def make_update_readonly_flag_test(self, readonly, return_code):
+            body = {"os-update_readonly_flag": {"readonly": readonly}}
+            req = webob.Request.blank('/v2/fake/volumes/1/action')
+            req.method = "POST"
+            req.body = jsonutils.dumps(body)
+            req.headers["content-type"] = "application/json"
+            res = req.get_response(fakes.wsgi_app())
+            self.assertEqual(res.status_int, return_code)
 
-        res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        make_update_readonly_flag_test(self, True, 202)
+        make_update_readonly_flag_test(self, '0', 202)
+        make_update_readonly_flag_test(self, 'true', 202)
+        make_update_readonly_flag_test(self, 'false', 202)
+        make_update_readonly_flag_test(self, 'tt', 400)
+        make_update_readonly_flag_test(self, 11, 400)
 
 
 def stub_volume_get(self, context, volume_id):

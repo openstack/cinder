@@ -20,6 +20,7 @@ from cinder.api import xmlutil
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.rpc import common as rpc_common
+from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 
@@ -234,16 +235,17 @@ class VolumeActionsController(wsgi.Controller):
         context = req.environ['cinder.context']
         volume = self.volume_api.get(context, id)
 
-        if not self.is_valid_body(body, 'os-update_readonly_flag'):
-            msg = _("No 'os-update_readonly_flag' was specified "
-                    "in request.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
         readonly_flag = body['os-update_readonly_flag'].get('readonly')
+        if isinstance(readonly_flag, basestring):
+            try:
+                readonly_flag = strutils.bool_from_string(readonly_flag,
+                                                          strict=True)
+            except ValueError:
+                msg = _("Bad value for 'readonly'")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if not isinstance(readonly_flag, bool):
-            msg = _("Volume 'readonly' flag must be specified "
-                    "in request as a boolean.")
+        elif not isinstance(readonly_flag, bool):
+            msg = _("'readonly' not string or bool")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
