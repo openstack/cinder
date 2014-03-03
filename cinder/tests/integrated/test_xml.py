@@ -42,8 +42,9 @@ class XmlTests(integrated_helpers._IntegratedTestBase):
         headers = {}
         headers['Accept'] = 'application/xml'
 
-        response = self.api.api_request('/volumes', headers=headers)
-        data = response.read()
+        response = self.api.api_request('/volumes', headers=headers,
+                                        stream=True)
+        data = response.raw
         LOG.warn("data: %s" % data)
-        root = etree.XML(data)
+        root = etree.parse(data).getroot()
         self.assertEqual(root.nsmap.get(None), common.XML_NS_V1)

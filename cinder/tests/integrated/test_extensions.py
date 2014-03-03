@@ -36,6 +36,6 @@ class ExtensionsTest(integrated_helpers._IntegratedTestBase):
     def test_get_foxnsocks(self):
         """Simple check that fox-n-socks works."""
         response = self.api.api_request('/foxnsocks')
-        foxnsocks = response.read()
+        foxnsocks = response.text
         LOG.debug("foxnsocks: %s" % foxnsocks)
         self.assertEqual('Try to say this Mr. Knox, sir...', foxnsocks)
