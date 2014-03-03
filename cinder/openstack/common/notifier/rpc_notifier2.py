@@ -18,7 +18,7 @@
 from oslo.config import cfg
 
 from cinder.openstack.common import context as req_context
-from cinder.openstack.common.gettextutils import _  # noqa
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import rpc
 
