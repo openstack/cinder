@@ -68,11 +68,11 @@ def common_mocks(f):
         #                ensure that any test ending up in a subprocess fails
         #                if not properly mocked.
         @mock.patch('subprocess.Popen', spec=True)
-        # NOTE(dosaboy): set spec to empty object so that hasattr calls return
-        #                False by default.
+        # NOTE(dosaboy): mock out eventlet.sleep() so that it does nothing.
         @mock.patch('eventlet.sleep', spec=True)
         @mock.patch('time.time', spec=True)
-        # NOTE(dosaboy): mock out eventlet.sleep() so that it does nothing.
+        # NOTE(dosaboy): set spec to empty object so that hasattr calls return
+        #                False by default.
         @mock.patch('cinder.backup.drivers.ceph.rbd', spec=object)
         @mock.patch('cinder.backup.drivers.ceph.rados', spec=object)
         def _common_inner_inner2(mock_rados, mock_rbd, mock_time, mock_sleep,
