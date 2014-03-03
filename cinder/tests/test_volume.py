@@ -29,6 +29,7 @@ import eventlet
 import mock
 import mox
 from oslo.config import cfg
+from stevedore import extension
 from taskflow.engines.action_engine import engine
 
 from cinder.backup import driver as backup_driver
@@ -90,6 +91,8 @@ class BaseVolumeTestCase(test.TestCase):
     """Test Case for volumes."""
     def setUp(self):
         super(BaseVolumeTestCase, self).setUp()
+        self.extension_manager = extension.ExtensionManager(
+            "BaseVolumeTestCase")
         vol_tmpdir = tempfile.mkdtemp()
         self.flags(volumes_dir=vol_tmpdir,
                    notification_driver=[test_notifier.__name__])
