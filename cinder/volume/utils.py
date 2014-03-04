@@ -25,7 +25,6 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
-from cinder.openstack.common import timeutils
 from cinder import units
 from cinder import utils
 
@@ -33,34 +32,6 @@ from cinder import utils
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
-
-
-def get_host_from_queue(queuename):
-    # This assumes the queue is named something like cinder-volume
-    # and does not have dot separators in the queue name
-    return queuename.split('@', 1)[0].split('.', 1)[1]
-
-
-def notify_usage_exists(context, volume_ref, current_period=False):
-    """Generates 'exists' notification for a volume for usage auditing
-       purposes.
-
-       Generates usage for last completed period, unless 'current_period'
-       is True.
-    """
-    begin, end = utils.last_completed_audit_period()
-    if current_period:
-        audit_start = end
-        audit_end = timeutils.utcnow()
-    else:
-        audit_start = begin
-        audit_end = end
-
-    extra_usage_info = dict(audit_period_beginning=str(audit_start),
-                            audit_period_ending=str(audit_end))
-
-    notify_about_volume_usage(context, volume_ref,
-                              'exists', extra_usage_info=extra_usage_info)
 
 
 def null_safe_str(s):

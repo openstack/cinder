@@ -709,15 +709,6 @@ class ISCSIDriver(VolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
-    def _get_iscsi_initiator(self):
-        """Get iscsi initiator name for this machine."""
-        # NOTE openiscsi stores initiator name in a file that
-        #      needs root permission to read.
-        contents = utils.read_file_as_root('/etc/iscsi/initiatorname.iscsi')
-        for l in contents.split('\n'):
-            if l.startswith('InitiatorName='):
-                return l[l.index('=') + 1:].strip()
-
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
 

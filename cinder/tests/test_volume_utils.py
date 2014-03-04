@@ -75,50 +75,6 @@ class UsageInfoTestCase(test.TestCase):
         vol.update(params)
         return db.volume_create(self.context, vol)['id']
 
-    def test_notify_usage_exists(self):
-        """Ensure 'exists' notification generates appropriate usage data."""
-        volume_id = self._create_volume()
-        volume = db.volume_get(self.context, volume_id)
-        volume_utils.notify_usage_exists(self.context, volume)
-        LOG.info("%r" % test_notifier.NOTIFICATIONS)
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
-        msg = test_notifier.NOTIFICATIONS[0]
-        self.assertEqual(msg['priority'], 'INFO')
-        self.assertEqual(msg['event_type'], 'volume.exists')
-        payload = msg['payload']
-        self.assertEqual(payload['tenant_id'], self.project_id)
-        self.assertEqual(payload['user_id'], self.user_id)
-        self.assertEqual(payload['snapshot_id'], self.snapshot_id)
-        self.assertEqual(payload['volume_id'], volume.id)
-        self.assertEqual(payload['size'], self.volume_size)
-        for attr in ('display_name', 'created_at', 'launched_at',
-                     'status', 'audit_period_beginning',
-                     'audit_period_ending'):
-            self.assertIn(attr, payload)
-        db.volume_destroy(context.get_admin_context(), volume['id'])
-
-    def test_get_host_from_queue_simple(self):
-        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTNAME, self.BACKEND)
-        self.assertEqual(volume_utils.get_host_from_queue(fullname),
-                         self.HOSTNAME)
-
-    def test_get_host_from_queue_ip(self):
-        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTIP, self.BACKEND)
-        self.assertEqual(volume_utils.get_host_from_queue(fullname),
-                         self.HOSTIP)
-
-    def test_get_host_from_queue_multi_at_symbol(self):
-        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTNAME,
-                                 self.MULTI_AT_BACKEND)
-        self.assertEqual(volume_utils.get_host_from_queue(fullname),
-                         self.HOSTNAME)
-
-    def test_get_host_from_queue_ip_multi_at_symbol(self):
-        fullname = "%s.%s@%s" % (self.QUEUE_NAME, self.HOSTIP,
-                                 self.MULTI_AT_BACKEND)
-        self.assertEqual(volume_utils.get_host_from_queue(fullname),
-                         self.HOSTIP)
-
 
 class LVMVolumeDriverTestCase(test.TestCase):
     def test_convert_blocksize_option(self):
