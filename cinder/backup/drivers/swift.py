@@ -31,7 +31,6 @@
 """
 
 import hashlib
-import httplib
 import json
 import os
 import socket
@@ -135,20 +134,6 @@ class SwiftBackupDriver(BackupDriver):
                                          preauthtoken=self.context.auth_token,
                                          starting_backoff=self.swift_backoff)
 
-    def _check_container_exists(self, container):
-        LOG.debug(_('_check_container_exists: container: %s') % container)
-        try:
-            self.conn.head_container(container)
-        except swift.ClientException as error:
-            if error.http_status == httplib.NOT_FOUND:
-                LOG.debug(_('container %s does not exist') % container)
-                return False
-            else:
-                raise
-        else:
-            LOG.debug(_('container %s exists') % container)
-            return True
-
     def _create_container(self, context, backup):
         backup_id = backup['id']
         container = backup['container']
@@ -158,8 +143,11 @@ class SwiftBackupDriver(BackupDriver):
         if container is None:
             container = CONF.backup_swift_container
             self.db.backup_update(context, backup_id, {'container': container})
-        if not self._check_container_exists(container):
-            self.conn.put_container(container)
+        # NOTE(gfidente): accordingly to the Object Storage API reference, we
+        # do not need to check if a container already exists, container PUT
+        # requests are idempotent and a code of 202 (Accepted) is returned when
+        # the container already existed.
+        self.conn.put_container(container)
         return container
 
     def _generate_swift_object_name_prefix(self, backup):

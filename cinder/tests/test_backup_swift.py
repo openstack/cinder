@@ -121,16 +121,6 @@ class BackupSwiftTestCase(test.TestCase):
         backup = db.backup_get(self.ctxt, 123)
         self.assertEqual(backup['container'], container_name)
 
-    def test_create_backup_container_check_wraps_socket_error(self):
-        container_name = 'socket_error_on_head'
-        self._create_backup_db_entry(container=container_name)
-        service = SwiftBackupDriver(self.ctxt)
-        self.volume_file.seek(0)
-        backup = db.backup_get(self.ctxt, 123)
-        self.assertRaises(exception.SwiftConnectionFailed,
-                          service.backup,
-                          backup, self.volume_file)
-
     def test_create_backup_put_object_wraps_socket_error(self):
         container_name = 'socket_error_on_put'
         self._create_backup_db_entry(container=container_name)
@@ -195,13 +185,3 @@ class BackupSwiftTestCase(test.TestCase):
         compressor = service._get_compressor('bz2')
         self.assertEqual(compressor, bz2)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
-
-    def test_check_container_exists(self):
-        service = SwiftBackupDriver(self.ctxt)
-        exists = service._check_container_exists('fake_container')
-        self.assertEqual(exists, True)
-        exists = service._check_container_exists('missing_container')
-        self.assertEqual(exists, False)
-        self.assertRaises(swift.ClientException,
-                          service._check_container_exists,
-                          'unauthorized_container')
