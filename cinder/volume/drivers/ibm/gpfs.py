@@ -29,6 +29,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import units
+from cinder import utils
 from cinder.volume import driver
 
 GPFS_CLONE_MIN_RELEASE = 1200
@@ -817,12 +818,14 @@ class GPFSDriver(driver.VolumeDriver):
         LOG.debug(_('Begin backup of volume %s.') % volume['name'])
 
         # create a snapshot that will be used as the backup source
-        backup_path = '%s_%s.snap' % (volume_path, backup['id'])
-        self._create_gpfs_snap(volume_path, backup_path)
+        backup_path = '%s_%s' % (volume_path, backup['id'])
+        self._create_gpfs_clone(volume_path, backup_path)
         self._gpfs_redirect(volume_path)
+
         try:
-            with fileutils.file_open(backup_path) as backup_file:
-                backup_service.backup(backup, backup_file)
+            with utils.temporary_chown(backup_path):
+                with fileutils.file_open(backup_path) as backup_file:
+                    backup_service.backup(backup, backup_file)
         finally:
             # clean up snapshot file.  If it is a clone parent, delete
             # will fail silently, but be cleaned up when volume is
@@ -835,8 +838,9 @@ class GPFSDriver(driver.VolumeDriver):
         LOG.debug(_('Begin restore of backup %s.') % backup['id'])
 
         volume_path = self.local_path(volume)
-        with fileutils.file_open(volume_path, 'wb') as volume_file:
-            backup_service.restore(backup, volume['id'], volume_file)
+        with utils.temporary_chown(volume_path):
+            with fileutils.file_open(volume_path, 'wb') as volume_file:
+                backup_service.restore(backup, volume['id'], volume_file)
 
     def _migrate_volume(self, volume, host):
         """Migrate vol if source and dest are managed by same GPFS cluster."""
