@@ -414,6 +414,10 @@ class StorwizeSVCDriver(san.SanDriver):
                         properties['target_wwn'] = conn_wwpns[0]
                 else:
                     properties['target_wwn'] = conn_wwpns
+
+                i_t_map = self._make_initiator_target_map(connector['wwpns'],
+                                                          conn_wwpns)
+                properties['initiator_target_map'] = i_t_map
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.terminate_connection(volume, connector)
@@ -429,6 +433,16 @@ class StorwizeSVCDriver(san.SanDriver):
                      'prop': str(properties)})
 
         return {'driver_volume_type': type_str, 'data': properties, }
+
+    def _make_initiator_target_map(self, initiator_wwpns, target_wwpns):
+        """Build a simplistic all-to-all mapping."""
+        i_t_map = {}
+        for i_wwpn in initiator_wwpns:
+            i_t_map[str(i_wwpn)] = []
+            for t_wwpn in target_wwpns:
+                i_t_map[i_wwpn].append(t_wwpn)
+
+        return i_t_map
 
     @utils.synchronized('storwize-host', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
@@ -457,11 +471,21 @@ class StorwizeSVCDriver(san.SanDriver):
             # See bug #1244257
             host_name = None
 
+        info = {}
+        if 'wwpns' in connector and host_name:
+            target_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
+            init_targ_map = self._make_initiator_target_map(connector['wwpns'],
+                                                            target_wwpns)
+            info = {'driver_volume_type': 'fibre_channel',
+                    'data': {'initiator_target_map': init_targ_map}}
+
         self._helpers.unmap_vol_from_host(vol_name, host_name)
 
         LOG.debug(_('leave: terminate_connection: volume %(vol)s with '
                     'connector %(conn)s') % {'vol': str(volume),
                                              'conn': str(connector)})
+
+        return info
 
     def create_volume(self, volume):
         opts = self._get_vdisk_params(volume['volume_type_id'])
