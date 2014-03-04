@@ -167,12 +167,12 @@ class StorwizeHelpers(object):
         return None
 
     def get_conn_fc_wwpns(self, host):
-        wwpns = []
+        wwpns = set()
         resp = self.ssh.lsfabric(host=host)
         for wwpn in resp.select('local_wwpn'):
             if wwpn is not None:
-                wwpns.append(wwpn)
-        return wwpns
+                wwpns.add(wwpn)
+        return list(wwpns)
 
     def get_host_from_connector(self, connector):
         """Return the Storwize host described by the connector."""

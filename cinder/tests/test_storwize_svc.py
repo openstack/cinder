@@ -2444,6 +2444,55 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                          'Storwize driver delete vdisk copy error')
         self._delete_volume(volume)
 
+    def test_storwize_initiator_target_map(self):
+        # Create two volumes to be used in mappings
+        ctxt = context.get_admin_context()
+
+        # Generate us a test volume
+        volume = self._generate_vol_info(None, None)
+        self.driver.create_volume(volume)
+
+        # FIbre Channel volume type
+        vol_type = volume_types.create(ctxt, 'FC', {'protocol': 'FC'})
+
+        volume['volume_type_id'] = vol_type['id']
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume['name'], True)
+
+        wwpns = ['ff00000000000000', 'ff00000000000001']
+        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
+
+        # Initialise the connection
+        init_ret = self.driver.initialize_connection(volume, connector)
+
+        # Check that the initiator_target_map is as expected
+        init_data = {'driver_volume_type': 'fibre_channel',
+                     'data': {'initiator_target_map':
+                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
+                               'ff00000000000001': ['AABBCCDDEEFF0011']},
+                              'target_discovered': False,
+                              'target_lun': '0',
+                              'target_wwn': 'AABBCCDDEEFF0011',
+                              'volume_id': volume['id']
+                              }
+                     }
+
+        self.assertEqual(init_data, init_ret)
+
+        # Terminate connection
+        term_ret = self.driver.terminate_connection(volume, connector)
+
+        # Check that the initiator_target_map is as expected
+        term_data = {'driver_volume_type': 'fibre_channel',
+                     'data': {'initiator_target_map':
+                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
+                               'ff00000000000001': ['AABBCCDDEEFF0011']}
+                              }
+                     }
+
+        self.assertEqual(term_data, term_ret)
+
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
