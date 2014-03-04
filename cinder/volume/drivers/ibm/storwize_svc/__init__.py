@@ -34,6 +34,7 @@ Limitations:
 
 """
 
+import math
 from oslo.config import cfg
 
 from cinder import context
@@ -116,9 +117,10 @@ class StorwizeSVCDriver(san.SanDriver):
             lsfabric, clear unused data from connections, ensure matching
             WWPNs by comparing lower case
     1.2.4 - Fix bug #1278035 (async migration/retype)
+    1.2.5 - Added support for manage_existing (unmanage is inherited)
     """
 
-    VERSION = "1.2.4"
+    VERSION = "1.2.5"
     VDISKCOPYOPS_INTERVAL = 600
 
     def __init__(self, *args, **kwargs):
@@ -746,6 +748,56 @@ class StorwizeSVCDriver(san.SanDriver):
                                                        'diff': diff,
                                                        'host': host['host']})
         return True
+
+    def manage_existing(self, volume, ref):
+        """Manages an existing vdisk.
+
+        Renames the vdisk to match the expected name for the volume.
+        Error checking done by manage_existing_get_size is not repeated -
+        if we got here then we have a vdisk that isn't in use (or we don't
+        care if it is in use.
+        """
+        vdisk = self._helpers.vdisk_by_uid(ref['vdisk_UID'])
+        if vdisk is None:
+            reason = _('No vdisk with the specified vdisk_UID.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+        self._helpers.rename_vdisk(vdisk['name'], volume['name'])
+
+    def manage_existing_get_size(self, volume, ref):
+        """Return size of an existing LV for manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'vdisk_UID': <uid of disk>}
+
+        Optional elements are:
+          'manage_if_in_use':  True/False (default is False)
+            If set to True, a volume will be managed even if it is currently
+            attached to a host system.
+        """
+
+        # Check that the reference is valid
+        if 'vdisk_UID' not in ref:
+            reason = _('Reference must contain vdisk_UID element.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+
+        # Check for existence of the vdisk
+        vdisk = self._helpers.vdisk_by_uid(ref['vdisk_UID'])
+        if vdisk is None:
+            reason = _('No vdisk with the specified vdisk_UID.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+
+        # Check if the disk is in use, if we need to.
+        manage_if_in_use = ref.get('manage_if_in_use', False)
+        if (not manage_if_in_use and
+                self._helpers.is_vdisk_in_use(vdisk['name'])):
+            reason = _('The specified vdisk is mapped to a host.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+
+        return int(math.ceil(float(vdisk['capacity']) / units.GiB))
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.

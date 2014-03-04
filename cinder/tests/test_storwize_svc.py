@@ -654,7 +654,8 @@ port_speed!N/A
 
         for vol in self._volumes_list.itervalues():
             if (('filtervalue' not in kwargs) or
-                    (kwargs['filtervalue'] == 'name=' + vol['name'])):
+               (kwargs['filtervalue'] == 'name=' + vol['name']) or
+               (kwargs['filtervalue'] == 'vdisk_UID=' + vol['uid'])):
                 fcmap_info = self._get_fcmap_info(vol['name'])
 
                 if 'bytes' in kwargs:
@@ -742,7 +743,6 @@ port_speed!N/A
             if 'delim' in kwargs:
                 for index in range(len(rows)):
                     rows[index] = kwargs['delim'].join(rows[index])
-
             return ('%s' % '\n'.join(rows), '')
 
     def _cmd_lsiogrp(self, **kwargs):
@@ -1345,6 +1345,10 @@ port_speed!N/A
             if key == 'warning':
                 vol['warning'] = value.rstrip('%')
                 continue
+            if key == 'name':
+                vol['name'] = value
+                del self._volumes_list[vol_name]
+                self._volumes_list[value] = vol
             if key in params:
                 vol[key] = value
             else:
@@ -2492,6 +2496,145 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                      }
 
         self.assertEqual(term_data, term_ret)
+
+    def _get_vdisk_uid(self, vdisk_name):
+        """Return vdisk_UID for given vdisk.
+
+        Given a vdisk by name, performs an lvdisk command that extracts
+        the vdisk_UID parameter and returns it.
+        Returns None if the specified vdisk does not exist.
+        """
+        vdisk_properties, err = self.sim._cmd_lsvdisk(obj=vdisk_name,
+                                                      delim='!')
+
+        # Iterate through each row until we find the vdisk_UID entry
+        for row in vdisk_properties.split('\n'):
+            words = row.split('!')
+            if words[0] == 'vdisk_UID':
+                return words[1]
+        return None
+
+    def _create_volume_and_return_uid(self, volume_name):
+        """Creates a volume and returns its UID.
+
+        Creates a volume with the specified name, and returns the UID that
+        the Storwize controller allocated for it.  We do this by executing a
+        create_volume and then calling into the simulator to perform an
+        lsvdisk directly.
+        """
+        volume = self._generate_vol_info(None, None)
+        self.driver.create_volume(volume)
+
+        return (volume, self._get_vdisk_uid(volume['name']))
+
+    def test_manage_existing_bad_ref(self):
+        """Error on manage with bad reference.
+
+        This test case attempts to manage an existing volume but passes in
+        a bad reference that the Storwize driver doesn't understand.  We
+        expect an exception to be raised.
+        """
+        volume = self._generate_vol_info(None, None)
+        ref = {}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, volume, ref)
+
+    def test_manage_existing_bad_uid(self):
+        """Error when the specified UUID does not exist."""
+        volume = self._generate_vol_info(None, None)
+        ref = {'vdisk_UID': 'bad_uid'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, volume, ref)
+        pass
+
+    def test_manage_existing_good_uid_not_mapped(self):
+        """Tests managing a volume with no mappings.
+
+        This test case attempts to manage an existing volume by UID, and
+        we expect it to succeed.  We verify that the backend volume was
+        renamed to have the name of the Cinder volume that we asked for it to
+        be associated with.
+        """
+
+        # Create a volume as a way of getting a vdisk created, and find out the
+        # UID of that vdisk.
+        volume, uid = self._create_volume_and_return_uid('manage_test')
+
+        # Descriptor of the Cinder volume that we want to own the vdisk
+        # refrerenced by uid.
+        new_volume = self._generate_vol_info(None, None)
+
+        # Submit the request to manage it.
+        ref = {'vdisk_UID': uid}
+        size = self.driver.manage_existing_get_size(new_volume, ref)
+        self.assertEqual(size, 10)
+        self.driver.manage_existing(new_volume, ref)
+
+        # Assert that there is a disk named after the new volume that has the
+        # ID that we passed in, indicating that the disk has been renamed.
+        uid_of_new_volume = self._get_vdisk_uid(new_volume['name'])
+        self.assertEqual(uid, uid_of_new_volume)
+
+    def test_manage_existing_good_uid_mapped(self):
+        """Tests managing a mapped volume with no override.
+
+        This test case attempts to manage an existing volume by UID, but
+        the volume is mapped to a host, so we expect to see an exception
+        raised.
+        """
+        # Create a volume as a way of getting a vdisk created, and find out the
+        # UUID of that vdisk.
+        volume, uid = self._create_volume_and_return_uid('manage_test')
+
+        # Map a host to the disk
+        conn = {'initiator': u'unicode:initiator3',
+                'ip': '10.10.10.12',
+                'host': u'unicode.foo}.bar}.baz'}
+        self.driver.initialize_connection(volume, conn)
+
+        # Descriptor of the Cinder volume that we want to own the vdisk
+        # refrerenced by uid.
+        volume = self._generate_vol_info(None, None)
+        ref = {'vdisk_UID': uid}
+
+        # Attempt to manage this disk, and except an exception beause the
+        # volume is already mapped.
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, volume, ref)
+
+    def test_manage_existing_good_uid_mapped_with_override(self):
+        """Tests managing a mapped volume with override.
+
+        This test case attempts to manage an existing volume by UID, when it
+        it already mapped to a host, but the ref specifies that this is OK.
+        We verify that the backend volume was renamed to have the name of the
+        Cinder volume that we asked for it to be associated with.
+        """
+        # Create a volume as a way of getting a vdisk created, and find out the
+        # UUID of that vdisk.
+        volume, uid = self._create_volume_and_return_uid('manage_test')
+
+        # Map a host to the disk
+        conn = {'initiator': u'unicode:initiator3',
+                'ip': '10.10.10.12',
+                'host': u'unicode.foo}.bar}.baz'}
+        self.driver.initialize_connection(volume, conn)
+
+        # Descriptor of the Cinder volume that we want to own the vdisk
+        # refrerenced by uid.
+        new_volume = self._generate_vol_info(None, None)
+
+        # Submit the request to manage it, specifying that it is OK to
+        # manage a volume that is already attached.
+        ref = {'vdisk_UID': uid, 'manage_if_in_use': True}
+        size = self.driver.manage_existing_get_size(new_volume, ref)
+        self.assertEqual(size, 10)
+        self.driver.manage_existing(new_volume, ref)
+
+        # Assert that there is a disk named after the new volume that has the
+        # ID that we passed in, indicating that the disk has been renamed.
+        uid_of_new_volume = self._get_vdisk_uid(new_volume['name'])
+        self.assertEqual(uid, uid_of_new_volume)
 
 
 class CLIResponseTestCase(test.TestCase):

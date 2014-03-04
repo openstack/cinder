@@ -218,6 +218,15 @@ class StorwizeSSH(object):
         LOG.error(msg)
         raise exception.VolumeBackendAPIException(data=msg)
 
+    def lsvdisks_from_filter(self, filter_name, value):
+        """Performs an lsvdisk command, filtering the results as specified.
+
+        Returns an iterable for all matching vdisks.
+        """
+        ssh_cmd = ['svcinfo', 'lsvdisk', '-bytes', '-delim', '!',
+                   '-filtervalue', '%s=%s' % (filter_name, value)]
+        return self.run_ssh_info(ssh_cmd, with_header=True)
+
     def chvdisk(self, vdisk, params):
         ssh_cmd = ['svctask', 'chvdisk'] + params + [vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
