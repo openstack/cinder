@@ -25,12 +25,20 @@ from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
-from cinder.zonemanager.drivers.fc_common import FCCommon
+from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
 
 LOG = logging.getLogger(__name__)
 
 
-class BrcdFCSanLookupService(FCCommon):
+class BrcdFCSanLookupService(FCSanLookupService):
+    """The SAN lookup service that talks to Brocade switches.
+
+    Version History:
+        1.0.0 - Initial version
+
+    """
+
+    VERSION = "1.0.0"
 
     def __init__(self, **kwargs):
         """Initializing the client."""
