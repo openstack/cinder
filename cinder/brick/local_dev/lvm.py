@@ -490,8 +490,9 @@ class LVM(executor.Executor):
         """
         source_lvref = self.get_volume(source_lv_name)
         if source_lvref is None:
-            LOG.error(_("Unable to find LV: %s") % source_lv_name)
-            return False
+            LOG.error(_("Trying to create snapshot by non-existent LV: %s")
+                      % source_lv_name)
+            raise exception.VolumeDeviceNotFound(device=source_lv_name)
         cmd = ['lvcreate', '--name', name,
                '--snapshot', '%s/%s' % (self.vg_name, source_lv_name)]
         if lv_type != 'thin':
