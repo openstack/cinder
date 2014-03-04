@@ -781,6 +781,52 @@ class HP3PARBaseDriver(object):
 
         mock_client.assert_has_calls(expected)
 
+    def test_extend_volume_non_base(self):
+        extend_ex = hpexceptions.HTTPForbidden(error={'code': 150})
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getTask.return_value': {
+                'status': 1},
+            'getCPG.return_value': {},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': {},
+            # Throw an exception first time only
+            'growVolume.side_effect': [extend_ex,
+                                       None],
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+        grow_size = 3
+        old_size = self.volume['size']
+        new_size = old_size + grow_size
+        self.driver.extend_volume(self.volume, str(new_size))
+
+        self.assertEqual(2, mock_client.growVolume.call_count)
+
+    def test_extend_volume_non_base_failure(self):
+        extend_ex = hpexceptions.HTTPForbidden(error={'code': 150})
+        conf = {
+            'getPorts.return_value': {
+                'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]},
+            'getTask.return_value': {
+                'status': 1},
+            'getCPG.return_value': {},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': {},
+            # Always fail
+            'growVolume.side_effect': extend_ex
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+        grow_size = 3
+        old_size = self.volume['size']
+        new_size = old_size + grow_size
+        self.assertRaises(hpexceptions.HTTPForbidden,
+                          self.driver.extend_volume,
+                          self.volume,
+                          str(new_size))
+
     def test_get_ports(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
