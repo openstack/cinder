@@ -284,7 +284,6 @@ class TestWindowsDriver(test.TestCase):
                                  mox.IgnoreArg())
         windows_utils.WindowsUtils.change_disk_status(volume['name'],
                                                       mox.IsA(bool))
-        os.unlink(mox.IsA(str))
         vhdutils.VHDUtils.convert_vhd(fake_temp_path,
                                       fake_volume_path,
                                       constants.VHD_TYPE_FIXED)
