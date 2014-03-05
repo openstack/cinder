@@ -746,3 +746,33 @@ class StorwizeHelpers(object):
 
         for key in changes:
             self.ssh.chvdisk(vdisk, ['-' + key, opts[key]])
+
+    def vdisk_by_uid(self, vdisk_uid):
+        """Returns the properties of the vdisk with the specified UID.
+
+        Returns None if no such disk exists.
+        """
+
+        vdisks = self.ssh.lsvdisks_from_filter('vdisk_UID', vdisk_uid)
+
+        if len(vdisks) == 0:
+            return None
+
+        if len(vdisks) != 1:
+            msg = (_('Expected single vdisk returned from lsvdisk when '
+                     'filtering on vdisk_UID.  %{count}s were returned.') %
+                   {'count': len(vdisks)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        vdisk = vdisks.result[0]
+
+        return self.ssh.lsvdisk(vdisk['name'])
+
+    def is_vdisk_in_use(self, vdisk):
+        """Returns True if the specified vdisk is mapped to at least 1 host."""
+        resp = self.ssh.lsvdiskhostmap(vdisk)
+        return len(resp) != 0
+
+    def rename_vdisk(self, vdisk, new_name):
+        self.ssh.chvdisk(vdisk, ['-name', new_name])
