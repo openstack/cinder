@@ -196,7 +196,7 @@ class HP3PARCommon(object):
                               self.config.hp3par_password)
         except hpexceptions.HTTPUnauthorized as ex:
             msg = (_("Failed to Login to 3PAR (%(url)s) because %(err)s") %
-                   {'url': self.config.hp3par_api_url, 'err': str(ex)})
+                   {'url': self.config.hp3par_api_url, 'err': ex})
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -208,7 +208,7 @@ class HP3PARCommon(object):
         try:
             self.client = self._create_client()
         except hpexceptions.UnsupportedVersion as ex:
-            raise exception.InvalidInput(str(ex))
+            raise exception.InvalidInput(ex)
         LOG.info(_("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s")
                  % {"common_ver": self.VERSION,
                      "rest_ver": hp3parclient.get_version_string()})
@@ -713,24 +713,24 @@ class HP3PARCommon(object):
                 except exception.InvalidInput as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
-                    LOG.error(str(ex))
-                    raise exception.CinderException(str(ex))
+                    LOG.error(ex)
+                    raise exception.CinderException(ex)
         except hpexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array") % volume_name
             LOG.error(msg)
             raise exception.Duplicate(msg)
         except hpexceptions.HTTPBadRequest as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise ex
         except exception.CinderException as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise ex
         except Exception as ex:
-            LOG.error(str(ex))
-            raise exception.CinderException(str(ex))
+            LOG.error(ex)
+            raise exception.CinderException(ex)
 
     def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
                      tpvv=True):
@@ -778,7 +778,7 @@ class HP3PARCommon(object):
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
         except Exception as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.CinderException(ex)
 
     def delete_volume(self, volume):
@@ -799,10 +799,10 @@ class HP3PARCommon(object):
                         # the volume once it stops the copy.
                         self.client.stopOnlinePhysicalCopy(volume_name)
                     else:
-                        LOG.error(str(ex))
+                        LOG.error(ex)
                         raise ex
                 else:
-                    LOG.error(str(ex))
+                    LOG.error(ex)
                     raise ex
             except hpexceptions.HTTPConflict as ex:
                 if ex.get_code() == 34:
@@ -823,7 +823,7 @@ class HP3PARCommon(object):
                                                               volume_name)
                     self.client.deleteVolume(volume_name)
                 else:
-                    LOG.error(str(ex))
+                    LOG.error(ex)
                     raise ex
 
         except hpexceptions.HTTPNotFound as ex:
@@ -833,13 +833,13 @@ class HP3PARCommon(object):
                     "%(id)s Ex: %(msg)s") % {'id': volume['id'], 'msg': ex}
             LOG.warning(msg)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.NotAuthorized(ex.get_description())
         except hpexceptions.HTTPConflict as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.VolumeIsBusy(ex.get_description())
         except Exception as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.CinderException(ex)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -901,7 +901,7 @@ class HP3PARCommon(object):
                     self.client.growVolume(volume_name, growth_size_mib)
                 except Exception as ex:
                     LOG.error(_("Error extending volume %(id)s. Ex: %(ex)s") %
-                              {'id': volume['id'], 'ex': str(ex)})
+                              {'id': volume['id'], 'ex': ex})
                     # Delete the volume if unable to grow it
                     self.client.deleteVolume(volume_name)
                     raise exception.CinderException(ex)
@@ -915,16 +915,16 @@ class HP3PARCommon(object):
                 except Exception as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
-                    LOG.error(str(ex))
+                    LOG.error(ex)
                     raise exception.CinderException(ex)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.NotFound()
         except Exception as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.CinderException(ex)
 
     def create_snapshot(self, snapshot):
@@ -961,10 +961,10 @@ class HP3PARCommon(object):
 
             self.client.createSnapshot(snap_name, vol_name, optional)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.NotFound()
 
     def update_volume_key_value_pair(self, volume, key, value):
@@ -976,15 +976,15 @@ class HP3PARCommon(object):
                   (volume['display_name'],
                    volume['name'],
                    self._get_3par_vol_name(volume['id']),
-                   str(key),
-                   str(value)))
+                   key,
+                   value))
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
             if value is None:
                 value = ''
             self.client.setVolumeMetaData(volume_name, key, value)
         except Exception as ex:
-            msg = _('Failure in update_volume_key_value_pair:%s') % str(ex)
+            msg = _('Failure in update_volume_key_value_pair:%s') % ex
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -993,12 +993,12 @@ class HP3PARCommon(object):
 
         LOG.debug("VOLUME (%s : %s %s) Clearing Key : %s)" %
                   (volume['display_name'], volume['name'],
-                   self._get_3par_vol_name(volume['id']), str(key)))
+                   self._get_3par_vol_name(volume['id']), key))
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
             self.client.removeVolumeMetaData(volume_name, key)
         except Exception as ex:
-            msg = _('Failure in clear_volume_key_value_pair:%s') % str(ex)
+            msg = _('Failure in clear_volume_key_value_pair:%s') % ex
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1146,16 +1146,16 @@ class HP3PARCommon(object):
             LOG.error(msg)
             raise exception.Duplicate(msg)
         except hpexceptions.HTTPBadRequest as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise ex
         except exception.CinderException as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise ex
         except Exception as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.CinderException(ex)
 
     def delete_snapshot(self, snapshot):
@@ -1166,7 +1166,7 @@ class HP3PARCommon(object):
             snap_name = self._get_3par_snap_name(snapshot['id'])
             self.client.deleteVolume(snap_name)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
@@ -1175,7 +1175,7 @@ class HP3PARCommon(object):
                     "%(id)s Ex: %(msg)s") % {'id': snapshot['id'], 'msg': ex}
             LOG.warning(msg)
         except hpexceptions.HTTPConflict as ex:
-            LOG.error(str(ex))
+            LOG.error(ex)
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
 
     def _get_3par_hostname_from_wwn_iqn(self, wwns, iqns):
@@ -1215,11 +1215,11 @@ class HP3PARCommon(object):
                 hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
                 # no 3par host, re-throw
                 if (hostname is None):
-                    LOG.error(str(e))
+                    LOG.error(e)
                     raise
             else:
                 # not a 'host does not exist' HTTPNotFound exception, re-throw
-                LOG.error(str(e))
+                LOG.error(e)
                 raise
 
         # try again with name retrieved from 3par

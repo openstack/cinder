@@ -24,7 +24,7 @@ from cinder.volume.drivers.xenapi import tools
 
 class XenAPIException(Exception):
     def __init__(self, original_exception):
-        super(XenAPIException, self).__init__(str(original_exception))
+        super(XenAPIException, self).__init__(original_exception)
         self.original_exception = original_exception
 
 

@@ -33,11 +33,11 @@
 import hashlib
 import json
 import os
+import six
 import socket
 
 import eventlet
 from oslo.config import cfg
-import six
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
@@ -225,7 +225,7 @@ class SwiftBackupDriver(BackupDriver):
         try:
             container = self._create_container(self.context, backup)
         except socket.error as err:
-            raise exception.SwiftConnectionFailed(reason=str(err))
+            raise exception.SwiftConnectionFailed(reason=err)
 
         object_prefix = self._generate_swift_object_name_prefix(backup)
         backup['service_metadata'] = object_prefix
@@ -282,7 +282,7 @@ class SwiftBackupDriver(BackupDriver):
             etag = self.conn.put_object(container, object_name, reader,
                                         content_length=len(data))
         except socket.error as err:
-            raise exception.SwiftConnectionFailed(reason=str(err))
+            raise exception.SwiftConnectionFailed(reason=err)
         LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') %
                   {'object_name': object_name, 'etag': etag, })
         md5 = hashlib.md5(data).hexdigest()
@@ -313,7 +313,7 @@ class SwiftBackupDriver(BackupDriver):
                                  object_list,
                                  volume_meta)
         except socket.error as err:
-            raise exception.SwiftConnectionFailed(reason=str(err))
+            raise exception.SwiftConnectionFailed(reason=err)
         self.db.backup_update(self.context, backup['id'],
                               {'object_count': object_id})
         LOG.debug(_('backup %s finished.') % backup['id'])
@@ -388,7 +388,7 @@ class SwiftBackupDriver(BackupDriver):
             try:
                 (resp, body) = self.conn.get_object(container, object_name)
             except socket.error as err:
-                raise exception.SwiftConnectionFailed(reason=str(err))
+                raise exception.SwiftConnectionFailed(reason=err)
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
             if decompressor is not None:
@@ -435,7 +435,7 @@ class SwiftBackupDriver(BackupDriver):
         try:
             metadata = self._read_metadata(backup)
         except socket.error as err:
-            raise exception.SwiftConnectionFailed(reason=str(err))
+            raise exception.SwiftConnectionFailed(reason=err)
         metadata_version = metadata['version']
         LOG.debug(_('Restoring swift backup version %s'), metadata_version)
         try:
@@ -479,7 +479,7 @@ class SwiftBackupDriver(BackupDriver):
                 try:
                     self.conn.delete_object(container, swift_object_name)
                 except socket.error as err:
-                    raise exception.SwiftConnectionFailed(reason=str(err))
+                    raise exception.SwiftConnectionFailed(reason=err)
                 except Exception:
                     LOG.warn(_('swift error while deleting object %s, '
                                'continuing with delete') % swift_object_name)

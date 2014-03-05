@@ -61,7 +61,7 @@ class StorwizeHelpers(object):
         level = resp['code_level']
         match_obj = re.search('([0-9].){3}[0-9]', level)
         if match_obj is None:
-            msg = _('Failed to get code level (%s).') % str(level)
+            msg = _('Failed to get code level (%s).') % level
             raise exception.VolumeBackendAPIException(data=msg)
         code_level = match_obj.group().split('.')
         return {'code_level': tuple([int(x) for x in code_level]),
@@ -81,7 +81,7 @@ class StorwizeHelpers(object):
                 if int(iogrp['node_count']) > 0:
                     iogrps.append(int(iogrp['id']))
             except KeyError:
-                self.handle_keyerror('lsiogrp', str(iogrp))
+                self.handle_keyerror('lsiogrp', iogrp)
             except ValueError:
                 msg = (_('Expected integer for node_count, '
                          'svcinfo lsiogrp returned: %(node)s') %
@@ -111,7 +111,7 @@ class StorwizeHelpers(object):
                 node['enabled_protocols'] = []
                 nodes[node['id']] = node
             except KeyError:
-                self.handle_keyerror('lsnode', str(node_data))
+                self.handle_keyerror('lsnode', node_data)
         return nodes
 
     def add_iscsi_ip_addrs(self, storage_nodes):
@@ -128,7 +128,7 @@ class StorwizeHelpers(object):
                     if len(ip_data['IP_address_6']):
                         node['ipv6'].append(ip_data['IP_address_6'])
             except KeyError:
-                self.handle_keyerror('lsportip', str(ip_data))
+                self.handle_keyerror('lsportip', ip_data)
 
     def add_fc_wwpns(self, storage_nodes):
         """Add FC WWPNs to system node information."""
@@ -160,7 +160,7 @@ class StorwizeHelpers(object):
                     if host_data['iscsi_auth_method'] == 'chap':
                         return host_data['iscsi_chap_secret']
             except KeyError:
-                self.handle_keyerror('lsiscsiauth', str(host_data))
+                self.handle_keyerror('lsiscsiauth', host_data)
         if not host_found:
             msg = _('Failed to find host %s') % host_name
             raise exception.VolumeBackendAPIException(data=msg)
@@ -176,7 +176,7 @@ class StorwizeHelpers(object):
 
     def get_host_from_connector(self, connector):
         """Return the Storwize host described by the connector."""
-        LOG.debug(_('enter: get_host_from_connector: %s') % str(connector))
+        LOG.debug(_('enter: get_host_from_connector: %s') % connector)
 
         # If we have FC information, we have a faster lookup option
         host_name = None
@@ -191,7 +191,7 @@ class StorwizeHelpers(object):
                                 wwpn.lower()):
                             host_name = wwpn_info['name']
                     except KeyError:
-                        self.handle_keyerror('lsfabric', str(wwpn_info))
+                        self.handle_keyerror('lsfabric', wwpn_info)
 
         # That didn't work, so try exhaustive search
         if host_name is None:

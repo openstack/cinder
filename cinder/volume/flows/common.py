@@ -16,6 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -66,7 +67,7 @@ def error_out_volume(context, db, volume_id, reason=None):
     def _clean_reason(reason):
         if reason is None:
             return '???'
-        reason = str(reason)
+        reason = six.text_type(reason)
         if len(reason) <= REASON_LENGTH:
             return reason
         else:

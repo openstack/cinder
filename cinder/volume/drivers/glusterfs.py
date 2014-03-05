@@ -1034,7 +1034,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             except Exception as exc:
                 LOG.warning(_('Exception during mounting %s') % (exc,))
 
-        LOG.debug(_('Available shares: %s') % str(self._mounted_shares))
+        LOG.debug(_('Available shares: %s') % self._mounted_shares)
 
     def _ensure_share_writable(self, path):
         """Ensure that the Cinder user can write to the share.

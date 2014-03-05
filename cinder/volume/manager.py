@@ -775,7 +775,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.driver.validate_connector(connector)
         except Exception as err:
             err_msg = (_('Unable to fetch connection information from '
-                         'backend: %(err)s') % {'err': str(err)})
+                         'backend: %(err)s') % {'err': err})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -800,7 +800,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception as err:
             self.driver.remove_export(context, volume)
             err_msg = (_('Unable to fetch connection information from '
-                         'backend: %(err)s') % {'err': str(err)})
+                         'backend: %(err)s') % {'err': err})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -863,7 +863,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self._add_or_delete_fc_connection(conn_info, 0)
         except Exception as err:
             err_msg = (_('Unable to terminate volume connection: %(err)s')
-                       % {'err': str(err)})
+                       % {'err': err})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -1324,4 +1324,4 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.zonemanager.delete_connection(_initiator_target_map)
             except exception.ZoneManagerException as e:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(str(e))
+                    LOG.error(e)

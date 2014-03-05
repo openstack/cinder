@@ -23,7 +23,6 @@ defined in this class.
 
 """
 
-
 from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
@@ -89,6 +88,6 @@ class FCSanLookupService(fc_common.FCCommon):
             device_map = self.lookup_service.get_device_mapping_from_network(
                 initiator_list, target_list)
         except Exception as e:
-            LOG.error(str(e))
-            raise exception.FCSanLookupServiceException(str(e))
+            LOG.error(e)
+            raise exception.FCSanLookupServiceException(e)
         return device_map

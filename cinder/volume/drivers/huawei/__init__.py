@@ -85,8 +85,8 @@ class HuaweiVolumeDriver(object):
                      'be set to either T, Dorado or HVS. "Protocol" should '
                      'be set to either iSCSI or FC. Product: %(product)s '
                      'Protocol: %(protocol)s')
-                   % {'product': str(product),
-                      'protocol': str(protocol)})
+                   % {'product': product,
+                      'protocol': protocol})
             raise exception.InvalidInput(reason=msg)
 
     def __setattr__(self, name, value):

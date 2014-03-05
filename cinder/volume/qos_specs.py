@@ -237,7 +237,7 @@ def get_all_specs(context, inactive=False, search_opts={}):
     qos_specs = db.qos_specs_get_all(context, inactive)
 
     if search_opts:
-        LOG.debug(_("Searching by: %s") % str(search_opts))
+        LOG.debug(_("Searching by: %s") % search_opts)
 
         def _check_specs_match(qos_specs, searchdict):
             for k, v in searchdict.iteritems():

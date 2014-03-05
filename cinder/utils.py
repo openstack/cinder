@@ -152,12 +152,12 @@ def check_ssh_injection(cmd_list):
             if quoted:
                 if (re.match('[\'"]', quoted) or
                         re.search('[^\\\\][\'"]', quoted)):
-                    raise exception.SSHInjectionThreat(command=str(cmd_list))
+                    raise exception.SSHInjectionThreat(command=cmd_list)
         else:
             # We only allow spaces within quoted arguments, and that
             # is the only special character allowed within quotes
             if len(arg.split()) > 1:
-                raise exception.SSHInjectionThreat(command=str(cmd_list))
+                raise exception.SSHInjectionThreat(command=cmd_list)
 
         # Second, check whether danger character in command. So the shell
         # special operator must be a single argument.
@@ -696,7 +696,7 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug(_('Could not remove tmpdir: %s'), str(e))
+            LOG.debug(_('Could not remove tmpdir: %s'), e)
 
 
 def walk_class_hierarchy(clazz, encountered=None):

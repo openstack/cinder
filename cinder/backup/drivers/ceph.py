@@ -814,7 +814,7 @@ class CephBackupDriver(BackupDriver):
                 vol_meta_backup = VolumeMetadataBackup(client, backup['id'])
                 vol_meta_backup.set(json_meta)
         except exception.VolumeMetadataBackupExists as e:
-            msg = _("Failed to backup volume metadata - %s") % (str(e))
+            msg = (_("Failed to backup volume metadata - %s") % (e))
             raise exception.BackupOperationError(msg)
 
     def backup(self, backup, volume_file, backup_metadata=True):

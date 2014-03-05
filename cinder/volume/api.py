@@ -296,7 +296,7 @@ class API(base.Base):
             filters['no_migration_targets'] = True
 
         if filters:
-            LOG.debug(_("Searching by: %s") % str(filters))
+            LOG.debug(_("Searching by: %s") % filters)
 
             def _check_metadata_match(volume, searchdict):
                 volume_metadata = {}
@@ -361,7 +361,7 @@ class API(base.Base):
                 context, context.project_id)
 
         if search_opts:
-            LOG.debug(_("Searching by: %s") % str(search_opts))
+            LOG.debug(_("Searching by: %s") % search_opts)
 
             results = []
             not_found = object()
@@ -908,7 +908,7 @@ class API(base.Base):
 
         if migration_policy and migration_policy not in ['on-demand', 'never']:
             msg = _('migration_policy must be \'on-demand\' or \'never\', '
-                    'passed: %s') % str(new_type)
+                    'passed: %s') % new_type
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -920,7 +920,7 @@ class API(base.Base):
                 vol_type = volume_types.get_volume_type_by_name(context,
                                                                 new_type)
         except exception.InvalidVolumeType:
-            msg = _('Invalid volume_type passed: %s') % str(new_type)
+            msg = _('Invalid volume_type passed: %s') % new_type
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -933,7 +933,7 @@ class API(base.Base):
 
         # Error if the original and new type are the same
         if volume['volume_type_id'] == vol_type_id:
-            msg = _('New volume_type same as original: %s') % str(new_type)
+            msg = (_('New volume_type same as original: %s') % new_type)
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 

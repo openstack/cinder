@@ -281,8 +281,8 @@ class CoraidAppliance(object):
         try:
             self.rpc('fetch', {}, None, allow_empty_response=True)
         except Exception as e:
-            LOG.debug(_('Coraid Appliance ping failed: %s'), str(e))
-            raise exception.CoraidESMNotAvailable(reason=str(e))
+            LOG.debug(_('Coraid Appliance ping failed: %s'), e)
+            raise exception.CoraidESMNotAvailable(reason=e)
 
     def create_lun(self, repository_name, volume_name, volume_size_in_gb):
         request = {'addr': 'cms',
