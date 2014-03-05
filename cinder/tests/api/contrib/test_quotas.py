@@ -110,6 +110,25 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
 
+    def test_delete(self):
+        result_show = self.controller.show(self.req, 'foo')
+        self.assertDictMatch(result_show, make_body())
+
+        body = make_body(gigabytes=2000, snapshots=15,
+                         volumes=5, tenant_id=None)
+        result_update = self.controller.update(self.req, 'foo', body)
+        self.assertDictMatch(result_update, body)
+
+        self.controller.delete(self.req, 'foo')
+
+        result_show_after = self.controller.show(self.req, 'foo')
+        self.assertDictMatch(result_show, result_show_after)
+
+    def test_delete_no_admin(self):
+        self.req.environ['cinder.context'].is_admin = False
+        self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
+                          self.req, 'test')
+
 
 class QuotaSerializerTest(test.TestCase):
 
