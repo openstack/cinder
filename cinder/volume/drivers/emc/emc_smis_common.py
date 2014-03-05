@@ -680,6 +680,47 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
+        # It takes a while for the relationship between the snapshot
+        # and the source volume gets cleaned up.  Needs to wait until
+        # it is cleaned up.  Otherwise, the source volume can't be
+        # deleted immediately after the snapshot deletion because it
+        # still has snapshot.
+        wait_timeout = int(self._get_timeout())
+        wait_interval = 10
+        start = int(time.time())
+        while True:
+            try:
+                sync_name, storage_system =\
+                    self._find_storage_sync_sv_sv(snapshot, volume, False)
+                if sync_name is None:
+                    LOG.info(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                             'Snapshot is deleted.')
+                             % {'snapshot': snapshotname,
+                                'volume': volumename})
+                    break
+                time.sleep(wait_interval)
+                if int(time.time()) - start >= wait_timeout:
+                    LOG.warn(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                               'Snapshot deleted but cleanup timed out.')
+                             % {'snapshot': snapshotname,
+                                'volume': volumename})
+                    break
+            except Exception as ex:
+                if ex.args[0] == 6:
+                    # 6 means object not found, so snapshot is deleted cleanly
+                    LOG.info(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                             'Snapshot is deleted.')
+                             % {'snapshot': snapshotname,
+                                'volume': volumename})
+                else:
+                    LOG.warn(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                               'Snapshot deleted but error during cleanup. '
+                               'Error: %(error)s')
+                             % {'snapshot': snapshotname,
+                                'volume': volumename,
+                                'error': str(ex.args)})
+                break
+
         LOG.debug(_('Leaving delete_snapshot: Volume: %(volumename)s  '
                   'Snapshot: %(snapshotname)s  Return code: %(rc)lu.')
                   % {'volumename': volumename,
@@ -1040,6 +1081,24 @@ class EMCSMISCommon():
         else:
             LOG.debug(_("Masking View not found."))
             return None
+
+    def _get_timeout(self, filename=None):
+        if filename is None:
+            filename = self.configuration.cinder_emc_config_file
+
+        file = open(filename, 'r')
+        data = file.read()
+        file.close()
+        dom = parseString(data)
+        timeouts = dom.getElementsByTagName('Timeout')
+        if timeouts is not None and len(timeouts) > 0:
+            timeout = timeouts[0].toxml().replace('<Timeout>', '')
+            timeout = timeout.replace('</Timeout>', '')
+            LOG.debug(_("Found Timeout: %s") % (timeout))
+            return timeout
+        else:
+            LOG.debug(_("Timeout not specified."))
+            return 10
 
     def _get_ecom_cred(self, filename=None):
         if filename is None:
