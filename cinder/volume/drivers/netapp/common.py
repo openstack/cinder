@@ -44,6 +44,10 @@ netapp_unified_plugin_registry =\
             'cinder.volume.drivers.netapp.iscsi.NetAppDirect7modeISCSIDriver',
             'nfs':
             'cinder.volume.drivers.netapp.nfs.NetAppDirect7modeNfsDriver'
+        }, 'eseries':
+        {
+            'iscsi':
+            'cinder.volume.drivers.netapp.eseries.iscsi.Driver'
         },
      }
 
@@ -53,7 +57,8 @@ netapp_unified_plugin_registry =\
 netapp_family_default =\
     {
         'ontap_cluster': 'nfs',
-        'ontap_7mode': 'nfs'
+        'ontap_7mode': 'nfs',
+        'eseries': 'iscsi'
     }
 
 
