@@ -398,7 +398,6 @@ def service_update(context, service_id, values):
     with session.begin():
         service_ref = _service_get(context, service_id, session=session)
         service_ref.update(values)
-        service_ref.save(session=session)
 
 
 ###################
@@ -514,7 +513,6 @@ def quota_update(context, project_id, resource, limit):
     with session.begin():
         quota_ref = _quota_get(context, project_id, resource, session=session)
         quota_ref.hard_limit = limit
-        quota_ref.save(session=session)
 
 
 @require_admin_context
@@ -594,7 +592,6 @@ def quota_class_update(context, class_name, resource, limit):
         quota_class_ref = _quota_class_get(context, class_name, resource,
                                            session=session)
         quota_class_ref.hard_limit = limit
-        quota_class_ref.save(session=session)
 
 
 @require_admin_context
@@ -827,10 +824,6 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                 if delta > 0:
                     usages[resource].reserved += delta
 
-        # Apply updates to the usages table
-        for usage_ref in usages.values():
-            usage_ref.save(session=session)
-
     if unders:
         LOG.warning(_("Change will make usage less than 0 for the following "
                       "resources: %s") % unders)
@@ -869,9 +862,6 @@ def reservation_commit(context, reservations, project_id=None):
 
             reservation.delete(session=session)
 
-        for usage in usages.values():
-            usage.save(session=session)
-
 
 @require_context
 def reservation_rollback(context, reservations, project_id=None):
@@ -885,9 +875,6 @@ def reservation_rollback(context, reservations, project_id=None):
                 usage.reserved -= reservation.delta
 
             reservation.delete(session=session)
-
-        for usage in usages.values():
-            usage.save(session=session)
 
 
 @require_admin_context
@@ -976,7 +963,6 @@ def volume_attached(context, volume_id, instance_uuid, host_name, mountpoint):
         volume_ref['attach_status'] = 'attached'
         volume_ref['instance_uuid'] = instance_uuid
         volume_ref['attached_host'] = host_name
-        volume_ref.save(session=session)
         return volume_ref
 
 
@@ -998,9 +984,9 @@ def volume_create(context, values):
 
     session = get_session()
     with session.begin():
-        volume_ref.save(session=session)
+        session.add(volume_ref)
 
-        return _volume_get(context, values['id'], session=session)
+    return _volume_get(context, values['id'], session=session)
 
 
 @require_admin_context
@@ -1109,7 +1095,6 @@ def volume_detached(context, volume_id):
         volume_ref['instance_uuid'] = None
         volume_ref['attached_host'] = None
         volume_ref['attach_time'] = None
-        volume_ref.save(session=session)
 
 
 @require_context
@@ -1345,7 +1330,7 @@ def volume_update(context, volume_id, values):
 
         volume_ref = _volume_get(context, volume_id, session=session)
         volume_ref.update(values)
-        volume_ref.save(session=session)
+
         return volume_ref
 
 
@@ -1534,14 +1519,14 @@ def volume_admin_metadata_update(context, volume_id, metadata, delete):
 def snapshot_create(context, values):
     values['snapshot_metadata'] = _metadata_refs(values.get('metadata'),
                                                  models.SnapshotMetadata)
-    snapshot_ref = models.Snapshot()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
-    snapshot_ref.update(values)
 
     session = get_session()
     with session.begin():
-        snapshot_ref.save(session=session)
+        snapshot_ref = models.Snapshot()
+        snapshot_ref.update(values)
+        session.add(snapshot_ref)
 
         return _snapshot_get(context, values['id'], session=session)
 
@@ -1655,7 +1640,6 @@ def snapshot_update(context, snapshot_id, values):
     with session.begin():
         snapshot_ref = _snapshot_get(context, snapshot_id, session=session)
         snapshot_ref.update(values)
-        snapshot_ref.save(session=session)
 
 ####################
 
@@ -1776,7 +1760,7 @@ def volume_type_create(context, values):
                                                    models.VolumeTypeExtraSpecs)
             volume_type_ref = models.VolumeTypes()
             volume_type_ref.update(values)
-            volume_type_ref.save(session=session)
+            session.add(volume_type_ref)
         except Exception as e:
             raise db_exc.DBError(e)
         return volume_type_ref
@@ -2353,7 +2337,7 @@ def volume_type_encryption_create(context, volume_type_id, values):
             values['volume_type_id'] = volume_type_id
 
         encryption.update(values)
-        encryption.save(session=session)
+        session.add(encryption)
 
         return encryption
 
@@ -2370,7 +2354,6 @@ def volume_type_encryption_update(context, volume_type_id, values):
                                                          volume_type_id)
 
         encryption.update(values)
-        encryption.save(session=session)
 
         return encryption
 
@@ -2493,7 +2476,7 @@ def volume_glance_metadata_create(context, volume_id, key, value):
         vol_glance_metadata.key = key
         vol_glance_metadata.value = str(value)
 
-        vol_glance_metadata.save(session=session)
+        session.add(vol_glance_metadata)
 
     return
 
@@ -2646,7 +2629,7 @@ def backup_update(context, backup_id, values):
                 _("No backup with id %s") % backup_id)
 
         backup.update(values)
-        backup.save(session=session)
+
     return backup
 
 
@@ -2719,7 +2702,6 @@ def transfer_get_all_by_project(context, project_id):
 
 @require_context
 def transfer_create(context, values):
-    transfer = models.Transfer()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
     session = get_session()
@@ -2732,10 +2714,11 @@ def transfer_create(context, values):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
         volume_ref['status'] = 'awaiting-transfer'
+        transfer = models.Transfer()
         transfer.update(values)
-        transfer.save(session=session)
+        session.add(transfer)
         volume_ref.update(volume_ref)
-        volume_ref.save(session=session)
+
     return transfer
 
 
@@ -2787,7 +2770,7 @@ def transfer_accept(context, transfer_id, user_id, project_id):
         volume_ref['project_id'] = project_id
         volume_ref['updated_at'] = literal_column('updated_at')
         volume_ref.update(volume_ref)
-        volume_ref.save(session=session)
+
         session.query(models.Transfer).\
             filter_by(id=transfer_ref['id']).\
             update({'deleted': True,
