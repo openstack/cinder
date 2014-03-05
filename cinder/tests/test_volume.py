@@ -2890,6 +2890,80 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.assertEqual(moved, True)
         self.assertIsNone(model_update)
 
+    @staticmethod
+    def _get_manage_existing_lvs(name):
+        """Helper method used by the manage_existing tests below."""
+        lvs = [{'name': 'fake_lv', 'size': '1.75'},
+               {'name': 'fake_lv_bad_size', 'size': 'Not a float'}]
+        for lv in lvs:
+            if lv['name'] == name:
+                return lv
+
+    def _setup_stubs_for_manage_existing(self):
+        """Helper to set up common stubs for the manage_existing tests."""
+        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                             False,
+                                             None,
+                                             'default')
+        self.stubs.Set(self.volume.driver.vg, 'get_volume',
+                       self._get_manage_existing_lvs)
+
+    def test_lvm_manage_existing(self):
+        """Good pass on managing an LVM volume.
+
+        This test case ensures that, when a logical volume with the
+        specified name exists, and the size is as expected, no error is
+        returned from driver.manage_existing, and that the rename_volume
+        function is called in the Brick LVM code with the correct arguments.
+        """
+        self._setup_stubs_for_manage_existing()
+
+        ref = {'lv_name': 'fake_lv'}
+        vol = {'name': 'test', 'id': 1, 'size': 0}
+
+        def _rename_volume(old_name, new_name):
+            self.assertEqual(old_name, ref['lv_name'])
+            self.assertEqual(new_name, vol['name'])
+
+        self.stubs.Set(self.volume.driver.vg, 'rename_volume',
+                       _rename_volume)
+
+        size = self.volume.driver.manage_existing_get_size(vol, ref)
+        self.assertEqual(size, 2)
+        model_update = self.volume.driver.manage_existing(vol, ref)
+        self.assertIsNone(model_update)
+
+    def test_lvm_manage_existing_bad_size(self):
+        """Make sure correct exception on bad size returned from LVM.
+
+        This test case ensures that the correct exception is raised when
+        the information returned for the existing LVs is not in the format
+        that the manage_existing code expects.
+        """
+        self._setup_stubs_for_manage_existing()
+
+        ref = {'lv_name': 'fake_lv_bad_size'}
+        vol = {'name': 'test', 'id': 1, 'size': 2}
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume.driver.manage_existing_get_size,
+                          vol, ref)
+
+    def test_lvm_manage_existing_bad_ref(self):
+        """Error case where specified LV doesn't exist.
+
+        This test case ensures that the correct exception is raised when
+        the caller attempts to manage a volume that does not exist.
+        """
+        self._setup_stubs_for_manage_existing()
+
+        ref = {'lv_name': 'fake_nonexistent_lv'}
+        vol = {'name': 'test', 'id': 1, 'size': 0, 'status': 'available'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.volume.driver.manage_existing_get_size,
+                          vol, ref)
+
 
 class LVMVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""

@@ -562,6 +562,16 @@ class KeyManagerError(CinderException):
     msg_fmt = _("key manager error: %(reason)s")
 
 
+class ManageExistingInvalidReference(CinderException):
+    message = _("Manage existing volume failed due to invalid backend "
+                "reference %(existing_ref)s: %(reason)s")
+
+
+class ManageExistingVolumeTypeMismatch(CinderException):
+    message = _("Manage existing volume failed due to volume type mismatch: "
+                "%(reason)s")
+
+
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):

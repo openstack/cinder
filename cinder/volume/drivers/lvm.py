@@ -18,6 +18,7 @@ Driver for Linux servers running LVM.
 
 """
 
+import math
 import os
 import socket
 
@@ -385,6 +386,61 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Extend an existing volume's size."""
         self.vg.extend_volume(volume['name'],
                               self._sizestr(new_size))
+
+    def manage_existing(self, volume, existing_ref):
+        """Manages an existing LV.
+
+        Renames the LV to match the expected name for the volume.
+        Error checking done by manage_existing_get_size is not repeated.
+        """
+        lv_name = existing_ref['lv_name']
+        lv = self.vg.get_volume(lv_name)
+
+        # Attempt to rename the LV to match the OpenStack internal name.
+        try:
+            self.vg.rename_volume(lv_name, volume['name'])
+        except processutils.ProcessExecutionError as exc:
+            exception_message = (_("Failed to rename logical volume %(name)s, "
+                                   "error message was: %(err_msg)s")
+                                 % {'name': lv_name,
+                                    'err_msg': exc.stderr})
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of an existing LV for manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'lv_name': <name of LV>}
+        """
+
+        # Check that the reference is valid
+        if 'lv_name' not in existing_ref:
+            reason = _('Reference must contain lv_name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        lv_name = existing_ref['lv_name']
+        lv = self.vg.get_volume(lv_name)
+
+        # Raise an exception if we didn't find a suitable LV.
+        if not lv:
+            kwargs = {'existing_ref': lv_name,
+                      'reason': 'Specified logical volume does not exist.'}
+            raise exception.ManageExistingInvalidReference(**kwargs)
+
+        # LV size is returned in gigabytes.  Attempt to parse size as a float
+        # and round up to the next integer.
+        try:
+            lv_size = int(math.ceil(float(lv['size'])))
+        except ValueError:
+            exception_message = (_("Failed to manage existing volume "
+                                   "%(name)s, because reported size %(size)s "
+                                   "was not a floating-point number.")
+                                 % {'name': lv_name,
+                                    'size': lv['size']})
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return lv_size
 
 
 class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
