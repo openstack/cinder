@@ -1790,6 +1790,10 @@
 # FC Zoning mode configured (string value)
 #zoning_mode=none
 
+# User defined capabilities, a JSON formatted string
+# specifying key/value pairs. (string value)
+#extra_capabilities={}
+
 
 [fc-zone-manager]
 
