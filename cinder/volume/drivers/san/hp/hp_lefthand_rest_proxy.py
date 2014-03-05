@@ -87,9 +87,11 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         1.0.2 - Added support for volume migrate
         1.0.3 - Fixed bug #1285829, HP LeftHand backend assisted migration
                 should check for snapshots
+        1.0.4 - Fixed bug #1285925, LeftHand AO volume create performance
+                improvement
     """
 
-    VERSION = "1.0.3"
+    VERSION = "1.0.4"
 
     device_stats = {}
 
@@ -151,6 +153,15 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             # if provisioning is not set, default to thin
             if 'isThinProvisioned' not in optional:
                 optional['isThinProvisioned'] = True
+
+            # AdaptiveOptimization defaults to 'true' if you don't specify the
+            # value on a create, and that is the most efficient way to create
+            # a volume. If you pass in 'false' or 'true' for AO, it will result
+            # in an update operation following the create operation to set this
+            # value, so it is best to not specify the value and let it default
+            # to 'true'.
+            if optional.get('isAdaptiveOptimizationEnabled'):
+                del optional['isAdaptiveOptimizationEnabled']
 
             clusterName = self.configuration.hplefthand_clustername
             optional['clusterName'] = clusterName

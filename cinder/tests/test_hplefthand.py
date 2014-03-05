@@ -1300,3 +1300,67 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         self.assertEqual(
             len(expected),
             len(mock_client.method_calls))
+
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'extra_specs': {'hplh:ao': 'true'}})
+    def test_create_volume_with_ao_true(self, _mock_volume_type):
+
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        volume_with_vt = self.volume
+        volume_with_vt['volume_type_id'] = 1
+
+        # mock return value of createVolume
+        mock_client.createVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+
+        volume_info = self.driver.create_volume(volume_with_vt)
+
+        self.assertEqual('10.0.1.6:3260,1 iqn.1993-08.org.debian:01:222 0',
+                         volume_info['provider_location'])
+
+        # make sure createVolume is called without
+        # isAdaptiveOptimizationEnabled == true
+        expected = self.driver_startup_call_stack + [
+            mock.call.createVolume(
+                'fakevolume',
+                1,
+                units.GiB,
+                {'isThinProvisioned': True, 'clusterName': 'CloudCluster1'})]
+
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'extra_specs': {'hplh:ao': 'false'}})
+    def test_create_volume_with_ao_false(self, _mock_volume_type):
+
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        volume_with_vt = self.volume
+        volume_with_vt['volume_type_id'] = 1
+
+        # mock return value of createVolume
+        mock_client.createVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+
+        volume_info = self.driver.create_volume(volume_with_vt)
+
+        self.assertEqual('10.0.1.6:3260,1 iqn.1993-08.org.debian:01:222 0',
+                         volume_info['provider_location'])
+
+        # make sure createVolume is called with
+        # isAdaptiveOptimizationEnabled == false
+        expected = self.driver_startup_call_stack + [
+            mock.call.createVolume(
+                'fakevolume',
+                1,
+                units.GiB,
+                {'isThinProvisioned': True,
+                 'clusterName': 'CloudCluster1',
+                 'isAdaptiveOptimizationEnabled': False})]
+
+        mock_client.assert_has_calls(expected)
