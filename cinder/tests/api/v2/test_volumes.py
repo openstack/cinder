@@ -747,6 +747,70 @@ class VolumeApiTest(test.TestCase):
                           self.controller.index,
                           req)
 
+    def test_volume_default_limit(self):
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+
+        # Number of volumes equals the max, include next link
+        def stub_volume_get_all(context, marker, limit,
+                                sort_key, sort_dir):
+            vols = [stubs.stub_volume(i)
+                    for i in xrange(CONF.osapi_max_limit)]
+            if limit == None or limit >= len(vols):
+                return vols
+            return vols[:limit]
+        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
+        for key in ['volumes', 'volumes/detail']:
+            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
+                                          use_admin_context=True)
+            res_dict = self.controller.index(req)
+            self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
+            volumes_links = res_dict['volumes_links']
+            self.assertEqual(volumes_links[0]['rel'], 'next')
+
+        # Number of volumes less then max, do not include
+        def stub_volume_get_all2(context, marker, limit,
+                                 sort_key, sort_dir):
+            vols = [stubs.stub_volume(i)
+                    for i in xrange(100)]
+            if limit == None or limit >= len(vols):
+                return vols
+            return vols[:limit]
+        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all2)
+        for key in ['volumes', 'volumes/detail']:
+            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
+                                          use_admin_context=True)
+            res_dict = self.controller.index(req)
+            self.assertEqual(len(res_dict['volumes']), 100)
+            self.assertFalse('volumes_links' in res_dict)
+
+        # Number of volumes more then the max, include next link
+        def stub_volume_get_all3(context, marker, limit,
+                                 sort_key, sort_dir):
+            vols = [stubs.stub_volume(i)
+                    for i in xrange(CONF.osapi_max_limit + 100)]
+            if limit == None or limit >= len(vols):
+                return vols
+            return vols[:limit]
+        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all3)
+        for key in ['volumes', 'volumes/detail']:
+            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
+                                          use_admin_context=True)
+            res_dict = self.controller.index(req)
+            self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
+            volumes_links = res_dict['volumes_links']
+            self.assertEqual(volumes_links[0]['rel'], 'next')
+        # Pass a limit that is greater then the max and the total number of
+        # volumes, ensure only the maximum is returned and that the next
+        # link is present
+        for key in ['volumes', 'volumes/detail']:
+            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1&limit=%d'
+                                          % (key, CONF.osapi_max_limit * 2),
+                                          use_admin_context=True)
+            res_dict = self.controller.index(req)
+            self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
+            volumes_links = res_dict['volumes_links']
+            self.assertEqual(volumes_links[0]['rel'], 'next')
+
     def test_volume_list_by_name(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
                                            sort_key, sort_dir):
