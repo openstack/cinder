@@ -51,7 +51,7 @@ loc_opts = [
 CONF.register_opts(loc_opts)
 
 
-class EMCVnxCli():
+class EMCVnxCli(object):
     """This class defines the functions to use the native CLI functionality."""
 
     stats = {'driver_version': VERSION,
@@ -108,7 +108,7 @@ class EMCVnxCli():
             raise exception.VolumeBackendAPIException(data=out)
 
     def _cli_execute(self, *cmd, **kwargv):
-        if "check_exit_code" not in kwargv.keys():
+        if "check_exit_code" not in kwargv:
             kwargv["check_exit_code"] = True
         rc = 0
         try:
@@ -157,20 +157,19 @@ class EMCVnxCli():
 
         # wait for up to a minute to verify that the LUN has progressed
         # to Ready state
-        def _wait_for_lun_ready(volumename):
+        def _wait_for_lun_ready(volumename, start_time):
             # executing cli command to check volume
             command_to_verify = ('lun', '-list', '-name', volumename)
             out, rc = self._cli_execute(*command_to_verify)
             if rc == 0 and out.find("Ready") > -1:
                 raise loopingcall.LoopingCallDone()
-            if int(time.time()) - self.start_lun_ready > self.timeout * 60:
+            if int(time.time()) - start_time > self.timeout * 60:
                 msg = (_('LUN %s failed to become Ready'), volumename)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-        self.start_lun_ready = int(time.time())
         timer = loopingcall.FixedIntervalLoopingCall(
-            _wait_for_lun_ready, volumename)
+            _wait_for_lun_ready, volumename, int(time.time()))
         timer.start(interval=self.wait_interval).wait()
 
     def delete_volume(self, volume):
@@ -308,7 +307,7 @@ class EMCVnxCli():
                  % {'snapshot': snapshotname,
                     'volume': volumename})
 
-        def _wait_for_snap_delete(snapshot):
+        def _wait_for_snap_delete(snapshot, start_time):
             # defining CLI command
             snapshotname = snapshot['name']
             volumename = snapshot['volume_name']
@@ -324,7 +323,7 @@ class EMCVnxCli():
 
             if rc not in [0, 9, 5]:
                 if rc == 13:
-                    if int(time.time()) - self.start_snap_delete < \
+                    if int(time.time()) - start_time < \
                             self.timeout * 60:
                         LOG.info(_('Snapshot %s is in use'), snapshotname)
                     else:
@@ -339,9 +338,8 @@ class EMCVnxCli():
             else:
                 raise loopingcall.LoopingCallDone()
 
-        self.start_snap_delete = int(time.time())
         timer = loopingcall.FixedIntervalLoopingCall(
-            _wait_for_snap_delete, snapshot)
+            _wait_for_snap_delete, snapshot, int(time.time()))
         timer.start(interval=self.wait_interval).wait()
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -440,9 +438,7 @@ class EMCVnxCli():
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        self.sync_status = False
-
-        def _wait_for_sync_status(volumename):
+        def _wait_for_sync_status(volumename, start_time):
             lun_list = ('lun', '-list', '-name', volumename,
                         '-attachedSnapshot')
             out, rc = self._cli_execute(*lun_list)
@@ -450,23 +446,18 @@ class EMCVnxCli():
                 vol_details = out.split('\n')
                 snapshotname = vol_details[2].split(':')[1].strip()
             if (snapshotname == 'N/A'):
-                self.sync_status = True
                 raise loopingcall.LoopingCallDone()
             else:
-                LOG.info(_('Waiting for the update on Sync status of %s '),
+                LOG.info(_('Waiting for the update on Sync status of %s'),
                          volumename)
-                if int(time.time()) - self.start_status >= self.timeout * 60:
-                    raise loopingcall.LoopingCallDone()
+                if int(time.time()) - start_time >= self.timeout * 60:
+                    msg = (_('Failed to really migrate %s'), volumename)
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
 
-        self.start_status = int(time.time())
         timer = loopingcall.FixedIntervalLoopingCall(
-            _wait_for_sync_status, volumename)
+            _wait_for_sync_status, volumename, int(time.time()))
         timer.start(interval=self.wait_interval).wait()
-
-        if not self.sync_status:
-            msg = (_('Failed to really migrate %s'), volumename)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""

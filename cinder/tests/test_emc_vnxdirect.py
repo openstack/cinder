@@ -279,6 +279,8 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
         elif cmd == ('connection', '-getport', '-sp', 'A'):
             return 'SP:  A\nPort ID:  5\nPort WWN:  iqn.1992-04.' + \
                    'com.emc:cx.fnm00124000215.a5\niSCSI Alias:  0215.a5\n', 0
+        else:
+            self.assertTrue(False)
 
     def setUp(self):
         # backup
