@@ -34,6 +34,7 @@ from cinder import units
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import storwize_svc
+from cinder.volume.drivers.ibm.storwize_svc import helpers
 from cinder.volume.drivers.ibm.storwize_svc import ssh
 from cinder.volume import volume_types
 
@@ -2700,3 +2701,26 @@ port_speed!8Gb
         self.assertEqual(list(resp.select('port_id', 'port_status')),
                          [('500507680210C744', 'active'),
                           ('500507680240C744', 'inactive')])
+
+
+class StorwizeHelpersTestCase(test.TestCase):
+    def setUp(self):
+        super(StorwizeHelpersTestCase, self).setUp()
+        self.helpers = helpers.StorwizeHelpers(None)
+
+    def test_compression_enabled(self):
+        fake_license_without_keys = {}
+        fake_license = {
+            'license_compression_enclosures': '1',
+            'license_compression_capacity': '1'
+        }
+
+        # Check when keys of return licenses do not contain
+        # 'license_compression_enclosures' and 'license_compression_capacity'
+        with mock.patch.object(ssh.StorwizeSSH, 'lslicense') as lslicense:
+            lslicense.return_value = fake_license_without_keys
+            self.assertFalse(self.helpers.compression_enabled())
+
+        with mock.patch.object(ssh.StorwizeSSH, 'lslicense') as lslicense:
+            lslicense.return_value = fake_license
+            self.assertTrue(self.helpers.compression_enabled())
