@@ -121,10 +121,11 @@ class HP3PARCommon(object):
         2.0.5 - Fix extend volume units bug #1284368
         2.0.6 - use loopingcall.wait instead of time.sleep
         2.0.7 - Allow extend volume based on snapshot bug #1285906
+        2.0.8 - Fix detach issue for multiple hosts Bug #1288927
 
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     stats = {}
 
@@ -450,6 +451,21 @@ class HP3PARCommon(object):
                                        'hp3par_cpg')})
         self.stats = stats
 
+    def _get_vlun(self, volume_name, hostname):
+        """find a VLUN on a 3PAR host."""
+        vluns = self.client.getHostVLUNs(hostname)
+        found_vlun = None
+        for vlun in vluns:
+            if volume_name in vlun['volumeName']:
+                found_vlun = vlun
+                break
+
+        msg = (_("3PAR vlun %(name)s not found on host %(host)s") %
+               {'name': volume_name, 'host': hostname})
+        if found_vlun is None:
+            LOG.warn(msg)
+        return found_vlun
+
     def create_vlun(self, volume, host, nsp=None):
         """Create a VLUN.
 
@@ -457,17 +473,19 @@ class HP3PARCommon(object):
         """
         volume_name = self._get_3par_vol_name(volume['id'])
         self._create_3par_vlun(volume_name, host['name'], nsp)
-        return self.client.getVLUN(volume_name)
+        return self._get_vlun(volume_name, host['name'])
 
     def delete_vlun(self, volume, hostname):
         volume_name = self._get_3par_vol_name(volume['id'])
-        vlun = self.client.getVLUN(volume_name)
-        # VLUN Type of MATCHED_SET 4 requires the port to be provided
-        if self.VLUN_TYPE_MATCHED_SET == vlun['type']:
-            self.client.deleteVLUN(volume_name, vlun['lun'], hostname,
-                                   vlun['portPos'])
-        else:
-            self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
+        vlun = self._get_vlun(volume_name, hostname)
+
+        if vlun is not None:
+            # VLUN Type of MATCHED_SET 4 requires the port to be provided
+            if self.VLUN_TYPE_MATCHED_SET == vlun['type']:
+                self.client.deleteVLUN(volume_name, vlun['lun'], hostname,
+                                       vlun['portPos'])
+            else:
+                self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
 
         try:
             self._delete_3par_host(hostname)
