@@ -119,7 +119,7 @@ class GPFSDriver(driver.VolumeDriver):
     def _get_gpfs_state(self):
         """Return GPFS state information."""
         try:
-            (out, _) = self._execute('mmgetstate', '-Y', run_as_root=True)
+            (out, err) = self._execute('mmgetstate', '-Y', run_as_root=True)
             return out
         except processutils.ProcessExecutionError as exc:
             LOG.error(_('Failed to issue mmgetstate command, error: %s.') %
@@ -141,7 +141,7 @@ class GPFSDriver(driver.VolumeDriver):
     def _get_filesystem_from_path(self, path):
         """Return filesystem for specified path."""
         try:
-            (out, _) = self._execute('df', path, run_as_root=True)
+            (out, err) = self._execute('df', path, run_as_root=True)
             lines = out.splitlines()
             filesystem = lines[1].split()[0]
             return filesystem
@@ -155,8 +155,8 @@ class GPFSDriver(driver.VolumeDriver):
     def _get_gpfs_cluster_id(self):
         """Return the id for GPFS cluster being used."""
         try:
-            (out, _) = self._execute('mmlsconfig', 'clusterId', '-Y',
-                                     run_as_root=True)
+            (out, err) = self._execute('mmlsconfig', 'clusterId', '-Y',
+                                       run_as_root=True)
             lines = out.splitlines()
             value_token = lines[0].split(':').index('value')
             cluster_id = lines[1].split(':')[value_token]
@@ -170,10 +170,11 @@ class GPFSDriver(driver.VolumeDriver):
         """Return the GPFS fileset for specified path."""
         fs_regex = re.compile(r'.*fileset.name:\s+(?P<fileset>\w+)', re.S)
         try:
-            (out, _) = self._execute('mmlsattr', '-L', path, run_as_root=True)
+            (out, err) = self._execute('mmlsattr', '-L', path,
+                                       run_as_root=True)
         except processutils.ProcessExecutionError as exc:
             LOG.error(_('Failed to issue mmlsattr command on path %(path)s, '
-                        'error: %(error)') %
+                        'error: %(error)s') %
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -181,11 +182,12 @@ class GPFSDriver(driver.VolumeDriver):
             fileset = fs_regex.match(out).group('fileset')
             return fileset
         except AttributeError as exc:
-            LOG.error(_('Failed to find fileset for path %(path)s, error: '
-                        '%(error)s.') %
-                      {'path': path,
-                       'error': exc.stderr})
-            raise exception.VolumeBackendAPIException(data=exc.stderr)
+            msg = (_('Failed to find fileset for path %(path)s, command '
+                     'output: %(cmdout)s.') %
+                   {'path': path,
+                    'cmdout': out})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def _verify_gpfs_pool(self, storage_pool):
         """Return true if the specified pool is a valid GPFS storage pool."""
@@ -226,10 +228,10 @@ class GPFSDriver(driver.VolumeDriver):
         """
         filesystem = self._get_filesystem_from_path(path)
         try:
-            (out, _) = self._execute('mmlsfs', filesystem, '-V', '-Y',
-                                     run_as_root=True)
+            (out, err) = self._execute('mmlsfs', filesystem, '-V', '-Y',
+                                       run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsfs command for path %(path), '
+            LOG.error(_('Failed to issue mmlsfs command for path %(path)s, '
                         'error: %(error)s.') %
                       {'path': path,
                        'error': exc.stderr})
@@ -246,8 +248,8 @@ class GPFSDriver(driver.VolumeDriver):
     def _get_gpfs_cluster_release_level(self):
         """Return the GPFS version of current cluster."""
         try:
-            (out, _) = self._execute('mmlsconfig', 'minreleaseLeveldaemon',
-                                     '-Y', run_as_root=True)
+            (out, err) = self._execute('mmlsconfig', 'minreleaseLeveldaemon',
+                                       '-Y', run_as_root=True)
         except processutils.ProcessExecutionError as exc:
             LOG.error(_('Failed to issue mmlsconfig command, error: %s.') %
                       exc.stderr)
@@ -266,7 +268,7 @@ class GPFSDriver(driver.VolumeDriver):
         try:
             self._execute('mmlsattr', directory, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsattr command for path %(path), '
+            LOG.error(_('Failed to issue mmlsattr command for path %(path)s, '
                         'error: %(error)s.') %
                       {'path': directory,
                        'error': exc.stderr})
@@ -606,7 +608,8 @@ class GPFSDriver(driver.VolumeDriver):
 
     def _is_gpfs_parent_file(self, gpfs_file):
         """Return true if the specified file is a gpfs clone parent."""
-        out, _ = self._execute('mmclone', 'show', gpfs_file, run_as_root=True)
+        out, err = self._execute('mmclone', 'show', gpfs_file,
+                                 run_as_root=True)
         ptoken = out.splitlines().pop().split()[0]
         return ptoken == 'yes'
 
@@ -865,7 +868,7 @@ class GPFSDriver(driver.VolumeDriver):
             self._execute('mv', local_path, new_path, run_as_root=True)
             return (True, None)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Driver-based migration of volume %(vol) failed. '
+            LOG.error(_('Driver-based migration of volume %(vol)s failed. '
                         'Move from %(src)s to %(dst)s failed with error: '
                         '%(error)s.') %
                       {'vol': volume['name'],
@@ -958,8 +961,8 @@ class GPFSDriver(driver.VolumeDriver):
         if not mounted:
             return 0, 0
 
-        out, _ = self._execute('df', '-P', '-B', '1', path,
-                               run_as_root=True)
+        out, err = self._execute('df', '-P', '-B', '1', path,
+                                 run_as_root=True)
         out = out.splitlines()[1]
         size = int(out.split()[1])
         available = int(out.split()[3])
