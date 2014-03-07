@@ -86,7 +86,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         """Initializes the connection and returns connection info.
 
         The iscsi driver returns a driver_volume_type of 'iscsi'.
-        the format of the driver data is defined in _get_iscsi_properties.
+        the format of the driver data is defined in vnx_get_iscsi_properties.
 
         :param volume: volume to be attached.
         :param connector: connector information.
@@ -98,7 +98,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                     'target_discovered': True,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1,
+                    'volume_id': '12345678-1234-4321-1234-123456789012',
                 }
             }
         """
@@ -122,7 +122,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
     def _do_iscsi_discovery(self, volume):
 
-        LOG.warn(_("ISCSI provider_location not stored for volume %s, "
+        LOG.warn(_("iSCSI provider_location not stored for volume %s, "
                  "using discovery.") % (volume['name']))
 
         (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
@@ -135,8 +135,6 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
         return targets
 
-    # Rename this function to vnx_get_iscsi_properties because it has
-    # different input parameters from _get_iscsi_properties in the base class
     def vnx_get_iscsi_properties(self, volume, connector):
         """Gets iscsi configuration.
 
@@ -152,7 +150,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
         :target_lun:    the lun of the iSCSI target
 
-        :volume_id:    the id of the volume (currently used by xen)
+        :volume_id:    the UUID of the volume
 
         :auth_method:, :auth_username:, :auth_password:
 
@@ -223,8 +221,6 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
             properties['auth_username'] = auth_username
             properties['auth_password'] = auth_secret
 
-        LOG.debug(_("ISCSI properties: %s") % (properties))
-
         return properties
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -241,12 +237,12 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self.update_volume_status()
+            self.update_volume_stats()
             LOG.info(_("update_volume_status:%s"), self._stats)
 
         return self._stats
 
-    def update_volume_status(self):
+    def update_volume_stats(self):
         """Retrieve status info from volume group."""
         LOG.debug(_("Updating volume status"))
         # retrieving the volume update from the VNX
