@@ -109,7 +109,7 @@ def stub_volume_get_db(context, volume_id):
 
 
 def stub_volume_get_all(context, search_opts=None, marker=None, limit=None,
-                        sort_key='created_at', sort_dir='desc'):
+                        sort_key='created_at', sort_dir='desc', filters=None):
     return [stub_volume(100, project_id='fake'),
             stub_volume(101, project_id='superfake'),
             stub_volume(102, project_id='superduperfake')]

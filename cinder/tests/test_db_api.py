@@ -1,3 +1,4 @@
+#    Copyright 2014 IBM Corp.
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -409,6 +410,257 @@ class DBAPIVolumeTestCase(BaseTest):
                                             db.volume_get_all_by_project(
                                             self.ctxt, 'p%d' % i, None,
                                             None, 'host', None))
+
+    def test_volume_get_by_name(self):
+        db.volume_create(self.ctxt, {'display_name': 'vol1'})
+        db.volume_create(self.ctxt, {'display_name': 'vol2'})
+        db.volume_create(self.ctxt, {'display_name': 'vol3'})
+
+        # no name filter
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc')
+        self.assertEqual(len(volumes), 3)
+        # filter on name
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc', {'display_name': 'vol2'})
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['display_name'], 'vol2')
+        # filter no match
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc', {'display_name': 'vol4'})
+        self.assertEqual(len(volumes), 0)
+
+    def test_volume_list_by_status(self):
+        db.volume_create(self.ctxt, {'display_name': 'vol1',
+                                     'status': 'available'})
+        db.volume_create(self.ctxt, {'display_name': 'vol2',
+                                     'status': 'available'})
+        db.volume_create(self.ctxt, {'display_name': 'vol3',
+                                     'status': 'in-use'})
+
+        # no status filter
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc')
+        self.assertEqual(len(volumes), 3)
+        # single match
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc', {'status': 'in-use'})
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['status'], 'in-use')
+        # multiple match
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc', {'status': 'available'})
+        self.assertEqual(len(volumes), 2)
+        for volume in volumes:
+            self.assertEqual(volume['status'], 'available')
+        # multiple filters
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc', {'status': 'available',
+                                            'display_name': 'vol1'})
+        self.assertEqual(len(volumes), 1)
+        self.assertEqual(volumes[0]['display_name'], 'vol1')
+        self.assertEqual(volumes[0]['status'], 'available')
+        # no match
+        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
+                                    'asc', {'status': 'in-use',
+                                            'display_name': 'vol1'})
+        self.assertEqual(len(volumes), 0)
+
+    def _assertEqualsVolumeOrderResult(self, correct_order, limit=None,
+                                       sort_key='created_at', sort_dir='asc',
+                                       filters=None, project_id=None,
+                                       match_keys=['id', 'display_name',
+                                                   'volume_metadata',
+                                                   'created_at']):
+        """"Verifies that volumes are returned in the correct order."""
+        if project_id:
+            result = db.volume_get_all_by_project(self.ctxt, project_id, None,
+                                                  limit, sort_key,
+                                                  sort_dir, filters=filters)
+        else:
+            result = db.volume_get_all(self.ctxt, None, limit, sort_key,
+                                       sort_dir, filters=filters)
+        self.assertEqual(len(correct_order), len(result))
+        self.assertEqual(len(result), len(correct_order))
+        for vol1, vol2 in zip(result, correct_order):
+            for key in match_keys:
+                val1 = vol1.get(key)
+                val2 = vol2.get(key)
+                # metadata is a list, compare the 'key' and 'value' of each
+                if key == 'volume_metadata':
+                    self.assertEqual(len(val1), len(val2))
+                    for m1, m2 in zip(val1, val2):
+                        self.assertEqual(m1.get('key'), m2.get('key'))
+                        self.assertEqual(m1.get('value'), m2.get('value'))
+                else:
+                    self.assertEqual(val1, val2)
+
+    def test_volume_get_by_filter(self):
+        """Verifies that all filtering is done at the DB layer."""
+        vols = []
+        vols.extend([db.volume_create(self.ctxt,
+                                      {'project_id': 'g1',
+                                       'display_name': 'name_%d' % i,
+                                       'size': 1})
+                     for i in xrange(2)])
+        vols.extend([db.volume_create(self.ctxt,
+                                      {'project_id': 'g1',
+                                       'display_name': 'name_%d' % i,
+                                       'size': 2})
+                     for i in xrange(2)])
+        vols.extend([db.volume_create(self.ctxt,
+                                      {'project_id': 'g1',
+                                       'display_name': 'name_%d' % i})
+                     for i in xrange(2)])
+        vols.extend([db.volume_create(self.ctxt,
+                                      {'project_id': 'g2',
+                                       'display_name': 'name_%d' % i,
+                                       'size': 1})
+                     for i in xrange(2)])
+
+        # By project, filter on size and name
+        filters = {'size': '1'}
+        correct_order = [vols[0], vols[1]]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            project_id='g1')
+        filters = {'size': '1', 'display_name': 'name_1'}
+        correct_order = [vols[1]]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            project_id='g1')
+
+        # Remove project scope
+        filters = {'size': '1'}
+        correct_order = [vols[0], vols[1], vols[6], vols[7]]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters)
+        filters = {'size': '1', 'display_name': 'name_1'}
+        correct_order = [vols[1], vols[7]]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters)
+
+        # Remove size constraint
+        filters = {'display_name': 'name_1'}
+        correct_order = [vols[1], vols[3], vols[5]]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            project_id='g1')
+        correct_order = [vols[1], vols[3], vols[5], vols[7]]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters)
+
+        # Verify bogus values return nothing
+        filters = {'display_name': 'name_1', 'bogus_value': 'foo'}
+        self._assertEqualsVolumeOrderResult([], filters=filters,
+                                            project_id='g1')
+        self._assertEqualsVolumeOrderResult([], project_id='bogus')
+        self._assertEqualsVolumeOrderResult([], filters=filters)
+        self._assertEqualsVolumeOrderResult([], filters={'metadata':
+                                                         'not valid'})
+        self._assertEqualsVolumeOrderResult([], filters={'metadata':
+                                                         ['not', 'valid']})
+
+        # Verify that relationship property keys return nothing, these
+        # exist on the Volumes model but are not columns
+        filters = {'volume_type': 'bogus_type'}
+        self._assertEqualsVolumeOrderResult([], filters=filters)
+
+    def test_volume_get_all_filters_limit(self):
+        vol1 = db.volume_create(self.ctxt, {'display_name': 'test1'})
+        vol2 = db.volume_create(self.ctxt, {'display_name': 'test2'})
+        vol3 = db.volume_create(self.ctxt, {'display_name': 'test2',
+                                            'metadata': {'key1': 'val1'}})
+        vol4 = db.volume_create(self.ctxt, {'display_name': 'test3',
+                                            'metadata': {'key1': 'val1',
+                                                         'key2': 'val2'}})
+        vol5 = db.volume_create(self.ctxt, {'display_name': 'test3',
+                                            'metadata': {'key2': 'val2',
+                                                         'key3': 'val3'},
+                                            'host': 'host5'})
+        vols = [vol1, vol2, vol3, vol4, vol5]
+
+        # Ensure we have 5 total instances
+        self._assertEqualsVolumeOrderResult(vols)
+
+        # No filters, test limit
+        self._assertEqualsVolumeOrderResult(vols[:1], limit=1)
+        self._assertEqualsVolumeOrderResult(vols[:4], limit=4)
+
+        # Just the test2 volumes
+        filters = {'display_name': 'test2'}
+        self._assertEqualsVolumeOrderResult([vol2, vol3], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol2], limit=1,
+                                            filters=filters)
+        self._assertEqualsVolumeOrderResult([vol2, vol3], limit=2,
+                                            filters=filters)
+        self._assertEqualsVolumeOrderResult([vol2, vol3], limit=100,
+                                            filters=filters)
+
+        # metdata filters
+        filters = {'metadata': {'key1': 'val1'}}
+        self._assertEqualsVolumeOrderResult([vol3, vol4], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol3], limit=1,
+                                            filters=filters)
+        self._assertEqualsVolumeOrderResult([vol3, vol4], limit=10,
+                                            filters=filters)
+
+        filters = {'metadata': {'key1': 'val1',
+                                'key2': 'val2'}}
+        self._assertEqualsVolumeOrderResult([vol4], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol4], limit=1,
+                                            filters=filters)
+
+        # No match
+        filters = {'metadata': {'key1': 'val1',
+                                'key2': 'val2',
+                                'key3': 'val3'}}
+        self._assertEqualsVolumeOrderResult([], filters=filters)
+        filters = {'metadata': {'key1': 'val1',
+                                'key2': 'bogus'}}
+        self._assertEqualsVolumeOrderResult([], filters=filters)
+        filters = {'metadata': {'key1': 'val1',
+                                'key2': 'val1'}}
+        self._assertEqualsVolumeOrderResult([], filters=filters)
+
+        # Combination
+        filters = {'display_name': 'test2',
+                   'metadata': {'key1': 'val1'}}
+        self._assertEqualsVolumeOrderResult([vol3], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol3], limit=1,
+                                            filters=filters)
+        self._assertEqualsVolumeOrderResult([vol3], limit=100,
+                                            filters=filters)
+        filters = {'display_name': 'test3',
+                   'metadata': {'key2': 'val2',
+                                'key3': 'val3'},
+                   'host': 'host5'}
+        self._assertEqualsVolumeOrderResult([vol5], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol5], limit=1,
+                                            filters=filters)
+
+    def test_volume_get_no_migration_targets(self):
+        """Verifies the unique 'no_migration_targets'=True filter.
+
+        This filter returns volumes with either a NULL 'migration_status'
+        or a non-NULL value that does not start with 'target:'.
+        """
+        vol1 = db.volume_create(self.ctxt, {'display_name': 'test1'})
+        vol2 = db.volume_create(self.ctxt, {'display_name': 'test2',
+                                            'migration_status': 'bogus'})
+        vol3 = db.volume_create(self.ctxt, {'display_name': 'test3',
+                                            'migration_status': 'btarget:'})
+        vol4 = db.volume_create(self.ctxt, {'display_name': 'test4',
+                                            'migration_status': 'target:'})
+        vols = [vol1, vol2, vol3, vol4]
+
+        # Ensure we have 4 total instances
+        self._assertEqualsVolumeOrderResult(vols)
+
+        # Apply the unique filter
+        filters = {'no_migration_targets': True}
+        self._assertEqualsVolumeOrderResult([vol1, vol2, vol3],
+                                            filters=filters)
+        self._assertEqualsVolumeOrderResult([vol1, vol2], limit=2,
+                                            filters=filters)
+
+        filters = {'no_migration_targets': True,
+                   'display_name': 'test4'}
+        self._assertEqualsVolumeOrderResult([], filters=filters)
 
     def test_volume_get_iscsi_target_num(self):
         target = db.iscsi_target_create_safe(self.ctxt, {'volume_id': 42,

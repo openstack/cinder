@@ -267,8 +267,10 @@ class API(base.Base):
         return volume
 
     def get_all(self, context, marker=None, limit=None, sort_key='created_at',
-                sort_dir='desc', filters={}):
+                sort_dir='desc', filters=None):
         check_policy(context, 'get_all')
+        if filters == None:
+            filters = {}
 
         try:
             if limit is not None:
@@ -280,60 +282,27 @@ class API(base.Base):
             msg = _('limit param must be an integer')
             raise exception.InvalidInput(reason=msg)
 
-        if (context.is_admin and 'all_tenants' in filters):
-            # Need to remove all_tenants to pass the filtering below.
-            del filters['all_tenants']
-            volumes = self.db.volume_get_all(context, marker, limit, sort_key,
-                                             sort_dir)
-        else:
-            volumes = self.db.volume_get_all_by_project(context,
-                                                        context.project_id,
-                                                        marker, limit,
-                                                        sort_key, sort_dir)
-
-        # Non-admin shouldn't see temporary target of a volume migration
+        # Non-admin shouldn't see temporary target of a volume migration, add
+        # unique filter data to reflect that only volumes with a NULL
+        # 'migration_status' or a 'migration_status' that does not start with
+        # 'target:' should be returned (processed in db/sqlalchemy/api.py)
         if not context.is_admin:
             filters['no_migration_targets'] = True
 
         if filters:
-            LOG.debug(_("Searching by: %s") % filters)
+            LOG.debug(_("Searching by: %s") % str(filters))
 
-            def _check_metadata_match(volume, searchdict):
-                volume_metadata = {}
-                for i in volume.get('volume_metadata'):
-                    volume_metadata[i['key']] = i['value']
-
-                for k, v in searchdict.iteritems():
-                    if (k not in volume_metadata.keys() or
-                            volume_metadata[k] != v):
-                        return False
-                return True
-
-            def _check_migration_target(volume, searchdict):
-                status = volume['migration_status']
-                if status and status.startswith('target:'):
-                    return False
-                return True
-
-            # search_option to filter_name mapping.
-            filter_mapping = {'metadata': _check_metadata_match,
-                              'no_migration_targets': _check_migration_target}
-
-            result = []
-            not_found = object()
-            for volume in volumes:
-                # go over all filters in the list
-                for opt, values in filters.iteritems():
-                    try:
-                        filter_func = filter_mapping[opt]
-                    except KeyError:
-                        def filter_func(volume, value):
-                            return volume.get(opt, not_found) == value
-                    if not filter_func(volume, values):
-                        break  # volume doesn't match this filter
-                else:  # did not break out loop
-                    result.append(volume)  # volume matches all filters
-            volumes = result
+        if (context.is_admin and 'all_tenants' in filters):
+            # Need to remove all_tenants to pass the filtering below.
+            del filters['all_tenants']
+            volumes = self.db.volume_get_all(context, marker, limit, sort_key,
+                                             sort_dir, filters=filters)
+        else:
+            volumes = self.db.volume_get_all_by_project(context,
+                                                        context.project_id,
+                                                        marker, limit,
+                                                        sort_key, sort_dir,
+                                                        filters=filters)
 
         return volumes
 
