@@ -177,7 +177,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             try:
                 self.delete_snapshot({'volume_name': volume, 'name': snapshot})
             except nexenta.NexentaException as exc:
-                LOG.warning(_('Cannot delete snapshot %(origin): %(exc)s'),
+                LOG.warning(_('Cannot delete snapshot %(origin)s: %(exc)s'),
                             {'origin': origin, 'exc': exc})
 
     def create_cloned_volume(self, volume, src_vref):
