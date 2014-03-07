@@ -19,7 +19,6 @@
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import policy
 from cinder import utils
 
