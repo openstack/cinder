@@ -747,6 +747,16 @@ class VolumeApiTest(test.TestCase):
                           self.controller.index,
                           req)
 
+    def test_volume_with_limit_zero(self):
+        def stub_volume_get_all(context, marker, limit,
+                                sort_key, sort_dir):
+            return []
+        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
+        req = fakes.HTTPRequest.blank('/v2/volumes?limit=0')
+        res_dict = self.controller.index(req)
+        expected = {'volumes': []}
+        self.assertEqual(res_dict, expected)
+
     def test_volume_default_limit(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
