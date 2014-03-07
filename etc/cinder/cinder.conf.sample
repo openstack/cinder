@@ -1855,53 +1855,35 @@
 #extra_capabilities={}
 
 
-[fc-zone-manager]
+[BRCD_FABRIC_EXAMPLE]
 
 #
-# Options defined in cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver
+# Options defined in cinder.zonemanager.drivers.brocade.brcd_fabric_opts
 #
 
-# Southbound connector for zoning operation (string value)
-#brcd_sb_connector=cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli.BrcdFCZoneClientCLI
+# Management IP of fabric (string value)
+#fc_fabric_address=
 
+# Fabric user ID (string value)
+#fc_fabric_user=
 
-#
-# Options defined in cinder.zonemanager.fc_zone_manager
-#
+# Password for user (string value)
+#fc_fabric_password=
 
-# FC Zone Driver responsible for zone management (string
-# value)
-#zone_driver=cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver.BrcdFCZoneDriver
+# Connecting port (integer value)
+#fc_fabric_port=22
 
-# Zoning policy configured by user (string value)
+# overridden zoning policy (string value)
 #zoning_policy=initiator-target
 
-# Comma separated list of fibre channel fabric names. This
-# list of names is used to retrieve other SAN credentials for
-# connecting to each SAN fabric (string value)
-#fc_fabric_names=<None>
+# overridden zoning activation state (boolean value)
+#zone_activate=true
 
-# FC San Lookup Service (string value)
-#fc_san_lookup_service=cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service.BrcdFCSanLookupService
+# overridden zone name prefix (string value)
+#zone_name_prefix=<None>
 
-
-[ssl]
-
-#
-# Options defined in cinder.openstack.common.sslutils
-#
-
-# CA certificate file to use to verify connecting clients
-# (string value)
-#ca_file=<None>
-
-# Certificate file to use when starting the server securely
-# (string value)
-#cert_file=<None>
-
-# Private key file to use when starting the server securely
-# (string value)
-#key_file=<None>
+# Principal switch WWN of the fabric (string value)
+#principal_switch_wwn=<None>
 
 
 [database]
@@ -1970,6 +1952,36 @@
 #connection_trace=false
 
 
+[fc-zone-manager]
+
+#
+# Options defined in cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver
+#
+
+# Southbound connector for zoning operation (string value)
+#brcd_sb_connector=cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli.BrcdFCZoneClientCLI
+
+
+#
+# Options defined in cinder.zonemanager.fc_zone_manager
+#
+
+# FC Zone Driver responsible for zone management (string
+# value)
+#zone_driver=cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver.BrcdFCZoneDriver
+
+# Zoning policy configured by user (string value)
+#zoning_policy=initiator-target
+
+# Comma separated list of fibre channel fabric names. This
+# list of names is used to retrieve other SAN credentials for
+# connecting to each SAN fabric (string value)
+#fc_fabric_names=<None>
+
+# FC San Lookup Service (string value)
+#fc_san_lookup_service=cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service.BrcdFCSanLookupService
+
+
 [keymgr]
 
 #
@@ -1988,32 +2000,6 @@
 # Fixed key returned by key manager, specified in hex (string
 # value)
 #fixed_key=<None>
-
-
-[rpc_notifier2]
-
-#
-# Options defined in cinder.openstack.common.notifier.rpc_notifier2
-#
-
-# AMQP topic(s) used for OpenStack notifications (list value)
-#topics=notifications
-
-
-[matchmaker_redis]
-
-#
-# Options defined in cinder.openstack.common.rpc.matchmaker_redis
-#
-
-# Host to locate redis (string value)
-#host=127.0.0.1
-
-# Use this port to connect to redis host. (integer value)
-#port=6379
-
-# Password for Redis server. (optional) (string value)
-#password=<None>
 
 
 [keystone_authtoken]
@@ -2147,35 +2133,20 @@
 #enforce_token_bind=permissive
 
 
-[BRCD_FABRIC_EXAMPLE]
+[matchmaker_redis]
 
 #
-# Options defined in cinder.zonemanager.drivers.brocade.brcd_fabric_opts
+# Options defined in cinder.openstack.common.rpc.matchmaker_redis
 #
 
-# Management IP of fabric (string value)
-#fc_fabric_address=
+# Host to locate redis (string value)
+#host=127.0.0.1
 
-# Fabric user ID (string value)
-#fc_fabric_user=
+# Use this port to connect to redis host. (integer value)
+#port=6379
 
-# Password for user (string value)
-#fc_fabric_password=
-
-# Connecting port (integer value)
-#fc_fabric_port=22
-
-# overridden zoning policy (string value)
-#zoning_policy=initiator-target
-
-# overridden zoning activation state (boolean value)
-#zone_activate=true
-
-# overridden zone name prefix (string value)
-#zone_name_prefix=<None>
-
-# Principal switch WWN of the fabric (string value)
-#principal_switch_wwn=<None>
+# Password for Redis server. (optional) (string value)
+#password=<None>
 
 
 [matchmaker_ring]
@@ -2187,5 +2158,34 @@
 # Matchmaker ring file (JSON) (string value)
 # Deprecated group/name - [DEFAULT]/matchmaker_ringfile
 #ringfile=/etc/oslo/matchmaker_ring.json
+
+
+[rpc_notifier2]
+
+#
+# Options defined in cinder.openstack.common.notifier.rpc_notifier2
+#
+
+# AMQP topic(s) used for OpenStack notifications (list value)
+#topics=notifications
+
+
+[ssl]
+
+#
+# Options defined in cinder.openstack.common.sslutils
+#
+
+# CA certificate file to use to verify connecting clients
+# (string value)
+#ca_file=<None>
+
+# Certificate file to use when starting the server securely
+# (string value)
+#cert_file=<None>
+
+# Private key file to use when starting the server securely
+# (string value)
+#key_file=<None>
 
 
