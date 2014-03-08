@@ -216,15 +216,35 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             self._stats = data
         return self._stats
 
+    def _verify_volume_creation(self, volume):
+        """Verify the volume can be created.
+
+        Verify that there is a datastore that can accommodate this volume.
+        If this volume is being associated with a volume_type then verify
+        the storage_profile exists and can accommodate this volume. Raise
+        an exception otherwise.
+
+        :param volume: Volume object
+        """
+        try:
+            # find if any host can accommodate the volume
+            self._select_ds_for_volume(volume)
+        except error_util.VimException as excep:
+            msg = _("Not able to find a suitable datastore for the volume: "
+                    "%s.") % volume['name']
+            LOG.exception(msg)
+            raise error_util.VimFaultException([excep], msg)
+        LOG.debug(_("Verified volume %s can be created."), volume['name'])
+
     def create_volume(self, volume):
         """Creates a volume.
 
-        We do not create any backing. We do it only for the first time
+        We do not create any backing. We do it only the first time
         it is being attached to a virtual machine.
 
         :param volume: Volume object
         """
-        pass
+        self._verify_volume_creation(volume)
 
     def _delete_volume(self, volume):
         """Delete the volume backing if it is present.
@@ -449,7 +469,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                "of size: %(vol)s GB under host: %(host)s. "
                                "More details: %(excep)s") %
                              {'vol': volume['size'],
-                              'host': host.obj, 'excep': excep})
+                              'host': host, 'excep': excep})
             if selected_host:
                 self.volumeops.cancel_retrieval(retrv_result)
                 return (selected_host, rp, folder, summary)
@@ -670,7 +690,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :param volume: New Volume object
         :param src_vref: Volume object that must be cloned
         """
-
+        self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(src_vref['name'])
         if not backing:
             LOG.info(_("There is no backing for the source volume: "
@@ -700,7 +720,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :param volume: Volume object
         :param snapshot: Snapshot object
         """
-
+        self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(snapshot['volume_name'])
         if not backing:
             LOG.info(_("There is no backing for the source snapshot: "
@@ -1063,6 +1083,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         :param volume: New Volume object
         :param snapshot: Reference to snapshot entity
         """
+        self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(snapshot['volume_name'])
         if not backing:
             LOG.info(_("There is no backing for the snapshoted volume: "
@@ -1098,7 +1119,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         :param volume: New Volume object
         :param src_vref: Source Volume object
         """
-
+        self._verify_volume_creation(volume)
         backing = self.volumeops.get_backing(src_vref['name'])
         if not backing:
             LOG.info(_("There is no backing for the source volume: %(src)s. "
