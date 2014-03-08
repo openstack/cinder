@@ -18,9 +18,11 @@ Classes for making VMware VI SOAP calls.
 """
 
 import httplib
+
 import suds
 
 from cinder.volume.drivers.vmware import error_util
+from cinder.volume.drivers.vmware import vim_util
 
 RESP_NOT_XML_ERROR = "Response is 'text/html', not 'text/xml'"
 CONN_ABORT_ERROR = 'Software caused connection abort'
@@ -80,7 +82,7 @@ class Vim(object):
         self._host_name = host
         if not wsdl_loc:
             wsdl_loc = Vim._get_wsdl_loc(protocol, host)
-        soap_url = Vim._get_soap_url(protocol, host)
+        soap_url = vim_util.get_soap_url(protocol, host)
         self._client = suds.client.Client(wsdl_loc, location=soap_url,
                                           plugins=[VIMMessagePlugin()])
         self._service_content = self.RetrieveServiceContent('ServiceInstance')
@@ -93,17 +95,7 @@ class Vim(object):
         :param host_name: ESX/VC server host name
         :return: Default WSDL file location hosted at the server
         """
-        return '%s://%s/sdk/vimService.wsdl' % (protocol, host_name)
-
-    @staticmethod
-    def _get_soap_url(protocol, host_name):
-        """Return URL to SOAP services for ESX/VC server.
-
-        :param protocol: https or http
-        :param host_name: ESX/VC server host name
-        :return: URL to SOAP services for ESX/VC server
-        """
-        return '%s://%s/sdk' % (protocol, host_name)
+        return vim_util.get_soap_url(protocol, host_name) + '/vimService.wsdl'
 
     @property
     def service_content(self):

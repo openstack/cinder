@@ -17,6 +17,21 @@
 The VMware API utility module.
 """
 
+import netaddr
+
+
+def get_soap_url(protocol, host, path='sdk'):
+    """Return URL to SOAP services for ESX/VC server.
+
+    :param protocol: https or http
+    :param host: ESX/VC server host IP
+    :param path: path part of the SOAP URL
+    :return: URL to SOAP services for ESX/VC server
+    """
+    if netaddr.valid_ipv6(host):
+        return '%s://[%s]/%s' % (protocol, host, path)
+    return '%s://%s/%s' % (protocol, host, path)
+
 
 def build_selection_spec(client_factory, name):
     """Builds the selection spec.
@@ -299,3 +314,31 @@ def get_object_property(vim, mobj, property_name):
         if prop:
             prop_val = prop[0].val
     return prop_val
+
+
+def convert_datastores_to_hubs(pbm_client_factory, datastores):
+    """Convert Datastore morefs to PbmPlacementHub morefs.
+
+    :param pbm_client_factory: pbm client factory
+    :param datastores: list of datastore morefs
+    :returns: list of PbmPlacementHub morefs
+    """
+    hubs = []
+    for ds in datastores:
+        hub = pbm_client_factory.create('ns0:PbmPlacementHub')
+        hub.hubId = ds.value
+        hub.hubType = 'Datastore'
+        hubs.append(hub)
+    return hubs
+
+
+def convert_hubs_to_datastores(hubs, datastores):
+    """Get filtered subset of datastores as represented by hubs.
+
+    :param hubs: represents a sub set of datastore ids
+    :param datastores: represents all candidate datastores
+    :returns: that subset of datastores objects that are also present in hubs
+    """
+    hubIds = [hub.hubId for hub in hubs]
+    filtered_dss = [ds for ds in datastores if ds.value in hubIds]
+    return filtered_dss

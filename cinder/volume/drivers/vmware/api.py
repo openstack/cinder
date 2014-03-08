@@ -1,5 +1,3 @@
-# vim: expandtab tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2013 VMware, Inc.
 # All Rights Reserved.
 #
@@ -23,6 +21,7 @@ Provides abstraction over cinder.volume.drivers.vmware.vim.Vim SOAP calls.
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.vmware import error_util
+from cinder.volume.drivers.vmware import pbm
 from cinder.volume.drivers.vmware import vim
 from cinder.volume.drivers.vmware import vim_util
 
@@ -98,7 +97,7 @@ class VMwareAPISession(object):
     @Retry(exceptions=(Exception))
     def __init__(self, server_ip, server_username, server_password,
                  api_retry_count, task_poll_interval, scheme='https',
-                 create_session=True, wsdl_loc=None):
+                 create_session=True, wsdl_loc=None, pbm_wsdl=None):
         """Constructs session object.
 
         :param server_ip: IP address of ESX/VC server
@@ -111,8 +110,10 @@ class VMwareAPISession(object):
         :param scheme: http or https protocol
         :param create_session: Boolean whether to set up connection at the
                                time of instance creation
-        :param wsdl_loc: WSDL file location for invoking SOAP calls on server
-                         using suds
+        :param wsdl_loc: VIM WSDL file location for invoking SOAP calls on
+                         server using suds
+        :param pbm_wsdl: PBM WSDL file location. If set to None the storage
+                         policy related functionality will be disabled.
         """
         self._server_ip = server_ip
         self._server_username = server_username
@@ -123,6 +124,8 @@ class VMwareAPISession(object):
         self._scheme = scheme
         self._session_id = None
         self._vim = None
+        self._pbm_wsdl = pbm_wsdl
+        self._pbm = None
         if create_session:
             self.create_session()
 
@@ -132,6 +135,14 @@ class VMwareAPISession(object):
             self._vim = vim.Vim(protocol=self._scheme, host=self._server_ip,
                                 wsdl_loc=self._wsdl_loc)
         return self._vim
+
+    @property
+    def pbm(self):
+        if not self._pbm and self._pbm_wsdl:
+            self._pbm = pbm.PBMClient(self.vim, self._pbm_wsdl,
+                                      protocol=self._scheme,
+                                      host=self._server_ip)
+        return self._pbm
 
     def create_session(self):
         """Establish session with the server."""
@@ -157,15 +168,23 @@ class VMwareAPISession(object):
                 LOG.exception(_("Error while terminating session: %s.") %
                               excep)
         self._session_id = session.key
+        if self.pbm:
+            self.pbm.set_cookie()
         LOG.info(_("Successfully established connection to the server."))
 
     def __del__(self):
-        """Logs-out the session."""
+        """Logs-out the sessions."""
         try:
             self.vim.Logout(self.vim.service_content.sessionManager)
         except Exception as excep:
-            LOG.exception(_("Error while logging out the user: %s.") %
+            LOG.exception(_("Error while logging out from vim session: %s."),
                           excep)
+        if self._pbm:
+            try:
+                self.pbm.Logout(self.pbm.service_content.sessionManager)
+            except Exception as excep:
+                LOG.exception(_("Error while logging out from pbm session: "
+                                "%s."), excep)
 
     def invoke_api(self, module, method, *args, **kwargs):
         """Wrapper method for invoking APIs.

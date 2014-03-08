@@ -442,7 +442,7 @@ class VolumeOpsTestCase(test.TestCase):
                                        resource_pool, host, ds_name)
         self.assertEqual(mock.sentinel.result, ret)
         get_create_spec.assert_called_once_with(name, size_kb, disk_type,
-                                                ds_name)
+                                                ds_name, None)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         'CreateVM_Task',
                                                         folder,
