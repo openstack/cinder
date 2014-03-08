@@ -258,7 +258,7 @@ class ViewBuilder(object):
         max_items = min(
             int(request.params.get("limit", CONF.osapi_max_limit)),
             CONF.osapi_max_limit)
-        if max_items == len(items):
+        if max_items and max_items == len(items):
             last_item = items[-1]
             if id_key in last_item:
                 last_item_id = last_item[id_key]
