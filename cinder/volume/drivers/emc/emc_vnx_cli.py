@@ -611,7 +611,7 @@ class EMCVnxCli(object):
 
                     if host_lun_id is None:
                         msg = (_('Unable to get new host lun id. Please '
-                               'check if the storage group can accomodate '
+                               'check if the storage group can accommodate '
                                'new LUN. '
                                'Command to add LUN for volume - %s '
                                'in storagegroup failed') % (volumename))
