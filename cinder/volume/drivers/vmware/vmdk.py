@@ -80,15 +80,23 @@ vmdk_opts = [
                     'Query results will be obtained in batches from the '
                     'server and not in one shot. Server may still limit the '
                     'count to something less than the configured value.'),
-    cfg.StrOpt('vmware_pbm_wsdl',
+]
+
+spbm_opts = [
+    cfg.StrOpt('pbm_wsdl_location',
                help='PBM service WSDL file location URL. '
                     'e.g. file:///opt/SDK/spbm/wsdl/pbmService.wsdl. '
                     'Not setting this will disable storage policy based '
                     'placement of volumes.'),
+    cfg.StrOpt('pbm_default_policy',
+               help='The PBM default policy. If pbm_wsdl_location is set and '
+                    'there is no defined storage policy for the specific '
+                    'request then this policy will be used.'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(vmdk_opts)
+CONF.register_opts(spbm_opts)
 
 
 def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
@@ -337,12 +345,15 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         :param volume: volume whose storage profile should be queried
         :return: string value of storage profile if volume type is associated,
+                 default global profile if configured in pbm_default_profile,
                  None otherwise
         """
         type_id = volume['volume_type_id']
         if not type_id:
             return
-        return _get_volume_type_extra_spec(type_id, 'storage_profile')
+        default_policy = self.configuration.pbm_default_policy
+        return _get_volume_type_extra_spec(type_id, 'storage_profile',
+                                           default_value=default_policy)
 
     def _filter_ds_by_profile(self, datastores, storage_profile):
         """Filter out datastores that do not match given storage profile.
@@ -971,6 +982,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
 
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(spbm_opts)
         self._session = None
 
     @property
@@ -982,15 +994,36 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             api_retry_count = self.configuration.vmware_api_retry_count
             task_poll_interval = self.configuration.vmware_task_poll_interval
             wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
-            pbm_wsdl = self.configuration.vmware_pbm_wsdl
+            pbm_wsdl = self.configuration.pbm_wsdl_location
             self._session = api.VMwareAPISession(ip, username,
                                                  password, api_retry_count,
                                                  task_poll_interval,
                                                  wsdl_loc=wsdl_loc,
                                                  pbm_wsdl=pbm_wsdl)
-            if pbm_wsdl:
-                self._storage_policy_enabled = True
         return self._session
+
+    def do_setup(self, context):
+        """Any initialization the volume driver does while starting."""
+        super(VMwareVcVmdkDriver, self).do_setup(context)
+        # VC specific setup is done here
+        pbm_wsdl = self.configuration.pbm_wsdl_location
+        default_policy = self.configuration.pbm_default_policy
+        if not pbm_wsdl:
+            if default_policy:
+                LOG.warn(_("Ignoring %s since pbm_wsdl_location is not "
+                           "set."), default_policy)
+            return
+        # pbm_wsdl is set, so storage policy should be enabled
+        self._storage_policy_enabled = True
+        # now verify the default policy exists in VC
+        if default_policy:
+            if not self.volumeops.retrieve_profile_id(default_policy):
+                msg = _("The configured default PBM policy '%s' is not "
+                        "defined on vCenter Server.") % default_policy
+                raise error_util.PbmDefaultPolicyDoesNotExist(message=msg)
+            else:
+                LOG.info(_("Successfully verified existence of "
+                           "pbm_default_policy: %s."), default_policy)
 
     def _get_volume_group_folder(self, datacenter):
         """Get volume group folder.

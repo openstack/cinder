@@ -1721,6 +1721,17 @@
 # Options defined in cinder.volume.drivers.vmware.vmdk
 #
 
+# PBM service WSDL file location URL. e.g.
+# file:///opt/SDK/spbm/wsdl/pbmService.wsdl. Not setting this
+# will disable storage policy based placement of volumes.
+# (string value)
+#pbm_wsdl_location=<None>
+
+# The PBM default policy. If pbm_wsdl_location is set and
+# there is no defined storage policy for the specific request
+# then this policy will be used. (string value)
+#pbm_default_policy=<None>
+
 # IP address for connecting to VMware ESX/VC server. (string
 # value)
 #vmware_host_ip=<None>
@@ -1759,12 +1770,6 @@
 # in one shot. Server may still limit the count to something
 # less than the configured value. (integer value)
 #vmware_max_objects_retrieval=100
-
-# PBM service WSDL file location URL. e.g.
-# file:///opt/SDK/spbm/wsdl/pbmService.wsdl. Not setting this
-# will disable storage policy based placement of volumes.
-# (string value)
-#vmware_pbm_wsdl=<None>
 
 
 #

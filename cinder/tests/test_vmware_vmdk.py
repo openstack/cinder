@@ -1077,11 +1077,33 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     """Test class for VMwareVcVmdkDriver."""
 
     PBM_WSDL = '/fake/wsdl/path'
+    DEFAULT_PROFILE = 'fakeProfile'
 
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
-        self.flags(vmware_pbm_wsdl=self.PBM_WSDL)
+        self._config.pbm_wsdl_location = self.PBM_WSDL
+        self._config.pbm_default_policy = self.DEFAULT_PROFILE
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'session', new_callable=mock.PropertyMock)
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'volumeops', new_callable=mock.PropertyMock)
+    def test_do_setup(self, vol_ops, session):
+        """Test do_setup."""
+        vol_ops = vol_ops.return_value
+        session = session.return_value
+        # pbm_wsdl_location is set and pbm_default_policy is used
+        self._driver.do_setup(mock.ANY)
+        default = self.DEFAULT_PROFILE
+        vol_ops.retrieve_profile_id.assert_called_once_with(default)
+        # pbm_wsdl_location is set and pbm_default_policy is wrong
+        vol_ops.retrieve_profile_id.return_value = None
+        self.assertRaises(error_util.PbmDefaultPolicyDoesNotExist,
+                          self._driver.do_setup, mock.ANY)
+        # pbm_wsdl_location is not set
+        self._driver.configuration.pbm_wsdl_location = None
+        self._driver.do_setup(mock.ANY)
 
     def test_init_conn_with_instance_and_backing(self):
         """Test initialize_connection with instance and backing."""
@@ -1396,19 +1418,27 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     def test_get_storage_profile(self, get_volume_type_extra_specs):
         """Test vmdk _get_storage_profile."""
 
-        # Test volume with no type id returns None
+        # volume with no type id returns None
         volume = FakeObject()
         volume['volume_type_id'] = None
         sp = self._driver._get_storage_profile(volume)
         self.assertEqual(None, sp, "Without a volume_type_id no storage "
                          "profile should be returned.")
 
-        # Test volume with type id calls extra specs
+        # profile associated with the volume type should be returned
         fake_id = 'fake_volume_id'
         volume['volume_type_id'] = fake_id
-        self._driver._get_storage_profile(volume)
+        get_volume_type_extra_specs.return_value = 'fake_profile'
+        profile = self._driver._get_storage_profile(volume)
+        self.assertEqual('fake_profile', profile)
         spec_key = 'vmware:storage_profile'
         get_volume_type_extra_specs.assert_called_once_with(fake_id, spec_key)
+
+        # default profile should be returned when no storage profile is
+        # associated with the volume type
+        get_volume_type_extra_specs.return_value = False
+        profile = self._driver._get_storage_profile(volume)
+        self.assertEqual(self.DEFAULT_PROFILE, profile)
 
     @mock.patch('cinder.volume.drivers.vmware.vim_util.'
                 'convert_datastores_to_hubs')
