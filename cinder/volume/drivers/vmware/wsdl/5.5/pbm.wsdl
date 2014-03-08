@@ -1,0 +1,889 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+   Copyright 2005-2013 VMware, Inc.  All rights reserved.
+-->
+<definitions targetNamespace="urn:pbm"
+   xmlns="http://schemas.xmlsoap.org/wsdl/"
+   xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/"
+   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+   xmlns:pbm="urn:pbm"
+   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+>
+   <types>
+      <schema
+         targetNamespace="urn:pbm"
+         xmlns="http://www.w3.org/2001/XMLSchema"
+         xmlns:pbm="urn:pbm"
+         xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+         xmlns:vim25="urn:vim25"
+         elementFormDefault="qualified"
+      >
+         <import namespace="urn:vim25" schemaLocation="core-types.xsd" />
+         <include schemaLocation="pbm-messagetypes.xsd" />
+         <element name="versionURI" type="xsd:string" />
+         <element name="HostCommunicationFault" type="vim25:HostCommunication"/>
+         <element name="HostNotConnectedFault" type="vim25:HostNotConnected"/>
+         <element name="HostNotReachableFault" type="vim25:HostNotReachable"/>
+         <element name="InvalidArgumentFault" type="vim25:InvalidArgument"/>
+         <element name="InvalidRequestFault" type="vim25:InvalidRequest"/>
+         <element name="InvalidTypeFault" type="vim25:InvalidType"/>
+         <element name="ManagedObjectNotFoundFault" type="vim25:ManagedObjectNotFound"/>
+         <element name="MethodNotFoundFault" type="vim25:MethodNotFound"/>
+         <element name="NotEnoughLicensesFault" type="vim25:NotEnoughLicenses"/>
+         <element name="NotImplementedFault" type="vim25:NotImplemented"/>
+         <element name="NotSupportedFault" type="vim25:NotSupported"/>
+         <element name="RequestCanceledFault" type="vim25:RequestCanceled"/>
+         <element name="SecurityErrorFault" type="vim25:SecurityError"/>
+         <element name="SystemErrorFault" type="vim25:SystemError"/>
+         <element name="UnexpectedFaultFault" type="vim25:UnexpectedFault"/>
+         <element name="MethodFaultFault" type="vim25:MethodFault"/>
+         <element name="RuntimeFaultFault" type="vim25:RuntimeFault"/>
+         <element name="PbmRetrieveServiceContent"  type="pbm:PbmRetrieveServiceContentRequestType" />
+         <element name="PbmRetrieveServiceContentResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmServiceInstanceContent" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmCheckCompliance"  type="pbm:PbmCheckComplianceRequestType" />
+         <element name="PbmCheckComplianceResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmComplianceResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmFetchComplianceResult"  type="pbm:PbmFetchComplianceResultRequestType" />
+         <element name="PbmFetchComplianceResultResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmComplianceResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmCheckRollupCompliance"  type="pbm:PbmCheckRollupComplianceRequestType" />
+         <element name="PbmCheckRollupComplianceResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmRollupComplianceResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmFetchRollupComplianceResult"  type="pbm:PbmFetchRollupComplianceResultRequestType" />
+         <element name="PbmFetchRollupComplianceResultResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmRollupComplianceResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmAlreadyExistsFault" type="pbm:PbmAlreadyExists"/>
+         <element name="PbmCapabilityProfilePropertyMismatchFaultFault" type="pbm:PbmCapabilityProfilePropertyMismatchFault"/>
+         <element name="PbmCompatibilityCheckFaultFault" type="pbm:PbmCompatibilityCheckFault"/>
+         <element name="PbmDefaultProfileAppliesFaultFault" type="pbm:PbmDefaultProfileAppliesFault"/>
+         <element name="PbmDuplicateNameFault" type="pbm:PbmDuplicateName"/>
+         <element name="PbmIncompatibleVendorSpecificRuleSetFault" type="pbm:PbmIncompatibleVendorSpecificRuleSet"/>
+         <element name="PbmFaultNotFoundFault" type="pbm:PbmFaultNotFound"/>
+         <element name="PbmFaultFault" type="pbm:PbmFault"/>
+         <element name="PbmFaultProfileStorageFaultFault" type="pbm:PbmFaultProfileStorageFault"/>
+         <element name="PbmPropertyMismatchFaultFault" type="pbm:PbmPropertyMismatchFault"/>
+         <element name="PbmResourceInUseFault" type="pbm:PbmResourceInUse"/>
+         <element name="PbmQueryMatchingHub"  type="pbm:PbmQueryMatchingHubRequestType" />
+         <element name="PbmQueryMatchingHubResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmPlacementHub" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmQueryMatchingHubWithSpec"  type="pbm:PbmQueryMatchingHubWithSpecRequestType" />
+         <element name="PbmQueryMatchingHubWithSpecResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmPlacementHub" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmCheckCompatibility"  type="pbm:PbmCheckCompatibilityRequestType" />
+         <element name="PbmCheckCompatibilityResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmPlacementCompatibilityResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmCheckCompatibilityWithSpec"  type="pbm:PbmCheckCompatibilityWithSpecRequestType" />
+         <element name="PbmCheckCompatibilityWithSpecResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmPlacementCompatibilityResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmFetchResourceType"  type="pbm:PbmFetchResourceTypeRequestType" />
+         <element name="PbmFetchResourceTypeResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfileResourceType" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmFetchVendorInfo"  type="pbm:PbmFetchVendorInfoRequestType" />
+         <element name="PbmFetchVendorInfoResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmCapabilityVendorResourceTypeInfo" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmFetchCapabilityMetadata"  type="pbm:PbmFetchCapabilityMetadataRequestType" />
+         <element name="PbmFetchCapabilityMetadataResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmCapabilityMetadataPerCategory" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmCreate"  type="pbm:PbmCreateRequestType" />
+         <element name="PbmCreateResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfileId" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmUpdate"  type="pbm:PbmUpdateRequestType" />
+         <element name="PbmUpdateResponse">
+            <complexType />
+         </element>
+         <element name="PbmDelete"  type="pbm:PbmDeleteRequestType" />
+         <element name="PbmDeleteResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfileOperationOutcome" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmQueryProfile"  type="pbm:PbmQueryProfileRequestType" />
+         <element name="PbmQueryProfileResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfileId" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmRetrieveContent"  type="pbm:PbmRetrieveContentRequestType" />
+         <element name="PbmRetrieveContentResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfile" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmQueryAssociatedProfiles"  type="pbm:PbmQueryAssociatedProfilesRequestType" />
+         <element name="PbmQueryAssociatedProfilesResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmQueryProfileResult" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmQueryAssociatedProfile"  type="pbm:PbmQueryAssociatedProfileRequestType" />
+         <element name="PbmQueryAssociatedProfileResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfileId" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmQueryAssociatedEntity"  type="pbm:PbmQueryAssociatedEntityRequestType" />
+         <element name="PbmQueryAssociatedEntityResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmServerObjectRef" minOccurs="0" maxOccurs="unbounded" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmQueryDefaultRequirementProfile"  type="pbm:PbmQueryDefaultRequirementProfileRequestType" />
+         <element name="PbmQueryDefaultRequirementProfileResponse">
+            <complexType>
+               <sequence>
+                  <element name="returnval" type="pbm:PbmProfileId" minOccurs="0" />
+               </sequence>
+            </complexType>
+         </element>
+         <element name="PbmResetDefaultRequirementProfile"  type="pbm:PbmResetDefaultRequirementProfileRequestType" />
+         <element name="PbmResetDefaultRequirementProfileResponse">
+            <complexType />
+         </element>
+      </schema>
+   </types>
+   <message name="HostCommunicationFaultMsg">
+      <part name="fault" element="pbm:HostCommunicationFault" />
+   </message>
+   <message name="HostNotConnectedFaultMsg">
+      <part name="fault" element="pbm:HostNotConnectedFault" />
+   </message>
+   <message name="HostNotReachableFaultMsg">
+      <part name="fault" element="pbm:HostNotReachableFault" />
+   </message>
+   <message name="InvalidArgumentFaultMsg">
+      <part name="fault" element="pbm:InvalidArgumentFault" />
+   </message>
+   <message name="InvalidRequestFaultMsg">
+      <part name="fault" element="pbm:InvalidRequestFault" />
+   </message>
+   <message name="InvalidTypeFaultMsg">
+      <part name="fault" element="pbm:InvalidTypeFault" />
+   </message>
+   <message name="ManagedObjectNotFoundFaultMsg">
+      <part name="fault" element="pbm:ManagedObjectNotFoundFault" />
+   </message>
+   <message name="MethodNotFoundFaultMsg">
+      <part name="fault" element="pbm:MethodNotFoundFault" />
+   </message>
+   <message name="NotEnoughLicensesFaultMsg">
+      <part name="fault" element="pbm:NotEnoughLicensesFault" />
+   </message>
+   <message name="NotImplementedFaultMsg">
+      <part name="fault" element="pbm:NotImplementedFault" />
+   </message>
+   <message name="NotSupportedFaultMsg">
+      <part name="fault" element="pbm:NotSupportedFault" />
+   </message>
+   <message name="RequestCanceledFaultMsg">
+      <part name="fault" element="pbm:RequestCanceledFault" />
+   </message>
+   <message name="SecurityErrorFaultMsg">
+      <part name="fault" element="pbm:SecurityErrorFault" />
+   </message>
+   <message name="SystemErrorFaultMsg">
+      <part name="fault" element="pbm:SystemErrorFault" />
+   </message>
+   <message name="UnexpectedFaultFaultMsg">
+      <part name="fault" element="pbm:UnexpectedFaultFault" />
+   </message>
+   <message name="MethodFaultFaultMsg">
+      <part name="fault" element="pbm:MethodFaultFault" />
+   </message>
+   <message name="RuntimeFaultFaultMsg">
+      <part name="fault" element="pbm:RuntimeFaultFault" />
+   </message>
+   <message name="PbmRetrieveServiceContentRequestMsg">
+      <part name="parameters" element="pbm:PbmRetrieveServiceContent" />
+   </message>
+   <message name="PbmRetrieveServiceContentResponseMsg">
+      <part name="parameters" element="pbm:PbmRetrieveServiceContentResponse" />
+   </message>
+   <message name="PbmCheckComplianceRequestMsg">
+      <part name="parameters" element="pbm:PbmCheckCompliance" />
+   </message>
+   <message name="PbmCheckComplianceResponseMsg">
+      <part name="parameters" element="pbm:PbmCheckComplianceResponse" />
+   </message>
+   <message name="PbmFetchComplianceResultRequestMsg">
+      <part name="parameters" element="pbm:PbmFetchComplianceResult" />
+   </message>
+   <message name="PbmFetchComplianceResultResponseMsg">
+      <part name="parameters" element="pbm:PbmFetchComplianceResultResponse" />
+   </message>
+   <message name="PbmCheckRollupComplianceRequestMsg">
+      <part name="parameters" element="pbm:PbmCheckRollupCompliance" />
+   </message>
+   <message name="PbmCheckRollupComplianceResponseMsg">
+      <part name="parameters" element="pbm:PbmCheckRollupComplianceResponse" />
+   </message>
+   <message name="PbmFetchRollupComplianceResultRequestMsg">
+      <part name="parameters" element="pbm:PbmFetchRollupComplianceResult" />
+   </message>
+   <message name="PbmFetchRollupComplianceResultResponseMsg">
+      <part name="parameters" element="pbm:PbmFetchRollupComplianceResultResponse" />
+   </message>
+   <message name="PbmAlreadyExistsFaultMsg">
+      <part name="fault" element="pbm:PbmAlreadyExistsFault" />
+   </message>
+   <message name="PbmCapabilityProfilePropertyMismatchFaultFaultMsg">
+      <part name="fault" element="pbm:PbmCapabilityProfilePropertyMismatchFaultFault" />
+   </message>
+   <message name="PbmCompatibilityCheckFaultFaultMsg">
+      <part name="fault" element="pbm:PbmCompatibilityCheckFaultFault" />
+   </message>
+   <message name="PbmDefaultProfileAppliesFaultFaultMsg">
+      <part name="fault" element="pbm:PbmDefaultProfileAppliesFaultFault" />
+   </message>
+   <message name="PbmDuplicateNameFaultMsg">
+      <part name="fault" element="pbm:PbmDuplicateNameFault" />
+   </message>
+   <message name="PbmIncompatibleVendorSpecificRuleSetFaultMsg">
+      <part name="fault" element="pbm:PbmIncompatibleVendorSpecificRuleSetFault" />
+   </message>
+   <message name="PbmFaultNotFoundFaultMsg">
+      <part name="fault" element="pbm:PbmFaultNotFoundFault" />
+   </message>
+   <message name="PbmFaultFaultMsg">
+      <part name="fault" element="pbm:PbmFaultFault" />
+   </message>
+   <message name="PbmFaultProfileStorageFaultFaultMsg">
+      <part name="fault" element="pbm:PbmFaultProfileStorageFaultFault" />
+   </message>
+   <message name="PbmPropertyMismatchFaultFaultMsg">
+      <part name="fault" element="pbm:PbmPropertyMismatchFaultFault" />
+   </message>
+   <message name="PbmResourceInUseFaultMsg">
+      <part name="fault" element="pbm:PbmResourceInUseFault" />
+   </message>
+   <message name="PbmQueryMatchingHubRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryMatchingHub" />
+   </message>
+   <message name="PbmQueryMatchingHubResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryMatchingHubResponse" />
+   </message>
+   <message name="PbmQueryMatchingHubWithSpecRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryMatchingHubWithSpec" />
+   </message>
+   <message name="PbmQueryMatchingHubWithSpecResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryMatchingHubWithSpecResponse" />
+   </message>
+   <message name="PbmCheckCompatibilityRequestMsg">
+      <part name="parameters" element="pbm:PbmCheckCompatibility" />
+   </message>
+   <message name="PbmCheckCompatibilityResponseMsg">
+      <part name="parameters" element="pbm:PbmCheckCompatibilityResponse" />
+   </message>
+   <message name="PbmCheckCompatibilityWithSpecRequestMsg">
+      <part name="parameters" element="pbm:PbmCheckCompatibilityWithSpec" />
+   </message>
+   <message name="PbmCheckCompatibilityWithSpecResponseMsg">
+      <part name="parameters" element="pbm:PbmCheckCompatibilityWithSpecResponse" />
+   </message>
+   <message name="PbmFetchResourceTypeRequestMsg">
+      <part name="parameters" element="pbm:PbmFetchResourceType" />
+   </message>
+   <message name="PbmFetchResourceTypeResponseMsg">
+      <part name="parameters" element="pbm:PbmFetchResourceTypeResponse" />
+   </message>
+   <message name="PbmFetchVendorInfoRequestMsg">
+      <part name="parameters" element="pbm:PbmFetchVendorInfo" />
+   </message>
+   <message name="PbmFetchVendorInfoResponseMsg">
+      <part name="parameters" element="pbm:PbmFetchVendorInfoResponse" />
+   </message>
+   <message name="PbmFetchCapabilityMetadataRequestMsg">
+      <part name="parameters" element="pbm:PbmFetchCapabilityMetadata" />
+   </message>
+   <message name="PbmFetchCapabilityMetadataResponseMsg">
+      <part name="parameters" element="pbm:PbmFetchCapabilityMetadataResponse" />
+   </message>
+   <message name="PbmCreateRequestMsg">
+      <part name="parameters" element="pbm:PbmCreate" />
+   </message>
+   <message name="PbmCreateResponseMsg">
+      <part name="parameters" element="pbm:PbmCreateResponse" />
+   </message>
+   <message name="PbmUpdateRequestMsg">
+      <part name="parameters" element="pbm:PbmUpdate" />
+   </message>
+   <message name="PbmUpdateResponseMsg">
+      <part name="parameters" element="pbm:PbmUpdateResponse" />
+   </message>
+   <message name="PbmDeleteRequestMsg">
+      <part name="parameters" element="pbm:PbmDelete" />
+   </message>
+   <message name="PbmDeleteResponseMsg">
+      <part name="parameters" element="pbm:PbmDeleteResponse" />
+   </message>
+   <message name="PbmQueryProfileRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryProfile" />
+   </message>
+   <message name="PbmQueryProfileResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryProfileResponse" />
+   </message>
+   <message name="PbmRetrieveContentRequestMsg">
+      <part name="parameters" element="pbm:PbmRetrieveContent" />
+   </message>
+   <message name="PbmRetrieveContentResponseMsg">
+      <part name="parameters" element="pbm:PbmRetrieveContentResponse" />
+   </message>
+   <message name="PbmQueryAssociatedProfilesRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryAssociatedProfiles" />
+   </message>
+   <message name="PbmQueryAssociatedProfilesResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryAssociatedProfilesResponse" />
+   </message>
+   <message name="PbmQueryAssociatedProfileRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryAssociatedProfile" />
+   </message>
+   <message name="PbmQueryAssociatedProfileResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryAssociatedProfileResponse" />
+   </message>
+   <message name="PbmQueryAssociatedEntityRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryAssociatedEntity" />
+   </message>
+   <message name="PbmQueryAssociatedEntityResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryAssociatedEntityResponse" />
+   </message>
+   <message name="PbmQueryDefaultRequirementProfileRequestMsg">
+      <part name="parameters" element="pbm:PbmQueryDefaultRequirementProfile" />
+   </message>
+   <message name="PbmQueryDefaultRequirementProfileResponseMsg">
+      <part name="parameters" element="pbm:PbmQueryDefaultRequirementProfileResponse" />
+   </message>
+   <message name="PbmResetDefaultRequirementProfileRequestMsg">
+      <part name="parameters" element="pbm:PbmResetDefaultRequirementProfile" />
+   </message>
+   <message name="PbmResetDefaultRequirementProfileResponseMsg">
+      <part name="parameters" element="pbm:PbmResetDefaultRequirementProfileResponse" />
+   </message>
+   <portType name="PbmPortType">
+      <operation name="PbmRetrieveServiceContent">
+         <input message="pbm:PbmRetrieveServiceContentRequestMsg" />
+         <output message="pbm:PbmRetrieveServiceContentResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmCheckCompliance">
+         <input message="pbm:PbmCheckComplianceRequestMsg" />
+         <output message="pbm:PbmCheckComplianceResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmFetchComplianceResult">
+         <input message="pbm:PbmFetchComplianceResultRequestMsg" />
+         <output message="pbm:PbmFetchComplianceResultResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmCheckRollupCompliance">
+         <input message="pbm:PbmCheckRollupComplianceRequestMsg" />
+         <output message="pbm:PbmCheckRollupComplianceResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmFetchRollupComplianceResult">
+         <input message="pbm:PbmFetchRollupComplianceResultRequestMsg" />
+         <output message="pbm:PbmFetchRollupComplianceResultResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryMatchingHub">
+         <input message="pbm:PbmQueryMatchingHubRequestMsg" />
+         <output message="pbm:PbmQueryMatchingHubResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryMatchingHubWithSpec">
+         <input message="pbm:PbmQueryMatchingHubWithSpecRequestMsg" />
+         <output message="pbm:PbmQueryMatchingHubWithSpecResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmCheckCompatibility">
+         <input message="pbm:PbmCheckCompatibilityRequestMsg" />
+         <output message="pbm:PbmCheckCompatibilityResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmCheckCompatibilityWithSpec">
+         <input message="pbm:PbmCheckCompatibilityWithSpecRequestMsg" />
+         <output message="pbm:PbmCheckCompatibilityWithSpecResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmFetchResourceType">
+         <input message="pbm:PbmFetchResourceTypeRequestMsg" />
+         <output message="pbm:PbmFetchResourceTypeResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmFetchVendorInfo">
+         <input message="pbm:PbmFetchVendorInfoRequestMsg" />
+         <output message="pbm:PbmFetchVendorInfoResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmFetchCapabilityMetadata">
+         <input message="pbm:PbmFetchCapabilityMetadataRequestMsg" />
+         <output message="pbm:PbmFetchCapabilityMetadataResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmCreate">
+         <input message="pbm:PbmCreateRequestMsg" />
+         <output message="pbm:PbmCreateResponseMsg" />
+         <fault name="InvalidArgumentFault" message="pbm:InvalidArgumentFaultMsg"/>
+         <fault name="PbmFaultProfileStorageFaultFault" message="pbm:PbmFaultProfileStorageFaultFaultMsg"/>
+         <fault name="PbmDuplicateNameFault" message="pbm:PbmDuplicateNameFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmUpdate">
+         <input message="pbm:PbmUpdateRequestMsg" />
+         <output message="pbm:PbmUpdateResponseMsg" />
+         <fault name="InvalidArgumentFault" message="pbm:InvalidArgumentFaultMsg"/>
+         <fault name="PbmFaultProfileStorageFaultFault" message="pbm:PbmFaultProfileStorageFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmDelete">
+         <input message="pbm:PbmDeleteRequestMsg" />
+         <output message="pbm:PbmDeleteResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryProfile">
+         <input message="pbm:PbmQueryProfileRequestMsg" />
+         <output message="pbm:PbmQueryProfileResponseMsg" />
+         <fault name="InvalidArgumentFault" message="pbm:InvalidArgumentFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmRetrieveContent">
+         <input message="pbm:PbmRetrieveContentRequestMsg" />
+         <output message="pbm:PbmRetrieveContentResponseMsg" />
+         <fault name="InvalidArgumentFault" message="pbm:InvalidArgumentFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryAssociatedProfiles">
+         <input message="pbm:PbmQueryAssociatedProfilesRequestMsg" />
+         <output message="pbm:PbmQueryAssociatedProfilesResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryAssociatedProfile">
+         <input message="pbm:PbmQueryAssociatedProfileRequestMsg" />
+         <output message="pbm:PbmQueryAssociatedProfileResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryAssociatedEntity">
+         <input message="pbm:PbmQueryAssociatedEntityRequestMsg" />
+         <output message="pbm:PbmQueryAssociatedEntityResponseMsg" />
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmQueryDefaultRequirementProfile">
+         <input message="pbm:PbmQueryDefaultRequirementProfileRequestMsg" />
+         <output message="pbm:PbmQueryDefaultRequirementProfileResponseMsg" />
+         <fault name="InvalidArgumentFault" message="pbm:InvalidArgumentFaultMsg"/>
+         <fault name="PbmFaultFault" message="pbm:PbmFaultFaultMsg"/>
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+      <operation name="PbmResetDefaultRequirementProfile">
+         <input message="pbm:PbmResetDefaultRequirementProfileRequestMsg" />
+         <output message="pbm:PbmResetDefaultRequirementProfileResponseMsg" />
+         <fault name="RuntimeFault" message="pbm:RuntimeFaultFaultMsg"/>
+      </operation>
+   </portType>
+   <binding name="PbmBinding" type="pbm:PbmPortType">
+      <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+      <operation name="PbmRetrieveServiceContent">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmCheckCompliance">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmFetchComplianceResult">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmCheckRollupCompliance">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmFetchRollupComplianceResult">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryMatchingHub">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryMatchingHubWithSpec">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmCheckCompatibility">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmCheckCompatibilityWithSpec">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmFetchResourceType">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmFetchVendorInfo">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmFetchCapabilityMetadata">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmCreate">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="InvalidArgumentFault">
+            <soap:fault name="InvalidArgumentFault" use="literal" />
+         </fault>
+         <fault name="PbmFaultProfileStorageFaultFault">
+            <soap:fault name="PbmFaultProfileStorageFaultFault" use="literal" />
+         </fault>
+         <fault name="PbmDuplicateNameFault">
+            <soap:fault name="PbmDuplicateNameFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmUpdate">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="InvalidArgumentFault">
+            <soap:fault name="InvalidArgumentFault" use="literal" />
+         </fault>
+         <fault name="PbmFaultProfileStorageFaultFault">
+            <soap:fault name="PbmFaultProfileStorageFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmDelete">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryProfile">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="InvalidArgumentFault">
+            <soap:fault name="InvalidArgumentFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmRetrieveContent">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="InvalidArgumentFault">
+            <soap:fault name="InvalidArgumentFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryAssociatedProfiles">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryAssociatedProfile">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryAssociatedEntity">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmQueryDefaultRequirementProfile">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="InvalidArgumentFault">
+            <soap:fault name="InvalidArgumentFault" use="literal" />
+         </fault>
+         <fault name="PbmFaultFault">
+            <soap:fault name="PbmFaultFault" use="literal" />
+         </fault>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+      <operation name="PbmResetDefaultRequirementProfile">
+         <soap:operation soapAction="urn:pbm/1.0" style="document" />
+         <input>
+            <soap:body use="literal" />
+         </input>
+         <output>
+            <soap:body use="literal" />
+         </output>
+         <fault name="RuntimeFault">
+            <soap:fault name="RuntimeFault" use="literal" />
+         </fault>
+      </operation>
+   </binding>
+</definitions>

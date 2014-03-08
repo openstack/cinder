@@ -17,6 +17,9 @@
 Test suite for VMware VMDK driver.
 """
 
+from distutils.version import LooseVersion
+import os
+
 import mock
 import mox
 
@@ -1076,34 +1079,88 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     """Test class for VMwareVcVmdkDriver."""
 
-    PBM_WSDL = '/fake/wsdl/path'
     DEFAULT_PROFILE = 'fakeProfile'
+    DEFAULT_VC_VERSION = '5.5'
 
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
-        self._config.pbm_wsdl_location = self.PBM_WSDL
         self._config.pbm_default_policy = self.DEFAULT_PROFILE
+        self._config.vmware_host_version = self.DEFAULT_VC_VERSION
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
 
+    def test_get_pbm_wsdl_location(self):
+        # no version returns None
+        wsdl = self._driver._get_pbm_wsdl_location(None)
+        self.assertIsNone(wsdl)
+
+        def expected_wsdl(version):
+            driver_dir = os.path.join(os.path.dirname(__file__), '..',
+                                      'volume', 'drivers', 'vmware')
+            driver_abs_dir = os.path.abspath(driver_dir)
+            return 'file://' + os.path.join(driver_abs_dir, 'wsdl', version,
+                                            'pbmService.wsdl')
+
+        # verify wsdl path for different version strings
+        with mock.patch('os.path.exists') as path_exists:
+            path_exists.return_value = True
+            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5'))
+            self.assertEqual(expected_wsdl('5'), wsdl)
+            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5.5'))
+            self.assertEqual(expected_wsdl('5.5'), wsdl)
+            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5.5.1'))
+            self.assertEqual(expected_wsdl('5.5'), wsdl)
+            # if wsdl path does not exist, then it returns None
+            path_exists.return_value = False
+            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5.5'))
+            self.assertIsNone(wsdl)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'session', new_callable=mock.PropertyMock)
+    def test_get_vc_version(self, session):
+        # test config overrides fetching from VC server
+        version = self._driver._get_vc_version()
+        self.assertEqual(self.DEFAULT_VC_VERSION, version)
+        # explicitly remove config entry
+        self._driver.configuration.vmware_host_version = None
+        session.return_value.vim.service_content.about.version = '6.0.1'
+        version = self._driver._get_vc_version()
+        self.assertEqual(LooseVersion('6.0.1'), version)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_pbm_wsdl_location')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_vc_version')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'volumeops', new_callable=mock.PropertyMock)
-    def test_do_setup(self, vol_ops, session):
-        """Test do_setup."""
+    def test_do_setup(self, vol_ops, session, _get_vc_version,
+                      _get_pbm_wsdl_location):
         vol_ops = vol_ops.return_value
         session = session.return_value
-        # pbm_wsdl_location is set and pbm_default_policy is used
+        # pbm is enabled and pbm_default_policy is used
+        _get_vc_version.return_value = LooseVersion('5.5')
+        _get_pbm_wsdl_location.return_value = 'fake_pbm_location'
         self._driver.do_setup(mock.ANY)
         default = self.DEFAULT_PROFILE
         vol_ops.retrieve_profile_id.assert_called_once_with(default)
-        # pbm_wsdl_location is set and pbm_default_policy is wrong
+        self.assertTrue(self._driver._storage_policy_enabled)
+
+        # pbm is enabled and pbm_default_policy is wrong
+        self._driver._storage_policy_enabled = False
+        vol_ops.retrieve_profile_id.reset_mock()
         vol_ops.retrieve_profile_id.return_value = None
         self.assertRaises(error_util.PbmDefaultPolicyDoesNotExist,
                           self._driver.do_setup, mock.ANY)
-        # pbm_wsdl_location is not set
-        self._driver.configuration.pbm_wsdl_location = None
+        vol_ops.retrieve_profile_id.assert_called_once_with(default)
+
+        # pbm is disabled
+        self._driver._storage_policy_enabled = False
+        vol_ops.retrieve_profile_id.reset_mock()
+        _get_vc_version.return_value = LooseVersion('5.0')
         self._driver.do_setup(mock.ANY)
+        self.assertFalse(self._driver._storage_policy_enabled)
+        self.assertFalse(vol_ops.retrieve_profile_id.called)
 
     def test_init_conn_with_instance_and_backing(self):
         """Test initialize_connection with instance and backing."""

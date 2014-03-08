@@ -22,9 +22,13 @@ driver creates a virtual machine for each of the volumes. This virtual
 machine is never powered on and is often referred as the shadow VM.
 """
 
+import distutils.version as dist_version  # pylint: disable=E0611
+import os
+
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import units
 from cinder.volume import driver
@@ -80,18 +84,18 @@ vmdk_opts = [
                     'Query results will be obtained in batches from the '
                     'server and not in one shot. Server may still limit the '
                     'count to something less than the configured value.'),
+    cfg.StrOpt('vmware_host_version',
+               help='Optional string specifying the VMware VC server version. '
+                    'The driver attempts to retrieve the version from VMware '
+                    'VC server. Set this configuration only if you want to '
+                    'override the VC server version.'),
 ]
 
 spbm_opts = [
-    cfg.StrOpt('pbm_wsdl_location',
-               help='PBM service WSDL file location URL. '
-                    'e.g. file:///opt/SDK/spbm/wsdl/pbmService.wsdl. '
-                    'Not setting this will disable storage policy based '
-                    'placement of volumes.'),
     cfg.StrOpt('pbm_default_policy',
-               help='The PBM default policy. If pbm_wsdl_location is set and '
-                    'there is no defined storage policy for the specific '
-                    'request then this policy will be used.'),
+               help='The PBM default policy. If using VC server version 5.5 '
+                    'or above and there is no defined storage policy for the '
+                    'specific request then this policy will be used.'),
 ]
 
 CONF = cfg.CONF
@@ -193,13 +197,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             if not getattr(self.configuration, param, None):
                 raise exception.InvalidInput(_("%s not set.") % param)
 
-        # Create the session object for the first time
-        max_objects = self.configuration.vmware_max_objects_retrieval
-        self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
-        LOG.info(_("Successfully setup driver: %(driver)s for "
-                   "server: %(ip)s.") %
-                 {'driver': self.__class__.__name__,
-                  'ip': self.configuration.vmware_host_ip})
+        # Create the session object for the first time for ESX driver
+        driver = self.__class__.__name__
+        if driver == 'VMwareEsxVmdkDriver':
+            max_objects = self.configuration.vmware_max_objects_retrieval
+            self._volumeops = volumeops.VMwareVolumeOps(self.session,
+                                                        max_objects)
+            LOG.info(_("Successfully setup driver: %(driver)s for "
+                       "server: %(ip)s.") %
+                     {'driver': driver,
+                      'ip': self.configuration.vmware_host_ip})
 
     def check_for_setup_error(self):
         pass
@@ -980,6 +987,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
     """Manage volumes on VMware VC server."""
 
+    # PBM is enabled only for VC versions 5.5 and above
+    PBM_ENABLED_VC_VERSION = dist_version.LooseVersion('5.5')
+
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(spbm_opts)
@@ -994,7 +1004,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             api_retry_count = self.configuration.vmware_api_retry_count
             task_poll_interval = self.configuration.vmware_task_poll_interval
             wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
-            pbm_wsdl = self.configuration.pbm_wsdl_location
+            pbm_wsdl = self.pbm_wsdl if hasattr(self, 'pbm_wsdl') else None
             self._session = api.VMwareAPISession(ip, username,
                                                  password, api_retry_count,
                                                  task_poll_interval,
@@ -1002,28 +1012,87 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                                                  pbm_wsdl=pbm_wsdl)
         return self._session
 
+    def _get_pbm_wsdl_location(self, vc_version):
+        """Return PBM WSDL file location corresponding to VC version."""
+        if not vc_version:
+            return
+        ver = str(vc_version).split('.')
+        major_minor = ver[0]
+        if len(ver) >= 2:
+            major_minor = major_minor + '.' + ver[1]
+        curr_dir = os.path.abspath(os.path.dirname(__file__))
+        pbm_service_wsdl = os.path.join(curr_dir, 'wsdl', major_minor,
+                                        'pbmService.wsdl')
+        if not os.path.exists(pbm_service_wsdl):
+            LOG.warn(_("PBM WSDL file %s is missing!"), pbm_service_wsdl)
+            return
+        pbm_wsdl = 'file://' + pbm_service_wsdl
+        LOG.info(_("Using PBM WSDL location: %s"), pbm_wsdl)
+        return pbm_wsdl
+
+    def _get_vc_version(self):
+        """Connect to VC server and fetch version.
+
+        Can be over-ridden by setting 'vmware_host_version' config.
+        :returns: VC version as a LooseVersion object
+        """
+        version_str = self.configuration.vmware_host_version
+        if version_str:
+            LOG.info(_("Using overridden vmware_host_version from config: "
+                       "%s"), version_str)
+        else:
+            version_str = self.session.vim.service_content.about.version
+            LOG.info(_("Fetched VC server version: %s"), version_str)
+        # convert version_str to LooseVersion and return
+        version = None
+        try:
+            version = dist_version.LooseVersion(version_str)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Version string '%s' is not parseable"),
+                              version_str)
+        return version
+
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(VMwareVcVmdkDriver, self).do_setup(context)
         # VC specific setup is done here
-        pbm_wsdl = self.configuration.pbm_wsdl_location
+
+        # Enable pbm only if VC version is greater than 5.5
+        vc_version = self._get_vc_version()
+        if vc_version and vc_version >= self.PBM_ENABLED_VC_VERSION:
+            self.pbm_wsdl = self._get_pbm_wsdl_location(vc_version)
+            if not self.pbm_wsdl:
+                LOG.error(_("Not able to configure PBM for VC server: %s"),
+                          vc_version)
+                raise error_util.VMwareDriverException()
+            self._storage_policy_enabled = True
+            # Destroy current session so that it is recreated with pbm enabled
+            self._session = None
+
+        # recreate session and initialize volumeops
+        max_objects = self.configuration.vmware_max_objects_retrieval
+        self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
+
+        # if default policy is configured verify it exists in VC
         default_policy = self.configuration.pbm_default_policy
-        if not pbm_wsdl:
-            if default_policy:
-                LOG.warn(_("Ignoring %s since pbm_wsdl_location is not "
-                           "set."), default_policy)
-            return
-        # pbm_wsdl is set, so storage policy should be enabled
-        self._storage_policy_enabled = True
-        # now verify the default policy exists in VC
         if default_policy:
-            if not self.volumeops.retrieve_profile_id(default_policy):
-                msg = _("The configured default PBM policy '%s' is not "
-                        "defined on vCenter Server.") % default_policy
-                raise error_util.PbmDefaultPolicyDoesNotExist(message=msg)
+            if not self._storage_policy_enabled:
+                LOG.warn(_("Ignoring default policy '%(policy)s' since "
+                           "Storage Policy Based Management is not "
+                           "enabled on VC version %(ver)s") %
+                         {'policy': default_policy, 'ver': vc_version})
             else:
+                if not self.volumeops.retrieve_profile_id(default_policy):
+                    msg = _("The configured default PBM policy '%s' is not "
+                            "defined on vCenter Server.") % default_policy
+                    raise error_util.PbmDefaultPolicyDoesNotExist(message=msg)
                 LOG.info(_("Successfully verified existence of "
                            "pbm_default_policy: %s."), default_policy)
+
+        LOG.info(_("Successfully setup driver: %(driver)s for server: "
+                   "%(ip)s.") % {'driver': self.__class__.__name__,
+                                 'ip': self.configuration.vmware_host_ip})
 
     def _get_volume_group_folder(self, datacenter):
         """Get volume group folder.
