@@ -22,7 +22,8 @@
 """
 
 import re
-import urlparse
+
+import six.moves.urllib.parse as urlparse
 
 from cinder import units
 

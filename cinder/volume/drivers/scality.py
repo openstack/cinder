@@ -20,9 +20,9 @@ Scality SOFS Volume Driver.
 import errno
 import os
 import urllib2
-import urlparse
 
 from oslo.config import cfg
+import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.image import image_utils

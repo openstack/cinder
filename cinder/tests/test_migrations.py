@@ -26,10 +26,10 @@ if possible.
 import ConfigParser
 import os
 import subprocess
-import urlparse
 import uuid
 
 from migrate.versioning import repository
+import six.moves.urllib.parse as urlparse
 import sqlalchemy
 import testtools
 

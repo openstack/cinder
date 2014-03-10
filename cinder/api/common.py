@@ -16,9 +16,9 @@
 
 import os
 import re
-import urlparse
 
 from oslo.config import cfg
+import six.moves.urllib.parse as urlparse
 import webob
 
 from cinder.api.openstack import wsgi

@@ -18,7 +18,8 @@ Client classes for web services.
 
 import json
 import requests
-import urlparse
+
+import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.openstack.common import log as logging

@@ -25,10 +25,10 @@ import random
 import shutil
 import sys
 import time
-import urlparse
 
 import glanceclient.exc
 from oslo.config import cfg
+import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.openstack.common import jsonutils
