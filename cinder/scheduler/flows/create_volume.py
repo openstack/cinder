@@ -18,7 +18,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.notifier import api as notifier
+from cinder import rpc
 from cinder import utils
 from cinder.volume.flows import common
 
@@ -128,9 +128,7 @@ def get_flow(context, db, driver, request_spec=None,
                 'reason': cause,
             }
             try:
-                publisher_id = notifier.publisher_id("scheduler")
-                notifier.notify(context, publisher_id, topic, notifier.ERROR,
-                                payload)
+                rpc.get_notifier('scheduler').error(context, topic, payload)
             except exception.CinderException:
                 LOG.exception(_("Failed notifying on %(topic)s "
                                 "payload %(payload)s") % {'topic': topic,

@@ -11,7 +11,8 @@
 # under the License.
 
 import ast
-import os
+import tempfile
+import time
 import webob
 
 from oslo.config import cfg
@@ -25,6 +26,7 @@ from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
+from cinder.tests import cast_as_call
 from cinder.volume import api as volume_api
 from cinder.volume import utils as volutils
 
@@ -43,7 +45,15 @@ class AdminActionsTest(test.TestCase):
 
     def setUp(self):
         super(AdminActionsTest, self).setUp()
+
+        self.tempdir = tempfile.mkdtemp()
+        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+        self.flags(lock_path=self.tempdir,
+                   disable_process_locking=True)
+
         self.volume_api = volume_api.API()
+        cast_as_call.mock_cast_as_call(self.volume_api.volume_rpcapi.client)
+        cast_as_call.mock_cast_as_call(self.volume_api.scheduler_rpcapi.client)
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
 
     def test_reset_status_as_admin(self):
@@ -255,7 +265,6 @@ class AdminActionsTest(test.TestCase):
         self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
 
     def test_force_delete_snapshot(self):
-        self.stubs.Set(os.path, 'exists', lambda x: True)
         self.stubs.Set(volutils, 'clear_volume',
                        lambda a, b, volume_clear=CONF.volume_clear,
                        volume_clear_size=CONF.volume_clear_size: None)
@@ -275,9 +284,28 @@ class AdminActionsTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         # start service to handle rpc.cast for 'delete snapshot'
         svc = self.start_service('volume', host='test')
+
+        cast_as_call.mock_cast_as_call(svc.manager.scheduler_rpcapi.client)
+
+        # NOTE(flaper87): Instead fo patch `os.path.exists`
+        # create a fake path for the snapshot that should
+        # be deleted and let the check pass
+        def local_path(volume, vg=None):
+            tfile = tempfile.mkstemp(suffix='-cow', dir=self.tempdir)
+            # NOTE(flaper87): Strip `-cow` since it'll be added
+            # later in the happy path.
+            return tfile[1].strip('-cow')
+
+        self.stubs.Set(svc.manager.driver, "local_path", local_path)
         # make request
         resp = req.get_response(app())
-        # request is accepted
+
+        # NOTE(flaper87): Since we're using a nested service
+        # lets make sure we yield the control over the service
+        # thread so it can process the recent calls.
+        time.sleep(0.6)
+
+        # Request is accepted
         self.assertEqual(resp.status_int, 202)
         # snapshot is deleted
         self.assertRaises(exception.NotFound, db.snapshot_get, ctx,

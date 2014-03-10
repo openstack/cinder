@@ -34,6 +34,7 @@ Volume backups can be created, restored, deleted and listed.
 """
 
 from oslo.config import cfg
+from oslo import messaging
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
@@ -66,6 +67,8 @@ class BackupManager(manager.SchedulerDependentManager):
     """Manages backup of block storage devices."""
 
     RPC_API_VERSION = '1.0'
+
+    target = messaging.Target(version=RPC_API_VERSION)
 
     def __init__(self, service_name=None, *args, **kwargs):
         self.service = importutils.import_module(self.driver_name)

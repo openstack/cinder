@@ -29,7 +29,6 @@ from xml.dom.minidom import Document
 
 from cinder import exception
 from cinder import test
-from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import huawei_hvs
 from cinder.volume.drivers.huawei import rest_common
@@ -103,7 +102,10 @@ class FakeHVSCommon(rest_common.HVSCommon):
         return params
 
     def _change_file_mode(self, filepath):
-        utils.execute('chmod', '777', filepath)
+        # NOTE(flaper87): Changing file permissions is
+        # not needed since we're using a tempfile created
+        # within this test.
+        pass
 
     def call(self, url=False, data=None, method=None):
 
@@ -509,6 +511,7 @@ class HVSRESTiSCSIDriverTestCase(test.TestCase):
         self.configuration.append_config_values(mox.IgnoreArg())
 
         self.stubs.Set(time, 'sleep', Fake_sleep)
+        #self.stubs.Set(greenthread, 'sleep', Fake_sleep)
 
         self.driver = FakeHVSiSCSIStorage(configuration=self.configuration)
         self.driver.do_setup({})

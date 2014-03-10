@@ -17,16 +17,16 @@ Client side of the volume RPC API.
 """
 
 from oslo.config import cfg
+from oslo import messaging
 
 from cinder.openstack.common import jsonutils
-from cinder.openstack.common import rpc
-import cinder.openstack.common.rpc.proxy
+from cinder import rpc
 
 
 CONF = cfg.CONF
 
 
-class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
+class VolumeAPI(object):
     '''Client side of the volume rpc API.
 
     API version history:
@@ -55,9 +55,10 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     BASE_RPC_API_VERSION = '1.0'
 
     def __init__(self, topic=None):
-        super(VolumeAPI, self).__init__(
-            topic=topic or CONF.volume_topic,
-            default_version=self.BASE_RPC_API_VERSION)
+        super(VolumeAPI, self).__init__()
+        target = messaging.Target(topic=CONF.volume_topic,
+                                  version=self.BASE_RPC_API_VERSION)
+        self.client = rpc.get_client(target, '1.15')
 
     def create_volume(self, ctxt, volume, host,
                       request_spec, filter_properties,
@@ -65,156 +66,105 @@ class VolumeAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
                       snapshot_id=None, image_id=None,
                       source_volid=None):
 
+        cctxt = self.client.prepare(server=host, version='1.4')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        self.cast(ctxt,
-                  self.make_msg('create_volume',
-                                volume_id=volume['id'],
-                                request_spec=request_spec_p,
-                                filter_properties=filter_properties,
-                                allow_reschedule=allow_reschedule,
-                                snapshot_id=snapshot_id,
-                                image_id=image_id,
-                                source_volid=source_volid),
-                  topic=rpc.queue_get_for(ctxt,
-                                          self.topic,
-                                          host),
-                  version='1.4')
+        cctxt.cast(ctxt, 'create_volume',
+                   volume_id=volume['id'],
+                   request_spec=request_spec_p,
+                   filter_properties=filter_properties,
+                   allow_reschedule=allow_reschedule,
+                   snapshot_id=snapshot_id,
+                   image_id=image_id,
+                   source_volid=source_volid),
 
     def delete_volume(self, ctxt, volume, unmanage_only=False):
-        self.cast(ctxt,
-                  self.make_msg('delete_volume',
-                                volume_id=volume['id'],
-                                unmanage_only=unmanage_only),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
-                  version='1.15')
+        cctxt = self.client.prepare(server=volume['host'], version='1.15')
+        cctxt.cast(ctxt, 'delete_volume',
+                   volume_id=volume['id'],
+                   unmanage_only=unmanage_only)
 
     def create_snapshot(self, ctxt, volume, snapshot):
-        self.cast(ctxt, self.make_msg('create_snapshot',
-                                      volume_id=volume['id'],
-                                      snapshot_id=snapshot['id']),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']))
+        cctxt = self.client.prepare(server=volume['host'])
+        cctxt.cast(ctxt, 'create_snapshot', volume_id=volume['id'],
+                   snapshot_id=snapshot['id'])
 
     def delete_snapshot(self, ctxt, snapshot, host):
-        self.cast(ctxt, self.make_msg('delete_snapshot',
-                                      snapshot_id=snapshot['id']),
-                  topic=rpc.queue_get_for(ctxt, self.topic, host))
+        cctxt = self.client.prepare(server=host)
+        cctxt.cast(ctxt, 'delete_snapshot', snapshot_id=snapshot['id'])
 
     def attach_volume(self, ctxt, volume, instance_uuid, host_name,
                       mountpoint, mode):
-        return self.call(ctxt, self.make_msg('attach_volume',
-                                             volume_id=volume['id'],
-                                             instance_uuid=instance_uuid,
-                                             host_name=host_name,
-                                             mountpoint=mountpoint,
-                                             mode=mode),
-                         topic=rpc.queue_get_for(ctxt,
-                                                 self.topic,
-                                                 volume['host']),
-                         version='1.11')
+
+        cctxt = self.client.prepare(server=volume['host'], version='1.11')
+        return cctxt.call(ctxt, 'attach_volume',
+                          volume_id=volume['id'],
+                          instance_uuid=instance_uuid,
+                          host_name=host_name,
+                          mountpoint=mountpoint,
+                          mode=mode)
 
     def detach_volume(self, ctxt, volume):
-        return self.call(ctxt, self.make_msg('detach_volume',
-                                             volume_id=volume['id']),
-                         topic=rpc.queue_get_for(ctxt,
-                                                 self.topic,
-                                                 volume['host']))
+        cctxt = self.client.prepare(server=volume['host'])
+        return cctxt.call(ctxt, 'detach_volume', volume_id=volume['id'])
 
     def copy_volume_to_image(self, ctxt, volume, image_meta):
-        self.cast(ctxt, self.make_msg('copy_volume_to_image',
-                                      volume_id=volume['id'],
-                                      image_meta=image_meta),
-                  topic=rpc.queue_get_for(ctxt,
-                                          self.topic,
-                                          volume['host']),
-                  version='1.3')
+        cctxt = self.client.prepare(server=volume['host'], version='1.3')
+        cctxt.cast(ctxt, 'copy_volume_to_image', volume_id=volume['id'],
+                   image_meta=image_meta)
 
     def initialize_connection(self, ctxt, volume, connector):
-        return self.call(ctxt, self.make_msg('initialize_connection',
-                                             volume_id=volume['id'],
-                                             connector=connector),
-                         topic=rpc.queue_get_for(ctxt,
-                                                 self.topic,
-                                                 volume['host']))
+        cctxt = self.client.prepare(server=volume['host'])
+        return cctxt.call(ctxt, 'initialize_connection',
+                          volume_id=volume['id'],
+                          connector=connector)
 
     def terminate_connection(self, ctxt, volume, connector, force=False):
-        return self.call(ctxt, self.make_msg('terminate_connection',
-                                             volume_id=volume['id'],
-                                             connector=connector,
-                                             force=force),
-                         topic=rpc.queue_get_for(ctxt,
-                                                 self.topic,
-                                                 volume['host']))
+        cctxt = self.client.prepare(server=volume['host'])
+        return cctxt.call(ctxt, 'terminate_connection', volume_id=volume['id'],
+                          connector=connector, force=force)
 
     def publish_service_capabilities(self, ctxt):
-        self.fanout_cast(ctxt, self.make_msg('publish_service_capabilities'),
-                         version='1.2')
+        cctxt = self.client.prepare(fanout=True, version='1.2')
+        cctxt.cast(ctxt, 'publish_service_capabilities')
 
     def accept_transfer(self, ctxt, volume, new_user, new_project):
-        self.cast(ctxt,
-                  self.make_msg('accept_transfer',
-                                volume_id=volume['id'],
-                                new_user=new_user,
-                                new_project=new_project),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
-                  version='1.9')
+        cctxt = self.client.prepare(server=volume['host'], version='1.9')
+        cctxt.cast(ctxt, 'accept_transfer', volume_id=volume['id'],
+                   new_user=new_user, new_project=new_project)
 
     def extend_volume(self, ctxt, volume, new_size, reservations):
-        self.cast(ctxt,
-                  self.make_msg('extend_volume',
-                                volume_id=volume['id'],
-                                new_size=new_size,
-                                reservations=reservations),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
-                  version='1.14')
+        cctxt = self.client.prepare(server=volume['host'], version='1.14')
+        cctxt.cast(ctxt, 'extend_volume', volume_id=volume['id'],
+                   new_size=new_size, reservations=reservations)
 
     def migrate_volume(self, ctxt, volume, dest_host, force_host_copy):
+        cctxt = self.client.prepare(server=volume['host'], version='1.8')
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
-        self.cast(ctxt,
-                  self.make_msg('migrate_volume',
-                                volume_id=volume['id'],
-                                host=host_p,
-                                force_host_copy=force_host_copy),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
-                  version='1.8')
+        cctxt.cast(ctxt, 'migrate_volume', volume_id=volume['id'],
+                   host=host_p, force_host_copy=force_host_copy)
 
     def migrate_volume_completion(self, ctxt, volume, new_volume, error):
-        return self.call(ctxt,
-                         self.make_msg('migrate_volume_completion',
-                                       volume_id=volume['id'],
-                                       new_volume_id=new_volume['id'],
-                                       error=error),
-                         topic=rpc.queue_get_for(ctxt, self.topic,
-                                                 volume['host']),
-                         version='1.10')
+        cctxt = self.client.prepare(server=volume['host'], version='1.10')
+        return cctxt.call(ctxt, 'migrate_volume_completion',
+                          volume_id=volume['id'],
+                          new_volume_id=new_volume['id'],
+                          error=error)
 
     def retype(self, ctxt, volume, new_type_id, dest_host,
                migration_policy='never', reservations=None):
+        cctxt = self.client.prepare(server=volume['host'], version='1.12')
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
-        self.cast(ctxt,
-                  self.make_msg('retype',
-                                volume_id=volume['id'],
-                                new_type_id=new_type_id,
-                                host=host_p,
-                                migration_policy=migration_policy,
-                                reservations=reservations),
-                  topic=rpc.queue_get_for(ctxt, self.topic, volume['host']),
-                  version='1.12')
+        cctxt.cast(ctxt, 'retype', volume_id=volume['id'],
+                   new_type_id=new_type_id, host=host_p,
+                   migration_policy=migration_policy,
+                   reservations=reservations)
 
     def create_export(self, ctxt, volume):
-        return self.call(ctxt, self.make_msg('create_export',
-                                             volume_id=volume['id']),
-                         topic=rpc.queue_get_for(ctxt,
-                                                 self.topic,
-                                                 volume['host']),
-                         version='1.13')
+        cctxt = self.client.prepare(server=volume['host'], version='1.13')
+        return cctxt.call(ctxt, 'create_export', volume_id=volume['id'])
 
     def manage_existing(self, ctxt, volume, ref):
-        return self.cast(ctxt, self.make_msg('manage_existing',
-                                             volume_id=volume['id'],
-                                             ref=ref),
-                         topic=rpc.queue_get_for(ctxt,
-                                                 self.topic,
-                                                 volume['host']),
-                         version='1.15')
+        cctxt = self.client.prepare(server=volume['host'], version='1.15')
+        cctxt.cast(ctxt, 'manage_existing', volume_id=volume['id'], ref=ref)

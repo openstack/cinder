@@ -17,15 +17,16 @@ Client side of the scheduler manager RPC API.
 """
 
 from oslo.config import cfg
+from oslo import messaging
 
 from cinder.openstack.common import jsonutils
-import cinder.openstack.common.rpc.proxy
+from cinder import rpc
 
 
 CONF = cfg.CONF
 
 
-class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
+class SchedulerAPI(object):
     '''Client side of the scheduler rpc API.
 
     API version history:
@@ -42,63 +43,65 @@ class SchedulerAPI(cinder.openstack.common.rpc.proxy.RpcProxy):
     RPC_API_VERSION = '1.0'
 
     def __init__(self):
-        super(SchedulerAPI, self).__init__(
-            topic=CONF.scheduler_topic,
-            default_version=self.RPC_API_VERSION)
+        super(SchedulerAPI, self).__init__()
+        target = messaging.Target(topic=CONF.scheduler_topic,
+                                  version=self.RPC_API_VERSION)
+        self.client = rpc.get_client(target, version_cap='1.5')
 
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None):
+
+        cctxt = self.client.prepare(version='1.2')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return self.cast(ctxt, self.make_msg(
-            'create_volume',
-            topic=topic,
-            volume_id=volume_id,
-            snapshot_id=snapshot_id,
-            image_id=image_id,
-            request_spec=request_spec_p,
-            filter_properties=filter_properties),
-            version='1.2')
+        return cctxt.cast(ctxt, 'create_volume',
+                          topic=topic,
+                          volume_id=volume_id,
+                          snapshot_id=snapshot_id,
+                          image_id=image_id,
+                          request_spec=request_spec_p,
+                          filter_properties=filter_properties)
 
     def migrate_volume_to_host(self, ctxt, topic, volume_id, host,
                                force_host_copy=False, request_spec=None,
                                filter_properties=None):
+
+        cctxt = self.client.prepare(version='1.3')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return self.cast(ctxt, self.make_msg(
-            'migrate_volume_to_host',
-            topic=topic,
-            volume_id=volume_id,
-            host=host,
-            force_host_copy=force_host_copy,
-            request_spec=request_spec_p,
-            filter_properties=filter_properties),
-            version='1.3')
+        return cctxt.cast(ctxt, 'migrate_volume_to_host',
+                          topic=topic,
+                          volume_id=volume_id,
+                          host=host,
+                          force_host_copy=force_host_copy,
+                          request_spec=request_spec_p,
+                          filter_properties=filter_properties)
 
     def retype(self, ctxt, topic, volume_id,
                request_spec=None, filter_properties=None):
+
+        cctxt = self.client.prepare(version='1.4')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return self.cast(ctxt, self.make_msg(
-            'retype',
-            topic=topic,
-            volume_id=volume_id,
-            request_spec=request_spec_p,
-            filter_properties=filter_properties),
-            version='1.4')
+        return cctxt.cast(ctxt, 'retype',
+                          topic=topic,
+                          volume_id=volume_id,
+                          request_spec=request_spec_p,
+                          filter_properties=filter_properties)
 
     def manage_existing(self, ctxt, topic, volume_id,
                         request_spec=None, filter_properties=None):
+        cctxt = self.client.prepare(version='1.5')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return self.cast(ctxt, self.make_msg(
-            'manage_existing',
-            topic=topic,
-            volume_id=volume_id,
-            request_spec=request_spec_p,
-            filter_properties=filter_properties),
-            version='1.5')
+        return cctxt.cast(ctxt, 'manage_existing',
+                          topic=topic,
+                          volume_id=volume_id,
+                          request_spec=request_spec_p,
+                          filter_properties=filter_properties)
 
     def update_service_capabilities(self, ctxt,
                                     service_name, host,
                                     capabilities):
-        self.fanout_cast(ctxt, self.make_msg('update_service_capabilities',
-                         service_name=service_name, host=host,
-                         capabilities=capabilities))
+        # FIXME(flaper87): What to do with fanout?
+        cctxt = self.client.prepare(fanout=True)
+        cctxt.cast(ctxt, 'update_service_capabilities',
+                   service_name=service_name, host=host,
+                   capabilities=capabilities)

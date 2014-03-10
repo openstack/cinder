@@ -65,7 +65,6 @@ class _IntegratedTestBase(test.TestCase):
         # set up services
         self.volume = self.start_service('volume')
         self.scheduler = self.start_service('scheduler')
-
         self._start_api_service()
 
         self.api = client.TestOpenStackClient('fake', 'fake', self.auth_url)

@@ -26,7 +26,6 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqa_api
 from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception
-from cinder.openstack.common import rpc
 from cinder.openstack.common import timeutils
 from cinder import quota
 from cinder import test
@@ -55,12 +54,6 @@ class QuotaIntegrationTestCase(test.TestCase):
         self.context = context.RequestContext(self.user_id,
                                               self.project_id,
                                               is_admin=True)
-        orig_rpc_call = rpc.call
-
-        def rpc_call_wrapper(context, topic, msg, timeout=None):
-            return orig_rpc_call(context, topic, msg)
-
-        self.stubs.Set(rpc, 'call', rpc_call_wrapper)
 
         # Destroy the 'default' quota_class in the database to avoid
         # conflicts with the test cases here that are setting up their own

@@ -23,8 +23,8 @@ from cinder.api.views import qos_specs as view_qos_specs
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common.notifier import api as notifier_api
 from cinder.openstack.common import strutils
+from cinder import rpc
 from cinder.volume import qos_specs
 
 
@@ -83,11 +83,9 @@ class QoSSpecsController(wsgi.Controller):
 
     @staticmethod
     def _notify_qos_specs_error(context, method, payload):
-        notifier_api.notify(context,
-                            'QoSSpecs',
-                            method,
-                            notifier_api.ERROR,
-                            payload)
+        rpc.get_notifier('QoSSpecs').error(context,
+                                           method,
+                                           payload)
 
     @wsgi.serializers(xml=QoSSpecsTemplate)
     def index(self, req):
@@ -115,9 +113,9 @@ class QoSSpecsController(wsgi.Controller):
             qos_specs.create(context, name, specs)
             spec = qos_specs.get_qos_specs_by_name(context, name)
             notifier_info = dict(name=name, specs=specs)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'QoSSpecs.create',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'QoSSpecs.create',
+                                              notifier_info)
         except exception.InvalidInput as err:
             notifier_err = dict(name=name, error_message=err)
             self._notify_qos_specs_error(context,
@@ -150,9 +148,9 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.update(context, id, specs)
             notifier_info = dict(id=id, specs=specs)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.update',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'qos_specs.update',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -202,9 +200,9 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.delete(context, id, force)
             notifier_info = dict(id=id)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.delete',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'qos_specs.delete',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -240,9 +238,8 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.delete_keys(context, id, keys)
             notifier_info = dict(id=id)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.delete_keys',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier().info(context, 'qos_specs.delete_keys',
+                                    notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -269,9 +266,9 @@ class QoSSpecsController(wsgi.Controller):
         try:
             associates = qos_specs.get_associations(context, id)
             notifier_info = dict(id=id)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.associations',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'qos_specs.associations',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -307,9 +304,9 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.associate_qos_with_type(context, id, type_id)
             notifier_info = dict(id=id, type_id=type_id)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.associate',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'qos_specs.associate',
+                                              notifier_info)
         except exception.VolumeTypeNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -360,9 +357,9 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.disassociate_qos_specs(context, id, type_id)
             notifier_info = dict(id=id, type_id=type_id)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.disassociate',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'qos_specs.disassociate',
+                                              notifier_info)
         except exception.VolumeTypeNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -394,9 +391,9 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.disassociate_all(context, id)
             notifier_info = dict(id=id)
-            notifier_api.notify(context, 'QoSSpecs',
-                                'qos_specs.disassociate_all',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context,
+                                              'qos_specs.disassociate_all',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,

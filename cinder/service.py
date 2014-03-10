@@ -23,6 +23,7 @@ import os
 import random
 
 from oslo.config import cfg
+from oslo import messaging
 
 from cinder import context
 from cinder import db
@@ -30,8 +31,8 @@ from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import rpc
 from cinder.openstack.common import service
+from cinder import rpc
 from cinder import version
 from cinder import wsgi
 
@@ -75,6 +76,10 @@ class Service(service.Service):
                  periodic_interval=None, periodic_fuzzy_delay=None,
                  service_name=None, *args, **kwargs):
         super(Service, self).__init__()
+
+        if not rpc.initialized():
+            rpc.init(CONF)
+
         self.host = host
         self.binary = binary
         self.topic = topic
@@ -104,22 +109,14 @@ class Service(service.Service):
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
-        self.conn = rpc.create_connection(new=True)
-        LOG.debug(_("Creating Consumer connection for Service %s") %
-                  self.topic)
+        LOG.debug(_("Creating RPC server for service %s") % self.topic)
 
-        rpc_dispatcher = self.manager.create_rpc_dispatcher()
+        target = messaging.Target(topic=self.topic, server=self.host)
+        endpoints = [self.manager]
+        endpoints.extend(self.manager.additional_endpoints)
+        self.rpcserver = rpc.get_server(target, endpoints)
+        self.rpcserver.start()
 
-        # Share this same connection for these Consumers
-        self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=False)
-
-        node_topic = '%s.%s' % (self.topic, self.host)
-        self.conn.create_consumer(node_topic, rpc_dispatcher, fanout=False)
-
-        self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=True)
-
-        # Consume from all consumers in a thread
-        self.conn.consume_in_thread()
         self.manager.init_host()
 
         if self.report_interval:
@@ -219,7 +216,7 @@ class Service(service.Service):
         # Try to shut the connection down, but if we get any sort of
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
-            self.conn.close()
+            self.rpcserver.stop()
         except Exception:
             pass
         for x in self.timers:
@@ -228,7 +225,6 @@ class Service(service.Service):
             except Exception:
                 pass
         self.timers = []
-
         super(Service, self).stop()
 
     def wait(self):

@@ -39,6 +39,7 @@ intact.
 import time
 
 from oslo.config import cfg
+from oslo import messaging
 
 from cinder import compute
 from cinder import context
@@ -170,6 +171,8 @@ class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
     RPC_API_VERSION = '1.15'
+
+    target = messaging.Target(version=RPC_API_VERSION)
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):

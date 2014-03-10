@@ -22,7 +22,7 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
-from cinder.openstack.common.notifier import api as notifier_api
+from cinder import rpc
 from cinder.volume import volume_types
 
 authorize = extensions.extension_authorizer('volume',
@@ -127,9 +127,8 @@ class VolumeTypeEncryptionController(wsgi.Controller):
 
         db.volume_type_encryption_create(context, type_id, encryption_specs)
         notifier_info = dict(type_id=type_id, specs=encryption_specs)
-        notifier_api.notify(context, 'volumeTypeEncryption',
-                            'volume_type_encryption.create',
-                            notifier_api.INFO, notifier_info)
+        notifier = rpc.get_notifier('volumeTypeEncryption')
+        notifier.info(context, 'volume_type_encryption.create', notifier_info)
         return body
 
     @wsgi.serializers(xml=VolumeTypeEncryptionTemplate)
@@ -159,9 +158,8 @@ class VolumeTypeEncryptionController(wsgi.Controller):
 
         db.volume_type_encryption_update(context, type_id, encryption_specs)
         notifier_info = dict(type_id=type_id, id=id)
-        notifier_api.notify(context, 'volumeTypeEncryption',
-                            'volume_type_encryption.update',
-                            notifier_api.INFO, notifier_info)
+        notifier = rpc.get_notifier('volumeTypeEncryption')
+        notifier.info(context, 'volume_type_encryption.update', notifier_info)
 
         return body
 

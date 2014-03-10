@@ -17,7 +17,7 @@
 Unit Tests for cinder.scheduler.rpcapi
 """
 
-
+import copy
 import mock
 
 from oslo.config import cfg
@@ -38,16 +38,26 @@ class SchedulerRpcAPITestCase(test.TestCase):
     def tearDown(self):
         super(SchedulerRpcAPITestCase, self).tearDown()
 
-    def _test_scheduler_api(self, method, rpc_method, _mock_method, **kwargs):
+    def _test_scheduler_api(self, method, rpc_method,
+                            fanout=False, **kwargs):
         ctxt = context.RequestContext('fake_user', 'fake_project')
         rpcapi = scheduler_rpcapi.SchedulerAPI()
         expected_retval = 'foo' if rpc_method == 'call' else None
-        expected_version = kwargs.pop('version', rpcapi.RPC_API_VERSION)
-        expected_msg = rpcapi.make_msg(method, **kwargs)
-        expected_msg['version'] = expected_version
+
+        target = {
+            "fanout": fanout,
+            "version": kwargs.pop('version', rpcapi.RPC_API_VERSION)
+        }
+
+        expected_msg = copy.deepcopy(kwargs)
 
         self.fake_args = None
         self.fake_kwargs = None
+
+        def _fake_prepare_method(*args, **kwds):
+            for kwd in kwds:
+                self.assertEqual(kwds[kwd], target[kwd])
+            return rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
@@ -55,29 +65,28 @@ class SchedulerRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        _mock_method.side_effect = _fake_rpc_method
+        with mock.patch.object(rpcapi.client, "prepare") as mock_prepared:
+            mock_prepared.side_effect = _fake_prepare_method
 
-        retval = getattr(rpcapi, method)(ctxt, **kwargs)
+            with mock.patch.object(rpcapi.client, rpc_method) as mock_method:
+                mock_method.side_effect = _fake_rpc_method
+                retval = getattr(rpcapi, method)(ctxt, **kwargs)
+                self.assertEqual(retval, expected_retval)
+                expected_args = [ctxt, method, expected_msg]
+                for arg, expected_arg in zip(self.fake_args, expected_args):
+                    self.assertEqual(arg, expected_arg)
 
-        self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, CONF.scheduler_topic, expected_msg]
-        for arg, expected_arg in zip(self.fake_args, expected_args):
-            self.assertEqual(arg, expected_arg)
-
-    @mock.patch('cinder.openstack.common.rpc.fanout_cast')
-    def test_update_service_capabilities(self, _mock_rpc_method):
+    def test_update_service_capabilities(self):
         self._test_scheduler_api('update_service_capabilities',
-                                 rpc_method='fanout_cast',
-                                 _mock_method=_mock_rpc_method,
+                                 rpc_method='cast',
                                  service_name='fake_name',
                                  host='fake_host',
-                                 capabilities='fake_capabilities')
+                                 capabilities='fake_capabilities',
+                                 fanout=True)
 
-    @mock.patch('cinder.openstack.common.rpc.cast')
-    def test_create_volume(self, _mock_rpc_method):
+    def test_create_volume(self):
         self._test_scheduler_api('create_volume',
                                  rpc_method='cast',
-                                 _mock_method=_mock_rpc_method,
                                  topic='topic',
                                  volume_id='volume_id',
                                  snapshot_id='snapshot_id',
@@ -86,11 +95,9 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filter_properties='filter_properties',
                                  version='1.2')
 
-    @mock.patch('cinder.openstack.common.rpc.cast')
-    def test_migrate_volume_to_host(self, _mock_rpc_method):
+    def test_migrate_volume_to_host(self):
         self._test_scheduler_api('migrate_volume_to_host',
                                  rpc_method='cast',
-                                 _mock_method=_mock_rpc_method,
                                  topic='topic',
                                  volume_id='volume_id',
                                  host='host',
@@ -99,22 +106,18 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filter_properties='filter_properties',
                                  version='1.3')
 
-    @mock.patch('cinder.openstack.common.rpc.cast')
-    def test_retype(self, _mock_rpc_method):
+    def test_retype(self):
         self._test_scheduler_api('retype',
                                  rpc_method='cast',
-                                 _mock_method=_mock_rpc_method,
                                  topic='topic',
                                  volume_id='volume_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.4')
 
-    @mock.patch('cinder.openstack.common.rpc.cast')
-    def test_manage_existing(self, _mock_rpc_method):
+    def test_manage_existing(self):
         self._test_scheduler_api('manage_existing',
                                  rpc_method='cast',
-                                 _mock_method=_mock_rpc_method,
                                  topic='topic',
                                  volume_id='volume_id',
                                  request_spec='fake_request_spec',

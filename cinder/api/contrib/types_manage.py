@@ -22,7 +22,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.v1 import types
 from cinder.api.views import types as views_types
 from cinder import exception
-from cinder.openstack.common.notifier import api as notifier_api
+from cinder import rpc
 from cinder.volume import volume_types
 
 
@@ -35,11 +35,7 @@ class VolumeTypesManageController(wsgi.Controller):
     _view_builder_class = views_types.ViewBuilder
 
     def _notify_volume_type_error(self, context, method, payload):
-        notifier_api.notify(context,
-                            'volumeType',
-                            method,
-                            notifier_api.ERROR,
-                            payload)
+        rpc.get_notifier('volumeType').error(context, method, payload)
 
     @wsgi.action("create")
     @wsgi.serializers(xml=types.VolumeTypeTemplate)
@@ -62,9 +58,8 @@ class VolumeTypesManageController(wsgi.Controller):
             volume_types.create(context, name, specs)
             vol_type = volume_types.get_volume_type_by_name(context, name)
             notifier_info = dict(volume_types=vol_type)
-            notifier_api.notify(context, 'volumeType',
-                                'volume_type.create',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('volumeType').info(context, 'volume_type.create',
+                                                notifier_info)
 
         except exception.VolumeTypeExists as err:
             notifier_err = dict(volume_types=vol_type, error_message=err)
@@ -92,9 +87,9 @@ class VolumeTypesManageController(wsgi.Controller):
             vol_type = volume_types.get_volume_type(context, id)
             volume_types.destroy(context, vol_type['id'])
             notifier_info = dict(volume_types=vol_type)
-            notifier_api.notify(context, 'volumeType',
-                                'volume_type.delete',
-                                notifier_api.INFO, notifier_info)
+            rpc.get_notifier('volumeType').info(context,
+                                                'volume_type.delete',
+                                                notifier_info)
         except exception.VolumeTypeInUse as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_volume_type_error(context,
