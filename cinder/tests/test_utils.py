@@ -13,7 +13,6 @@
 #    under the License.
 
 
-import __builtin__
 import datetime
 import hashlib
 import os
@@ -22,7 +21,6 @@ import tempfile
 import uuid
 
 import mock
-import mox
 from oslo.config import cfg
 import paramiko
 import six
@@ -38,6 +36,14 @@ from cinder import utils
 
 
 CONF = cfg.CONF
+
+
+def _get_local_mock_open(fake_data='abcd efgh'):
+    mock_context_manager = mock.Mock()
+    mock_context_manager.__enter__ = mock.Mock(
+        return_value=six.StringIO(fake_data))
+    mock_context_manager.__exit__ = mock.Mock(return_value=False)
+    return mock_context_manager
 
 
 class ExecuteTestCase(test.TestCase):
@@ -277,6 +283,59 @@ class GetFromPathTestCase(test.TestCase):
 
 
 class GenericUtilsTestCase(test.TestCase):
+
+    @mock.patch('os.path.exists', return_value=True)
+    def test_find_config(self, mock_exists):
+        path = '/etc/cinder/cinder.conf'
+        cfgpath = utils.find_config(path)
+        self.assertEqual(path, cfgpath)
+
+        mock_exists.return_value = False
+        self.assertRaises(exception.ConfigNotFound,
+                          utils.find_config,
+                          path)
+
+    def test_as_int(self):
+        test_obj_int = '2'
+        test_obj_float = '2.2'
+        for obj in [test_obj_int, test_obj_float]:
+            self.assertEqual(2, utils.as_int(obj))
+
+        obj = 'not_a_number'
+        self.assertEqual(obj, utils.as_int(obj))
+        self.assertRaises(TypeError,
+                          utils.as_int,
+                          obj,
+                          quiet=False)
+
+    def test_check_exclusive_options(self):
+        utils.check_exclusive_options()
+        utils.check_exclusive_options(something=None,
+                                      pretty_keys=True,
+                                      unit_test=True)
+
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_exclusive_options,
+                          test=True,
+                          unit=False,
+                          pretty_keys=True)
+
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_exclusive_options,
+                          test=True,
+                          unit=False,
+                          pretty_keys=False)
+
+    def test_require_driver_intialized(self):
+        driver = mock.Mock()
+        driver.initialized = True
+        utils.require_driver_initialized(driver)
+
+        driver.initialized = False
+        self.assertRaises(exception.DriverNotInitialized,
+                          utils.require_driver_initialized,
+                          driver)
+
     def test_hostname_unicode_sanitization(self):
         hostname = u"\u7684.test.example.com"
         self.assertEqual("test.example.com",
@@ -307,44 +366,30 @@ class GenericUtilsTestCase(test.TestCase):
                                        CONF.glance_port)
         self.assertEqual(generated_url, actual_url)
 
-    def test_read_cached_file(self):
-        self.mox.StubOutWithMock(os.path, "getmtime")
-        os.path.getmtime(mox.IgnoreArg()).AndReturn(1)
-        self.mox.ReplayAll()
-
-        cache_data = {"data": 1123, "mtime": 1}
-        data = utils.read_cached_file("/this/is/a/fake", cache_data)
+    @mock.patch('__builtin__.open')
+    @mock.patch('os.path.getmtime', return_value=1)
+    def test_read_cached_file(self, mock_mtime, mock_open):
+        fake_file = "/this/is/a/fake"
+        cache_data = {"data": 1123, "mtime": 2}
+        mock_open.return_value = _get_local_mock_open()
+        data = utils.read_cached_file(fake_file, cache_data)
         self.assertEqual(cache_data["data"], data)
+        mock_open.assert_called_once_with(fake_file)
 
-    def test_read_modified_cached_file(self):
-        self.mox.StubOutWithMock(os.path, "getmtime")
-        self.mox.StubOutWithMock(__builtin__, 'open')
-        os.path.getmtime(mox.IgnoreArg()).AndReturn(2)
-
-        fake_contents = "lorem ipsum"
-        fake_file = self.mox.CreateMockAnything()
-        fake_file.read().AndReturn(fake_contents)
-        fake_context_manager = self.mox.CreateMockAnything()
-        fake_context_manager.__enter__().AndReturn(fake_file)
-        fake_context_manager.__exit__(mox.IgnoreArg(),
-                                      mox.IgnoreArg(),
-                                      mox.IgnoreArg())
-
-        __builtin__.open(mox.IgnoreArg()).AndReturn(fake_context_manager)
-
-        self.mox.ReplayAll()
-        cache_data = {"data": 1123, "mtime": 1}
-        self.reload_called = False
-
-        def test_reload(reloaded_data):
-            self.assertEqual(reloaded_data, fake_contents)
-            self.reload_called = True
-
-        data = utils.read_cached_file("/this/is/a/fake",
+    @mock.patch('__builtin__.open')
+    @mock.patch('os.path.getmtime', return_value=1)
+    def test_read_modified_cached_file(self, mock_mtime, mock_open):
+        fake_data = 'lorem ipsum'
+        fake_file = "/this/is/a/fake"
+        mock_open.return_value = _get_local_mock_open(fake_data)
+        cache_data = {"data": 'original data', "mtime": 2}
+        mock_reload = mock.Mock()
+        data = utils.read_cached_file(fake_file,
                                       cache_data,
-                                      reload_func=test_reload)
-        self.assertEqual(data, fake_contents)
-        self.assertTrue(self.reload_called)
+                                      reload_func=mock_reload)
+        self.assertEqual(data, fake_data)
+        mock_reload.assert_called_once_with(fake_data)
+        mock_open.assert_called_once_with(fake_file)
 
     def test_generate_password(self):
         password = utils.generate_password()
@@ -377,37 +422,30 @@ class GenericUtilsTestCase(test.TestCase):
                 self.assertEqual(fake_execute.uid, 2)
             self.assertEqual(fake_execute.uid, os.getuid())
 
-    def test_service_is_up(self):
+    @mock.patch('cinder.openstack.common.timeutils.utcnow')
+    def test_service_is_up(self, mock_utcnow):
         fts_func = datetime.datetime.fromtimestamp
         fake_now = 1000
         down_time = 5
 
         self.flags(service_down_time=down_time)
-        self.mox.StubOutWithMock(timeutils, 'utcnow')
+        mock_utcnow.return_value = fts_func(fake_now)
 
         # Up (equal)
-        timeutils.utcnow().AndReturn(fts_func(fake_now))
         service = {'updated_at': fts_func(fake_now - down_time),
                    'created_at': fts_func(fake_now - down_time)}
-        self.mox.ReplayAll()
         result = utils.service_is_up(service)
         self.assertTrue(result)
 
-        self.mox.ResetAll()
         # Up
-        timeutils.utcnow().AndReturn(fts_func(fake_now))
         service = {'updated_at': fts_func(fake_now - down_time + 1),
                    'created_at': fts_func(fake_now - down_time + 1)}
-        self.mox.ReplayAll()
         result = utils.service_is_up(service)
         self.assertTrue(result)
 
-        self.mox.ResetAll()
         # Down
-        timeutils.utcnow().AndReturn(fts_func(fake_now))
         service = {'updated_at': fts_func(fake_now - down_time - 1),
                    'created_at': fts_func(fake_now - down_time - 1)}
-        self.mox.ReplayAll()
         result = utils.service_is_up(service)
         self.assertFalse(result)
 
@@ -498,70 +536,42 @@ class GenericUtilsTestCase(test.TestCase):
                           utils.check_ssh_injection,
                           with_multiple_quotes)
 
-    def test_create_channel(self):
-        client = paramiko.SSHClient()
-        channel = paramiko.Channel(123)
-        self.mox.StubOutWithMock(client, 'invoke_shell')
-        self.mox.StubOutWithMock(channel, 'resize_pty')
+    @mock.patch('paramiko.SSHClient')
+    def test_create_channel(self, mock_client):
+        test_width = 600
+        test_height = 800
+        mock_channel = mock.Mock()
+        mock_client.invoke_shell.return_value = mock_channel
+        utils.create_channel(mock_client, test_width, test_height)
+        mock_client.invoke_shell.assert_called_once()
+        mock_channel.resize_pty.assert_called_once_with(test_width,
+                                                        test_height)
 
-        client.invoke_shell().AndReturn(channel)
-        channel.resize_pty(600, 800)
+    @mock.patch('os.stat')
+    def test_get_file_mode(self, mock_stat):
 
-        self.mox.ReplayAll()
-        utils.create_channel(client, 600, 800)
-
-        self.mox.VerifyAll()
-
-    def _make_fake_stat(self, test_file, orig_os_stat):
-        """Create a fake method to stub out os.stat().
-
-           Generate a function that will return a particular
-           stat object for a given file.
-
-           :param: test_file: file to spoof stat() for
-           :param: orig_os_stat: pointer to original os.stat()
-        """
-
-        def fake_stat(path):
-            if path == test_file:
-                class stat_result:
+        class stat_result:
                     st_mode = 0o777
                     st_gid = 33333
-                return stat_result
-            else:
-                return orig_os_stat(path)
 
-        return fake_stat
-
-    def test_get_file_mode(self):
         test_file = '/var/tmp/made_up_file'
-
-        orig_os_stat = os.stat
-        os.stat = self._make_fake_stat(test_file, orig_os_stat)
-
-        self.mox.ReplayAll()
-
+        mock_stat.return_value = stat_result
         mode = utils.get_file_mode(test_file)
         self.assertEqual(mode, 0o777)
+        mock_stat.assert_called_once_with(test_file)
 
-        self.mox.VerifyAll()
+    @mock.patch('os.stat')
+    def test_get_file_gid(self, mock_stat):
 
-        os.stat = orig_os_stat
+        class stat_result:
+                    st_mode = 0o777
+                    st_gid = 33333
 
-    def test_get_file_gid(self):
         test_file = '/var/tmp/made_up_file'
-
-        orig_os_stat = os.stat
-        os.stat = self._make_fake_stat(test_file, orig_os_stat)
-
-        self.mox.ReplayAll()
-
+        mock_stat.return_value = stat_result
         gid = utils.get_file_gid(test_file)
         self.assertEqual(gid, 33333)
-
-        self.mox.VerifyAll()
-
-        os.stat = orig_os_stat
+        mock_stat.assert_called_once_with(test_file)
 
 
 class MonkeyPatchTestCase(test.TestCase):
@@ -794,15 +804,17 @@ class FakeTransport(object):
 class SSHPoolTestCase(test.TestCase):
     """Unit test for SSH Connection Pool."""
 
-    def setup(self):
-        self.mox.StubOutWithMock(paramiko, "SSHClient")
-        paramiko.SSHClient().AndReturn(FakeSSHClient())
-        self.mox.ReplayAll()
+    @mock.patch('paramiko.RSAKey.from_private_key_file')
+    @mock.patch('paramiko.SSHClient')
+    def test_single_ssh_connect(self, mock_sshclient, mock_pkey):
+        mock_sshclient.return_value = FakeSSHClient()
 
-    def test_single_ssh_connect(self):
-        self.setup()
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
-                                min_size=1, max_size=1)
+        # create with password
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
+                                "test",
+                                password="test",
+                                min_size=1,
+                                max_size=1)
         with sshpool.item() as ssh:
             first_id = ssh.id
 
@@ -810,25 +822,45 @@ class SSHPoolTestCase(test.TestCase):
             second_id = ssh.id
 
         self.assertEqual(first_id, second_id)
+        mock_sshclient.connect.assert_called_once()
 
-    def test_closed_reopend_ssh_connections(self):
-        self.setup()
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
-                                min_size=1, max_size=2)
+        # create with private key
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
+                                "test",
+                                privatekey="test",
+                                min_size=1,
+                                max_size=1)
+        mock_sshclient.connect.assert_called_once()
+
+        # attempt to create with no password or private key
+        self.assertRaises(paramiko.SSHException,
+                          utils.SSHPool,
+                          "127.0.0.1", 22, 10,
+                          "test",
+                          min_size=1,
+                          max_size=1)
+
+    @mock.patch('paramiko.SSHClient')
+    def test_closed_reopend_ssh_connections(self, mock_sshclient):
+        mock_sshclient.return_value = eval('FakeSSHClient')()
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
+                                "test",
+                                password="test",
+                                min_size=1,
+                                max_size=4)
         with sshpool.item() as ssh:
+            mock_sshclient.reset_mock()
             first_id = ssh.id
+
         with sshpool.item() as ssh:
             second_id = ssh.id
-            # Close the connection and test for a new connection
             ssh.get_transport().active = False
+            sshpool.remove(ssh)
 
         self.assertEqual(first_id, second_id)
 
-        # The mox items are not getting setup in a new pool connection,
-        # so had to reset and set again.
-        self.mox.UnsetStubs()
-        self.setup()
-
+        # create a new client
+        mock_sshclient.return_value = FakeSSHClient()
         with sshpool.item() as ssh:
             third_id = ssh.id
 
