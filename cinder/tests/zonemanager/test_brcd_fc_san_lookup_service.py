@@ -73,9 +73,8 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
                                          default=22, help=''))
         fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn',
                                          default='100000051e55a100', help=''))
-        self.fabric_configs = {}
         config = conf.Configuration(fc_fabric_opts, 'BRCD_FAB_2')
-        self.fabric_configs['BRCD_FAB_2'] = config
+        self.fabric_configs = {'BRCD_FAB_2': config}
 
     @mock.patch.object(brcd_lookup.BrcdFCSanLookupService,
                        'get_nameserver_info')

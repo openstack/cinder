@@ -71,6 +71,13 @@ class TestVolumeManager(manager.VolumeManager, test.TestCase):
         self.zonemanager = fc_zone_manager.ZoneManager(
             configuration=self.configuration)
 
+    def tearDown(self):
+        super(TestVolumeManager, self).tearDown()
+        self.configuration = None
+        self.db = None
+        self.driver = None
+        self.zonemanager = None
+
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
 
