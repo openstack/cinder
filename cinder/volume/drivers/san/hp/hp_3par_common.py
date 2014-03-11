@@ -120,10 +120,11 @@ class HP3PARCommon(object):
         2.0.4 - Allow volumes created from snapshots to be larger bug #1279478
         2.0.5 - Fix extend volume units bug #1284368
         2.0.6 - use loopingcall.wait instead of time.sleep
+        2.0.7 - Allow extend volume based on snapshot bug #1285906
 
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.7"
 
     stats = {}
 
@@ -248,14 +249,39 @@ class HP3PARCommon(object):
         volume_name = self._get_3par_vol_name(volume['id'])
         old_size = volume['size']
         growth_size = int(new_size) - old_size
-        LOG.debug("Extending Volume %s from %s to %s, by %s GB." %
-                  (volume_name, old_size, new_size, growth_size))
+        LOG.debug(_("Extending Volume %(vol)s from %(old)s to %(new)s, "
+                    " by %(diff)s GB.") %
+                  {'vol': volume_name, 'old': old_size, 'new': new_size,
+                   'diff': growth_size})
         growth_size_mib = growth_size * units.KiB
+        self._extend_volume(volume, volume_name, growth_size_mib)
+
+    def _extend_volume(self, volume, volume_name, growth_size_mib,
+                       _convert_to_base=False):
         try:
+            if _convert_to_base:
+                LOG.debug(_("Converting to base volume prior to growing."))
+                self._convert_to_base_volume(volume)
             self.client.growVolume(volume_name, growth_size_mib)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_("Error extending volume %s") % volume)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception() as ex_ctxt:
+                if (not _convert_to_base and
+                    isinstance(ex, hpexceptions.HTTPForbidden) and
+                        ex.get_code() == 150):
+                        # Error code 150 means 'invalid operation: Cannot grow
+                        # this type of volume'.
+                        # Suppress raising this exception because we can
+                        # resolve it by converting it into a base volume.
+                        # Afterwards, extending the volume should succeed, or
+                        # fail with a different exception/error code.
+                        ex_ctxt.reraise = False
+                        self._extend_volume(volume, volume_name,
+                                            growth_size_mib,
+                                            _convert_to_base=True)
+                else:
+                    LOG.error(_("Error extending volume: %(vol)s. "
+                                "Exception: %(ex)s") %
+                              {'vol': volume_name, 'ex': ex})
 
     def _get_3par_vol_name(self, volume_id):
         """Get converted 3PAR volume name.
