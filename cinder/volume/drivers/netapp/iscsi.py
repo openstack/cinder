@@ -956,32 +956,44 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         """Clone LUN with the given handle to the new name."""
         metadata = self._get_lun_attr(name, 'metadata')
         volume = metadata['Volume']
-        clone_create = NaElement.create_node_with_children(
-            'clone-create',
-            **{'volume': volume, 'source-path': name,
-                'destination-path': new_name, 'space-reserve': space_reserved})
-        if block_count > 0:
-            block_ranges = NaElement("block-ranges")
-            # zAPI can only handle 2^24 block ranges
-            bc_limit = 2 ** 24  # 8GB
-            segments = int(math.ceil(float(block_count) / float(bc_limit)))
-            bc = block_count
-            for segment in range(0, segments):
-                if bc > bc_limit:
-                    block_count = bc_limit
-                    bc -= bc_limit
-                else:
-                    block_count = bc
-                block_range = NaElement.create_node_with_children(
-                    'block-range',
-                    **{'source-block-number': str(src_block),
-                       'destination-block-number': str(dest_block),
-                       'block-count': str(block_count)})
-                block_ranges.add_child_elem(block_range)
-                src_block = int(src_block) + int(block_count)
-                dest_block = int(dest_block) + int(block_count)
-            clone_create.add_child_elem(block_ranges)
-        self.client.invoke_successfully(clone_create, True)
+        # zAPI can only handle 2^24 blocks per range
+        bc_limit = 2 ** 24  # 8GB
+        # zAPI can only handle 32 block ranges per call
+        br_limit = 32
+        z_limit = br_limit * bc_limit  # 256 GB
+        z_calls = int(math.ceil(block_count / float(z_limit)))
+        zbc = block_count
+        for call in range(0, z_calls):
+            if zbc > z_limit:
+                block_count = z_limit
+                zbc -= z_limit
+            else:
+                block_count = zbc
+            clone_create = NaElement.create_node_with_children(
+                'clone-create',
+                **{'volume': volume, 'source-path': name,
+                   'destination-path': new_name,
+                   'space-reserve': space_reserved})
+            if block_count > 0:
+                block_ranges = NaElement("block-ranges")
+                segments = int(math.ceil(block_count / float(bc_limit)))
+                bc = block_count
+                for segment in range(0, segments):
+                    if bc > bc_limit:
+                        block_count = bc_limit
+                        bc -= bc_limit
+                    else:
+                        block_count = bc
+                    block_range = NaElement.create_node_with_children(
+                        'block-range',
+                        **{'source-block-number': str(src_block),
+                           'destination-block-number': str(dest_block),
+                           'block-count': str(block_count)})
+                    block_ranges.add_child_elem(block_range)
+                    src_block += int(block_count)
+                    dest_block += int(block_count)
+                clone_create.add_child_elem(block_ranges)
+            self.client.invoke_successfully(clone_create, True)
         LOG.debug(_("Cloned LUN with new name %s") % new_name)
         lun = self._get_lun_by_args(vserver=self.vserver, path='/vol/%s/%s'
                                     % (volume, new_name))
@@ -1321,38 +1333,51 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         path = metadata['Path']
         (parent, splitter, name) = path.rpartition('/')
         clone_path = '%s/%s' % (parent, new_name)
-        clone_start = NaElement.create_node_with_children(
-            'clone-start', **{'source-path': path,
-                              'destination-path': clone_path,
-                              'no-snap': 'true'})
-        if block_count > 0:
-            block_ranges = NaElement("block-ranges")
-            # zAPI can only handle 2^24 block ranges
-            bc_limit = 2 ** 24  # 8GB
-            segments = int(math.ceil(float(block_count) / float(bc_limit)))
-            bc = block_count
-            for segment in range(0, segments):
-                if bc > bc_limit:
-                    block_count = bc_limit
-                    bc -= bc_limit
-                else:
-                    block_count = bc
-                block_range = NaElement.create_node_with_children(
-                    'block-range',
-                    **{'source-block-number': str(src_block),
-                        'destination-block-number': str(dest_block),
-                        'block-count': str(block_count)})
-                block_ranges.add_child_elem(block_range)
-                src_block = int(src_block) + int(block_count)
-                dest_block = int(dest_block) + int(block_count)
-            clone_start.add_child_elem(block_ranges)
-        result = self.client.invoke_successfully(clone_start, True)
-        clone_id_el = result.get_child_by_name('clone-id')
-        cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
-        vol_uuid = cl_id_info.get_child_content('volume-uuid')
-        clone_id = cl_id_info.get_child_content('clone-op-id')
-        if vol_uuid:
-            self._check_clone_status(clone_id, vol_uuid, name, new_name)
+        # zAPI can only handle 2^24 blocks per range
+        bc_limit = 2 ** 24  # 8GB
+        # zAPI can only handle 32 block ranges per call
+        br_limit = 32
+        z_limit = br_limit * bc_limit  # 256 GB
+        z_calls = int(math.ceil(block_count / float(z_limit)))
+        zbc = block_count
+        for call in range(0, z_calls):
+            if zbc > z_limit:
+                block_count = z_limit
+                zbc -= z_limit
+            else:
+                block_count = zbc
+            clone_start = NaElement.create_node_with_children(
+                'clone-start', **{'source-path': path,
+                                  'destination-path': clone_path,
+                                  'no-snap': 'true'})
+            if block_count > 0:
+                block_ranges = NaElement("block-ranges")
+                # zAPI can only handle 2^24 block ranges
+                bc_limit = 2 ** 24  # 8GB
+                segments = int(math.ceil(block_count / float(bc_limit)))
+                bc = block_count
+                for segment in range(0, segments):
+                    if bc > bc_limit:
+                        block_count = bc_limit
+                        bc -= bc_limit
+                    else:
+                        block_count = bc
+                    block_range = NaElement.create_node_with_children(
+                        'block-range',
+                        **{'source-block-number': str(src_block),
+                            'destination-block-number': str(dest_block),
+                            'block-count': str(block_count)})
+                    block_ranges.add_child_elem(block_range)
+                    src_block += int(block_count)
+                    dest_block += int(block_count)
+                clone_start.add_child_elem(block_ranges)
+            result = self.client.invoke_successfully(clone_start, True)
+            clone_id_el = result.get_child_by_name('clone-id')
+            cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
+            vol_uuid = cl_id_info.get_child_content('volume-uuid')
+            clone_id = cl_id_info.get_child_content('clone-op-id')
+            if vol_uuid:
+                self._check_clone_status(clone_id, vol_uuid, name, new_name)
         self.vol_refresh_voluntary = True
         luns = self._get_lun_by_args(path=clone_path)
         if luns:
