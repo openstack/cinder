@@ -241,10 +241,10 @@ class CoraidAppliance(object):
         if self._is_bad_config_state(reply):
             # Calculate error message
             if not reply:
-                message = _('Reply is empty.')
+                reason = _('Reply is empty.')
             else:
-                message = reply.get('message', _('Error message is empty.'))
-            raise exception.CoraidESMConfigureError(message=message)
+                reason = reply.get('message', _('Error message is empty.'))
+            raise exception.CoraidESMConfigureError(reason=reason)
         return reply
 
     def esm_command(self, request):
