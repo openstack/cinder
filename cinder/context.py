@@ -39,11 +39,13 @@ class RequestContext(object):
     Represents the user taking a given action within the system.
 
     """
+    user_idt_format = '{user} {tenant} {domain} {user_domain} {p_domain}'
 
     def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
                  roles=None, project_name=None, remote_address=None,
                  timestamp=None, request_id=None, auth_token=None,
                  overwrite=True, quota_class=None, service_catalog=None,
+                 domain=None, user_domain=None, project_domain=None,
                  **kwargs):
         """Initialize RequestContext.
 
@@ -63,6 +65,9 @@ class RequestContext(object):
 
         self.user_id = user_id
         self.project_id = project_id
+        self.domain = domain
+        self.user_domain = user_domain
+        self.project_domain = project_domain
         self.roles = roles or []
         self.project_name = project_name
         self.is_admin = is_admin
@@ -113,9 +118,19 @@ class RequestContext(object):
         local.store.context = self
 
     def to_dict(self):
+        user_idt = (
+            self.user_idt_format.format(user=self.user or '-',
+                                        tenant=self.tenant or '-',
+                                        domain=self.domain or '-',
+                                        user_domain=self.user_domain or '-',
+                                        p_domain=self.project_domain or '-'))
+
         return {'user_id': self.user_id,
                 'project_id': self.project_id,
                 'project_name': self.project_name,
+                'domain': self.domain,
+                'user_domain': self.user_domain,
+                'project_domain': self.project_domain,
                 'is_admin': self.is_admin,
                 'read_deleted': self.read_deleted,
                 'roles': self.roles,
@@ -126,7 +141,8 @@ class RequestContext(object):
                 'quota_class': self.quota_class,
                 'service_catalog': self.service_catalog,
                 'tenant': self.tenant,
-                'user': self.user}
+                'user': self.user,
+                'user_identity': user_idt}
 
     @classmethod
     def from_dict(cls, values):

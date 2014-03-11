@@ -86,3 +86,11 @@ class ContextTestCase(test.TestCase):
         ctxt = context.RequestContext('111', '222',
                                       service_catalog=service_catalog)
         self.assertEqual(ctxt.service_catalog, compute_catalog)
+
+    def test_user_identity(self):
+        ctx = context.RequestContext("user", "tenant",
+                                     domain="domain",
+                                     user_domain="user-domain",
+                                     project_domain="project-domain")
+        self.assertEqual('user tenant domain user-domain project-domain',
+                         ctx.to_dict()["user_identity"])
