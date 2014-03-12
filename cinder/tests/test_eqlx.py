@@ -187,7 +187,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.driver._eql_execute('volume', 'select', volume['name'], 'access',
                                  'create', 'initiator',
                                  self.connector['initiator'],
-                                 'authmethod chap',
+                                 'authmethod', 'chap',
                                  'username',
                                  self.configuration.eqlx_chap_login)
         self.mox.ReplayAll()
