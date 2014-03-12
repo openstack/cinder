@@ -54,6 +54,10 @@ def return_volume_types_create(context, name, specs):
     pass
 
 
+def return_volume_types_create_duplicate_type(context, name, specs):
+    raise exception.VolumeTypeExists(id=name)
+
+
 def return_volume_types_get_by_name(context, name):
     if name == "777":
         raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
@@ -121,6 +125,18 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
         self.assertEqual(1, len(res_dict))
         self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
+
+    def test_create_duplicate_type_fail(self):
+        self.stubs.Set(volume_types, 'create',
+                       return_volume_types_create_duplicate_type)
+        self.stubs.Set(volume_types, 'get_volume_type_by_name',
+                       return_volume_types_get_by_name)
+
+        body = {"volume_type": {"name": "vol_type_1",
+                                "extra_specs": {"key1": "value1"}}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types')
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._create, req, body)
 
     def _create_volume_type_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types')

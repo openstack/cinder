@@ -15,6 +15,7 @@
 
 """The volume types manage extension."""
 
+import six
 import webob
 
 from cinder.api import extensions
@@ -67,7 +68,7 @@ class VolumeTypesManageController(wsgi.Controller):
                                            'volume_type.create',
                                            notifier_err)
 
-            raise webob.exc.HTTPConflict(explanation=err)
+            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
         except exception.NotFound as err:
             notifier_err = dict(volume_types=vol_type, error_message=err)
             self._notify_volume_type_error(context,
@@ -95,7 +96,7 @@ class VolumeTypesManageController(wsgi.Controller):
             self._notify_volume_type_error(context,
                                            'volume_type.delete',
                                            notifier_err)
-            msg = 'Target volume type is still in use.'
+            msg = _('Target volume type is still in use.')
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
             notifier_err = dict(id=id, error_message=err)
