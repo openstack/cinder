@@ -701,7 +701,10 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVLUN.return_value = {'lun': None, 'type': 0}
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0}]
 
         self.driver.terminate_connection(
             self.volume,
@@ -710,7 +713,7 @@ class HP3PARBaseDriver(object):
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVLUN(self.VOLUME_3PAR_NAME),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.deleteVLUN(
                 self.VOLUME_3PAR_NAME,
                 None,
@@ -986,7 +989,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                              'vendor': None,
                              'wwn': self.wwn[1]}]}]
         mock_client.findHost.return_value = self.FAKE_HOST
-        mock_client.getVLUN.return_value = {'lun': 90}
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': 90, 'type': 0}]
         mock_client.getPorts.return_value = {
             'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]}
 
@@ -994,16 +1000,16 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
             mock.call.getCPG(HP3PAR_CPG),
             mock.call.getHost(self.FAKE_HOST),
             mock.ANY,
             mock.call.getHost(self.FAKE_HOST),
             mock.call.createVLUN(
-                'osv-0DM4qZEVSKON-DXN-NwVpw',
+                self.VOLUME_3PAR_NAME,
                 auto=True,
                 hostname=self.FAKE_HOST),
-            mock.call.getVLUN('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getPorts(),
             mock.call.logout()]
 
@@ -1015,7 +1021,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVLUN.return_value = {'lun': None, 'type': 0}
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0}]
         mock_client.getPorts.return_value = {
             'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]}
 
@@ -1026,7 +1035,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVLUN(self.VOLUME_3PAR_NAME),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.deleteVLUN(
                 self.VOLUME_3PAR_NAME,
                 None,
@@ -1304,23 +1313,26 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             hpexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.findHost.return_value = self.FAKE_HOST
-        mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': self.TARGET_LUN, 'type': 0}]
 
         result = self.driver.initialize_connection(self.volume, self.connector)
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
             mock.call.getCPG(HP3PAR_CPG),
             mock.call.getHost(self.FAKE_HOST),
             mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
             mock.call.getHost(self.FAKE_HOST),
             mock.call.createVLUN(
-                'osv-0DM4qZEVSKON-DXN-NwVpw',
+                self.VOLUME_3PAR_NAME,
                 auto=True,
                 hostname='fakehost',
                 portPos={'node': 8, 'slot': 1, 'cardPort': 1}),
-            mock.call.getVLUN('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
