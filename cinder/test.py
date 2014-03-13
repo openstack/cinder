@@ -27,6 +27,7 @@ import tempfile
 import uuid
 
 import fixtures
+import logging
 import mox
 from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture
@@ -37,7 +38,7 @@ from testtools import matchers
 from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.openstack.common.db.sqlalchemy import session
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import log as oslo_logging
 from cinder.openstack.common import timeutils
 from cinder import rpc
 from cinder import service
@@ -52,7 +53,7 @@ test_opts = [
 CONF = cfg.CONF
 CONF.register_opts(test_opts)
 
-LOG = logging.getLogger(__name__)
+LOG = oslo_logging.getLogger(__name__)
 
 _DB_CACHE = None
 
@@ -129,7 +130,8 @@ class TestCase(testtools.TestCase):
             stderr = self.useFixture(fixtures.StringStream('stderr')).stream
             self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
 
-        self.log_fixture = self.useFixture(fixtures.FakeLogger())
+        self.log_fixture = self.useFixture(fixtures.FakeLogger(
+            level=logging.DEBUG))
 
         rpc.add_extra_exmods("cinder.tests")
         self.addCleanup(rpc.clear_extra_exmods)
