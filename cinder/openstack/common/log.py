@@ -537,7 +537,7 @@ def _setup_logging_from_conf(project, version):
 
     if CONF.publish_errors:
         handler = importutils.import_object(
-            "openstack.common.log_handler.PublishErrorsHandler",
+            "cinder.openstack.common.log_handler.PublishErrorsHandler",
             logging.ERROR)
         log_root.addHandler(handler)
 
@@ -650,7 +650,7 @@ class ContextFormatter(logging.Formatter):
         # NOTE(sdague): default the fancier formatting params
         # to an empty string so we don't throw an exception if
         # they get used
-        for key in ('instance', 'color'):
+        for key in ('instance', 'color', 'user_identity'):
             if key not in record.__dict__:
                 record.__dict__[key] = ''
 
