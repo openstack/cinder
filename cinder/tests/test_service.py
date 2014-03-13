@@ -20,6 +20,7 @@ Unit Tests for remote procedure calls using queue
 """
 
 
+import mock
 import mox
 from oslo.config import cfg
 
@@ -215,3 +216,27 @@ class TestWSGIService(test.TestCase):
         test_service.start()
         self.assertNotEqual(0, test_service.port)
         test_service.stop()
+
+
+class OSCompatibilityTestCase(test.TestCase):
+    def _test_service_launcher(self, fake_os):
+        # Note(lpetrut): The cinder-volume service needs to be spawned
+        # differently on Windows due to an eventlet bug. For this reason,
+        # we must check the process launcher used.
+        fake_process_launcher = mock.MagicMock()
+        with mock.patch('os.name', fake_os):
+            with mock.patch('cinder.service.process_launcher',
+                            fake_process_launcher):
+                launcher = service.get_launcher()
+                if fake_os == 'nt':
+                    self.assertEqual(type(launcher),
+                                     service.Launcher)
+                else:
+                    self.assertEqual(launcher,
+                                     fake_process_launcher())
+
+    def test_process_launcher_on_windows(self):
+        self._test_service_launcher('nt')
+
+    def test_process_launcher_on_linux(self):
+        self._test_service_launcher('posix')

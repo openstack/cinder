@@ -389,3 +389,20 @@ def wait():
     except KeyboardInterrupt:
         _launcher.stop()
     rpc.cleanup()
+
+
+class Launcher(object):
+    def __init__(self):
+        self.launch_service = serve
+        self.wait = wait
+
+
+def get_launcher():
+    # Note(lpetrut): ProcessLauncher uses green pipes which fail on Windows
+    # due to missing support of non-blocking I/O pipes. For this reason, the
+    # service must be spawned differently on Windows, using the ServiceLauncher
+    # class instead.
+    if os.name == 'nt':
+        return Launcher()
+    else:
+        return process_launcher()
