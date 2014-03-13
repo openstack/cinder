@@ -29,7 +29,8 @@ class QemuImgInfo(object):
     BACKING_FILE_RE = re.compile((r"^(.*?)\s*\(actual\s+path\s*:"
                                   r"\s+(.*?)\)\s*$"), re.I)
     TOP_LEVEL_RE = re.compile(r"^([\w\d\s\_\-]+):(.*)$")
-    SIZE_RE = re.compile(r"(\d+)(\w+)?(\s*\(\s*(\d+)\s+bytes\s*\))?", re.I)
+    SIZE_RE = re.compile(r"(\d*\.?\d+)(\w+)?(\s*\(\s*(\d+)\s+bytes\s*\))?",
+                         re.I)
 
     def __init__(self, cmd_output=None):
         details = self._parse(cmd_output or '')
