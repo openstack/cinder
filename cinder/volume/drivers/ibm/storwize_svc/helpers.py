@@ -339,7 +339,7 @@ class StorwizeHelpers(object):
                     found = True
             if not found:
                 LOG.warning(_('unmap_vol_from_host: No mapping of volume '
-                              '%(vol_name)s to host %(host) found.') %
+                              '%(vol_name)s to host %(host)s found.') %
                             {'vol_name': volume_name, 'host': host_name})
 
         # We now know that the mapping exists
