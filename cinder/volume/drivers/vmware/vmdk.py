@@ -150,8 +150,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     # 1.2.0 - storage profile volume types based placement of volumes
     VERSION = '1.2.0'
 
+    def _do_deprecation_warning(self):
+        LOG.warn(_('The VMware ESX VMDK driver is now deprecated and will be '
+                   'removed in the Juno release. The VMware vCenter VMDK '
+                   'driver will remain and continue to be supported.'))
+
     def __init__(self, *args, **kwargs):
         super(VMwareEsxVmdkDriver, self).__init__(*args, **kwargs)
+
+        self._do_deprecation_warning()
+
         self.configuration.append_config_values(vmdk_opts)
         self._session = None
         self._stats = None
