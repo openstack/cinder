@@ -35,8 +35,7 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
     sys.path.insert(0, POSSIBLE_TOPDIR)
 
 from cinder.openstack.common import gettextutils
-gettextutils.enable_lazy()
-gettextutils.install('cinder', lazy=True)
+gettextutils.install('cinder')
 
 # Need to register global_opts
 from cinder.common import config  # noqa

@@ -23,6 +23,7 @@ from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
 from cinder.brick.remotefs import remotefs
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
