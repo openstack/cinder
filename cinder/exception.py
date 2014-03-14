@@ -595,11 +595,11 @@ class CoraidESMBadGroup(CoraidException):
 
 
 class CoraidESMConfigureError(CoraidException):
-    message = _('ESM configure request failed: %(message)s.')
+    message = _('ESM configure request failed: %(reason)s')
 
 
 class CoraidESMNotAvailable(CoraidException):
-    message = _('Coraid ESM not available with reason: %(reason)s.')
+    message = _('Coraid ESM not available with reason: %(reason)s')
 
 
 # Zadara
