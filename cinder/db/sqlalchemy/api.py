@@ -1,6 +1,7 @@
 # Copyright (c) 2011 X.commerce, a business unit of eBay Inc.
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
+# Copyright 2014 IBM Corp.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -26,6 +27,7 @@ from oslo.config import cfg
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, joinedload_all
+from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql import func
 
@@ -1153,20 +1155,30 @@ def volume_get(context, volume_id):
 
 
 @require_admin_context
-def volume_get_all(context, marker, limit, sort_key, sort_dir):
+def volume_get_all(context, marker, limit, sort_key, sort_dir,
+                   filters=None):
+    """Retrieves all volumes.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_key: single attributes by which results should be sorted
+    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param filters: Filters for the query. A filter key/value of
+                    'no_migration_targets'=True causes volumes with either
+                    a NULL 'migration_status' or a 'migration_status' that
+                    does not start with 'target:' to be retrieved.
+    :returns: list of matching volumes
+    """
     session = get_session()
     with session.begin():
-        query = _volume_get_query(context, session=session)
-
-        marker_volume = None
-        if marker is not None:
-            marker_volume = _volume_get(context, marker, session=session)
-
-        query = sqlalchemyutils.paginate_query(query, models.Volume, limit,
-                                               [sort_key, 'created_at', 'id'],
-                                               marker=marker_volume,
-                                               sort_dir=sort_dir)
-
+        # Generate the query
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_key, sort_dir, filters)
+        # No volumes would match, return empty list
+        if query == None:
+            return []
         return query.all()
 
 
@@ -1192,23 +1204,134 @@ def volume_get_all_by_instance_uuid(context, instance_uuid):
 
 @require_context
 def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
-                              sort_dir):
+                              sort_dir, filters=None):
+    """"Retrieves all volumes in a project.
+
+    :param context: context to query under
+    :param project_id: project for all volumes being retrieved
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_key: single attributes by which results should be sorted
+    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param filters: Filters for the query. A filter key/value of
+                    'no_migration_targets'=True causes volumes with either
+                    a NULL 'migration_status' or a 'migration_status' that
+                    does not start with 'target:' to be retrieved.
+    :returns: list of matching volumes
+    """
     session = get_session()
     with session.begin():
         authorize_project_context(context, project_id)
-        query = _volume_get_query(context, session).\
-            filter_by(project_id=project_id)
-
-        marker_volume = None
-        if marker is not None:
-            marker_volume = _volume_get(context, marker, session)
-
-        query = sqlalchemyutils.paginate_query(query, models.Volume, limit,
-                                               [sort_key, 'created_at', 'id'],
-                                               marker=marker_volume,
-                                               sort_dir=sort_dir)
-
+        # Add in the project filter without modifying the given filters
+        filters = filters.copy() if filters else {}
+        filters['project_id'] = project_id
+        # Generate the query
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_key, sort_dir, filters)
+        # No volumes would match, return empty list
+        if query == None:
+            return []
         return query.all()
+
+
+def _generate_paginate_query(context, session, marker, limit, sort_key,
+                             sort_dir, filters):
+    """Generate the query to include the filters and the paginate options.
+
+    Returns a query with sorting / pagination criteria added or None
+    if the given filters will not yield any results.
+
+    :param context: context to query under
+    :param session: the session to use
+    :param marker: the last item of the previous page; we returns the next
+                    results after this value.
+    :param limit: maximum number of items to return
+    :param sort_key: single attributes by which results should be sorted
+    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param filters: dictionary of filters; values that are lists,
+                    tuples, sets, or frozensets cause an 'IN' test to
+                    be performed, while exact matching ('==' operator)
+                    is used for other values
+    :returns: updated query or None
+    """
+    query = _volume_get_query(context, session=session)
+
+    if filters:
+        filters = filters.copy()
+
+        # 'no_migration_targets' is unique, must be either NULL or
+        # not start with 'target:'
+        if ('no_migration_targets' in filters and
+                filters['no_migration_targets'] == True):
+            filters.pop('no_migration_targets')
+            try:
+                column_attr = getattr(models.Volume, 'migration_status')
+                conditions = [column_attr == None,
+                              column_attr.op('NOT LIKE')('target:%')]
+                query = query.filter(or_(*conditions))
+            except AttributeError:
+                log_msg = _("'migration_status' column could not be found.")
+                LOG.debug(log_msg)
+                return None
+
+        # Apply exact match filters for everything else, ensure that the
+        # filter value exists on the model
+        for key in filters.keys():
+            # metadata is unique, must be a dict
+            if key == 'metadata':
+                if not isinstance(filters[key], dict):
+                    log_msg = _("'metadata' filter value is not valid.")
+                    LOG.debug(log_msg)
+                    return None
+                continue
+            try:
+                column_attr = getattr(models.Volume, key)
+                # Do not allow relationship properties since those require
+                # schema specific knowledge
+                prop = getattr(column_attr, 'property')
+                if isinstance(prop, RelationshipProperty):
+                    log_msg = (_("'%s' filter key is not valid, "
+                                 "it maps to a relationship.")) % key
+                    LOG.debug(log_msg)
+                    return None
+            except AttributeError:
+                log_msg = _("'%s' filter key is not valid.") % key
+                LOG.debug(log_msg)
+                return None
+
+        # Holds the simple exact matches
+        filter_dict = {}
+
+        # Iterate over all filters, special case the filter is necessary
+        for key, value in filters.iteritems():
+            if key == 'metadata':
+                # model.VolumeMetadata defines the backref to Volumes as
+                # 'volume_metadata', use that column attribute key
+                key = 'volume_metadata'
+                column_attr = getattr(models.Volume, key)
+                for k, v in value.iteritems():
+                    query = query.filter(column_attr.any(key=k, value=v))
+            elif isinstance(value, (list, tuple, set, frozenset)):
+                # Looking for values in a list; apply to query directly
+                column_attr = getattr(models.Volume, key)
+                query = query.filter(column_attr.in_(value))
+            else:
+                # OK, simple exact match; save for later
+                filter_dict[key] = value
+
+        # Apply simple exact matches
+        if filter_dict:
+            query = query.filter_by(**filter_dict)
+
+    marker_volume = None
+    if marker is not None:
+        marker_volume = _volume_get(context, marker, session)
+
+    return sqlalchemyutils.paginate_query(query, models.Volume, limit,
+                                          [sort_key, 'created_at', 'id'],
+                                          marker=marker_volume,
+                                          sort_dir=sort_dir)
 
 
 @require_admin_context
