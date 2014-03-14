@@ -131,6 +131,62 @@ class BackupSwiftTestCase(test.TestCase):
                           service.backup,
                           backup, self.volume_file)
 
+    def test_backup_backup_metadata_fail(self):
+        """Test of when an exception occurs in backup().
+
+        In backup(), after an exception occurs in
+        self._backup_metadata(), we want to check the process of an
+        exception handler.
+        """
+        self._create_backup_db_entry()
+        self.flags(backup_compression_algorithm='none')
+        service = SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+
+        def fake_backup_metadata(self, backup, object_meta):
+            raise exception.BackupDriverException(message=_('fake'))
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(SwiftBackupDriver, '_backup_metadata',
+                       fake_backup_metadata)
+
+        # We expect that an exception be notified directly.
+        self.assertRaises(exception.BackupDriverException,
+                          service.backup,
+                          backup, self.volume_file)
+
+    def test_backup_backup_metadata_fail2(self):
+        """Test of when an exception occurs in an exception handler.
+
+        In backup(), after an exception occurs in
+        self._backup_metadata(), we want to check the process when the
+        second exception occurs in self.delete().
+        """
+        self._create_backup_db_entry()
+        self.flags(backup_compression_algorithm='none')
+        service = SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+
+        def fake_backup_metadata(self, backup, object_meta):
+            raise exception.BackupDriverException(message=_('fake'))
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(SwiftBackupDriver, '_backup_metadata',
+                       fake_backup_metadata)
+
+        def fake_delete(self, backup):
+            raise exception.BackupOperationError()
+
+        # Raise a pseudo exception.BackupOperationError.
+        self.stubs.Set(SwiftBackupDriver, 'delete', fake_delete)
+
+        # We expect that the second exception is notified.
+        self.assertRaises(exception.BackupOperationError,
+                          service.backup,
+                          backup, self.volume_file)
+
     def test_restore(self):
         self._create_backup_db_entry()
         service = SwiftBackupDriver(self.ctxt)

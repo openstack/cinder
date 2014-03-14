@@ -41,6 +41,7 @@ from oslo.config import cfg
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
@@ -349,10 +350,11 @@ class SwiftBackupDriver(BackupDriver):
             try:
                 self._backup_metadata(backup, object_meta)
             except Exception as err:
-                LOG.exception(_("Backup volume metadata to swift failed: %s")
-                              % six.text_type(err))
-                self.delete(backup)
-                raise
+                with excutils.save_and_reraise_exception():
+                    LOG.exception(
+                        _("Backup volume metadata to swift failed: %s") %
+                        six.text_type(err))
+                    self.delete(backup)
 
         self._finalize_backup(backup, container, object_meta)
 

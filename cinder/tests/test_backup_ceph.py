@@ -14,6 +14,7 @@
 #    under the License.
 """ Tests for Ceph backup service."""
 
+import contextlib
 import hashlib
 import mock
 import os
@@ -451,6 +452,148 @@ class BackupCephTestCase(test.TestCase):
                             # Ensure the files are equal
                             self.assertEqual(checksum.digest(),
                                              self.checksum.digest())
+
+    @common_mocks
+    @mock.patch('fcntl.fcntl', spec=True)
+    @mock.patch('subprocess.Popen', spec=True)
+    def test_backup_volume_from_rbd_fail(self, mock_popen, mock_fnctl):
+        """Test of when an exception occurs in an exception handler.
+
+        In _backup_rbd(), after an exception.BackupRBDOperationFailed
+        occurs in self._rbd_diff_transfer(), we want to check the
+        process when the second exception occurs in
+        self._try_delete_base_image().
+        """
+        backup_name = self.service._get_backup_base_name(self.backup_id,
+                                                         diff_format=True)
+
+        def mock_write_data():
+            self.volume_file.seek(0)
+            data = self.volume_file.read(self.data_length)
+            self.callstack.append('write')
+            checksum.update(data)
+            test_file.write(data)
+
+        def mock_read_data():
+            self.callstack.append('read')
+            return self.volume_file.read(self.data_length)
+
+        self._setup_mock_popen(mock_popen,
+                               ['out', 'err'],
+                               p1hook=mock_read_data,
+                               p2hook=mock_write_data)
+
+        self.mock_rbd.RBD.list = mock.Mock()
+        self.mock_rbd.RBD.list.return_value = [backup_name]
+
+        with contextlib.nested(
+                mock.patch.object(self.service, 'get_backup_snaps'),
+                mock.patch.object(self.service, '_rbd_diff_transfer')
+        ) as (_unused, mock_rbd_diff_transfer):
+            def mock_rbd_diff_transfer_side_effect(src_name, src_pool,
+                                                   dest_name, dest_pool,
+                                                   src_user, src_conf,
+                                                   dest_user, dest_conf,
+                                                   src_snap, from_snap):
+                raise exception.BackupRBDOperationFailed(_('mock'))
+
+            # Raise a pseudo exception.BackupRBDOperationFailed.
+            mock_rbd_diff_transfer.side_effect \
+                = mock_rbd_diff_transfer_side_effect
+            with contextlib.nested(
+                    mock.patch.object(self.service, '_full_backup'),
+                    mock.patch.object(self.service, '_try_delete_base_image')
+            ) as (_unused, mock_try_delete_base_image):
+                def mock_try_delete_base_image_side_effect(backup_id,
+                                                           volume_id,
+                                                           base_name):
+                    raise self.service.rbd.ImageNotFound(_('mock'))
+
+                # Raise a pesudo exception rbd.ImageNotFound.
+                mock_try_delete_base_image.side_effect \
+                    = mock_try_delete_base_image_side_effect
+                with mock.patch.object(self.service, '_backup_metadata'):
+                    with tempfile.NamedTemporaryFile() as test_file:
+                        checksum = hashlib.sha256()
+                        image = self.service.rbd.Image()
+                        meta = rbddriver.RBDImageMetadata(image,
+                                                          'pool_foo',
+                                                          'user_foo',
+                                                          'conf_foo')
+                        rbdio = rbddriver.RBDImageIOWrapper(meta)
+
+                        # We expect that the second exception is
+                        # notified.
+                        self.assertRaises(
+                            self.service.rbd.ImageNotFound,
+                            self.service.backup,
+                            self.backup, rbdio)
+
+    @common_mocks
+    @mock.patch('fcntl.fcntl', spec=True)
+    @mock.patch('subprocess.Popen', spec=True)
+    def test_backup_volume_from_rbd_fail2(self, mock_popen, mock_fnctl):
+        """Test of when an exception occurs in an exception handler.
+
+        In backup(), after an exception.BackupOperationError occurs in
+        self._backup_metadata(), we want to check the process when the
+        second exception occurs in self.delete().
+        """
+        backup_name = self.service._get_backup_base_name(self.backup_id,
+                                                         diff_format=True)
+
+        def mock_write_data():
+            self.volume_file.seek(0)
+            data = self.volume_file.read(self.data_length)
+            self.callstack.append('write')
+            checksum.update(data)
+            test_file.write(data)
+
+        def mock_read_data():
+            self.callstack.append('read')
+            return self.volume_file.read(self.data_length)
+
+        self._setup_mock_popen(mock_popen,
+                               ['out', 'err'],
+                               p1hook=mock_read_data,
+                               p2hook=mock_write_data)
+
+        self.mock_rbd.RBD.list = mock.Mock()
+        self.mock_rbd.RBD.list.return_value = [backup_name]
+
+        with contextlib.nested(
+                mock.patch.object(self.service, 'get_backup_snaps'),
+                mock.patch.object(self.service, '_rbd_diff_transfer'),
+                mock.patch.object(self.service, '_full_backup'),
+                mock.patch.object(self.service, '_backup_metadata')
+        ) as (_unused1, _u2, _u3, mock_backup_metadata):
+
+            def mock_backup_metadata_side_effect(backup):
+                raise exception.BackupOperationError(_('mock'))
+
+            # Raise a pseudo exception.BackupOperationError.
+            mock_backup_metadata.side_effect = mock_backup_metadata_side_effect
+            with mock.patch.object(self.service, 'delete') as mock_delete:
+                def mock_delete_side_effect(backup):
+                    raise self.service.rbd.ImageBusy()
+
+                # Raise a pseudo exception rbd.ImageBusy.
+                mock_delete.side_effect = mock_delete_side_effect
+                with tempfile.NamedTemporaryFile() as test_file:
+                    checksum = hashlib.sha256()
+                    image = self.service.rbd.Image()
+                    meta = rbddriver.RBDImageMetadata(image,
+                                                      'pool_foo',
+                                                      'user_foo',
+                                                      'conf_foo')
+                    rbdio = rbddriver.RBDImageIOWrapper(meta)
+
+                    # We expect that the second exception is
+                    # notified.
+                    self.assertRaises(
+                        self.service.rbd.ImageBusy,
+                        self.service.backup,
+                        self.backup, rbdio)
 
     @common_mocks
     def test_backup_vol_length_0(self):

@@ -53,6 +53,7 @@ from oslo.config import cfg
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import strutils
 from cinder.openstack.common import units
@@ -667,21 +668,19 @@ class CephBackupDriver(BackupDriver):
                 source_rbd_image.remove_snap(from_snap)
 
         except exception.BackupRBDOperationFailed:
-            LOG.debug("Differential backup transfer failed")
+            with excutils.save_and_reraise_exception():
+                LOG.debug("Differential backup transfer failed")
 
-            # Clean up if image was created as part of this operation
-            if image_created:
-                self._try_delete_base_image(backup_id, volume_id,
-                                            base_name=base_name)
+                # Clean up if image was created as part of this operation
+                if image_created:
+                    self._try_delete_base_image(backup_id, volume_id,
+                                                base_name=base_name)
 
-            # Delete snapshot
-            LOG.debug("Deleting diff backup snapshot='%(snapshot)s' of "
-                      "source volume='%(volume)s'." %
-                      {'snapshot': new_snap, 'volume': volume_id})
-            source_rbd_image.remove_snap(new_snap)
-
-            # Re-raise the exception so that caller can try another approach
-            raise
+                # Delete snapshot
+                LOG.debug("Deleting diff backup snapshot='%(snapshot)s' of "
+                          "source volume='%(volume)s'." %
+                          {'snapshot': new_snap, 'volume': volume_id})
+                source_rbd_image.remove_snap(new_snap)
 
     def _file_is_rbd(self, volume_file):
         """Returns True if the volume_file is actually an RBD image."""
@@ -881,9 +880,9 @@ class CephBackupDriver(BackupDriver):
             try:
                 self._backup_metadata(backup)
             except exception.BackupOperationError:
-                # Cleanup.
-                self.delete(backup)
-                raise
+                with excutils.save_and_reraise_exception():
+                    # Cleanup.
+                    self.delete(backup)
 
         LOG.debug("Backup '%(backup_id)s' of volume %(volume_id)s finished."
                   % {'backup_id': backup_id, 'volume_id': volume_id})
