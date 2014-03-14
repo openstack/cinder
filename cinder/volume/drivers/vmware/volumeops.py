@@ -138,30 +138,20 @@ class VMwareVolumeOps(object):
         self._session.invoke_api(vim_util, 'cancel_retrieval',
                                  self._session.vim, retrieve_result)
 
-    def _is_usable(self, datastore, mount_info):
-        """Check if the given datastore is usable as per the given mount info.
+    def _is_usable(self, mount_info):
+        """Check if a datastore is usable as per the given mount info.
 
         The datastore is considered to be usable for a host only if it is
         writable, mounted and accessible.
 
-        :param datastore: Reference to the datastore entity
-        :param mount_info: host mount information
+        :param mount_info: Host mount information
         :return: True if datastore is usable
         """
-
-        writable = mount_info.accessMode == "readWrite"
-
+        writable = mount_info.accessMode == 'readWrite'
         # If mounted attribute is not set, then default is True
-        mounted = True
-        if hasattr(mount_info, "mounted"):
-            mounted = mount_info.mounted
-
-        if hasattr(mount_info, "accessible"):
-            accessible = mount_info.accessible
-        else:
-            # If accessible attribute is not set, we look at summary
-            summary = self.get_summary(datastore)
-            accessible = summary.accessible
+        mounted = getattr(mount_info, 'mounted', True)
+        # If accessible attribute is not set, then default is False
+        accessible = getattr(mount_info, 'accessible', False)
 
         return writable and mounted and accessible
 
@@ -175,31 +165,57 @@ class VMwareVolumeOps(object):
         :return: List of managed object references of all connected
                  hosts
         """
+        summary = self.get_summary(datastore)
+        if not summary.accessible:
+            return []
 
         host_mounts = self._session.invoke_api(vim_util, 'get_object_property',
                                                self._session.vim, datastore,
                                                'host')
+        if not hasattr(host_mounts, 'DatastoreHostMount'):
+            return []
+
         connected_hosts = []
         for host_mount in host_mounts.DatastoreHostMount:
-            if self._is_usable(datastore, host_mount.mountInfo):
+            if self._is_usable(host_mount.mountInfo):
                 connected_hosts.append(host_mount.key.value)
 
         return connected_hosts
 
+    def _in_maintenance(self, summary):
+        """Check if a datastore is entering maintenance or in maintenance.
+
+        :param summary: Summary information about the datastore
+        :return: True if the datastore is entering maintenance or in
+                 maintenance
+        """
+        if hasattr(summary, 'maintenanceMode'):
+            return summary.maintenanceMode in ['enteringMaintenance',
+                                               'inMaintenance']
+        return False
+
     def _is_valid(self, datastore, host):
-        """Check if host's datastore is accessible, mounted and writable.
+        """Check if the datastore is valid for the given host.
+
+        A datastore is considered valid for a host only if the datastore is
+        writable, mounted and accessible. Also, the datastore should not be
+        in maintenance mode.
 
         :param datastore: Reference to the datastore entity
         :param host: Reference to the host entity
         :return: True if datastore can be used for volume creation
         """
+        summary = self.get_summary(datastore)
+        in_maintenance = self._in_maintenance(summary)
+        if not summary.accessible or in_maintenance:
+            return False
 
         host_mounts = self._session.invoke_api(vim_util, 'get_object_property',
                                                self._session.vim, datastore,
                                                'host')
         for host_mount in host_mounts.DatastoreHostMount:
             if host_mount.key.value == host.value:
-                return self._is_usable(datastore, host_mount.mountInfo)
+                return self._is_usable(host_mount.mountInfo)
         return False
 
     def get_dss_rp(self, host):
