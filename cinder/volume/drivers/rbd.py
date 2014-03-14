@@ -26,6 +26,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import strutils
 from cinder import units
 from cinder.volume import driver
 
@@ -585,7 +586,9 @@ class RBDDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
-        volume_name = volume['name']
+        # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
+        #                utf-8 otherwise librbd will barf.
+        volume_name = strutils.safe_encode(volume['name'])
         with RADOSClient(self) as client:
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
@@ -658,14 +661,17 @@ class RBDDriver(driver.VolumeDriver):
 
     def delete_snapshot(self, snapshot):
         """Deletes an rbd snapshot."""
-        with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
-            snap = snapshot['name']
+        # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
+        #                utf-8 otherwise librbd will barf.
+        volume_name = strutils.safe_encode(snapshot['volume_name'])
+        snap_name = strutils.safe_encode(snapshot['name'])
+        with RBDVolumeProxy(self, volume_name) as volume:
             if self._supports_layering():
                 try:
-                    volume.unprotect_snap(snap)
+                    volume.unprotect_snap(snap_name)
                 except self.rbd.ImageBusy:
-                    raise exception.SnapshotIsBusy(snapshot_name=snap)
-            volume.remove_snap(snap)
+                    raise exception.SnapshotIsBusy(snapshot_name=snap_name)
+            volume.remove_snap(snap_name)
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
