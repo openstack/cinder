@@ -44,6 +44,7 @@ glance_opts = [
 ]
 CONF = cfg.CONF
 CONF.register_opts(glance_opts)
+CONF.import_opt('glance_api_version', 'cinder.common.config')
 
 LOG = logging.getLogger(__name__)
 
