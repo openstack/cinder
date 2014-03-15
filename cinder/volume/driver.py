@@ -273,16 +273,6 @@ class VolumeDriver(object):
         """Fail if connector doesn't contain all the data needed by driver."""
         pass
 
-    def _copy_volume_data_cleanup(self, context, volume, properties,
-                                  attach_info, remote, force=False):
-        self._detach_volume(attach_info)
-        if remote:
-            rpcapi = volume_rpcapi.VolumeAPI()
-            rpcapi.terminate_connection(context, volume, properties,
-                                        force=force)
-        else:
-            self.terminate_connection(volume, properties, force=False)
-
     def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""
         LOG.debug(_('copy_data_between_volumes %(src)s -> %(dest)s.')
@@ -316,9 +306,8 @@ class VolumeDriver(object):
                 LOG.error(msg % {'vol': src_vol['id']})
                 self.db.volume_update(context, src_vol['id'],
                                       {'status': src_orig_status})
-                self._copy_volume_data_cleanup(context, dest_vol, properties,
-                                               dest_attach_info, dest_remote,
-                                               force=True)
+                self._detach_volume(context, dest_attach_info, dest_vol,
+                                    properties, force=True, remote=dest_remote)
 
         try:
             size_in_mb = int(src_vol['size']) * 1024    # vol size is in GB
@@ -334,12 +323,12 @@ class VolumeDriver(object):
                 LOG.error(msg % {'src': src_vol['id'], 'dest': dest_vol['id']})
                 copy_error = True
         finally:
-            self._copy_volume_data_cleanup(context, dest_vol, properties,
-                                           dest_attach_info, dest_remote,
-                                           force=copy_error)
-            self._copy_volume_data_cleanup(context, src_vol, properties,
-                                           src_attach_info, src_remote,
-                                           force=copy_error)
+            self._detach_volume(context, dest_attach_info, dest_vol,
+                                properties, force=copy_error,
+                                remote=dest_remote)
+            self._detach_volume(context, src_attach_info, src_vol,
+                                properties, force=copy_error,
+                                remote=src_remote)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
@@ -356,8 +345,7 @@ class VolumeDriver(object):
                                      self.configuration.volume_dd_blocksize,
                                      size=volume['size'])
         finally:
-            self._detach_volume(attach_info)
-            self.terminate_connection(volume, properties)
+            self._detach_volume(context, attach_info, volume, properties)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
@@ -372,18 +360,50 @@ class VolumeDriver(object):
                                       image_meta,
                                       attach_info['device']['path'])
         finally:
-            self._detach_volume(attach_info)
-            self.terminate_connection(volume, properties)
+            self._detach_volume(context, attach_info, volume, properties)
 
     def _attach_volume(self, context, volume, properties, remote=False):
         """Attach the volume."""
         if remote:
+            # Call remote manager's initialize_connection which includes
+            # driver's create_export and initialize_connection
             rpcapi = volume_rpcapi.VolumeAPI()
-            rpcapi.create_export(context, volume)
             conn = rpcapi.initialize_connection(context, volume, properties)
         else:
-            self.create_export(context, volume)
-            conn = self.initialize_connection(volume, properties)
+            # Call local driver's create_export and initialize_connection.
+            # NOTE(avishay) This is copied from the manager's code - need to
+            # clean this up in the future.
+            model_update = None
+            try:
+                LOG.debug(_("Volume %s: creating export"), volume['id'])
+                model_update = self.create_export(context, volume)
+                if model_update:
+                    volume = self.db.volume_update(context, volume['id'],
+                                                   model_update)
+            except exception.CinderException as ex:
+                if model_update:
+                    LOG.exception(_("Failed updating model of volume "
+                                    "%(volume_id)s with driver provided model "
+                                    "%(model)s") %
+                                  {'volume_id': volume['id'],
+                                   'model': model_update})
+                    raise exception.ExportFailure(reason=ex)
+
+            try:
+                conn = self.initialize_connection(volume, properties)
+            except Exception as err:
+                try:
+                    err_msg = (_('Unable to fetch connection information from '
+                                 'backend: %(err)s') % {'err': err})
+                    LOG.error(err_msg)
+                    LOG.debug("Cleaning up failed connect initialization.")
+                    self.remove_export(context, volume)
+                except Exception as ex:
+                    ex_msg = (_('Error encountered during cleanup '
+                                'of a failed attach: %(ex)s') % {'ex': ex})
+                    LOG.error(err_msg)
+                    raise exception.VolumeBackendAPIException(data=ex_msg)
+                raise exception.VolumeBackendAPIException(data=err_msg)
 
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
@@ -406,12 +426,41 @@ class VolumeDriver(object):
                                                       {'path': host_device}))
         return {'conn': conn, 'device': device, 'connector': connector}
 
-    def _detach_volume(self, attach_info):
+    def _detach_volume(self, context, attach_info, volume, properties,
+                       force=False, remote=False):
         """Disconnect the volume from the host."""
         # Use Brick's code to do attach/detach
         connector = attach_info['connector']
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
+
+        if remote:
+            # Call remote manager's terminate_connection which includes
+            # driver's terminate_connection and remove export
+            rpcapi = volume_rpcapi.VolumeAPI()
+            rpcapi.terminate_connection(context, volume, properties,
+                                        force=force)
+        else:
+            # Call local driver's terminate_connection and remove export.
+            # NOTE(avishay) This is copied from the manager's code - need to
+            # clean this up in the future.
+            try:
+                self.terminate_connection(volume, properties, force=force)
+            except Exception as err:
+                err_msg = (_('Unable to terminate volume connection: %(err)s')
+                           % {'err': err})
+                LOG.error(err_msg)
+                raise exception.VolumeBackendAPIException(data=err_msg)
+
+            try:
+                LOG.debug(_("volume %s: removing export"), volume['id'])
+                self.remove_export(context, volume)
+            except Exception as ex:
+                LOG.exception(_("Error detaching volume %(volume)s, "
+                                "due to remove export failure."),
+                              {"volume": volume['id']})
+                raise exception.RemoveExportException(volume=volume['id'],
+                                                      reason=ex)
 
     def clone_image(self, volume, image_location, image_id, image_meta):
         """Create a volume efficiently from an existing image.
@@ -451,8 +500,7 @@ class VolumeDriver(object):
                     backup_service.backup(backup, volume_file)
 
         finally:
-            self._detach_volume(attach_info)
-            self.terminate_connection(volume, properties)
+            self._detach_volume(context, attach_info, volume, properties)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
@@ -471,8 +519,7 @@ class VolumeDriver(object):
                     backup_service.restore(backup, volume['id'], volume_file)
 
         finally:
-            self._detach_volume(attach_info)
-            self.terminate_connection(volume, properties)
+            self._detach_volume(context, attach_info, volume, properties)
 
     def clear_download(self, context, volume):
         """Clean up after an interrupted image copy."""

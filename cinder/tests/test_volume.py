@@ -2702,8 +2702,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         f = fileutils.file_open('/dev/null').AndReturn(file('/dev/null'))
         backup_service.backup(backup, f)
         utils.execute('chown', 0, '/dev/null', run_as_root=True)
-        self.volume.driver._detach_volume(attach_info)
-        self.volume.driver.terminate_connection(vol, properties)
+        self.volume.driver._detach_volume(self.context, attach_info, vol,
+                                          properties)
         self.mox.ReplayAll()
         self.volume.driver.backup_volume(self.context, backup, backup_service)
         self.mox.UnsetStubs()
@@ -2735,8 +2735,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         f = fileutils.file_open('/dev/null', 'wb').AndReturn(file('/dev/null'))
         backup_service.restore(backup, vol['id'], f)
         utils.execute('chown', 0, '/dev/null', run_as_root=True)
-        self.volume.driver._detach_volume(attach_info)
-        self.volume.driver.terminate_connection(vol, properties)
+        self.volume.driver._detach_volume(self.context, attach_info, vol,
+                                          properties)
         self.mox.ReplayAll()
         self.volume.driver.restore_backup(self.context, backup, vol,
                                           backup_service)

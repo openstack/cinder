@@ -63,10 +63,6 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         # These exception types will trigger the volume to be set into error
         # status rather than being rescheduled.
         self.no_reschedule_types = [
-            # The volume has already finished being created when the exports
-            # occur, rescheduling would be bad if it happened due to exports
-            # not succeeding.
-            exception.ExportFailure,
             # Image copying happens after volume creation so rescheduling due
             # to copy failure will mean the same volume will be created at
             # another place when it still exists locally.
@@ -602,15 +598,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             if model_update:
                 volume_ref = self.db.volume_update(context, volume_ref['id'],
                                                    model_update)
-        except exception.CinderException as ex:
+        except exception.CinderException:
             # If somehow the update failed we want to ensure that the
             # failure is logged (but not try rescheduling since the volume at
             # this point has been created).
-            if model_update:
-                LOG.exception(_("Failed updating model of volume %(volume_id)s"
-                                " with creation provided model %(model)s") %
-                              {'volume_id': volume_id, 'model': model_update})
-                raise exception.ExportFailure(reason=ex)
+            LOG.exception(_("Failed updating model of volume %(volume_id)s"
+                            " with creation provided model %(model)s") %
+                          {'volume_id': volume_id, 'model': model_update})
+            raise
 
         return volume_ref
 
