@@ -34,6 +34,7 @@ class UsedLimitsController(wsgi.Controller):
         quota_map = {
             'totalVolumesUsed': 'volumes',
             'totalGigabytesUsed': 'gigabytes',
+            'totalSnapshotsUsed': 'snapshots',
         }
 
         used_limits = {}

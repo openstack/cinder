@@ -47,6 +47,7 @@ class ViewBuilder(object):
             "cores": ["maxTotalCores"],
             "gigabytes": ["maxTotalVolumeGigabytes"],
             "volumes": ["maxTotalVolumes"],
+            "snapshots": ["maxTotalSnapshots"],
             "key_pairs": ["maxTotalKeypairs"],
             "floating_ips": ["maxTotalFloatingIps"],
             "metadata_items": ["maxServerMeta", "maxImageMeta"],
