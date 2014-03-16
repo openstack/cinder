@@ -30,7 +30,9 @@ from six.moves import cStringIO as StringIO
 ignore_codes = ["E1103"]
 # Note(maoy): the error message is the pattern of E0202. It should be ignored
 # for cinder.tests modules
-ignore_messages = ["An attribute affected in cinder.tests"]
+#Note(fengqian): the second error message is the pattern of [E0611].
+#It should be ignored because use six module to keep py3.X compatibility.
+ignore_messages = ["An attribute affected in cinder.tests", "No name 'urllib' in module '_MovedItems'"]
 # Note(maoy): we ignore all errors in openstack.common because it should be
 # checked elsewhere. We also ignore cinder.tests for now due to high false
 # positive rate.

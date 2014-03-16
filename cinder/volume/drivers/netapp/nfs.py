@@ -21,8 +21,9 @@ import os
 import re
 from threading import Timer
 import time
-import urlparse
 import uuid
+
+import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.image import image_utils

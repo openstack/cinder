@@ -14,7 +14,8 @@
 
 import netaddr
 import requests
-import urlparse
+
+import six.moves.urllib.parse as urlparse
 
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
