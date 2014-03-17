@@ -19,6 +19,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.openstack.common import log as logging
 from cinder.volume.flows.api import create_volume as create_api
+from cinder.volume.flows import common as flow_common
 from cinder.volume.flows.manager import create_volume as create_mgr
 
 LOG = logging.getLogger(__name__)
@@ -43,7 +44,10 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
             driver_name = self.driver.__class__.__name__
             LOG.error(_("Unable to manage existing volume. "
                         "Volume driver %s not initialized.") % driver_name)
-            self.db.volume_update(context, volume_id, dict(status='error'))
+            flow_common.error_out_volume(context, self.db, volume_id,
+                                         reason=_("Volume driver %s "
+                                                  "not initialized.") %
+                                         driver_name)
             raise exception.DriverNotInitialized()
 
         size = self.driver.manage_existing_get_size(volume_ref,
