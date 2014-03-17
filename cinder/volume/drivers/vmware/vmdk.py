@@ -856,12 +856,12 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             LOG.info(_("Done copying image: %(id)s to volume: %(vol)s.") %
                      {'id': image_id, 'vol': volume['name']})
         except Exception as excep:
-            LOG.exception(_("Exception in copy_image_to_volume: %(excep)s. "
-                            "Deleting the backing: %(back)s.") %
-                          {'excep': excep, 'back': backing})
+            err_msg = (_("Exception in copy_image_to_volume: "
+                         "%(excep)s. Deleting the backing: "
+                         "%(back)s.") % {'excep': excep, 'back': backing})
             # delete the backing
             self.volumeops.delete_backing(backing)
-            raise excep
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
     def _fetch_stream_optimized_image(self, context, volume, image_service,
                                       image_id, image_size):
@@ -876,8 +876,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             # find host in which to create the volume
             (host, rp, folder, summary) = self._select_ds_for_volume(volume)
         except error_util.VimException as excep:
-            LOG.exception(_("Exception in _select_ds_for_volume: %s.") % excep)
-            raise excep
+            err_msg = (_("Exception in _select_ds_for_volume: "
+                         "%s."), excep)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
         size_gb = volume['size']
         LOG.debug(_("Selected datastore %(ds)s for new volume of size "
@@ -915,13 +916,14 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                                        vm_import_spec,
                                                        image_size=image_size)
         except exception.CinderException as excep:
-            LOG.exception(_("Exception in copy_image_to_volume: %s.") % excep)
-            backing = self.volumeops.get_backing(volume['name'])
-            if backing:
-                LOG.exception(_("Deleting the backing: %s") % backing)
-                # delete the backing
-                self.volumeops.delete_backing(backing)
-            raise excep
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Exception in copy_image_to_volume: %s."),
+                              excep)
+                backing = self.volumeops.get_backing(volume['name'])
+                if backing:
+                    LOG.exception(_("Deleting the backing: %s") % backing)
+                    # delete the backing
+                    self.volumeops.delete_backing(backing)
 
         LOG.info(_("Done copying image: %(id)s to volume: %(vol)s.") %
                  {'id': image_id, 'vol': volume['name']})
@@ -988,12 +990,19 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         if properties and 'vmware_disktype' in properties:
             disk_type = properties['vmware_disktype']
 
-        if disk_type == 'streamOptimized':
-            self._fetch_stream_optimized_image(context, volume, image_service,
-                                               image_id, image_size_in_bytes)
-        else:
-            self._fetch_flat_image(context, volume, image_service, image_id,
-                                   image_size_in_bytes)
+        try:
+            if disk_type == 'streamOptimized':
+                self._fetch_stream_optimized_image(context, volume,
+                                                   image_service, image_id,
+                                                   image_size_in_bytes)
+            else:
+                self._fetch_flat_image(context, volume, image_service,
+                                       image_id, image_size_in_bytes)
+        except exception.CinderException as excep:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Exception in copying the image to the "
+                                "volume: %s."), excep)
+
         # image_size_in_bytes is the capacity of the image in Bytes and
         # volume_size_in_gb is the size specified by the user, if the
         # size is input from the API.
@@ -1052,6 +1061,52 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                    image_version=1)
         LOG.info(_("Done copying volume %(vol)s to a new image %(img)s") %
                  {'vol': volume['name'], 'img': image_meta['name']})
+
+    def extend_volume(self, volume, new_size):
+        """Extend vmdk to new_size.
+
+        Extends the vmdk backing to new volume size. First try to extend in
+        place on the same datastore. If that fails, try to relocate the volume
+        to a different datastore that can accommodate the new_size'd volume.
+
+        :param volume: dictionary describing the existing 'available' volume
+        :param new_size: new size in GB to extend this volume to
+        """
+        vol_name = volume['name']
+        # try extending vmdk in place
+        try:
+            self._extend_vmdk_virtual_disk(vol_name, new_size)
+            LOG.info(_("Done extending volume %(vol)s to size %(size)s GB.") %
+                     {'vol': vol_name, 'size': new_size})
+            return
+        except error_util.VimFaultException:
+            LOG.info(_("Relocating volume %s vmdk to a different "
+                       "datastore since trying to extend vmdk file "
+                       "in place failed."), vol_name)
+        # If in place extend fails, then try to relocate the volume
+        try:
+            (host, rp, folder, summary) = self._select_ds_for_volume(new_size)
+        except error_util.VimException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Not able to find a different datastore to "
+                                "place the extended volume %s."), vol_name)
+
+        LOG.info(_("Selected datastore %(ds)s to place extended volume of "
+                   "size %(size)s GB.") % {'ds': summary.name,
+                                           'size': new_size})
+
+        try:
+            backing = self.volumeops.get_backing(vol_name)
+            self.volumeops.relocate_backing(backing, summary.datastore, rp,
+                                            host)
+            self._extend_vmdk_virtual_disk(vol_name, new_size)
+            self.volumeops.move_backing_to_folder(backing, folder)
+        except error_util.VimException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Not able to relocate volume %s for "
+                                "extending."), vol_name)
+        LOG.info(_("Done extending volume %(vol)s to size %(size)s GB.") %
+                 {'vol': vol_name, 'size': new_size})
 
 
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
