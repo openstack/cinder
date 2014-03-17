@@ -1213,12 +1213,10 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     """Test class for VMwareVcVmdkDriver."""
     VMDK_DRIVER = vmdk.VMwareVcVmdkDriver
 
-    DEFAULT_PROFILE = 'fakeProfile'
     DEFAULT_VC_VERSION = '5.5'
 
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
-        self._config.pbm_default_policy = self.DEFAULT_PROFILE
         self._config.vmware_host_version = self.DEFAULT_VC_VERSION
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
 
@@ -1266,35 +1264,38 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                 '_get_vc_version')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_do_setup(self, vol_ops, session, _get_vc_version,
-                      _get_pbm_wsdl_location):
-        vol_ops = vol_ops.return_value
+    def test_do_setup(self, session, _get_vc_version, _get_pbm_wsdl_location):
         session = session.return_value
-        # pbm is enabled and pbm_default_policy is used
-        _get_vc_version.return_value = LooseVersion('5.5')
-        _get_pbm_wsdl_location.return_value = 'fake_pbm_location'
-        self._driver.do_setup(mock.ANY)
-        default = self.DEFAULT_PROFILE
-        vol_ops.retrieve_profile_id.assert_called_once_with(default)
-        self.assertTrue(self._driver._storage_policy_enabled)
-
-        # pbm is enabled and pbm_default_policy is wrong
-        self._driver._storage_policy_enabled = False
-        vol_ops.retrieve_profile_id.reset_mock()
-        vol_ops.retrieve_profile_id.return_value = None
-        self.assertRaises(error_util.PbmDefaultPolicyDoesNotExist,
-                          self._driver.do_setup, mock.ANY)
-        vol_ops.retrieve_profile_id.assert_called_once_with(default)
 
         # pbm is disabled
-        self._driver._storage_policy_enabled = False
-        vol_ops.retrieve_profile_id.reset_mock()
-        _get_vc_version.return_value = LooseVersion('5.0')
+        vc_version = LooseVersion('5.0')
+        _get_vc_version.return_value = vc_version
         self._driver.do_setup(mock.ANY)
         self.assertFalse(self._driver._storage_policy_enabled)
-        self.assertFalse(vol_ops.retrieve_profile_id.called)
+        _get_vc_version.assert_called_once_with()
+
+        # pbm is enabled and invalid pbm wsdl location
+        vc_version = LooseVersion('5.5')
+        _get_vc_version.reset_mock()
+        _get_vc_version.return_value = vc_version
+        _get_pbm_wsdl_location.return_value = None
+        self.assertRaises(error_util.VMwareDriverException,
+                          self._driver.do_setup,
+                          mock.ANY)
+        self.assertFalse(self._driver._storage_policy_enabled)
+        _get_vc_version.assert_called_once_with()
+        _get_pbm_wsdl_location.assert_called_once_with(vc_version)
+
+        # pbm is enabled and valid pbm wsdl location
+        vc_version = LooseVersion('5.5')
+        _get_vc_version.reset_mock()
+        _get_vc_version.return_value = vc_version
+        _get_pbm_wsdl_location.reset_mock()
+        _get_pbm_wsdl_location.return_value = 'fake_pbm_location'
+        self._driver.do_setup(mock.ANY)
+        self.assertTrue(self._driver._storage_policy_enabled)
+        _get_vc_version.assert_called_once_with()
+        _get_pbm_wsdl_location.assert_called_once_with(vc_version)
 
     @mock.patch.object(VMDK_DRIVER, '_extend_volumeops_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
@@ -1672,11 +1673,11 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         spec_key = 'vmware:storage_profile'
         get_volume_type_extra_specs.assert_called_once_with(fake_id, spec_key)
 
-        # default profile should be returned when no storage profile is
+        # None should be returned when no storage profile is
         # associated with the volume type
         get_volume_type_extra_specs.return_value = False
         profile = self._driver._get_storage_profile(volume)
-        self.assertEqual(self.DEFAULT_PROFILE, profile)
+        self.assertIsNone(profile)
 
     @mock.patch('cinder.volume.drivers.vmware.vim_util.'
                 'convert_datastores_to_hubs')
