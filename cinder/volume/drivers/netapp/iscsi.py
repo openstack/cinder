@@ -47,7 +47,6 @@ from cinder.volume.drivers.netapp.utils import get_volume_extra_specs
 from cinder.volume.drivers.netapp.utils import provide_ems
 from cinder.volume.drivers.netapp.utils import set_safe_attr
 from cinder.volume.drivers.netapp.utils import validate_instantiation
-from cinder.volume import volume_types
 
 
 LOG = logging.getLogger(__name__)
@@ -495,16 +494,6 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             **{'initiator-group-name': igroup,
                'initiator': initiator})
         self.client.invoke_successfully(igroup_add, True)
-
-    def _get_qos_type(self, volume):
-        """Get the storage service type for a volume."""
-        type_id = volume['volume_type_id']
-        if not type_id:
-            return None
-        volume_type = volume_types.get_volume_type(None, type_id)
-        if not volume_type:
-            return None
-        return volume_type['name']
 
     def _add_lun_to_table(self, lun):
         """Adds LUN to cache table."""
