@@ -51,7 +51,7 @@ class StorwizeHelpers(object):
         keys = ['license_compression_enclosures',
                 'license_compression_capacity']
         for key in keys:
-            if resp[key] != '0':
+            if resp.get(key, '0') != '0':
                 return True
         return False
 
