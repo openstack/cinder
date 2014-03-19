@@ -123,6 +123,7 @@ class VMwareAPISession(object):
         self._task_poll_interval = task_poll_interval
         self._scheme = scheme
         self._session_id = None
+        self._session_username = None
         self._vim = None
         self._pbm_wsdl = pbm_wsdl
         self._pbm = None
@@ -168,6 +169,14 @@ class VMwareAPISession(object):
                 LOG.exception(_("Error while terminating session: %s.") %
                               excep)
         self._session_id = session.key
+
+        # We need to save the username in the session since we may need it
+        # later to check active session. The SessionIsActive method requires
+        # the username parameter to be exactly same as that in the session
+        # object. We can't use the username used for login since the Login
+        # method ignores the case.
+        self._session_username = session.userName
+
         if self.pbm:
             self.pbm.set_cookie()
         LOG.info(_("Successfully established connection to the server."))
@@ -206,7 +215,6 @@ class VMwareAPISession(object):
         @Retry(max_retry_count=self._api_retry_count,
                exceptions=(error_util.VimException))
         def _invoke_api(module, method, *args, **kwargs):
-            last_fault_list = []
             while True:
                 try:
                     api_method = getattr(module, method)
@@ -217,24 +225,53 @@ class VMwareAPISession(object):
                     # If it is a not-authenticated fault, we re-authenticate
                     # the user and retry the API invocation.
 
-                    # Because of the idle session returning an empty
-                    # RetrieveProperties response and also the same is
-                    # returned when there is an empty answer to a query
-                    # (e.g. no VMs on the host), we have no way to
-                    # differentiate.
-                    # So if the previous response was also an empty
-                    # response and after creating a new session, we get
-                    # the same empty response, then we are sure of the
-                    # response being an empty response.
-                    if error_util.NOT_AUTHENTICATED in last_fault_list:
+                    # The not-authenticated fault is set by the fault checker
+                    # due to an empty response. An empty response could be a
+                    # valid response; for e.g., response for the query to
+                    # return the VMs in an ESX server which has no VMs in it.
+                    # Also, the server responds with an empty response in the
+                    # case of an inactive session. Therefore, we need a way to
+                    # differentiate between these two cases.
+                    if self._is_current_session_active():
+                        LOG.debug(_("Returning empty response for "
+                                    "%(module)s.%(method)s invocation."),
+                                  {'module': module,
+                                   'method': method})
                         return []
-                    last_fault_list = excep.fault_list
-                    LOG.exception(_("Not authenticated error occurred. "
-                                    "Will create session and try "
-                                    "API call again: %s.") % excep)
+
+                    # empty response is due to an inactive session
+                    LOG.warn(_("Current session: %(session)s is inactive; "
+                               "re-creating the session while invoking "
+                               "method %(module)s.%(method)s."),
+                             {'session': self._session_id,
+                              'module': module,
+                              'method': method},
+                             exc_info=True)
                     self.create_session()
 
         return _invoke_api(module, method, *args, **kwargs)
+
+    def _is_current_session_active(self):
+        """Check if current session is active.
+
+        :returns: True if the session is active; False otherwise
+        """
+        LOG.debug(_("Checking if the current session: %s is active."),
+                  self._session_id)
+
+        is_active = False
+        try:
+            is_active = self.vim.SessionIsActive(
+                self.vim.service_content.sessionManager,
+                sessionID=self._session_id,
+                userName=self._session_username)
+        except error_util.VimException:
+            LOG.warn(_("Error occurred while checking whether the "
+                       "current session: %s is active."),
+                     self._session_id,
+                     exc_info=True)
+
+        return is_active
 
     def wait_for_task(self, task):
         """Return a deferred that will give the result of the given task.
