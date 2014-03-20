@@ -533,7 +533,6 @@ def get_volumes_for_specs(ssc_vols, specs):
     result = copy.deepcopy(ssc_vols['all'])
     raid_type = specs.get('netapp:raid_type')
     disk_type = specs.get('netapp:disk_type')
-    qos_policy_group = specs.get('netapp:qos_policy_group')
     bool_specs_list = ['netapp_mirrored', 'netapp_unmirrored',
                        'netapp_dedup', 'netapp_nodedup',
                        'netapp_compression', 'netapp_nocompression',
@@ -582,7 +581,7 @@ def get_volumes_for_specs(ssc_vols, specs):
             result = result & ssc_vols['thin']
         else:
             result = result - ssc_vols['thin']
-    if raid_type or disk_type or qos_policy_group:
+    if raid_type or disk_type:
         tmp = copy.deepcopy(result)
         for vol in tmp:
             if raid_type:
@@ -594,11 +593,6 @@ def get_volumes_for_specs(ssc_vols, specs):
                 vol_dtype = vol.aggr['disk_type']
                 vol_dtype = vol_dtype.lower() if vol_dtype else None
                 if disk_type.lower() != vol_dtype:
-                    result.discard(vol)
-            if qos_policy_group:
-                vol_qos = vol.qos['qos_policy_group']
-                vol_qos = vol_qos.lower() if vol_qos else None
-                if qos_policy_group.lower() != vol_qos:
                     result.discard(vol)
     return result
 
