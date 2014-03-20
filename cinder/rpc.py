@@ -31,6 +31,7 @@ from oslo import messaging
 
 import cinder.context
 import cinder.exception
+from cinder.openstack.common import jsonutils
 
 CONF = cfg.CONF
 TRANSPORT = None
@@ -60,8 +61,9 @@ def init(conf):
     TRANSPORT = messaging.get_transport(conf,
                                         allowed_remote_exmods=exmods,
                                         aliases=TRANSPORT_ALIASES)
-    NOTIFIER = messaging.Notifier(TRANSPORT,
-                                  serializer=RequestContextSerializer(None))
+
+    serializer = RequestContextSerializer(JsonPayloadSerializer())
+    NOTIFIER = messaging.Notifier(TRANSPORT, serializer=serializer)
 
 
 def initialized():
@@ -90,6 +92,12 @@ def clear_extra_exmods():
 
 def get_allowed_exmods():
     return ALLOWED_EXMODS + EXTRA_EXMODS
+
+
+class JsonPayloadSerializer(messaging.NoOpSerializer):
+    @staticmethod
+    def serialize_entity(context, entity):
+        return jsonutils.to_primitive(entity, convert_instances=True)
 
 
 class RequestContextSerializer(messaging.Serializer):
