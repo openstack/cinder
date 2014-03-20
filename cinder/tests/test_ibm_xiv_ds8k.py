@@ -124,6 +124,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         configuration.xiv_ds8k_proxy = \
             'cinder.tests.test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver'
         configuration.xiv_ds8k_connection_type = 'iscsi'
+        configuration.xiv_chap = 'disabled'
         configuration.san_ip = FAKE
         configuration.san_login = FAKE
         configuration.san_clustername = FAKE
