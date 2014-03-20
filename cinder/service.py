@@ -100,6 +100,7 @@ class Service(service.Service):
         LOG.audit(_('Starting %(topic)s node (version %(version_string)s)'),
                   {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
+        self.manager.init_host()
         ctxt = context.get_admin_context()
         try:
             service_ref = db.service_get_by_args(ctxt,
@@ -116,8 +117,6 @@ class Service(service.Service):
         endpoints.extend(self.manager.additional_endpoints)
         self.rpcserver = rpc.get_server(target, endpoints)
         self.rpcserver.start()
-
-        self.manager.init_host()
 
         if self.report_interval:
             pulse = loopingcall.LoopingCall(self.report_state)
