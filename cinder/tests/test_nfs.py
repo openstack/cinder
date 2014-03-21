@@ -683,3 +683,75 @@ class NfsDriverTestCase(test.TestCase):
                                                        total_available,
                                                        total_allocated,
                                                        requested_volume_size))
+
+    def test_extend_volume(self):
+        """Extend a volume by 1."""
+        drv = self._driver
+        volume = {'id': '80ee16b6-75d2-4d54-9539-ffc1b4b0fb10', 'size': 1,
+                  'provider_location': 'nfs_share'}
+        path = 'path'
+        newSize = volume['size'] + 1
+
+        with mock.patch.object(image_utils, 'resize_image') as resize:
+            with mock.patch.object(drv, 'local_path', return_value=path):
+                with mock.patch.object(drv, '_is_share_eligible',
+                                       return_value=True):
+                    with mock.patch.object(drv, '_is_file_size_equal',
+                                           return_value=True):
+                        drv.extend_volume(volume, newSize)
+
+                        resize.assert_called_once_with(path, newSize)
+
+    def test_extend_volume_failure(self):
+        """Error during extend operation."""
+        drv = self._driver
+        volume = {'id': '80ee16b6-75d2-4d54-9539-ffc1b4b0fb10', 'size': 1,
+                  'provider_location': 'nfs_share'}
+
+        with mock.patch.object(image_utils, 'resize_image'):
+            with mock.patch.object(drv, 'local_path', return_value='path'):
+                with mock.patch.object(drv, '_is_share_eligible',
+                                       return_value=True):
+                    with mock.patch.object(drv, '_is_file_size_equal',
+                                           return_value=False):
+                        self.assertRaises(exception.ExtendVolumeError,
+                                          drv.extend_volume, volume, 2)
+
+    def test_extend_volume_insufficient_space(self):
+        """Insufficient space on nfs_share during extend operation."""
+        drv = self._driver
+        volume = {'id': '80ee16b6-75d2-4d54-9539-ffc1b4b0fb10', 'size': 1,
+                  'provider_location': 'nfs_share'}
+
+        with mock.patch.object(image_utils, 'resize_image'):
+            with mock.patch.object(drv, 'local_path', return_value='path'):
+                with mock.patch.object(drv, '_is_share_eligible',
+                                       return_value=False):
+                    with mock.patch.object(drv, '_is_file_size_equal',
+                                           return_value=False):
+                        self.assertRaises(exception.ExtendVolumeError,
+                                          drv.extend_volume, volume, 2)
+
+    def test_is_file_size_equal(self):
+        """File sizes are equal."""
+        drv = self._driver
+        path = 'fake/path'
+        size = 2
+        data = mock.MagicMock()
+        data.virtual_size = size * units.GiB
+
+        with mock.patch.object(image_utils, 'qemu_img_info',
+                               return_value=data):
+            self.assertTrue(drv._is_file_size_equal(path, size))
+
+    def test_is_file_size_equal_false(self):
+        """File sizes are not equal."""
+        drv = self._driver
+        path = 'fake/path'
+        size = 2
+        data = mock.MagicMock()
+        data.virtual_size = (size + 1) * units.GiB
+
+        with mock.patch.object(image_utils, 'qemu_img_info',
+                               return_value=data):
+            self.assertFalse(drv._is_file_size_equal(path, size))

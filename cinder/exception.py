@@ -579,6 +579,10 @@ class ManageExistingVolumeTypeMismatch(CinderException):
                 "%(reason)s")
 
 
+class ExtendVolumeError(CinderException):
+    message = _("Error extending volume: %(reason)s")
+
+
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):
