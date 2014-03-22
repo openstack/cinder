@@ -901,7 +901,7 @@ class EMCSMISCommon():
         LOG.info(_('Unmap volume: %(volume)s')
                  % {'volume': volumename})
 
-        device_info = self.find_device_number(volume)
+        device_info = self.find_device_number(volume, connector)
         device_number = device_info['hostlunid']
         if device_number is None:
             LOG.info(_("Volume %s is not mapped. No volume to unmap.")
@@ -931,7 +931,7 @@ class EMCSMISCommon():
         LOG.info(_('Initialize connection: %(volume)s')
                  % {'volume': volumename})
         self.conn = self._get_ecom_connection()
-        device_info = self.find_device_number(volume)
+        device_info = self.find_device_number(volume, connector)
         device_number = device_info['hostlunid']
         if device_number is not None:
             LOG.info(_("Volume %s is already mapped.")
@@ -939,7 +939,7 @@ class EMCSMISCommon():
         else:
             self._map_lun(volume, connector)
             # Find host lun id again after the volume is exported to the host
-            device_info = self.find_device_number(volume)
+            device_info = self.find_device_number(volume, connector)
 
         return device_info
 
@@ -1533,7 +1533,7 @@ class EMCSMISCommon():
         return out_device_number
 
     # Find a device number that a host can see for a volume
-    def find_device_number(self, volume):
+    def find_device_number(self, volume, connector):
         out_num_device_number = None
 
         volumename = volume['name']
@@ -1546,29 +1546,47 @@ class EMCSMISCommon():
             # VMAX LUN doesn't have this property
             pass
 
-        unitnames = self.conn.ReferenceNames(
-            vol_instance.path,
-            ResultClass='CIM_ProtocolControllerForUnit')
+        indexVMAX = storage_system.find('SYMMETRIX')
+        if indexVMAX == -1:
+            # find out whether the volume is already attached to the host
+            ctrl = self._find_lunmasking_scsi_protocol_controller_for_vol(
+                vol_instance,
+                connector)
 
-        for unitname in unitnames:
-            controller = unitname['Antecedent']
-            classname = controller['CreationClassName']
-            index = classname.find('LunMaskingSCSIProtocolController')
-            if index > -1:  # VNX
-                # Get an instance of CIM_ProtocolControllerForUnit
-                unitinstance = self.conn.GetInstance(unitname,
-                                                     LocalOnly=False)
-                numDeviceNumber = int(unitinstance['DeviceNumber'], 16)
-                out_num_device_number = numDeviceNumber
-                break
-            else:
-                index = classname.find('Symm_LunMaskingView')
-                if index > -1:  # VMAX
+            LOG.debug(_("LunMaskingSCSIProtocolController for "
+                      "volume %(vol)s and connector %(connector)s "
+                      "is %(ctrl)s.")
+                      % {'vol': vol_instance.path,
+                         'connector': connector,
+                         'ctrl': ctrl})
+
+        if indexVMAX > -1 or ctrl:
+            unitnames = self.conn.ReferenceNames(
+                vol_instance.path,
+                ResultClass='CIM_ProtocolControllerForUnit')
+
+            for unitname in unitnames:
+                controller = unitname['Antecedent']
+                classname = controller['CreationClassName']
+                index = classname.find('LunMaskingSCSIProtocolController')
+                if index > -1:  # VNX
+                    if ctrl['DeviceID'] != controller['DeviceID']:
+                        continue
+                    # Get an instance of CIM_ProtocolControllerForUnit
                     unitinstance = self.conn.GetInstance(unitname,
                                                          LocalOnly=False)
                     numDeviceNumber = int(unitinstance['DeviceNumber'], 16)
                     out_num_device_number = numDeviceNumber
                     break
+                else:
+                    index = classname.find('Symm_LunMaskingView')
+                    if index > -1:  # VMAX
+                        unitinstance = self.conn.GetInstance(unitname,
+                                                             LocalOnly=False)
+                        numDeviceNumber = int(unitinstance['DeviceNumber'],
+                                              16)
+                        out_num_device_number = numDeviceNumber
+                        break
 
         if out_num_device_number is None:
             LOG.info(_("Device number not found for volume "
