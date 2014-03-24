@@ -69,6 +69,9 @@ CONF.register_opts(socket_opts)
 
 LOG = logging.getLogger(__name__)
 
+# Raise the default from 8192 to accommodate large tokens
+eventlet.wsgi.MAX_HEADER_LINE = 16384
+
 
 class Server(object):
     """Server class to manage a WSGI server, serving a WSGI application."""
