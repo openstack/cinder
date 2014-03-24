@@ -1147,6 +1147,11 @@ def volume_destroy(context, volume_id):
             update({'deleted': True,
                     'deleted_at': now,
                     'updated_at': literal_column('updated_at')})
+        model_query(context, models.Transfer, session=session).\
+            filter_by(volume_id=volume_id).\
+            update({'deleted': True,
+                    'deleted_at': now,
+                    'updated_at': literal_column('updated_at')})
 
 
 @require_admin_context
