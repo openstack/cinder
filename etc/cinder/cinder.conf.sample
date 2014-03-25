@@ -1244,6 +1244,10 @@
 # (fibre_channel|iscsi) (string value)
 #xiv_ds8k_connection_type=iscsi
 
+# CHAP authentication mode, effective only for iscsi
+# (disabled|enabled) (string value)
+#xiv_chap=disabled
+
 
 #
 # Options defined in cinder.volume.drivers.lvm
