@@ -15,7 +15,7 @@
 
 import mox
 
-
+from cinder.brick import exception
 from cinder.brick.local_dev import lvm as brick
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
@@ -109,10 +109,26 @@ class BrickLvmTestCase(test.TestCase):
             pass
         elif 'lvcreate, -T, -V, ' in cmd_string:
             pass
+        elif 'lvcreate, --name, ' in cmd_string:
+            pass
         else:
             raise AssertionError('unexpected command called: %s' % cmd_string)
 
         return (data, "")
+
+    def test_create_lv_snapshot(self):
+        self.assertEqual(self.vg.create_lv_snapshot('snapshot-1', 'fake-1'),
+                         None)
+
+        self._mox.StubOutWithMock(self.vg, 'get_volume')
+        self.vg.get_volume('fake-non-existent').AndReturn(None)
+        self._mox.ReplayAll()
+        try:
+            self.vg.create_lv_snapshot('snapshot-1', 'fake-non-existent')
+        except exception.VolumeDeviceNotFound as e:
+            self.assertEqual(e.kwargs['device'], 'fake-non-existent')
+        else:
+            self.fail("Exception not raised")
 
     def test_vg_exists(self):
         self.assertEqual(self.vg._vg_exists(), True)
