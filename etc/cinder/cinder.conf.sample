@@ -2031,12 +2031,6 @@
 # with Identity API Server. (integer value)
 #http_request_max_retries=3
 
-# Allows to pass in the name of a fake http_handler callback
-# function used instead of httplib.HTTPConnection or
-# httplib.HTTPSConnection. Useful for unit testing where
-# network is not available. (string value)
-#http_handler=<None>
-
 # Single shared secret with the Keystone configuration used
 # for bootstrapping a Keystone installation, or otherwise
 # bypassing the normal authentication process. (string value)
@@ -2074,20 +2068,24 @@
 # value)
 #signing_dir=<None>
 
-# If defined, the memcache server(s) to use for caching (list
-# value)
+# Optionally specify a list of memcached server(s) to use for
+# caching. If left undefined, tokens will instead be cached
+# in-process. (list value)
 # Deprecated group/name - [DEFAULT]/memcache_servers
 #memcached_servers=<None>
 
-# In order to prevent excessive requests and validations, the
-# middleware uses an in-memory cache for the tokens the
-# Keystone API returns. This is only valid if memcache_servers
-# is defined. Set to -1 to disable caching completely.
-# (integer value)
+# In order to prevent excessive effort spent validating
+# tokens, the middleware caches previously-seen tokens for a
+# configurable duration (in seconds). Set to -1 to disable
+# caching completely. (integer value)
 #token_cache_time=300
 
-# Value only used for unit testing (integer value)
-#revocation_cache_time=1
+# Determines the frequency at which the list of revoked tokens
+# is retrieved from the Identity service (in seconds). A high
+# number of revocation events combined with a low cache
+# duration may significantly reduce performance. (integer
+# value)
+#revocation_cache_time=300
 
 # (optional) if defined, indicate whether token data should be
 # authenticated or authenticated and encrypted. Acceptable
