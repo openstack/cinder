@@ -963,6 +963,8 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         z_limit = br_limit * bc_limit  # 256 GB
         z_calls = int(math.ceil(block_count / float(z_limit)))
         zbc = block_count
+        if z_calls == 0:
+            z_calls = 1
         for call in range(0, z_calls):
             if zbc > z_limit:
                 block_count = z_limit
@@ -1340,6 +1342,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         z_limit = br_limit * bc_limit  # 256 GB
         z_calls = int(math.ceil(block_count / float(z_limit)))
         zbc = block_count
+        if z_calls == 0:
+            z_calls = 1
         for call in range(0, z_calls):
             if zbc > z_limit:
                 block_count = z_limit
