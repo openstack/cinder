@@ -1703,12 +1703,6 @@
 # Options defined in cinder.volume.drivers.vmware.vmdk
 #
 
-# The PBM default policy. If using VC server version 5.5 or
-# above and there is no defined storage policy for the
-# specific request then this policy will be used. (string
-# value)
-#pbm_default_policy=<None>
-
 # IP address for connecting to VMware ESX/VC server. (string
 # value)
 #vmware_host_ip=<None>

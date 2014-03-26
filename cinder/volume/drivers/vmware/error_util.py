@@ -62,8 +62,3 @@ class VMwaredriverConfigurationException(VMwareDriverException):
     """Base class for all configuration exceptions.
     """
     message = _("VMware VMDK driver configuration error.")
-
-
-class PbmDefaultPolicyDoesNotExist(VMwaredriverConfigurationException):
-    message = _("The configured default PBM policy is not defined on "
-                "vCenter Server.")

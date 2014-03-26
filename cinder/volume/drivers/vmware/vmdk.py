@@ -91,16 +91,8 @@ vmdk_opts = [
                     'override the VC server version.'),
 ]
 
-spbm_opts = [
-    cfg.StrOpt('pbm_default_policy',
-               help='The PBM default policy. If using VC server version 5.5 '
-                    'or above and there is no defined storage policy for the '
-                    'specific request then this policy will be used.'),
-]
-
 CONF = cfg.CONF
 CONF.register_opts(vmdk_opts)
-CONF.register_opts(spbm_opts)
 
 
 def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
@@ -356,19 +348,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         return best_summary
 
     def _get_storage_profile(self, volume):
-        """Get storage profile associated with this volume's volume_type.
+        """Get storage profile associated with the given volume's volume_type.
 
-        :param volume: volume whose storage profile should be queried
-        :return: string value of storage profile if volume type is associated,
-                 default global profile if configured in pbm_default_profile,
-                 None otherwise
+        :param volume: Volume whose storage profile should be queried
+        :return: String value of storage profile if volume type is associated
+                 and contains storage_profile extra_spec option; None otherwise
         """
         type_id = volume['volume_type_id']
-        if not type_id:
-            return
-        default_policy = self.configuration.pbm_default_policy
-        return _get_volume_type_extra_spec(type_id, 'storage_profile',
-                                           default_value=default_policy)
+        if type_id is None:
+            return None
+        return _get_volume_type_extra_spec(type_id, 'storage_profile')
 
     def _filter_ds_by_profile(self, datastores, storage_profile):
         """Filter out datastores that do not match given storage profile.
@@ -1117,7 +1106,6 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
 
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(spbm_opts)
         self._session = None
 
     @property
@@ -1198,22 +1186,6 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         # recreate session and initialize volumeops
         max_objects = self.configuration.vmware_max_objects_retrieval
         self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
-
-        # if default policy is configured verify it exists in VC
-        default_policy = self.configuration.pbm_default_policy
-        if default_policy:
-            if not self._storage_policy_enabled:
-                LOG.warn(_("Ignoring default policy '%(policy)s' since "
-                           "Storage Policy Based Management is not "
-                           "enabled on VC version %(ver)s") %
-                         {'policy': default_policy, 'ver': vc_version})
-            else:
-                if not self.volumeops.retrieve_profile_id(default_policy):
-                    msg = _("The configured default PBM policy '%s' is not "
-                            "defined on vCenter Server.") % default_policy
-                    raise error_util.PbmDefaultPolicyDoesNotExist(message=msg)
-                LOG.info(_("Successfully verified existence of "
-                           "pbm_default_policy: %s."), default_policy)
 
         LOG.info(_("Successfully setup driver: %(driver)s for server: "
                    "%(ip)s.") % {'driver': self.__class__.__name__,
