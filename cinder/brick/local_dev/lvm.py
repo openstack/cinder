@@ -461,7 +461,7 @@ class LVM(executor.Executor):
 
         if mirror_count > 0:
             cmd.extend(['-m', mirror_count, '--nosync',
-                        '--mirrorlog mirrored'])
+                        '--mirrorlog', 'mirrored'])
             terras = int(size_str[:-1]) / 1024.0
             if terras >= 1.5:
                 rsize = int(2 ** math.ceil(math.log(terras) / math.log(2)))
