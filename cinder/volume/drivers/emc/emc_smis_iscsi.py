@@ -127,7 +127,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         """Initializes the connection and returns connection info.
 
         The iscsi driver returns a driver_volume_type of 'iscsi'.
-        the format of the driver data is defined in _get_iscsi_properties.
+        the format of the driver data is defined in smis_get_iscsi_properties.
         Example return value::
 
             {
@@ -136,14 +136,14 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
                     'target_discovered': True,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1,
+                    'volume_id': '12345678-1234-4321-1234-123456789012',
                 }
             }
 
         """
         self.common.initialize_connection(volume, connector)
 
-        iscsi_properties = self._get_iscsi_properties(volume)
+        iscsi_properties = self.smis_get_iscsi_properties(volume, connector)
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -163,7 +163,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         return targets
 
-    def _get_iscsi_properties(self, volume):
+    def smis_get_iscsi_properties(self, volume, connector):
         """Gets iscsi configuration.
 
         We ideally get saved information in the volume entity, but fall back
@@ -178,7 +178,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         :target_lun:    the lun of the iSCSI target
 
-        :volume_id:    the id of the volume (currently used by xen)
+        :volume_id:    the UUID of the volume
 
         :auth_method:, :auth_username:, :auth_password:
 
@@ -197,7 +197,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
         LOG.debug(_("ISCSI Discovery: Found %s") % (location))
         properties['target_discovered'] = True
 
-        device_info = self.common.find_device_number(volume)
+        device_info = self.common.find_device_number(volume, connector)
         if device_info is None or device_info['hostlunid'] is None:
             exception_message = (_("Cannot find device number for volume %s")
                                  % volume['name'])
@@ -245,6 +245,8 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         properties['volume_id'] = volume['id']
 
+        LOG.debug(_("ISCSI properties: %s") % (properties))
+
         auth = volume['provider_auth']
         if auth:
             (auth_method, auth_username, auth_secret) = auth.split()
@@ -252,8 +254,6 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
             properties['auth_method'] = auth_method
             properties['auth_username'] = auth_username
             properties['auth_password'] = auth_secret
-
-        LOG.debug(_("ISCSI properties: %s") % (properties))
 
         return properties
 

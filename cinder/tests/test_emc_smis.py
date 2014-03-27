@@ -398,8 +398,12 @@ class FakeEcomConnection():
     def _assoc_hdwid(self):
         assocs = []
         assoc = {}
-        assoc['StorageID'] = self.data.initiator1
+        assoc['StorageID'] = self.data.connector['initiator']
         assocs.append(assoc)
+        for wwpn in self.data.connector['wwpns']:
+            assoc2 = {}
+            assoc2['StorageID'] = wwpn
+            assocs.append(assoc2)
         return assocs
 
     def _assoc_endpoint(self):
