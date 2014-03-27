@@ -39,6 +39,7 @@ from cinder.openstack.common import processutils
 from cinder import units
 from cinder import utils
 from cinder.volume.drivers import nfs
+from cinder.volume.drivers.nfs import nas_opts
 from cinder.volume.drivers.san import san
 
 VERSION = '1.0.0'
@@ -61,6 +62,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def __init__(self, execute=utils.execute, *args, **kwargs):
         self._context = None
         super(IBMNAS_NFSDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(nas_opts)
         self.configuration.san_ip = self.configuration.nas_ip
         self.configuration.san_login = self.configuration.nas_login
         self.configuration.san_password = self.configuration.nas_password
