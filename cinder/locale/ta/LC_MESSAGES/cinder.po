@@ -1,18 +1,18 @@
-# Czech translation for cinder
-# Copyright (c) 2011 Rosetta Contributors and Canonical Ltd 2011
-# This file is distributed under the same license as the cinder package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2011.
+# Tamil translations for cinder.
+# Copyright (C) 2014 ORGANIZATION
+# This file is distributed under the same license as the cinder project.
 #
+# Translators:
 msgid ""
 msgstr ""
-"Project-Id-Version:  cinder\n"
-"Report-Msgid-Bugs-To: FULL NAME <EMAIL@ADDRESS>\n"
+"Project-Id-Version:  Cinder\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2014-03-27 06:10+0000\n"
-"PO-Revision-Date: 2012-04-04 20:28+0000\n"
-"Last-Translator: Zbyněk Schwarz <Unknown>\n"
-"Language-Team: Czech <cs@li.org>\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)\n"
+"PO-Revision-Date: 2014-03-27 04:55+0000\n"
+"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"Language-Team: Tamil "
+"(http://www.transifex.com/projects/p/openstack/language/ta/)\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -30,7 +30,7 @@ msgstr ""
 
 #: cinder/exception.py:66 cinder/brick/exception.py:31
 msgid "An unknown exception occurred."
-msgstr "Vyskytla se neočekávaná výjimka."
+msgstr ""
 
 #: cinder/exception.py:88
 msgid "Exception in string format operation"
@@ -58,21 +58,21 @@ msgstr ""
 
 #: cinder/exception.py:124
 msgid "Not authorized."
-msgstr "Neschváleno."
+msgstr ""
 
 #: cinder/exception.py:129
 msgid "User does not have admin privileges"
-msgstr "Uživatel nemá správcovská oprávnění"
+msgstr ""
 
 #: cinder/exception.py:133
 #, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
-msgstr "Pravidla nedovolují, aby bylo %(action)s provedeno."
+msgstr ""
 
 #: cinder/exception.py:137
-#, fuzzy, python-format
+#, python-format
 msgid "Not authorized for image %(image_id)s."
-msgstr "Kernel nenalezen v obrazu %(image_id)s."
+msgstr ""
 
 #: cinder/exception.py:141
 msgid "Volume driver not ready."
@@ -80,7 +80,7 @@ msgstr ""
 
 #: cinder/exception.py:145 cinder/brick/exception.py:77
 msgid "Unacceptable parameters."
-msgstr "Nepřijatelné parametry."
+msgstr ""
 
 #: cinder/exception.py:150
 #, python-format
@@ -93,18 +93,17 @@ msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr ""
 
 #: cinder/exception.py:159
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
-msgstr "Svazek %(volume_id)s není k ničemu připojen"
+msgstr ""
 
 #: cinder/exception.py:163
 msgid "Failed to load data into json format"
-msgstr "Nelze načíst data do formátu json"
+msgstr ""
 
 #: cinder/exception.py:167
-#, fuzzy
 msgid "The results are invalid."
-msgstr "Požadavek je neplatný."
+msgstr ""
 
 #: cinder/exception.py:171
 #, python-format
@@ -124,7 +123,7 @@ msgstr ""
 #: cinder/exception.py:183
 #, python-format
 msgid "Invalid content type %(content_type)s."
-msgstr "Neplatný typ obsahu %(content_type)s."
+msgstr ""
 
 #: cinder/exception.py:187
 #, python-format
@@ -134,7 +133,7 @@ msgstr ""
 #: cinder/exception.py:193 cinder/brick/exception.py:84
 #, python-format
 msgid "%(err)s"
-msgstr "%(err)s"
+msgstr ""
 
 #: cinder/exception.py:197
 #, python-format
@@ -148,12 +147,12 @@ msgstr ""
 
 #: cinder/exception.py:206
 msgid "Service is unavailable at this time."
-msgstr "Služba je v tuto chvíli nedostupná."
+msgstr ""
 
 #: cinder/exception.py:210
 #, python-format
 msgid "Image %(image_id)s is unacceptable: %(reason)s"
-msgstr "Obraz %(image_id)s je nepřijatelný: %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:214
 #, python-format
@@ -167,17 +166,17 @@ msgstr ""
 
 #: cinder/exception.py:222 cinder/brick/exception.py:71
 msgid "Resource could not be found."
-msgstr "Zdroj nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:228
 #, python-format
 msgid "Volume %(volume_id)s could not be found."
-msgstr "Svazek %(volume_id)s nemohl být nastaven."
+msgstr ""
 
 #: cinder/exception.py:232
 #, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
-msgstr "Svazek %(volume_id)s nemá žádná metadata s klíčem %(metadata_key)s."
+msgstr ""
 
 #: cinder/exception.py:237
 #, python-format
@@ -197,19 +196,19 @@ msgid "Invalid metadata size: %(reason)s"
 msgstr ""
 
 #: cinder/exception.py:250
-#, fuzzy, python-format
+#, python-format
 msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
-msgstr "Instance %(instance_id)s nemá žádná metadata s klíčem %(metadata_key)s."
+msgstr ""
 
 #: cinder/exception.py:255
 #, python-format
 msgid "Volume type %(volume_type_id)s could not be found."
-msgstr "Typ svazku %(volume_type_id)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:259
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
-msgstr "Typ svazku s názvem %(volume_type_name)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:264
 #, python-format
@@ -217,8 +216,6 @@ msgid ""
 "Volume Type %(volume_type_id)s has no extra specs with key "
 "%(extra_specs_key)s."
 msgstr ""
-"Typ svazku %(volume_type_id)s nemá žádné dodatečné parametry s klíčem "
-"%(extra_specs_key)s."
 
 #: cinder/exception.py:269
 #, python-format
@@ -230,12 +227,12 @@ msgstr ""
 #: cinder/exception.py:274
 #, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
-msgstr "Snímek %(snapshot_id)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:278
 #, python-format
 msgid "deleting volume %(volume_name)s that has snapshot"
-msgstr "mazání svazku %(volume_name)s který má snímek"
+msgstr ""
 
 #: cinder/exception.py:282
 #, python-format
@@ -245,42 +242,42 @@ msgstr ""
 #: cinder/exception.py:287
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/exception.py:291
 #, python-format
 msgid "Invalid image href %(image_href)s."
-msgstr "Neplatný href %(image_href)s obrazu."
+msgstr ""
 
 #: cinder/exception.py:295
 #, python-format
 msgid "Image %(image_id)s could not be found."
-msgstr "Obraz %(image_id)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:299
 #, python-format
 msgid "Service %(service_id)s could not be found."
-msgstr "Služba %(service_id)s nemohla být nalezena."
+msgstr ""
 
 #: cinder/exception.py:303
 #, python-format
 msgid "Host %(host)s could not be found."
-msgstr "Hostitel %(host)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:307
 #, python-format
 msgid "Scheduler Host Filter %(filter_name)s could not be found."
-msgstr "Filtr hostitelů plácinderče %(filter_name)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:311
-#, fuzzy, python-format
+#, python-format
 msgid "Scheduler Host Weigher %(weigher_name)s could not be found."
-msgstr "Filtr hostitelů plácinderče %(filter_name)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:315
 #, python-format
 msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "Nelze najít binární soubor %(binary)s v hostiteli %(host)s."
+msgstr ""
 
 #: cinder/exception.py:319
 #, python-format
@@ -296,7 +293,7 @@ msgstr ""
 
 #: cinder/exception.py:328
 msgid "Quota could not be found"
-msgstr "Kvóta nemohla být nalezena."
+msgstr ""
 
 #: cinder/exception.py:332
 #, python-format
@@ -306,37 +303,37 @@ msgstr ""
 #: cinder/exception.py:336
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
-msgstr "Kvóta pro projekt %(project_id)s nemohla být nalezena."
+msgstr ""
 
 #: cinder/exception.py:340
-#, fuzzy, python-format
+#, python-format
 msgid "Quota class %(class_name)s could not be found."
-msgstr "Třída %(class_name)s nemohla být nalezena: %(exception)s"
+msgstr ""
 
 #: cinder/exception.py:344
-#, fuzzy, python-format
+#, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
-msgstr "Kvóta pro projekt %(project_id)s nemohla být nalezena."
+msgstr ""
 
 #: cinder/exception.py:348
-#, fuzzy, python-format
+#, python-format
 msgid "Quota reservation %(uuid)s could not be found."
-msgstr "Uživatel %(user_id)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:352
-#, fuzzy, python-format
+#, python-format
 msgid "Quota exceeded for resources: %(overs)s"
-msgstr "Kvóta překročena"
+msgstr ""
 
 #: cinder/exception.py:356
 #, python-format
 msgid "File %(file_path)s could not be found."
-msgstr "Soubor %(file_path)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:365
-#, fuzzy, python-format
+#, python-format
 msgid "Volume Type %(id)s already exists."
-msgstr "Typ svazku %(name)s již existuje."
+msgstr ""
 
 #: cinder/exception.py:369
 #, python-format
@@ -351,27 +348,27 @@ msgstr ""
 #: cinder/exception.py:377
 #, python-format
 msgid "Malformed message body: %(reason)s"
-msgstr "Poškozené tělo zprávy: %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:381
 #, python-format
 msgid "Could not find config at %(path)s"
-msgstr "Nelze najít nastavení v %(path)s"
+msgstr ""
 
 #: cinder/exception.py:385
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find parameter %(param)s"
-msgstr "Nelze najít nastavení v %(path)s"
+msgstr ""
 
 #: cinder/exception.py:389
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
-msgstr "Nelze načíst aplikaci vložení '%(name)s' z %(path)s"
+msgstr ""
 
 #: cinder/exception.py:393
 #, python-format
 msgid "No valid host was found. %(reason)s"
-msgstr "Nebyl nalezen žádný platný hostitel. %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:402
 #, python-format
@@ -396,16 +393,14 @@ msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
 msgstr ""
 
 #: cinder/exception.py:423
-#, fuzzy, python-format
+#, python-format
 msgid "Detected more than one volume with name %(vol_name)s"
-msgstr "Zjištěn více než jeden svazek s názvem %(vol_name)"
+msgstr ""
 
 #: cinder/exception.py:427
 #, python-format
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
-"Nelze vytvořit typ_svazku s názvem %(name)s a specifikacemi "
-"%(extra_specs)s"
 
 #: cinder/exception.py:432
 #, python-format
@@ -413,9 +408,9 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr ""
 
 #: cinder/exception.py:436
-#, fuzzy, python-format
+#, python-format
 msgid "Malformed response to command %(cmd)s: %(reason)s"
-msgstr "Poškozené tělo zprávy: %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:440
 #, python-format
@@ -455,9 +450,9 @@ msgid "Failed to copy metadata to volume: %(reason)s"
 msgstr ""
 
 #: cinder/exception.py:469
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to copy image to volume: %(reason)s"
-msgstr "Poškozené tělo zprávy: %(reason)s"
+msgstr ""
 
 #: cinder/exception.py:473
 msgid "Invalid Ceph args provided for backup rbd operation"
@@ -480,18 +475,18 @@ msgid "Backup RBD operation failed"
 msgstr ""
 
 #: cinder/exception.py:493
-#, fuzzy, python-format
+#, python-format
 msgid "Backup %(backup_id)s could not be found."
-msgstr "Skupina LDAP %(group_id)s nemohla být nalezena."
+msgstr ""
 
 #: cinder/exception.py:497
 msgid "Failed to identify volume backend."
 msgstr ""
 
 #: cinder/exception.py:501
-#, fuzzy, python-format
+#, python-format
 msgid "Invalid backup: %(reason)s"
-msgstr "Neplatná podpůrná vrstva: %s"
+msgstr ""
 
 #: cinder/exception.py:505
 #, python-format
@@ -499,9 +494,9 @@ msgid "Connection to swift failed: %(reason)s"
 msgstr ""
 
 #: cinder/exception.py:509
-#, fuzzy, python-format
+#, python-format
 msgid "Transfer %(transfer_id)s could not be found."
-msgstr "Obraz %(image_id)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/exception.py:513
 #, python-format
@@ -635,13 +630,13 @@ msgid "Invalid attachment info for volume %(name)s: %(reason)s"
 msgstr ""
 
 #: cinder/exception.py:631
-#, fuzzy, python-format
+#, python-format
 msgid "Bad HTTP response status %(status)s"
-msgstr "Neplatný stav serveru: %(status)s"
+msgstr ""
 
 #: cinder/exception.py:636
 msgid "Bad response from SolidFire API"
-msgstr "Špatná odpověď od SolidFire API"
+msgstr ""
 
 #: cinder/exception.py:640
 msgid "SolidFire Cinder Driver exception"
@@ -650,12 +645,12 @@ msgstr ""
 #: cinder/exception.py:644
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
-msgstr "Chyba v odpovědi SolidFire API: data=%(data)s"
+msgstr ""
 
 #: cinder/exception.py:648
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr "Nelze nalézt účet %(account_name) on zařízení Solidfire"
+msgstr ""
 
 #: cinder/exception.py:654
 #, python-format
@@ -663,9 +658,8 @@ msgid "Invalid 3PAR Domain: %(err)s"
 msgstr ""
 
 #: cinder/exception.py:659
-#, fuzzy
 msgid "Unknown NFS exception"
-msgstr "Vyskytla se neočekávaná výjimka."
+msgstr ""
 
 #: cinder/exception.py:663
 msgid "No mounted NFS shares found"
@@ -677,9 +671,8 @@ msgid "There is no share which can host %(volume_size)sG"
 msgstr ""
 
 #: cinder/exception.py:672
-#, fuzzy
 msgid "Unknown Gluster exception"
-msgstr "Vyskytla se neočekávaná výjimka."
+msgstr ""
 
 #: cinder/exception.py:676
 msgid "No mounted Gluster shares found"
@@ -734,15 +727,15 @@ msgstr ""
 
 #: cinder/manager.py:128
 msgid "Notifying Schedulers of capabilities ..."
-msgstr "Oznamování schopností plácinderčům ..."
+msgstr ""
 
 #: cinder/policy.py:30
 msgid "JSON file representing policy"
-msgstr "Soubor JSON představující zásady"
+msgstr ""
 
 #: cinder/policy.py:33
 msgid "Rule checked when requested rule is not found"
-msgstr "Kontrolované pravidlo, když požadované není nalezeno"
+msgstr ""
 
 #: cinder/quota.py:105
 #, python-format
@@ -791,9 +784,9 @@ msgid ""
 msgstr ""
 
 #: cinder/service.py:100
-#, fuzzy, python-format
+#, python-format
 msgid "Starting %(topic)s node (version %(version_string)s)"
-msgstr "Začínající uzel %(topic)s (verze %(vcs_string)s)"
+msgstr ""
 
 #: cinder/service.py:113
 #, python-format
@@ -811,19 +804,19 @@ msgstr ""
 
 #: cinder/service.py:212
 msgid "Service killed that has no database entry"
-msgstr "Ukončena služba bez záznamu v databázi"
+msgstr ""
 
 #: cinder/service.py:250
 msgid "The service database object disappeared, Recreating it."
-msgstr "Objekt databáze služby zmizel, je znovu vytvářen."
+msgstr ""
 
 #: cinder/service.py:265
 msgid "Recovered model server connection!"
-msgstr "Obnoveno připojení modelového serveru!"
+msgstr ""
 
 #: cinder/service.py:271
 msgid "model server went away"
-msgstr "modelový server je nedostupný"
+msgstr ""
 
 #: cinder/service.py:293
 #, python-format
@@ -838,9 +831,8 @@ msgstr ""
 
 #: cinder/service.py:374 cinder/openstack/common/service.py:166
 #: cinder/openstack/common/service.py:384
-#, fuzzy
 msgid "Full set of CONF:"
-msgstr "Úplná sada PŘÍZNAKŮ:"
+msgstr ""
 
 #: cinder/service.py:382
 #, python-format
@@ -869,12 +861,12 @@ msgstr ""
 #: cinder/utils.py:413
 #, python-format
 msgid "Invalid backend: %s"
-msgstr "Neplatná podpůrná vrstva: %s"
+msgstr ""
 
 #: cinder/utils.py:424
 #, python-format
 msgid "backend %s"
-msgstr "podpůrná vrstva: %s"
+msgstr ""
 
 #: cinder/utils.py:699
 #, python-format
@@ -934,15 +926,15 @@ msgstr ""
 
 #: cinder/wsgi.py:235
 msgid "Stopping WSGI server."
-msgstr "Zastavování serveru WSGI."
+msgstr ""
 
 #: cinder/wsgi.py:253
 msgid "WSGI server has stopped."
-msgstr "Server WSGI byl zastaven."
+msgstr ""
 
 #: cinder/wsgi.py:322
 msgid "You must implement __call__"
-msgstr "Musíte zavést __call__"
+msgstr ""
 
 #: cinder/api/auth.py:26
 msgid ""
@@ -958,78 +950,78 @@ msgstr ""
 
 #: cinder/api/common.py:92 cinder/api/common.py:126 cinder/volume/api.py:282
 msgid "limit param must be an integer"
-msgstr "parametr limit musí být celé číslo"
+msgstr ""
 
 #: cinder/api/common.py:95 cinder/api/common.py:130 cinder/volume/api.py:279
 msgid "limit param must be positive"
-msgstr "parametr limit musí být kladný"
+msgstr ""
 
 #: cinder/api/common.py:120
 msgid "offset param must be an integer"
-msgstr "parametr offset musí být celé číslo"
+msgstr ""
 
 #: cinder/api/common.py:134
 msgid "offset param must be positive"
-msgstr "parametr offset musí být kladný"
+msgstr ""
 
 #: cinder/api/common.py:162
 #, python-format
 msgid "marker [%s] not found"
-msgstr "značka [%s] nenalezena"
+msgstr ""
 
 #: cinder/api/common.py:189
 #, python-format
 msgid "href %s does not contain version"
-msgstr "href %s neobsahuje verzi"
+msgstr ""
 
 #: cinder/api/extensions.py:183
 msgid "Initializing extension manager."
-msgstr "Zavádění správce rozšíření."
+msgstr ""
 
 #: cinder/api/extensions.py:198
 #, python-format
 msgid "Loaded extension: %s"
-msgstr "Načteno rozšíření: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:236
 #, python-format
 msgid "Ext name: %s"
-msgstr "Název roz: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:237
 #, python-format
 msgid "Ext alias: %s"
-msgstr "Přezdívká roz: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:238
 #, python-format
 msgid "Ext description: %s"
-msgstr "Popis roz: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:240
 #, python-format
 msgid "Ext namespace: %s"
-msgstr "Jmenný prostor roz: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:241
 #, python-format
 msgid "Ext updated: %s"
-msgstr "Roz aktualizováno: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:243
 #, python-format
 msgid "Exception loading extension: %s"
-msgstr "Výjimka při načítání rozšíření: %s"
+msgstr ""
 
 #: cinder/api/extensions.py:257
 #, python-format
 msgid "Loading extension %s"
-msgstr "Načítání rozšíření %s"
+msgstr ""
 
 #: cinder/api/extensions.py:263
 #, python-format
 msgid "Calling extension factory %s"
-msgstr "Volání továrny rozšíření %s"
+msgstr ""
 
 #: cinder/api/extensions.py:277
 #, python-format
@@ -1046,17 +1038,17 @@ msgstr ""
 #: cinder/api/extensions.py:288
 #, python-format
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
-msgstr "Nelze načít rozšížení %(ext_factory)s: %(exc)s"
+msgstr ""
 
 #: cinder/api/extensions.py:357
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
-msgstr "Nelze načíst rozšíření %(classpath)s: %(exc)s"
+msgstr ""
 
 #: cinder/api/extensions.py:382
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
-msgstr "Nelze načíst rozšíření %(ext_name)s: %(exc)s"
+msgstr ""
 
 #: cinder/api/sizelimit.py:25
 msgid ""
@@ -1066,22 +1058,20 @@ msgstr ""
 
 #: cinder/api/xmlutil.py:266
 msgid "element is not a child"
-msgstr "prvek není podřazený"
+msgstr ""
 
 #: cinder/api/xmlutil.py:463
 msgid "root element selecting a list"
-msgstr "kořenový prvek volí seznam"
+msgstr ""
 
 #: cinder/api/xmlutil.py:786
 #, python-format
 msgid "Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
 msgstr ""
-"Neshoda stromu šablony; přidávání sluhy %(slavetag)s k pánovi "
-"%(mastertag)s"
 
 #: cinder/api/xmlutil.py:907
 msgid "subclasses must implement construct()!"
-msgstr "podtřídy musí zavádět construct()!"
+msgstr ""
 
 #: cinder/api/contrib/admin_actions.py:82
 #, python-format
@@ -1112,7 +1102,7 @@ msgstr ""
 #: cinder/api/contrib/volume_transfer.py:157
 #: cinder/api/contrib/volume_transfer.py:193
 msgid "Incorrect request body format"
-msgstr "Nsprávný formát těla požadavku"
+msgstr ""
 
 #: cinder/api/contrib/backups.py:234
 #, python-format
@@ -1159,37 +1149,36 @@ msgid "import record output: %s."
 msgstr ""
 
 #: cinder/api/contrib/extended_snapshot_attributes.py:60
-#, fuzzy
 msgid "Snapshot not found."
-msgstr "Server nenalezen."
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:86 cinder/api/openstack/wsgi.py:237
 msgid "cannot understand XML"
-msgstr "XML nelze porozumět"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:136
-#, fuzzy, python-format
+#, python-format
 msgid "Host '%s' could not be found."
-msgstr "Hostitel %(host)s nemohl být nalezen."
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:165
 #, python-format
 msgid "Invalid status: '%s'"
-msgstr "Neplatný stav: '%s'"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:168
 #, python-format
 msgid "Invalid update setting: '%s'"
-msgstr "Neplatné nastavení aktualizace: '%s'"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:180
 #, python-format
 msgid "Setting host %(host)s to %(state)s."
-msgstr "Nastavování hostitele %(host)s na %(state)s."
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:206
 msgid "Describe-resource is admin only functionality"
-msgstr "Describe-resource je funkce pouze pro správce"
+msgstr ""
 
 #: cinder/api/contrib/hosts.py:214
 msgid "Host not found"
@@ -1276,21 +1265,20 @@ msgid "progress must be an integer percentage"
 msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:101
-#, fuzzy
 msgid "Request body empty"
-msgstr "Nsprávný formát těla požadavku"
+msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:105
 #: cinder/api/v1/snapshot_metadata.py:75 cinder/api/v1/volume_metadata.py:75
 #: cinder/api/v2/snapshot_metadata.py:75 cinder/api/v2/volume_metadata.py:74
 msgid "Request body and URI mismatch"
-msgstr "Neshoda s tělem požadavku a URI"
+msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:108
 #: cinder/api/v1/snapshot_metadata.py:79 cinder/api/v1/volume_metadata.py:79
 #: cinder/api/v2/snapshot_metadata.py:79 cinder/api/v2/volume_metadata.py:78
 msgid "Request body contains too many items"
-msgstr "Tělo požadavku obsahuje příliš mnoho položek"
+msgstr ""
 
 #: cinder/api/contrib/types_extra_specs.py:152
 msgid ""
@@ -1384,14 +1372,14 @@ msgid "Listing volume transfers"
 msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:147
-#, fuzzy, python-format
+#, python-format
 msgid "Creating new volume transfer %s"
-msgstr "Vytvořit snímek svazku %s"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:162
-#, fuzzy, python-format
+#, python-format
 msgid "Creating transfer of volume %s"
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:183
 #, python-format
@@ -1399,9 +1387,9 @@ msgid "Accepting volume transfer %s"
 msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:196
-#, fuzzy, python-format
+#, python-format
 msgid "Accepting transfer %s"
-msgstr "Vytvořit snímek svazku %s"
+msgstr ""
 
 #: cinder/api/contrib/volume_transfer.py:217
 #, python-format
@@ -1479,12 +1467,12 @@ msgstr ""
 #: cinder/api/middleware/fault.py:44
 #, python-format
 msgid "Caught error: %s"
-msgstr "Zachycena chyba: %s"
+msgstr ""
 
 #: cinder/api/middleware/fault.py:53 cinder/api/openstack/wsgi.py:978
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
-msgstr "%(url)s vrácena s HTTP %(status)d"
+msgstr ""
 
 #: cinder/api/middleware/fault.py:69
 #, python-format
@@ -1498,24 +1486,24 @@ msgstr ""
 
 #: cinder/api/openstack/__init__.py:69
 msgid "Must specify an ExtensionManager class"
-msgstr "Musí být určena třída ExtensionManager"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:80
 #, python-format
 msgid "Extended resource: %s"
-msgstr "Rozšířený zdroj: %s"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:104
 #, python-format
 msgid ""
 "Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
 "resource"
-msgstr "Rozšíření %(ext_name)s: nelze rozšířit %(collection)s: Žádný takový zdroj"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:110
 #, python-format
 msgid "Extension %(ext_name)s extending resource: %(collection)s"
-msgstr "Rozšíření %(ext_name)s: rozšiřování zdroje %(collection)s"
+msgstr ""
 
 #: cinder/api/openstack/__init__.py:126
 msgid ""
@@ -1531,43 +1519,43 @@ msgstr ""
 
 #: cinder/api/openstack/wsgi.py:212 cinder/api/openstack/wsgi.py:628
 msgid "cannot understand JSON"
-msgstr "JSON nelze porozumět"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:633
 msgid "too many body keys"
-msgstr "příliš mnoho klíčů těla"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:671
-#, fuzzy, python-format
+#, python-format
 msgid "Exception handling resource: %s"
-msgstr "Rozšířený zdroj: %s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:676
 #, python-format
 msgid "Fault thrown: %s"
-msgstr "Vyvolána chyba: %s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:679
 #, python-format
 msgid "HTTP exception thrown: %s"
-msgstr "Vyvolána výjimka HTTP: %s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:787
 msgid "Empty body provided in request"
-msgstr "V požadavku zadáno prázdné tělo"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:793
 msgid "Unrecognized Content-Type provided in request"
-msgstr "V požadavku zadán nerozpoznaný Content-Type"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:797
 msgid "No Content-Type provided in request"
-msgstr "V požadavku nezadán Content-Type"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:908
 #, python-format
 msgid "There is no such action: %s"
-msgstr "Žádná taková činnost: %s"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:911 cinder/api/openstack/wsgi.py:924
 #: cinder/api/v1/snapshot_metadata.py:53 cinder/api/v1/snapshot_metadata.py:71
@@ -1579,20 +1567,20 @@ msgstr "Žádná taková činnost: %s"
 #: cinder/api/v2/volume_metadata.py:52 cinder/api/v2/volume_metadata.py:70
 #: cinder/api/v2/volume_metadata.py:95 cinder/api/v2/volume_metadata.py:120
 msgid "Malformed request body"
-msgstr "Poškozené tělo požadavku"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:921
 msgid "Unsupported Content-Type"
-msgstr "Nepodporovaný Content-Type"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:933
 msgid "Malformed request url"
-msgstr "Poškozená url požadavku"
+msgstr ""
 
 #: cinder/api/openstack/wsgi.py:981
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
-msgstr "%(url)s vrátilo chybu: %(e)s"
+msgstr ""
 
 #: cinder/api/openstack/volume/__init__.py:25
 msgid ""
@@ -1612,20 +1600,17 @@ msgid ""
 "Only %(value)s %(verb)s request(s) can be made to %(uri)s every "
 "%(unit_string)s."
 msgstr ""
-"Pouze %(value)s požadavky %(verb)s mohou být provedeny pro %(uri)s "
-"každých %(unit_string)s."
 
 #: cinder/api/v1/limits.py:264 cinder/api/v2/limits.py:261
 msgid "This request was rate-limited."
-msgstr "Tento požadavek má omezen množství."
+msgstr ""
 
 #: cinder/api/v1/snapshot_metadata.py:37 cinder/api/v1/snapshot_metadata.py:117
 #: cinder/api/v1/snapshot_metadata.py:156 cinder/api/v2/snapshot_metadata.py:37
 #: cinder/api/v2/snapshot_metadata.py:117
 #: cinder/api/v2/snapshot_metadata.py:156
-#, fuzzy
 msgid "snapshot does not exist"
-msgstr "Instance neexistuje"
+msgstr ""
 
 #: cinder/api/v1/snapshot_metadata.py:139
 #: cinder/api/v1/snapshot_metadata.py:149 cinder/api/v1/volume_metadata.py:139
@@ -1633,7 +1618,7 @@ msgstr "Instance neexistuje"
 #: cinder/api/v2/snapshot_metadata.py:149 cinder/api/v2/volume_metadata.py:138
 #: cinder/api/v2/volume_metadata.py:148
 msgid "Metadata item was not found"
-msgstr "Položka metadat nenalezena"
+msgstr ""
 
 #: cinder/api/v1/snapshots.py:119 cinder/api/v2/snapshots.py:120
 #, python-format
@@ -1657,9 +1642,8 @@ msgstr ""
 #: cinder/api/v1/volume_metadata.py:37 cinder/api/v1/volume_metadata.py:117
 #: cinder/api/v1/volume_metadata.py:156 cinder/api/v2/volume_metadata.py:36
 #: cinder/api/v2/volume_metadata.py:116 cinder/api/v2/volume_metadata.py:155
-#, fuzzy
 msgid "volume does not exist"
-msgstr "Server neexistuje"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:114
 #, python-format
@@ -1674,7 +1658,7 @@ msgstr ""
 #: cinder/api/v1/volumes.py:347 cinder/api/v1/volumes.py:351
 #: cinder/api/v2/volumes.py:251 cinder/api/v2/volumes.py:255
 msgid "Invalid imageRef provided."
-msgstr "Zadáno neplatné imageRef."
+msgstr ""
 
 #: cinder/api/v1/volumes.py:391 cinder/api/v2/volumes.py:308
 #, python-format
@@ -1689,12 +1673,12 @@ msgstr ""
 #: cinder/api/v1/volumes.py:415 cinder/api/v2/volumes.py:331
 #, python-format
 msgid "Create volume of %s GB"
-msgstr "Vytvořit svazek o %s GB"
+msgstr ""
 
 #: cinder/api/v1/volumes.py:504
-#, fuzzy, python-format
+#, python-format
 msgid "Removing options '%(bad_options)s' from query"
-msgstr "Odstraňování voleb '%(unk_opt_str)s' z fronty"
+msgstr ""
 
 #: cinder/api/v2/snapshots.py:111 cinder/api/v2/snapshots.py:126
 #: cinder/api/v2/snapshots.py:267
@@ -1715,24 +1699,21 @@ msgid "source volume id:%s not found"
 msgstr ""
 
 #: cinder/api/v2/volumes.py:431
-#, fuzzy, python-format
+#, python-format
 msgid "Removing options '%s' from query"
-msgstr "Odstraňování voleb '%(unk_opt_str)s' z fronty"
+msgstr ""
 
 #: cinder/backup/api.py:66
-#, fuzzy
 msgid "Backup status must be available or error"
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/backup/api.py:115
-#, fuzzy
 msgid "Volume to be backed up must be available"
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/backup/api.py:150
-#, fuzzy
 msgid "Backup status must be available"
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/backup/api.py:155
 msgid "Backup to be restored has invalid size"
@@ -1744,9 +1725,8 @@ msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s"
 msgstr ""
 
 #: cinder/backup/api.py:180
-#, fuzzy
 msgid "Volume to be restored to must be available"
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/backup/api.py:186
 #, python-format
@@ -2372,9 +2352,9 @@ msgid "_generate_swift_object_name_prefix: %s"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:168
-#, fuzzy, python-format
+#, python-format
 msgid "generated object list: %s"
-msgstr "Očekáván objekt typu: %s"
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:179
 #, python-format
@@ -2408,9 +2388,9 @@ msgid "_read_metadata finished (%s)"
 msgstr ""
 
 #: cinder/backup/drivers/swift.py:222
-#, fuzzy, python-format
+#, python-format
 msgid "volume size %d is invalid."
-msgstr "Požadavek je neplatný."
+msgstr ""
 
 #: cinder/backup/drivers/swift.py:236
 #, python-format
@@ -2729,19 +2709,19 @@ msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr ""
 
 #: cinder/brick/exception.py:108
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/brick/exception.py:112
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/brick/exception.py:116
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to attach iSCSI target for volume %(volume_id)s."
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/brick/exception.py:120
 #, python-format
@@ -2883,9 +2863,9 @@ msgid ""
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:211 cinder/brick/iscsi/iscsi.py:367
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:222
 #, python-format
@@ -2905,9 +2885,9 @@ msgid "Volume path %s does not exist, nothing to remove."
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:274
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
-msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
+msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:292 cinder/brick/iscsi/iscsi.py:546
 msgid "valid iqn needed for show_target"
@@ -3133,9 +3113,8 @@ msgid "No backup with id %s"
 msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:2751
-#, fuzzy
 msgid "Volume must be available"
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/db/sqlalchemy/api.py:2775
 #, python-format
@@ -3368,9 +3347,9 @@ msgid "Eventlet backdoor listening on %(port)s for process %(pid)d"
 msgstr ""
 
 #: cinder/openstack/common/excutils.py:62
-#, fuzzy, python-format
+#, python-format
 msgid "Original exception being dropped: %s"
-msgstr "Původní výjimka je zahozena"
+msgstr ""
 
 #: cinder/openstack/common/excutils.py:91
 #, python-format
@@ -3407,29 +3386,29 @@ msgid "Could not release the acquired lock `%s`"
 msgstr ""
 
 #: cinder/openstack/common/lockutils.py:189
-#, fuzzy, python-format
+#, python-format
 msgid "Got semaphore \"%(lock)s\" for method \"%(method)s\"..."
-msgstr "Získán semafor \"%(lock)s\" pro zámek metody \"%(method)s\""
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:200
-#, fuzzy, python-format
+#, python-format
 msgid "Attempting to grab file lock \"%(lock)s\" for method \"%(method)s\"..."
-msgstr "Pokus o získání zámku souboru \"%(lock)s\" pro zámek metody \"%(method)s\""
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:227
-#, fuzzy, python-format
+#, python-format
 msgid "Got file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
-msgstr "Získán zámek souboru \"%(lock)s\" pro zámek metody \"%(method)s\""
+msgstr ""
 
 #: cinder/openstack/common/lockutils.py:235
-#, fuzzy, python-format
+#, python-format
 msgid "Released file lock \"%(lock)s\" at %(path)s for method \"%(method)s\"..."
-msgstr "Získán zámek souboru \"%(lock)s\" pro zámek metody \"%(method)s\""
+msgstr ""
 
 #: cinder/openstack/common/log.py:326
-#, fuzzy, python-format
+#, python-format
 msgid "Deprecated: %s"
-msgstr "obdrženo: %s"
+msgstr ""
 
 #: cinder/openstack/common/log.py:437
 #, python-format
@@ -3439,12 +3418,12 @@ msgstr ""
 #: cinder/openstack/common/log.py:488
 #, python-format
 msgid "syslog facility must be one of: %s"
-msgstr "zařízení záznamu systému musí být jedno z: %s"
+msgstr ""
 
 #: cinder/openstack/common/log.py:709
-#, fuzzy, python-format
+#, python-format
 msgid "Fatal call to deprecated config: %(msg)s"
-msgstr "Třída %(fullname)s je zastaralá: %(msg)s"
+msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:82
 #, python-format
@@ -3453,9 +3432,8 @@ msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:89
 #: cinder/tests/brick/test_brick_connector.py:466
-#, fuzzy
 msgid "in fixed duration looping call"
-msgstr "v opakujícím volání"
+msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:129
 #, python-format
@@ -3463,9 +3441,8 @@ msgid "Dynamic looping call sleeping for %.02f seconds"
 msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:136
-#, fuzzy
 msgid "in dynamic looping call"
-msgstr "v opakujícím volání"
+msgstr ""
 
 #: cinder/openstack/common/periodic_task.py:43
 #, python-format
@@ -3485,12 +3462,12 @@ msgstr ""
 #: cinder/openstack/common/periodic_task.py:177
 #, python-format
 msgid "Running periodic task %(full_task_name)s"
-msgstr "Spuštění pravidelné úlohy %(full_task_name)s"
+msgstr ""
 
 #: cinder/openstack/common/periodic_task.py:186
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
-msgstr "Chyba při %(full_task_name)s: %(e)s"
+msgstr ""
 
 #: cinder/openstack/common/policy.py:149
 #, python-format
@@ -3517,37 +3494,37 @@ msgstr ""
 #: cinder/openstack/common/processutils.py:127
 #, python-format
 msgid "Got unknown keyword args to utils.execute: %r"
-msgstr "Získány neznámé argumenty klíčového slova pro utils.execute: %r"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:142
 #, python-format
 msgid "Running cmd (subprocess): %s"
-msgstr "Spouštění příkazu (podproces): %s"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:167
 #: cinder/openstack/common/processutils.py:239
 #: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:448
 #, python-format
 msgid "Result was %s"
-msgstr "Výsledek byl %s"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:179
 #, python-format
 msgid "%r failed. Retrying."
-msgstr "%r selhalo. Opakování."
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:218
 #, python-format
 msgid "Running cmd (SSH): %s"
-msgstr "Spouštění příkazu (SSH): %s"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:220
 msgid "Environment not supported over SSH"
-msgstr "Prostředí není podporováno přes SSH"
+msgstr ""
 
 #: cinder/openstack/common/processutils.py:224
 msgid "process_input not supported over SSH"
-msgstr "process_input není podporován přes SSH"
+msgstr ""
 
 #: cinder/openstack/common/request_utils.py:66
 #, python-format
@@ -3581,9 +3558,8 @@ msgid "Parent process has died unexpectedly, exiting"
 msgstr ""
 
 #: cinder/openstack/common/service.py:275
-#, fuzzy
 msgid "Unhandled exception"
-msgstr "Vnitřní výjimka: %s"
+msgstr ""
 
 #: cinder/openstack/common/service.py:308
 msgid "Forking too fast, sleeping"
@@ -3678,7 +3654,7 @@ msgstr ""
 
 #: cinder/openstack/common/db/sqlalchemy/session.py:487
 msgid "DB exception wrapped."
-msgstr "Vyjímka DB zabalena."
+msgstr ""
 
 #: cinder/openstack/common/db/sqlalchemy/session.py:538
 #, python-format
@@ -3902,7 +3878,7 @@ msgstr ""
 #: cinder/tests/test_ibm_xiv_ds8k.py:102
 #, python-format
 msgid "Volume not found for instance %(instance_id)s."
-msgstr "Svazek není nalezen v instanci %(instance_id)s."
+msgstr ""
 
 #: cinder/tests/test_misc.py:58
 #, python-format
@@ -3965,9 +3941,8 @@ msgid "Result data: %s"
 msgstr ""
 
 #: cinder/tests/api/contrib/test_backups.py:737
-#, fuzzy
 msgid "Invalid input"
-msgstr "Neplatný snímek"
+msgstr ""
 
 #: cinder/tests/brick/test_brick_remotefs.py:99
 msgid "Unexpected call to _execute."
@@ -3978,9 +3953,9 @@ msgid "mount failed."
 msgstr ""
 
 #: cinder/tests/integrated/test_login.py:29
-#, fuzzy, python-format
+#, python-format
 msgid "volume: %s"
-msgstr "Odpojit svazek %s"
+msgstr ""
 
 #: cinder/tests/integrated/api/client.py:34
 #, python-format
@@ -4070,9 +4045,9 @@ msgid "status must be available"
 msgstr ""
 
 #: cinder/transfer/api.py:119
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to create transfer record for %s"
-msgstr "Nelze získat metadata pro ip: %s"
+msgstr ""
 
 #: cinder/transfer/api.py:136
 #, python-format
@@ -4150,9 +4125,8 @@ msgid "status must be in-use to detach"
 msgstr ""
 
 #: cinder/volume/api.py:371
-#, fuzzy
 msgid "Volume status must be available to reserve"
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/volume/api.py:447
 msgid "Snapshot cannot be created while volume is migrating"
@@ -4193,9 +4167,8 @@ msgid "Metadata property value greater than 255 characters"
 msgstr ""
 
 #: cinder/volume/api.py:703 cinder/volume/api.py:777
-#, fuzzy
 msgid "Volume status must be available/in-use."
-msgstr "Obraz musí být dostupný"
+msgstr ""
 
 #: cinder/volume/api.py:706
 msgid "Volume status is in-use."
@@ -4397,9 +4370,9 @@ msgid "Error from iscsiadm -m discovery: %s"
 msgstr ""
 
 #: cinder/volume/driver.py:701
-#, fuzzy, python-format
+#, python-format
 msgid "Could not find iSCSI export for volume %s"
-msgstr "Nelze najít obslužnou rutinu pro svazek %(driver_type)s."
+msgstr ""
 
 #: cinder/volume/driver.py:705 cinder/volume/drivers/emc/emc_cli_iscsi.py:169
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:197
@@ -4453,9 +4426,9 @@ msgid "%s"
 msgstr ""
 
 #: cinder/volume/iscsi.py:184
-#, fuzzy, python-format
+#, python-format
 msgid "Symbolic link %s not found"
-msgstr "značka [%s] nenalezena"
+msgstr ""
 
 #: cinder/volume/iscsi.py:251
 #, python-format
@@ -4621,9 +4594,9 @@ msgid "Error detaching volume %(volume)s, due to uninitialized driver."
 msgstr ""
 
 #: cinder/volume/manager.py:714
-#, fuzzy, python-format
+#, python-format
 msgid "Uploaded volume %(volume_id)s to image (%(image_id)s) successfully"
-msgstr "Připojit svazek %(volume_id)s k instanci %(instance_id)s na %(device)s"
+msgstr ""
 
 #: cinder/volume/manager.py:832 cinder/volume/manager.py:857
 #, python-format
@@ -4821,9 +4794,9 @@ msgstr ""
 
 #: cinder/volume/drivers/block_device.py:138 cinder/volume/drivers/lvm.py:284
 #: cinder/volume/drivers/zadara.py:509 cinder/volume/drivers/nexenta/nfs.py:189
-#, fuzzy, python-format
+#, python-format
 msgid "Creating clone of volume: %s"
-msgstr "Vytvořit snímek svazku %s"
+msgstr ""
 
 #: cinder/volume/drivers/block_device.py:206
 msgid "No free disk"
@@ -4935,9 +4908,9 @@ msgstr ""
 
 #: cinder/volume/drivers/eqlx.py:215 cinder/volume/drivers/san/san.py:149
 #: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:414
-#, fuzzy, python-format
+#, python-format
 msgid "Error running SSH command: %s"
-msgstr "Při spuštění příkazu došlo k nečekané chybě."
+msgstr ""
 
 #: cinder/volume/drivers/eqlx.py:282
 #, python-format
@@ -5198,9 +5171,9 @@ msgid "file already exists at %s"
 msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:1037 cinder/volume/drivers/nfs.py:178
-#, fuzzy, python-format
+#, python-format
 msgid "Exception during mounting %s"
-msgstr "Výjimka při načítání rozšíření: %s"
+msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:1039
 #, python-format
@@ -5290,9 +5263,9 @@ msgid " but size is now %d"
 msgstr ""
 
 #: cinder/volume/drivers/nfs.py:380
-#, fuzzy, python-format
+#, python-format
 msgid "%s is already mounted"
-msgstr "skupina %s již existuje"
+msgstr ""
 
 #: cinder/volume/drivers/nfs.py:432
 #, python-format
@@ -5348,9 +5321,9 @@ msgid "fileno() not supported by RBD()"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:211
-#, fuzzy, python-format
+#, python-format
 msgid "error opening rbd image %s"
-msgstr "Chyba v přesunu %s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:260
 msgid "rados and rbd python libraries not found"
@@ -5466,14 +5439,13 @@ msgid "Blank components"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:718
-#, fuzzy
 msgid "Not an rbd snapshot"
-msgstr "Neplatný snímek"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:730
-#, fuzzy, python-format
+#, python-format
 msgid "not cloneable: %s"
-msgstr "Název roz: %s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:734
 #, python-format
@@ -5485,9 +5457,9 @@ msgid "rbd image clone requires image format to be 'raw' but image {0} is '{1}'"
 msgstr ""
 
 #: cinder/volume/drivers/rbd.py:753
-#, fuzzy, python-format
+#, python-format
 msgid "Unable to open image %(loc)s: %(err)s"
-msgstr "Poškozené tělo zprávy: %(reason)s"
+msgstr ""
 
 #: cinder/volume/drivers/rbd.py:823
 msgid "volume backup complete."
@@ -5596,9 +5568,9 @@ msgstr ""
 #: cinder/volume/drivers/solidfire.py:200
 #: cinder/volume/drivers/solidfire.py:269
 #: cinder/volume/drivers/solidfire.py:364
-#, fuzzy, python-format
+#, python-format
 msgid "API response: %s"
-msgstr "odpověď %s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:220
 #, python-format
@@ -5616,9 +5588,8 @@ msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:396
-#, fuzzy
 msgid "Failed to get model update from clone"
-msgstr "Nelze získat metadata pro ip: %s"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:408
 #, python-format
@@ -5701,9 +5672,8 @@ msgid "Updating cluster status info"
 msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:671
-#, fuzzy
 msgid "Failed to get updated stats"
-msgstr "Nelze vytvořit typ instance"
+msgstr ""
 
 #: cinder/volume/drivers/solidfire.py:701
 #: cinder/volume/drivers/solidfire.py:726
@@ -5730,9 +5700,9 @@ msgid "Pool %(name)s: %(total)sGB total, %(free)sGB free"
 msgstr ""
 
 #: cinder/volume/drivers/zadara.py:408 cinder/volume/drivers/zadara.py:531
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(name)s could not be found. It might be already deleted"
-msgstr "Svazek %(volume_id)s nemohl být nastaven."
+msgstr ""
 
 #: cinder/volume/drivers/zadara.py:438
 #, python-format
@@ -5794,9 +5764,9 @@ msgstr ""
 
 #: cinder/volume/drivers/emc/emc_cli_iscsi.py:202
 #: cinder/volume/drivers/emc/emc_smis_iscsi.py:232
-#, fuzzy, python-format
+#, python-format
 msgid "Found iSCSI endpoint: %s"
-msgstr "Vyvoláno Nenalezeno: %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_cli_iscsi.py:209
 #, python-format
@@ -5872,9 +5842,8 @@ msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:176
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:348
-#, fuzzy
 msgid "Entering create_volume_from_snapshot."
-msgstr "Vytvořit svazek ze snímku %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:181
 #, python-format
@@ -6045,9 +6014,9 @@ msgid "Entering delete_volume."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:471
-#, fuzzy, python-format
+#, python-format
 msgid "Delete Volume: %(volume)s"
-msgstr "mazání svazku %(volume_name)s který má snímek"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:478
 #, python-format
@@ -6092,9 +6061,9 @@ msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:534
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:278
-#, fuzzy, python-format
+#, python-format
 msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "Vytvořit snímek svazku %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:544
 #: cinder/volume/drivers/emc/emc_smis_common.py:972
@@ -6125,11 +6094,11 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:583
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Error Create Snapshot: %(snapshot)s Volume: %(volume)s Error: "
 "%(errordesc)s"
-msgstr "Vytvořit snímek svazku %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:605
 #, python-format
@@ -6145,9 +6114,9 @@ msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:617
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:306
-#, fuzzy, python-format
+#, python-format
 msgid "Delete Snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "Vytvořit snímek svazku %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:623
 #, python-format
@@ -6225,9 +6194,9 @@ msgid "ExposePaths parameter LunMaskingSCSIProtocolController: %(lunmasking)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:771
-#, fuzzy, python-format
+#, python-format
 msgid "Error mapping volume %s."
-msgstr "Chyba v přesunu %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:775
 #, python-format
@@ -6374,9 +6343,8 @@ msgid "Found Storage Type in config file: %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1063
-#, fuzzy
 msgid "Storage type not found."
-msgstr "Obraz nenalezen"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1079
 #, python-format
@@ -6384,9 +6352,8 @@ msgid "Found Masking View: %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1082
-#, fuzzy
 msgid "Masking View not found."
-msgstr "Obraz nenalezen"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1097
 #, python-format
@@ -6398,9 +6365,8 @@ msgid "Timeout not specified."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1122
-#, fuzzy
 msgid "Ecom user not found."
-msgstr "Server nenalezen."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1142
 #, python-format
@@ -6408,14 +6374,12 @@ msgid "Ecom IP: %(ecomIp)s Port: %(ecomPort)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1146
-#, fuzzy
 msgid "Ecom server not found."
-msgstr "Server nenalezen."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1153
-#, fuzzy
 msgid "Cannot connect to ECOM server"
-msgstr "Znovu připojeno k frontě"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1165
 #, python-format
@@ -6438,9 +6402,9 @@ msgid "Found Storage Hardware ID Management Service: %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1248
-#, fuzzy, python-format
+#, python-format
 msgid "Pool %(storage_type)s is not found."
-msgstr "Role %(role_id)s nemohla být nalezena."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1254
 #, python-format
@@ -6458,14 +6422,14 @@ msgid "Pool name: %(poolname)s  System name: %(systemname)s."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1292
-#, fuzzy, python-format
+#, python-format
 msgid "Volume %(volumename)s not found on the array."
-msgstr "Svazek %(volume_id)s nemohl být nastaven."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1295
-#, fuzzy, python-format
+#, python-format
 msgid "Volume name: %(volumename)s  Volume instance: %(vol_instance)s."
-msgstr "Svazek není nalezen v instanci %(instance_id)s."
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1310
 #, python-format
@@ -6487,9 +6451,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1353
-#, fuzzy, python-format
+#, python-format
 msgid "Error finding %s."
-msgstr "Chyba v přesunu %s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_smis_common.py:1357
 #, python-format
@@ -6698,9 +6662,9 @@ msgid "Failed to list %s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:251
-#, fuzzy, python-format
+#, python-format
 msgid "create_export: Volume: %(volume)s  Device ID: %(device_id)s"
-msgstr "Připojit svazek %(volume_id)s k instanci %(instance_id)s na %(device)s"
+msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:292
 #, python-format
@@ -6916,9 +6880,9 @@ msgid "%(element)s: %(val)s"
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:103 cinder/volume/drivers/hds/hds.py:105
-#, fuzzy, python-format
+#, python-format
 msgid "XML exception reading parameter: %s"
-msgstr "Výjimka při načítání rozšíření: %s"
+msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:178
 #, python-format
@@ -6931,9 +6895,9 @@ msgid "No configuration found for service: %s"
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:250
-#, fuzzy, python-format
+#, python-format
 msgid "HDP not found: %s"
-msgstr "Instance nenalezena"
+msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:289
 #, python-format
@@ -6956,9 +6920,9 @@ msgid "LUN %(lun)s extended to %(size)s GB."
 msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:395
-#, fuzzy, python-format
+#, python-format
 msgid "delete lun %(lun)s on %(name)s"
-msgstr "mazání svazku %(volume_name)s který má snímek"
+msgstr ""
 
 #: cinder/volume/drivers/hds/hds.py:480
 #, python-format
@@ -8226,18 +8190,13 @@ msgstr ""
 #: cinder/volume/drivers/ibm/storwize_svc/ssh.py:35
 #: cinder/volume/drivers/ibm/storwize_svc/ssh.py:213
 #: cinder/volume/drivers/ibm/storwize_svc/ssh.py:250
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "CLI Exception output:\n"
 " command: %(cmd)s\n"
 " stdout: %(out)s\n"
 " stderr: %(err)s"
 msgstr ""
-"%(description)s\n"
-"Příkaz: %(cmd)s\n"
-"Kód ukončení: %(exit_code)s\n"
-"Stdout: %(stdout)r\n"
-"Stderr: %(stderr)r"
 
 #: cinder/volume/drivers/ibm/storwize_svc/ssh.py:53
 #, python-format
@@ -8384,19 +8343,19 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:238
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get LUN target details for the LUN %s"
-msgstr "Nelze získat metadata pro ip: %s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:249
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get target portal for the LUN %s"
-msgstr "Nelze získat metadata pro ip: %s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:252
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get target IQN for the LUN %s"
-msgstr "Nelze získat metadata pro ip: %s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:290
 #, python-format
@@ -8555,9 +8514,9 @@ msgid "Api version could not be determined."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:1190
-#, fuzzy, python-format
+#, python-format
 msgid "Failed to get vol with required size for volume: %s"
-msgstr "Nelze získat metadata pro ip: %s"
+msgstr ""
 
 #: cinder/volume/drivers/netapp/iscsi.py:1299
 #, python-format
@@ -9433,9 +9392,8 @@ msgid "No headers in server response"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:89
-#, fuzzy
 msgid "Bad response from server"
-msgstr "Špatná odpověď od SolidFire API"
+msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:90
 #, python-format
@@ -9443,9 +9401,9 @@ msgid "Auto switching to HTTPS connection to %s"
 msgstr ""
 
 #: cinder/volume/drivers/nexenta/jsonrpc.py:96
-#, fuzzy, python-format
+#, python-format
 msgid "Got response: %s"
-msgstr "odpověď %s"
+msgstr ""
 
 #: cinder/volume/drivers/nexenta/nfs.py:85
 #, python-format
@@ -9596,9 +9554,9 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:763
-#, fuzzy, python-format
+#, python-format
 msgid "Volume (%s) already exists on array"
-msgstr "skupina %s již existuje"
+msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:782
 #, python-format
@@ -11630,1533 +11588,4 @@ msgstr ""
 #, python-format
 msgid "Active zone set from fabric: %s"
 msgstr ""
-
-#~ msgid "Error retrieving volume status: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "_update_volume_status: Could not get storage pool data"
-#~ msgstr ""
-
-#~ msgid "Cannot find any Fibre Channel HBAs"
-#~ msgstr ""
-
-#~ msgid "Volume status must be available or error"
-#~ msgstr "Obraz musí být dostupný"
-
-#~ msgid "No backend config with id %s"
-#~ msgstr ""
-
-#~ msgid "No sm_flavor called %s"
-#~ msgstr ""
-
-#~ msgid "No sm_volume with id %s"
-#~ msgstr ""
-
-#~ msgid "Error: %s"
-#~ msgstr "Zachycena chyba: %s"
-
-#~ msgid "Unexpected state while cloning %s"
-#~ msgstr "Při spuštění příkazu došlo k nečekané chybě."
-
-#~ msgid "iSCSI device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Fibre Channel device not found."
-#~ msgstr ""
-
-#~ msgid "Uncaught exception"
-#~ msgstr ""
-
-#~ msgid "Out reactor registered"
-#~ msgstr ""
-
-#~ msgid "CONSUMER GOT %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT SUCCEEDED %(data)s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT QUEUED %(data)s"
-#~ msgstr ""
-
-#~ msgid "Could not create IPC directory %s"
-#~ msgstr ""
-
-#~ msgid "ROUTER RELAY-OUT %(data)s"
-#~ msgstr ""
-
-#~ msgid "May specify only one of snapshot, imageRef or source volume"
-#~ msgstr ""
-
-#~ msgid "Volume size cannot be lesser than the Snapshot size"
-#~ msgstr ""
-
-#~ msgid "Unable to clone volumes that are in an error state"
-#~ msgstr ""
-
-#~ msgid "Clones currently must be >= original volume size."
-#~ msgstr ""
-
-#~ msgid "Volume size '%s' must be an integer and greater than 0"
-#~ msgstr ""
-
-#~ msgid "Size of specified image is larger than volume size."
-#~ msgstr ""
-
-#~ msgid "Image minDisk size is larger than the volume size."
-#~ msgstr ""
-
-#~ msgid ""
-#~ msgstr ""
-
-#~ msgid "Availability zone is invalid"
-#~ msgstr ""
-
-#~ msgid "volume %(vol_name)s: creating lv of size %(vol_size)sG"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from snapshot"
-#~ msgstr "Vytvořit svazek ze snímku %s"
-
-#~ msgid "volume %s: creating from existing volume"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating from image"
-#~ msgstr ""
-
-#~ msgid "volume %s: creating"
-#~ msgstr ""
-
-#~ msgid "Setting volume: %s status to error after failed image copy."
-#~ msgstr ""
-
-#~ msgid "Unexpected Error: "
-#~ msgstr ""
-
-#~ msgid "volume %s: creating export"
-#~ msgstr ""
-
-#~ msgid "volume %s: create failed"
-#~ msgstr ""
-
-#~ msgid "volume %s: created successfully"
-#~ msgstr ""
-
-#~ msgid "volume %s: Error trying to reschedule create"
-#~ msgstr ""
-
-#~ msgid "volume %(volume_id)s: re-scheduling %(method)s attempt %(num)d"
-#~ msgstr ""
-
-#~ msgid "Failed to copy image to volume: %(volume_id)s, error: %(error)s"
-#~ msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
-
-#~ msgid "Downloaded image %(image_id)s to %(volume_id)s successfully."
-#~ msgstr ""
-
-#~ msgid "Array Mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "LUN %(lun)s of size %(size)s MB is created."
-#~ msgstr ""
-
-#~ msgid "Array mismatch %(myid)s vs %(arid)s"
-#~ msgstr ""
-
-#~ msgid "Failed to attach iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "Fetching %s"
-#~ msgstr "Získávání %s"
-
-#~ msgid "Link Local address is not found.:%s"
-#~ msgstr "Adresa místního spojení nenalezena.: %s"
-
-#~ msgid "Couldn't get Link Local IP of %(interface)s :%(ex)s"
-#~ msgstr "Nelze získat IP místního spojení %(interface)s :%(ex)s"
-
-#~ msgid "Started %(name)s on %(_host)s:%(_port)s"
-#~ msgstr "%(name)s spuštěno v %(host)s:%(port)s"
-
-#~ msgid "Unable to find a Fibre Channel volume device"
-#~ msgstr ""
-
-#~ msgid "Volume device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Unable to find Volume Group: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to create Volume Group: %s"
-#~ msgstr "Nelze získat metadata pro ip: %s"
-
-#~ msgid "snapshot %(snap_name)s: creating"
-#~ msgstr ""
-
-#~ msgid "Running with CoraidDriver for ESM EtherCLoud"
-#~ msgstr ""
-
-#~ msgid "Update session cookie %(session)s"
-#~ msgstr ""
-
-#~ msgid "Message : %(message)s"
-#~ msgstr "%(code)s: %(message)s"
-
-#~ msgid "Error while trying to set group: %(message)s"
-#~ msgstr ""
-
-#~ msgid "Unable to find group: %(group)s"
-#~ msgstr "Nelze použít globální roli %(role_id)s"
-
-#~ msgid "ESM urlOpen error"
-#~ msgstr ""
-
-#~ msgid "JSON Error"
-#~ msgstr "Chyba přesunu"
-
-#~ msgid "Request without URL"
-#~ msgstr ""
-
-#~ msgid "Configure data : %s"
-#~ msgstr ""
-
-#~ msgid "Configure response : %s"
-#~ msgstr "odpověď %s"
-
-#~ msgid "Unable to retrive volume infos for volume %(volname)s"
-#~ msgstr "Nenalezeno žádné cílové id ve svazku %(volume_id)s."
-
-#~ msgid "Cannot login on Coraid ESM"
-#~ msgstr ""
-
-#~ msgid "Fail to create volume %(volname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to delete volume %(volname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Create Snapshot %(snapname)s"
-#~ msgstr "Nelze restartovat instanci"
-
-#~ msgid "Failed to Delete Snapshot %(snapname)s"
-#~ msgstr ""
-
-#~ msgid "Failed to Create Volume from Snapshot %(snapname)s"
-#~ msgstr "Vytvořit svazek ze snímku %s"
-
-#~ msgid "fmt = %(fmt)s backed by: %(backing_file)s"
-#~ msgstr ""
-
-#~ msgid "Expected image to be in raw format, but is %s"
-#~ msgstr ""
-
-#~ msgid "volume group %s doesn't exist"
-#~ msgstr ""
-
-#~ msgid "Error retrieving volume stats: %s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "CPG (%s) must be in a domain"
-#~ msgstr ""
-
-#~ msgid "Error populating default encryption types!"
-#~ msgstr ""
-
-#~ msgid "Unexpected error while running command."
-#~ msgstr "Při spuštění příkazu došlo k nečekané chybě."
-
-#~ msgid "Nexenta SA returned the error"
-#~ msgstr ""
-
-#~ msgid "Ignored target group creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error \"%s\" while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Copying metadata from snapshot %(snap_volume_id)s to %(volume_id)s"
-#~ msgstr ""
-
-#~ msgid "Connection to glance failed"
-#~ msgstr "Připojení k glance selhalo"
-
-#~ msgid "Invalid snapshot"
-#~ msgstr "Neplatný snímek"
-
-#~ msgid "Invalid input received"
-#~ msgstr "Obdržen neplatný vstup"
-
-#~ msgid "Invalid volume type"
-#~ msgstr "Neplatný typ svazku"
-
-#~ msgid "Invalid volume"
-#~ msgstr "Neplatný svazek"
-
-#~ msgid "Invalid host"
-#~ msgstr ""
-
-#~ msgid "Invalid auth key"
-#~ msgstr "Neplatný snímek"
-
-#~ msgid "Invalid metadata"
-#~ msgstr "Neplatná metadata"
-
-#~ msgid "Invalid metadata size"
-#~ msgstr "Neplatný klíč metadata"
-
-#~ msgid "Migration error"
-#~ msgstr "Chyba přesunu"
-
-#~ msgid "Quota exceeded"
-#~ msgstr "Kvóta překročena"
-
-#~ msgid "Connection to swift failed"
-#~ msgstr "Připojení k glance selhalo"
-
-#~ msgid "Volume migration failed"
-#~ msgstr ""
-
-#~ msgid "SSH command injection detected"
-#~ msgstr ""
-
-#~ msgid "Invalid qos specs"
-#~ msgstr ""
-
-#~ msgid "debug in callback: %s"
-#~ msgstr "ladění ve zpětném volání: %s"
-
-#~ msgid "Expected object of type: %s"
-#~ msgstr "Očekáván objekt typu: %s"
-
-#~ msgid "timefunc: '%(name)s' took %(total_time).2f secs"
-#~ msgstr "timefunc: '%(name)s' trvalo %(total_time).2f sek"
-
-#~ msgid "base image still has %s snapshots so not deleting base image"
-#~ msgstr ""
-
-#~ msgid "Failed to rename migration destination volume %(vol)s to %(name)s"
-#~ msgstr ""
-
-#~ msgid "Resize volume \"%(name)s\" to %(size)s"
-#~ msgstr ""
-
-#~ msgid "Volume \"%(name)s\" resized. New size is %(size)s"
-#~ msgstr ""
-
-#~ msgid "Invalid snapshot backing file format: %s"
-#~ msgstr ""
-
-#~ msgid "Extend volume from %(old_size) to %(new_size)"
-#~ msgstr ""
-
-#~ msgid "pool %s doesn't exist"
-#~ msgstr "Instance neexistuje"
-
-#~ msgid "_update_volume_stats: Could not get system name."
-#~ msgstr ""
-
-#~ msgid "Disk not found: %s"
-#~ msgstr "Instance nenalezena"
-
-#~ msgid "read timed out"
-#~ msgstr ""
-
-#~ msgid "check_for_setup_error."
-#~ msgstr ""
-
-#~ msgid "check_for_setup_error: Can not get device type."
-#~ msgstr ""
-
-#~ msgid "check_for_setup_error: Device type is:%(type)s, version is:%(version)s."
-#~ msgstr ""
-
-#~ msgid "_get_device_type: Storage Pool must be configured."
-#~ msgstr ""
-
-#~ msgid "create_volume:volume name: %s."
-#~ msgstr ""
-
-#~ msgid "delete_volume:No need to delete volume. Volume %(name)s does not exist."
-#~ msgstr ""
-
-#~ msgid "create_export: volume name:%s"
-#~ msgstr "Vytvořit snímek svazku %s"
-
-#~ msgid "create_export:Volume %(name)s does not exist."
-#~ msgstr ""
-
-#~ msgid "initialize_connection:Failed to find target iSCSI iqn. Target IP:%(ip)s"
-#~ msgstr ""
-
-#~ msgid "terminate_connection:Host does not exist. Host name:%(host)s."
-#~ msgstr ""
-
-#~ msgid "terminate_connection:volume does not exist. volume name:%(volume)s"
-#~ msgstr ""
-
-#~ msgid "create_snapshot:Device does not support snapshot."
-#~ msgstr ""
-
-#~ msgid "create_snapshot:Resource pool needs 1GB valid size at least."
-#~ msgstr ""
-
-#~ msgid "create_snapshot:Volume does not exist. Volume name:%(name)s"
-#~ msgstr ""
-
-#~ msgid "create_snapshot:Snapshot does not exist. Snapshot name:%(name)s"
-#~ msgstr ""
-
-#~ msgid "delete_snapshot:snapshot name:%(snapshot)s, volume name:%(volume)s."
-#~ msgstr ""
-
-#~ msgid "delete_snapshot:Device does not support snapshot."
-#~ msgstr ""
-
-#~ msgid "delete_snapshot:Snapshot does not exist. snapshot name:%(snap)s"
-#~ msgstr ""
-
-#~ msgid "_check_conf_file: %s"
-#~ msgstr ""
-
-#~ msgid "Write login information to xml error. %s"
-#~ msgstr ""
-
-#~ msgid "_get_login_info error. %s"
-#~ msgstr ""
-
-#~ msgid "_get_lun_set_info:Use default prefetch type. Prefetch type:Intelligent."
-#~ msgstr ""
-
-#~ msgid "_get_lun_set_info:%s"
-#~ msgstr ""
-
-#~ msgid "_get_iscsi_info:%s"
-#~ msgstr ""
-
-#~ msgid "CLI command:%s"
-#~ msgstr ""
-
-#~ msgid "_execute_cli:%s"
-#~ msgstr ""
-
-#~ msgid "_delete_hostport:Failed to delete host port. port id:%(portid)s"
-#~ msgstr ""
-
-#~ msgid "_get_tgt_iqn:iSCSI IP is %s."
-#~ msgstr ""
-
-#~ msgid "_get_tgt_iqn:iSCSI target iqn is:%s"
-#~ msgstr ""
-
-#~ msgid "_delete_map:Failed to delete host map. mapid:%(mapid)s out:%(out)s"
-#~ msgstr ""
-
-#~ msgid "_delete_host: Failed delete host. host id:%(hostid)s out:%(out)s"
-#~ msgstr ""
-
-#~ msgid "_is_resource_pool_enough:Resource pool for snapshot not be added."
-#~ msgstr ""
-
-#~ msgid "Ignored target creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored target group member addition error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LU creation error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Ignored LUN mapping entry addition error while ensuring export"
-#~ msgstr ""
-
-#~ msgid "Invalid source volume %(reason)s."
-#~ msgstr ""
-
-#~ msgid "The request is invalid."
-#~ msgstr "Požadavek je neplatný."
-
-#~ msgid "Volume %(volume_id)s persistence file could not be found."
-#~ msgstr "Svazek %(volume_id)s nemohl být nastaven."
-
-#~ msgid "No disk at %(location)s"
-#~ msgstr "Źádný disk ve %(location)s"
-
-#~ msgid "Class %(class_name)s could not be found: %(exception)s"
-#~ msgstr "Třída %(class_name)s nemohla být nalezena: %(exception)s"
-
-#~ msgid "Action not allowed."
-#~ msgstr "Činnost není povolena."
-
-#~ msgid "Key pair %(key_name)s already exists."
-#~ msgstr "Dvojice klíčů %(key_name)s již existuje."
-
-#~ msgid "Migration error: %(reason)s"
-#~ msgstr ""
-
-#~ msgid "Maximum volume/snapshot size exceeded"
-#~ msgstr ""
-
-#~ msgid "3PAR Host already exists: %(err)s.  %(info)s"
-#~ msgstr ""
-
-#~ msgid "Backup volume %(volume_id)s type not recognised."
-#~ msgstr ""
-
-#~ msgid "_remove_iscsi_port: iSCSI port was not found on host %(hostid)s"
-#~ msgstr ""
-
-#~ msgid "ssh_read: Read SSH timeout"
-#~ msgstr ""
-
-#~ msgid "do_setup."
-#~ msgstr ""
-
-#~ msgid "create_volume: volume name: %s."
-#~ msgstr ""
-
-#~ msgid "delete_volume: volume name: %s."
-#~ msgstr ""
-
-#~ msgid "create_cloned_volume: src volume: %(src)s tgt volume: %(tgt)s"
-#~ msgstr ""
-
-#~ msgid "create_snapshot: snapshot name: %(snapshot)s volume name: %(volume)s"
-#~ msgstr ""
-
-#~ msgid "delete_snapshot: snapshot name: %(snapshot)s volume name: %(volume)s"
-#~ msgstr ""
-
-#~ msgid "change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s"
-#~ msgstr ""
-
-#~ msgid "_update_volume_stats: Updating volume stats"
-#~ msgstr ""
-
-#~ msgid "restore finished."
-#~ msgstr ""
-
-#~ msgid "Error encountered during initialization of driver: %s"
-#~ msgstr ""
-
-#~ msgid "Unabled to update stats, driver is uninitialized"
-#~ msgstr ""
-
-#~ msgid "Snapshot file at %s does not exist."
-#~ msgstr ""
-
-#~ msgid "_create_copy: Source vdisk %s does not exist"
-#~ msgstr ""
-
-#~ msgid "Login to 3PAR array invalid"
-#~ msgstr ""
-
-#~ msgid "There are no datastores present under %s."
-#~ msgstr ""
-
-#~ msgid "Size for volume: %s not found, skipping secure delete."
-#~ msgstr ""
-
-#~ msgid "Could not find attribute for LUN named %s"
-#~ msgstr ""
-
-#~ msgid "Cleaning up incomplete backup operations"
-#~ msgstr ""
-
-#~ msgid "Resetting volume %s to available (was backing-up)"
-#~ msgstr ""
-
-#~ msgid "Resetting volume %s to error_restoring (was restoring-backup)"
-#~ msgstr ""
-
-#~ msgid "Resetting backup %s to error (was creating)"
-#~ msgstr ""
-
-#~ msgid "Resetting backup %s to available (was restoring)"
-#~ msgstr ""
-
-#~ msgid "Resuming delete on backup: %s"
-#~ msgstr ""
-
-#~ msgid "create_backup started, backup: %(backup_id)s for volume: %(volume_id)s"
-#~ msgstr ""
-
-#~ msgid "create_backup finished. backup: %s"
-#~ msgstr ""
-
-#~ msgid "delete_backup started, backup: %s"
-#~ msgstr ""
-
-#~ msgid "delete_backup finished, backup %s deleted"
-#~ msgstr ""
-
-#~ msgid "JSON transfer Error"
-#~ msgstr ""
-
-#~ msgid "create volume error: %(err)s"
-#~ msgstr ""
-
-#~ msgid "Create snapshot error."
-#~ msgstr ""
-
-#~ msgid "Create luncopy error."
-#~ msgstr ""
-
-#~ msgid "_find_host_lun_id transfer data error! "
-#~ msgstr ""
-
-#~ msgid "ssh_read: Read SSH timeout."
-#~ msgstr ""
-
-#~ msgid "There are no hosts in the inventory."
-#~ msgstr ""
-
-#~ msgid "Unable to create volume: %(vol)s on the hosts: %(hosts)s."
-#~ msgstr ""
-
-#~ msgid "Successfully cloned new backing: %s."
-#~ msgstr ""
-
-#~ msgid "Successfully reverted clone: %(clone)s to snapshot: %(snapshot)s."
-#~ msgstr ""
-
-#~ msgid "Copying backing files from %(src)s to %(dest)s."
-#~ msgstr ""
-
-#~ msgid "Initiated copying of backing via task: %s."
-#~ msgstr ""
-
-#~ msgid "Successfully copied backing to %s."
-#~ msgstr ""
-
-#~ msgid "Registering backing at path: %s to inventory."
-#~ msgstr ""
-
-#~ msgid "Initiated registring backing, task: %s."
-#~ msgstr ""
-
-#~ msgid "Successfully registered backing: %s."
-#~ msgstr ""
-
-#~ msgid "Reverting backing to snapshot: %s."
-#~ msgstr ""
-
-#~ msgid "Initiated reverting snapshot via task: %s."
-#~ msgstr ""
-
-#~ msgid "Successfully reverted to snapshot: %s."
-#~ msgstr ""
-
-#~ msgid "Successfully copied disk data to: %s."
-#~ msgstr ""
-
-#~ msgid "Error(s): %s occurred in the call to RetrieveProperties."
-#~ msgstr ""
-
-#~ msgid "Requested volume or snapshot exceeds allowed Gigabytes quota"
-#~ msgstr ""
-
-#~ msgid "Deploy v1 of the Cinder API. "
-#~ msgstr ""
-
-#~ msgid "Deploy v2 of the Cinder API. "
-#~ msgstr ""
-
-#~ msgid "_read_xml:%s"
-#~ msgstr ""
-
-#~ msgid "request ip info is %s."
-#~ msgstr ""
-
-#~ msgid "new str info is %s."
-#~ msgstr ""
-
-#~ msgid "Failed to create iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "Failed to remove iser target for volume %(volume_id)s."
-#~ msgstr ""
-
-#~ msgid "rtstool is not installed correctly"
-#~ msgstr ""
-
-#~ msgid "Creating iser_target for: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to create iser target for volume id:%(vol_id)s: %(e)s"
-#~ msgstr ""
-
-#~ msgid "Removing iser_target for: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to remove iser target for volume id:%(vol_id)s: %(e)s"
-#~ msgstr ""
-
-#~ msgid "Volume %s does not exist, it seems it was already deleted"
-#~ msgstr ""
-
-#~ msgid "Executing zfs send/recv on the appliance"
-#~ msgstr ""
-
-#~ msgid "zfs send/recv done, new volume %s created"
-#~ msgstr ""
-
-#~ msgid "Failed to delete temp snapshot %(volume)s@%(snapshot)s"
-#~ msgstr ""
-
-#~ msgid "Failed to delete zfs recv snapshot %(volume)s@%(snapshot)s"
-#~ msgstr ""
-
-#~ msgid "rbd export-diff failed - %s"
-#~ msgstr ""
-
-#~ msgid "rbd import-diff failed - %s"
-#~ msgstr ""
-
-#~ msgid "%s is not on GPFS. Perhaps GPFS not mounted."
-#~ msgstr ""
-
-#~ msgid "Folder %s does not exist, it seems it was already deleted."
-#~ msgstr ""
-
-#~ msgid "No 'os-update_readonly_flag' was specified in request."
-#~ msgstr ""
-
-#~ msgid "Volume 'readonly' flag must be specified in request as a boolean."
-#~ msgstr ""
-
-#~ msgid "ISER provider_location not stored, using discovery"
-#~ msgstr ""
-
-#~ msgid "Could not find iSER export for volume %s"
-#~ msgstr ""
-
-#~ msgid "ISER Discovery: Found %s"
-#~ msgstr ""
-
-#~ msgid "Failed to access the device on the path %(path)s: %(error)s."
-#~ msgstr ""
-
-#~ msgid "iSER device not found at %s"
-#~ msgstr ""
-
-#~ msgid "Found iSER node %(host_device)s (after %(tries)s rescans)."
-#~ msgstr ""
-
-#~ msgid "Skipping ensure_export. No iser_target provisioned for volume: %s"
-#~ msgstr ""
-
-#~ msgid "Skipping remove_export. No iser_target provisioned for volume: %s"
-#~ msgstr ""
-
-#~ msgid "Downloading image: %s from glance image server."
-#~ msgstr ""
-
-#~ msgid "Uploading image: %s to the Glance image server."
-#~ msgstr ""
-
-#~ msgid "Invalid request body"
-#~ msgstr "Neplatné tělo požadavku"
-
-#~ msgid "enter: _get_host_from_connector: prefix %s"
-#~ msgstr ""
-
-#~ msgid "Schedule volume flow not retrieved"
-#~ msgstr ""
-
-#~ msgid "Failed to successfully complete schedule volume using flow: %s"
-#~ msgstr ""
-
-#~ msgid "Create volume flow not retrieved"
-#~ msgstr ""
-
-#~ msgid "Failed to successfully complete create volume workflow"
-#~ msgstr ""
-
-#~ msgid "Expected volume result not found"
-#~ msgstr ""
-
-#~ msgid "Manager volume flow not retrieved"
-#~ msgstr ""
-
-#~ msgid "Failed to successfully complete manager volume workflow"
-#~ msgstr ""
-
-#~ msgid "Unable to update stats, driver is uninitialized"
-#~ msgstr ""
-
-#~ msgid "Bad reponse from server: %s"
-#~ msgstr ""
-
-#~ msgid "%(flow)s has moved into state %(state)s from state %(old_state)s"
-#~ msgstr ""
-
-#~ msgid "No request spec, will not reschedule"
-#~ msgstr ""
-
-#~ msgid "No retry filter property or associated retry info, will not reschedule"
-#~ msgstr ""
-
-#~ msgid "Retry info not present, will not reschedule"
-#~ msgstr ""
-
-#~ msgid "Clear capabilities"
-#~ msgstr ""
-
-#~ msgid "This usually means the volume was never succesfully created."
-#~ msgstr ""
-
-#~ msgid "setting LU uppper (end) limit to %s"
-#~ msgstr ""
-
-#~ msgid "Can't find lun or lun goup in array"
-#~ msgstr ""
-
-#~ msgid "Volume to be restored to is smaller than the backup to be restored"
-#~ msgstr ""
-
-#~ msgid "Volume driver '%(driver)s' not initialized."
-#~ msgstr ""
-
-#~ msgid "in looping call"
-#~ msgstr "v opakujícím volání"
-
-#~ msgid "Is the appropriate service running?"
-#~ msgstr ""
-
-#~ msgid "Could not find another host"
-#~ msgstr "Nelze najít %s v požadavku."
-
-#~ msgid "Not enough allocatable volume gigabytes remaining"
-#~ msgstr ""
-
-#~ msgid "Unable to update stats on non-intialized Volume Group: %s"
-#~ msgstr ""
-
-#~ msgid "do_setup: Pool %s does not exist"
-#~ msgstr ""
-
-#~ msgid "migrate_volume started with more than one vdisk copy"
-#~ msgstr ""
-
-#~ msgid "migrate_volume: Could not get vdisk copy data"
-#~ msgstr ""
-
-#~ msgid "Selected datastore: %s for the volume."
-#~ msgstr ""
-
-#~ msgid "There are no valid datastores present under %s."
-#~ msgstr ""
-
-#~ msgid "Unable to create volume, driver not initialized"
-#~ msgstr ""
-
-#~ msgid "Migration %(migration_id)s could not be found."
-#~ msgstr "Přesun %(migration_id)s nemohl být nalezen."
-
-#~ msgid "Bad driver response status: %(status)s"
-#~ msgstr ""
-
-#~ msgid "Instance %(instance_id)s could not be found."
-#~ msgstr "Instance %(instance_id)s nemohla být nastavena."
-
-#~ msgid "Volume retype failed: %(reason)s"
-#~ msgstr ""
-
-#~ msgid "SIGTERM received"
-#~ msgstr ""
-
-#~ msgid "Child %(pid)d exited with status %(code)d"
-#~ msgstr ""
-
-#~ msgid "_wait_child %d"
-#~ msgstr ""
-
-#~ msgid "wait wrap.failed %s"
-#~ msgstr "Vyvoláno Nenalezeno: %s"
-
-#~ msgid "Failed to update iscsi target for volume %(name)s."
-#~ msgstr ""
-
-#~ msgid "Updating iscsi target: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to update iscsi target %(name)s: %(e)s"
-#~ msgstr ""
-
-#~ msgid "Caught '%(exception)s' exception."
-#~ msgstr ""
-
-#~ msgid "Get code level failed"
-#~ msgstr ""
-
-#~ msgid "do_setup: Could not get system name"
-#~ msgstr ""
-
-#~ msgid "Failed to get license information."
-#~ msgstr ""
-
-#~ msgid "do_setup: No configured nodes"
-#~ msgstr ""
-
-#~ msgid "enter: _get_chap_secret_for_host: host name %s"
-#~ msgstr ""
-
-#~ msgid "enter: _get_host_from_connector: %s"
-#~ msgstr ""
-
-#~ msgid "leave: _get_host_from_connector: host %s"
-#~ msgstr ""
-
-#~ msgid "enter: _create_host: host %s"
-#~ msgstr ""
-
-#~ msgid "_create_host: No connector ports"
-#~ msgstr ""
-
-#~ msgid "leave: _create_host: host %(host)s - %(host_name)s"
-#~ msgstr "Nastavování hostitele %(host)s na %(state)s."
-
-#~ msgid "enter: _map_vol_to_host: volume %(volume_name)s to host %(host_name)s"
-#~ msgstr "mazání svazku %(volume_name)s který má snímek"
-
-#~ msgid "volume %s mapping to multi host"
-#~ msgstr ""
-
-#~ msgid "enter: _delete_host: host %s "
-#~ msgstr ""
-
-#~ msgid "leave: _delete_host: host %s "
-#~ msgstr ""
-
-#~ msgid "_create_host failed to return the host name."
-#~ msgstr ""
-
-#~ msgid "_get_host_from_connector failed to return the host name for connector"
-#~ msgstr ""
-
-#~ msgid "protocol must be specified as '<in> iSCSI' or '<in> FC'"
-#~ msgstr ""
-
-#~ msgid "enter: _create_vdisk: vdisk %s "
-#~ msgstr ""
-
-#~ msgid "_prepare_fc_map: %s"
-#~ msgstr ""
-
-#~ msgid "leave: _run_flashcopy: FlashCopy started from %(source)s to %(target)s"
-#~ msgstr ""
-
-#~ msgid "enter: _create_copy: snapshot %(tgt_vdisk)s from vdisk %(src_vdisk)s"
-#~ msgstr ""
-
-#~ msgid "_create_copy: Source vdisk %(src_vdisk)s (%(src_id)s) does not exist"
-#~ msgstr ""
-
-#~ msgid "leave: _create_copy: snapshot %(tgt_vdisk)s from vdisk %(src_vdisk)s"
-#~ msgstr ""
-
-#~ msgid "enter: _get_flashcopy_mapping_attributes: mapping %s"
-#~ msgstr ""
-
-#~ msgid "enter: _is_vdisk_defined: vdisk %s "
-#~ msgstr ""
-
-#~ msgid "leave: _is_vdisk_defined: vdisk %(vol)s with %(str)s "
-#~ msgstr ""
-
-#~ msgid "enter: _delete_vdisk: vdisk %s"
-#~ msgstr ""
-
-#~ msgid "warning: Tried to delete vdisk %s but it does not exist."
-#~ msgstr ""
-
-#~ msgid "leave: _delete_vdisk: vdisk %s"
-#~ msgstr ""
-
-#~ msgid "_get_vdisk_copy_attrs: Could not get vdisk copy data"
-#~ msgstr ""
-
-#~ msgid "_get_pool_attrs: Pool %s does not exist"
-#~ msgstr ""
-
-#~ msgid "enter: _execute_command_and_parse_attributes:  command %s"
-#~ msgstr ""
-
-#~ msgid "Did not find expected column in %(fun)s: %(hdr)s"
-#~ msgstr ""
-
-#~ msgid "Updating volume %(volume_id)s with %(update)s"
-#~ msgstr ""
-
-#~ msgid "Volume %s: resetting 'creating' status failed"
-#~ msgstr ""
-
-#~ msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s"
-#~ msgstr ""
-
-#~ msgid "Marking volume %s as bootable"
-#~ msgstr ""
-
-#~ msgid "Host %(host)s is not up or doesn't exist."
-#~ msgstr "Hostitel %(host)s není dostupný nebo neexistuje."
-
-#~ msgid "backup_id required"
-#~ msgstr ""
-
-#~ msgid "discarding %(length)s bytes from offset %(offset)s"
-#~ msgstr ""
-
-#~ msgid "writing zeroes chunk %d"
-#~ msgstr ""
-
-#~ msgid "transferring data between '%(src)s' and '%(dest)s'"
-#~ msgstr ""
-
-#~ msgid "transferred chunk %(chunk)s of %(chunks)s (%(rate)dK/s)"
-#~ msgstr ""
-
-#~ msgid "transferring remaining %s bytes"
-#~ msgstr ""
-
-#~ msgid "creating base image '%s'"
-#~ msgstr ""
-
-#~ msgid "deleting backup snapshot='%s'"
-#~ msgstr ""
-
-#~ msgid "no backup snapshot to delete"
-#~ msgstr ""
-
-#~ msgid "trying diff format name format basename='%s'"
-#~ msgstr ""
-
-#~ msgid "base image still has %s snapshots so skipping base image delete"
-#~ msgstr ""
-
-#~ msgid "deleting base image='%s'"
-#~ msgstr ""
-
-#~ msgid "image busy, retrying %(retries)s more time(s) in %(delay)ss"
-#~ msgstr ""
-
-#~ msgid "max retries reached - raising error"
-#~ msgstr ""
-
-#~ msgid "base backup image='%s' deleted)"
-#~ msgstr ""
-
-#~ msgid "deleting source snap '%s'"
-#~ msgstr ""
-
-#~ msgid "performing differential transfer from '%(src)s' to '%(dest)s'"
-#~ msgstr ""
-
-#~ msgid "rbd diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
-#~ msgstr ""
-
-#~ msgid "image '%s' not found - trying diff format name"
-#~ msgstr ""
-
-#~ msgid "diff format image '%s' not found"
-#~ msgstr ""
-
-#~ msgid "using --from-snap '%s'"
-#~ msgstr ""
-
-#~ msgid "source snap '%s' is stale so deleting"
-#~ msgstr ""
-
-#~ msgid "creating backup snapshot='%s'"
-#~ msgstr ""
-
-#~ msgid "differential backup transfer completed in %.4fs"
-#~ msgstr ""
-
-#~ msgid "differential backup transfer failed"
-#~ msgstr ""
-
-#~ msgid "creating base image='%s'"
-#~ msgstr ""
-
-#~ msgid "copying data"
-#~ msgstr ""
-
-#~ msgid "looking for snapshot of backup base '%s'"
-#~ msgstr ""
-
-#~ msgid "backup base '%s' has no snapshots"
-#~ msgstr ""
-
-#~ msgid "backup '%s' has no snapshot"
-#~ msgstr ""
-
-#~ msgid "backup should only have one snapshot but instead has %s"
-#~ msgstr ""
-
-#~ msgid "found snapshot '%s'"
-#~ msgstr ""
-
-#~ msgid "need non-zero volume size"
-#~ msgstr ""
-
-#~ msgid "forcing full backup"
-#~ msgstr ""
-
-#~ msgid "backup '%s' finished."
-#~ msgstr ""
-
-#~ msgid "adjusting restore vol size"
-#~ msgstr ""
-
-#~ msgid "trying incremental restore from base='%(base)s' snap='%(snap)s'"
-#~ msgstr ""
-
-#~ msgid "differential restore failed, trying full restore"
-#~ msgstr ""
-
-#~ msgid "restore transfer completed in %.4fs"
-#~ msgstr ""
-
-#~ msgid "rbd has %s extents"
-#~ msgstr ""
-
-#~ msgid "dest volume is original volume - forcing full copy"
-#~ msgstr ""
-
-#~ msgid "destination has extents - forcing full copy"
-#~ msgstr ""
-
-#~ msgid "no restore point found for backup='%s', forcing full copy"
-#~ msgstr ""
-
-#~ msgid "forcing full restore"
-#~ msgstr ""
-
-#~ msgid "starting restore from Ceph backup=%(src)s to volume=%(dest)s"
-#~ msgstr ""
-
-#~ msgid "volume_file does not support fileno() so skipping fsync()"
-#~ msgstr ""
-
-#~ msgid "restore finished successfully."
-#~ msgstr ""
-
-#~ msgid "restore finished with error - %s"
-#~ msgstr ""
-
-#~ msgid "delete started for backup=%s"
-#~ msgstr ""
-
-#~ msgid "delete '%s' finished with warning"
-#~ msgstr ""
-
-#~ msgid "delete '%s' finished"
-#~ msgstr ""
-
-#~ msgid "no calling threads waiting for msg_id : %s, message : %s"
-#~ msgstr ""
-
-#~ msgid "Failed to sanitize %(item)s. Key error %(err)s"
-#~ msgstr ""
-
-#~ msgid "topic is %s."
-#~ msgstr ""
-
-#~ msgid "Matchmaker unregistered: %s, %s"
-#~ msgstr ""
-
-#~ msgid "volume %s: glance metadata deleted"
-#~ msgstr ""
-
-#~ msgid "no glance metadata found for volume %s"
-#~ msgstr ""
-
-#~ msgid "Volume %s: retyped succesfully"
-#~ msgstr ""
-
-#~ msgid "Skipping ensure_export. No iscsi_target provisioned for volume: %s"
-#~ msgstr ""
-
-#~ msgid "Error unrecognized volume_clear option: %s"
-#~ msgstr ""
-
-#~ msgid "Invalid hp3parclient version. Version %s or greater required."
-#~ msgstr ""
-
-#~ msgid "command %s failed"
-#~ msgstr ""
-
-#~ msgid "Error running ssh command: %s"
-#~ msgstr "Při spuštění příkazu došlo k nečekané chybě."
-
-#~ msgid "Creating Consumer connection for Service %s"
-#~ msgstr "Vytváření připojení zákazníka pro službu %s"
-
-#~ msgid "_check_container_exists: container: %s"
-#~ msgstr ""
-
-#~ msgid "container %s does not exist"
-#~ msgstr "Instance neexistuje"
-
-#~ msgid "container %s exists"
-#~ msgstr "Instance neexistuje"
-
-#~ msgid "backup: %(vol_id)s Failed. %(path)s is not a block device."
-#~ msgstr ""
-
-#~ msgid "backup: %(vol_id)s Failed. Cannot obtain real path to device %(path)s."
-#~ msgstr ""
-
-#~ msgid "backup: %(vol_id)s Failed. %(path)s is not a file."
-#~ msgstr ""
-
-#~ msgid "Unknown byte multiplier: %s"
-#~ msgstr ""
-
-#~ msgid "%s not in valid priorities"
-#~ msgstr ""
-
-#~ msgid "Failed to load notifier %s. These notifications will not be sent."
-#~ msgstr ""
-
-#~ msgid "The rabbit_notifier is now deprecated. Please use rpc_notifier instead."
-#~ msgstr ""
-
-#~ msgid "Could not send notification to %(topic)s. Payload=%(message)s"
-#~ msgstr ""
-
-#~ msgid "Pool creating new connection"
-#~ msgstr ""
-
-#~ msgid "No calling threads waiting for msg_id : %(msg_id)s, message : %(data)s"
-#~ msgstr ""
-
-#~ msgid "_call_waiters: %s"
-#~ msgstr ""
-
-#~ msgid "unpacked context: %s"
-#~ msgstr "rozbalený kontext: %s"
-
-#~ msgid "UNIQUE_ID is %s."
-#~ msgstr ""
-
-#~ msgid "received %s"
-#~ msgstr "obdrženo: %s"
-
-#~ msgid "no method for message: %s"
-#~ msgstr "pro zprávu není metoda: %s"
-
-#~ msgid "No method for message: %s"
-#~ msgstr "Pro zprávu není metoda: %s"
-
-#~ msgid "Expected exception during message handling (%s)"
-#~ msgstr ""
-
-#~ msgid "Exception during message handling"
-#~ msgstr ""
-
-#~ msgid "Making synchronous call on %s ..."
-#~ msgstr ""
-
-#~ msgid "MSG_ID is %s"
-#~ msgstr "MSG_ID je %s"
-
-#~ msgid "Making asynchronous cast on %s..."
-#~ msgstr ""
-
-#~ msgid "Making asynchronous fanout cast..."
-#~ msgstr ""
-
-#~ msgid "Sending %(event_type)s on %(topic)s"
-#~ msgstr ""
-
-#~ msgid "An unknown RPC related exception occurred."
-#~ msgstr "Vyskytla se neočekávaná výjimka."
-
-#~ msgid "<unknown>"
-#~ msgstr ""
-
-#~ msgid "Found duplicate message(%(msg_id)s). Skipping it."
-#~ msgstr ""
-
-#~ msgid "Invalid reuse of an RPC connection."
-#~ msgstr "Neplatné znovu použití připojení RPC."
-
-#~ msgid "Specified RPC version, %(version)s, not supported by this endpoint."
-#~ msgstr ""
-
-#~ msgid "Specified RPC version cap, %(version_cap)s, is too low"
-#~ msgstr ""
-
-#~ msgid "Returning exception %s to caller"
-#~ msgstr "Volajícímu je vrácena výjimka: %s"
-
-#~ msgid "Failed to process message ... skipping it."
-#~ msgstr ""
-
-#~ msgid "Failed to process message ... will requeue."
-#~ msgstr ""
-
-#~ msgid "Reconnecting to AMQP server on %(hostname)s:%(port)d"
-#~ msgstr ""
-
-#~ msgid "Connected to AMQP server on %(hostname)s:%(port)d"
-#~ msgstr ""
-
-#~ msgid "Failed to declare consumer for topic '%(topic)s': %(err_str)s"
-#~ msgstr ""
-
-#~ msgid "Timed out waiting for RPC response: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to consume message from queue: %s"
-#~ msgstr ""
-
-#~ msgid "Failed to publish message to topic '%(topic)s': %(err_str)s"
-#~ msgstr ""
-
-#~ msgid "Invalid value for qpid_topology_version: %d"
-#~ msgstr ""
-
-#~ msgid "Failed to process message... skipping it."
-#~ msgstr ""
-
-#~ msgid "Unable to connect to AMQP server: %(e)s. Sleeping %(delay)s seconds"
-#~ msgstr ""
-
-#~ msgid "Connected to AMQP server on %s"
-#~ msgstr ""
-
-#~ msgid "Re-established AMQP queues"
-#~ msgstr ""
-
-#~ msgid "Error processing message.  Skipping it."
-#~ msgstr ""
-
-#~ msgid "JSON serialization failed."
-#~ msgstr ""
-
-#~ msgid "Deserializing: %s"
-#~ msgstr "Popis roz: %s"
-
-#~ msgid "Connecting to %(addr)s with %(type)s"
-#~ msgstr ""
-
-#~ msgid "-> Subscribed to %(subscribe)s"
-#~ msgstr ""
-
-#~ msgid "-> bind: %(bind)s"
-#~ msgstr ""
-
-#~ msgid "Could not open socket."
-#~ msgstr ""
-
-#~ msgid "Subscribing to %s"
-#~ msgstr ""
-
-#~ msgid "ZeroMQ socket could not be closed."
-#~ msgstr ""
-
-#~ msgid "You cannot recv on this socket."
-#~ msgstr ""
-
-#~ msgid "You cannot send on this socket."
-#~ msgstr ""
-
-#~ msgid "Running func with context: %s"
-#~ msgstr "rozbalený kontext: %s"
-
-#~ msgid "Sending reply"
-#~ msgstr ""
-
-#~ msgid "RPC message did not include method."
-#~ msgstr ""
-
-#~ msgid "Registering reactor"
-#~ msgstr "Zrušení registrace obrazu %s"
-
-#~ msgid "In reactor registered"
-#~ msgstr ""
-
-#~ msgid "Consuming socket"
-#~ msgstr ""
-
-#~ msgid "Creating proxy for topic: %s"
-#~ msgstr ""
-
-#~ msgid "Topic contained dangerous characters."
-#~ msgstr ""
-
-#~ msgid "Topic socket file creation failed."
-#~ msgstr ""
-
-#~ msgid "Required IPC directory does not exist at %s"
-#~ msgstr ""
-
-#~ msgid "Permission denied to IPC directory at %s"
-#~ msgstr ""
-
-#~ msgid "Could not create ZeroMQ receiver daemon. Socket may already be in use."
-#~ msgstr ""
-
-#~ msgid "CONSUMER RECEIVED DATA: %s"
-#~ msgstr ""
-
-#~ msgid "ZMQ Envelope version unsupported or unknown."
-#~ msgstr ""
-
-#~ msgid "Skipping topic registration. Already registered."
-#~ msgstr ""
-
-#~ msgid "Consumer is a zmq.%s"
-#~ msgstr ""
-
-#~ msgid "Creating payload"
-#~ msgstr ""
-
-#~ msgid "Creating queue socket for reply waiter"
-#~ msgstr ""
-
-#~ msgid "Sending cast"
-#~ msgstr ""
-
-#~ msgid "Cast sent; Waiting reply"
-#~ msgstr ""
-
-#~ msgid "Received message: %s"
-#~ msgstr "obdrženo: %s"
-
-#~ msgid "Unpacking response"
-#~ msgstr ""
-
-#~ msgid "Unsupported or unknown ZMQ envelope returned."
-#~ msgstr ""
-
-#~ msgid "RPC Message Invalid."
-#~ msgstr "Požadavek je neplatný."
-
-#~ msgid "%(msg)s"
-#~ msgstr ""
-
-#~ msgid "Sending message(s) to: %s"
-#~ msgstr ""
-
-#~ msgid "No matchmaker results. Not casting."
-#~ msgstr ""
-
-#~ msgid "No match from matchmaker."
-#~ msgstr ""
-
-#~ msgid "rpc_zmq_matchmaker = %(orig)s is deprecated; use %(new)s instead"
-#~ msgstr ""
-
-#~ msgid "Match not found by MatchMaker."
-#~ msgstr ""
-
-#~ msgid "Matchmaker does not implement registration or heartbeat."
-#~ msgstr ""
-
-#~ msgid "Matchmaker unregistered: %(key)s, %(host)s"
-#~ msgstr ""
-
-#~ msgid "Register before starting heartbeat."
-#~ msgstr ""
-
-#~ msgid "No key defining hosts for topic '%s', see ringfile"
-#~ msgstr ""
-
-#~ msgid "GPFS is not active.  Detailed output: %s"
-#~ msgstr ""
-
-#~ msgid "GPFS is not running - state: %s"
-#~ msgstr ""
-
-#~ msgid "mkfs failed on volume %(vol)s, error message was: %(err)s"
-#~ msgstr ""
-
-#~ msgid "Leaving create_volume: %(volumename)s  Return code: %(rc)lu"
-#~ msgstr ""
-
-#~ msgid "Create export: %(volume)s"
-#~ msgstr "Vytvořit snímek svazku %s"
-
-#~ msgid "Found Storage Type: %s"
-#~ msgstr ""
-
-#~ msgid "Unable to determine pool extent size"
-#~ msgstr ""
-
-#~ msgid "migrate_volume started without a vdisk copy in the expected pool."
-#~ msgstr ""
-
-#~ msgid "No clonned lun named %s found on the filer"
-#~ msgstr ""
-
-#~ msgid "Copied image to volume %s"
-#~ msgstr ""
-
-#~ msgid "Cloning img from cache for %s"
-#~ msgstr ""
-
-#~ msgid "Unexpected exception in cloning image %(image_id)s. Message: %(msg)s"
-#~ msgstr ""
-
-#~ msgid "Cloning image %s directly in share"
-#~ msgstr ""
-
-#~ msgid "Cannot delete snapshot %(origin): %(exc)s"
-#~ msgstr ""
-
-#~ msgid "Error extending volume %s"
-#~ msgstr ""
-
-#~ msgid "Error while logging out the user: %s."
-#~ msgstr ""
-
-#~ msgid "ESM configure request failed: %(message)s."
-#~ msgstr ""
-
-#~ msgid "Coraid ESM not available with reason: %(reason)s."
-#~ msgstr ""
-
-#~ msgid "Unable to find LV: %s"
-#~ msgstr "Nelze použít globální roli %(role_id)s"
-
-#~ msgid "Error provisioning vol %(name)s on %(volume)s"
-#~ msgstr ""
-
-#~ msgid "Exception creating vol %(name)s on share %(share)s"
-#~ msgstr ""
-
-#~ msgid "The configured default PBM policy is not defined on vCenter Server."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Ignoring default policy '%(policy)s' since "
-#~ "Storage Policy Based Management is not"
-#~ " enabled on VC version %(ver)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "The configured default PBM policy '%s'"
-#~ " is not defined on vCenter Server."
-#~ msgstr ""
-
-#~ msgid "Successfully verified existence of pbm_default_policy: %s."
-#~ msgstr ""
 
