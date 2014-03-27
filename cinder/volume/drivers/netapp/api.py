@@ -26,6 +26,8 @@ from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
+ESIS_CLONE_NOT_LICENSED = '14956'
+
 
 class NaServer(object):
     """Encapsulates server connection logic."""
@@ -214,9 +216,12 @@ class NaServer(object):
         code = result.get_attr('errno')\
             or result.get_child_content('errorno')\
             or 'ESTATUSFAILED'
-        msg = result.get_attr('reason')\
-            or result.get_child_content('reason')\
-            or 'Execution status is failed due to unknown reason'
+        if code == ESIS_CLONE_NOT_LICENSED:
+            msg = 'Clone operation failed: FlexClone not licensed.'
+        else:
+            msg = result.get_attr('reason')\
+                or result.get_child_content('reason')\
+                or 'Execution status is failed due to unknown reason'
         raise NaApiError(code, msg)
 
     def _create_request(self, na_element, enable_tunneling=False):
