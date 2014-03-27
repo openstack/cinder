@@ -17,10 +17,76 @@ Mock unit tests for the NetApp iSCSI driver
 """
 
 import mock
+import uuid
 
 from cinder import test
 import cinder.volume.drivers.netapp.api as ntapi
 import cinder.volume.drivers.netapp.iscsi as ntap_iscsi
+
+
+class NetAppDirectISCSIDriverTestCase(test.TestCase):
+
+    def setUp(self):
+        super(NetAppDirectISCSIDriverTestCase, self).setUp()
+        self.driver = ntap_iscsi.NetAppDirectISCSIDriver(
+            configuration=mock.Mock())
+        self.driver.client = mock.Mock()
+        self.fake_volume = str(uuid.uuid4())
+        self.fake_lun = str(uuid.uuid4())
+        self.fake_size = '1024'
+        self.fake_metadata = {
+            'OsType': 'linux',
+            'SpaceReserved': 'true',
+        }
+        self.mock_request = mock.Mock()
+
+    def tearDown(self):
+        super(NetAppDirectISCSIDriverTestCase, self).tearDown()
+
+    def test_create_lun(self):
+        expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
+
+        with mock.patch.object(ntapi.NaElement, 'create_node_with_children',
+                               return_value=self.mock_request
+                               ) as mock_create_node:
+            self.driver.create_lun(self.fake_volume,
+                                   self.fake_lun,
+                                   self.fake_size,
+                                   self.fake_metadata)
+
+            mock_create_node.assert_called_once_with(
+                'lun-create-by-size',
+                **{'path': expected_path,
+                   'size': self.fake_size,
+                   'ostype': self.fake_metadata['OsType'],
+                   'space-reservation-enabled':
+                   self.fake_metadata['SpaceReserved']})
+            self.driver.client.invoke_successfully.assert_called_once_with(
+                mock.ANY, True)
+
+    def test_create_lun_with_qos_policy_group(self):
+        expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
+        expected_qos_group = 'qos_1'
+
+        with mock.patch.object(ntapi.NaElement, 'create_node_with_children',
+                               return_value=self.mock_request
+                               ) as mock_create_node:
+            self.driver.create_lun(self.fake_volume,
+                                   self.fake_lun,
+                                   self.fake_size,
+                                   self.fake_metadata,
+                                   qos_policy_group=expected_qos_group)
+
+            mock_create_node.assert_called_once_with(
+                'lun-create-by-size',
+                **{'path': expected_path, 'size': self.fake_size,
+                    'ostype': self.fake_metadata['OsType'],
+                    'space-reservation-enabled':
+                    self.fake_metadata['SpaceReserved']})
+            self.mock_request.add_new_child.assert_called_once_with(
+                'qos-policy-group', expected_qos_group)
+            self.driver.client.invoke_successfully.assert_called_once_with(
+                mock.ANY, True)
 
 
 class NetAppiSCSICModeTestCase(test.TestCase):

@@ -340,7 +340,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """Creates an actual lun on filer."""
         raise NotImplementedError()
 
-    def _create_lun(self, volume, lun, size, metadata):
+    def create_lun(self, volume, lun, size, metadata, qos_policy_group=None):
         """Issues api request for creating lun on volume."""
         path = '/vol/%s/%s' % (volume, lun)
         lun_create = NaElement.create_node_with_children(
@@ -348,6 +348,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             **{'path': path, 'size': size,
                 'ostype': metadata['OsType'],
                 'space-reservation-enabled': metadata['SpaceReserved']})
+        if qos_policy_group:
+            lun_create.add_new_child('qos-policy-group', qos_policy_group)
         self.client.invoke_successfully(lun_create, True)
 
     def _get_iscsi_service_details(self):
@@ -682,7 +684,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                         ' as it contains no blocks.')
                 raise exception.VolumeBackendAPIException(data=msg % name)
             new_lun = 'new-%s' % (name)
-            self._create_lun(vol_name, new_lun, new_size_bytes, metadata)
+            self.create_lun(vol_name, new_lun, new_size_bytes, metadata)
             try:
                 self._clone_lun(name, new_lun, block_count=block_count)
                 self._post_sub_clone_resize(path)
@@ -771,6 +773,9 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         """Creates an actual lun on filer."""
         req_size = float(size) *\
             float(self.configuration.netapp_size_multiplier)
+        qos_policy_group = None
+        if extra_specs:
+            qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None)
         volumes = self._get_avl_volumes(req_size, extra_specs)
         if not volumes:
             msg = _('Failed to get vol with required'
@@ -778,14 +783,18 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             raise exception.VolumeBackendAPIException(data=msg % name)
         for volume in volumes:
             try:
-                self._create_lun(volume.id['name'], name, size, metadata)
+                self.create_lun(volume.id['name'], name, size, metadata,
+                                qos_policy_group=qos_policy_group)
                 metadata['Path'] = '/vol/%s/%s' % (volume.id['name'], name)
                 metadata['Volume'] = volume.id['name']
                 metadata['Qtree'] = None
                 return
-            except NaApiError:
-                LOG.warn(_("Error provisioning vol %(name)s on %(volume)s")
-                         % {'name': name, 'volume': volume.id['name']})
+            except NaApiError as ex:
+                msg = _("Error provisioning vol %(name)s on "
+                        "%(volume)s. Details: %(ex)s")
+                LOG.error(msg % {'name': name,
+                                 'volume': volume.id['name'],
+                                 'ex': ex})
             finally:
                 self._update_stale_vols(volume=volume)
 
@@ -1180,7 +1189,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         if not volume:
             msg = _('Failed to get vol with required size for volume: %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
-        self._create_lun(volume['name'], name, size, metadata)
+        self.create_lun(volume['name'], name, size, metadata)
         metadata['Path'] = '/vol/%s/%s' % (volume['name'], name)
         metadata['Volume'] = volume['name']
         metadata['Qtree'] = None
