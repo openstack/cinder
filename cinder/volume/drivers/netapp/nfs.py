@@ -774,6 +774,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         """
         self._ensure_shares_mounted()
         extra_specs = get_volume_extra_specs(volume)
+        qos_policy_group = None
+        if extra_specs:
+            qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None)
         eligible = self._find_shares(volume['size'], extra_specs)
         if not eligible:
             raise exception.NfsNoSuitableShareFound(
@@ -783,18 +786,35 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 volume['provider_location'] = sh
                 LOG.info(_('casted to %s') % volume['provider_location'])
                 self._do_create_volume(volume)
+                if qos_policy_group:
+                    self._set_qos_policy_group_on_volume(volume, sh,
+                                                         qos_policy_group)
                 return {'provider_location': volume['provider_location']}
-            except Exception:
-                LOG.warn(_("Exception creating vol %(name)s"
-                           " on share %(share)s")
-                         % {'name': volume['name'],
-                             'share': volume['provider_location']})
+            except Exception as ex:
+                LOG.error(_("Exception creating vol %(name)s on "
+                            "share %(share)s. Details: %(ex)s")
+                          % {'name': volume['name'],
+                             'share': volume['provider_location'],
+                             'ex': ex})
                 volume['provider_location'] = None
             finally:
                 if self.ssc_enabled:
                     self._update_stale_vols(self._get_vol_for_share(sh))
         msg = _("Volume %s could not be created on shares.")
         raise exception.VolumeBackendAPIException(data=msg % (volume['name']))
+
+    def _set_qos_policy_group_on_volume(self, volume, share, qos_policy_group):
+        target_path = '%s' % (volume['name'])
+        export_path = share.split(':')[1]
+        flex_vol_name = self._get_vol_by_junc_vserver(self.vserver,
+                                                      export_path)
+        file_assign_qos = NaElement.create_node_with_children(
+            'file-assign-qos',
+            **{'volume': flex_vol_name,
+               'qos-policy-group-name': qos_policy_group,
+               'file': target_path,
+               'vserver': self.vserver})
+        self._invoke_successfully(file_assign_qos)
 
     def _find_shares(self, size, extra_specs):
         """Finds suitable shares for given params."""

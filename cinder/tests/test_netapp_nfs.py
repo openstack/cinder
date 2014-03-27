@@ -811,6 +811,46 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
         self._driver.ssc_enabled = True
         self._driver.configuration.netapp_copyoffload_tool_path = 'cof_path'
 
+    @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
+    def test_create_volume(self, mock_volume_extra_specs):
+        drv = self._driver
+        drv.ssc_enabled = False
+        extra_specs = {}
+        mock_volume_extra_specs.return_value = extra_specs
+        fake_share = 'localhost:myshare'
+        fake_qos_policy = 'qos_policy_1'
+        with mock.patch.object(drv, '_ensure_shares_mounted'):
+            with mock.patch.object(drv, '_find_shares',
+                                   return_value=['localhost:myshare']):
+                with mock.patch.object(drv, '_do_create_volume'):
+                    volume_info = self._driver.create_volume(FakeVolume(1))
+                    self.assertEqual(volume_info.get('provider_location'),
+                                     fake_share)
+
+    @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
+    def test_create_volume_with_qos_policy(self, mock_volume_extra_specs):
+        drv = self._driver
+        drv.ssc_enabled = False
+        extra_specs = {'netapp:qos_policy_group': 'qos_policy_1'}
+        fake_volume = FakeVolume(1)
+        fake_share = 'localhost:myshare'
+        fake_qos_policy = 'qos_policy_1'
+        mock_volume_extra_specs.return_value = extra_specs
+
+        with mock.patch.object(drv, '_ensure_shares_mounted'):
+            with mock.patch.object(drv, '_find_shares',
+                                   return_value=['localhost:myshare']):
+                with mock.patch.object(drv, '_do_create_volume'):
+                    with mock.patch.object(drv,
+                                           '_set_qos_policy_group_on_volume'
+                                           ) as mock_set_qos:
+                        volume_info = self._driver.create_volume(fake_volume)
+                        self.assertEqual(volume_info.get('provider_location'),
+                                         'localhost:myshare')
+                        mock_set_qos.assert_called_once_with(fake_volume,
+                                                             fake_share,
+                                                             fake_qos_policy)
+
     def test_copy_img_to_vol_copyoffload_success(self):
         drv = self._driver
         context = object()
