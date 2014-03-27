@@ -55,6 +55,9 @@ class FakeVim(object):
     def TerminateSession(self, session_manager, sessionId):
         pass
 
+    def SessionIsActive(self, session_manager, sessionID, userName):
+        pass
+
 
 class FakeTaskInfo(object):
     def __init__(self, state, result=None):
