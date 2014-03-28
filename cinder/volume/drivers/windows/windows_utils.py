@@ -90,6 +90,8 @@ class WindowsUtils(object):
             properties['auth_username'] = auth_username
             properties['auth_password'] = auth_secret
 
+        return properties
+
     def associate_initiator_with_iscsi_target(self, initiator_name,
                                               target_name):
         """Sets information used by the iSCSI target entry."""
