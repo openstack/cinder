@@ -235,7 +235,12 @@ class WindowsUtils(object):
     def remove_iscsi_target(self, target_name):
         """Removes ISCSI target."""
         try:
-            wt_host = self._conn_wmi.WT_Host(HostName=target_name)[0]
+            host = self._conn_wmi.WT_Host(HostName=target_name)
+            if not host:
+                LOG.debug(_('Skipping removing target %s as it does not '
+                            'exist.') % target_name)
+                return
+            wt_host = host[0]
             wt_host.RemoveAllWTDisks()
             wt_host.Delete_()
         except wmi.x_wmi as exc:
