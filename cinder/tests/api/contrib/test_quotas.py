@@ -101,6 +101,16 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
                           self.req, 'foo', make_body(tenant_id=None))
 
+    def test_update_without_quota_set_field(self):
+        body = {'fake_quota_set': {'gigabytes': 100}}
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
+
+    def test_update_empty_body(self):
+        body = {}
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
+
 
 class QuotaSerializerTest(test.TestCase):
 
