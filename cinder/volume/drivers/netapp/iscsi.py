@@ -783,6 +783,11 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         self.ssc_vols = None
         self.stale_vols = set()
 
+    def check_for_setup_error(self):
+        """Check that the driver is working and can communicate."""
+        ssc_utils.check_ssc_api_permissions(self.client)
+        super(NetAppDirectCmodeISCSIDriver, self).check_for_setup_error()
+
     def _create_lun_on_eligible_vol(self, name, size, metadata,
                                     extra_specs=None):
         """Creates an actual lun on filer."""
@@ -1108,6 +1113,17 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
     def refresh_ssc_vols(self, vols):
         """Refreshes ssc_vols with latest entries."""
         self.ssc_vols = vols
+
+    def delete_volume(self, volume):
+        """Driver entry point for destroying existing volumes."""
+        lun = self.lun_table.get(volume['name'])
+        netapp_vol = None
+        if lun:
+            netapp_vol = lun.get_metadata_property('Volume')
+        super(NetAppDirectCmodeISCSIDriver, self).delete_volume(volume)
+        if netapp_vol:
+            self._update_stale_vols(
+                volume=ssc_utils.NetAppVolume(netapp_vol, self.vserver))
 
 
 class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):

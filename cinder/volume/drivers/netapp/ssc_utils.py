@@ -109,31 +109,36 @@ def get_cluster_vols_with_ssc(na_server, vserver, volume=None):
                 aggr_attrs = aggrs[aggr_name]
             else:
                 aggr_attrs = query_aggr_options(na_server, aggr_name)
-                eff_disk_type = query_aggr_storage_disk(na_server, aggr_name)
-                aggr_attrs['disk_type'] = eff_disk_type
+                if aggr_attrs:
+                    eff_disk_type = query_aggr_storage_disk(na_server,
+                                                            aggr_name)
+                    aggr_attrs['disk_type'] = eff_disk_type
                 aggrs[aggr_name] = aggr_attrs
             vol.aggr['raid_type'] = aggr_attrs.get('raid_type')
             vol.aggr['ha_policy'] = aggr_attrs.get('ha_policy')
             vol.aggr['disk_type'] = aggr_attrs.get('disk_type')
-        if vol.id['name'] in sis_vols:
-            vol.sis['dedup'] = sis_vols[vol.id['name']]['dedup']
-            vol.sis['compression'] = sis_vols[vol.id['name']]['compression']
-        else:
-            vol.sis['dedup'] = False
-            vol.sis['compression'] = False
+        if sis_vols:
+            if vol.id['name'] in sis_vols:
+                vol.sis['dedup'] = sis_vols[vol.id['name']]['dedup']
+                vol.sis['compression'] =\
+                    sis_vols[vol.id['name']]['compression']
+            else:
+                vol.sis['dedup'] = False
+                vol.sis['compression'] = False
         if (vol.space['space-guarantee-enabled'] and
                 (vol.space['space-guarantee'] == 'file' or
                  vol.space['space-guarantee'] == 'volume')):
             vol.space['thin_provisioned'] = False
         else:
             vol.space['thin_provisioned'] = True
-        vol.mirror['mirrored'] = False
-        if vol.id['name'] in mirrored_vols:
-            for mirr_attrs in mirrored_vols[vol.id['name']]:
-                if (mirr_attrs['rel_type'] == 'data_protection' and
-                        mirr_attrs['mirr_state'] == 'snapmirrored'):
-                    vol.mirror['mirrored'] = True
-                    break
+        if mirrored_vols:
+            vol.mirror['mirrored'] = False
+            if vol.id['name'] in mirrored_vols:
+                for mirr_attrs in mirrored_vols[vol.id['name']]:
+                    if (mirr_attrs['rel_type'] == 'data_protection' and
+                            mirr_attrs['mirr_state'] == 'snapmirrored'):
+                        vol.mirror['mirrored'] = True
+                        break
     return volumes
 
 
@@ -158,10 +163,11 @@ def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
     for res in result:
         records = res.get_child_content('num-records')
         if records > 0:
-            attr_list = res['attributes-list']
-            vol_attrs = attr_list.get_children()
-            vols_found = create_vol_list(vol_attrs)
-            vols.update(vols_found)
+            attr_list = res.get_child_by_name('attributes-list')
+            if attr_list:
+                vol_attrs = attr_list.get_children()
+                vols_found = create_vol_list(vol_attrs)
+                vols.update(vols_found)
     return vols
 
 
@@ -247,22 +253,25 @@ def query_aggr_options(na_server, aggr_name):
     """
 
     add_elems = {'aggregate': aggr_name}
-    result = na_utils.invoke_api(na_server,
-                                 api_name='aggr-options-list-info',
-                                 api_family='cm', query=None,
-                                 des_result=None,
-                                 additional_elems=add_elems,
-                                 is_iter=False)
     attrs = {}
-    for res in result:
-        options = res.get_child_by_name('options')
-        if options:
-            op_list = options.get_children()
-            for op in op_list:
-                if op.get_child_content('name') == 'ha_policy':
-                    attrs['ha_policy'] = op.get_child_content('value')
-                if op.get_child_content('name') == 'raidtype':
-                    attrs['raid_type'] = op.get_child_content('value')
+    try:
+        result = na_utils.invoke_api(na_server,
+                                     api_name='aggr-options-list-info',
+                                     api_family='cm', query=None,
+                                     des_result=None,
+                                     additional_elems=add_elems,
+                                     is_iter=False)
+        for res in result:
+            options = res.get_child_by_name('options')
+            if options:
+                op_list = options.get_children()
+                for op in op_list:
+                    if op.get_child_content('name') == 'ha_policy':
+                        attrs['ha_policy'] = op.get_child_content('value')
+                    if op.get_child_content('name') == 'raidtype':
+                        attrs['raid_type'] = op.get_child_content('value')
+    except Exception as e:
+        LOG.debug(_("Exception querying aggr options. %s"), e)
     return attrs
 
 
@@ -279,28 +288,31 @@ def get_sis_vol_dict(na_server, vserver, volume=None):
         vol_path = '/vol/%s' % (volume)
         query_attr['path'] = vol_path
     query = {'sis-status-info': query_attr}
-    result = na_utils.invoke_api(na_server,
-                                 api_name='sis-get-iter',
-                                 api_family='cm',
-                                 query=query,
-                                 is_iter=True)
-    for res in result:
-        attr_list = res.get_child_by_name('attributes-list')
-        if attr_list:
-            sis_status = attr_list.get_children()
-            for sis in sis_status:
-                path = sis.get_child_content('path')
-                if not path:
-                    continue
-                (___, __, vol) = path.rpartition('/')
-                if not vol:
-                    continue
-                v_sis = {}
-                v_sis['compression'] = na_utils.to_bool(
-                    sis.get_child_content('is-compression-enabled'))
-                v_sis['dedup'] = na_utils.to_bool(
-                    sis.get_child_content('state'))
-                sis_vols[vol] = v_sis
+    try:
+        result = na_utils.invoke_api(na_server,
+                                     api_name='sis-get-iter',
+                                     api_family='cm',
+                                     query=query,
+                                     is_iter=True)
+        for res in result:
+            attr_list = res.get_child_by_name('attributes-list')
+            if attr_list:
+                sis_status = attr_list.get_children()
+                for sis in sis_status:
+                    path = sis.get_child_content('path')
+                    if not path:
+                        continue
+                    (___, __, vol) = path.rpartition('/')
+                    if not vol:
+                        continue
+                    v_sis = {}
+                    v_sis['compression'] = na_utils.to_bool(
+                        sis.get_child_content('is-compression-enabled'))
+                    v_sis['dedup'] = na_utils.to_bool(
+                        sis.get_child_content('state'))
+                    sis_vols[vol] = v_sis
+    except Exception as e:
+        LOG.debug(_("Exception querying sis information. %s"), e)
     return sis_vols
 
 
@@ -311,54 +323,62 @@ def get_snapmirror_vol_dict(na_server, vserver, volume=None):
     if volume:
         query_attr['source-volume'] = volume
     query = {'snapmirror-info': query_attr}
-    result = na_utils.invoke_api(na_server, api_name='snapmirror-get-iter',
-                                 api_family='cm', query=query, is_iter=True)
-    for res in result:
-        attr_list = res.get_child_by_name('attributes-list')
-        if attr_list:
-            snap_info = attr_list.get_children()
-            for snap in snap_info:
-                src_volume = snap.get_child_content('source-volume')
-                v_snap = {}
-                v_snap['dest_loc'] =\
-                    snap.get_child_content('destination-location')
-                v_snap['rel_type'] =\
-                    snap.get_child_content('relationship-type')
-                v_snap['mirr_state'] =\
-                    snap.get_child_content('mirror-state')
-                if mirrored_vols.get(src_volume):
-                    mirrored_vols.get(src_volume).append(v_snap)
-                else:
-                    mirrored_vols[src_volume] = [v_snap]
+    try:
+        result = na_utils.invoke_api(na_server,
+                                     api_name='snapmirror-get-iter',
+                                     api_family='cm', query=query,
+                                     is_iter=True)
+        for res in result:
+            attr_list = res.get_child_by_name('attributes-list')
+            if attr_list:
+                snap_info = attr_list.get_children()
+                for snap in snap_info:
+                    src_volume = snap.get_child_content('source-volume')
+                    v_snap = {}
+                    v_snap['dest_loc'] =\
+                        snap.get_child_content('destination-location')
+                    v_snap['rel_type'] =\
+                        snap.get_child_content('relationship-type')
+                    v_snap['mirr_state'] =\
+                        snap.get_child_content('mirror-state')
+                    if mirrored_vols.get(src_volume):
+                        mirrored_vols.get(src_volume).append(v_snap)
+                    else:
+                        mirrored_vols[src_volume] = [v_snap]
+    except Exception as e:
+        LOG.debug(_("Exception querying mirror information. %s"), e)
     return mirrored_vols
 
 
 def query_aggr_storage_disk(na_server, aggr):
-    """Queries for storage disks assosiated to an aggregate."""
+    """Queries for storage disks associated to an aggregate."""
     query = {'storage-disk-info': {'disk-raid-info':
                                    {'disk-aggregate-info':
                                        {'aggregate-name': aggr}}}}
     des_attr = {'storage-disk-info':
                 {'disk-raid-info': ['effective-disk-type']}}
-    result = na_utils.invoke_api(na_server,
-                                 api_name='storage-disk-get-iter',
-                                 api_family='cm', query=query,
-                                 des_result=des_attr,
-                                 additional_elems=None,
-                                 is_iter=True)
-    for res in result:
-        attr_list = res.get_child_by_name('attributes-list')
-        if attr_list:
-            storage_disks = attr_list.get_children()
-            for disk in storage_disks:
-                raid_info = disk.get_child_by_name('disk-raid-info')
-                if raid_info:
-                    eff_disk_type =\
-                        raid_info.get_child_content('effective-disk-type')
-                    if eff_disk_type:
-                        return eff_disk_type
-                    else:
-                        continue
+    try:
+        result = na_utils.invoke_api(na_server,
+                                     api_name='storage-disk-get-iter',
+                                     api_family='cm', query=query,
+                                     des_result=des_attr,
+                                     additional_elems=None,
+                                     is_iter=True)
+        for res in result:
+            attr_list = res.get_child_by_name('attributes-list')
+            if attr_list:
+                storage_disks = attr_list.get_children()
+                for disk in storage_disks:
+                    raid_info = disk.get_child_by_name('disk-raid-info')
+                    if raid_info:
+                        eff_disk_type =\
+                            raid_info.get_child_content('effective-disk-type')
+                        if eff_disk_type:
+                            return eff_disk_type
+                        else:
+                            continue
+    except Exception as e:
+        LOG.debug(_("Exception querying storage disk. %s"), e)
     return 'unknown'
 
 
@@ -373,13 +393,13 @@ def get_cluster_ssc(na_server, vserver):
                'compression': compress_vols,
                'thin': thin_prov_vols, 'all': netapp_volumes}
     for vol in netapp_volumes:
-        if vol.sis['dedup']:
+        if vol.sis.get('dedup'):
             dedup_vols.add(vol)
-        if vol.sis['compression']:
+        if vol.sis.get('compression'):
             compress_vols.add(vol)
-        if vol.mirror['mirrored']:
+        if vol.mirror.get('mirrored'):
             mirror_vols.add(vol)
-        if vol.space['thin_provisioned']:
+        if vol.space.get('thin_provisioned'):
             thin_prov_vols.add(vol)
     return ssc_map
 
@@ -419,13 +439,13 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
                     for k in ssc_vols_copy:
                         vol_set = ssc_vols_copy[k]
                         vol_set.discard(vol)
-                        if k == "mirrored" and vol.mirror['mirrored']:
+                        if k == "mirrored" and vol.mirror.get('mirrored'):
                             vol_set.add(vol)
-                        if k == "dedup" and vol.sis['dedup']:
+                        if k == "dedup" and vol.sis.get('dedup'):
                             vol_set.add(vol)
-                        if k == "compression" and vol.sis['compression']:
+                        if k == "compression" and vol.sis.get('compression'):
                             vol_set.add(vol)
-                        if k == "thin" and vol.space['thin_provisioned']:
+                        if k == "thin" and vol.space.get('thin_provisioned'):
                             vol_set.add(vol)
                         if k == "all":
                             vol_set.add(vol)
@@ -583,3 +603,26 @@ def get_volumes_for_specs(ssc_vols, specs):
                 if qos_policy_group.lower() != vol_qos:
                     result.discard(vol)
     return result
+
+
+def check_ssc_api_permissions(na_server):
+    """Checks backend ssc api permissions for the user."""
+    api_map = {'storage-disk-get-iter': ['disk type'],
+               'snapmirror-get-iter': ['data protection mirror'],
+               'sis-get-iter': ['deduplication', 'compression'],
+               'aggr-options-list-info': ['raid type'],
+               'volume-get-iter': ['volume information']}
+    failed_apis = na_utils.check_apis_on_cluster(na_server, api_map.keys())
+    if failed_apis:
+        if 'volume-get-iter' in failed_apis:
+            msg = _("Fatal error: User not permitted"
+                    " to query NetApp volumes.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            unsupp_ssc_features = []
+            for fail in failed_apis:
+                unsupp_ssc_features.extend(api_map[fail])
+            LOG.warn(_("The user does not have access or sufficient"
+                       " privileges to use all ssc apis. The ssc"
+                       " features %s may not work as expected."),
+                     unsupp_ssc_features)

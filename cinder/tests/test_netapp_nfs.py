@@ -31,6 +31,7 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
+from cinder.volume.drivers.netapp import ssc_utils
 
 
 from oslo.config import cfg
@@ -137,11 +138,12 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
 
         mox.StubOutWithMock(drv, '_get_provider_location')
         mox.StubOutWithMock(drv, '_volume_not_present')
+        mox.StubOutWithMock(drv, '_post_prov_deprov_in_ssc')
 
         if snapshot_exists:
             mox.StubOutWithMock(drv, '_execute')
             mox.StubOutWithMock(drv, '_get_volume_path')
-
+        drv._get_provider_location(IgnoreArg())
         drv._get_provider_location(IgnoreArg())
         drv._volume_not_present(IgnoreArg(), IgnoreArg())\
             .AndReturn(not snapshot_exists)
@@ -149,6 +151,8 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         if snapshot_exists:
             drv._get_volume_path(IgnoreArg(), IgnoreArg())
             drv._execute('rm', None, run_as_root=True)
+
+        drv._post_prov_deprov_in_ssc(IgnoreArg())
 
         mox.ReplayAll()
 
@@ -196,7 +200,11 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         # set required flags
         for flag in required_flags:
             setattr(drv.configuration, flag, 'val')
+        setattr(drv, 'ssc_enabled', False)
 
+        mox.StubOutWithMock(netapp_nfs.NetAppDirectNfsDriver, '_check_flags')
+
+        netapp_nfs.NetAppDirectNfsDriver._check_flags()
         mox.ReplayAll()
 
         drv.check_for_setup_error()
@@ -237,6 +245,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_get_if_info_by_ip')
         mox.StubOutWithMock(drv, '_get_vol_by_junc_vserver')
         mox.StubOutWithMock(drv, '_clone_file')
+        mox.StubOutWithMock(drv, '_post_prov_deprov_in_ssc')
 
         drv._get_host_ip(IgnoreArg()).AndReturn('127.0.0.1')
         drv._get_export_path(IgnoreArg()).AndReturn('/nfs')
@@ -245,6 +254,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv._get_vol_by_junc_vserver('openstack', '/nfs').AndReturn('nfsvol')
         drv._clone_file('nfsvol', 'volume_name', 'clone_name',
                         'openstack')
+        drv._post_prov_deprov_in_ssc(IgnoreArg())
         return mox
 
     def _prepare_info_by_ip_response(self):
@@ -286,8 +296,9 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         volume_name = 'volume_name'
         clone_name = 'clone_name'
         volume_id = volume_name + str(hash(volume_name))
+        share = 'ip:/share'
 
-        drv._clone_volume(volume_name, clone_name, volume_id)
+        drv._clone_volume(volume_name, clone_name, volume_id, share)
 
         mox.VerifyAll()
 
@@ -790,6 +801,29 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
     def _custom_setup(self):
         self._driver = netapp_nfs.NetAppDirect7modeNfsDriver(
             configuration=create_configuration())
+
+    def _prepare_delete_snapshot_mock(self, snapshot_exists):
+        drv = self._driver
+        mox = self.mox
+
+        mox.StubOutWithMock(drv, '_get_provider_location')
+        mox.StubOutWithMock(drv, '_volume_not_present')
+
+        if snapshot_exists:
+            mox.StubOutWithMock(drv, '_execute')
+            mox.StubOutWithMock(drv, '_get_volume_path')
+
+        drv._get_provider_location(IgnoreArg())
+        drv._volume_not_present(IgnoreArg(), IgnoreArg())\
+            .AndReturn(not snapshot_exists)
+
+        if snapshot_exists:
+            drv._get_volume_path(IgnoreArg(), IgnoreArg())
+            drv._execute('rm', None, run_as_root=True)
+
+        mox.ReplayAll()
+
+        return mox
 
     def test_check_for_setup_error_version(self):
         drv = self._driver
