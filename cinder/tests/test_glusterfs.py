@@ -642,8 +642,8 @@ class GlusterFsDriverTestCase(test.TestCase):
     def test_create_cloned_volume(self):
         (mox, drv) = self._mox, self._driver
 
-        mox.StubOutWithMock(drv, 'create_snapshot')
-        mox.StubOutWithMock(drv, 'delete_snapshot')
+        mox.StubOutWithMock(drv, '_create_snapshot')
+        mox.StubOutWithMock(drv, '_delete_snapshot')
         mox.StubOutWithMock(drv, '_read_info_file')
         mox.StubOutWithMock(image_utils, 'convert_image')
         mox.StubOutWithMock(drv, '_copy_volume_from_snapshot')
@@ -676,7 +676,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                     'id': 'tmp-snap-%s' % src_vref['id'],
                     'volume': src_vref}
 
-        drv.create_snapshot(snap_ref)
+        drv._create_snapshot(snap_ref)
 
         snap_info = {'active': volume_file,
                      snap_ref['id']: volume_path + '-clone'}
@@ -685,7 +685,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv._copy_volume_from_snapshot(snap_ref, volume_ref, volume['size'])
 
-        drv.delete_snapshot(mox_lib.IgnoreArg())
+        drv._delete_snapshot(mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 
@@ -1636,9 +1636,9 @@ class GlusterFsDriverTestCase(test.TestCase):
         volume = self._simple_volume('c1073000-0000-0000-0000-0000000c1073')
         src_volume = self._simple_volume()
 
-        mox.StubOutWithMock(drv, 'create_snapshot')
+        mox.StubOutWithMock(drv, '_create_snapshot')
         mox.StubOutWithMock(drv, '_copy_volume_from_snapshot')
-        mox.StubOutWithMock(drv, 'delete_snapshot')
+        mox.StubOutWithMock(drv, '_delete_snapshot')
 
         snap_ref = {'volume_name': src_volume['name'],
                     'name': 'clone-snap-%s' % src_volume['id'],
@@ -1654,11 +1654,11 @@ class GlusterFsDriverTestCase(test.TestCase):
                       'provider_location': volume['provider_location'],
                       'name': 'volume-' + volume['id']}
 
-        drv.create_snapshot(snap_ref)
+        drv._create_snapshot(snap_ref)
         drv._copy_volume_from_snapshot(snap_ref,
                                        volume_ref,
                                        src_volume['size'])
-        drv.delete_snapshot(snap_ref)
+        drv._delete_snapshot(snap_ref)
 
         mox.ReplayAll()
 
