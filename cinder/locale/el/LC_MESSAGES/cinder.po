@@ -11605,33 +11605,3 @@ msgstr ""
 msgid "Active zone set from fabric: %s"
 msgstr ""
 
-#~ msgid "ESM configure request failed: %(message)s."
-#~ msgstr ""
-
-#~ msgid "Coraid ESM not available with reason: %(reason)s."
-#~ msgstr ""
-
-#~ msgid "Unable to find LV: %s"
-#~ msgstr ""
-
-#~ msgid "Error provisioning vol %(name)s on %(volume)s"
-#~ msgstr ""
-
-#~ msgid "Exception creating vol %(name)s on share %(share)s"
-#~ msgstr ""
-
-#~ msgid "The configured default PBM policy is not defined on vCenter Server."
-#~ msgstr ""
-
-#~ msgid ""
-#~ msgstr ""
-
-#~ msgid "Successfully verified existence of pbm_default_policy: %s."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Not authenticated error occurred. Will "
-#~ "create session and try API call "
-#~ "again: %s."
-#~ msgstr ""
-

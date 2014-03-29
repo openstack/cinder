@@ -11604,9 +11604,3 @@ msgstr ""
 msgid "Active zone set from fabric: %s"
 msgstr ""
 
-#~ msgid ""
-#~ "Not authenticated error occurred. Will "
-#~ "create session and try API call "
-#~ "again: %s."
-#~ msgstr ""
-
