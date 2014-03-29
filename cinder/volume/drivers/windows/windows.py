@@ -68,8 +68,8 @@ class WindowsDriver(driver.ISCSIDriver):
         initiator_name = connector['initiator']
         target_name = volume['provider_location']
 
-        self.utils.associate_initiator_with_iscsi_target(target_name,
-                                                         initiator_name)
+        self.utils.associate_initiator_with_iscsi_target(initiator_name,
+                                                         target_name)
 
         properties = self.utils.get_host_information(volume, target_name)
 
