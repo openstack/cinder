@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-03-27 06:10+0000\n"
+"POT-Creation-Date: 2014-03-29 06:10+0000\n"
 "PO-Revision-Date: 2014-03-13 05:13+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Greek "
@@ -9927,57 +9927,72 @@ msgstr ""
 msgid "Failure while invoking function: %(func)s. Error: %(excep)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:168
+#: cinder/volume/drivers/vmware/api.py:169
 #, python-format
 msgid "Error while terminating session: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:173
+#: cinder/volume/drivers/vmware/api.py:182
 msgid "Successfully established connection to the server."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:180
+#: cinder/volume/drivers/vmware/api.py:189
 #, python-format
 msgid "Error while logging out from vim session: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:186
+#: cinder/volume/drivers/vmware/api.py:195
 #, python-format
 msgid "Error while logging out from pbm session: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:232
+#: cinder/volume/drivers/vmware/api.py:236
 #, python-format
-msgid ""
-"Not authenticated error occurred. Will create session and try API call "
-"again: %s."
+msgid "Returning empty response for %(module)s.%(method)s invocation."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:267
+#: cinder/volume/drivers/vmware/api.py:243
+#, python-format
+msgid ""
+"Current session: %(session)s is inactive; re-creating the session while "
+"invoking method %(module)s.%(method)s."
+msgstr ""
+
+#: cinder/volume/drivers/vmware/api.py:259
+#, python-format
+msgid "Checking if the current session: %s is active."
+msgstr ""
+
+#: cinder/volume/drivers/vmware/api.py:269
+#, python-format
+msgid "Error occurred while checking whether the current session: %s is active."
+msgstr ""
+
+#: cinder/volume/drivers/vmware/api.py:304
 #, python-format
 msgid "Task: %(task)s progress: %(prog)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:271
+#: cinder/volume/drivers/vmware/api.py:308
 #, python-format
 msgid "Task %s status: success."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:274
-#: cinder/volume/drivers/vmware/api.py:278
+#: cinder/volume/drivers/vmware/api.py:311
+#: cinder/volume/drivers/vmware/api.py:315
 #, python-format
 msgid "Task: %(task)s failed with error: %(err)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:294
+#: cinder/volume/drivers/vmware/api.py:331
 msgid "Lease is ready."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:296
+#: cinder/volume/drivers/vmware/api.py:333
 msgid "Lease initializing..."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/api.py:306
+#: cinder/volume/drivers/vmware/api.py:343
 #, python-format
 msgid "Error: unknown lease state %s."
 msgstr ""
@@ -11589,36 +11604,4 @@ msgstr ""
 #, python-format
 msgid "Active zone set from fabric: %s"
 msgstr ""
-
-#~ msgid "ESM configure request failed: %(message)s."
-#~ msgstr ""
-
-#~ msgid "Coraid ESM not available with reason: %(reason)s."
-#~ msgstr ""
-
-#~ msgid "Unable to find LV: %s"
-#~ msgstr ""
-
-#~ msgid "Error provisioning vol %(name)s on %(volume)s"
-#~ msgstr ""
-
-#~ msgid "Exception creating vol %(name)s on share %(share)s"
-#~ msgstr ""
-
-#~ msgid "The configured default PBM policy is not defined on vCenter Server."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Ignoring default policy '%(policy)s' since "
-#~ "Storage Policy Based Management is not"
-#~ " enabled on VC version %(ver)s"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "The configured default PBM policy '%s'"
-#~ " is not defined on vCenter Server."
-#~ msgstr ""
-
-#~ msgid "Successfully verified existence of pbm_default_policy: %s."
-#~ msgstr ""
 
