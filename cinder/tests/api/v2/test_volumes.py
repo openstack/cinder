@@ -18,6 +18,7 @@ import datetime
 
 from lxml import etree
 from oslo.config import cfg
+import six.moves.urllib.parse as urlparse
 import webob
 
 from cinder.api import extensions
@@ -609,6 +610,15 @@ class VolumeApiTest(test.TestCase):
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
 
+        # Ensure that the next link is correctly formatted
+        links = res_dict['volumes_links']
+        self.assertEqual(links[0]['rel'], 'next')
+        href_parts = urlparse.urlparse(links[0]['href'])
+        self.assertEqual('/v2/fake/volumes', href_parts.path)
+        params = urlparse.parse_qs(href_parts.query)
+        self.assertTrue('marker' in params)
+        self.assertEqual('1', params['limit'][0])
+
     def test_volume_index_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
         self.assertRaises(exception.Invalid,
@@ -671,7 +681,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1')
-        res_dict = self.controller.index(req)
+        res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 2)
         self.assertEqual(volumes[0]['id'], 1)
@@ -683,20 +693,29 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=1')
-        res_dict = self.controller.index(req)
+        res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
+
+        # Ensure that the next link is correctly formatted
+        links = res_dict['volumes_links']
+        self.assertEqual(links[0]['rel'], 'next')
+        href_parts = urlparse.urlparse(links[0]['href'])
+        self.assertEqual('/v2/fake/volumes/detail', href_parts.path)
+        params = urlparse.parse_qs(href_parts.query)
+        self.assertTrue('marker' in params)
+        self.assertEqual('1', params['limit'][0])
 
     def test_volume_detail_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1')
         self.assertRaises(exception.Invalid,
-                          self.controller.index,
+                          self.controller.detail,
                           req)
 
     def test_volume_detail_limit_non_int(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a')
         self.assertRaises(exception.Invalid,
-                          self.controller.index,
+                          self.controller.detail,
                           req)
 
     def test_volume_detail_limit_marker(self):
@@ -705,7 +724,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1&limit=1')
-        res_dict = self.controller.index(req)
+        res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]['id'], '1')
@@ -722,26 +741,26 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1')
-        res_dict = self.controller.index(req)
+        res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]['id'], 2)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1',
                                       use_admin_context=True)
-        res_dict = self.controller.index(req)
+        res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]['id'], 2)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1&offset=1')
         self.assertRaises(exception.InvalidInput,
-                          self.controller.index,
+                          self.controller.detail,
                           req)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a&offset=1')
         self.assertRaises(exception.InvalidInput,
-                          self.controller.index,
+                          self.controller.detail,
                           req)
 
     def test_volume_with_limit_zero(self):
@@ -757,6 +776,16 @@ class VolumeApiTest(test.TestCase):
     def test_volume_default_limit(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
+        def _verify_links(links, url_key):
+            '''Verify next link and url.'''
+            self.assertEqual(links[0]['rel'], 'next')
+            href_parts = urlparse.urlparse(links[0]['href'])
+            self.assertEqual('/v2/fake/%s' % key, href_parts.path)
+
+        # Verify both the index and detail queries
+        api_keys = ['volumes', 'volumes/detail']
+        fns = [self.controller.index, self.controller.detail]
+
         # Number of volumes equals the max, include next link
         def stub_volume_get_all(context, marker, limit,
                                 sort_key, sort_dir,
@@ -767,13 +796,13 @@ class VolumeApiTest(test.TestCase):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
-        for key in ['volumes', 'volumes/detail']:
+        for key, fn in zip(api_keys, fns):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
                                           use_admin_context=True)
-            res_dict = self.controller.index(req)
+            res_dict = fn(req)
             self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
             volumes_links = res_dict['volumes_links']
-            self.assertEqual(volumes_links[0]['rel'], 'next')
+            _verify_links(volumes_links, key)
 
         # Number of volumes less then max, do not include
         def stub_volume_get_all2(context, marker, limit,
@@ -785,10 +814,10 @@ class VolumeApiTest(test.TestCase):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all2)
-        for key in ['volumes', 'volumes/detail']:
+        for key, fn in zip(api_keys, fns):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
                                           use_admin_context=True)
-            res_dict = self.controller.index(req)
+            res_dict = fn(req)
             self.assertEqual(len(res_dict['volumes']), 100)
             self.assertFalse('volumes_links' in res_dict)
 
@@ -802,24 +831,24 @@ class VolumeApiTest(test.TestCase):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all3)
-        for key in ['volumes', 'volumes/detail']:
+        for key, fn in zip(api_keys, fns):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
                                           use_admin_context=True)
-            res_dict = self.controller.index(req)
+            res_dict = fn(req)
             self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
             volumes_links = res_dict['volumes_links']
-            self.assertEqual(volumes_links[0]['rel'], 'next')
+            _verify_links(volumes_links, key)
         # Pass a limit that is greater then the max and the total number of
         # volumes, ensure only the maximum is returned and that the next
         # link is present
-        for key in ['volumes', 'volumes/detail']:
+        for key, fn in zip(api_keys, fns):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1&limit=%d'
                                           % (key, CONF.osapi_max_limit * 2),
                                           use_admin_context=True)
-            res_dict = self.controller.index(req)
+            res_dict = fn(req)
             self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
             volumes_links = res_dict['volumes_links']
-            self.assertEqual(volumes_links[0]['rel'], 'next')
+            _verify_links(volumes_links, key)
 
     def test_volume_list_default_filters(self):
         """Tests that the default filters from volume.api.API.get_all are set.
