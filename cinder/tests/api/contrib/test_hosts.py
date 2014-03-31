@@ -28,7 +28,7 @@ from cinder import test
 
 LOG = logging.getLogger(__name__)
 created_time = datetime.datetime(2012, 11, 14, 1, 20, 41, 95099)
-curr_time = timeutils.utcnow()
+curr_time = datetime.datetime(2013, 7, 3, 0, 0, 1)
 
 SERVICE_LIST = [
     {'created_at': created_time, 'updated_at': curr_time,
@@ -58,6 +58,10 @@ LIST_RESPONSE = [{'service-status': 'available', 'service': 'cinder-volume',
                   'host_name': 'test.host.1', 'last-update': curr_time}]
 
 
+def stub_utcnow():
+    return datetime.datetime(2013, 7, 3, 0, 0, 2)
+
+
 def stub_service_get_all(self, req):
     return SERVICE_LIST
 
@@ -81,6 +85,7 @@ class HostTestCase(test.TestCase):
         self.req = FakeRequest()
         self.stubs.Set(db, 'service_get_all',
                        stub_service_get_all)
+        self.stubs.Set(timeutils, 'utcnow', stub_utcnow)
 
     def _test_host_update(self, host, key, val, expected_value):
         body = {key: val}
