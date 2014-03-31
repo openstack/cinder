@@ -43,6 +43,9 @@ shred: CommandFilter, shred, root
 
 #cinder/volume/.py: utils.temporary_chown(path, 0), ...
 chown: CommandFilter, chown, root
+ionice_1: RegExpFilter, ionice, root, ionice, -c[0-3]( -n[0-7])?, dd, if=\S+, of=\S+, count=\d+, bs=\S+
+ionice_2: RegExpFilter, ionice, root, ionice, -c[0-3]( -n[0-7])?, dd, if=\S+, of=\S+, count=\d+, bs=\S+, iflag=direct, oflag=direct
+ionice_3: RegExpFilter, ionice, root, ionice, -c[0-3]( -n[0-7])?, dd, if=\S+, of=\S+, count=\d+, bs=\S+, conv=fdatasync
 
 # cinder/volume/driver.py
 dmsetup: CommandFilter, dmsetup, root
