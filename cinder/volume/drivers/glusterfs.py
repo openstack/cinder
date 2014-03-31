@@ -297,6 +297,10 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
+        info_path = mounted_path + '.info'
+        if os.path.exists(info_path):
+            os.remove(info_path)
+
     @utils.synchronized('glusterfs', external=False)
     def create_snapshot(self, snapshot):
         """Apply locking to the create snapshot operation."""
