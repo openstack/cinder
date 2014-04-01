@@ -316,6 +316,14 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'rmvdiskcopy', '-copy', copy_id, vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def addvdiskaccess(self, vdisk, iogrp):
+        ssh_cmd = ['svctask', 'addvdiskaccess', '-iogrp', iogrp, vdisk]
+        self.run_ssh_assert_no_output(ssh_cmd)
+
+    def rmvdiskaccess(self, vdisk, iogrp):
+        ssh_cmd = ['svctask', 'rmvdiskaccess', '-iogrp', iogrp, vdisk]
+        self.run_ssh_assert_no_output(ssh_cmd)
+
 
 class CLIResponse(object):
     '''Parse SVC CLI output and generate iterable.'''

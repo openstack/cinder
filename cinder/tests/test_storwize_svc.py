@@ -1068,7 +1068,7 @@ port_speed!N/A
         return('FlashCopy Mapping, id [' + fcmap_info['id'] +
                '], successfully created', '')
 
-    def _cmd_gen_prestartfcmap(self, **kwargs):
+    def _cmd_prestartfcmap(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
         id_num = kwargs['obj']
@@ -1084,7 +1084,7 @@ port_speed!N/A
 
         return self._state_transition('prepare', fcmap)
 
-    def _cmd_gen_startfcmap(self, **kwargs):
+    def _cmd_startfcmap(self, **kwargs):
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
         id_num = kwargs['obj']
@@ -1375,6 +1375,16 @@ port_speed!N/A
             vol['IO_group_name'] = iogrp
         return ('', '')
 
+    def _cmd_addvdiskaccess(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        return ('', '')
+
+    def _cmd_rmvdiskaccess(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5701E']
+        return ('', '')
+
     def _add_host_to_list(self, connector):
         host_info = {}
         host_info['id'] = self._find_unused_id(self._hosts_list)
@@ -1402,81 +1412,8 @@ port_speed!N/A
 
         command = kwargs['cmd']
         del kwargs['cmd']
-
-        if command == 'lsmdiskgrp':
-            out, err = self._cmd_lsmdiskgrp(**kwargs)
-        elif command == 'lslicense':
-            out, err = self._cmd_lslicense(**kwargs)
-        elif command == 'lssystem':
-            out, err = self._cmd_lssystem(**kwargs)
-        elif command == 'lsnodecanister':
-            out, err = self._cmd_lsnodecanister(**kwargs)
-        elif command == 'lsnode':
-            out, err = self._cmd_lsnode(**kwargs)
-        elif command == 'lsportip':
-            out, err = self._cmd_lsportip(**kwargs)
-        elif command == 'lsfabric':
-            out, err = self._cmd_lsfabric(**kwargs)
-        elif command == 'mkvdisk':
-            out, err = self._cmd_mkvdisk(**kwargs)
-        elif command == 'rmvdisk':
-            out, err = self._cmd_rmvdisk(**kwargs)
-        elif command == 'expandvdisksize':
-            out, err = self._cmd_expandvdisksize(**kwargs)
-        elif command == 'lsvdisk':
-            out, err = self._cmd_lsvdisk(**kwargs)
-        elif command == 'lsiogrp':
-            out, err = self._cmd_lsiogrp(**kwargs)
-        elif command == 'mkhost':
-            out, err = self._cmd_mkhost(**kwargs)
-        elif command == 'addhostport':
-            out, err = self._cmd_addhostport(**kwargs)
-        elif command == 'chhost':
-            out, err = self._cmd_chhost(**kwargs)
-        elif command == 'rmhost':
-            out, err = self._cmd_rmhost(**kwargs)
-        elif command == 'lshost':
-            out, err = self._cmd_lshost(**kwargs)
-        elif command == 'lsiscsiauth':
-            out, err = self._cmd_lsiscsiauth(**kwargs)
-        elif command == 'mkvdiskhostmap':
-            out, err = self._cmd_mkvdiskhostmap(**kwargs)
-        elif command == 'rmvdiskhostmap':
-            out, err = self._cmd_rmvdiskhostmap(**kwargs)
-        elif command == 'lshostvdiskmap':
-            out, err = self._cmd_lshostvdiskmap(**kwargs)
-        elif command == 'lsvdiskhostmap':
-            out, err = self._cmd_lsvdiskhostmap(**kwargs)
-        elif command == 'mkfcmap':
-            out, err = self._cmd_mkfcmap(**kwargs)
-        elif command == 'prestartfcmap':
-            out, err = self._cmd_gen_prestartfcmap(**kwargs)
-        elif command == 'startfcmap':
-            out, err = self._cmd_gen_startfcmap(**kwargs)
-        elif command == 'stopfcmap':
-            out, err = self._cmd_stopfcmap(**kwargs)
-        elif command == 'rmfcmap':
-            out, err = self._cmd_rmfcmap(**kwargs)
-        elif command == 'chfcmap':
-            out, err = self._cmd_chfcmap(**kwargs)
-        elif command == 'lsfcmap':
-            out, err = self._cmd_lsfcmap(**kwargs)
-        elif command == 'lsvdiskfcmappings':
-            out, err = self._cmd_lsvdiskfcmappings(**kwargs)
-        elif command == 'migratevdisk':
-            out, err = self._cmd_migratevdisk(**kwargs)
-        elif command == 'addvdiskcopy':
-            out, err = self._cmd_addvdiskcopy(**kwargs)
-        elif command == 'lsvdiskcopy':
-            out, err = self._cmd_lsvdiskcopy(**kwargs)
-        elif command == 'rmvdiskcopy':
-            out, err = self._cmd_rmvdiskcopy(**kwargs)
-        elif command == 'chvdisk':
-            out, err = self._cmd_chvdisk(**kwargs)
-        elif command == 'movevdisk':
-            out, err = self._cmd_movevdisk(**kwargs)
-        else:
-            out, err = ('', 'ERROR: Unsupported command')
+        func = getattr(self, '_cmd_' + command)
+        out, err = func(**kwargs)
 
         if (check_exit_code) and (len(err) != 0):
             raise processutils.ProcessExecutionError(exit_code=1,
@@ -2403,8 +2340,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         host = {'host': 'foo', 'capabilities': cap}
         ctxt = context.get_admin_context()
 
-        key_specs_old = {'compression': True}
-        key_specs_new = {'compression': False}
+        key_specs_old = {'compression': True, 'iogrp': 0}
+        key_specs_new = {'compression': False, 'iogrp': 1}
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
@@ -2421,6 +2358,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.retype(ctxt, volume, new_type, diff, host)
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
         self.assertEqual('no', attrs['compressed_copy'])
+        self.assertEqual('1', attrs['IO_group_id'], 'Volume retype '
+                         'failed')
         self.driver.delete_volume(volume)
 
     def test_set_storage_code_level_success(self):

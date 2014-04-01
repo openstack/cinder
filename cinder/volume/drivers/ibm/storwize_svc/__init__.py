@@ -703,7 +703,7 @@ class StorwizeSVCDriver(san.SanDriver):
                                                        'host': host})
 
         ignore_keys = ['protocol', 'multipath']
-        no_copy_keys = ['warning', 'autoexpand', 'easytier', 'iogrp']
+        no_copy_keys = ['warning', 'autoexpand', 'easytier']
         copy_keys = ['rsize', 'grainsize', 'compression']
         all_keys = ignore_keys + no_copy_keys + copy_keys
         old_opts = self._get_vdisk_params(volume['volume_type_id'])
@@ -729,11 +729,21 @@ class StorwizeSVCDriver(san.SanDriver):
             if dest_pool is None:
                 return False
 
+            if old_opts['iogrp'] != new_opts['iogrp']:
+                self._helpers.change_vdisk_iogrp(volume['name'], self._state,
+                                                 (new_opts['iogrp'],
+                                                  old_opts['iogrp']))
+
             new_op = self._helpers.add_vdisk_copy(volume['name'], dest_pool,
                                                   new_type, self._state,
                                                   self.configuration)
             self._add_vdisk_copy_op(ctxt, volume, new_op)
         else:
+            if old_opts['iogrp'] != new_opts['iogrp']:
+                self._helpers.change_vdisk_iogrp(volume['name'], self._state,
+                                                 (new_opts['iogrp'],
+                                                  old_opts['iogrp']))
+
             self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
                                                new_opts, self._state)
 
