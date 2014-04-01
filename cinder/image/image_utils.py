@@ -309,8 +309,8 @@ def coalesce_vhd(vhd_path):
         'vhd-util', 'coalesce', '-n', vhd_path)
 
 
-def create_temporary_file():
-    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
+def create_temporary_file(*args, **kwargs):
+    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir, *args, **kwargs)
     os.close(fd)
     return tmp
 
@@ -320,9 +320,9 @@ def rename_file(src, dst):
 
 
 @contextlib.contextmanager
-def temporary_file():
+def temporary_file(*args, **kwargs):
     try:
-        tmp = create_temporary_file()
+        tmp = create_temporary_file(*args, **kwargs)
         yield tmp
     finally:
         fileutils.delete_if_exists(tmp)

@@ -17,9 +17,11 @@ Utility class for Windows Storage Server 2012 volume related operations.
 """
 
 import os
+import time
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.volume.drivers.windows import constants
 
 # Check needed for unit testing on Unix
 if os.name == 'nt':
@@ -35,6 +37,7 @@ class WindowsUtils(object):
         # Set the flags
         self._conn_wmi = wmi.WMI(moniker='//./root/wmi')
         self._conn_cimv2 = wmi.WMI(moniker='//./root/cimv2')
+        self._conn_virt = wmi.WMI(moniker='//./root/virtualization')
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
@@ -140,6 +143,19 @@ class WindowsUtils(object):
         except wmi.x_wmi as exc:
             err_msg = (_(
                 'create_volume: error when creating the volume name: '
+                '%(vol_name)s . WMI exception: '
+                '%(wmi_exc)s') % {'vol_name': vol_name, 'wmi_exc': exc})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def change_disk_status(self, vol_name, enabled):
+        try:
+            cl = self._conn_wmi.WT_Disk(Description=vol_name)[0]
+            cl.Enabled = enabled
+            cl.put()
+        except wmi.x_wmi as exc:
+            err_msg = (_(
+                'Error changing disk status: '
                 '%(vol_name)s . WMI exception: '
                 '%(wmi_exc)s') % {'vol_name': vol_name, 'wmi_exc': exc})
             LOG.error(err_msg)
@@ -305,3 +321,68 @@ class WindowsUtils(object):
                                                   'wmi_exc': exc})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def convert_vhd(self, src, dest, vhd_type):
+        # Due to the fact that qemu does not fully support vhdx format yet,
+        # we must use WMI make conversions between vhd and vhdx formats
+        image_man_svc = self._conn_virt.Msvm_ImageManagementService()[0]
+        (job_path, ret_val) = image_man_svc.ConvertVirtualHardDisk(
+            SourcePath=src, DestinationPath=dest, Type=vhd_type)
+        self.check_ret_val(ret_val, job_path)
+
+    def resize_vhd(self, vhd_path, new_max_size):
+        image_man_svc = self._conn_virt.Msvm_ImageManagementService()[0]
+        (job_path, ret_val) = image_man_svc.ExpandVirtualHardDisk(
+            Path=vhd_path, MaxInternalSize=new_max_size)
+        self.check_ret_val(ret_val, job_path)
+
+    def check_ret_val(self, ret_val, job_path, success_values=[0]):
+        if ret_val == constants.WMI_JOB_STATUS_STARTED:
+            return self._wait_for_job(job_path)
+        elif ret_val not in success_values:
+            raise exception.VolumeBackendAPIException(
+                _('Operation failed with return value: %s') % ret_val)
+
+    def _wait_for_job(self, job_path):
+        """Poll WMI job state and wait for completion."""
+        job = self._get_wmi_obj(job_path)
+
+        while job.JobState == constants.WMI_JOB_STATE_RUNNING:
+            time.sleep(0.1)
+            job = self._get_wmi_obj(job_path)
+        if job.JobState != constants.WMI_JOB_STATE_COMPLETED:
+            job_state = job.JobState
+            if job.path().Class == "Msvm_ConcreteJob":
+                err_sum_desc = job.ErrorSummaryDescription
+                err_desc = job.ErrorDescription
+                err_code = job.ErrorCode
+                raise exception.VolumeBackendAPIException(
+                    _("WMI job failed with status "
+                      "%(job_state)d. Error details: "
+                      "%(err_sum_desc)s - %(err_desc)s - "
+                      "Error code: %(err_code)d") %
+                    {'job_state': job_state,
+                     'err_sum_desc': err_sum_desc,
+                     'err_desc': err_desc,
+                     'err_code': err_code})
+            else:
+                (error, ret_val) = job.GetError()
+                if not ret_val and error:
+                    raise exception.VolumeBackendAPIException(
+                        _("WMI job failed with status %(job_state)d. "
+                          "Job path: %(job_path)s Error details: "
+                          "%(error)s") % {'job_state': job_state,
+                                          'error': error,
+                                          'job_path': job_path})
+                else:
+                    raise exception.VolumeBackendAPIException(
+                        _("WMI job failed with status %d. No error "
+                          "description available") % job_state)
+        desc = job.Description
+        elap = job.ElapsedTime
+        LOG.debug("WMI job succeeded: %(desc)s, Elapsed=%(elap)s" %
+                  {'desc': desc, 'elap': elap})
+        return job
+
+    def _get_wmi_obj(self, path):
+        return wmi.WMI(moniker=path.replace('\\', '/'))
