@@ -304,9 +304,10 @@ class VMwareHTTPReadVmdk(VMwareHTTPFile):
 
     def read(self, chunk_size):
         """Read a chunk from file."""
-        self._progress += READ_CHUNKSIZE
+        data = self.file_handle.read(READ_CHUNKSIZE)
+        self._progress += len(data)
         LOG.debug("Read %s bytes from vmdk." % self._progress)
-        return self.file_handle.read(READ_CHUNKSIZE)
+        return data
 
     def update_progress(self):
         """Updates progress to lease.
