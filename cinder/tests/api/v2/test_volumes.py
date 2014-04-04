@@ -308,6 +308,113 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
 
+    def test_volume_update_deprecation(self):
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+        self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
+
+        updates = {
+            "display_name": "Updated Test Name",
+            "display_description": "Updated Test Description",
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        res_dict = self.controller.update(req, '1', body)
+        expected = {
+            'volume': {
+                'status': 'fakestatus',
+                'description': 'Updated Test Description',
+                'encrypted': False,
+                'availability_zone': 'fakeaz',
+                'bootable': 'false',
+                'name': 'Updated Test Name',
+                'attachments': [
+                    {
+                        'id': '1',
+                        'volume_id': '1',
+                        'server_id': 'fakeuuid',
+                        'host_name': None,
+                        'device': '/',
+                    }
+                ],
+                'user_id': 'fakeuser',
+                'volume_type': 'vol_type_name',
+                'snapshot_id': None,
+                'source_volid': None,
+                'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
+                'id': '1',
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'size': 1,
+                'links': [
+                    {
+                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
+                    }
+                ],
+            }
+        }
+        self.assertEqual(res_dict, expected)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+
+    def test_volume_update_deprecation_key_priority(self):
+        """Test current update keys have priority over deprecated keys."""
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+        self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
+
+        updates = {
+            "name": "New Name",
+            "description": "New Description",
+            "display_name": "Not Shown Name",
+            "display_description": "Not Shown Description",
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        res_dict = self.controller.update(req, '1', body)
+        expected = {
+            'volume': {
+                'status': 'fakestatus',
+                'description': 'New Description',
+                'encrypted': False,
+                'availability_zone': 'fakeaz',
+                'bootable': 'false',
+                'name': 'New Name',
+                'attachments': [
+                    {
+                        'id': '1',
+                        'volume_id': '1',
+                        'server_id': 'fakeuuid',
+                        'host_name': None,
+                        'device': '/',
+                    }
+                ],
+                'user_id': 'fakeuser',
+                'volume_type': 'vol_type_name',
+                'snapshot_id': None,
+                'source_volid': None,
+                'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
+                'id': '1',
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'size': 1,
+                'links': [
+                    {
+                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/volumes/1',
+                        'rel': 'bookmark'
+                    }
+                ],
+            }
+        }
+        self.assertEqual(res_dict, expected)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+
     def test_volume_update_metadata(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -372,7 +479,7 @@ class VolumeApiTest(test.TestCase):
                                         False)
 
         updates = {
-            "display_name": "Updated Test Name",
+            "name": "Updated Test Name",
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
@@ -386,7 +493,7 @@ class VolumeApiTest(test.TestCase):
             'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
-            'name': 'displayname',
+            'name': 'Updated Test Name',
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
