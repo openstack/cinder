@@ -726,8 +726,6 @@ class StorwizeHelpers(object):
         return dest_pool
 
     def change_vdisk_options(self, vdisk, changes, opts, state):
-        if 'iogrp' in opts:
-            opts['iogrp'] = str(opts['iogrp'])
         if 'warning' in opts:
             opts['warning'] = '%s%%' % str(opts['warning'])
         if 'easytier' in opts:
@@ -735,17 +733,18 @@ class StorwizeHelpers(object):
         if 'autoexpand' in opts:
             opts['autoexpand'] = 'on' if opts['autoexpand'] else 'off'
 
-        if 'iogrp' in changes:
-            changes.remove('iogrp')
-            if state['code_level'] < (6, 4, 0, 0):
-                LOG.debug(_('Ignore change IO group as storage code level '
-                            'is %(code_level)s, below then '
-                            '6.4.0.0') % {'code_level': state['code_level']})
-            else:
-                self.ssh.movevdisk(vdisk, opts['iogrp'])
-
         for key in changes:
             self.ssh.chvdisk(vdisk, ['-' + key, opts[key]])
+
+    def change_vdisk_iogrp(self, vdisk, state, iogrp):
+        if state['code_level'] < (6, 4, 0, 0):
+            LOG.debug(_('Ignore change IO group as storage code level is '
+                        '%(code_level)s, below the required 6.4.0.0') %
+                      {'code_level': state['code_level']})
+        else:
+            self.ssh.movevdisk(vdisk, str(iogrp[0]))
+            self.ssh.addvdiskaccess(vdisk, str(iogrp[0]))
+            self.ssh.rmvdiskaccess(vdisk, str(iogrp[1]))
 
     def vdisk_by_uid(self, vdisk_uid):
         """Returns the properties of the vdisk with the specified UID.
