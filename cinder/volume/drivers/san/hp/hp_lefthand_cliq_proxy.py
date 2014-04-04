@@ -72,9 +72,10 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         1.2.0 - Ported into the new HP LeftHand driver.
         1.2.1 - Fixed bug #1279897, HP LeftHand CLIQ proxy may return incorrect
                 capacity values.
+        1.2.2 - Fixed driver with Paramiko 1.13.0, bug #1298608.
     """
 
-    VERSION = "1.2.1"
+    VERSION = "1.2.2"
 
     device_stats = {}
 
@@ -106,7 +107,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
 
         LOG.debug(_("CLIQ command returned %s"), out)
 
-        result_xml = etree.fromstring(out)
+        result_xml = etree.fromstring(out.encode('utf8'))
         if check_cliq_result:
             response_node = result_xml.find("response")
             if response_node is None:

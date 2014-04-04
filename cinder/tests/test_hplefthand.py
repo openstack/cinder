@@ -309,6 +309,42 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 </gauche>"""
             return output, None
 
+        def test_paramiko_1_13_0(cliq_args):
+
+            # paramiko 1.13.0 now returns unicode
+            output = unicode(
+                '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+                '<gauche version="1.0">\n\n  <response description="Operation'
+                ' succeeded." name="CliqSuccess" processingTime="423" '
+                'result="0">\n    <cluster adaptiveOptimization="false" '
+                'blockSize="1024" description="" maxVolumeSizeReplication1='
+                '"114594676736" minVolumeSize="262144" name="clusterdemo" '
+                'pageSize="262144" spaceTotal="118889644032" storageNodeCount='
+                '"1" unprovisionedSpace="114594676736" useVip="true">\n'
+                '      <nsm ipAddress="10.10.29.102" name="lefdemo1"/>\n'
+                '      <vip ipAddress="10.10.22.87" subnetMask='
+                '"255.255.224.0"/>\n    </cluster>\n  </response>\n\n'
+                '</gauche>\n    ')
+            return output, None
+
+        def test_paramiko_1_10_0(cliq_args):
+
+            # paramiko 1.10.0 returns python default encoding.
+            output = (
+                '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+                '<gauche version="1.0">\n\n  <response description="Operation'
+                ' succeeded." name="CliqSuccess" processingTime="423" '
+                'result="0">\n    <cluster adaptiveOptimization="false" '
+                'blockSize="1024" description="" maxVolumeSizeReplication1='
+                '"114594676736" minVolumeSize="262144" name="clusterdemo" '
+                'pageSize="262144" spaceTotal="118889644032" storageNodeCount='
+                '"1" unprovisionedSpace="114594676736" useVip="true">\n'
+                '      <nsm ipAddress="10.10.29.102" name="lefdemo1"/>\n'
+                '      <vip ipAddress="10.10.22.87" subnetMask='
+                '"255.255.224.0"/>\n    </cluster>\n  </response>\n\n'
+                '</gauche>\n    ')
+            return output, None
+
         self.assertEqual(cliq_args['output'], 'XML')
         try:
             verbs = {'createVolume': create_volume,
@@ -324,7 +360,9 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                      'getSnapshotInfo': get_snapshot_info,
                      'getServerInfo': get_server_info,
                      'createServer': create_server,
-                     'testError': test_error}
+                     'testError': test_error,
+                     'testParamiko_1.10.1': test_paramiko_1_10_0,
+                     'testParamiko_1.13.1': test_paramiko_1_13_0}
         except KeyError:
             raise NotImplementedError()
 
@@ -592,6 +630,20 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         # validate call chain
         mock_cliq_run.assert_has_calls(expected)
+
+    def test_cliq_run_xml_paramiko_1_13_0(self):
+
+        # set up driver with default config
+        self.setup_driver()
+        xml = self.driver.proxy._cliq_run_xml('testParamiko_1.13.1', {})
+        self.assertIsNotNone(xml)
+
+    def test_cliq_run_xml_paramiko_1_10_0(self):
+
+        # set up driver with default config
+        self.setup_driver()
+        xml = self.driver.proxy._cliq_run_xml('testParamiko_1.10.1', {})
+        self.assertIsNotNone(xml)
 
 
 class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
