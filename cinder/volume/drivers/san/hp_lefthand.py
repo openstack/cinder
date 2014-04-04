@@ -67,9 +67,10 @@ class HpSanISCSIDriver(SanISCSIDriver):
         1.0.0 - Initial driver
         1.1.0 - Added create/delete snapshot, extend volume, create volume
                 from snapshot support.
+        1.1.1 - Fixes driver with Paramiko 1.13.0, bug #1298608.
     """
 
-    VERSION = "1.1.0"
+    VERSION = "1.1.1"
 
     device_stats = {}
 
@@ -92,7 +93,7 @@ class HpSanISCSIDriver(SanISCSIDriver):
 
         LOG.debug(_("CLIQ command returned %s"), out)
 
-        result_xml = etree.fromstring(out)
+        result_xml = etree.fromstring(out.encode('utf8'))
         if check_cliq_result:
             response_node = result_xml.find("response")
             if response_node is None:
