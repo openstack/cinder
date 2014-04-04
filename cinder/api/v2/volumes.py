@@ -379,6 +379,8 @@ class VolumeController(wsgi.Controller):
         valid_update_keys = (
             'name',
             'description',
+            'display_name',
+            'display_description',
             'metadata',
         )
 
