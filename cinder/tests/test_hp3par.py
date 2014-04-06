@@ -362,7 +362,7 @@ class HP3PARBaseDriver(object):
                 'serialNumber': 'different'},
         }
 
-        mock_client = self.setup_driver(mock_conf=conf)
+        self.setup_driver(mock_conf=conf)
 
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
@@ -393,7 +393,7 @@ class HP3PARBaseDriver(object):
             lambda x: {'OpenStackCPG': {'domain': 'OpenStack'}}.get(x, {})
         }
 
-        mock_client = self.setup_driver(mock_conf=conf)
+        self.setup_driver(mock_conf=conf)
 
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
@@ -650,7 +650,7 @@ class HP3PARBaseDriver(object):
             'getVolume.return_value': {}
         }
 
-        mock_client = self.setup_driver(mock_conf=conf)
+        self.setup_driver(mock_conf=conf)
 
         volume = self.volume.copy()
         volume['size'] = self.volume['size'] + 10
@@ -821,7 +821,7 @@ class HP3PARBaseDriver(object):
             'growVolume.side_effect': extend_ex
         }
 
-        mock_client = self.setup_driver(mock_conf=conf)
+        self.setup_driver(mock_conf=conf)
         grow_size = 3
         old_size = self.volume['size']
         new_size = old_size + grow_size

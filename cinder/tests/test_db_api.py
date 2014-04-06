@@ -151,7 +151,6 @@ class DBAPIServiceTestCase(BaseTest):
 
     def test_service_get(self):
         service1 = self._create_service({})
-        service2 = self._create_service({'host': 'some_other_fake_host'})
         real_service1 = db.service_get(self.ctxt, service1['id'])
         self._assertEqualObjects(service1, real_service1)
 
@@ -161,7 +160,6 @@ class DBAPIServiceTestCase(BaseTest):
 
     def test_service_get_by_host_and_topic(self):
         service1 = self._create_service({'host': 'host1', 'topic': 'topic1'})
-        service2 = self._create_service({'host': 'host2', 'topic': 'topic2'})
 
         real_service1 = db.service_get_by_host_and_topic(self.ctxt,
                                                          host='host1',
@@ -663,8 +661,8 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualsVolumeOrderResult([], filters=filters)
 
     def test_volume_get_iscsi_target_num(self):
-        target = db.iscsi_target_create_safe(self.ctxt, {'volume_id': 42,
-                                                         'target_num': 43})
+        db.iscsi_target_create_safe(self.ctxt, {'volume_id': 42,
+                                                'target_num': 43})
         self.assertEqual(43, db.volume_get_iscsi_target_num(self.ctxt, 42))
 
     def test_volume_get_iscsi_target_num_nonexistent(self):
@@ -726,9 +724,9 @@ class DBAPISnapshotTestCase(BaseTest):
         db.volume_create(self.ctxt, {'id': 1,
                                      'project_id': 'project1',
                                      'size': 42})
-        snapshot = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
-                                                  'project_id': 'project1',
-                                                  'volume_size': 42})
+        db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
+                                       'project_id': 'project1',
+                                       'volume_size': 42})
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
         self.assertEqual(actual, (1, 42))
 
@@ -1002,7 +1000,7 @@ class DBAPIReservationTestCase(BaseTest):
     def test_reservation_expire(self):
         self.values['expire'] = datetime.datetime.utcnow() + \
             datetime.timedelta(days=1)
-        reservations = _quota_reserve(self.ctxt, 'project1')
+        _quota_reserve(self.ctxt, 'project1')
         db.reservation_expire(self.ctxt)
 
         expected = {'project_id': 'project1',
@@ -1048,8 +1046,8 @@ class DBAPIQuotaClassTestCase(BaseTest):
                           'nonexistent')
 
     def test_quota_class_get_all_by_name(self):
-        sample1 = db.quota_class_create(self.ctxt, 'test2', 'res1', 43)
-        sample2 = db.quota_class_create(self.ctxt, 'test2', 'res2', 44)
+        db.quota_class_create(self.ctxt, 'test2', 'res1', 43)
+        db.quota_class_create(self.ctxt, 'test2', 'res2', 44)
         self.assertEqual({'class_name': 'test_qc', 'test_resource': 42},
                          db.quota_class_get_all_by_name(self.ctxt, 'test_qc'))
         self.assertEqual({'class_name': 'test2', 'res1': 43, 'res2': 44},
@@ -1061,8 +1059,8 @@ class DBAPIQuotaClassTestCase(BaseTest):
         self.assertEqual(43, updated['hard_limit'])
 
     def test_quota_class_destroy_all_by_name(self):
-        sample1 = db.quota_class_create(self.ctxt, 'test2', 'res1', 43)
-        sample2 = db.quota_class_create(self.ctxt, 'test2', 'res2', 44)
+        db.quota_class_create(self.ctxt, 'test2', 'res1', 43)
+        db.quota_class_create(self.ctxt, 'test2', 'res2', 44)
         db.quota_class_destroy_all_by_name(self.ctxt, 'test2')
         self.assertEqual({'class_name': 'test2'},
                          db.quota_class_get_all_by_name(self.ctxt, 'test2'))
@@ -1155,7 +1153,7 @@ class DBAPIQuotaTestCase(BaseTest):
                           'nonexitent_resource')
 
     def test_quota_usage_get(self):
-        reservations = _quota_reserve(self.ctxt, 'p1')
+        _quota_reserve(self.ctxt, 'p1')
         quota_usage = db.quota_usage_get(self.ctxt, 'p1', 'gigabytes')
         expected = {'resource': 'gigabytes', 'project_id': 'p1',
                     'in_use': 0, 'reserved': 2, 'total': 2}
@@ -1163,7 +1161,7 @@ class DBAPIQuotaTestCase(BaseTest):
             self.assertEqual(value, quota_usage[key], key)
 
     def test_quota_usage_get_all_by_project(self):
-        reservations = _quota_reserve(self.ctxt, 'p1')
+        _quota_reserve(self.ctxt, 'p1')
         expected = {'project_id': 'p1',
                     'volumes': {'in_use': 0, 'reserved': 1},
                     'gigabytes': {'in_use': 0, 'reserved': 2}}

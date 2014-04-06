@@ -40,7 +40,6 @@ def app():
 
 
 class AdminActionsTest(test.TestCase):
-
     def setUp(self):
         super(AdminActionsTest, self).setUp()
 
@@ -679,10 +678,10 @@ class AdminActionsTest(test.TestCase):
         expected_status = 400
         expected_id = None
         ctx = context.RequestContext('admin', 'fake', True)
-        volume = self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
-                                                expected_status, expected_id)
-        volume = self._migrate_volume_comp_exec(ctx, volume2, volume1, False,
-                                                expected_status, expected_id)
+        self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
+                                       expected_status, expected_id)
+        self._migrate_volume_comp_exec(ctx, volume2, volume1, False,
+                                       expected_status, expected_id)
 
     def test_migrate_volume_comp_bad_mig_status(self):
         admin_ctx = context.get_admin_context()
@@ -695,8 +694,8 @@ class AdminActionsTest(test.TestCase):
         expected_status = 400
         expected_id = None
         ctx = context.RequestContext('admin', 'fake', True)
-        volume = self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
-                                                expected_status, expected_id)
+        self._migrate_volume_comp_exec(ctx, volume1, volume2, False,
+                                       expected_status, expected_id)
 
     def test_migrate_volume_comp_no_action(self):
         admin_ctx = context.get_admin_context()

@@ -130,7 +130,6 @@ class XenAPINFSDriver(driver.VolumeDriver):
             snapshot, volume['display_name'], volume['name_description'])
 
     def create_snapshot(self, snapshot):
-        volume_id = snapshot['volume_id']
         volume = snapshot['volume']
         return self._copy_volume(
             volume, snapshot['display_name'], snapshot['display_description'])

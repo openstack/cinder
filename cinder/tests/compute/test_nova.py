@@ -42,7 +42,6 @@ class NovaApiTestCase(test.TestCase):
         self.mox.StubOutWithMock(nova, 'novaclient')
 
     def test_update_server_volume(self):
-        volume_id = 'volume_id1'
         nova.novaclient(self.ctx).AndReturn(self.novaclient)
         self.mox.StubOutWithMock(self.novaclient.volumes,
                                  'update_server_volume')

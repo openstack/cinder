@@ -943,8 +943,7 @@ class ManagedRBDTestCase(DriverTestCase):
         with mock.patch.object(self.volume.driver, 'clone_image') as \
                 mock_clone_image:
             mock_clone_image.side_effect = exception.CinderException
-            with mock.patch.object(self.volume.driver, 'create_volume') as \
-                    mock_create:
+            with mock.patch.object(self.volume.driver, 'create_volume'):
                 with mock.patch.object(create_volume.CreateVolumeFromSpecTask,
                                        '_copy_image_to_volume') as mock_copy:
                     self._create_volume_from_image('error', raw=True,

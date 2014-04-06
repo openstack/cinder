@@ -137,7 +137,6 @@ class TestCase(testtools.TestCase):
         self.addCleanup(rpc.clear_extra_exmods)
         self.addCleanup(rpc.cleanup)
 
-        fs = '%(levelname)s [%(name)s] %(message)s'
         self.messaging_conf = messaging_conffixture.ConfFixture(CONF)
         self.messaging_conf.transport_driver = 'fake'
         self.messaging_conf.response_timeout = 15

@@ -199,10 +199,10 @@ class SchedulerManager(manager.Manager):
 
         volume_ref = db.volume_get(context, volume_id)
         try:
-            tgt_host = self.driver.host_passes_filters(context,
-                                                       volume_ref['host'],
-                                                       request_spec,
-                                                       filter_properties)
+            self.driver.host_passes_filters(context,
+                                            volume_ref['host'],
+                                            request_spec,
+                                            filter_properties)
         except exception.NoValidHost as ex:
             _manage_existing_set_error(self, context, ex, request_spec)
         except Exception as ex:

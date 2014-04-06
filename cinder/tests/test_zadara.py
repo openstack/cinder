@@ -571,9 +571,9 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         connector3 = dict(initiator='test_iqn.3')
 
         self.driver.create_volume(volume)
-        props1 = self.driver.initialize_connection(volume, connector1)
-        props2 = self.driver.initialize_connection(volume, connector2)
-        props3 = self.driver.initialize_connection(volume, connector3)
+        self.driver.initialize_connection(volume, connector1)
+        self.driver.initialize_connection(volume, connector2)
+        self.driver.initialize_connection(volume, connector3)
 
         self.driver.terminate_connection(volume, connector1)
         self.driver.terminate_connection(volume, connector3)
@@ -583,11 +583,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     def test_wrong_attach_params(self):
         """Test different wrong attach scenarios."""
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
-        volume2 = {'name': 'test_volume_02', 'size': 1, 'id': 102}
-        volume3 = {'name': 'test_volume_03', 'size': 1, 'id': 103}
         connector1 = dict(initiator='test_iqn.1')
-        connector2 = dict(initiator='test_iqn.2')
-        connector3 = dict(initiator='test_iqn.3')
 
         self.assertRaises(exception.VolumeNotFound,
                           self.driver.initialize_connection,
@@ -605,8 +601,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume1)
         self.driver.create_volume(volume2)
-        props1 = self.driver.initialize_connection(volume1, connector1)
-        props2 = self.driver.initialize_connection(volume2, connector2)
+        self.driver.initialize_connection(volume1, connector1)
+        self.driver.initialize_connection(volume2, connector2)
 
         self.assertRaises(exception.ZadaraServerNotFound,
                           self.driver.terminate_connection,
@@ -666,9 +662,9 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         connector3 = dict(initiator='test_iqn.3')
 
         self.driver.create_volume(volume1)
-        props1 = self.driver.initialize_connection(volume1, connector1)
-        props2 = self.driver.initialize_connection(volume1, connector2)
-        props3 = self.driver.initialize_connection(volume1, connector3)
+        self.driver.initialize_connection(volume1, connector1)
+        self.driver.initialize_connection(volume1, connector2)
+        self.driver.initialize_connection(volume1, connector3)
 
         self.flags(zadara_vpsa_auto_detach_on_delete=False)
         self.assertRaises(exception.VolumeAttached,

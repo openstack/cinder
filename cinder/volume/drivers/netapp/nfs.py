@@ -95,7 +95,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             if vol_size != snap_size:
                 try:
                     self.extend_volume(volume, vol_size)
-                except Exception as e:
+                except Exception:
                     with excutils.save_and_reraise_exception():
                         LOG.error(
                             _("Resizing %s failed. Cleaning volume."),
@@ -1413,7 +1413,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             try:
                 self._invoke_successfully(clone_clear, None)
                 break
-            except Exception as e:
+            except Exception:
                 # Filer might be rebooting
                 time.sleep(5)
             retry = retry - 1

@@ -22,7 +22,7 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    _volumes = Table('volumes', meta, autoload=True)
+    Table('volumes', meta, autoload=True)
 
     # New table
     volume_admin_metadata = Table(

@@ -110,8 +110,6 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.fake_args = None
         self.fake_kwargs = None
 
-        real_prepare = rpcapi.client.prepare
-
         def _fake_prepare_method(*args, **kwds):
             for kwd in kwds:
                 self.assertEqual(kwds[kwd], target[kwd])

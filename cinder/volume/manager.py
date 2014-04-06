@@ -684,7 +684,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume = self.db.volume_get(context, volume_id)
         try:
             utils.require_driver_initialized(self.driver)
-        except exception.DriverNotInitialized as ex:
+        except exception.DriverNotInitialized:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_("Error detaching volume %(volume)s, "
                                 "due to uninitialized driver."),

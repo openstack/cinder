@@ -72,7 +72,6 @@ class SchedulerOptionsTestCase(test.TestCase):
         file_old = None
         file_now = datetime.datetime(2012, 1, 1, 1, 1, 1)
 
-        data = dict(a=1, b=2, c=3)
         jdata = ""
 
         fake = FakeSchedulerOptions(last_checked, now, file_old, file_now,

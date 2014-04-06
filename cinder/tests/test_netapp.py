@@ -668,7 +668,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         configuration = create_configuration()
         configuration.netapp_storage_family = 'xyz_abc'
         try:
-            driver = common.NetAppDriver(configuration=configuration)
+            common.NetAppDriver(configuration=configuration)
             raise AssertionError('Wrong storage family is getting accepted.')
         except exception.InvalidInput:
             pass
@@ -678,7 +678,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         configuration.netapp_storage_family = 'ontap'
         configuration.netapp_storage_protocol = 'ontap'
         try:
-            driver = common.NetAppDriver(configuration=configuration)
+            common.NetAppDriver(configuration=configuration)
             raise AssertionError('Wrong storage protocol is getting accepted.')
         except exception.InvalidInput:
             pass
@@ -690,7 +690,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         configuration.netapp_storage_family = 'test_family'
         configuration.netapp_storage_protocol = 'iscsi'
         try:
-            driver = common.NetAppDriver(configuration=configuration)
+            common.NetAppDriver(configuration=configuration)
             raise AssertionError('Non NetApp driver is getting instantiated.')
         except exception.InvalidInput:
             pass

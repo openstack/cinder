@@ -139,7 +139,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_get_fs_from_path_ok(self, mock_exec):
-        ctxt = self.context
         mock_exec.return_value = ('Filesystem           1K-blocks      '
                                   'Used Available Use%% Mounted on\n'
                                   '%s             10485760    531968   9953792'
@@ -150,7 +149,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_get_fs_from_path_fail_path(self, mock_exec):
-        ctxt = self.context
         mock_exec.return_value = ('Filesystem           1K-blocks      '
                                   'Used Available Use% Mounted on\n'
                                   'test             10485760    531968   '
@@ -160,7 +158,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_get_fs_from_path_fail_raise(self, mock_exec):
-        ctxt = self.context
         mock_exec.side_effect = processutils.ProcessExecutionError(
             stdout='test', stderr='test')
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -168,7 +165,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_get_gpfs_cluster_id_ok(self, mock_exec):
-        ctxt = self.context
         mock_exec.return_value = ('mmlsconfig::HEADER:version:reserved:'
                                   'reserved:configParameter:value:nodeList:\n'
                                   'mmlsconfig::0:1:::clusterId:%s::'
@@ -178,7 +174,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_get_gpfs_cluster_id_fail_id(self, mock_exec):
-        ctxt = self.context
         mock_exec.return_value = ('mmlsconfig::HEADER.:version:reserved:'
                                   'reserved:configParameter:value:nodeList:\n'
                                   'mmlsconfig::0:1:::clusterId:test::', '')
@@ -187,7 +182,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_get_gpfs_cluster_id_fail_raise(self, mock_exec):
-        ctxt = self.context
         mock_exec.side_effect = processutils.ProcessExecutionError(
             stdout='test', stderr='test')
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -231,7 +225,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_verify_gpfs_pool_ok(self, mock_exec):
-        ctxt = self.context
         mock_exec.return_value = ('Storage pools in file system at \'/gpfs0\':'
                                   '\n'
                                   'Name                    Id   BlkSize Data '
@@ -247,7 +240,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_verify_gpfs_pool_fail_pool(self, mock_exec):
-        ctxt = self.context
         mock_exec.return_value = ('Storage pools in file system at \'/gpfs0\':'
                                   '\n'
                                   'Name                    Id   BlkSize Data '
@@ -263,7 +255,6 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.utils.execute')
     def test_verify_gpfs_pool_fail_raise(self, mock_exec):
-        ctxt = self.context
         mock_exec.side_effect = processutils.ProcessExecutionError(
             stdout='test', stderr='test')
         self.assertFalse(self.driver._verify_gpfs_pool('/dev/gpfs'))
@@ -990,10 +981,8 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
     def test_is_cloneable_ok(self, mock_is_gpfs_path):
-        org_value_share_mode = self.driver.configuration.gpfs_images_share_mode
         self.flags(volume_driver=self.driver_name,
                    gpfs_images_share_mode='test')
-        org_value_dir = CONF.gpfs_images_dir
         CONF.gpfs_images_dir = self.images_dir
         mock_is_gpfs_path.return_value = None
         self.assertEqual((True, None, os.path.join(CONF.gpfs_images_dir,
@@ -1002,9 +991,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
     def test_is_cloneable_fail_config(self, mock_is_gpfs_path):
-        org_value_share_mode = self.driver.configuration.gpfs_images_share_mode
         self.flags(volume_driver=self.driver_name, gpfs_images_share_mode='')
-        org_value_dir = CONF.gpfs_images_dir
         CONF.gpfs_images_dir = ''
         mock_is_gpfs_path.return_value = None
         self.assertNotEqual((True, None, os.path.join(CONF.gpfs_images_dir,
@@ -1013,10 +1000,8 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
     def test_is_cloneable_fail_path(self, mock_is_gpfs_path):
-        org_value_share_mode = self.driver.configuration.gpfs_images_share_mode
         self.flags(volume_driver=self.driver_name,
                    gpfs_images_share_mode='test')
-        org_value_dir = CONF.gpfs_images_dir
         CONF.gpfs_images_dir = self.images_dir
         mock_is_gpfs_path.side_effect = (
             processutils.ProcessExecutionError(stdout='test', stderr='test'))
@@ -1421,7 +1406,7 @@ class GPFSDriverTestCase(test.TestCase):
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
-        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume_types.get_volume_type(ctxt, old_type_ref['id'])
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
         diff, equal = volume_types.volume_types_diff(ctxt,

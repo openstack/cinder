@@ -818,7 +818,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                                             source_volid=src_vol_id,
                                             **self.volume_params)
         dst_vol_id = dst_vol['id']
-        admin_ctxt = context.get_admin_context()
 
         orig_elevated = self.context.elevated
 
@@ -868,7 +867,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                                             source_volid=src_vol_id,
                                             **self.volume_params)
         dst_vol_id = dst_vol['id']
-        admin_ctxt = context.get_admin_context()
 
         orig_elevated = self.context.elevated
 
@@ -2595,7 +2593,7 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
 
     def test_snapshot_get_active_by_window(self):
         # Find all all snapshots valid within a timeframe window.
-        vol = db.volume_create(self.context, {'id': 1})
+        db.volume_create(self.context, {'id': 1})
         for i in range(5):
             self.db_attrs[i]['volume_id'] = 1
 
