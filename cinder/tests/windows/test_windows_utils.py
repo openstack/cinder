@@ -22,11 +22,7 @@ from cinder.volume.drivers.windows import windows_utils
 
 class WindowsUtilsTestCase(test.TestCase):
 
-    _FAKE_FORMAT = 2
-    _FAKE_TYPE = 3
     _FAKE_JOB_PATH = 'fake_job_path'
-    _FAKE_VHD_PATH = r'C:\fake\vhd.vhd'
-    _FAKE_DESTINATION_PATH = r'C:\fake\destination.vhd'
     _FAKE_RET_VAL = 0
     _FAKE_RET_VAL_ERROR = 10
     _FAKE_VHD_SIZE = 1024
@@ -36,35 +32,7 @@ class WindowsUtilsTestCase(test.TestCase):
         super(WindowsUtilsTestCase, self).setUp()
         windows_utils.WindowsUtils.__init__ = lambda x: None
         self.wutils = windows_utils.WindowsUtils()
-        self.wutils._conn_virt = mock.MagicMock()
         self.wutils.time = mock.MagicMock()
-
-    def test_convert_vhd(self):
-        self.wutils.check_ret_val = mock.MagicMock()
-        mock_img_svc = self.wutils._conn_virt.Msvm_ImageManagementService()[0]
-        mock_img_svc.ConvertVirtualHardDisk.return_value = (
-            self._FAKE_JOB_PATH, self._FAKE_RET_VAL)
-
-        self.wutils.convert_vhd(self._FAKE_VHD_PATH,
-                                self._FAKE_DESTINATION_PATH,
-                                self._FAKE_TYPE)
-
-        mock_img_svc.ConvertVirtualHardDisk.assert_called_once()
-        self.wutils.check_ret_val.assert_called_once_with(
-            self._FAKE_RET_VAL, self._FAKE_JOB_PATH)
-
-    def test_resize_vhd(self):
-        self.wutils.check_ret_val = mock.MagicMock()
-        mock_img_svc = self.wutils._conn_virt.Msvm_ImageManagementService()[0]
-        mock_img_svc.ExpandVirtualHardDisk.return_value = (self._FAKE_JOB_PATH,
-                                                           self._FAKE_RET_VAL)
-
-        self.wutils.resize_vhd(self._FAKE_VHD_PATH,
-                               self._FAKE_VHD_SIZE)
-
-        mock_img_svc.ExpandVirtualHardDisk.assert_called_once()
-        self.wutils.check_ret_val.assert_called_once_with(self._FAKE_RET_VAL,
-                                                          self._FAKE_JOB_PATH)
 
     def _test_check_ret_val(self, job_started, job_failed):
         self.wutils._wait_for_job = mock.Mock(return_value=self._FAKE_JOB)

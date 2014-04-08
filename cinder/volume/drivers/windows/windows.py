@@ -24,9 +24,10 @@ import os
 from oslo.config import cfg
 
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.windows import constants
+from cinder.volume.drivers.windows import utilsfactory
 from cinder.volume.drivers.windows import windows_utils
 
 LOG = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class WindowsDriver(driver.ISCSIDriver):
         Validate the flags we care about
         """
         self.utils = windows_utils.WindowsUtils()
+        self.vhdutils = utilsfactory.get_vhdutils()
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
@@ -97,12 +99,15 @@ class WindowsDriver(driver.ISCSIDriver):
 
         self.utils.create_volume(vhd_path, vol_name, vol_size)
 
-    def local_path(self, volume):
+    def local_path(self, volume, format=None):
         base_vhd_folder = self.configuration.windows_iscsi_lun_path
         if not os.path.exists(base_vhd_folder):
             LOG.debug('Creating folder %s ', base_vhd_folder)
             os.makedirs(base_vhd_folder)
-        return os.path.join(base_vhd_folder, str(volume['name']) + ".vhd")
+        if not format:
+            format = self.utils.get_supported_format()
+        return os.path.join(base_vhd_folder, str(volume['name']) + "." +
+                            format)
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
@@ -168,6 +173,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and create a volume using it."""
         # Convert to VHD and file back to VHD
+        vhd_type = self.utils.get_supported_vhd_type()
         if (CONF.image_conversion_dir and not
                 os.path.exists(CONF.image_conversion_dir)):
             os.makedirs(CONF.image_conversion_dir)
@@ -179,21 +185,32 @@ class WindowsDriver(driver.ISCSIDriver):
             # the desired image.
             self.utils.change_disk_status(volume['name'], False)
             os.unlink(volume_path)
-            self.utils.convert_vhd(tmp, volume_path,
-                                   constants.VHD_TYPE_FIXED)
-            self.utils.resize_vhd(volume_path,
-                                  volume['size'] << 30)
+            self.vhdutils.convert_vhd(tmp, volume_path,
+                                      vhd_type)
+            self.vhdutils.resize_vhd(volume_path,
+                                     volume['size'] << 30)
             self.utils.change_disk_status(volume['name'], True)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-
-        # Copy the volume to the image conversion dir
+        disk_format = self.utils.get_supported_format()
         temp_vhd_path = os.path.join(self.configuration.image_conversion_dir,
-                                     str(image_meta['id']) + ".vhd")
-        self.utils.copy_vhd_disk(self.local_path(volume), temp_vhd_path)
-        image_utils.upload_volume(context, image_service, image_meta,
-                                  temp_vhd_path, 'vpc')
+                                     str(image_meta['id']) + '.' + disk_format)
+        upload_image = temp_vhd_path
+
+        try:
+            self.utils.copy_vhd_disk(self.local_path(volume), temp_vhd_path)
+            # qemu-img does not yet fully support vhdx format, so we'll first
+            # convert the image to vhd before attempting upload
+            if disk_format == 'vhdx':
+                upload_image = upload_image[:-1]
+                self.vhdutils.convert_vhd(temp_vhd_path, upload_image)
+
+            image_utils.upload_volume(context, image_service, image_meta,
+                                      upload_image, 'vpc')
+        finally:
+            fileutils.delete_if_exists(temp_vhd_path)
+            fileutils.delete_if_exists(upload_image)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
