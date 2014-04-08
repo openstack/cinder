@@ -148,7 +148,12 @@ class WindowsUtils(object):
     def delete_volume(self, vol_name, vhd_path):
         """Driver entry point for destroying existing volumes."""
         try:
-            wt_disk = self._conn_wmi.WT_Disk(Description=vol_name)[0]
+            disk = self._conn_wmi.WT_Disk(Description=vol_name)
+            if not disk:
+                LOG.debug(_('Skipping deleting disk %s as it does not '
+                            'exist.') % vol_name)
+                return
+            wt_disk = disk[0]
             wt_disk.Delete_()
             vhdfiles = self._conn_cimv2.query(
                 "Select * from CIM_DataFile where Name = '" +
