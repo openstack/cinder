@@ -493,6 +493,13 @@ class StorwizeSVCDriver(san.SanDriver):
     def delete_volume(self, volume):
         self._helpers.delete_vdisk(volume['name'], False)
 
+        if volume['id'] in self._vdiskcopyops:
+            del self._vdiskcopyops[volume['id']]
+
+            if not len(self._vdiskcopyops):
+                self._vdiskcopyops_loop.stop()
+                self._vdiskcopyops_loop = None
+
     def create_snapshot(self, snapshot):
         ctxt = context.get_admin_context()
         try:

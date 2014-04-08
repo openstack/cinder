@@ -1775,7 +1775,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           volume)
 
         # Try to delete a volume that doesn't exist (should not fail)
-        vol_no_exist = {'name': 'i_dont_exist'}
+        vol_no_exist = {'name': 'i_dont_exist',
+                        'id': '111111'}
         self.driver.delete_volume(vol_no_exist)
         # Ensure export for volume that doesn't exist (should not fail)
         self.driver.ensure_export(None, vol_no_exist)
@@ -2387,6 +2388,14 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.assertEqual(None, admin_metadata.get('vdiskcopyops', None),
                          'Storwize driver delete vdisk copy error')
         self._delete_volume(volume)
+
+    def test_storwize_delete_with_vdisk_copy_ops(self):
+        volume = self._create_volume()
+        self.driver._vdiskcopyops = {volume['id']: [('0', '1')]}
+        with mock.patch.object(self.driver, '_vdiskcopyops_loop'):
+            self.assertIn(volume['id'], self.driver._vdiskcopyops)
+            self.driver.delete_volume(volume)
+            self.assertNotIn(volume['id'], self.driver._vdiskcopyops)
 
     def test_storwize_initiator_target_map(self):
         # Create two volumes to be used in mappings
