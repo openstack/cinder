@@ -119,7 +119,7 @@ class TestVolumeManager(manager.VolumeManager, test.TestCase):
         with mock.patch.object(manager.VolumeManager,
                                '_add_or_delete_fc_connection')\
                 as add_del_conn_mock:
-            self.terminate_connection(None, None, None, False)
+            self.terminate_connection(self.context_mock, None, None, False)
             add_del_conn_mock.assert_called_once_with(conn_info, 0)
 
     @mock.patch.object(utils, 'require_driver_initialized')
@@ -131,7 +131,7 @@ class TestVolumeManager(manager.VolumeManager, test.TestCase):
                 as add_del_conn_mock:
             self.configuration.zoning_mode = 'none'
             self.zonemanager = None
-            self.terminate_connection(None, None, None, False)
+            self.terminate_connection(self.context_mock, None, None, False)
             assert not add_del_conn_mock.called
 
     @mock.patch.object(utils, 'require_driver_initialized')
@@ -142,7 +142,7 @@ class TestVolumeManager(manager.VolumeManager, test.TestCase):
         with mock.patch.object(manager.VolumeManager,
                                '_add_or_delete_fc_connection')\
                 as add_del_conn_mock:
-            self.terminate_connection(None, None, None, False)
+            self.terminate_connection(self.context_mock, None, None, False)
             assert not add_del_conn_mock.called
 
     @mock.patch.object(fc_zone_manager.ZoneManager, 'add_connection')
