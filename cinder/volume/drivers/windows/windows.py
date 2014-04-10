@@ -100,14 +100,7 @@ class WindowsDriver(driver.ISCSIDriver):
         self.utils.create_volume(vhd_path, vol_name, vol_size)
 
     def local_path(self, volume, format=None):
-        base_vhd_folder = self.configuration.windows_iscsi_lun_path
-        if not os.path.exists(base_vhd_folder):
-            LOG.debug('Creating folder %s ', base_vhd_folder)
-            os.makedirs(base_vhd_folder)
-        if not format:
-            format = self.utils.get_supported_format()
-        return os.path.join(base_vhd_folder, str(volume['name']) + "." +
-                            format)
+        return self.utils.local_path(volume, format)
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
@@ -127,8 +120,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Driver entry point for exporting snapshots as volumes."""
         snapshot_name = snapshot['name']
-        vol_name = volume['name']
-        self.utils.create_volume_from_snapshot(vol_name, snapshot_name)
+        self.utils.create_volume_from_snapshot(volume, snapshot_name)
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
