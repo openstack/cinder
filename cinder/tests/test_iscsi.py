@@ -114,6 +114,7 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.flags(volumes_dir=self.persist_tempdir)
         self.script_template = "\n".join([
             'tgt-admin --update %(target_name)s',
+            'tgt-admin --delete %(target_name)s',
             'tgt-admin --force '
             '--delete %(target_name)s',
             'tgtadm --lld iscsi --op show --mode target'])
