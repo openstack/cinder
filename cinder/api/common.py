@@ -216,7 +216,7 @@ class ViewBuilder(object):
                 {"rel": "bookmark",
                  "href": self._get_bookmark_link(request, identifier), }]
 
-    def _get_next_link(self, request, identifier):
+    def _get_next_link(self, request, identifier, collection_name):
         """Return href string with proper limit and marker params."""
         params = request.params.copy()
         params["marker"] = identifier
@@ -224,7 +224,7 @@ class ViewBuilder(object):
                                           CONF.osapi_volume_base_URL)
         url = os.path.join(prefix,
                            request.environ["cinder.context"].project_id,
-                           self._collection_name)
+                           collection_name)
         return "%s?%s" % (url, dict_to_query_str(params))
 
     def _get_href_link(self, request, identifier):
@@ -246,13 +246,24 @@ class ViewBuilder(object):
                             self._collection_name,
                             str(identifier))
 
-    def _get_collection_links(self, request, items, id_key="uuid"):
-        """Retrieve 'next' link, if applicable. This is included if:
+    def _get_collection_links(self, request, items, collection_name,
+                              id_key="uuid"):
+        """Retrieve 'next' link, if applicable.
+
+        The next link is included if:
         1) 'limit' param is specified and equals the number of volumes.
         2) 'limit' param is specified but it exceeds CONF.osapi_max_limit,
         in this case the number of volumes is CONF.osapi_max_limit.
         3) 'limit' param is NOT specified but the number of volumes is
         CONF.osapi_max_limit.
+
+        :param request: API request
+        :param items: List of collection items
+        :param collection_name: Name of collection, used to generate the
+                                next link for a pagination query
+        :param id_key: Attribute key used to retrieve the unique ID, used
+                       to generate the next link marker for a pagination query
+        :returns links
         """
         links = []
         max_items = min(
@@ -266,7 +277,8 @@ class ViewBuilder(object):
                 last_item_id = last_item["id"]
             links.append({
                 "rel": "next",
-                "href": self._get_next_link(request, last_item_id),
+                "href": self._get_next_link(request, last_item_id,
+                                            collection_name),
             })
         return links
 
