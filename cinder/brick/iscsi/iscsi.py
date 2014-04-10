@@ -276,6 +276,30 @@ class TgtAdm(TargetAdmin):
                       % {'vol_id': vol_id, 'e': e})
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
+        # NOTE(jdg): There's a bug in some versions of tgt that
+        # will sometimes fail silently when using the force flag
+        #    https://bugs.launchpad.net/ubuntu/+source/tgt/+bug/1305343
+        # For now work-around by checking if the target was deleted,
+        # if it wasn't, try again without the force.
+
+        # This will NOT do any good for the case of mutliple sessions
+        # which the force was aded for but it will however address
+        # the cases pointed out in bug:
+        #    https://bugs.launchpad.net/cinder/+bug/1304122
+        if self._get_target(iqn):
+            try:
+                LOG.warning(_('Silent failure of target removal '
+                              'detected, retry....'))
+                self._execute('tgt-admin',
+                              '--delete',
+                              iqn,
+                              run_as_root=True)
+            except putils.ProcessExecutionError as e:
+                LOG.error(_("Failed to remove iscsi target for volume "
+                            "id:%(vol_id)s: %(e)s")
+                          % {'vol_id': vol_id, 'e': e})
+                raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
+
         # NOTE(jdg): This *should* be there still but incase
         # it's not we don't care, so just ignore it if was
         # somehow deleted between entry of this method
