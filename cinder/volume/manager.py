@@ -791,16 +791,22 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.debug("Volume %s: creating export", volume_id)
             model_update = self.driver.create_export(context.elevated(),
                                                      volume)
+        except exception.CinderException:
+            err_msg = (_('Unable to create export for volume %(volume_id)s') %
+                       {'volume_id': volume_id})
+            LOG.exception(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        try:
             if model_update:
                 volume = self.db.volume_update(context,
                                                volume_id,
                                                model_update)
         except exception.CinderException as ex:
-            if model_update:
-                LOG.exception(_("Failed updating model of volume %(volume_id)s"
-                              " with driver provided model %(model)s") %
-                              {'volume_id': volume_id, 'model': model_update})
-                raise exception.ExportFailure(reason=ex)
+            LOG.exception(_("Failed updating model of volume %(volume_id)s"
+                          " with driver provided model %(model)s") %
+                          {'volume_id': volume_id, 'model': model_update})
+            raise exception.ExportFailure(reason=ex)
 
         try:
             conn_info = self.driver.initialize_connection(volume, connector)
