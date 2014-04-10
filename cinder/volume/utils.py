@@ -41,6 +41,7 @@ def null_safe_str(s):
 def _usage_from_volume(context, volume_ref, **kw):
     usage_info = dict(tenant_id=volume_ref['project_id'],
                       user_id=volume_ref['user_id'],
+                      instance_uuid=volume_ref['instance_uuid'],
                       availability_zone=volume_ref['availability_zone'],
                       volume_id=volume_ref['id'],
                       volume_type=volume_ref['volume_type_id'],
