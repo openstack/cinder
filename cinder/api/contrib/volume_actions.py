@@ -264,6 +264,8 @@ class VolumeActionsController(wsgi.Controller):
             msg = "%(err_type)s: %(err_msg)s" % {'err_type': error.exc_type,
                                                  'err_msg': error.value}
             raise webob.exc.HTTPBadRequest(explanation=msg)
+        except Exception as error:
+            raise webob.exc.HTTPBadRequest(explanation=unicode(error))
         return {'os-volume_upload_image': response}
 
     @wsgi.action('os-extend')
