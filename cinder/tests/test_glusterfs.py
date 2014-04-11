@@ -685,28 +685,36 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv.create_cloned_volume(volume, src_vref)
 
-    def test_delete_volume(self):
-        """delete_volume simple test case."""
-        mox = self._mox
-        drv = self._driver
+    @mock.patch('cinder.openstack.common.fileutils.delete_if_exists')
+    def test_delete_volume(self, mock_delete_if_exists):
+        volume = self._simple_volume()
+        volume_filename = 'volume-%s' % self.VOLUME_UUID
+        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume_filename)
+        info_file = volume_path + '.info'
 
-        self.stub_out_not_replaying(drv, '_ensure_share_mounted')
+        with contextlib.nested(
+                mock.patch.object(self._driver, '_ensure_share_mounted'),
+                mock.patch.object(self._driver, '_local_volume_dir'),
+                mock.patch.object(self._driver, 'get_active_image_from_info'),
+                mock.patch.object(self._driver, '_execute'),
+                mock.patch.object(self._driver, '_local_path_volume_info')
+        ) as (mock_ensure_share_mounted, mock_local_volume_dir,
+              mock_active_image_from_info, mock_execute,
+              mock_local_path_volume_info):
+            mock_local_volume_dir.return_value = self.TEST_MNT_POINT
+            mock_active_image_from_info.return_value = volume_filename
+            mock_local_path_volume_info.return_value = info_file
 
-        volume = DumbVolume()
-        volume['name'] = 'volume-123'
-        volume['provider_location'] = self.TEST_EXPORT1
+            self._driver.delete_volume(volume)
 
-        mox.StubOutWithMock(drv, 'local_path')
-        drv.local_path(volume).AndReturn(self.TEST_LOCAL_PATH)
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('rm', '-f', self.TEST_LOCAL_PATH, run_as_root=True)
-
-        mox.ReplayAll()
-
-        drv.delete_volume(volume)
-
-        mox.VerifyAll()
+            mock_ensure_share_mounted.assert_called_once_with(
+                volume['provider_location'])
+            mock_local_volume_dir.assert_called_once_with(volume)
+            mock_active_image_from_info.assert_called_once_with(volume)
+            mock_execute.assert_called_once_with('rm', '-f', volume_path,
+                                                 run_as_root=True)
+            mock_local_path_volume_info.assert_called_once_with(volume)
+            mock_delete_if_exists.assert_called_once_with(info_file)
 
     def test_delete_should_ensure_share_mounted(self):
         """delete_volume should ensure that corresponding share is mounted."""
@@ -746,31 +754,6 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv.delete_volume(volume)
 
         mox.VerifyAll()
-
-    @mock.patch('os.remove')
-    @mock.patch('os.path.exists')
-    def test_delete_volume_with_info_file(self, mock_path_exists, mock_remove):
-        mock_path_exists.return_value = True
-        info_file = self.TEST_LOCAL_PATH + '.info'
-        volume = self._simple_volume()
-
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_ensure_share_mounted'),
-                mock.patch.object(self._driver, 'local_path'),
-                mock.patch.object(self._driver, '_execute')
-        ) as (mock_ensure_share_mounted, mock_local_path, mock_execute):
-            mock_local_path.return_value = self.TEST_LOCAL_PATH
-
-            self._driver.delete_volume(volume)
-
-            mock_ensure_share_mounted.assert_called_once_with(
-                volume['provider_location'])
-            mock_local_path.assert_called_once_with(volume)
-            mock_execute.assert_called_once_with('rm', '-f',
-                                                 self.TEST_LOCAL_PATH,
-                                                 run_as_root=True)
-            mock_path_exists.assert_called_once_with(info_file)
-            mock_remove.assert_called_once_with(info_file)
 
     def test_create_snapshot(self):
         (mox, drv) = self._mox, self._driver
