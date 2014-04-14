@@ -31,6 +31,7 @@
     "volume_extension:volume_admin_actions:reset_status": [["rule:admin_api"]],
     "volume_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],
     "volume_extension:volume_admin_actions:force_delete": [["rule:admin_api"]],
+    "volume_extension:volume_admin_actions:force_detach": [["rule:admin_api"]],
     "volume_extension:snapshot_admin_actions:force_delete": [["rule:admin_api"]],
     "volume_extension:volume_admin_actions:migrate_volume": [["rule:admin_api"]],
     "volume_extension:volume_admin_actions:migrate_volume_completion": [["rule:admin_api"]],
