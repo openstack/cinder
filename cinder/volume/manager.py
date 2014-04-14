@@ -779,7 +779,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         model_update = None
         try:
             LOG.debug(_("Volume %s: creating export"), volume_id)
-            model_update = self.driver.create_export(context, volume)
+            model_update = self.driver.create_export(context.elevated(),
+                                                     volume)
             if model_update:
                 volume = self.db.volume_update(context,
                                                volume_id,
@@ -794,10 +795,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             conn_info = self.driver.initialize_connection(volume, connector)
         except Exception as err:
-            self.driver.remove_export(context, volume)
             err_msg = (_('Unable to fetch connection information from '
                          'backend: %(err)s') % {'err': err})
             LOG.error(err_msg)
+            self.driver.remove_export(context.elevated(), volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         # Add qos_specs to connection info
@@ -865,7 +866,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         try:
             LOG.debug(_("volume %s: removing export"), volume_id)
-            self.driver.remove_export(context, volume_ref)
+            self.driver.remove_export(context.elevated(), volume_ref)
         except Exception as ex:
             LOG.exception(_("Error detaching volume %(volume)s, "
                             "due to remove export failure."),
