@@ -207,7 +207,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         # if vdiskcopy exists in database, start the looping call
         if len(self._vdiskcopyops) >= 1:
-            self._vdiskcopyops_loop = loopingcall.LoopingCall(
+            self._vdiskcopyops_loop = loopingcall.FixedIntervalLoopingCall(
                 self._check_volume_copy_ops)
             self._vdiskcopyops_loop.start(interval=self.VDISKCOPYOPS_INTERVAL)
 
@@ -574,7 +574,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         # We added the first copy operation, so start the looping call
         if len(self._vdiskcopyops) == 1:
-            self._vdiskcopyops_loop = loopingcall.LoopingCall(
+            self._vdiskcopyops_loop = loopingcall.FixedIntervalLoopingCall(
                 self._check_volume_copy_ops)
             self._vdiskcopyops_loop.start(interval=self.VDISKCOPYOPS_INTERVAL)
 
