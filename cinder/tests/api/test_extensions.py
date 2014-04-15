@@ -19,6 +19,7 @@ from lxml import etree
 from oslo.config import cfg
 import webob
 
+from cinder.api import extensions
 from cinder.api.v1 import router
 from cinder.api import xmlutil
 from cinder.openstack.common import jsonutils
@@ -153,3 +154,58 @@ class ExtensionControllerTest(ExtensionTestCase):
             'The Fox In Socks Extension.')
 
         xmlutil.validate_schema(root, 'extension')
+
+
+class StubExtensionManager(object):
+    """Provides access to Tweedle Beetles."""
+
+    name = "Tweedle Beetle Extension"
+    alias = "TWDLBETL"
+
+    def __init__(self, resource_ext=None, action_ext=None, request_ext=None,
+                 controller_ext=None):
+        self.resource_ext = resource_ext
+        self.controller_ext = controller_ext
+        self.extra_resource_ext = None
+
+    def get_resources(self):
+        resource_exts = []
+        if self.resource_ext:
+            resource_exts.append(self.resource_ext)
+        if self.extra_resource_ext:
+            resource_exts.append(self.extra_resource_ext)
+        return resource_exts
+
+    def get_controller_extensions(self):
+        controller_extensions = []
+        if self.controller_ext:
+            controller_extensions.append(self.controller_ext)
+        return controller_extensions
+
+
+class ExtensionControllerIdFormatTest(test.TestCase):
+
+    def _bounce_id(self, test_id):
+
+        class BounceController(object):
+            def show(self, req, id):
+                return id
+        res_ext = extensions.ResourceExtension('bounce',
+                                               BounceController())
+        manager = StubExtensionManager(res_ext)
+        app = router.APIRouter(manager)
+        request = webob.Request.blank("/fake/bounce/%s" % test_id)
+        response = request.get_response(app)
+        return response.body
+
+    def test_id_with_xml_format(self):
+        result = self._bounce_id('foo.xml')
+        self.assertEqual(result, 'foo')
+
+    def test_id_with_json_format(self):
+        result = self._bounce_id('foo.json')
+        self.assertEqual(result, 'foo')
+
+    def test_id_with_bad_format(self):
+        result = self._bounce_id('foo.bad')
+        self.assertEqual(result, 'foo.bad')
