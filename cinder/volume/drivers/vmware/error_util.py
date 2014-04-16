@@ -39,11 +39,16 @@ class VimAttributeException(VimException):
     pass
 
 
-class VimFaultException(exception.VolumeBackendAPIException):
-    """The VIM Fault exception class."""
+class VimConnectionException(VimException):
+    """Thrown when there is a connection problem."""
+    pass
+
+
+class VimFaultException(VimException):
+    """Exception thrown when there are faults during VIM API calls."""
 
     def __init__(self, fault_list, msg):
-        exception.VolumeBackendAPIException.__init__(self, msg)
+        super(VimFaultException, self).__init__(msg)
         self.fault_list = fault_list
 
 
