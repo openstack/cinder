@@ -257,6 +257,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'volume_id': volume_id,
             'volume_type': None,
             'snapshot_id': None,
+            'instance_uuid': None,
             'user_id': 'fake',
             'launched_at': 'DONTCARE',
             'size': 1,
