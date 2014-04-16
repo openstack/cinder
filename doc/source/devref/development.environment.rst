@@ -142,11 +142,8 @@ basis by running::
 Contributing Your Work
 ----------------------
 
-Once your work is complete you may wish to contribute it to the project.  Add
-your name and email address to the ``Authors`` file, and also to the ``.mailmap``
-file if you use multiple email addresses. Your contributions can not be merged
-into trunk unless you are listed in the Authors file. Cinder uses the Gerrit
-code review system. For information on how to submit your branch to Gerrit,
-see GerritWorkflow_.
+Once your work is complete you may wish to contribute it to the project.
+Cinder uses the Gerrit code review system. For information on how to submit
+your branch to Gerrit, see GerritWorkflow_.
 
 .. _GerritWorkflow: http://wiki.openstack.org/GerritWorkflow
