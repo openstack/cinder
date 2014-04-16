@@ -28,23 +28,19 @@ class VolumeMigStatusAttributeController(wsgi.Controller):
                                                                  **kwargs)
         self.volume_api = volume.API()
 
-    def _add_volume_mig_status_attribute(self, context, resp_volume):
-        try:
-            db_volume = self.volume_api.get(context, resp_volume['id'])
-        except Exception:
-            return
-        else:
-            key = "%s:migstat" % Volume_mig_status_attribute.alias
-            resp_volume[key] = db_volume['migration_status']
-            key = "%s:name_id" % Volume_mig_status_attribute.alias
-            resp_volume[key] = db_volume['_name_id']
+    def _add_volume_mig_status_attribute(self, req, context, resp_volume):
+        db_volume = req.cached_resource_by_id(resp_volume['id'])
+        key = "%s:migstat" % Volume_mig_status_attribute.alias
+        resp_volume[key] = db_volume['migration_status']
+        key = "%s:name_id" % Volume_mig_status_attribute.alias
+        resp_volume[key] = db_volume['_name_id']
 
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeMigStatusAttributeTemplate())
-            self._add_volume_mig_status_attribute(context,
+            self._add_volume_mig_status_attribute(req, context,
                                                   resp_obj.obj['volume'])
 
     @wsgi.extends
@@ -53,7 +49,7 @@ class VolumeMigStatusAttributeController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeListMigStatusAttributeTemplate())
             for volume in list(resp_obj.obj['volumes']):
-                self._add_volume_mig_status_attribute(context, volume)
+                self._add_volume_mig_status_attribute(req, context, volume)
 
 
 class Volume_mig_status_attribute(extensions.ExtensionDescriptor):
