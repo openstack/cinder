@@ -892,6 +892,33 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
             assert_called_once_with(context, volume, image_service, image_id)
         drv._update_stale_vols.assert_called_once_with('vol')
 
+    def test_copy_img_to_vol_copyoffload_nonexistent_binary_path(self):
+        drv = self._driver
+        context = object()
+        volume = {'id': 'vol_id', 'name': 'name'}
+        image_service = mock.Mock()
+        image_service.get_location.return_value = (mock.Mock(), mock.Mock())
+        image_service.show.return_value = {'size': 0}
+        image_id = 'image_id'
+        drv._client = mock.Mock()
+        drv._client.get_api_version = mock.Mock(return_value=(1, 20))
+        drv._find_image_in_cache = mock.Mock(return_value=[])
+        drv._construct_image_nfs_url = mock.Mock(return_value="")
+        drv._check_get_nfs_path_segs = mock.Mock(return_value=("test:test",
+                                                               "dr"))
+        drv._get_ip_verify_on_cluster = mock.Mock(return_value="192.1268.1.1")
+        drv._get_mount_point_for_share = mock.Mock(return_value='mnt_point')
+        drv._get_host_ip = mock.Mock()
+        drv._get_provider_location = mock.Mock()
+        drv._get_export_path = mock.Mock(return_value="dr")
+        drv._check_share_can_hold_size = mock.Mock()
+        # Raise error as if the copyoffload file can not be found
+        drv._clone_file_dst_exists = mock.Mock(side_effect=OSError())
+
+        # Verify the orignal error is propagated
+        self.assertRaises(OSError, drv._try_copyoffload,
+                          context, volume, image_service, image_id)
+
     def test_copyoffload_frm_cache_success(self):
         drv = self._driver
         context = object()
