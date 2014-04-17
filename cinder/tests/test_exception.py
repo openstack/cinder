@@ -89,3 +89,15 @@ class CinderExceptionTestCase(test.TestCase):
 
         exc = FakeCinderException(code=404)
         self.assertEqual(exc.kwargs['code'], 404)
+
+    def test_error_msg_is_exception_to_string(self):
+        msg = 'test message'
+        exc1 = Exception(msg)
+        exc2 = exception.CinderException(exc1)
+        self.assertEqual(msg, exc2.msg)
+
+    def test_exception_kwargs_to_string(self):
+        msg = 'test message'
+        exc1 = Exception(msg)
+        exc2 = exception.CinderException(kwarg1=exc1)
+        self.assertEqual(msg, exc2.kwargs['kwarg1'])
