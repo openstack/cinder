@@ -332,7 +332,7 @@ class VolumeController(wsgi.Controller):
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_href = volume.get('imageRef')
-            if image_href:
+            if image_href is not None:
                 image_uuid = self._image_uuid_from_href(image_href)
                 kwargs['image_id'] = image_uuid
 

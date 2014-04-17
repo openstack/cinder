@@ -172,7 +172,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         """Checks image existence and validates that the image metadata."""
 
         # Check image existence
-        if not image_id:
+        if image_id is None:
             return
 
         # NOTE(harlowja): this should raise an error if the image does not
