@@ -1,4 +1,3 @@
-
 # Copyright (c) 2012 NetApp, Inc.
 # All Rights Reserved.
 #
@@ -22,10 +21,11 @@ import mock
 import mox
 from mox import IgnoreArg
 from mox import IsA
+import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import test
@@ -243,20 +243,19 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         volume = FakeVolume()
         setattr(volume, 'provider_location', '127.0.0.1:/nfs')
 
+        drv.zapi_client = mox.CreateMockAnything()
         mox.StubOutWithMock(drv, '_get_host_ip')
         mox.StubOutWithMock(drv, '_get_export_path')
-        mox.StubOutWithMock(drv, '_get_if_info_by_ip')
-        mox.StubOutWithMock(drv, '_get_vol_by_junc_vserver')
-        mox.StubOutWithMock(drv, '_clone_file')
         mox.StubOutWithMock(drv, '_post_prov_deprov_in_ssc')
 
+        drv.zapi_client.get_if_info_by_ip('127.0.0.1').AndReturn(
+            self._prepare_info_by_ip_response())
+        drv.zapi_client.get_vol_by_junc_vserver('openstack', '/nfs').AndReturn(
+            'nfsvol')
+        drv.zapi_client.clone_file('nfsvol', 'volume_name', 'clone_name',
+                                   'openstack')
         drv._get_host_ip(IgnoreArg()).AndReturn('127.0.0.1')
         drv._get_export_path(IgnoreArg()).AndReturn('/nfs')
-        drv._get_if_info_by_ip('127.0.0.1').AndReturn(
-            self._prepare_info_by_ip_response())
-        drv._get_vol_by_junc_vserver('openstack', '/nfs').AndReturn('nfsvol')
-        drv._clone_file('nfsvol', 'volume_name', 'clone_name',
-                        'openstack')
         drv._post_prov_deprov_in_ssc(IgnoreArg())
         return mox
 
@@ -298,7 +297,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
 
         volume_name = 'volume_name'
         clone_name = 'clone_name'
-        volume_id = volume_name + str(hash(volume_name))
+        volume_id = volume_name + six.text_type(hash(volume_name))
         share = 'ip:/share'
 
         drv._clone_volume(volume_name, clone_name, volume_id, share)
@@ -362,8 +361,8 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         if (share == 'testshare' and file_name == 'img-cache-id'):
             pass
         else:
-            LOG.warn(_("Share %(share)s and file name %(file_name)s")
-                     % {'share': share, 'file_name': file_name})
+            LOG.warning(_LW("Share %(share)s and file name %(file_name)s")
+                        % {'share': share, 'file_name': file_name})
             self.fail('Return result is unexpected')
 
     def test_find_old_cache_files_notexists(self):
@@ -897,7 +896,7 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
                 volume_info = self._driver.create_volume(FakeVolume(host, 1))
                 self.assertEqual(volume_info.get('provider_location'),
                                  fake_share)
-                self.assertEqual(0, utils.LOG.warn.call_count)
+                self.assertEqual(0, utils.LOG.warning.call_count)
 
     @mock.patch.object(utils, 'LOG', mock.Mock())
     @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
@@ -913,7 +912,7 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
                 self._driver.create_volume(FakeVolume(host, 1))
                 warn_msg = 'Extra spec netapp:raid_type is obsolete.  ' \
                            'Use netapp_raid_type instead.'
-                utils.LOG.warn.assert_called_once_with(warn_msg)
+                utils.LOG.warning.assert_called_once_with(warn_msg)
 
     @mock.patch.object(utils, 'LOG', mock.Mock())
     @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
@@ -930,7 +929,7 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
                 self._driver.create_volume(FakeVolume(host, 1))
                 warn_msg = 'Extra spec netapp_thick_provisioned is ' \
                            'deprecated.  Use netapp_thin_provisioned instead.'
-                utils.LOG.warn.assert_called_once_with(warn_msg)
+                utils.LOG.warning.assert_called_once_with(warn_msg)
 
     def test_create_volume_no_pool_specified(self):
         drv = self._driver
@@ -1279,33 +1278,24 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
         setattr(volume, 'provider_location', '127.0.0.1:/nfs')
 
         mox.StubOutWithMock(drv, '_get_export_ip_path')
-        mox.StubOutWithMock(drv, '_get_actual_path_for_export')
-        mox.StubOutWithMock(drv, '_start_clone')
-        mox.StubOutWithMock(drv, '_wait_for_clone_finish')
-        if status == 'fail':
-            mox.StubOutWithMock(drv, '_clear_clone')
 
         drv._get_export_ip_path(
             IgnoreArg(), IgnoreArg()).AndReturn(('127.0.0.1', '/nfs'))
-        drv._get_actual_path_for_export(IgnoreArg()).AndReturn('/vol/vol1/nfs')
-        drv._start_clone(IgnoreArg(), IgnoreArg()).AndReturn(('1', '2'))
-        if status == 'fail':
-            drv._wait_for_clone_finish('1', '2').AndRaise(
-                api.NaApiError('error', 'error'))
-            drv._clear_clone('1')
-        else:
-            drv._wait_for_clone_finish('1', '2')
         return mox
 
     def test_clone_volume_clear(self):
         drv = self._driver
         mox = self._prepare_clone_mock('fail')
+        drv.zapi_client = mox.CreateMockAnything()
+        drv.zapi_client.get_actual_path_for_export('/nfs').AndReturn(
+            '/vol/vol1/nfs')
+        drv.zapi_client.clone_file(IgnoreArg(), IgnoreArg())
 
         mox.ReplayAll()
 
         volume_name = 'volume_name'
         clone_name = 'clone_name'
-        volume_id = volume_name + str(hash(volume_name))
+        volume_id = volume_name + six.text_type(hash(volume_name))
         try:
             drv._clone_volume(volume_name, clone_name, volume_id)
         except Exception as e:
@@ -1325,3 +1315,22 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
             configuration)
         configuration.netapp_storage_family = 'ontap_7mode'
         return configuration
+
+    def test_clone_volume(self):
+        drv = self._driver
+        mox = self._prepare_clone_mock('pass')
+        drv.zapi_client = mox.CreateMockAnything()
+        drv.zapi_client.get_actual_path_for_export('/nfs').AndReturn(
+            '/vol/vol1/nfs')
+        drv.zapi_client.clone_file(IgnoreArg(), IgnoreArg())
+
+        mox.ReplayAll()
+
+        volume_name = 'volume_name'
+        clone_name = 'clone_name'
+        volume_id = volume_name + six.text_type(hash(volume_name))
+        share = 'ip:/share'
+
+        drv._clone_volume(volume_name, clone_name, volume_id, share)
+
+        mox.VerifyAll()

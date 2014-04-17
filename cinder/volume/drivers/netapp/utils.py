@@ -34,7 +34,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import version
@@ -140,7 +140,7 @@ def provide_ems(requester, server, netapp_backend, app_version,
             na_server.invoke_successfully(ems, True)
             LOG.debug("ems executed successfully.")
         except NaApiError as e:
-            LOG.warn(_("Failed to invoke ems. Message : %s") % e)
+            LOG.warning(_LW("Failed to invoke ems. Message : %s") % e)
         finally:
             requester.last_ems = timeutils.utcnow()
 
@@ -153,8 +153,8 @@ def validate_instantiation(**kwargs):
     """
     if kwargs and kwargs.get('netapp_mode') == 'proxy':
         return
-    LOG.warn(_("It is not the recommended way to use drivers by NetApp. "
-               "Please use NetAppDriver to achieve the functionality."))
+    LOG.warning(_LW("It is not the recommended way to use drivers by NetApp. "
+                    "Please use NetAppDriver to achieve the functionality."))
 
 
 def invoke_api(na_server, api_name, api_family='cm', query=None,
@@ -231,7 +231,7 @@ def create_api_request(api_name, query=None, des_result=None,
     if additional_elems:
         api_el.translate_struct(additional_elems)
     if is_iter:
-        api_el.add_new_child('max-records', str(record_step))
+        api_el.add_new_child('max-records', six.text_type(record_step))
     if tag:
         api_el.add_new_child('tag', tag, True)
     return api_el
@@ -240,7 +240,7 @@ def create_api_request(api_name, query=None, des_result=None,
 def to_bool(val):
     """Converts true, yes, y, 1 to True, False otherwise."""
     if val:
-        strg = str(val).lower()
+        strg = six.text_type(val).lower()
         if (strg == 'true' or strg == 'y'
             or strg == 'yes' or strg == 'enabled'
                 or strg == '1'):
@@ -363,7 +363,7 @@ def decode_base32_to_hex(base32_string):
 
 def convert_uuid_to_es_fmt(uuid_str):
     """Converts uuid to e-series compatible name format."""
-    uuid_base32 = encode_hex_to_base32(uuid.UUID(str(uuid_str)).hex)
+    uuid_base32 = encode_hex_to_base32(uuid.UUID(six.text_type(uuid_str)).hex)
     return uuid_base32.strip('=')
 
 
@@ -381,14 +381,15 @@ def round_down(value, precision):
 def log_extra_spec_warnings(extra_specs):
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(OBSOLETE_SSC_SPECS.keys())):
-            msg = _('Extra spec %(old)s is obsolete.  Use %(new)s instead.')
+            msg = _LW('Extra spec %(old)s is obsolete.  Use %(new)s instead.')
             args = {'old': spec, 'new': OBSOLETE_SSC_SPECS[spec]}
-            LOG.warn(msg % args)
+            LOG.warning(msg % args)
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(DEPRECATED_SSC_SPECS.keys())):
-            msg = _('Extra spec %(old)s is deprecated.  Use %(new)s instead.')
+            msg = _LW('Extra spec %(old)s is deprecated.  Use %(new)s '
+                      'instead.')
             args = {'old': spec, 'new': DEPRECATED_SSC_SPECS[spec]}
-            LOG.warn(msg % args)
+            LOG.warning(msg % args)
 
 
 class OpenStackInfo(object):

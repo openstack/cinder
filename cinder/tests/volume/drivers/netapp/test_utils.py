@@ -16,6 +16,8 @@
 Mock unit tests for the NetApp driver utility module
 """
 
+import six
+
 from cinder import test
 import cinder.volume.drivers.netapp.utils as na_utils
 
@@ -46,7 +48,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
     def test_convert_es_fmt_to_uuid(self):
         value = '4Z7JGGVS5VEJBE4LHLGGUUL7VQ'
-        result = str(na_utils.convert_es_fmt_to_uuid(value))
+        result = six.text_type(na_utils.convert_es_fmt_to_uuid(value))
         self.assertEqual(result, 'e67e931a-b2ed-4890-938b-3acc6a517fac')
 
     def test_round_down(self):

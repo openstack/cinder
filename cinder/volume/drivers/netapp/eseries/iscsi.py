@@ -429,7 +429,7 @@ class Driver(driver.ISCSIDriver):
                 except exception.NetAppDriverException as e:
                     LOG.error(_LE("Failure deleting snap vol. Error: %s."), e)
             else:
-                LOG.warn(_LW("Snapshot volume not found."))
+                LOG.warning(_LW("Snapshot volume not found."))
 
     def _create_snapshot_volume(self, snapshot_id):
         """Creates snapshot volume for given group with snapshot_id."""
@@ -470,11 +470,11 @@ class Driver(driver.ISCSIDriver):
                 try:
                     self._client.delete_vol_copy_job(job['volcopyRef'])
                 except exception.NetAppDriverException:
-                    LOG.warn(_LW("Failure deleting "
-                                 "job %s."), job['volcopyRef'])
+                    LOG.warning(_LW("Failure deleting "
+                                    "job %s."), job['volcopyRef'])
             else:
-                LOG.warn(_LW('Volume copy job for src vol %s not found.'),
-                         src_vol['id'])
+                LOG.warning(_LW('Volume copy job for src vol %s not found.'),
+                            src_vol['id'])
         LOG.info(_LI('Copy job to dest vol %s completed.'), dst_vol['label'])
 
     def create_cloned_volume(self, volume, src_vref):
@@ -487,8 +487,8 @@ class Driver(driver.ISCSIDriver):
             try:
                 self.delete_snapshot(snapshot)
             except exception.NetAppDriverException:
-                LOG.warn(_LW("Failure deleting temp snapshot %s."),
-                         snapshot['id'])
+                LOG.warning(_LW("Failure deleting temp snapshot %s."),
+                            snapshot['id'])
 
     def delete_volume(self, volume):
         """Deletes a volume."""
@@ -531,7 +531,7 @@ class Driver(driver.ISCSIDriver):
         try:
             snap_grp = self._get_cached_snapshot_grp(snapshot['id'])
         except KeyError:
-            LOG.warn(_LW("Snapshot %s already deleted.") % snapshot['id'])
+            LOG.warning(_LW("Snapshot %s already deleted.") % snapshot['id'])
             return
         self._client.delete_snapshot_group(snap_grp['pitGroupRef'])
         snapshot_name = snap_grp['label']
@@ -648,12 +648,12 @@ class Driver(driver.ISCSIDriver):
                     return self._client.update_host_type(
                         host['hostRef'], ht_def)
                 except exception.NetAppDriverException as e:
-                    msg = _("Unable to update host type for host with"
-                            " label %(l)s. %(e)s")
-                    LOG.warn(msg % {'l': host['label'], 'e': e.msg})
+                    msg = _LW("Unable to update host type for host with "
+                              "label %(l)s. %(e)s")
+                    LOG.warning(msg % {'l': host['label'], 'e': e.msg})
                     return host
         except exception.NotFound as e:
-            LOG.warn(_LW("Message - %s."), e.msg)
+            LOG.warning(_LW("Message - %s."), e.msg)
             return self._create_host(port_id, host_type)
 
     def _get_host_with_port(self, port_id):
@@ -774,8 +774,8 @@ class Driver(driver.ISCSIDriver):
                      (int(x.get('totalRaidedSpace', 0)) -
                       int(x.get('usedSpace', 0) >= size))]
         if not avl_pools:
-            msg = _("No storage pool found with available capacity %s.")
-            LOG.warn(msg % size_gb)
+            msg = _LW("No storage pool found with available capacity %s.")
+            LOG.warning(msg % size_gb)
         return avl_pools
 
     def extend_volume(self, volume, new_size):
@@ -807,8 +807,8 @@ class Driver(driver.ISCSIDriver):
         """Removes tmp vols with no snapshots."""
         try:
             if not utils.set_safe_attr(self, 'clean_job_running', True):
-                LOG.warn(_LW('Returning as clean tmp '
-                             'vol job already running.'))
+                LOG.warning(_LW('Returning as clean tmp '
+                                'vol job already running.'))
                 return
             for label in self._objects['volumes']['label_ref'].keys():
                 if (label.startswith('tmp-') and

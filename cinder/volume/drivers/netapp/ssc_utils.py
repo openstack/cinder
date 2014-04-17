@@ -24,7 +24,7 @@ from oslo.utils import timeutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
@@ -410,7 +410,7 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
     backend = args[0]
     na_server = args[1]
     vserver = args[2]
-    identity = str(id(backend))
+    identity = six.text_type(id(backend))
     lock_pr = '%s_%s' % ('refresh_ssc', identity)
     try:
         job_set = na_utils.set_safe_attr(
@@ -469,7 +469,7 @@ def get_cluster_latest_ssc(*args, **kwargs):
     backend = args[0]
     na_server = args[1]
     vserver = args[2]
-    identity = str(id(backend))
+    identity = six.text_type(id(backend))
     lock_pr = '%s_%s' % ('refresh_ssc', identity)
 
     # As this depends on stale job running state
@@ -505,7 +505,7 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
         raise exception.InvalidInput(reason=_("Backend server not NaServer."))
     delta_secs = getattr(backend, 'ssc_run_delta_secs', 1800)
     if getattr(backend, 'ssc_job_running', None):
-        LOG.warn(_('ssc job in progress. Returning... '))
+        LOG.warning(_LW('ssc job in progress. Returning... '))
         return
     elif (getattr(backend, 'ssc_run_time', None) is None or
           (backend.ssc_run_time and
@@ -517,7 +517,7 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
                       args=[backend, na_server, vserver])
             t.start()
     elif getattr(backend, 'refresh_stale_running', None):
-        LOG.warn(_('refresh stale ssc job in progress. Returning... '))
+        LOG.warning(_LW('refresh stale ssc job in progress. Returning... '))
         return
     else:
         if backend.stale_vols:
@@ -620,7 +620,7 @@ def check_ssc_api_permissions(na_server):
             unsupp_ssc_features = []
             for fail in failed_apis:
                 unsupp_ssc_features.extend(api_map[fail])
-            LOG.warn(_("The user does not have access or sufficient"
-                       " privileges to use all netapp apis. The following"
-                       " extra_specs will fail or be ignored: %s"),
-                     unsupp_ssc_features)
+            LOG.warning(_LW("The user does not have access or sufficient "
+                            "privileges to use all netapp apis. The "
+                            "following extra_specs will fail or be ignored: "
+                            "%s"), unsupp_ssc_features)
