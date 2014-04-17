@@ -94,30 +94,10 @@ CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 
 MAPPING = {
-    'cinder.volume.drivers.nexenta.volume.NexentaDriver':
-    'cinder.volume.drivers.nexenta.iscsi.NexentaISCSIDriver',
-    'cinder.volume.drivers.solidfire.SolidFire':
-    'cinder.volume.drivers.solidfire.SolidFireDriver',
     'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver':
     'cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver',
-    'cinder.volume.drivers.windows.WindowsDriver':
-    'cinder.volume.drivers.windows.windows.WindowsDriver',
-    'cinder.volume.drivers.xiv.XIVDriver':
-    'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
     'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver':
     'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
-    'cinder.volume.driver.ISCSIDriver':
-    'cinder.volume.drivers.lvm.LVMISCSIDriver',
-    'cinder.volume.drivers.netapp.iscsi.NetAppISCSIDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
-    'cinder.volume.drivers.netapp.iscsi.NetAppCmodeISCSIDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
-    'cinder.volume.drivers.netapp.nfs.NetAppNFSDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
-    'cinder.volume.drivers.netapp.nfs.NetAppCmodeNfsDriver':
-    'cinder.volume.drivers.netapp.common.Deprecated',
-    'cinder.volume.drivers.huawei.HuaweiISCSIDriver':
-    'cinder.volume.drivers.huawei.HuaweiVolumeDriver',
     'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver':
     'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver',
     'cinder.volume.drivers.gpfs.GPFSDriver':
@@ -193,14 +173,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.warn(_("Driver path %s is deprecated, update your "
                        "configuration to the new path."), volume_driver)
             volume_driver = MAPPING[volume_driver]
-        if volume_driver == 'cinder.volume.drivers.lvm.ThinLVMVolumeDriver':
-            # Deprecated in Havana
-            # Not handled in MAPPING because it requires setting a conf option
-            LOG.warn(_("ThinLVMVolumeDriver is deprecated, please configure "
-                       "LVMISCSIDriver and lvm_type=thin.  Continuing with "
-                       "those settings."))
-            volume_driver = 'cinder.volume.drivers.lvm.LVMISCSIDriver'
-            self.configuration.lvm_type = 'thin'
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
