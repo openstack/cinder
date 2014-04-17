@@ -1996,23 +1996,29 @@
 # Options defined in keystoneclient.middleware.auth_token
 #
 
-# Prefix to prepend at the beginning of the path (string
-# value)
+# Prefix to prepend at the beginning of the path. Deprecated,
+# use identity_uri. (string value)
 #auth_admin_prefix=
 
-# Host providing the admin Identity API endpoint (string
-# value)
+# Host providing the admin Identity API endpoint. Deprecated,
+# use identity_uri. (string value)
 #auth_host=127.0.0.1
 
-# Port of the admin Identity API endpoint (integer value)
+# Port of the admin Identity API endpoint. Deprecated, use
+# identity_uri. (integer value)
 #auth_port=35357
 
-# Protocol of the admin Identity API endpoint(http or https)
-# (string value)
+# Protocol of the admin Identity API endpoint (http or https).
+# Deprecated, use identity_uri. (string value)
 #auth_protocol=https
 
 # Complete public Identity API endpoint (string value)
 #auth_uri=<None>
+
+# Complete admin Identity API endpoint. This should specify
+# the unversioned root endpoint eg. https://localhost:35357/
+# (string value)
+#identity_uri=<None>
 
 # API version of the admin Identity API endpoint (string
 # value)
