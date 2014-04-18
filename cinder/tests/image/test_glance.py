@@ -17,8 +17,7 @@
 import datetime
 
 import glanceclient.exc
-import glanceclient.v2.client
-from glanceclient.v2.client import Client as glanceclient_v2
+from glanceclient.v2 import client as glance_client_v2
 from oslo.config import cfg
 
 from cinder import context
@@ -542,6 +541,50 @@ class TestGlanceImageService(test.TestCase):
             self.assertEqual(same_id, image_id)
             self.assertEqual(service._client.netloc, ipv6_url)
 
+    def test_extracting_missing_attributes(self):
+        """Verify behavior from glance objects that are missing attributes
+
+        This fakes the image class and is missing the checksum and name
+        attribute as the client would return if they're not set in the
+        database. Regression test for bug #1308058.
+        """
+        class MyFakeGlanceImage(glance_stubs.FakeImage):
+            def __init__(self, metadata):
+                IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
+                                    'container_format', 'id', 'created_at',
+                                    'updated_at', 'deleted', 'status',
+                                    'min_disk', 'min_ram', 'is_public']
+                raw = dict.fromkeys(IMAGE_ATTRIBUTES)
+                raw.update(metadata)
+                self.__dict__['raw'] = raw
+
+        metadata = {
+            'id': 1,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+        }
+        image = MyFakeGlanceImage(metadata)
+        actual = glance._extract_attributes(image)
+        expected = {
+            'id': 1,
+            'name': None,
+            'is_public': None,
+            'size': None,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+            'deleted_at': None,
+            'deleted': None,
+            'status': None,
+            'properties': {},
+            'owner': None,
+        }
+        self.assertEqual(actual, expected)
+
 
 class TestGlanceClientVersion(test.TestCase):
     """Tests the version of the glance client generated."""
@@ -551,11 +594,11 @@ class TestGlanceClientVersion(test.TestCase):
         def fake_get_model(self):
             return
 
-        self.stubs.Set(glanceclient_v2, '_get_image_model',
+        self.stubs.Set(glance_client_v2.Client, '_get_image_model',
                        fake_get_model)
 
         try:
-            self.stubs.Set(glanceclient_v2, '_get_member_model',
+            self.stubs.Set(glance_client_v2.Client, '_get_member_model',
                            fake_get_model)
         except AttributeError:
             # method requires stubbing only with newer glanceclients.
