@@ -681,12 +681,13 @@ class StorwizeHelpers(object):
 
     def add_vdisk_copy(self, vdisk, dest_pool, volume_type, state, config):
         """Add a vdisk copy in the given pool."""
-        this_pool = config.storwize_svc_volpool_name
         resp = self.ssh.lsvdiskcopy(vdisk)
-        orig_copy_id = None
-        for copy_id, mdisk_grp in resp.select('copy_id', 'mdisk_grp_name'):
-            if mdisk_grp == this_pool:
-                orig_copy_id = copy_id
+        if len(resp) > 1:
+            msg = (_('add_vdisk_copy failed: A copy of volume %s exists. '
+                     'Adding another copy would exceed the limit of '
+                     '2 copies.') % vdisk)
+            raise exception.VolumeDriverException(message=msg)
+        orig_copy_id = resp[0].get("copy_id", None)
 
         if orig_copy_id is None:
             msg = (_('add_vdisk_copy started without a vdisk copy in the '
