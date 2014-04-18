@@ -431,7 +431,7 @@ def _extract_attributes(image):
         elif attr == 'checksum' and output['status'] != 'active':
             output[attr] = None
         else:
-            output[attr] = getattr(image, attr)
+            output[attr] = getattr(image, attr, None)
 
     output['properties'] = getattr(image, 'properties', {})
 
