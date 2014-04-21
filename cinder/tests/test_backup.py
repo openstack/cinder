@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 class FakeBackupException(Exception):
-        pass
+    pass
 
 
 class BackupTestCase(test.TestCase):

@@ -357,7 +357,7 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         drv._mounted_shares.remove('testshare')
 
         if (share == 'testshare' and file_name == 'img-cache-id'):
-                pass
+            pass
         else:
             LOG.warn(_("Share %(share)s and file name %(file_name)s")
                      % {'share': share, 'file_name': file_name})

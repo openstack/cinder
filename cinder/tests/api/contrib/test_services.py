@@ -64,37 +64,37 @@ fake_services_list = [{'binary': 'cinder-scheduler',
 
 
 class FakeRequest(object):
-        environ = {"cinder.context": context.get_admin_context()}
-        GET = {}
+    environ = {"cinder.context": context.get_admin_context()}
+    GET = {}
 
 
 # NOTE(uni): deprecating service request key, binary takes precedence
 # Still keeping service key here for API compatibility sake.
 class FakeRequestWithService(object):
-        environ = {"cinder.context": context.get_admin_context()}
-        GET = {"service": "cinder-volume"}
+    environ = {"cinder.context": context.get_admin_context()}
+    GET = {"service": "cinder-volume"}
 
 
 class FakeRequestWithBinary(object):
-        environ = {"cinder.context": context.get_admin_context()}
-        GET = {"binary": "cinder-volume"}
+    environ = {"cinder.context": context.get_admin_context()}
+    GET = {"binary": "cinder-volume"}
 
 
 class FakeRequestWithHost(object):
-        environ = {"cinder.context": context.get_admin_context()}
-        GET = {"host": "host1"}
+    environ = {"cinder.context": context.get_admin_context()}
+    GET = {"host": "host1"}
 
 
 # NOTE(uni): deprecating service request key, binary takes precedence
 # Still keeping service key here for API compatibility sake.
 class FakeRequestWithHostService(object):
-        environ = {"cinder.context": context.get_admin_context()}
-        GET = {"host": "host1", "service": "cinder-volume"}
+    environ = {"cinder.context": context.get_admin_context()}
+    GET = {"host": "host1", "service": "cinder-volume"}
 
 
 class FakeRequestWithHostBinary(object):
-        environ = {"cinder.context": context.get_admin_context()}
-        GET = {"host": "host1", "binary": "cinder-volume"}
+    environ = {"cinder.context": context.get_admin_context()}
+    GET = {"host": "host1", "binary": "cinder-volume"}
 
 
 def fake_service_get_all(context):
