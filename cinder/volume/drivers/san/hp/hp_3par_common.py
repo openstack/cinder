@@ -121,11 +121,12 @@ class HP3PARCommon(object):
         2.0.5 - Fix extend volume units bug #1284368
         2.0.6 - use loopingcall.wait instead of time.sleep
         2.0.7 - Allow extend volume based on snapshot bug #1285906
-        2.0.8 - Fix detach issue for multiple hosts Bug #1288927
+        2.0.8 - Fix detach issue for multiple hosts bug #1288927
+        2.0.9 - Remove unused 3PAR driver method bug #1310807
 
     """
 
-    VERSION = "2.0.8"
+    VERSION = "2.0.9"
 
     stats = {}
 
@@ -1268,14 +1269,6 @@ class HP3PARCommon(object):
 
         # try again with name retrieved from 3par
         self.delete_vlun(volume, hostname)
-
-    def parse_create_host_error(self, hostname, out):
-        search_str = "already used by host "
-        if search_str in out[1]:
-            # host exists, return name used by 3par
-            hostname_3par = self.get_next_word(out[1], search_str)
-            self.hosts_naming_dict[hostname] = hostname_3par
-            return hostname_3par
 
     def build_nsp(self, portPos):
         return '%s:%s:%s' % (portPos['node'],
