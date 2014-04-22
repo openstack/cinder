@@ -2306,6 +2306,28 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['host'], 'newhost')
         self.assertIsNone(volume['migration_status'])
 
+    def test_retype_setup_fail_volume_is_available(self):
+        """Verify volume is still available if retype prepare failed."""
+        elevated = context.get_admin_context()
+        project_id = self.context.project_id
+
+        db.volume_type_create(elevated, {'name': 'old', 'extra_specs': {}})
+        old_vol_type = db.volume_type_get_by_name(elevated, 'old')
+        db.volume_type_create(elevated, {'name': 'new', 'extra_specs': {}})
+        new_vol_type = db.volume_type_get_by_name(elevated, 'new')
+        db.quota_create(elevated, project_id, 'volumes_new', 0)
+
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           host=CONF.host, status='available',
+                                           volume_type_id=old_vol_type['id'])
+
+        api = cinder.volume.api.API()
+        self.assertRaises(exception.VolumeLimitExceeded, api.retype,
+                          self.context, volume, new_vol_type['id'])
+
+        volume = db.volume_get(elevated, volume.id)
+        self.assertEqual(volume['status'], 'available')
+
     def _retype_volume_exec(self, driver, snap=False, policy='on-demand',
                             migrate_exc=False, exc=None, diff_equal=False):
         elevated = context.get_admin_context()
