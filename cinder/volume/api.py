@@ -933,13 +933,14 @@ class API(base.Base):
                                 'in-use volumes')
                         raise exception.InvalidInput(reason=msg)
 
-        self.update(context, volume, {'status': 'retyping'})
-
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
         # pass the reservations onward in case we need to roll back.
         reservations = quota_utils.get_volume_type_reservation(context, volume,
                                                                vol_type_id)
+
+        self.update(context, volume, {'status': 'retyping'})
+
         request_spec = {'volume_properties': volume,
                         'volume_id': volume['id'],
                         'volume_type': vol_type,
