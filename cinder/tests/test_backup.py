@@ -416,14 +416,11 @@ class BackupTestCase(test.TestCase):
 
     def test_backup_manager_driver_name(self):
         """"Test mapping between backup services and backup drivers."""
-
-        old_setting = CONF.backup_driver
-        setattr(cfg.CONF, 'backup_driver', "cinder.backup.services.swift")
+        cfg.CONF.set_override('backup_driver', "cinder.backup.services.swift")
         backup_mgr = \
             importutils.import_object(CONF.backup_manager)
         self.assertEqual('cinder.backup.drivers.swift',
                          backup_mgr.driver_name)
-        setattr(cfg.CONF, 'backup_driver', old_setting)
 
     def test_export_record_with_bad_service(self):
         """Test error handling when attempting an export of a backup

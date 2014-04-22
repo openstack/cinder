@@ -465,7 +465,7 @@ class NfsDriverTestCase(test.TestCase):
         drv = self._driver
         volume = self._simple_volume()
 
-        setattr(cfg.CONF, 'nfs_sparsed_volumes', True)
+        cfg.CONF.set_override('nfs_sparsed_volumes', True)
 
         mox.StubOutWithMock(drv, '_create_sparsed_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
@@ -479,15 +479,13 @@ class NfsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-        delattr(cfg.CONF, 'nfs_sparsed_volumes')
-
     def test_create_nonsparsed_volume(self):
         mox = self._mox
         drv = self._driver
         self.configuration.nfs_sparsed_volumes = False
         volume = self._simple_volume()
 
-        setattr(cfg.CONF, 'nfs_sparsed_volumes', False)
+        cfg.CONF.set_override('nfs_sparsed_volumes', False)
 
         mox.StubOutWithMock(drv, '_create_regular_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
@@ -500,8 +498,6 @@ class NfsDriverTestCase(test.TestCase):
         drv._do_create_volume(volume)
 
         mox.VerifyAll()
-
-        delattr(cfg.CONF, 'nfs_sparsed_volumes')
 
     def test_create_volume_should_ensure_nfs_mounted(self):
         """create_volume ensures shares provided in config are mounted."""
