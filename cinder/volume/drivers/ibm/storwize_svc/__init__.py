@@ -471,6 +471,16 @@ class StorwizeSVCDriver(san.SanDriver):
 
         vol_name = volume['name']
         if 'host' in connector:
+            # maybe two hosts on the storage, one is for FC and the other for
+            # iSCSI, so get host according to protocol
+            vol_opts = self._get_vdisk_params(volume['volume_type_id'])
+            connector = connector.copy()
+            if vol_opts['protocol'] == 'FC':
+                connector.pop('initiator', None)
+            elif vol_opts['protocol'] == 'iSCSI':
+                connector.pop('wwnns', None)
+                connector.pop('wwpns', None)
+
             host_name = self._helpers.get_host_from_connector(connector)
             if host_name is None:
                 msg = (_('terminate_connection: Failed to get host name from'
