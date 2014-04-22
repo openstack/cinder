@@ -690,31 +690,6 @@ def quota_usage_get_all_by_project(context, project_id):
 ###################
 
 
-def reservation_create(context, uuid, usage, project_id, resource, delta,
-                       expire):
-    """Create a reservation for the given project and resource."""
-    return IMPL.reservation_create(context, uuid, usage, project_id,
-                                   resource, delta, expire)
-
-
-def reservation_get(context, uuid):
-    """Retrieve a reservation or raise if it does not exist."""
-    return IMPL.reservation_get(context, uuid)
-
-
-def reservation_get_all_by_project(context, project_id):
-    """Retrieve all reservations associated with a given project."""
-    return IMPL.reservation_get_all_by_project(context, project_id)
-
-
-def reservation_destroy(context, uuid):
-    """Destroy the reservation or raise if it does not exist."""
-    return IMPL.reservation_destroy(context, uuid)
-
-
-###################
-
-
 def quota_reserve(context, resources, quotas, deltas, expire,
                   until_refresh, max_age, project_id=None):
     """Check quotas and create appropriate reservations."""

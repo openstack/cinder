@@ -630,39 +630,6 @@ def _quota_usage_create(context, project_id, resource, in_use, reserved,
 ###################
 
 
-@require_context
-def _reservation_get(context, uuid, session=None):
-    result = model_query(context, models.Reservation, session=session,
-                         read_deleted="no").\
-        filter_by(uuid=uuid).first()
-
-    if not result:
-        raise exception.ReservationNotFound(uuid=uuid)
-
-    return result
-
-
-@require_context
-def reservation_get(context, uuid):
-    return _reservation_get(context, uuid)
-
-
-@require_context
-def reservation_get_all_by_project(context, project_id):
-    authorize_project_context(context, project_id)
-
-    rows = model_query(context, models.Reservation, read_deleted="no").\
-        filter_by(project_id=project_id).all()
-
-    result = {'project_id': project_id}
-    for row in rows:
-        result.setdefault(row.resource, {})
-        result[row.resource][row.uuid] = row.delta
-
-    return result
-
-
-@require_admin_context
 def _reservation_create(context, uuid, usage, project_id, resource, delta,
                         expire, session=None):
     reservation_ref = models.Reservation()
@@ -674,21 +641,6 @@ def _reservation_create(context, uuid, usage, project_id, resource, delta,
     reservation_ref.expire = expire
     reservation_ref.save(session=session)
     return reservation_ref
-
-
-@require_admin_context
-def reservation_create(context, uuid, usage, project_id, resource, delta,
-                       expire):
-    return _reservation_create(context, uuid, usage, project_id, resource,
-                               delta, expire)
-
-
-@require_admin_context
-def reservation_destroy(context, uuid):
-    session = get_session()
-    with session.begin():
-        reservation_ref = _reservation_get(context, uuid, session=session)
-        reservation_ref.delete(session=session)
 
 
 ###################

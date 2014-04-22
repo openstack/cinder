@@ -161,16 +161,12 @@ class QuotaIntegrationTestCase(test.TestCase):
         snap_ref2 = volume.API().create_snapshot(self.context,
                                                  vol_ref, '', '')
 
-        # Make sure no reservation was created for snapshot gigabytes.
-        reservations = db.reservation_get_all_by_project(self.context,
-                                                         self.project_id)
-        self.assertIsNone(reservations.get('gigabytes'))
-
         # Make sure the snapshot volume_size isn't included in usage.
         vol_ref2 = volume.API().create(self.context, 10, '', '')
         usages = db.quota_usage_get_all_by_project(self.context,
                                                    self.project_id)
         self.assertEqual(usages['gigabytes']['in_use'], 20)
+        self.assertEqual(usages['gigabytes']['reserved'], 0)
 
         db.snapshot_destroy(self.context, snap_ref['id'])
         db.snapshot_destroy(self.context, snap_ref2['id'])
