@@ -569,6 +569,9 @@ class DBAPIVolumeTestCase(BaseTest):
                                             'metadata': {'key2': 'val2',
                                                          'key3': 'val3'},
                                             'host': 'host5'})
+        db.volume_admin_metadata_update(self.ctxt, vol5.id,
+                                        {"readonly": "True"}, False)
+
         vols = [vol1, vol2, vol3, vol4, vol5]
 
         # Ensure we have 5 total instances
@@ -588,13 +591,16 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualsVolumeOrderResult([vol2, vol3], limit=100,
                                             filters=filters)
 
-        # metdata filters
+        # metadata filters
         filters = {'metadata': {'key1': 'val1'}}
         self._assertEqualsVolumeOrderResult([vol3, vol4], filters=filters)
         self._assertEqualsVolumeOrderResult([vol3], limit=1,
                                             filters=filters)
         self._assertEqualsVolumeOrderResult([vol3, vol4], limit=10,
                                             filters=filters)
+
+        filters = {'metadata': {'readonly': 'True'}}
+        self._assertEqualsVolumeOrderResult([vol5], filters=filters)
 
         filters = {'metadata': {'key1': 'val1',
                                 'key2': 'val2'}}
