@@ -74,8 +74,8 @@ class TestWindowsDriver(test.TestCase):
         windows_utils.WindowsUtils.__init__ = fake_wutils__init__
 
     def fake_local_path(self, volume):
-            return os.path.join(CONF.windows_iscsi_lun_path,
-                                str(volume['name']) + ".vhd")
+        return os.path.join(CONF.windows_iscsi_lun_path,
+                            str(volume['name']) + ".vhd")
 
     def test_check_for_setup_errors(self):
         mox = self._mox

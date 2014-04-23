@@ -115,13 +115,13 @@ class FakeHVSCommon(rest_common.HVSCommon):
 
         if self.test_normal:
             if url == "/xx/sessions":
-                    data = """{"error":{"code":0},
-                                "data":{"username":"admin",
-                                        "deviceid":"210235G7J20000000000"
-                                       }}"""
+                data = """{"error":{"code":0},
+                            "data":{"username":"admin",
+                                    "deviceid":"210235G7J20000000000"
+                                   }}"""
             if url == "sessions":
-                    data = """{"error":{"code":0},
-                                "data":{"ID":11}}"""
+                data = """{"error":{"code":0},
+                            "data":{"ID":11}}"""
 
             if url == "storagepool":
                 data = """{"error":{"code":0},

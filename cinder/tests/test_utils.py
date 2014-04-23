@@ -551,8 +551,8 @@ class GenericUtilsTestCase(test.TestCase):
     def test_get_file_mode(self, mock_stat):
 
         class stat_result:
-                    st_mode = 0o777
-                    st_gid = 33333
+            st_mode = 0o777
+            st_gid = 33333
 
         test_file = '/var/tmp/made_up_file'
         mock_stat.return_value = stat_result
@@ -564,8 +564,8 @@ class GenericUtilsTestCase(test.TestCase):
     def test_get_file_gid(self, mock_stat):
 
         class stat_result:
-                    st_mode = 0o777
-                    st_gid = 33333
+            st_mode = 0o777
+            st_gid = 33333
 
         test_file = '/var/tmp/made_up_file'
         mock_stat.return_value = stat_result

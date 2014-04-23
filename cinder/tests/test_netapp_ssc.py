@@ -204,30 +204,30 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
                 </attributes-list>
                 <num-records>4</num-records></results>"""
         elif 'aggr-options-list-info' == localname:
-                body = """<results status="passed">
-                             <options>
-                             <aggr-option-info>
-                             <name>ha_policy</name>
-                             <value>cfo</value>
-                             </aggr-option-info>
-                             <aggr-option-info>
-                             <name>raidtype</name>
-                             <value>raid_dp</value>
-                             </aggr-option-info>
-                             </options>
-                             </results>"""
+            body = """<results status="passed">
+                         <options>
+                         <aggr-option-info>
+                         <name>ha_policy</name>
+                         <value>cfo</value>
+                         </aggr-option-info>
+                         <aggr-option-info>
+                         <name>raidtype</name>
+                         <value>raid_dp</value>
+                         </aggr-option-info>
+                         </options>
+                         </results>"""
         elif 'sis-get-iter' == localname:
-                body = """<results status="passed">
-                             <attributes-list>
-                             <sis-status-info>
-                             <path>/vol/iscsi</path>
-                             <is-compression-enabled>
-                             true
-                             </is-compression-enabled>
-                             <state>enabled</state>
-                             </sis-status-info>
-                             </attributes-list>
-                             </results>"""
+            body = """<results status="passed">
+                         <attributes-list>
+                         <sis-status-info>
+                         <path>/vol/iscsi</path>
+                         <is-compression-enabled>
+                         true
+                         </is-compression-enabled>
+                         <state>enabled</state>
+                         </sis-status-info>
+                         </attributes-list>
+                         </results>"""
         elif 'storage-disk-get-iter' == localname:
             body = """<results status="passed">
                              <attributes-list>
@@ -239,10 +239,10 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
                              </attributes-list>
                              </results>"""
         else:
-                # Unknown API
-                s.send_response(500)
-                s.end_headers
-                return
+            # Unknown API
+            s.send_response(500)
+            s.end_headers
+            return
         s.send_response(200)
         s.send_header("Content-Type", "text/xml; charset=utf-8")
         s.end_headers()
