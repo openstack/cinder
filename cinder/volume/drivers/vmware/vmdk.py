@@ -1104,6 +1104,10 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
     # PBM is enabled only for VC versions 5.5 and above
     PBM_ENABLED_VC_VERSION = dist_version.LooseVersion('5.5')
 
+    def _do_deprecation_warning(self):
+        # no deprecation warning for vCenter vmdk driver
+        pass
+
     def __init__(self, *args, **kwargs):
         super(VMwareVcVmdkDriver, self).__init__(*args, **kwargs)
         self._session = None
