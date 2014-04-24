@@ -1139,21 +1139,6 @@ def volume_get_all_by_host(context, host):
     return _volume_get_query(context).filter_by(host=host).all()
 
 
-@require_admin_context
-def volume_get_all_by_instance_uuid(context, instance_uuid):
-    result = model_query(context, models.Volume, read_deleted="no").\
-        options(joinedload('volume_metadata')).\
-        options(joinedload('volume_admin_metadata')).\
-        options(joinedload('volume_type')).\
-        filter_by(instance_uuid=instance_uuid).\
-        all()
-
-    if not result:
-        return []
-
-    return result
-
-
 @require_context
 def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
                               sort_dir, filters=None):

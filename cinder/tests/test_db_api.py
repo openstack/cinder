@@ -380,24 +380,6 @@ class DBAPIVolumeTestCase(BaseTest):
                                             db.volume_get_all_by_host(
                                             self.ctxt, 'h%d' % i))
 
-    def test_volume_get_all_by_instance_uuid(self):
-        instance_uuids = []
-        volumes = []
-        for i in xrange(3):
-            instance_uuid = str(uuidutils.uuid.uuid1())
-            instance_uuids.append(instance_uuid)
-            volumes.append([db.volume_create(self.ctxt,
-                            {'instance_uuid': instance_uuid})
-                            for j in xrange(3)])
-        for i in xrange(3):
-            self._assertEqualListsOfObjects(volumes[i],
-                                            db.volume_get_all_by_instance_uuid(
-                                            self.ctxt, instance_uuids[i]))
-
-    def test_volume_get_all_by_instance_uuid_empty(self):
-        self.assertEqual([], db.volume_get_all_by_instance_uuid(self.ctxt,
-                                                                'empty'))
-
     def test_volume_get_all_by_project(self):
         volumes = []
         for i in xrange(3):
