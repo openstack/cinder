@@ -2060,9 +2060,19 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'name',
                           'description')
 
+    def test_begin_detaching_fails_available(self):
+        volume_api = cinder.volume.api.API()
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        self.assertRaises(exception.InvalidVolume, volume_api.begin_detaching,
+                          self.context, volume)
+
     def test_begin_roll_detaching_volume(self):
         """Test begin_detaching and roll_detaching functions."""
+
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
         volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume = db.volume_attached(
+            self.context, volume['id'], instance_uuid, 'fake-host', 'vdb')
         volume_api = cinder.volume.api.API()
         volume_api.begin_detaching(self.context, volume)
         volume = db.volume_get(self.context, volume['id'])
