@@ -217,11 +217,6 @@ def volume_get_all_by_host(context, host):
     return IMPL.volume_get_all_by_host(context, host)
 
 
-def volume_get_all_by_instance_uuid(context, instance_uuid):
-    """Get all volumes belonging to a instance."""
-    return IMPL.volume_get_all_by_instance_uuid(context, instance_uuid)
-
-
 def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
                               sort_dir, filters=None):
     """Get all volumes belonging to a project."""
