@@ -43,12 +43,13 @@ class CapacityWeigherTestCase(test.TestCase):
                                                        weight_properties)[0]
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get_all_by_topic')
-    def _get_all_hosts(self, _mock_service_get_all_by_topic):
+    def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):
         ctxt = context.get_admin_context()
-        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic,
+                                         disabled=disabled)
         host_states = self.host_manager.get_all_host_states(ctxt)
         _mock_service_get_all_by_topic.assert_called_once_with(
-            ctxt, CONF.volume_topic)
+            ctxt, CONF.volume_topic, disabled=disabled)
         return host_states
 
     def test_default_of_spreading_first(self):

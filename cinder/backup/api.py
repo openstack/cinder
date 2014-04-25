@@ -88,10 +88,12 @@ class API(base.Base):
         """Check if there is a backup service available."""
         topic = CONF.backup_topic
         ctxt = context.get_admin_context()
-        services = self.db.service_get_all_by_topic(ctxt, topic)
+        services = self.db.service_get_all_by_topic(ctxt,
+                                                    topic,
+                                                    disabled=False)
         for srv in services:
             if (srv['availability_zone'] == volume['availability_zone'] and
-                    srv['host'] == volume_host and not srv['disabled'] and
+                    srv['host'] == volume_host and
                     utils.service_is_up(srv)):
                 return True
         return False

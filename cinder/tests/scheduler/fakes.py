@@ -66,7 +66,7 @@ class FakeHostState(host_manager.HostState):
             setattr(self, key, val)
 
 
-def mock_host_manager_db_calls(mock_obj):
+def mock_host_manager_db_calls(mock_obj, disabled=None):
     services = [
         dict(id=1, host='host1', topic='volume', disabled=False,
              availability_zone='zone1', updated_at=timeutils.utcnow()),
@@ -80,4 +80,8 @@ def mock_host_manager_db_calls(mock_obj):
         dict(id=5, host='host5', topic='volume', disabled=True,
              availability_zone='zone4', updated_at=timeutils.utcnow()),
     ]
-    mock_obj.return_value = services
+    if disabled is None:
+        mock_obj.return_value = services
+    else:
+        mock_obj.return_value = [service for service in services
+                                 if service['disabled'] == disabled]

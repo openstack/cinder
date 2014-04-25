@@ -512,10 +512,7 @@ class BackupsAPITestCase(test.TestCase):
         az_not_match = [{'availability_zone': "strange_az", 'host': test_host,
                          'disabled': 0, 'updated_at': timeutils.utcnow()}]
         #service disabled
-        disabled_service = [{'availability_zone': "fake_az",
-                             'host': test_host,
-                             'disabled': 1,
-                             'updated_at': timeutils.utcnow()}]
+        disabled_service = []
 
         #dead service that last reported at 20th century
         dead_service = [{'availability_zone': "fake_az", 'host': alt_host,
