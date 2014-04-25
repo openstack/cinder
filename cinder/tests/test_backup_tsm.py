@@ -242,9 +242,6 @@ class BackupTSMTestCase(test.TestCase):
         self.stubs.Set(utils, 'execute', fake_exec)
         self.stubs.Set(os, 'stat', fake_stat_image)
 
-    def tearDown(self):
-        super(BackupTSMTestCase, self).tearDown()
-
     def _create_volume_db_entry(self, volume_id):
         vol = {'id': volume_id,
                'size': 1,

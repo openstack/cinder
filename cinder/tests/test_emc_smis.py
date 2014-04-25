@@ -1107,9 +1107,11 @@ class EMCSMISFCDriverTestCase(test.TestCase):
         self.data = EMCSMISCommonData()
 
         self.tempdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tempdir)
         super(EMCSMISFCDriverTestCase, self).setUp()
         self.config_file_path = None
         self.create_fake_config_file()
+        self.addCleanup(os.remove, self.config_file_path)
 
         configuration = mock.Mock()
         configuration.cinder_emc_config_file = self.config_file_path
@@ -1352,13 +1354,3 @@ class EMCSMISFCDriverTestCase(test.TestCase):
         volume_with_vt = self.data.test_volume
         volume_with_vt['volume_type_id'] = 1
         self.driver.create_volume(volume_with_vt)
-
-    def _cleanup(self):
-        bExists = os.path.exists(self.config_file_path)
-        if bExists:
-            os.remove(self.config_file_path)
-        shutil.rmtree(self.tempdir)
-
-    def tearDown(self):
-        self._cleanup()
-        super(EMCSMISFCDriverTestCase, self).tearDown()

@@ -1705,14 +1705,10 @@ class HuaweiUtilsTestCase(test.TestCase):
         super(HuaweiUtilsTestCase, self).setUp()
 
         self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.addCleanup(os.remove, self.fake_conf_file)
         create_fake_conf_file(self.fake_conf_file)
-
-    def tearDown(self):
-        if os.path.exists(self.fake_conf_file):
-            os.remove(self.fake_conf_file)
-        shutil.rmtree(self.tmp_dir)
-        super(HuaweiUtilsTestCase, self).tearDown()
 
     def test_parse_xml_file_ioerror(self):
         tmp_fonf_file = '/xxx/cinder_huawei_conf.xml'

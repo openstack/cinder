@@ -34,9 +34,6 @@ class TransfersTableTestCase(test.TestCase):
         self.ctxt = context.RequestContext(user_id='user_id',
                                            project_id='project_id')
 
-    def tearDown(self):
-        super(TransfersTableTestCase, self).tearDown()
-
     def _create_transfer(self, volume_id=None):
         """Create a transfer object."""
         transfer = {'display_name': 'display_name',

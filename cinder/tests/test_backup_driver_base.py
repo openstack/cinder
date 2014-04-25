@@ -101,9 +101,6 @@ class BackupBaseDriverTestCase(test.TestCase):
         self.assertRaises(NotImplementedError,
                           self.driver.verify, self.backup)
 
-    def tearDown(self):
-        super(BackupBaseDriverTestCase, self).tearDown()
-
 
 class BackupMetadataAPITestCase(test.TestCase):
 
@@ -247,6 +244,3 @@ class BackupMetadataAPITestCase(test.TestCase):
             mock_dumps.side_effect = TypeError
             self.assertFalse(self.bak_meta_api._is_serializable(data))
             mock_dumps.assert_called_once()
-
-    def tearDown(self):
-        super(BackupMetadataAPITestCase, self).tearDown()

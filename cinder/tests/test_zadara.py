@@ -493,9 +493,6 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.stubs.Set(httplib, 'HTTPSConnection', FakeHTTPSConnection)
         self.driver.do_setup(None)
 
-    def tearDown(self):
-        super(ZadaraVPSADriverTestCase, self).tearDown()
-
     def test_create_destroy(self):
         """Create/Delete volume."""
         volume = {'name': 'test_volume_01', 'size': 1}

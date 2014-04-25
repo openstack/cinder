@@ -39,9 +39,6 @@ class VolumeDriverCompatibility(test.TestCase):
         self.manager = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
 
-    def tearDown(self):
-        super(VolumeDriverCompatibility, self).tearDown()
-
     def _load_driver(self, driver):
         self.manager.__init__(volume_driver=driver)
 
