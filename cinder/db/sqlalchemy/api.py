@@ -1244,11 +1244,13 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
         for key, value in filters.iteritems():
             if key == 'metadata':
                 # model.VolumeMetadata defines the backref to Volumes as
-                # 'volume_metadata', use that column attribute key
-                key = 'volume_metadata'
-                column_attr = getattr(models.Volume, key)
+                # 'volume_metadata' or 'volume_admin_metadata', use those as
+                # column attribute keys
+                col_attr = getattr(models.Volume, 'volume_metadata')
+                col_ad_attr = getattr(models.Volume, 'volume_admin_metadata')
                 for k, v in value.iteritems():
-                    query = query.filter(column_attr.any(key=k, value=v))
+                    query = query.filter(or_(col_attr.any(key=k, value=v),
+                                             col_ad_attr.any(key=k, value=v)))
             elif isinstance(value, (list, tuple, set, frozenset)):
                 # Looking for values in a list; apply to query directly
                 column_attr = getattr(models.Volume, key)
