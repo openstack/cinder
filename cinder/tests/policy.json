@@ -20,8 +20,6 @@
     "volume:unreserve_volume": [],
     "volume:begin_detaching": [],
     "volume:roll_detaching": [],
-    "volume:check_attach": [],
-    "volume:check_detach": [],
     "volume:initialize_connection": [],
     "volume:terminate_connection": [],
     "volume:create_snapshot": [],

@@ -344,23 +344,6 @@ class API(base.Base):
         return snapshots
 
     @wrap_check_policy
-    def check_attach(self, volume):
-        # TODO(vish): abstract status checking?
-        if volume['status'] != "available":
-            msg = _("status must be available")
-            raise exception.InvalidVolume(reason=msg)
-        if volume['attach_status'] == "attached":
-            msg = _("already attached")
-            raise exception.InvalidVolume(reason=msg)
-
-    @wrap_check_policy
-    def check_detach(self, volume):
-        # TODO(vish): abstract status checking?
-        if volume['status'] != "in-use":
-            msg = _("status must be in-use to detach")
-            raise exception.InvalidVolume(reason=msg)
-
-    @wrap_check_policy
     def reserve_volume(self, context, volume):
         #NOTE(jdg): check for Race condition bug 1096983
         #explicitly get updated ref and check
