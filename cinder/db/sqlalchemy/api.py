@@ -2567,9 +2567,20 @@ def backup_get(context, backup_id):
     return result
 
 
+def _backup_get_all(context, filters=None):
+    session = get_session()
+    with session.begin():
+        # Generate the query
+        query = model_query(context, models.Backup)
+        if filters:
+            query = query.filter_by(**filters)
+
+        return query.all()
+
+
 @require_admin_context
-def backup_get_all(context):
-    return model_query(context, models.Backup).all()
+def backup_get_all(context, filters=None):
+    return _backup_get_all(context, filters)
 
 
 @require_admin_context
@@ -2578,11 +2589,17 @@ def backup_get_all_by_host(context, host):
 
 
 @require_context
-def backup_get_all_by_project(context, project_id):
-    authorize_project_context(context, project_id)
+def backup_get_all_by_project(context, project_id, filters=None):
 
-    return model_query(context, models.Backup).\
-        filter_by(project_id=project_id).all()
+    authorize_project_context(context, project_id)
+    if not filters:
+        filters = {}
+    else:
+        filters = filters.copy()
+
+    filters['project_id'] = project_id
+
+    return _backup_get_all(context, filters)
 
 
 @require_context

@@ -1184,6 +1184,19 @@ class DBAPIBackupTestCase(BaseTest):
         all_backups = db.backup_get_all(self.ctxt)
         self._assertEqualListsOfObjects(self.created, all_backups)
 
+    def tests_backup_get_all_by_filter(self):
+        filters = {'status': self.created[1]['status']}
+        filtered_backups = db.backup_get_all(self.ctxt, filters=filters)
+        self._assertEqualListsOfObjects([self.created[1]], filtered_backups)
+
+        filters = {'display_name': self.created[1]['display_name']}
+        filtered_backups = db.backup_get_all(self.ctxt, filters=filters)
+        self._assertEqualListsOfObjects([self.created[1]], filtered_backups)
+
+        filters = {'volume_id': self.created[1]['volume_id']}
+        filtered_backups = db.backup_get_all(self.ctxt, filters=filters)
+        self._assertEqualListsOfObjects([self.created[1]], filtered_backups)
+
     def test_backup_get_all_by_host(self):
         byhost = db.backup_get_all_by_host(self.ctxt,
                                            self.created[1]['host'])
