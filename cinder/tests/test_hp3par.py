@@ -989,6 +989,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
              'lun': 90, 'type': 0}]
         mock_client.getPorts.return_value = {
             'members': self.FAKE_FC_PORTS + [self.FAKE_ISCSI_PORT]}
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': 90,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
 
         result = self.driver.initialize_connection(self.volume, self.connector)
 
@@ -1305,6 +1311,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             {'active': True,
              'volumeName': self.VOLUME_3PAR_NAME,
              'lun': self.TARGET_LUN, 'type': 0}]
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': self.TARGET_LUN,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
 
         result = self.driver.initialize_connection(self.volume, self.connector)
 

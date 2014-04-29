@@ -343,12 +343,26 @@ class HP3PARCommon(object):
 
     def _create_3par_vlun(self, volume, hostname, nsp):
         try:
+            location = None
             if nsp is None:
-                self.client.createVLUN(volume, hostname=hostname, auto=True)
+                location = self.client.createVLUN(volume, hostname=hostname,
+                                                  auto=True)
             else:
                 port = self.build_portPos(nsp)
-                self.client.createVLUN(volume, hostname=hostname, auto=True,
-                                       portPos=port)
+                location = self.client.createVLUN(volume, hostname=hostname,
+                                                  auto=True, portPos=port)
+
+            vlun_info = None
+            if location:
+                # The LUN id is returned as part of the location URI
+                vlun = location.split(',')
+                vlun_info = {'volume_name': vlun[0],
+                             'lun_id': int(vlun[1]),
+                             'host_name': vlun[2],
+                             'nsp': vlun[3],
+                             }
+
+            return vlun_info
 
         except hpexceptions.HTTPBadRequest as e:
             if 'must be in the same domain' in e.get_description():
@@ -452,18 +466,23 @@ class HP3PARCommon(object):
                                        'hp3par_cpg')})
         self.stats = stats
 
-    def _get_vlun(self, volume_name, hostname):
+    def _get_vlun(self, volume_name, hostname, lun_id=None):
         """find a VLUN on a 3PAR host."""
         vluns = self.client.getHostVLUNs(hostname)
         found_vlun = None
         for vlun in vluns:
             if volume_name in vlun['volumeName']:
-                found_vlun = vlun
-                break
+                if lun_id:
+                    if vlun['lun'] == lun_id:
+                        found_vlun = vlun
+                        break
+                else:
+                    found_vlun = vlun
+                    break
 
-        msg = (_("3PAR vlun %(name)s not found on host %(host)s") %
-               {'name': volume_name, 'host': hostname})
         if found_vlun is None:
+            msg = (_("3PAR vlun %(name)s not found on host %(host)s") %
+                   {'name': volume_name, 'host': hostname})
             LOG.warn(msg)
         return found_vlun
 
@@ -473,8 +492,8 @@ class HP3PARCommon(object):
         In order to export a volume on a 3PAR box, we have to create a VLUN.
         """
         volume_name = self._get_3par_vol_name(volume['id'])
-        self._create_3par_vlun(volume_name, host['name'], nsp)
-        return self._get_vlun(volume_name, host['name'])
+        vlun_info = self._create_3par_vlun(volume_name, host['name'], nsp)
+        return self._get_vlun(volume_name, host['name'], vlun_info['lun_id'])
 
     def delete_vlun(self, volume, hostname):
         volume_name = self._get_3par_vol_name(volume['id'])
