@@ -934,12 +934,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                                      ['0987654321234', '123456789000987'],
                                      }}}
 
-    def setUp(self):
-        super(TestHP3PARFCDriver, self).setUp()
-
-    def tearDown(self):
-        super(TestHP3PARFCDriver, self).tearDown()
-
     def setup_driver(self, config=None, mock_conf=None):
 
         self.ctxt = context.get_admin_context()
@@ -1263,12 +1257,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'target_iqn': TARGET_IQN,
             'target_lun': TARGET_LUN,
             'target_portal': '1.1.1.2:1234'}}
-
-    def setUp(self):
-        super(TestHP3PARISCSIDriver, self).setUp()
-
-    def tearDown(self):
-        super(TestHP3PARISCSIDriver, self).tearDown()
 
     def setup_driver(self, config=None, mock_conf=None):
 

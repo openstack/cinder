@@ -79,9 +79,6 @@ class IBMNASDriverTestCase(test.TestCase):
         self.context.user_id = 'fake'
         self.context.project_id = 'fake'
 
-    def tearDown(self):
-        super(IBMNASDriverTestCase, self).tearDown()
-
     def _set_flag(self, flag, value):
         group = self._driver.configuration.config_group
         self._driver.configuration.set_override(flag, value, group)

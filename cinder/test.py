@@ -173,6 +173,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self.stubs.UnsetAll)
         self.addCleanup(self.stubs.SmartUnsetAll)
         self.addCleanup(self.mox.VerifyAll)
+        self.addCleanup(self._common_cleanup)
         self.injected = []
         self._services = []
 
@@ -182,7 +183,7 @@ class TestCase(testtools.TestCase):
         # This will be cleaned up by the NestedTempfile fixture
         CONF.set_override('lock_path', tempfile.mkdtemp())
 
-    def tearDown(self):
+    def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
 
         # Stop any timers
@@ -204,7 +205,6 @@ class TestCase(testtools.TestCase):
         # suite
         for key in [k for k in self.__dict__.keys() if k[0] != '_']:
             del self.__dict__[key]
-        super(TestCase, self).tearDown()
 
     def flags(self, **kw):
         """Override CONF variables for a test."""
