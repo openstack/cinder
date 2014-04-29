@@ -36,7 +36,8 @@ LOG = logging.getLogger(__name__)
 HUS_OPTS = [
     cfg.StrOpt('hds_cinder_config_file',
                default='/opt/hds/hus/cinder_hus_conf.xml',
-               help='configuration file for HDS cinder plugin for HUS'), ]
+               help='The configuration file for the Cinder HDS driver '
+                    'for HUS'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(HUS_OPTS)

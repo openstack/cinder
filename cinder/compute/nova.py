@@ -28,8 +28,9 @@ from cinder.openstack.common import log as logging
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
                default='compute:nova:publicURL',
-               help='Info to match when looking for nova in the service '
-                    'catalog. Format is : separated values of the form: '
+               help='Match this value when searching for nova in the '
+                    'service catalog. Format is: separated values of '
+                    'the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
     cfg.StrOpt('nova_catalog_admin_info',
                default='compute:nova:adminURL',
@@ -43,7 +44,7 @@ nova_opts = [
                help='Same as nova_endpoint_template, but for admin endpoint.'),
     cfg.StrOpt('os_region_name',
                default=None,
-               help='region name of this node'),
+               help='Region name of this node'),
     cfg.StrOpt('nova_ca_certificates_file',
                default=None,
                help='Location of ca certificates file to use for nova client '

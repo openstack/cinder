@@ -43,31 +43,32 @@ LOG = logging.getLogger(__name__)
 rbd_opts = [
     cfg.StrOpt('rbd_pool',
                default='rbd',
-               help='the RADOS pool in which rbd volumes are stored'),
+               help='The RADOS pool where rbd volumes are stored'),
     cfg.StrOpt('rbd_user',
                default=None,
-               help='the RADOS client name for accessing rbd volumes '
+               help='The RADOS client name for accessing rbd volumes '
                     '- only set when using cephx authentication'),
     cfg.StrOpt('rbd_ceph_conf',
                default='',  # default determined by librados
-               help='path to the ceph configuration file to use'),
+               help='Path to the ceph configuration file'),
     cfg.BoolOpt('rbd_flatten_volume_from_snapshot',
                 default=False,
-                help='flatten volumes created from snapshots to remove '
-                     'dependency'),
+                help='Flatten volumes created from snapshots to remove '
+                     'dependency from volume to snapshot'),
     cfg.StrOpt('rbd_secret_uuid',
                default=None,
-               help='the libvirt uuid of the secret for the rbd_user'
+               help='The libvirt uuid of the secret for the rbd_user '
                     'volumes'),
     cfg.StrOpt('volume_tmp_dir',
                default=None,
-               help='where to store temporary image files if the volume '
-                    'driver does not write them directly to the volume'),
+               help='Directory where temporary image files are stored '
+                    'when the volume driver does not write them directly '
+                    'to the volume.'),
     cfg.IntOpt('rbd_max_clone_depth',
                default=5,
-               help='maximum number of nested clones that can be taken of a '
-                    'volume before enforcing a flatten prior to next clone. '
-                    'A value of zero disables cloning')]
+               help='Maximum number of nested volume clones that are '
+                    'taken before a flatten occurs. Set to 0 to disable '
+                    'cloning.')]
 
 CONF = cfg.CONF
 CONF.register_opts(rbd_opts)

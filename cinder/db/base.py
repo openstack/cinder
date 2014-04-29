@@ -24,7 +24,7 @@ from cinder.openstack.common import importutils
 
 db_driver_opt = cfg.StrOpt('db_driver',
                            default='cinder.db',
-                           help='driver to use for database access')
+                           help='Driver to use for database access')
 
 CONF = cfg.CONF
 CONF.register_opt(db_driver_opt)

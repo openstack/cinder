@@ -217,34 +217,34 @@
 # Options defined in cinder.quota
 #
 
-# number of volumes allowed per project (integer value)
+# Number of volumes allowed per project (integer value)
 #quota_volumes=10
 
-# number of volume snapshots allowed per project (integer
+# Number of volume snapshots allowed per project (integer
 # value)
 #quota_snapshots=10
 
-# number of volume gigabytes (snapshots are also included)
-# allowed per project (integer value)
+# Total amount of storage, in gigabytes, allowed for volumes
+# and snapshots per project (integer value)
 #quota_gigabytes=1000
 
-# number of seconds until a reservation expires (integer
+# Number of seconds until a reservation expires (integer
 # value)
 #reservation_expire=86400
 
-# count of reservations until usage is refreshed (integer
+# Count of reservations until usage is refreshed (integer
 # value)
 #until_refresh=0
 
-# number of seconds between subsequent usage refreshes
+# Number of seconds between subsequent usage refreshes
 # (integer value)
 #max_age=0
 
-# default driver to use for quota checks (string value)
+# Default driver to use for quota checks (string value)
 #quota_driver=cinder.quota.DbQuotaDriver
 
-# whether to use default quota class for default quota
-# (boolean value)
+# Enables or disables use of default quota class with default
+# quota. (boolean value)
 #use_default_quota_class=true
 
 
@@ -252,27 +252,25 @@
 # Options defined in cinder.service
 #
 
-# seconds between nodes reporting state to datastore (integer
-# value)
+# Interval, in seconds, between nodes reporting state to
+# datastore (integer value)
 #report_interval=10
 
-# seconds between running periodic tasks (integer value)
+# Interval, in seconds, between running periodic tasks
+# (integer value)
 #periodic_interval=60
 
-# range of seconds to randomly delay when starting the
+# Range, in seconds, to randomly delay when starting the
 # periodic task scheduler to reduce stampeding. (Disable by
 # setting to 0) (integer value)
 #periodic_fuzzy_delay=60
 
-# IP address for OpenStack Volume API to listen (string value)
+# IP address on which OpenStack Volume API listens (string
+# value)
 #osapi_volume_listen=0.0.0.0
 
-# port for os volume api to listen (integer value)
+# Port on which OpenStack Volume API listens (integer value)
 #osapi_volume_listen_port=8776
-
-# Number of workers for OpenStack Volume API service (integer
-# value)
-#osapi_volume_workers=<None>
 
 
 #
@@ -314,8 +312,8 @@
 # Options defined in cinder.api.common
 #
 
-# the maximum number of items returned in a single response
-# from a collection resource (integer value)
+# The maximum number of items that a collection resource
+# returns in a single response (integer value)
 #osapi_max_limit=1000
 
 # Base URL that will be presented to users in links to the
@@ -455,20 +453,20 @@
 # Deprecated group/name - [DEFAULT]/pybasedir
 #state_path=/var/lib/cinder
 
-# ip address of this host (string value)
+# IP address of this host (string value)
 #my_ip=10.0.0.1
 
-# default glance hostname or ip (string value)
+# Default glance host name or IP (string value)
 #glance_host=$my_ip
 
-# default glance port (integer value)
+# Default glance port (integer value)
 #glance_port=9292
 
-# A list of the glance api servers available to cinder
+# A list of the glance API servers available to cinder
 # ([hostname|ip]:port) (list value)
 #glance_api_servers=$glance_host:$glance_port
 
-# Version of the glance api to use (integer value)
+# Version of the glance API to use (integer value)
 #glance_api_version=1
 
 # Number retries when downloading an image from glance
@@ -479,12 +477,11 @@
 # (boolean value)
 #glance_api_insecure=false
 
-# Whether to attempt to negotiate SSL layer compression when
-# using SSL (https) requests. Set to False to disable SSL
-# layer compression. In some cases disabling this may improve
-# data throughput, eg when high network bandwidth is available
-# and you are using already compressed image formats such as
-# qcow2 . (boolean value)
+# Enables or disables negotiation of SSL layer compression. In
+# some cases disabling compression can improve data
+# throughput, such as when high network bandwidth is available
+# and you use compressed image formats like qcow2. (boolean
+# value)
 #glance_api_ssl_compression=false
 
 # http/https timeout value for glance operations. If no value
@@ -492,13 +489,13 @@
 # used. (integer value)
 #glance_request_timeout=<None>
 
-# the topic scheduler nodes listen on (string value)
+# The topic that scheduler nodes listen on (string value)
 #scheduler_topic=cinder-scheduler
 
-# the topic volume nodes listen on (string value)
+# The topic that volume nodes listen on (string value)
 #volume_topic=cinder-volume
 
-# the topic volume backup nodes listen on (string value)
+# The topic that volume backup nodes listen on (string value)
 #backup_topic=cinder-backup
 
 # Deploy v1 of the Cinder API. (boolean value)
@@ -507,7 +504,7 @@
 # Deploy v2 of the Cinder API. (boolean value)
 #enable_v2_api=true
 
-# whether to rate limit the api (boolean value)
+# Enables or disables rate limit of the API. (boolean value)
 #api_rate_limit=true
 
 # Specify list of extensions to load when using
@@ -518,36 +515,35 @@
 # osapi volume extension to load (multi valued)
 #osapi_volume_extension=cinder.api.contrib.standard_extensions
 
-# full class name for the Manager for volume (string value)
+# Full class name for the Manager for volume (string value)
 #volume_manager=cinder.volume.manager.VolumeManager
 
-# full class name for the Manager for volume backup (string
+# Full class name for the Manager for volume backup (string
 # value)
 #backup_manager=cinder.backup.manager.BackupManager
 
-# full class name for the Manager for scheduler (string value)
+# Full class name for the Manager for scheduler (string value)
 #scheduler_manager=cinder.scheduler.manager.SchedulerManager
 
-# Name of this node.  This can be an opaque identifier.  It is
-# not necessarily a hostname, FQDN, or IP address. (string
+# Name of this node.  This can be an opaque identifier. It is
+# not necessarily a host name, FQDN, or IP address. (string
 # value)
 #host=cinder
 
-# availability zone of this node (string value)
+# Availability zone of this node (string value)
 #storage_availability_zone=nova
 
-# default availability zone to use when creating a new volume.
-# If this is not set then we use the value from the
-# storage_availability_zone option as the default
-# availability_zone for new volumes. (string value)
+# Default availability zone for new volumes. If not set, the
+# storage_availability_zone option value is used as the
+# default for new volumes. (string value)
 #default_availability_zone=<None>
 
-# default volume type to use (string value)
+# Default volume type to use (string value)
 #default_volume_type=<None>
 
-# time period to generate volume usages for.  Time period must
-# be hour, day, month or year (string value)
-#volume_usage_audit_period=month
+# Time period for which to generate volume usages. The options
+# are hour, day, month, or year. (string value)
+#volume_usage_audit_period=<None>
 
 # Path to the rootwrap configuration file to use for running
 # commands as root (string value)
@@ -559,8 +555,8 @@
 # List of modules/decorators to monkey patch (list value)
 #monkey_patch_modules=
 
-# maximum time since last check-in for up service (integer
-# value)
+# Maximum time since last check-in for a service to be
+# considered up (integer value)
 #service_down_time=60
 
 # The full class name of the volume API class to use (string
@@ -602,8 +598,8 @@
 # Options defined in cinder.compute.nova
 #
 
-# Info to match when looking for nova in the service catalog.
-# Format is : separated values of the form:
+# Match this value when searching for nova in the service
+# catalog. Format is: separated values of the form:
 # <service_type>:<service_name>:<endpoint_type> (string value)
 #nova_catalog_info=compute:nova:publicURL
 
@@ -620,7 +616,7 @@
 # (string value)
 #nova_endpoint_admin_template=<None>
 
-# region name of this node (string value)
+# Region name of this node (string value)
 #os_region_name=<None>
 
 # Location of ca certificates file to use for nova client
@@ -660,7 +656,7 @@
 # Options defined in cinder.db.base
 #
 
-# driver to use for database access (string value)
+# Driver to use for database access (string value)
 #db_driver=cinder.db
 
 
@@ -922,11 +918,11 @@
 # volume (integer value)
 #num_iser_scan_tries=3
 
-# The maximum number of iser target ids per host (integer
+# The maximum number of iSER target IDs per host (integer
 # value)
 #iser_num_targets=100
 
-# prefix for iser volumes (string value)
+# Prefix for iSER volumes (string value)
 #iser_target_prefix=iqn.2010-10.org.iser.openstack:
 
 # The IP address that the iSER daemon is listening on (string
@@ -937,10 +933,11 @@
 # value)
 #iser_port=3260
 
-# iser target user-land tool to use (string value)
+# The name of the iSER target user-land tool to use (string
+# value)
 #iser_helper=tgtadm
 
-# number of times to attempt to run flakey shell commands
+# Number of times to attempt to run flakey shell commands
 # (integer value)
 #num_shell_tries=3
 
@@ -948,11 +945,11 @@
 # value)
 #reserved_percentage=0
 
-# The maximum number of iscsi target ids per host (integer
+# The maximum number of iSCSI target IDs per host (integer
 # value)
 #iscsi_num_targets=100
 
-# prefix for iscsi volumes (string value)
+# Prefix for iSCSI volumes (string value)
 #iscsi_target_prefix=iqn.2010-10.org.openstack:
 
 # The IP address that the iSCSI daemon is listening on (string
@@ -990,7 +987,7 @@
 # "-c3" for idle only priority. (string value)
 #volume_clear_ionice=<None>
 
-# iscsi target user-land tool to use (string value)
+# iSCSI target user-land tool to use (string value)
 #iscsi_helper=tgtadm
 
 # Volume configuration file storage directory (string value)
@@ -1047,7 +1044,7 @@
 # Options defined in cinder.volume.drivers.emc.emc_smis_common
 #
 
-# use this file for cinder emc plugin config data (string
+# The configuration file for the Cinder EMC driver (string
 # value)
 #cinder_emc_config_file=/etc/cinder/cinder_emc_config.xml
 
@@ -1124,8 +1121,8 @@
 # Options defined in cinder.volume.drivers.hds.hds
 #
 
-# configuration file for HDS cinder plugin for HUS (string
-# value)
+# The configuration file for the Cinder HDS driver for HUS
+# (string value)
 #hds_cinder_config_file=/opt/hds/hus/cinder_hus_conf.xml
 
 
@@ -1133,7 +1130,8 @@
 # Options defined in cinder.volume.drivers.huawei
 #
 
-# config data for cinder huawei plugin (string value)
+# The configuration file for the Cinder Huawei driver (string
+# value)
 #cinder_huawei_conf_file=/etc/cinder/cinder_huawei_conf.xml
 
 
@@ -1419,25 +1417,25 @@
 # Nexenta target portal port (integer value)
 #nexenta_iscsi_target_portal_port=3260
 
-# pool on SA that will hold all volumes (string value)
+# SA Pool that holds all volumes (string value)
 #nexenta_volume=cinder
 
 # IQN prefix for iSCSI targets (string value)
 #nexenta_target_prefix=iqn.1986-03.com.sun:02:cinder-
 
-# prefix for iSCSI target groups on SA (string value)
+# Prefix for iSCSI target groups on SA (string value)
 #nexenta_target_group_prefix=cinder/
 
 # File with the list of available nfs shares (string value)
 #nexenta_shares_config=/etc/cinder/nfs_shares
 
-# Base dir containing mount points for nfs shares (string
+# Base directory that contains NFS share mount points (string
 # value)
 #nexenta_mount_point_base=$state_path/mnt
 
-# Create volumes as sparsed files which take no space.If set
-# to False volume is created as regular file.In such case
-# volume creation takes a lot of time. (boolean value)
+# Enables or disables the creation of volumes as sparsed files
+# that take no space. If disabled (False), volume is created
+# as a regular file, which takes a long time. (boolean value)
 #nexenta_sparsed_volumes=true
 
 # Default compression value for new ZFS folders. (string
@@ -1458,10 +1456,12 @@
 # Number of TCP connections. (integer value)
 #nexenta_rrmgr_connections=2
 
-# block size for volumes (blank=default,8KB) (string value)
+# Block size for volumes (default=blank means 8KB) (string
+# value)
 #nexenta_blocksize=
 
-# flag to create sparse volumes (boolean value)
+# Enables or disables the creation of sparse volumes (boolean
+# value)
 #nexenta_sparse=false
 
 
@@ -1516,32 +1516,32 @@
 # Options defined in cinder.volume.drivers.rbd
 #
 
-# the RADOS pool in which rbd volumes are stored (string
-# value)
+# The RADOS pool where rbd volumes are stored (string value)
 #rbd_pool=rbd
 
-# the RADOS client name for accessing rbd volumes - only set
+# The RADOS client name for accessing rbd volumes - only set
 # when using cephx authentication (string value)
 #rbd_user=<None>
 
-# path to the ceph configuration file to use (string value)
+# Path to the ceph configuration file (string value)
 #rbd_ceph_conf=
 
-# flatten volumes created from snapshots to remove dependency
-# (boolean value)
+# Flatten volumes created from snapshots to remove dependency
+# from volume to snapshot (boolean value)
 #rbd_flatten_volume_from_snapshot=false
 
-# the libvirt uuid of the secret for the rbd_uservolumes
+# The libvirt uuid of the secret for the rbd_user volumes
 # (string value)
 #rbd_secret_uuid=<None>
 
-# where to store temporary image files if the volume driver
-# does not write them directly to the volume (string value)
+# Directory where temporary image files are stored when the
+# volume driver does not write them directly to the volume.
+# (string value)
 #volume_tmp_dir=<None>
 
-# maximum number of nested clones that can be taken of a
-# volume before enforcing a flatten prior to next clone. A
-# value of zero disables cloning (integer value)
+# Maximum number of nested volume clones that are taken before
+# a flatten occurs. Set to 0 to disable cloning. (integer
+# value)
 #rbd_max_clone_depth=5
 
 

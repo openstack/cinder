@@ -33,7 +33,8 @@ LOG = logging.getLogger(__name__)
 huawei_opt = [
     cfg.StrOpt('cinder_huawei_conf_file',
                default='/etc/cinder/cinder_huawei_conf.xml',
-               help='config data for cinder huawei plugin')]
+               help='The configuration file for the Cinder Huawei '
+                    'driver')]
 
 CONF = cfg.CONF
 CONF.register_opts(huawei_opt)
