@@ -106,7 +106,7 @@ class DbQuotaDriver(object):
                 LOG.deprecated(_("Default quota for resource: %(res)s is set "
                                  "by the default quota flag: quota_%(res)s, "
                                  "it is now deprecated. Please use the "
-                                 "the default quota class for default "
+                                 "default quota class for default "
                                  "quota.") % {'res': resource.name})
             quotas[resource.name] = default_quotas.get(resource.name,
                                                        resource.default)
