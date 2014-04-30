@@ -1,0 +1,8 @@
+<element name="associations" xmlns="http://relaxng.org/ns/structure/1.0">
+  <attribute name="name">      <text/> </attribute>
+  <attribute name="id">      <text/> </attribute>
+  <attribute name="association_type"> <text/> </attribute>
+  <zeroOrMore>
+    <externalRef href="../atom-link.rng"/>
+  </zeroOrMore>
+</element>

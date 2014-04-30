@@ -26,6 +26,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import strutils
 from cinder import rpc
+from cinder import utils
 from cinder.volume import qos_specs
 
 
@@ -59,6 +60,26 @@ class QoSSpecsTemplate(xmlutil.TemplateBuilder):
                                           selector='qos_specs')
         make_qos_specs(elem)
         return xmlutil.MasterTemplate(root, 1)
+
+
+class QoSSpecsKeyDeserializer(wsgi.XMLDeserializer):
+    def _extract_keys(self, key_node):
+        keys = []
+        for key in key_node.childNodes:
+            key_name = key.tagName
+            keys.append(key_name)
+
+        return keys
+
+    def default(self, string):
+        dom = utils.safe_minidom_parse_string(string)
+        key_node = self.find_first_child_named(dom, 'keys')
+        if not key_node:
+            LOG.info(_("Unable to parse XML input."))
+            msg = _("Unable to parse XML request. "
+                    "Please provide XML in correct format.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        return {'body': {'keys': self._extract_keys(key_node)}}
 
 
 class AssociationsTemplate(xmlutil.TemplateBuilder):
@@ -225,6 +246,7 @@ class QoSSpecsController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
+    @wsgi.deserializers(xml=QoSSpecsKeyDeserializer)
     def delete_keys(self, req, id, body):
         """Deletes specified keys in qos specs."""
         context = req.environ['cinder.context']

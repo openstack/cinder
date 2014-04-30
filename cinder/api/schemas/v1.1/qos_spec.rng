@@ -1,0 +1,16 @@
+<element name="qos_spec" xmlns="http://relaxng.org/ns/structure/1.0">
+  <attribute name="name">      <text/> </attribute>
+  <attribute name="id">      <text/> </attribute>
+  <attribute name="consumer"> <text/> </attribute>
+  <element name="specs">
+    <zeroOrMore>
+      <element>
+        <anyName/>
+        <text/>
+      </element>
+    </zeroOrMore>
+  </element>
+  <zeroOrMore>
+    <externalRef href="../atom-link.rng"/>
+  </zeroOrMore>
+</element>

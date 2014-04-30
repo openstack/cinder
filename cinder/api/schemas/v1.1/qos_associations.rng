@@ -1,0 +1,5 @@
+<element name="qos_associations" xmlns="http://relaxng.org/ns/structure/1.0">
+  <zeroOrMore>
+    <externalRef href="qos_association.rng"/>
+  </zeroOrMore>
+</element>
