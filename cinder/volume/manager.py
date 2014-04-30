@@ -676,6 +676,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         """
         payload = {'volume_id': volume_id, 'image_id': image_meta['id']}
+        image_service = None
         try:
             volume = self.db.volume_get(context, volume_id)
 
@@ -692,6 +693,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                         "image (%(image_id)s) successfully"),
                       {'volume_id': volume_id, 'image_id': image_id})
         except Exception as error:
+            LOG.error(_("Error occurred while uploading volume %(volume_id)s "
+                        "to image %(image_id)s."),
+                      {'volume_id': volume_id, 'image_id': image_meta['id']})
+            if image_service is not None:
+                # Deletes the image if it is in queued or saving state
+                self._delete_image(context, image_meta['id'], image_service)
+
             with excutils.save_and_reraise_exception():
                 payload['message'] = unicode(error)
         finally:
@@ -702,6 +710,21 @@ class VolumeManager(manager.SchedulerDependentManager):
             else:
                 self.db.volume_update(context, volume_id,
                                       {'status': 'in-use'})
+
+    def _delete_image(self, context, image_id, image_service):
+        """Deletes an image stuck in queued or saving state."""
+        try:
+            image_meta = image_service.show(context, image_id)
+            image_status = image_meta.get('status')
+            if image_status == 'queued' or image_status == 'saving':
+                LOG.warn("Deleting image %(image_id)s in %(image_status)s "
+                         "state.",
+                         {'image_id': image_id,
+                          'image_status': image_status})
+                image_service.delete(context, image_id)
+        except Exception:
+            LOG.warn(_("Error occurred while deleting image %s."),
+                     image_id, exc_info=True)
 
     def initialize_connection(self, context, volume_id, connector):
         """Prepare volume for connection from host represented by connector.

@@ -2584,8 +2584,9 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
 
         os.close(self.dst_fd)
         self.stubs.Set(self.volume.driver, 'local_path', self.fake_local_path)
+        self.image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
         self.image_meta = {
-            'id': '70a599e0-31e7-49b7-b260-868f441e862b',
+            'id': self.image_id,
             'container_format': 'bare',
             'disk_format': 'raw'
         }
@@ -2661,6 +2662,73 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
 
         volume = db.volume_get(self.context, self.volume_id)
         self.assertEqual(volume.status, 'available')
+
+    def test_copy_volume_to_image_driver_exception(self):
+        self.image_meta['id'] = self.image_id
+
+        image_service = fake_image.FakeImageService()
+        # create new image in queued state
+        queued_image_id = 'd5133f15-f753-41bd-920a-06b8c49275d9'
+        queued_image_meta = image_service.show(self.context, self.image_id)
+        queued_image_meta['id'] = queued_image_id
+        queued_image_meta['status'] = 'queued'
+        image_service.create(self.context, queued_image_meta)
+
+        # create new image in saving state
+        saving_image_id = '5c6eec33-bab4-4e7d-b2c9-88e2d0a5f6f2'
+        saving_image_meta = image_service.show(self.context, self.image_id)
+        saving_image_meta['id'] = saving_image_id
+        saving_image_meta['status'] = 'saving'
+        image_service.create(self.context, saving_image_meta)
+
+        # create volume
+        self.volume_attrs['status'] = 'available'
+        self.volume_attrs['instance_uuid'] = None
+        db.volume_create(self.context, self.volume_attrs)
+
+        with mock.patch.object(self.volume.driver,
+                               'copy_volume_to_image') as driver_copy_mock:
+            driver_copy_mock.side_effect = exception.VolumeDriverException(
+                "Error")
+
+            # test with image not in queued state
+            self.assertRaises(exception.VolumeDriverException,
+                              self.volume.copy_volume_to_image,
+                              self.context,
+                              self.volume_id,
+                              self.image_meta)
+            volume = db.volume_get(self.context, self.volume_id)
+            self.assertEqual(volume['status'], 'available')
+            # image shouldn't be deleted if it is not in queued state
+            image_service.show(self.context, self.image_id)
+
+            # test with image in queued state
+            self.assertRaises(exception.VolumeDriverException,
+                              self.volume.copy_volume_to_image,
+                              self.context,
+                              self.volume_id,
+                              queued_image_meta)
+            volume = db.volume_get(self.context, self.volume_id)
+            self.assertEqual(volume['status'], 'available')
+            # queued image should be deleted
+            self.assertRaises(exception.ImageNotFound,
+                              image_service.show,
+                              self.context,
+                              queued_image_id)
+
+            # test with image in saving state
+            self.assertRaises(exception.VolumeDriverException,
+                              self.volume.copy_volume_to_image,
+                              self.context,
+                              self.volume_id,
+                              saving_image_meta)
+            volume = db.volume_get(self.context, self.volume_id)
+            self.assertEqual(volume['status'], 'available')
+            # image in saving state should be deleted
+            self.assertRaises(exception.ImageNotFound,
+                              image_service.show,
+                              self.context,
+                              saving_image_id)
 
 
 class GetActiveByWindowTestCase(BaseVolumeTestCase):
