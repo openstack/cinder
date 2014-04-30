@@ -793,7 +793,9 @@ class API(base.Base):
         # Make sure the host is in the list of available hosts
         elevated = context.elevated()
         topic = CONF.volume_topic
-        services = self.db.service_get_all_by_topic(elevated, topic)
+        services = self.db.service_get_all_by_topic(elevated,
+                                                    topic,
+                                                    disabled=False)
         found = False
         for service in services:
             if utils.service_is_up(service) and service['host'] == host:

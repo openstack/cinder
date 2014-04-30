@@ -133,9 +133,6 @@ class HostManagerTestCase(test.TestCase):
                  availability_zone='zone2', updated_at=timeutils.utcnow()),
             dict(id=4, host='host4', topic='volume', disabled=False,
                  availability_zone='zone3', updated_at=timeutils.utcnow()),
-            # service on host5 is disabled
-            dict(id=5, host='host5', topic='volume', disabled=True,
-                 availability_zone='zone4', updated_at=timeutils.utcnow()),
         ]
 
         # First test: service_is_up is always True, host5 is disabled
@@ -144,15 +141,15 @@ class HostManagerTestCase(test.TestCase):
         _mock_warning = mock.Mock()
         host_manager.LOG.warn = _mock_warning
 
-        # Get all states, make sure host5 is reported as down/disabled
+        # Get all states
         self.host_manager.get_all_host_states(context)
-        _mock_service_get_all_by_topic.assert_called_with(context, topic)
+        _mock_service_get_all_by_topic.assert_called_with(context,
+                                                          topic,
+                                                          disabled=False)
         expected = []
         for service in services:
             expected.append(mock.call(service))
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
-        _mock_warning.assert_called_with("volume service is down or disabled. "
-                                         "(host: host5)")
 
         # Get host_state_map and make sure we have the first 4 hosts
         host_state_map = self.host_manager.host_state_map
@@ -164,20 +161,22 @@ class HostManagerTestCase(test.TestCase):
 
         # Second test: Now service_is_up returns False for host4
         _mock_service_is_up.reset_mock()
-        _mock_service_is_up.side_effect = [True, True, True, False, True]
+        _mock_service_is_up.side_effect = [True, True, True, False]
         _mock_service_get_all_by_topic.reset_mock()
         _mock_warning.reset_mock()
 
-        # Get all states, make sure hosts 4 and 5 is reported as down/disabled
+        # Get all states, make sure host 4 is reported as down
         self.host_manager.get_all_host_states(context)
-        _mock_service_get_all_by_topic.assert_called_with(context, topic)
+        _mock_service_get_all_by_topic.assert_called_with(context,
+                                                          topic,
+                                                          disabled=False)
         expected = []
         for service in services:
             expected.append(mock.call(service))
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
         expected = []
-        for num in ['4', '5']:
-            expected.append(mock.call("volume service is down or disabled. "
+        for num in ['4']:
+            expected.append(mock.call("volume service is down. "
                                       "(host: host" + num + ")"))
         self.assertEqual(expected, _mock_warning.call_args_list)
 

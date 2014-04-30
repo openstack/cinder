@@ -188,11 +188,11 @@ class DBAPIServiceTestCase(BaseTest):
         values = [
             {'host': 'host1', 'topic': 't1'},
             {'host': 'host2', 'topic': 't1'},
-            {'disabled': True, 'topic': 't1'},
+            {'host': 'host4', 'disabled': True, 'topic': 't1'},
             {'host': 'host3', 'topic': 't2'}
         ]
         services = [self._create_service(vals) for vals in values]
-        expected = services[:2]
+        expected = services[:3]
         real = db.service_get_all_by_topic(self.ctxt, 't1')
         self._assertEqualListsOfObjects(expected, real)
 

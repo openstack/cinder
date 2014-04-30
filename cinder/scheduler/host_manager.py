@@ -289,13 +289,14 @@ class HostManager(object):
 
         # Get resource usage across the available volume nodes:
         topic = CONF.volume_topic
-        volume_services = db.service_get_all_by_topic(context, topic)
+        volume_services = db.service_get_all_by_topic(context,
+                                                      topic,
+                                                      disabled=False)
         active_hosts = set()
         for service in volume_services:
             host = service['host']
-            if not utils.service_is_up(service) or service['disabled']:
-                LOG.warn(_("volume service is down or disabled. "
-                           "(host: %s)") % host)
+            if not utils.service_is_up(service):
+                LOG.warn(_("volume service is down. (host: %s)") % host)
                 continue
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)
