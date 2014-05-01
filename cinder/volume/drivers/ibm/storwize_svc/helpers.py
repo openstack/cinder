@@ -308,7 +308,7 @@ class StorwizeHelpers(object):
                   {'result_lun': result_lun,
                    'volume_name': volume_name,
                    'host_name': host_name})
-        return result_lun
+        return int(result_lun)
 
     def unmap_vol_from_host(self, volume_name, host_name):
         """Unmap the volume and delete the host if it has no more mappings."""
