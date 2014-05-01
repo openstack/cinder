@@ -1931,7 +1931,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             types[protocol] = volume_types.create(ctxt, protocol, opts)
 
         expected = {'FC': {'driver_volume_type': 'fibre_channel',
-                           'data': {'target_lun': '0',
+                           'data': {'target_lun': 0,
                                     'target_wwn': 'AABBCCDDEEFF0011',
                                     'target_discovered': False}},
                     'iSCSI': {'driver_volume_type': 'iscsi',
@@ -1939,7 +1939,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                        'target_iqn':
                                        'iqn.1982-01.com.ibm:1234.sim.node1',
                                        'target_portal': '1.234.56.78:3260',
-                                       'target_lun': '0',
+                                       'target_lun': 0,
                                        'auth_method': 'CHAP'}}}
 
         for protocol in ['FC', 'iSCSI']:
@@ -2547,7 +2547,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                               {'ff00000000000000': ['AABBCCDDEEFF0011'],
                                'ff00000000000001': ['AABBCCDDEEFF0011']},
                               'target_discovered': False,
-                              'target_lun': '0',
+                              'target_lun': 0,
                               'target_wwn': 'AABBCCDDEEFF0011',
                               'volume_id': volume['id']
                               }
