@@ -695,7 +695,3 @@ class TestGlanceImageServiceClient(test.TestCase):
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
-
-    def tearDown(self):
-        self.stubs.UnsetAll()
-        super(TestGlanceImageServiceClient, self).tearDown()

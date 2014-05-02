@@ -231,9 +231,6 @@ class FakeRpc(object):
 class CoraidDriverTestCase(test.TestCase):
     def setUp(self):
         super(CoraidDriverTestCase, self).setUp()
-
-        self.mox = mox.Mox()
-
         configuration = mox.MockObject(conf.Configuration)
         configuration.append_config_values(mox.IgnoreArg())
         configuration.coraid_esm_address = fake_esm_ipaddress
@@ -252,10 +249,6 @@ class CoraidDriverTestCase(test.TestCase):
 
         self.driver = coraid.CoraidDriver(configuration=configuration)
         self.driver.do_setup({})
-
-    def tearDown(self):
-        self.mox.UnsetStubs()
-        super(CoraidDriverTestCase, self).tearDown()
 
     def mock_volume_types(self, repositories=[]):
         if not repositories:
@@ -677,17 +670,11 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
 class AutoReloginCoraidTestCase(test.TestCase):
     def setUp(self):
         super(AutoReloginCoraidTestCase, self).setUp()
-        self.mox = mox.Mox()
-
         self.rest_client = coraid.CoraidRESTClient('https://fake')
         self.appliance = coraid.CoraidAppliance(self.rest_client,
                                                 'fake_username',
                                                 'fake_password',
                                                 'fake_group')
-
-    def tearDown(self):
-        self.mox.UnsetStubs()
-        super(AutoReloginCoraidTestCase, self).tearDown()
 
     def _test_auto_relogin_fail(self, state):
         self.mox.StubOutWithMock(self.rest_client, 'rpc')

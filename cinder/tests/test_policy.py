@@ -41,10 +41,7 @@ class PolicyFileTestCase(test.TestCase):
         self.context = context.RequestContext('fake', 'fake')
         policy.reset()
         self.target = {}
-
-    def tearDown(self):
-        super(PolicyFileTestCase, self).tearDown()
-        policy.reset()
+        self.addCleanup(policy.reset)
 
     def test_modified_policy_reloads(self):
         with utils.tempdir() as tmpdir:
@@ -86,10 +83,7 @@ class PolicyTestCase(test.TestCase):
         common_policy.set_brain(common_policy.Brain(rules))
         self.context = context.RequestContext('fake', 'fake', roles=['member'])
         self.target = {}
-
-    def tearDown(self):
-        policy.reset()
-        super(PolicyTestCase, self).tearDown()
+        self.addCleanup(policy.reset)
 
     def test_enforce_nonexistent_action_throws(self):
         action = "example:noexist"
@@ -170,14 +164,12 @@ class DefaultPolicyTestCase(test.TestCase):
 
         self.context = context.RequestContext('fake', 'fake')
 
+        self.addCleanup(policy.reset)
+
     def _set_brain(self, default_rule):
         brain = cinder.openstack.common.policy.Brain(self.rules,
                                                      default_rule)
         cinder.openstack.common.policy.set_brain(brain)
-
-    def tearDown(self):
-        super(DefaultPolicyTestCase, self).tearDown()
-        policy.reset()
 
     def test_policy_called(self):
         self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,

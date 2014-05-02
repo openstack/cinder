@@ -96,6 +96,7 @@ class BaseVolumeTestCase(test.TestCase):
         vol_tmpdir = tempfile.mkdtemp()
         self.flags(volumes_dir=vol_tmpdir,
                    notification_driver=["test"])
+        self.addCleanup(self._cleanup)
         self.volume = importutils.import_object(CONF.volume_manager)
         self.context = context.get_admin_context()
         self.context.user_id = 'fake'
@@ -116,13 +117,12 @@ class BaseVolumeTestCase(test.TestCase):
         # keep ordered record of what we execute
         self.called = []
 
-    def tearDown(self):
+    def _cleanup(self):
         try:
             shutil.rmtree(CONF.volumes_dir)
         except OSError:
             pass
         fake_notifier.reset()
-        super(BaseVolumeTestCase, self).tearDown()
 
     def fake_get_target(obj, iqn):
         return 1
@@ -2475,6 +2475,8 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def setUp(self):
         super(CopyVolumeToImageTestCase, self).setUp()
         self.dst_fd, self.dst_path = tempfile.mkstemp()
+        self.addCleanup(os.unlink, self.dst_path)
+
         os.close(self.dst_fd)
         self.stubs.Set(self.volume.driver, 'local_path', self.fake_local_path)
         self.image_meta = {
@@ -2483,6 +2485,8 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
             'disk_format': 'raw'
         }
         self.volume_id = 1
+        self.addCleanup(db.volume_destroy, self.context, self.volume_id)
+
         self.volume_attrs = {
             'id': self.volume_id,
             'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -2491,11 +2495,6 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
             'status': 'uploading',
             'host': 'dummy'
         }
-
-    def tearDown(self):
-        db.volume_destroy(self.context, self.volume_id)
-        os.unlink(self.dst_path)
-        super(CopyVolumeToImageTestCase, self).tearDown()
 
     def test_copy_volume_to_image_status_available(self):
         # creating volume testdata
@@ -2668,13 +2667,13 @@ class DriverTestCase(test.TestCase):
             return self.output, None
         self.volume.driver.set_execute(_fake_execute)
         self.volume.driver.set_initialized()
+        self.addCleanup(self._cleanup)
 
-    def tearDown(self):
+    def _cleanup(self):
         try:
             shutil.rmtree(CONF.volumes_dir)
         except OSError:
             pass
-        super(DriverTestCase, self).tearDown()
 
     def fake_get_target(obj, iqn):
         return 1
@@ -3207,10 +3206,7 @@ class VolumePolicyTestCase(test.TestCase):
 
         self.context = context.get_admin_context()
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
-
-    def tearDown(self):
-        super(VolumePolicyTestCase, self).tearDown()
-        cinder.policy.reset()
+        self.addCleanup(cinder.policy.reset)
 
     def _set_rules(self, rules):
         cinder.common.policy.set_brain(cinder.common.policy.Brain(rules))

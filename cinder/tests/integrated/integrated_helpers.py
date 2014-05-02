@@ -66,12 +66,9 @@ class _IntegratedTestBase(test.TestCase):
         self.volume = self.start_service('volume')
         self.scheduler = self.start_service('scheduler')
         self._start_api_service()
+        self.addCleanup(self.osapi.stop)
 
         self.api = client.TestOpenStackClient('fake', 'fake', self.auth_url)
-
-    def tearDown(self):
-        self.osapi.stop()
-        super(_IntegratedTestBase, self).tearDown()
 
     def _start_api_service(self):
         self.osapi = service.WSGIService("osapi_volume")

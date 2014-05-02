@@ -24,9 +24,7 @@ import tempfile
 
 from oslo.config import cfg
 
-import mox as mox_lib
-from mox import IgnoreArg
-from mox import stubout
+import mox
 
 from cinder import test
 
@@ -48,9 +46,9 @@ class TestWindowsDriver(test.TestCase):
 
     def setUp(self):
         self.lun_path_tempdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.lun_path_tempdir)
+
         super(TestWindowsDriver, self).setUp()
-        self._mox = mox_lib.Mox()
-        self.stubs = stubout.StubOutForTesting()
         self.flags(
             windows_iscsi_lun_path=self.lun_path_tempdir,
         )
@@ -60,12 +58,6 @@ class TestWindowsDriver(test.TestCase):
 
         self._driver = windows.WindowsDriver(configuration=configuration)
         self._driver.do_setup({})
-
-    def tearDown(self):
-        self._mox.UnsetStubs()
-        self.stubs.UnsetAll()
-        shutil.rmtree(self.lun_path_tempdir)
-        super(TestWindowsDriver, self).tearDown()
 
     def _setup_stubs(self):
 
@@ -78,62 +70,52 @@ class TestWindowsDriver(test.TestCase):
                             str(volume['name']) + ".vhd")
 
     def test_check_for_setup_errors(self):
-        mox = self._mox
         drv = self._driver
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'check_for_setup_error')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'check_for_setup_error')
         windows_utils.WindowsUtils.check_for_setup_error()
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.check_for_setup_error()
 
-        mox.VerifyAll()
-
     def test_create_volume(self):
-        mox = self._mox
         drv = self._driver
         vol = db_fakes.get_fake_volume_info()
 
         self.stubs.Set(drv, 'local_path', self.fake_local_path)
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'create_volume')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_volume')
 
         windows_utils.WindowsUtils.create_volume(self.fake_local_path(vol),
                                                  vol['name'], vol['size'])
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.create_volume(vol)
 
-        mox.VerifyAll()
-
     def test_delete_volume(self):
         """delete_volume simple test case."""
-        mox = self._mox
         drv = self._driver
 
         vol = db_fakes.get_fake_volume_info()
 
-        mox.StubOutWithMock(drv, 'local_path')
+        self.mox.StubOutWithMock(drv, 'local_path')
         drv.local_path(vol).AndReturn(self.fake_local_path(vol))
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'delete_volume')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'delete_volume')
         windows_utils.WindowsUtils.delete_volume(vol['name'],
                                                  self.fake_local_path(vol))
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.delete_volume(vol)
 
-        mox.VerifyAll()
-
     def test_create_snapshot(self):
-        mox = self._mox
         drv = self._driver
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'create_snapshot')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_snapshot')
         volume = db_fakes.get_fake_volume_info()
         snapshot = db_fakes.get_fake_snapshot_info()
 
@@ -142,73 +124,61 @@ class TestWindowsDriver(test.TestCase):
         windows_utils.WindowsUtils.create_snapshot(volume['name'],
                                                    snapshot['name'])
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.create_snapshot(snapshot)
 
-        mox.VerifyAll()
-
     def test_create_volume_from_snapshot(self):
-        mox = self._mox
         drv = self._driver
 
         snapshot = db_fakes.get_fake_snapshot_info()
         volume = db_fakes.get_fake_volume_info()
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'create_volume_from_snapshot')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_volume_from_snapshot')
         windows_utils.WindowsUtils.\
             create_volume_from_snapshot(volume['name'], snapshot['name'])
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.create_volume_from_snapshot(volume, snapshot)
 
-        mox.VerifyAll()
-
     def test_delete_snapshot(self):
-        mox = self._mox
         drv = self._driver
 
         snapshot = db_fakes.get_fake_snapshot_info()
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'delete_snapshot')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'delete_snapshot')
         windows_utils.WindowsUtils.delete_snapshot(snapshot['name'])
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.delete_snapshot(snapshot)
 
-        mox.VerifyAll()
-
     def test_create_export(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
 
         initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'create_iscsi_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_iscsi_target')
         windows_utils.WindowsUtils.create_iscsi_target(initiator_name,
-                                                       IgnoreArg())
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'add_disk_to_target')
+                                                       mox.IgnoreArg())
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'add_disk_to_target')
         windows_utils.WindowsUtils.add_disk_to_target(volume['name'],
                                                       initiator_name)
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         export_info = drv.create_export(None, volume)
-
-        mox.VerifyAll()
 
         self.assertEqual(export_info['provider_location'], initiator_name)
 
     def test_initialize_connection(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
@@ -216,103 +186,88 @@ class TestWindowsDriver(test.TestCase):
 
         connector = db_fakes.get_fake_connector_info()
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'associate_initiator_with_iscsi_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'associate_initiator_with_iscsi_target')
         windows_utils.WindowsUtils.associate_initiator_with_iscsi_target(
             volume['provider_location'], initiator_name, )
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'get_host_information')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'get_host_information')
         windows_utils.WindowsUtils.get_host_information(
             volume, volume['provider_location'])
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.initialize_connection(volume, connector)
 
-        mox.VerifyAll()
-
     def test_terminate_connection(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
         initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
         connector = db_fakes.get_fake_connector_info()
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'delete_iscsi_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'delete_iscsi_target')
         windows_utils.WindowsUtils.delete_iscsi_target(
             initiator_name, volume['provider_location'])
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.terminate_connection(volume, connector)
 
-        mox.VerifyAll()
-
     def test_ensure_export(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
 
         initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'create_iscsi_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_iscsi_target')
         windows_utils.WindowsUtils.create_iscsi_target(initiator_name, True)
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'add_disk_to_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'add_disk_to_target')
         windows_utils.WindowsUtils.add_disk_to_target(volume['name'],
                                                       initiator_name)
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.ensure_export(None, volume)
 
-        mox.VerifyAll()
-
     def test_remove_export(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
 
         target_name = volume['provider_location']
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'remove_iscsi_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'remove_iscsi_target')
         windows_utils.WindowsUtils.remove_iscsi_target(target_name)
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.remove_export(None, volume)
 
-        mox.VerifyAll()
-
     def test_copy_image_to_volume(self):
         """resize_image common case usage."""
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
 
         self.stubs.Set(drv, 'local_path', self.fake_local_path)
 
-        mox.StubOutWithMock(image_utils, 'fetch_to_vhd')
+        self.mox.StubOutWithMock(image_utils, 'fetch_to_vhd')
         image_utils.fetch_to_vhd(None, None, None,
                                  self.fake_local_path(volume),
-                                 mox_lib.IgnoreArg())
+                                 mox.IgnoreArg())
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.copy_image_to_volume(None, volume, None, None)
 
-        mox.VerifyAll()
-
     def test_copy_volume_to_image(self):
-        mox = self._mox
         drv = self._driver
 
         vol = db_fakes.get_fake_volume_info()
@@ -321,51 +276,46 @@ class TestWindowsDriver(test.TestCase):
 
         self.stubs.Set(drv, 'local_path', self.fake_local_path)
 
-        mox.StubOutWithMock(image_utils, 'upload_volume')
+        self.mox.StubOutWithMock(image_utils, 'upload_volume')
 
         temp_vhd_path = os.path.join(CONF.image_conversion_dir,
                                      str(image_meta['id']) + ".vhd")
 
         image_utils.upload_volume(None, None, image_meta, temp_vhd_path, 'vpc')
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'copy_vhd_disk')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'copy_vhd_disk')
 
         windows_utils.WindowsUtils.copy_vhd_disk(self.fake_local_path(vol),
                                                  temp_vhd_path)
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.copy_volume_to_image(None, vol, None, image_meta)
 
-        mox.VerifyAll()
-
     def test_create_cloned_volume(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
         volume_cloned = db_fakes.get_fake_volume_info_cloned()
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'create_volume')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_volume')
 
-        windows_utils.WindowsUtils.create_volume(IgnoreArg(), IgnoreArg(),
-                                                 IgnoreArg())
+        windows_utils.WindowsUtils.create_volume(mox.IgnoreArg(),
+                                                 mox.IgnoreArg(),
+                                                 mox.IgnoreArg())
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                  'copy_vhd_disk')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'copy_vhd_disk')
         windows_utils.WindowsUtils.copy_vhd_disk(self.fake_local_path(
             volume_cloned), self.fake_local_path(volume))
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.create_cloned_volume(volume, volume_cloned)
 
-        mox.VerifyAll()
-
     def test_extend_volume(self):
-        mox = self._mox
         drv = self._driver
 
         volume = db_fakes.get_fake_volume_info()
@@ -373,15 +323,13 @@ class TestWindowsDriver(test.TestCase):
         TEST_VOLUME_ADDITIONAL_SIZE_MB = 1024
         TEST_VOLUME_ADDITIONAL_SIZE_GB = 1
 
-        self._mox.StubOutWithMock(windows_utils.WindowsUtils, 'extend')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils, 'extend')
 
         windows_utils.WindowsUtils.extend(volume['name'],
                                           TEST_VOLUME_ADDITIONAL_SIZE_MB)
 
         new_size = volume['size'] + TEST_VOLUME_ADDITIONAL_SIZE_GB
 
-        mox.ReplayAll()
+        self.mox.ReplayAll()
 
         drv.extend_volume(volume, new_size)
-
-        mox.VerifyAll()

@@ -16,8 +16,6 @@ import os.path
 import string
 import time
 
-import mox
-
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
@@ -34,7 +32,6 @@ class ConnectorTestCase(test.TestCase):
     def setUp(self):
         super(ConnectorTestCase, self).setUp()
         self.cmds = []
-        self.stubs.Set(os.path, 'exists', lambda x: True)
 
     def fake_execute(self, *cmd, **kwargs):
         self.cmds.append(string.join(cmd))
@@ -119,9 +116,6 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
             None, execute=self.fake_execute, use_multipath=False)
         self.stubs.Set(self.connector._linuxscsi,
                        'get_name_from_path', lambda x: "/dev/sdb")
-
-    def tearDown(self):
-        super(ISCSIConnectorTestCase, self).tearDown()
 
     def iscsi_connection(self, volume, location, iqn):
         return {
@@ -471,18 +465,12 @@ class AoEConnectorTestCase(ConnectorTestCase):
     """Test cases for AoE initiator class."""
     def setUp(self):
         super(AoEConnectorTestCase, self).setUp()
-        self.mox = mox.Mox()
         self.connector = connector.AoEConnector('sudo')
         self.connection_properties = {'target_shelf': 'fake_shelf',
                                       'target_lun': 'fake_lun'}
         self.stubs.Set(loopingcall,
                        'FixedIntervalLoopingCall',
                        FakeFixedIntervalLoopingCall)
-
-    def tearDown(self):
-        self.mox.VerifyAll()
-        self.mox.UnsetStubs()
-        super(AoEConnectorTestCase, self).tearDown()
 
     def _mock_path_exists(self, aoe_path, mock_values=[]):
         self.mox.StubOutWithMock(os.path, 'exists')
@@ -574,18 +562,12 @@ class RemoteFsConnectorTestCase(ConnectorTestCase):
 
     def setUp(self):
         super(RemoteFsConnectorTestCase, self).setUp()
-        self.mox = mox.Mox()
         self.connection_properties = {
             'export': self.TEST_DEV,
             'name': '9c592d52-ce47-4263-8c21-4ecf3c029cdb'}
         self.connector = connector.RemoteFsConnector(
             'nfs', root_helper='sudo', nfs_mount_point_base='/mnt/test',
             nfs_mount_options='vers=3')
-
-    def tearDown(self):
-        self.mox.VerifyAll()
-        self.mox.UnsetStubs()
-        super(RemoteFsConnectorTestCase, self).tearDown()
 
     def test_connect_volume(self):
         """Test the basic connect volume case."""
