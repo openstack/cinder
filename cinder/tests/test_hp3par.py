@@ -919,6 +919,38 @@ class HP3PARBaseDriver(object):
                                'minIOPS': '10', 'minBWS': '20',
                                'latency': '5', 'priority': 'high'})
 
+    def test_create_vlun(self):
+        host = 'fake-host'
+        lun_id = 11
+        nsp = '1:2:3'
+        mock_client = self.setup_driver()
+        location = ("%(name)s,%(lunid)s,%(host)s,%(nsp)s" %
+                    {'name': self.VOLUME_NAME,
+                     'lunid': lun_id,
+                     'host': host,
+                     'nsp': nsp})
+        mock_client.createVLUN.return_value = location
+
+        expected_info = {'volume_name': self.VOLUME_NAME,
+                         'lun_id': lun_id,
+                         'host_name': host,
+                         'nsp': nsp}
+        vlun_info = self.driver.common._create_3par_vlun(self.VOLUME_NAME,
+                                                         host, nsp)
+        self.assertEqual(expected_info, vlun_info)
+
+        location = ("%(name)s,%(lunid)s,%(host)s" %
+                    {'name': self.VOLUME_NAME,
+                     'lunid': lun_id,
+                     'host': host})
+        mock_client.createVLUN.return_value = location
+        expected_info = {'volume_name': self.VOLUME_NAME,
+                         'lun_id': lun_id,
+                         'host_name': host}
+        vlun_info = self.driver.common._create_3par_vlun(self.VOLUME_NAME,
+                                                         host, None)
+        self.assertEqual(expected_info, vlun_info)
+
 
 class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 

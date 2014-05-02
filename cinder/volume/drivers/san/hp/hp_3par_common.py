@@ -123,10 +123,11 @@ class HP3PARCommon(object):
         2.0.7 - Allow extend volume based on snapshot bug #1285906
         2.0.8 - Fix detach issue for multiple hosts bug #1288927
         2.0.9 - Remove unused 3PAR driver method bug #1310807
+        2.0.10 - Fixed an issue with 3PAR vlun location bug #1315542
 
     """
 
-    VERSION = "2.0.9"
+    VERSION = "2.0.10"
 
     stats = {}
 
@@ -359,8 +360,9 @@ class HP3PARCommon(object):
                 vlun_info = {'volume_name': vlun[0],
                              'lun_id': int(vlun[1]),
                              'host_name': vlun[2],
-                             'nsp': vlun[3],
                              }
+                if len(vlun) > 3:
+                    vlun_info['nsp'] = vlun[3]
 
             return vlun_info
 
