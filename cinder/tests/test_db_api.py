@@ -481,17 +481,16 @@ class DBAPIVolumeTestCase(BaseTest):
             result = db.volume_get_all(self.ctxt, None, limit, sort_key,
                                        sort_dir, filters=filters)
         self.assertEqual(len(correct_order), len(result))
-        self.assertEqual(len(result), len(correct_order))
         for vol1, vol2 in zip(result, correct_order):
             for key in match_keys:
                 val1 = vol1.get(key)
                 val2 = vol2.get(key)
-                # metadata is a list, compare the 'key' and 'value' of each
+                # metadata is a dict, compare the 'key' and 'value' of each
                 if key == 'volume_metadata':
                     self.assertEqual(len(val1), len(val2))
-                    for m1, m2 in zip(val1, val2):
-                        self.assertEqual(m1.get('key'), m2.get('key'))
-                        self.assertEqual(m1.get('value'), m2.get('value'))
+                    val1_dict = dict((x.key, x.value) for x in val1)
+                    val2_dict = dict((x.key, x.value) for x in val2)
+                    self.assertDictMatch(val1_dict, val2_dict)
                 else:
                     self.assertEqual(val1, val2)
 
