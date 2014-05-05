@@ -29,7 +29,10 @@ volume_driver=cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver
 
 import sys
 
-from hp3parclient import exceptions as hpexceptions
+try:
+    from hp3parclient import exceptions as hpexceptions
+except ImportError:
+    hpexceptions = None
 
 from cinder import exception
 from cinder.openstack.common import log as logging

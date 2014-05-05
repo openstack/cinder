@@ -29,7 +29,10 @@ Set the following in the cinder.conf file to enable the
 volume_driver=cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver
 """
 
-from hp3parclient import exceptions as hpexceptions
+try:
+    from hp3parclient import exceptions as hpexceptions
+except ImportError:
+    hpexceptions = None
 
 from cinder.openstack.common import log as logging
 from cinder import utils

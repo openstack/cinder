@@ -41,9 +41,12 @@ import pprint
 import re
 import uuid
 
-import hp3parclient
-from hp3parclient import client
-from hp3parclient import exceptions as hpexceptions
+from cinder.openstack.common import importutils
+hp3parclient = importutils.try_import("hp3parclient")
+if hp3parclient:
+    from hp3parclient import client
+    from hp3parclient import exceptions as hpexceptions
+
 from oslo.config import cfg
 
 from cinder import context
@@ -124,10 +127,11 @@ class HP3PARCommon(object):
         2.0.8 - Fix detach issue for multiple hosts bug #1288927
         2.0.9 - Remove unused 3PAR driver method bug #1310807
         2.0.10 - Fixed an issue with 3PAR vlun location bug #1315542
+        2.0.11 - Remove hp3parclient requirement from unit tests #1315195
 
     """
 
-    VERSION = "2.0.10"
+    VERSION = "2.0.11"
 
     stats = {}
 
@@ -209,6 +213,9 @@ class HP3PARCommon(object):
         LOG.debug("Disconnect from 3PAR")
 
     def do_setup(self, context):
+        if hp3parclient is None:
+            msg = _('You must install hp3parclient before using 3PAR drivers.')
+            raise exception.VolumeBackendAPIException(data=msg)
         try:
             self.client = self._create_client()
         except hpexceptions.UnsupportedVersion as ex:
