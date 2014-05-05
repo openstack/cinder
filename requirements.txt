@@ -1,5 +1,4 @@
 pbr>=0.6,<1.0
-amqplib>=0.6.1
 anyjson>=0.3.3
 argparse
 Babel>=1.3
