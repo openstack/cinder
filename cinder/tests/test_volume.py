@@ -2540,6 +2540,23 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
         volume = db.volume_get(self.context, self.volume_id)
         self.assertEqual(volume['status'], 'available')
 
+    def test_copy_volume_to_image_driver_not_initialized(self):
+        # creating volume testdata
+        db.volume_create(self.context, self.volume_attrs)
+
+        # set initialized to False
+        self.volume.driver._initialized = False
+
+        # start test
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.copy_volume_to_image,
+                          self.context,
+                          self.volume_id,
+                          self.image_meta)
+
+        volume = db.volume_get(self.context, self.volume_id)
+        self.assertEqual(volume.status, 'available')
+
 
 class GetActiveByWindowTestCase(BaseVolumeTestCase):
     def setUp(self):
