@@ -17,17 +17,22 @@ import json
 import uuid
 
 import mock
+from oslo.config import cfg
 from oslo import messaging
 import webob
 
 from cinder.api.contrib import volume_actions
 from cinder import exception
+from cinder.image.glance import GlanceImageService
 from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder import volume
 from cinder.volume import api as volume_api
+from cinder.volume import rpcapi as volume_rpcapi
+
+CONF = cfg.CONF
 
 
 class VolumeActionsTest(test.TestCase):
@@ -456,6 +461,40 @@ class VolumeImageActionsTest(test.TestCase):
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
 
+    def _get_os_volume_upload_image(self):
+        vol = {
+            "container_format": 'bare',
+            "disk_format": 'raw',
+            "updated_at": datetime.datetime(1, 1, 1, 1, 1, 1),
+            "image_name": 'image_name',
+            "is_public": False,
+            "force": True}
+        body = {"os-volume_upload_image": vol}
+
+        return body
+
+    def fake_image_service_create(self, *args):
+        ret = {
+            'status': u'queued',
+            'name': u'image_name',
+            'deleted': False,
+            'container_format': u'bare',
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'disk_format': u'raw',
+            'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'id': 1,
+            'min_ram': 0,
+            'checksum': None,
+            'min_disk': 0,
+            'is_public': False,
+            'deleted_at': None,
+            'properties': {u'x_billing_code_license': u'246254365'},
+            'size': 0}
+        return ret
+
+    def fake_rpc_copy_volume_to_image(self, *args):
+        pass
+
     def test_copy_volume_to_image(self):
         self.stubs.Set(volume_api.API,
                        "copy_volume_to_image",
@@ -610,3 +649,214 @@ class VolumeImageActionsTest(test.TestCase):
                           req,
                           id,
                           body)
+
+    def test_copy_volume_to_image_with_protected_prop(self):
+        """Test create image from volume with protected properties."""
+        id = 1
+
+        def fake_get_volume_image_metadata(*args):
+            meta_dict = {
+                "volume_id": id,
+                "key": "x_billing_code_license",
+                "value": "246254365"}
+            return meta_dict
+
+        # Need to mock get_volume_image_metadata, create,
+        # update and copy_volume_to_image
+        with mock.patch.object(volume_api.API, "get_volume_image_metadata") \
+                as mock_get_volume_image_metadata:
+            mock_get_volume_image_metadata.side_effect = \
+                fake_get_volume_image_metadata
+
+            with mock.patch.object(GlanceImageService, "create") \
+                    as mock_create:
+                mock_create.side_effect = self.fake_image_service_create
+
+                with mock.patch.object(volume_api.API, "update") \
+                        as mock_update:
+                    mock_update.side_effect = stubs.stub_volume_update
+
+                    with mock.patch.object(volume_rpcapi.VolumeAPI,
+                                           "copy_volume_to_image") \
+                            as mock_copy_volume_to_image:
+                        mock_copy_volume_to_image.side_effect = \
+                            self.fake_rpc_copy_volume_to_image
+
+                        req = fakes.HTTPRequest.blank(
+                            '/v2/tenant1/volumes/%s/action' % id)
+                        body = self._get_os_volume_upload_image()
+                        res_dict = self.controller._volume_upload_image(req,
+                                                                        id,
+                                                                        body)
+                        expected_res = {
+                            'os-volume_upload_image': {
+                                'id': id,
+                                'updated_at': datetime.datetime(1900, 1, 1,
+                                                                1, 1, 1),
+                                'status': 'uploading',
+                                'display_description': 'displaydesc',
+                                'size': 1,
+                                'volume_type': {'name': 'vol_type_name'},
+                                'image_id': 1,
+                                'container_format': 'bare',
+                                'disk_format': 'raw',
+                                'image_name': 'image_name'
+                            }
+                        }
+
+                        self.assertDictMatch(res_dict, expected_res)
+
+    def test_copy_volume_to_image_without_glance_metadata(self):
+        """Test create image from volume if volume is created without image.
+
+        In this case volume glance metadata will not be available for this
+        volume.
+        """
+        id = 1
+
+        def fake_get_volume_image_metadata_raise(*args):
+            raise exception.GlanceMetadataNotFound(id=id)
+
+        # Need to mock get_volume_image_metadata, create,
+        # update and copy_volume_to_image
+        with mock.patch.object(volume_api.API, "get_volume_image_metadata") \
+                as mock_get_volume_image_metadata:
+            mock_get_volume_image_metadata.side_effect = \
+                fake_get_volume_image_metadata_raise
+
+            with mock.patch.object(GlanceImageService, "create") \
+                    as mock_create:
+                mock_create.side_effect = self.fake_image_service_create
+
+                with mock.patch.object(volume_api.API, "update") \
+                        as mock_update:
+                    mock_update.side_effect = stubs.stub_volume_update
+
+                    with mock.patch.object(volume_rpcapi.VolumeAPI,
+                                           "copy_volume_to_image") \
+                            as mock_copy_volume_to_image:
+                        mock_copy_volume_to_image.side_effect = \
+                            self.fake_rpc_copy_volume_to_image
+
+                        req = fakes.HTTPRequest.blank(
+                            '/v2/tenant1/volumes/%s/action' % id)
+                        body = self._get_os_volume_upload_image()
+                        res_dict = self.controller._volume_upload_image(req,
+                                                                        id,
+                                                                        body)
+                        expected_res = {
+                            'os-volume_upload_image': {
+                                'id': id,
+                                'updated_at': datetime.datetime(1900, 1, 1,
+                                                                1, 1, 1),
+                                'status': 'uploading',
+                                'display_description': 'displaydesc',
+                                'size': 1,
+                                'volume_type': {'name': 'vol_type_name'},
+                                'image_id': 1,
+                                'container_format': 'bare',
+                                'disk_format': 'raw',
+                                'image_name': 'image_name'
+                            }
+                        }
+
+                        self.assertDictMatch(res_dict, expected_res)
+
+    def test_copy_volume_to_image_without_protected_prop(self):
+        """Test protected property is not defined with the root image."""
+        id = 1
+
+        def fake_get_volume_image_metadata(*args):
+            return []
+
+        # Need to mock get_volume_image_metadata, create,
+        # update and copy_volume_to_image
+        with mock.patch.object(volume_api.API, "get_volume_image_metadata") \
+                as mock_get_volume_image_metadata:
+            mock_get_volume_image_metadata.side_effect = \
+                fake_get_volume_image_metadata
+
+            with mock.patch.object(GlanceImageService, "create") \
+                    as mock_create:
+                mock_create.side_effect = self.fake_image_service_create
+
+                with mock.patch.object(volume_api.API, "update") \
+                        as mock_update:
+                    mock_update.side_effect = stubs.stub_volume_update
+
+                    with mock.patch.object(volume_rpcapi.VolumeAPI,
+                                           "copy_volume_to_image") \
+                            as mock_copy_volume_to_image:
+                        mock_copy_volume_to_image.side_effect = \
+                            self.fake_rpc_copy_volume_to_image
+
+                        req = fakes.HTTPRequest.blank(
+                            '/v2/tenant1/volumes/%s/action' % id)
+
+                        body = self._get_os_volume_upload_image()
+                        res_dict = self.controller._volume_upload_image(req,
+                                                                        id,
+                                                                        body)
+                        expected_res = {
+                            'os-volume_upload_image': {
+                                'id': id,
+                                'updated_at': datetime.datetime(1900, 1, 1,
+                                                                1, 1, 1),
+                                'status': 'uploading',
+                                'display_description': 'displaydesc',
+                                'size': 1,
+                                'volume_type': {'name': 'vol_type_name'},
+                                'image_id': 1,
+                                'container_format': 'bare',
+                                'disk_format': 'raw',
+                                'image_name': 'image_name'
+                            }
+                        }
+
+                        self.assertDictMatch(res_dict, expected_res)
+
+    def test_copy_volume_to_image_without_core_prop(self):
+        """Test glance_core_properties defined in cinder.conf is empty."""
+        id = 1
+
+        # Need to mock create, update, copy_volume_to_image
+        with mock.patch.object(GlanceImageService, "create") \
+                as mock_create:
+            mock_create.side_effect = self.fake_image_service_create
+
+            with mock.patch.object(volume_api.API, "update") \
+                    as mock_update:
+                mock_update.side_effect = stubs.stub_volume_update
+
+                with mock.patch.object(volume_rpcapi.VolumeAPI,
+                                       "copy_volume_to_image") \
+                        as mock_copy_volume_to_image:
+                    mock_copy_volume_to_image.side_effect = \
+                        self.fake_rpc_copy_volume_to_image
+
+                    CONF.set_override('glance_core_properties', [])
+
+                    req = fakes.HTTPRequest.blank(
+                        '/v2/tenant1/volumes/%s/action' % id)
+
+                    body = self._get_os_volume_upload_image()
+                    res_dict = self.controller._volume_upload_image(req,
+                                                                    id,
+                                                                    body)
+                    expected_res = {
+                        'os-volume_upload_image': {
+                            'id': id,
+                            'updated_at': datetime.datetime(1900, 1, 1,
+                                                            1, 1, 1),
+                            'status': 'uploading',
+                            'display_description': 'displaydesc',
+                            'size': 1,
+                            'volume_type': {'name': 'vol_type_name'},
+                            'image_id': 1,
+                            'container_format': 'bare',
+                            'disk_format': 'raw',
+                            'image_name': 'image_name'
+                        }
+                    }
+
+                    self.assertDictMatch(res_dict, expected_res)

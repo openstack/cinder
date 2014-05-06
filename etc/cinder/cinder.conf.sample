@@ -664,6 +664,9 @@
 # Options defined in cinder.image.glance
 #
 
+# Default core properties of image (list value)
+#glance_core_properties=checksum,container_format,disk_format,image_name,image_id,min_disk,min_ram,name,size
+
 # A list of url schemes that can be downloaded directly via
 # the direct_url.  Currently supported schemes: [file]. (list
 # value)

@@ -57,6 +57,8 @@ volume_same_az_opt = cfg.BoolOpt('cloned_volume_same_az',
 CONF = cfg.CONF
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
+
+CONF.import_opt('glance_core_properties', 'cinder.image.glance')
 CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
@@ -722,6 +724,25 @@ class API(base.Base):
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
         self._check_volume_availability(volume, force)
+        glance_core_properties = CONF.glance_core_properties
+        if glance_core_properties:
+            try:
+                volume_image_metadata = self.get_volume_image_metadata(context,
+                                                                       volume)
+                custom_property_set = (set(volume_image_metadata).difference
+                                      (set(glance_core_properties)))
+                if custom_property_set:
+                    metadata.update(dict(properties=dict((custom_property,
+                                                          volume_image_metadata
+                                                          [custom_property])
+                                    for custom_property
+                                    in custom_property_set)))
+            except exception.GlanceMetadataNotFound:
+                # If volume is not created from image, No glance metadata
+                # would be available for that volume in
+                # volume glance metadata table
+
+                pass
 
         recv_metadata = self.image_service.create(context, metadata)
         self.update(context, volume, {'status': 'uploading'})

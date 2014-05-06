@@ -40,6 +40,7 @@ def stub_volume(id, **kwargs):
         'name': 'vol name',
         'display_name': 'displayname',
         'display_description': 'displaydesc',
+        'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'snapshot_id': None,
         'source_volid': None,
