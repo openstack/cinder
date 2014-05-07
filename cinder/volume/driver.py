@@ -1022,3 +1022,21 @@ class FibreChannelDriver(VolumeDriver):
         """
         msg = _("Driver must implement initialize_connection")
         raise NotImplementedError(msg)
+
+    def validate_connector(self, connector):
+        """Fail if connector doesn't contain all the data needed by driver.
+
+        Do a check on the connector and ensure that it has wwnns, wwpns.
+        """
+        self.validate_connector_has_setting(connector, 'wwpns')
+        self.validate_connector_has_setting(connector, 'wwnns')
+
+    @staticmethod
+    def validate_connector_has_setting(connector, setting):
+        """Test for non-empty setting in connector."""
+        if setting not in connector or not connector[setting]:
+            msg = (_(
+                "FibreChannelDriver validate_connector failed. "
+                "No '%s'. Make sure HBA state is Online.") % setting)
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
