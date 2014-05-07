@@ -103,6 +103,14 @@ volume_opts = [
                default='1M',
                help='The default block size used when copying/clearing '
                     'volumes'),
+    cfg.StrOpt('volume_copy_blkio_cgroup_name',
+               default='cinder-volume-copy',
+               help='The blkio cgroup name to be used to limit bandwidth '
+                    'of volume copy'),
+    cfg.IntOpt('volume_copy_bps_limit',
+               default=0,
+               help='The upper limit of bandwidth of volume copy. '
+                    '0 => unlimited'),
 ]
 
 # for backward compatibility
