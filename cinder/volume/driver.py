@@ -883,6 +883,43 @@ class FakeISCSIDriver(ISCSIDriver):
         LOG.debug(_("FAKE ISCSI: %s"), cmd)
         return (None, None)
 
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot."""
+        pass
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+        pass
+
+    def delete_volume(self, volume):
+        """Deletes a volume."""
+        pass
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot."""
+        pass
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
+        pass
+
+    def local_path(self, volume):
+        return '/tmp/volume-%s' % volume.id
+
+    def ensure_export(self, context, volume):
+        """Synchronously recreates an export for a volume."""
+        pass
+
+    def create_export(self, context, volume):
+        """Exports the volume. Can optionally return a Dictionary of changes
+        to the volume object to be persisted.
+        """
+        pass
+
+    def remove_export(self, context, volume):
+        """Removes an export for a volume."""
+        pass
+
 
 class ISERDriver(ISCSIDriver):
     """Executes commands relating to ISER volumes.
