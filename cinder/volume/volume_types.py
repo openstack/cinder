@@ -192,11 +192,12 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
             qos_specs.update(qos_specs.pop('specs', {}))
 
     def _fix_encryption_specs(encryption):
-        if encryption1:
+        if encryption:
             encryption = dict(encryption)
             for param in ['volume_type_id', 'created_at', 'updated_at',
                           'deleted_at']:
                 encryption.pop(param, None)
+        return encryption
 
     def _dict_diff(dict1, dict2):
         res = {}
@@ -217,28 +218,34 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
 
     all_equal = True
     diff = {}
-    vol_type1 = get_volume_type(context, vol_type_id1)
-    vol_type2 = get_volume_type(context, vol_type_id2)
+    vol_type_data = []
+    for vol_type_id in (vol_type_id1, vol_type_id2):
+        if vol_type_id is None:
+            specs = {'extra_specs': None,
+                     'qos_specs': None,
+                     'encryption': None}
+        else:
+            specs = {}
+            vol_type = get_volume_type(context, vol_type_id)
+            specs['extra_specs'] = vol_type.get('extra_specs')
+            qos_specs = get_volume_type_qos_specs(vol_type_id)
+            specs['qos_specs'] = qos_specs.get('qos_specs')
+            _fix_qos_specs(specs['qos_specs'])
+            specs['encryption'] = get_volume_type_encryption(context,
+                                                             vol_type_id)
+            specs['encryption'] = _fix_encryption_specs(specs['encryption'])
+        vol_type_data.append(specs)
 
-    extra_specs1 = vol_type1.get('extra_specs')
-    extra_specs2 = vol_type2.get('extra_specs')
-    diff['extra_specs'], equal = _dict_diff(extra_specs1, extra_specs2)
+    diff['extra_specs'], equal = _dict_diff(vol_type_data[0]['extra_specs'],
+                                            vol_type_data[1]['extra_specs'])
     if not equal:
         all_equal = False
-
-    qos_specs1 = get_volume_type_qos_specs(vol_type_id1).get('qos_specs')
-    _fix_qos_specs(qos_specs1)
-    qos_specs2 = get_volume_type_qos_specs(vol_type_id2).get('qos_specs')
-    _fix_qos_specs(qos_specs2)
-    diff['qos_specs'], equal = _dict_diff(qos_specs1, qos_specs2)
+    diff['qos_specs'], equal = _dict_diff(vol_type_data[0]['qos_specs'],
+                                          vol_type_data[1]['qos_specs'])
     if not equal:
         all_equal = False
-
-    encryption1 = get_volume_type_encryption(context, vol_type_id1)
-    _fix_encryption_specs(encryption1)
-    encryption2 = get_volume_type_encryption(context, vol_type_id2)
-    _fix_encryption_specs(encryption2)
-    diff['encryption'], equal = _dict_diff(encryption1, encryption2)
+    diff['encryption'], equal = _dict_diff(vol_type_data[0]['encryption'],
+                                           vol_type_data[1]['encryption'])
     if not equal:
         all_equal = False
 
