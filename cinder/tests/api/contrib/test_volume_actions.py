@@ -287,6 +287,29 @@ class VolumeActionsTest(test.TestCase):
         make_update_readonly_flag_test(self, 11, 400)
         make_update_readonly_flag_test(self, None, 400)
 
+    def test_set_bootable(self):
+
+        def make_set_bootable_test(self, bootable, return_code):
+            body = {"os-set_bootable": {"bootable": bootable}}
+            if bootable is None:
+                body = {"os-set_bootable": {}}
+            req = webob.Request.blank('/v2/fake/volumes/1/action')
+            req.method = "POST"
+            req.body = jsonutils.dumps(body)
+            req.headers["content-type"] = "application/json"
+            res = req.get_response(fakes.wsgi_app())
+            self.assertEqual(res.status_int, return_code)
+
+        make_set_bootable_test(self, True, 200)
+        make_set_bootable_test(self, False, 200)
+        make_set_bootable_test(self, '1', 200)
+        make_set_bootable_test(self, '0', 200)
+        make_set_bootable_test(self, 'true', 200)
+        make_set_bootable_test(self, 'false', 200)
+        make_set_bootable_test(self, 'tt', 400)
+        make_set_bootable_test(self, 11, 400)
+        make_set_bootable_test(self, None, 400)
+
 
 class VolumeRetypeActionsTest(VolumeActionsTest):
     def setUp(self):

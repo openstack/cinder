@@ -332,6 +332,38 @@ class VolumeActionsController(wsgi.Controller):
         self.volume_api.retype(context, volume, new_type, policy)
         return webob.Response(status_int=202)
 
+    @wsgi.action('os-set_bootable')
+    def _set_bootable(self, req, id, body):
+        """Update bootable status of a volume."""
+        context = req.environ['cinder.context']
+        try:
+            volume = self.volume_api.get(context, id)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+
+        try:
+            bootable = body['os-set_bootable']['bootable']
+        except KeyError:
+            msg = _("Must specify bootable in request.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if isinstance(bootable, basestring):
+            try:
+                bootable = strutils.bool_from_string(bootable,
+                                                     strict=True)
+            except ValueError:
+                msg = _("Bad value for 'bootable'")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        elif not isinstance(bootable, bool):
+            msg = _("'bootable' not string or bool")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        update_dict = {'bootable': bootable}
+
+        self.volume_api.update(context, volume, update_dict)
+        return webob.Response(status_int=200)
+
 
 class Volume_actions(extensions.ExtensionDescriptor):
     """Enable volume actions
