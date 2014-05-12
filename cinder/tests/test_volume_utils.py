@@ -25,6 +25,7 @@ from cinder import db
 from cinder import exception
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder import test
 from cinder.tests import fake_notifier
 from cinder import utils
@@ -200,3 +201,19 @@ class ClearVolumeTestCase(test.TestCase):
 
         self.stubs.Set(volume_utils, 'copy_volume', fake_copy_volume)
         volume_utils.clear_volume(123, vol_path)
+
+
+class CopyVolumeTestCase(test.TestCase):
+
+    def test_copy_volume_dd_iflag_and_oflag(self):
+        def fake_utils_execute(*cmd, **kwargs):
+            if 'if=/dev/zero' in cmd and 'iflag=direct' in cmd:
+                raise processutils.ProcessExecutionError()
+            if 'of=/dev/null' in cmd and 'oflag=direct' in cmd:
+                raise processutils.ProcessExecutionError()
+            if 'iflag=direct' in cmd and 'oflag=direct' in cmd:
+                raise exception.InvalidInput(message='iflag/oflag error')
+
+        volume_utils.copy_volume('/dev/zero', '/dev/null', 1024,
+                                 CONF.volume_dd_blocksize, sync=True,
+                                 ionice=None, execute=fake_utils_execute)
