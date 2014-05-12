@@ -125,7 +125,7 @@ def get_conf_host_os_type(host_ip, config):
     if not host_os:
         host_os = os_type['Linux']  # default os type
 
-    LOG.debug(_('_get_host_os_type: Host %(ip)s OS type is %(os)s.')
+    LOG.debug('_get_host_os_type: Host %(ip)s OS type is %(os)s.'
               % {'ip': host_ip, 'os': host_os})
 
     return host_os

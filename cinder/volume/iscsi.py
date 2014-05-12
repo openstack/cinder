@@ -98,7 +98,7 @@ class _ExportMixin(object):
                 volume['name'] not in volume['provider_location']):
 
             msg = _('Detected inconsistency in provider_location id')
-            LOG.debug(_('%s'), msg)
+            LOG.debug('%s', msg)
             old_name = self._fix_id_migration(context, volume)
             if 'in-use' in volume['status']:
                 old_name = None
@@ -181,7 +181,7 @@ class _ExportMixin(object):
         except putils.ProcessExecutionError:
             link_path = '/dev/%s/%s' % (CONF.volume_group,
                                         old_name)
-            LOG.debug(_('Symbolic link %s not found') % link_path)
+            LOG.debug('Symbolic link %s not found' % link_path)
             os.chdir(start)
             return
 
@@ -248,7 +248,7 @@ class LioAdm(_ExportMixin, iscsi.LioAdm):
                                                    auth_user,
                                                    auth_pass)
         except exception.NotFound:
-            LOG.debug(_("volume_info:%s"), volume_info)
+            LOG.debug("volume_info:%s", volume_info)
             LOG.info(_("Skipping ensure_export. No iscsi_target "
                        "provision for volume: %s"), volume_id)
 

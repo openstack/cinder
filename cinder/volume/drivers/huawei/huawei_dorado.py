@@ -71,8 +71,8 @@ class HuaweiDoradoFCDriver(huawei_t.HuaweiTFCDriver):
 
     def initialize_connection(self, volume, connector):
         """Create FC connection between a volume and a host."""
-        LOG.debug(_('initialize_connection: volume name: %(vol)s '
-                    'host: %(host)s initiator: %(wwn)s')
+        LOG.debug('initialize_connection: volume name: %(vol)s '
+                  'host: %(host)s initiator: %(wwn)s'
                   % {'vol': volume['name'],
                      'host': connector['host'],
                      'wwn': connector['wwpns']})
@@ -89,7 +89,7 @@ class HuaweiDoradoFCDriver(huawei_t.HuaweiTFCDriver):
         fc_port_details = self._get_host_port_details(host_id)
         tgt_wwns = self._get_tgt_fc_port_wwns(fc_port_details)
 
-        LOG.debug(_('initialize_connection: Target FC ports WWNS: %s')
+        LOG.debug('initialize_connection: Target FC ports WWNS: %s'
                   % tgt_wwns)
 
         # Finally, map the volume to the host.

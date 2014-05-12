@@ -120,12 +120,12 @@ class RemoteFsClient(object):
             options = self._nfs_mount_type_opts[mnt_type]
             try:
                 self._do_mount('nfs', nfs_share, mount_path, options, flags)
-                LOG.debug(_('Mounted %(sh)s using %(mnt_type)s.')
+                LOG.debug('Mounted %(sh)s using %(mnt_type)s.'
                           % {'sh': nfs_share, 'mnt_type': mnt_type})
                 return
             except Exception as e:
                 mnt_errors[mnt_type] = six.text_type(e)
-                LOG.debug(_('Failed to do %s mount.'), mnt_type)
+                LOG.debug('Failed to do %s mount.', mnt_type)
         raise exception.BrickException(_("NFS mount failed for share %(sh)s."
                                          "Error - %(error)s")
                                        % {'sh': nfs_share,

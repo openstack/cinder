@@ -74,8 +74,8 @@ class FCSanLookupService(fc_common.FCCommon):
         # Initialize vendor specific implementation of  FCZoneDriver
         if (self.configuration.fc_san_lookup_service):
             lookup_service = self.configuration.fc_san_lookup_service
-            LOG.debug(_("Lookup service to invoke: "
-                        "%s"), lookup_service)
+            LOG.debug("Lookup service to invoke: "
+                      "%s", lookup_service)
             self.lookup_service = importutils.import_object(
                 lookup_service, configuration=self.configuration)
         else:

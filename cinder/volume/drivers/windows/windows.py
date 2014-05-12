@@ -99,7 +99,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def local_path(self, volume):
         base_vhd_folder = self.configuration.windows_iscsi_lun_path
         if not os.path.exists(base_vhd_folder):
-            LOG.debug(_('Creating folder %s '), base_vhd_folder)
+            LOG.debug('Creating folder %s ', base_vhd_folder)
             os.makedirs(base_vhd_folder)
         return os.path.join(base_vhd_folder, str(volume['name']) + ".vhd")
 
@@ -202,7 +202,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info for Windows device."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
         backend_name = self.__class__.__name__
         if self.configuration:
@@ -220,7 +220,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def extend_volume(self, volume, new_size):
         """Extend an Existing Volume."""
         old_size = volume['size']
-        LOG.debug(_("Extend volume from %(old_size)s GB to %(new_size)s GB."),
+        LOG.debug("Extend volume from %(old_size)s GB to %(new_size)s GB.",
                   {'old_size': old_size, 'new_size': new_size})
         additional_size = (new_size - old_size) * 1024
         self.utils.extend(volume['name'], additional_size)

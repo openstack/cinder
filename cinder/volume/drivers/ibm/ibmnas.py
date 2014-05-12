@@ -96,20 +96,20 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _get_provider_location(self, volume_id):
         """Returns provider location for given volume."""
-        LOG.debug(_("Enter _get_provider_location: volume_id %s") % volume_id)
+        LOG.debug("Enter _get_provider_location: volume_id %s" % volume_id)
         volume = self.db.volume_get(self._context, volume_id)
         LOG.debug("Exit _get_provider_location")
         return volume['provider_location']
 
     def _get_export_path(self, volume_id):
         """Returns NFS export path for the given volume."""
-        LOG.debug(_("Enter _get_export_path: volume_id %s") % volume_id)
+        LOG.debug("Enter _get_export_path: volume_id %s" % volume_id)
         return self._get_provider_location(volume_id).split(':')[1]
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Enter _update_volume_stats"))
+        LOG.debug("Enter _update_volume_stats")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or 'IBMNAS_NFS'
@@ -135,7 +135,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _create_ibmnas_snap(self, src, dest, mount_path):
         """Create volume clones and snapshots."""
-        LOG.debug(_("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s")
+        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s"
                   % {'src': src, 'dest': dest})
         if mount_path is not None:
             tmp_file_path = dest + '.snap'
@@ -165,10 +165,10 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _create_ibmnas_copy(self, src, dest, snap):
         """Create a cloned volume, parent & the clone both remain writable."""
-        LOG.debug(_('Enter _create_ibmnas_copy: src %(src)s, dest %(dest)s, '
-                    'snap %(snap)s') % {'src': src,
-                                        'dest': dest,
-                                        'snap': snap})
+        LOG.debug('Enter _create_ibmnas_copy: src %(src)s, dest %(dest)s, '
+                  'snap %(snap)s' % {'src': src,
+                                     'dest': dest,
+                                     'snap': snap})
         ssh_cmd = ['mkclone', '-p', snap, '-s', src, '-t', dest]
         try:
             self._run_ssh(ssh_cmd)
@@ -199,8 +199,8 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         self._resize_volume_file(path, new_size)
 
     def _delete_snapfiles(self, fchild, mount_point):
-        LOG.debug(_('Enter _delete_snapfiles: fchild %(fchild)s, '
-                    'mount_point %(mount_point)s')
+        LOG.debug('Enter _delete_snapfiles: fchild %(fchild)s, '
+                  'mount_point %(mount_point)s'
                   % {'fchild': fchild,
                      'mount_point': mount_point})
         ssh_cmd = ['lsclone', fchild]

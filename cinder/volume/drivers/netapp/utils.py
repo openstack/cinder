@@ -122,7 +122,7 @@ def provide_ems(requester, server, stats, netapp_backend,
             else:
                 na_server.set_vfiler(None)
             na_server.invoke_successfully(ems, True)
-            LOG.debug(_("ems executed successfully."))
+            LOG.debug("ems executed successfully.")
         except NaApiError as e:
             LOG.warn(_("Failed to invoke ems. Message : %s") % e)
         finally:

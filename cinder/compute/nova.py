@@ -95,7 +95,7 @@ def novaclient(context, admin=False):
                          service_name=service_name,
                          endpoint_type=endpoint_type)
 
-    LOG.debug(_('Novaclient connection created using URL: %s') % url)
+    LOG.debug('Novaclient connection created using URL: %s' % url)
 
     extensions = [assisted_volume_snapshots]
 

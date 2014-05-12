@@ -238,8 +238,8 @@ def create_vol_list(vol_attrs):
                 vol.qos['qos_policy_group'] = None
             vols.add(vol)
         except KeyError as e:
-            LOG.debug(_('Unexpected error while creating'
-                        ' ssc vol list. Message - %s') % (e.message))
+            LOG.debug('Unexpected error while creating'
+                      ' ssc vol list. Message - %s' % (e.message))
             continue
     return vols
 
@@ -269,7 +269,7 @@ def query_aggr_options(na_server, aggr_name):
                     if op.get_child_content('name') == 'raidtype':
                         attrs['raid_type'] = op.get_child_content('value')
     except Exception as e:
-        LOG.debug(_("Exception querying aggr options. %s"), e)
+        LOG.debug("Exception querying aggr options. %s", e)
     return attrs
 
 
@@ -310,7 +310,7 @@ def get_sis_vol_dict(na_server, vserver, volume=None):
                         sis.get_child_content('state'))
                     sis_vols[vol] = v_sis
     except Exception as e:
-        LOG.debug(_("Exception querying sis information. %s"), e)
+        LOG.debug("Exception querying sis information. %s", e)
     return sis_vols
 
 
@@ -344,7 +344,7 @@ def get_snapmirror_vol_dict(na_server, vserver, volume=None):
                     else:
                         mirrored_vols[src_volume] = [v_snap]
     except Exception as e:
-        LOG.debug(_("Exception querying mirror information. %s"), e)
+        LOG.debug("Exception querying mirror information. %s", e)
     return mirrored_vols
 
 
@@ -376,7 +376,7 @@ def query_aggr_storage_disk(na_server, aggr):
                         else:
                             continue
     except Exception as e:
-        LOG.debug(_("Exception querying storage disk. %s"), e)
+        LOG.debug("Exception querying storage disk. %s", e)
     return 'unknown'
 
 

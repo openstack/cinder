@@ -8,6 +8,8 @@ Cinder Style Commandments
 Cinder Specific Commandments
 ----------------------------
 
+- [N319] Validate that debug level logs are not translated
+
 General
 -------
 - Use 'raise' instead of 'raise e' to preserve original traceback or exception being reraised::

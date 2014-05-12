@@ -98,8 +98,8 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
 
     def initialize_connection(self, volume, connector):
         """Map a volume to a host and return target iSCSI information."""
-        LOG.debug(_('initialize_connection: volume name: %(vol)s, '
-                    'host: %(host)s, initiator: %(ini)s')
+        LOG.debug('initialize_connection: volume name: %(vol)s, '
+                  'host: %(host)s, initiator: %(ini)s'
                   % {'vol': volume['name'],
                      'host': connector['host'],
                      'ini': connector['initiator']})
@@ -203,7 +203,7 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
 
         """
 
-        LOG.debug(_('_get_tgt_iqn: iSCSI IP is %s.') % port_ip)
+        LOG.debug('_get_tgt_iqn: iSCSI IP is %s.' % port_ip)
 
         cli_cmd = 'showiscsitgtname'
         out = self.common._execute_cli(cli_cmd)
@@ -231,7 +231,7 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
 
         iqn = iqn_prefix + ':' + iqn_suffix + ':' + port_info[3]
 
-        LOG.debug(_('_get_tgt_iqn: iSCSI target iqn is %s.') % iqn)
+        LOG.debug('_get_tgt_iqn: iSCSI target iqn is %s.' % iqn)
 
         return (iqn, port_info[0])
 
@@ -320,8 +320,8 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate the map."""
-        LOG.debug(_('terminate_connection: volume: %(vol)s, host: %(host)s, '
-                    'connector: %(initiator)s')
+        LOG.debug('terminate_connection: volume: %(vol)s, host: %(host)s, '
+                  'connector: %(initiator)s'
                   % {'vol': volume['name'],
                      'host': connector['host'],
                      'initiator': connector['initiator']})
@@ -440,8 +440,8 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
 
     def initialize_connection(self, volume, connector):
         """Create FC connection between a volume and a host."""
-        LOG.debug(_('initialize_connection: volume name: %(vol)s, '
-                    'host: %(host)s, initiator: %(wwn)s')
+        LOG.debug('initialize_connection: volume name: %(vol)s, '
+                  'host: %(host)s, initiator: %(wwn)s'
                   % {'vol': volume['name'],
                      'host': connector['host'],
                      'wwn': connector['wwpns']})
@@ -458,7 +458,7 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
         fc_port_details = self._get_host_port_details(host_id)
         tgt_wwns = self._get_tgt_fc_port_wwns(fc_port_details)
 
-        LOG.debug(_('initialize_connection: Target FC ports WWNS: %s')
+        LOG.debug('initialize_connection: Target FC ports WWNS: %s'
                   % tgt_wwns)
 
         # Finally, map the volume to the host.
@@ -549,8 +549,8 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate the map."""
-        LOG.debug(_('terminate_connection: volume: %(vol)s, host: %(host)s, '
-                    'connector: %(initiator)s')
+        LOG.debug('terminate_connection: volume: %(vol)s, host: %(host)s, '
+                  'connector: %(initiator)s'
                   % {'vol': volume['name'],
                      'host': connector['host'],
                      'initiator': connector['initiator']})

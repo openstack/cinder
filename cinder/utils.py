@@ -433,7 +433,7 @@ class LazyPluggable(object):
                 fromlist = backend
 
             self.__backend = __import__(name, None, None, fromlist)
-            LOG.debug(_('backend %s'), self.__backend)
+            LOG.debug('backend %s', self.__backend)
         return self.__backend
 
     def __getattr__(self, key):
@@ -708,7 +708,7 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug(_('Could not remove tmpdir: %s'), e)
+            LOG.debug('Could not remove tmpdir: %s', e)
 
 
 def walk_class_hierarchy(clazz, encountered=None):

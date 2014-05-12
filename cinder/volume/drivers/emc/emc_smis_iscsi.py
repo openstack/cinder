@@ -191,7 +191,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
                                           " for volume %s") %
                                           (volume['name']))
 
-        LOG.debug(_("ISCSI Discovery: Found %s") % (location))
+        LOG.debug("ISCSI Discovery: Found %s" % (location))
         properties['target_discovered'] = True
 
         device_info = self.common.find_device_number(volume, connector)
@@ -226,7 +226,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
                 break
             for endpoint in endpoints:
                 if properties['target_iqn'] == endpoint:
-                    LOG.debug(_("Found iSCSI endpoint: %s") % endpoint)
+                    LOG.debug("Found iSCSI endpoint: %s" % endpoint)
                     foundEndpoint = True
                     break
             if foundEndpoint:
@@ -242,7 +242,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
         properties['volume_id'] = volume['id']
 
-        LOG.debug(_("ISCSI properties: %s") % (properties))
+        LOG.debug("ISCSI properties: %s" % (properties))
 
         auth = volume['provider_auth']
         if auth:
@@ -274,7 +274,7 @@ class EMCSMISISCSIDriver(driver.ISCSIDriver):
 
     def update_volume_stats(self):
         """Retrieve stats info from volume group."""
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or 'EMCSMISISCSIDriver'

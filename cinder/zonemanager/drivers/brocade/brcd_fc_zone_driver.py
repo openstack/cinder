@@ -130,7 +130,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
         """
-        LOG.debug(_("Add connection for Fabric:%s"), fabric)
+        LOG.debug("Add connection for Fabric:%s", fabric)
         LOG.info(_("BrcdFCZoneDriver - Add connection "
                    "for I-T map: %s"), initiator_target_map)
         fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
@@ -226,7 +226,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     LOG.error(e)
                     msg = _("Failed to add zoning configuration %s") % e
                     raise exception.FCZoneDriverException(msg)
-            LOG.debug(_("Zones added successfully: %s"), zone_map)
+            LOG.debug("Zones added successfully: %s", zone_map)
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
     def delete_connection(self, fabric, initiator_target_map):
@@ -239,7 +239,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
         """
-        LOG.debug(_("Delete connection for fabric:%s"), fabric)
+        LOG.debug("Delete connection for fabric:%s", fabric)
         LOG.info(_("BrcdFCZoneDriver - Delete connection for I-T map: %s"),
                  initiator_target_map)
         fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
@@ -283,7 +283,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
         # Based on zoning policy, get zone member list and push changes to
         # fabric. This operation could result in an update for zone config
         # with new member list or deleting zones from active cfg.
-        LOG.debug(_("zone config from Fabric: %s"), cfgmap_from_fabric)
+        LOG.debug("zone config from Fabric: %s", cfgmap_from_fabric)
         for initiator_key in initiator_target_map.keys():
             initiator = initiator_key.lower()
             formatted_initiator = self.get_formatted_wwn(initiator)
@@ -298,7 +298,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                         self.configuration.zone_name_prefix
                         + initiator.replace(':', '')
                         + target.replace(':', ''))
-                    LOG.debug(_("Zone name to del: %s"), zone_name)
+                    LOG.debug("Zone name to del: %s", zone_name)
                     if len(zone_names) > 0 and (zone_name in zone_names):
                         # delete zone.
                         LOG.debug(("Added zone to delete to "
@@ -324,22 +324,22 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     # filtered list and if it is non-empty, add initiator
                     # to it and update zone if filtered list is empty, we
                     # remove that zone.
-                    LOG.debug(_("Zone delete - I mode: "
-                                "filtered targets:%s"), filtered_members)
+                    LOG.debug("Zone delete - I mode: "
+                              "filtered targets:%s", filtered_members)
                     if filtered_members:
                         filtered_members.append(formatted_initiator)
-                        LOG.debug(_("Filtered zone members to "
-                                    "update: %s"), filtered_members)
+                        LOG.debug("Filtered zone members to "
+                                  "update: %s", filtered_members)
                         zone_map[zone_name] = filtered_members
-                        LOG.debug(_("Filtered zone Map to "
-                                    "update: %s"), zone_map)
+                        LOG.debug("Filtered zone Map to "
+                                  "update: %s", zone_map)
                     else:
                         zones_to_delete.append(zone_name)
             else:
                 LOG.info(_("Zoning Policy: %s, not "
                            "recognized"), zoning_policy)
-            LOG.debug(_("Final Zone map to update: %s"), zone_map)
-            LOG.debug(_("Final Zone list to delete: %s"), zones_to_delete)
+            LOG.debug("Final Zone map to update: %s", zone_map)
+            LOG.debug("Final Zone list to delete: %s", zones_to_delete)
             try:
                 # Update zone membership.
                 if zone_map:
@@ -377,13 +377,13 @@ class BrcdFCZoneDriver(FCZoneDriver):
         fabric_map = {}
         fc_fabric_names = self.configuration.fc_fabric_names
         fabrics = [x.strip() for x in fc_fabric_names.split(',')]
-        LOG.debug(_("Fabric List: %s"), fabrics)
-        LOG.debug(_("Target wwn List: %s"), target_wwn_list)
+        LOG.debug("Fabric List: %s", fabrics)
+        LOG.debug("Target wwn List: %s", target_wwn_list)
         if len(fabrics) > 0:
             for t in target_wwn_list:
                 formatted_target_list.append(self.get_formatted_wwn(t.lower()))
-            LOG.debug(_("Formatted Target wwn List:"
-                        " %s"), formatted_target_list)
+            LOG.debug("Formatted Target wwn List:"
+                      " %s", formatted_target_list)
             for fabric_name in fabrics:
                 fabric_ip = self.fabric_configs[fabric_name].safe_get(
                     'fc_fabric_address')
@@ -419,7 +419,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 nsinfo = None
                 try:
                     nsinfo = conn.get_nameserver_info()
-                    LOG.debug(_("name server info from fabric:%s"), nsinfo)
+                    LOG.debug("name server info from fabric:%s", nsinfo)
                     conn.cleanup()
                 except exception.BrocadeZoningCliException as ex:
                     with excutils.save_and_reraise_exception():
@@ -442,9 +442,9 @@ class BrcdFCZoneDriver(FCZoneDriver):
                             visible_targets[idx]).replace(':', '')
                     fabric_map[fabric_name] = visible_targets
                 else:
-                    LOG.debug(_("No targets are in the nameserver for SAN %s"),
+                    LOG.debug("No targets are in the nameserver for SAN %s",
                               fabric_name)
-        LOG.debug(_("Return SAN context output:%s"), fabric_map)
+        LOG.debug("Return SAN context output:%s", fabric_map)
         return fabric_map
 
     def get_active_zone_set(self, fabric_ip,
@@ -453,8 +453,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
         cfgmap = {}
         conn = None
         try:
-            LOG.debug(_("Southbound connector:"
-                        " %s"), self.configuration.brcd_sb_connector)
+            LOG.debug("Southbound connector:"
+                      " %s", self.configuration.brcd_sb_connector)
             conn = importutils.import_object(
                 self.configuration.brcd_sb_connector,
                 ipaddress=fabric_ip, username=fabric_user,
@@ -473,5 +473,5 @@ class BrcdFCZoneDriver(FCZoneDriver):
             msg = (_("Failed to access active zoning configuration:%s") % e)
             LOG.error(msg)
             raise exception.FCZoneDriverException(msg)
-        LOG.debug(_("Active zone set from fabric: %s"), cfgmap)
+        LOG.debug("Active zone set from fabric: %s", cfgmap)
         return cfgmap

@@ -746,7 +746,7 @@ class QuotaEngine(object):
                                             expire=expire,
                                             project_id=project_id)
 
-        LOG.debug(_("Created reservations %s") % reservations)
+        LOG.debug("Created reservations %s" % reservations)
 
         return reservations
 

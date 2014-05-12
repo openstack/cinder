@@ -26,4 +26,4 @@ class LoginTest(integrated_helpers._IntegratedTestBase):
         """Simple check - we list volumes - so we know we're logged in."""
         volumes = self.api.get_volumes()
         for volume in volumes:
-            LOG.debug(_("volume: %s") % volume)
+            LOG.debug("volume: %s" % volume)

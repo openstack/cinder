@@ -109,7 +109,7 @@ class Service(service.Service):
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
-        LOG.debug(_("Creating RPC server for service %s") % self.topic)
+        LOG.debug("Creating RPC server for service %s" % self.topic)
 
         target = messaging.Target(topic=self.topic, server=self.host)
         endpoints = [self.manager]
@@ -248,8 +248,8 @@ class Service(service.Service):
             try:
                 service_ref = db.service_get(ctxt, self.service_id)
             except exception.NotFound:
-                LOG.debug(_('The service database object disappeared, '
-                            'Recreating it.'))
+                LOG.debug('The service database object disappeared, '
+                          'Recreating it.')
                 self._create_service_ref(ctxt)
                 service_ref = db.service_get(ctxt, self.service_id)
 
@@ -372,7 +372,7 @@ def serve(server, workers=None):
 
 
 def wait():
-    LOG.debug(_('Full set of CONF:'))
+    LOG.debug('Full set of CONF:')
     for flag in CONF:
         flag_get = CONF.get(flag, None)
         # hide flag contents from log if contains a password
@@ -380,7 +380,7 @@ def wait():
         if ("_password" in flag or "_key" in flag or
                 (flag == "sql_connection" and
                     ("mysql:" in flag_get or "postgresql:" in flag_get))):
-            LOG.debug(_('%s : FLAG SET ') % flag)
+            LOG.debug('%s : FLAG SET ' % flag)
         else:
             LOG.debug('%(flag)s : %(flag_get)s' %
                       {'flag': flag, 'flag_get': flag_get})

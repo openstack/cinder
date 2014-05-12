@@ -818,7 +818,7 @@ class GPFSDriver(driver.VolumeDriver):
         """Create a new backup from an existing volume."""
         volume = self.db.volume_get(context, backup['volume_id'])
         volume_path = self.local_path(volume)
-        LOG.debug(_('Begin backup of volume %s.') % volume['name'])
+        LOG.debug('Begin backup of volume %s.' % volume['name'])
 
         # create a snapshot that will be used as the backup source
         backup_path = '%s_%s' % (volume_path, backup['id'])
@@ -838,7 +838,7 @@ class GPFSDriver(driver.VolumeDriver):
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        LOG.debug(_('Begin restore of backup %s.') % backup['id'])
+        LOG.debug('Begin restore of backup %s.' % backup['id'])
 
         volume_path = self.local_path(volume)
         with utils.temporary_chown(volume_path):

@@ -62,8 +62,8 @@ class HuaweiVolumeDriver(object):
         conf_file = self.configuration.cinder_huawei_conf_file
         (product, protocol) = self._get_conf_info(conf_file)
 
-        LOG.debug(_('_instantiate_driver: Loading %(protocol)s driver for '
-                    'Huawei OceanStor %(product)s series storage arrays.')
+        LOG.debug('_instantiate_driver: Loading %(protocol)s driver for '
+                  'Huawei OceanStor %(product)s series storage arrays.'
                   % {'protocol': protocol,
                      'product': product})
 

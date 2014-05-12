@@ -223,7 +223,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             return
 
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
-        LOG.debug(_("Re-exporting %s volumes"), len(volumes))
+        LOG.debug("Re-exporting %s volumes", len(volumes))
 
         try:
             sum = 0
@@ -262,7 +262,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # at this point the driver is considered initialized.
         self.driver.set_initialized()
 
-        LOG.debug(_('Resuming any in progress delete operations'))
+        LOG.debug('Resuming any in progress delete operations')
         for volume in volumes:
             if volume['status'] == 'deleting':
                 LOG.info(_('Resuming delete on volume: %s') % volume['id'])
@@ -376,9 +376,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             # and the volume status updated.
             utils.require_driver_initialized(self.driver)
 
-            LOG.debug(_("volume %s: removing export"), volume_ref['id'])
+            LOG.debug("volume %s: removing export", volume_ref['id'])
             self.driver.remove_export(context, volume_ref)
-            LOG.debug(_("volume %s: deleting"), volume_ref['id'])
+            LOG.debug("volume %s: deleting", volume_ref['id'])
             if unmanage_only:
                 self.driver.unmanage(volume_ref)
             else:
@@ -445,7 +445,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # and the snapshot status updated.
             utils.require_driver_initialized(self.driver)
 
-            LOG.debug(_("snapshot %(snap_id)s: creating"),
+            LOG.debug("snapshot %(snap_id)s: creating",
                       {'snap_id': snapshot_ref['id']})
 
             # Pass context so that drivers that want to use it, can,
@@ -505,7 +505,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # and the snapshot status updated.
             utils.require_driver_initialized(self.driver)
 
-            LOG.debug(_("snapshot %s: deleting"), snapshot_ref['id'])
+            LOG.debug("snapshot %s: deleting", snapshot_ref['id'])
 
             # Pass context so that drivers that want to use it, can,
             # but it is not a requirement for all drivers.
@@ -697,8 +697,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 glance.get_remote_image_service(context, image_meta['id'])
             self.driver.copy_volume_to_image(context, volume, image_service,
                                              image_meta)
-            LOG.debug(_("Uploaded volume %(volume_id)s to "
-                        "image (%(image_id)s) successfully"),
+            LOG.debug("Uploaded volume %(volume_id)s to "
+                      "image (%(image_id)s) successfully",
                       {'volume_id': volume_id, 'image_id': image_id})
         except Exception as error:
             LOG.error(_("Error occurred while uploading volume %(volume_id)s "
@@ -786,7 +786,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume = self.db.volume_get(context, volume_id)
         model_update = None
         try:
-            LOG.debug(_("Volume %s: creating export"), volume_id)
+            LOG.debug("Volume %s: creating export", volume_id)
             model_update = self.driver.create_export(context.elevated(),
                                                      volume)
             if model_update:
@@ -840,7 +840,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # FCZoneManager to add access control via FC zoning.
         vol_type = conn_info.get('driver_volume_type', None)
         mode = self.configuration.zoning_mode
-        LOG.debug(_("Zoning Mode: %s"), mode)
+        LOG.debug("Zoning Mode: %s", mode)
         if vol_type == 'fibre_channel' and self.zonemanager:
             self._add_or_delete_fc_connection(conn_info, 1)
         return conn_info
@@ -865,7 +865,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             if conn_info:
                 vol_type = conn_info.get('driver_volume_type', None)
                 mode = self.configuration.zoning_mode
-                LOG.debug(_("Zoning Mode: %s"), mode)
+                LOG.debug("Zoning Mode: %s", mode)
                 if vol_type == 'fibre_channel' and self.zonemanager:
                     self._add_or_delete_fc_connection(conn_info, 0)
         except Exception as err:
@@ -875,7 +875,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         try:
-            LOG.debug(_("volume %s: removing export"), volume_id)
+            LOG.debug("volume %s: removing export", volume_id)
             self.driver.remove_export(context.elevated(), volume_ref)
         except Exception as ex:
             LOG.exception(_("Error detaching volume %(volume)s, "
@@ -1047,7 +1047,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                               {'migration_status': 'migrating'})
         if not force_host_copy and new_type_id is None:
             try:
-                LOG.debug(_("volume %s: calling driver migrate_volume"),
+                LOG.debug("volume %s: calling driver migrate_volume",
                           volume_ref['id'])
                 moved, model_update = self.driver.migrate_volume(ctxt,
                                                                  volume_ref,
@@ -1326,12 +1326,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         _initiator_target_map = None
         if 'initiator_target_map' in conn_info['data']:
             _initiator_target_map = conn_info['data']['initiator_target_map']
-        LOG.debug(_("Initiator Target map:%s"), _initiator_target_map)
+        LOG.debug("Initiator Target map:%s", _initiator_target_map)
         # NOTE(skolathur): Invoke Zonemanager to handle automated FC zone
         # management when vol_type is fibre_channel and zoning_mode is fabric
         # Initiator_target map associating each initiator WWN to one or more
         # target WWN is passed to ZoneManager to add or update zone config.
-        LOG.debug(_("Zoning op: %s"), zone_op)
+        LOG.debug("Zoning op: %s", zone_op)
         if _initiator_target_map is not None:
             try:
                 if zone_op == 1:

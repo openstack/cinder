@@ -127,14 +127,14 @@ class BrcdFCZoneClientCLI(object):
                 }
             activate - True/False
         """
-        LOG.debug(_("Add Zones - Zones passed: %s"), zones)
+        LOG.debug("Add Zones - Zones passed: %s", zones)
         cfg_name = None
         iterator_count = 0
         zone_with_sep = ''
         active_zone_set = self.get_active_zone_set()
-        LOG.debug(_("Active zone set:%s"), active_zone_set)
+        LOG.debug("Active zone set:%s", active_zone_set)
         zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
-        LOG.debug(_("zone list:%s"), zone_list)
+        LOG.debug("zone list:%s", zone_list)
         for zone in zones.keys():
             # if zone exists, its an update. Delete & insert
             # TODO(skolathur): This can be optimized to an update call later
@@ -145,16 +145,16 @@ class BrcdFCZoneClientCLI(object):
                 except exception.BrocadeZoningCliException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_("Deleting zone failed %s"), zone)
-                LOG.debug(_("Deleted Zone before insert : %s"), zone)
+                LOG.debug("Deleted Zone before insert : %s", zone)
             zone_members_with_sep = ';'.join(str(member) for
                                              member in zones[zone])
-            LOG.debug(_("Forming command for add zone"))
+            LOG.debug("Forming command for add zone")
             cmd = 'zonecreate "%(zone)s", "%(zone_members_with_sep)s"' % {
                 'zone': zone,
                 'zone_members_with_sep': zone_members_with_sep}
-            LOG.debug(_("Adding zone, cmd to run %s"), cmd)
+            LOG.debug("Adding zone, cmd to run %s", cmd)
             self.apply_zone_change(cmd.split())
-            LOG.debug(_("Created zones on the switch"))
+            LOG.debug("Created zones on the switch")
             if(iterator_count > 0):
                 zone_with_sep += ';'
             iterator_count += 1
@@ -169,7 +169,7 @@ class BrcdFCZoneClientCLI(object):
             else:
                 cmd = 'cfgadd "%(zoneset)s", "%(zones)s"' \
                     % {'zoneset': cfg_name, 'zones': zone_with_sep}
-            LOG.debug(_("New zone %s"), cmd)
+            LOG.debug("New zone %s", cmd)
             self.apply_zone_change(cmd.split())
             self._cfg_save()
             if activate:
@@ -220,7 +220,7 @@ class BrcdFCZoneClientCLI(object):
                     % {'active_zoneset_name': active_zoneset_name,
                        'zone_names': zone_names
                        }
-            LOG.debug(_("Delete zones: Config cmd to run:%s"), cmd)
+            LOG.debug("Delete zones: Config cmd to run:%s", cmd)
             self.apply_zone_change(cmd.split())
             for zone in zones:
                 self._zone_delete(zone)
@@ -297,7 +297,7 @@ class BrcdFCZoneClientCLI(object):
         not expected.
         """
         stdout, stderr = None, None
-        LOG.debug(_("Executing command via ssh: %s"), cmd_list)
+        LOG.debug("Executing command via ssh: %s", cmd_list)
         stdout, stderr = self._run_ssh(cmd_list, True, 1)
         # no output expected, so output means there is an error
         if stdout:
@@ -320,7 +320,7 @@ class BrcdFCZoneClientCLI(object):
             if (stdout):
                 for line in stdout:
                     if 'Fabric OS:  v' in line:
-                        LOG.debug(_("Firmware version string:%s"), line)
+                        LOG.debug("Firmware version string:%s", line)
                         ver = line.split('Fabric OS:  v')[1].split('.')
                         if (ver):
                             firmware = int(ver[0] + ver[1])
@@ -430,7 +430,7 @@ class BrcdFCZoneClientCLI(object):
                                          min_size=1,
                                          max_size=5)
         stdin, stdout, stderr = None, None, None
-        LOG.debug(_("Executing command via ssh: %s") % command)
+        LOG.debug("Executing command via ssh: %s" % command)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -442,10 +442,10 @@ class BrcdFCZoneClientCLI(object):
                         stdin.write("%s\n" % ZoneConstant.YES)
                         channel = stdout.channel
                         exit_status = channel.recv_exit_status()
-                        LOG.debug(_("Exit Status from ssh:%s"), exit_status)
+                        LOG.debug("Exit Status from ssh:%s", exit_status)
                         # exit_status == -1 if no exit code was returned
                         if exit_status != -1:
-                            LOG.debug(_('Result was %s') % exit_status)
+                            LOG.debug('Result was %s' % exit_status)
                             if check_exit_code and exit_status != 0:
                                 raise processutils.ProcessExecutionError(
                                     exit_code=exit_status,
@@ -460,8 +460,8 @@ class BrcdFCZoneClientCLI(object):
                         LOG.error(e)
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
-                LOG.debug(_("Handling error case after "
-                            "SSH:%s"), last_exception)
+                LOG.debug("Handling error case after "
+                          "SSH:%s", last_exception)
                 try:
                     raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,

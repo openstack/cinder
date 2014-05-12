@@ -137,8 +137,8 @@ class SwiftBackupDriver(BackupDriver):
     def _create_container(self, context, backup):
         backup_id = backup['id']
         container = backup['container']
-        LOG.debug(_('_create_container started, container: %(container)s,'
-                    'backup: %(backup_id)s') %
+        LOG.debug('_create_container started, container: %(container)s,'
+                  'backup: %(backup_id)s' %
                   {'container': container, 'backup_id': backup_id})
         if container is None:
             container = CONF.backup_swift_container
@@ -156,7 +156,7 @@ class SwiftBackupDriver(BackupDriver):
         volume = 'volume_%s' % (backup['volume_id'])
         timestamp = timeutils.strtime(fmt="%Y%m%d%H%M%S")
         prefix = volume + '/' + timestamp + '/' + backup_name
-        LOG.debug(_('_generate_swift_object_name_prefix: %s') % prefix)
+        LOG.debug('_generate_swift_object_name_prefix: %s' % prefix)
         return prefix
 
     def _generate_object_names(self, backup):
@@ -165,7 +165,7 @@ class SwiftBackupDriver(BackupDriver):
                                                 prefix=prefix,
                                                 full_listing=True)[1]
         swift_object_names = [swift_obj['name'] for swift_obj in swift_objects]
-        LOG.debug(_('generated object list: %s') % swift_object_names)
+        LOG.debug('generated object list: %s' % swift_object_names)
         return swift_object_names
 
     def _metadata_filename(self, backup):
@@ -176,8 +176,8 @@ class SwiftBackupDriver(BackupDriver):
     def _write_metadata(self, backup, volume_id, container, object_list,
                         volume_meta):
         filename = self._metadata_filename(backup)
-        LOG.debug(_('_write_metadata started, container name: %(container)s,'
-                    ' metadata filename: %(filename)s') %
+        LOG.debug('_write_metadata started, container name: %(container)s,'
+                  ' metadata filename: %(filename)s' %
                   {'container': container, 'filename': filename})
         metadata = {}
         metadata['version'] = self.DRIVER_VERSION
@@ -199,17 +199,17 @@ class SwiftBackupDriver(BackupDriver):
                     'metadata file sent to swift [%(md5)s]') % {'etag': etag,
                                                                 'md5': md5}
             raise exception.InvalidBackup(reason=err)
-        LOG.debug(_('_write_metadata finished'))
+        LOG.debug('_write_metadata finished')
 
     def _read_metadata(self, backup):
         container = backup['container']
         filename = self._metadata_filename(backup)
-        LOG.debug(_('_read_metadata started, container name: %(container)s, '
-                    'metadata filename: %(filename)s') %
+        LOG.debug('_read_metadata started, container name: %(container)s, '
+                  'metadata filename: %(filename)s' %
                   {'container': container, 'filename': filename})
         (resp, body) = self.conn.get_object(container, filename)
         metadata = json.loads(body)
-        LOG.debug(_('_read_metadata finished (%s)') % metadata)
+        LOG.debug('_read_metadata finished (%s)' % metadata)
         return metadata
 
     def _prepare_backup(self, backup):
@@ -233,10 +233,10 @@ class SwiftBackupDriver(BackupDriver):
                                                         object_prefix})
         volume_size_bytes = volume['size'] * units.GiB
         availability_zone = self.az
-        LOG.debug(_('starting backup of volume: %(volume_id)s to swift,'
-                    ' volume size: %(volume_size_bytes)d, swift object names'
-                    ' prefix %(object_prefix)s, availability zone:'
-                    ' %(availability_zone)s') %
+        LOG.debug('starting backup of volume: %(volume_id)s to swift,'
+                  ' volume size: %(volume_size_bytes)d, swift object names'
+                  ' prefix %(object_prefix)s, availability zone:'
+                  ' %(availability_zone)s' %
                   {
                       'volume_id': volume_id,
                       'volume_size_bytes': volume_size_bytes,
@@ -257,37 +257,37 @@ class SwiftBackupDriver(BackupDriver):
         obj[object_name] = {}
         obj[object_name]['offset'] = data_offset
         obj[object_name]['length'] = len(data)
-        LOG.debug(_('reading chunk of data from volume'))
+        LOG.debug('reading chunk of data from volume')
         if self.compressor is not None:
             algorithm = CONF.backup_compression_algorithm.lower()
             obj[object_name]['compression'] = algorithm
             data_size_bytes = len(data)
             data = self.compressor.compress(data)
             comp_size_bytes = len(data)
-            LOG.debug(_('compressed %(data_size_bytes)d bytes of data '
-                        'to %(comp_size_bytes)d bytes using '
-                        '%(algorithm)s') %
+            LOG.debug('compressed %(data_size_bytes)d bytes of data '
+                      'to %(comp_size_bytes)d bytes using '
+                      '%(algorithm)s' %
                       {
                           'data_size_bytes': data_size_bytes,
                           'comp_size_bytes': comp_size_bytes,
                           'algorithm': algorithm,
                       })
         else:
-            LOG.debug(_('not compressing data'))
+            LOG.debug('not compressing data')
             obj[object_name]['compression'] = 'none'
 
         reader = six.StringIO(data)
-        LOG.debug(_('About to put_object'))
+        LOG.debug('About to put_object')
         try:
             etag = self.conn.put_object(container, object_name, reader,
                                         content_length=len(data))
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=err)
-        LOG.debug(_('swift MD5 for %(object_name)s: %(etag)s') %
+        LOG.debug('swift MD5 for %(object_name)s: %(etag)s' %
                   {'object_name': object_name, 'etag': etag, })
         md5 = hashlib.md5(data).hexdigest()
         obj[object_name]['md5'] = md5
-        LOG.debug(_('backup MD5 for %(object_name)s: %(md5)s') %
+        LOG.debug('backup MD5 for %(object_name)s: %(md5)s' %
                   {'object_name': object_name, 'md5': md5})
         if etag != md5:
             err = _('error writing object to swift, MD5 of object in '
@@ -298,7 +298,7 @@ class SwiftBackupDriver(BackupDriver):
         object_id += 1
         object_meta['list'] = object_list
         object_meta['id'] = object_id
-        LOG.debug(_('Calling eventlet.sleep(0)'))
+        LOG.debug('Calling eventlet.sleep(0)')
         eventlet.sleep(0)
 
     def _finalize_backup(self, backup, container, object_meta):
@@ -316,7 +316,7 @@ class SwiftBackupDriver(BackupDriver):
             raise exception.SwiftConnectionFailed(reason=err)
         self.db.backup_update(self.context, backup['id'],
                               {'object_count': object_id})
-        LOG.debug(_('backup %s finished.') % backup['id'])
+        LOG.debug('backup %s finished.' % backup['id'])
 
     def _backup_metadata(self, backup, object_meta):
         """Backup volume metadata.
@@ -359,12 +359,12 @@ class SwiftBackupDriver(BackupDriver):
     def _restore_v1(self, backup, volume_id, metadata, volume_file):
         """Restore a v1 swift volume backup from swift."""
         backup_id = backup['id']
-        LOG.debug(_('v1 swift volume backup restore of %s started'), backup_id)
+        LOG.debug('v1 swift volume backup restore of %s started', backup_id)
         container = backup['container']
         metadata_objects = metadata['objects']
         metadata_object_names = sum((obj.keys() for obj in metadata_objects),
                                     [])
-        LOG.debug(_('metadata_object_names = %s') % metadata_object_names)
+        LOG.debug('metadata_object_names = %s' % metadata_object_names)
         prune_list = [self._metadata_filename(backup)]
         swift_object_names = [swift_object_name for swift_object_name in
                               self._generate_object_names(backup)
@@ -376,9 +376,9 @@ class SwiftBackupDriver(BackupDriver):
 
         for metadata_object in metadata_objects:
             object_name = metadata_object.keys()[0]
-            LOG.debug(_('restoring object from swift. backup: %(backup_id)s, '
-                        'container: %(container)s, swift object name: '
-                        '%(object_name)s, volume: %(volume_id)s') %
+            LOG.debug('restoring object from swift. backup: %(backup_id)s, '
+                      'container: %(container)s, swift object name: '
+                      '%(object_name)s, volume: %(volume_id)s' %
                       {
                           'backup_id': backup_id,
                           'container': container,
@@ -392,7 +392,7 @@ class SwiftBackupDriver(BackupDriver):
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
             if decompressor is not None:
-                LOG.debug(_('decompressing data using %s algorithm') %
+                LOG.debug('decompressing data using %s algorithm' %
                           compression_algorithm)
                 decompressed = decompressor.decompress(body)
                 volume_file.write(decompressed)
@@ -415,7 +415,7 @@ class SwiftBackupDriver(BackupDriver):
             # threads can run, allowing for among other things the service
             # status to be updated
             eventlet.sleep(0)
-        LOG.debug(_('v1 swift volume backup restore of %s finished'),
+        LOG.debug('v1 swift volume backup restore of %s finished',
                   backup_id)
 
     def restore(self, backup, volume_id, volume_file):
@@ -423,9 +423,9 @@ class SwiftBackupDriver(BackupDriver):
         backup_id = backup['id']
         container = backup['container']
         object_prefix = backup['service_metadata']
-        LOG.debug(_('starting restore of backup %(object_prefix)s from swift'
-                    ' container: %(container)s, to volume %(volume_id)s, '
-                    'backup: %(backup_id)s') %
+        LOG.debug('starting restore of backup %(object_prefix)s from swift'
+                  ' container: %(container)s, to volume %(volume_id)s, '
+                  'backup: %(backup_id)s' %
                   {
                       'object_prefix': object_prefix,
                       'container': container,
@@ -437,7 +437,7 @@ class SwiftBackupDriver(BackupDriver):
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=err)
         metadata_version = metadata['version']
-        LOG.debug(_('Restoring swift backup version %s'), metadata_version)
+        LOG.debug('Restoring swift backup version %s', metadata_version)
         try:
             restore_func = getattr(self, self.DRIVER_VERSION_MAPPING.get(
                 metadata_version))
@@ -458,7 +458,7 @@ class SwiftBackupDriver(BackupDriver):
             LOG.error(msg)
             raise exception.BackupOperationError(msg)
 
-        LOG.debug(_('restore %(backup_id)s to %(volume_id)s finished.') %
+        LOG.debug('restore %(backup_id)s to %(volume_id)s finished.' %
                   {'backup_id': backup_id, 'volume_id': volume_id})
 
     def delete(self, backup):
@@ -484,8 +484,8 @@ class SwiftBackupDriver(BackupDriver):
                     LOG.warn(_('swift error while deleting object %s, '
                                'continuing with delete') % swift_object_name)
                 else:
-                    LOG.debug(_('deleted swift object: %(swift_object_name)s'
-                                ' in container: %(container)s') %
+                    LOG.debug('deleted swift object: %(swift_object_name)s'
+                              ' in container: %(container)s' %
                               {
                                   'swift_object_name': swift_object_name,
                                   'container': container
@@ -494,7 +494,7 @@ class SwiftBackupDriver(BackupDriver):
                 # Yield so other threads can run
                 eventlet.sleep(0)
 
-        LOG.debug(_('delete %s finished') % backup['id'])
+        LOG.debug('delete %s finished' % backup['id'])
 
 
 def get_backup_driver(context):

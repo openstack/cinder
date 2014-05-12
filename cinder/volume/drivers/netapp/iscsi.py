@@ -102,7 +102,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """
 
         host_filer = kwargs['hostname']
-        LOG.debug(_('Using NetApp filer: %s') % host_filer)
+        LOG.debug('Using NetApp filer: %s' % host_filer)
         self.client = NaServer(host=host_filer,
                                server_type=NaServer.SERVER_TYPE_FILER,
                                transport_type=kwargs['transport_type'],
@@ -147,7 +147,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         self.lun_table = {}
         self._get_lun_list()
-        LOG.debug(_("Success getting LUN list from server"))
+        LOG.debug("Success getting LUN list from server")
 
     def create_volume(self, volume):
         """Driver entry point for creating a new volume."""
@@ -163,7 +163,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         metadata['SpaceReserved'] = 'true'
         extra_specs = get_volume_extra_specs(volume)
         self._create_lun_on_eligible_vol(name, size, metadata, extra_specs)
-        LOG.debug(_("Created LUN with name %s") % name)
+        LOG.debug("Created LUN with name %s" % name)
         handle = self._create_lun_handle(metadata)
         self._add_lun_to_table(NetAppLun(handle, name, size, metadata))
 
@@ -188,7 +188,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             lun_destroy.add_new_child('force', 'true')
         self.client.invoke_successfully(lun_destroy, True)
         seg = path.split("/")
-        LOG.debug(_("Destroyed LUN %s") % seg[-1])
+        LOG.debug("Destroyed LUN %s" % seg[-1])
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
@@ -287,7 +287,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
         self.delete_volume(snapshot)
-        LOG.debug(_("Snapshot %s deletion successful") % snapshot['name'])
+        LOG.debug("Snapshot %s deletion successful" % snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Driver entry point for creating a new volume from a snapshot.
@@ -652,7 +652,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """Moves the lun at path to new path."""
         seg = path.split("/")
         new_seg = new_path.split("/")
-        LOG.debug(_("Moving lun %(name)s to %(new_name)s.")
+        LOG.debug("Moving lun %(name)s to %(new_name)s."
                   % {'name': seg[-1], 'new_name': new_seg[-1]})
         lun_move = NaElement("lun-move")
         lun_move.add_new_child("path", path)
@@ -726,7 +726,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
     def _get_lun_block_count(self, path):
         """Gets block counts for the lun."""
-        LOG.debug(_("Getting lun block count."))
+        LOG.debug("Getting lun block count.")
         block_count = 0
         lun_infos = self._get_lun_by_args(path=path)
         if not lun_infos:
@@ -838,7 +838,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             attr_list = result.get_child_by_name('attributes-list')
             iscsi_service = attr_list.get_child_by_name('iscsi-service-info')
             return iscsi_service.get_child_content('node-name')
-        LOG.debug(_('No iscsi service found for vserver %s') % (self.vserver))
+        LOG.debug('No iscsi service found for vserver %s' % (self.vserver))
         return None
 
     def _create_lun_handle(self, metadata):
@@ -1005,7 +1005,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
                     dest_block += int(block_count)
                 clone_create.add_child_elem(block_ranges)
             self.client.invoke_successfully(clone_create, True)
-        LOG.debug(_("Cloned LUN with new name %s") % new_name)
+        LOG.debug("Cloned LUN with new name %s" % new_name)
         lun = self._get_lun_by_args(vserver=self.vserver, path='/vol/%s/%s'
                                     % (volume, new_name))
         if len(lun) == 0:
@@ -1055,7 +1055,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
         netapp_backend = 'NetApp_iSCSI_Cluster_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
@@ -1440,11 +1440,11 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                 fmt = {'name': name, 'new_name': new_name}
                 if clone_ops_info.get_child_content('clone-state')\
                         == 'completed':
-                    LOG.debug(_("Clone operation with src %(name)s"
-                                " and dest %(new_name)s completed") % fmt)
+                    LOG.debug("Clone operation with src %(name)s"
+                              " and dest %(new_name)s completed" % fmt)
                 else:
-                    LOG.debug(_("Clone operation with src %(name)s"
-                                " and dest %(new_name)s failed") % fmt)
+                    LOG.debug("Clone operation with src %(name)s"
+                              " and dest %(new_name)s failed" % fmt)
                     raise NaApiError(
                         clone_ops_info.get_child_content('error'),
                         clone_ops_info.get_child_content('reason'))
@@ -1469,7 +1469,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
 
     def _update_volume_stats(self):
         """Retrieve status info from volume group."""
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
         netapp_backend = 'NetApp_iSCSI_7mode_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')

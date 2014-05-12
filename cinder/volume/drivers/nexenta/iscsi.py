@@ -188,8 +188,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         snapshot = {'volume_name': src_vref['name'],
                     'name': self._get_clone_snapshot_name(volume)}
-        LOG.debug(_('Creating temp snapshot of the original volume: '
-                    '%(volume_name)s@%(name)s'), snapshot)
+        LOG.debug('Creating temp snapshot of the original volume: '
+                  '%(volume_name)s@%(name)s', snapshot)
         # We don't delete this snapshot, because this snapshot will be origin
         # of new volume. This snapshot will be automatically promoted by NMS
         # when user will delete origin volume. But when cloned volume deleted
@@ -229,7 +229,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: a dictionary describing the volume to migrate
         :param host: a dictionary describing the host to migrate to
         """
-        LOG.debug(_('Enter: migrate_volume: id=%(id)s, host=%(host)s') %
+        LOG.debug('Enter: migrate_volume: id=%(id)s, host=%(host)s' %
                   {'id': volume['id'], 'host': host})
 
         false_ret = (False, None)
@@ -572,7 +572,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _update_volume_stats(self):
         """Retrieve stats info for NexentaStor appliance."""
-        LOG.debug(_('Updating volume stats'))
+        LOG.debug('Updating volume stats')
 
         stats = self.nms.volume.get_child_props(
             self.configuration.nexenta_volume, 'health|size|used|available')

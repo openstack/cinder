@@ -342,7 +342,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         if self.vg is None:
             LOG.warning(_('Unable to update stats on non-initialized '
                           'Volume Group: %s'), self.configuration.volume_group)

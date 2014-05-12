@@ -68,7 +68,7 @@ def _loc_info(loc):
 
 def _do_lu_range_check(start, end, maxlun):
     """Validate array allocation range."""
-    LOG.debug(_("Range: start LU: %(start)s, end LU: %(end)s")
+    LOG.debug("Range: start LU: %(start)s, end LU: %(end)s"
               % {'start': start,
                  'end': end})
     if int(start) < 0:
@@ -82,7 +82,7 @@ def _do_lu_range_check(start, end, maxlun):
         raise exception.InvalidInput(reason=msg)
     if int(end) > int(maxlun):
         end = maxlun
-        LOG.debug(_("setting LU upper (end) limit to %s") % maxlun)
+        LOG.debug("setting LU upper (end) limit to %s" % maxlun)
     return (start, end)
 
 
@@ -325,7 +325,7 @@ class HUSDriver(driver.ISCSIDriver):
                                   '%s' % (int(volume['size']) * 1024))
         lun = self.arid + '.' + out.split()[1]
         sz = int(out.split()[5])
-        LOG.debug(_("LUN %(lun)s of size %(sz)s MB is created.")
+        LOG.debug("LUN %(lun)s of size %(sz)s MB is created."
                   % {'lun': lun,
                      'sz': sz})
         return {'provider_location': lun}
@@ -353,7 +353,7 @@ class HUSDriver(driver.ISCSIDriver):
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
-        LOG.debug(_("LUN %(lun)s of size %(size)s MB is cloned.")
+        LOG.debug("LUN %(lun)s of size %(size)s MB is cloned."
                   % {'lun': lun,
                      'size': size})
         return {'provider_location': lun}
@@ -370,7 +370,7 @@ class HUSDriver(driver.ISCSIDriver):
                              self.config['password'],
                              arid, lun,
                              '%s' % (new_size * 1024))
-        LOG.debug(_("LUN %(lun)s extended to %(size)s GB.")
+        LOG.debug("LUN %(lun)s extended to %(size)s GB."
                   % {'lun': lun,
                      'size': new_size})
 
@@ -393,7 +393,7 @@ class HUSDriver(driver.ISCSIDriver):
                                      arid, lun, ctl, port, iqn,
                                      '')
         name = self.hus_name
-        LOG.debug(_("delete lun %(lun)s on %(name)s")
+        LOG.debug("delete lun %(lun)s on %(name)s"
                   % {'lun': lun,
                      'name': name})
         self.bend.delete_lu(self.config['hus_cmd'],
@@ -478,7 +478,7 @@ class HUSDriver(driver.ISCSIDriver):
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         sz = int(out.split()[5])
-        LOG.debug(_("LUN %(lun)s of size %(sz)s MB is created from snapshot.")
+        LOG.debug("LUN %(lun)s of size %(sz)s MB is created from snapshot."
                   % {'lun': lun,
                      'sz': sz})
         return {'provider_location': lun}
@@ -501,7 +501,7 @@ class HUSDriver(driver.ISCSIDriver):
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
-        LOG.debug(_("LUN %(lun)s of size %(size)s MB is created as snapshot.")
+        LOG.debug("LUN %(lun)s of size %(size)s MB is created as snapshot."
                   % {'lun': lun,
                      'size': size})
         return {'provider_location': lun}
@@ -520,7 +520,7 @@ class HUSDriver(driver.ISCSIDriver):
                             self.config['username'],
                             self.config['password'],
                             arid, lun)
-        LOG.debug(_("LUN %s is deleted.") % lun)
+        LOG.debug("LUN %s is deleted." % lun)
         return
 
     @utils.synchronized('hds_hus', external=True)

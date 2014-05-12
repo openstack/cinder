@@ -207,7 +207,7 @@ class HDSNFSDriver(nfs.NfsDriver):
         path = self._get_volume_path(nfs_mount, volume['name'])
 
         # Resize the image file on share to new size.
-        LOG.debug(_('Checking file for resize'))
+        LOG.debug('Checking file for resize')
 
         if self._is_file_size_equal(path, new_size):
             return
@@ -236,7 +236,7 @@ class HDSNFSDriver(nfs.NfsDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
 
-        LOG.debug(_('create_volume_from %s') % volume)
+        LOG.debug('create_volume_from %s', volume)
         vol_size = volume['size']
         snap_size = snapshot['volume_size']
 
@@ -263,7 +263,7 @@ class HDSNFSDriver(nfs.NfsDriver):
                            snapshot['name'],
                            snapshot['volume_id'])
         share = self._get_volume_location(snapshot['volume_id'])
-        LOG.debug(_('Share: %s'), share)
+        LOG.debug('Share: %s', share)
 
         # returns the mount point (not path)
         return {'provider_location': share}

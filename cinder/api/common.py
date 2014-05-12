@@ -186,7 +186,7 @@ def remove_version_from_href(href):
     new_path = '/'.join(url_parts)
 
     if new_path == parsed_url.path:
-        msg = _('href %s does not contain version') % href
+        msg = 'href %s does not contain version' % href
         LOG.debug(msg)
         raise ValueError(msg)
 

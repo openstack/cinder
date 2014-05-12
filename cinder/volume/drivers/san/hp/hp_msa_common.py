@@ -59,7 +59,7 @@ class HPMSACommon(object):
         self.client_logout()
 
     def client_login(self):
-        LOG.debug(_("Connecting to MSA"))
+        LOG.debug("Connecting to MSA")
         try:
             self.client.login()
         except msa.HPMSAConnectionError as ex:
@@ -79,7 +79,7 @@ class HPMSACommon(object):
 
     def client_logout(self):
         self.client.logout()
-        LOG.debug(_("Disconnected from MSA Array"))
+        LOG.debug("Disconnected from MSA Array")
 
     def _get_vol_name(self, volume_id):
         volume_name = self._encode_name(volume_id)
@@ -128,7 +128,7 @@ class HPMSACommon(object):
 
     def create_volume(self, volume):
         volume_id = self._get_vol_name(volume['id'])
-        LOG.debug(_("Create Volume (%(display_name)s: %(name)s %(id)s)") %
+        LOG.debug("Create Volume (%(display_name)s: %(name)s %(id)s)" %
                   {'display_name': volume['display_name'],
                    'name': volume['name'], 'id': volume_id})
 
@@ -172,7 +172,7 @@ class HPMSACommon(object):
         self._assert_enough_space_for_copy(volume['size'])
         self._assert_source_detached(src_vref)
 
-        LOG.debug(_("Cloning Volume %(source_id)s (%(dest_id)s)") %
+        LOG.debug("Cloning Volume %(source_id)s (%(dest_id)s)" %
                   {'source_id': volume['source_volid'],
                    'dest_id': volume['id']})
 
@@ -191,8 +191,8 @@ class HPMSACommon(object):
         self.get_volume_stats(True)
         self._assert_enough_space_for_copy(volume['size'])
 
-        LOG.debug(_("Creating Volume from snapshot %(source_id)s "
-                    "(%(dest_id)s)") %
+        LOG.debug("Creating Volume from snapshot %(source_id)s "
+                  "(%(dest_id)s)" %
                   {'source_id': snapshot['id'], 'dest_id': volume['id']})
 
         orig_name = self._get_snap_name(snapshot['id'])
@@ -207,7 +207,7 @@ class HPMSACommon(object):
         return None
 
     def delete_volume(self, volume):
-        LOG.debug(_("Deleting Volume (%s)") % volume['id'])
+        LOG.debug("Deleting Volume (%s)" % volume['id'])
         volume_name = self._get_vol_name(volume['id'])
         try:
             self.client.delete_volume(volume_name)
@@ -276,7 +276,7 @@ class HPMSACommon(object):
         return self.client.get_active_fc_target_ports()
 
     def create_snapshot(self, snapshot):
-        LOG.debug(_("Creating Snapshot from %(volume_id)s (%(snap_id)s)") %
+        LOG.debug("Creating Snapshot from %(volume_id)s (%(snap_id)s)" %
                   {'volume_id': snapshot['volume_id'],
                    'snap_id': snapshot['id']})
         snap_name = self._get_snap_name(snapshot['id'])
@@ -289,7 +289,7 @@ class HPMSACommon(object):
 
     def delete_snapshot(self, snapshot):
         snap_name = self._get_snap_name(snapshot['id'])
-        LOG.debug(_("Deleting Snapshot (%s)") % snapshot['id'])
+        LOG.debug("Deleting Snapshot (%s)" % snapshot['id'])
 
         try:
             self.client.delete_snapshot(snap_name)
@@ -304,8 +304,8 @@ class HPMSACommon(object):
         volume_name = self._get_vol_name(volume['id'])
         old_size = volume['size']
         growth_size = int(new_size) - old_size
-        LOG.debug(_("Extending Volume %(volume_name)s from %(old_size)s to "
-                  "%(new_size)s, by %(growth_size)s GB.") %
+        LOG.debug("Extending Volume %(volume_name)s from %(old_size)s to "
+                  "%(new_size)s, by %(growth_size)s GB." %
                   {'volume_name': volume_name, 'old_size': old_size,
                    'new_size': new_size, 'growth_size': growth_size})
         try:

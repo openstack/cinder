@@ -223,7 +223,7 @@ class Driver(driver.ISCSIDriver):
             self._objects['volumes']['ref_vol'].pop(vol_id, True)
             self._objects['volumes']['label_ref'].pop(label)
         else:
-            LOG.debug(_("Volume %s not cached."), label)
+            LOG.debug("Volume %s not cached.", label)
 
     def _del_snapshot_frm_cache(self, obj_name):
         """Deletes snapshot group from cache."""
@@ -232,7 +232,7 @@ class Driver(driver.ISCSIDriver):
             self._objects['snapshots']['ref_snap'].pop(snap_id, True)
             self._objects['snapshots']['label_ref'].pop(obj_name)
         else:
-            LOG.debug(_("Snapshot %s not cached."), obj_name)
+            LOG.debug("Snapshot %s not cached.", obj_name)
 
     def _del_vol_mapping_frm_cache(self, mapping):
         """Deletes volume mapping under cached volume."""
@@ -242,7 +242,7 @@ class Driver(driver.ISCSIDriver):
         try:
             mappings.remove(mapping)
         except ValueError:
-            LOG.debug(_("Mapping with id %s already removed."),
+            LOG.debug("Mapping with id %s already removed.",
                       mapping['lunMappingRef'])
 
     def _get_volume(self, uid):
@@ -347,7 +347,7 @@ class Driver(driver.ISCSIDriver):
     def _create_snapshot_volume(self, snapshot_id):
         """Creates snapshot volume for given group with snapshot_id."""
         group = self._get_cached_snapshot_grp(snapshot_id)
-        LOG.debug(_("Creating snap vol for group %s"), group['label'])
+        LOG.debug("Creating snap vol for group %s", group['label'])
         image = self._get_cached_snap_grp_image(snapshot_id)
         label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
         capacity = int(image['pitCapacity']) / units.GiB
@@ -622,7 +622,7 @@ class Driver(driver.ISCSIDriver):
 
     def _update_volume_stats(self):
         """Update volume statistics."""
-        LOG.debug(_("Updating volume stats."))
+        LOG.debug("Updating volume stats.")
         self._stats = self._stats or {}
         netapp_backend = 'NetApp_ESeries'
         backend_name = self.configuration.safe_get('volume_backend_name')
@@ -686,7 +686,7 @@ class Driver(driver.ISCSIDriver):
                     try:
                         self._delete_volume(label)
                     except exception.NetAppDriverException:
-                        LOG.debug(_("Error deleting vol with label %s."),
+                        LOG.debug("Error deleting vol with label %s.",
                                   label)
         finally:
             utils.set_safe_attr(self, 'clean_job_running', False)

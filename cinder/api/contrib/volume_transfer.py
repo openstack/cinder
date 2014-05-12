@@ -128,7 +128,7 @@ class VolumeTransferController(wsgi.Controller):
     def _get_transfers(self, req, is_detail):
         """Returns a list of transfers, transformed through view builder."""
         context = req.environ['cinder.context']
-        LOG.debug(_('Listing volume transfers'))
+        LOG.debug('Listing volume transfers')
         transfers = self.transfer_api.get_all(context)
         limited_list = common.limited(transfers, req)
 
@@ -144,7 +144,7 @@ class VolumeTransferController(wsgi.Controller):
     @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Create a new volume transfer."""
-        LOG.debug(_('Creating new volume transfer %s'), body)
+        LOG.debug('Creating new volume transfer %s', body)
         if not self.is_valid_body(body, 'transfer'):
             raise exc.HTTPBadRequest()
 
@@ -180,7 +180,7 @@ class VolumeTransferController(wsgi.Controller):
     def accept(self, req, id, body):
         """Accept a new volume transfer."""
         transfer_id = id
-        LOG.debug(_('Accepting volume transfer %s'), transfer_id)
+        LOG.debug('Accepting volume transfer %s', transfer_id)
         if not self.is_valid_body(body, 'accept'):
             raise exc.HTTPBadRequest()
 

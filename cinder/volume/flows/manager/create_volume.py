@@ -98,8 +98,8 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         num_attempts = retry_info.get('num_attempts', 0)
         request_spec['volume_id'] = volume_id
 
-        LOG.debug(_("Volume %(volume_id)s: re-scheduling %(method)s "
-                    "attempt %(num)d due to %(reason)s") %
+        LOG.debug("Volume %(volume_id)s: re-scheduling %(method)s "
+                  "attempt %(num)d due to %(reason)s" %
                   {'volume_id': volume_id,
                    'method': common.make_pretty_name(create_volume),
                    'num': num_attempts,
@@ -117,7 +117,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
     def _post_reschedule(self, context, volume_id):
         """Actions that happen after the rescheduling attempt occur here."""
 
-        LOG.debug(_("Volume %s: re-scheduled"), volume_id)
+        LOG.debug("Volume %s: re-scheduled", volume_id)
 
     def _pre_reschedule(self, context, volume_id):
         """Actions that happen before the rescheduling attempt occur here."""
@@ -134,7 +134,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                 'status': 'creating',
                 'scheduled_at': timeutils.utcnow(),
             }
-            LOG.debug(_("Updating volume %(volume_id)s with %(update)s.") %
+            LOG.debug("Updating volume %(volume_id)s with %(update)s." %
                       {'update': update, 'volume_id': volume_id})
             self.db.volume_update(context, volume_id, update)
         except exception.CinderException:
@@ -406,7 +406,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
     def _enable_bootable_flag(self, context, volume_id):
         try:
-            LOG.debug(_('Marking volume %s as bootable.'), volume_id)
+            LOG.debug('Marking volume %s as bootable.', volume_id)
             self.db.volume_update(context, volume_id, {'bootable': True})
         except exception.CinderException as ex:
             LOG.exception(_("Failed updating volume %(volume_id)s bootable"
@@ -436,8 +436,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         """Downloads Glance image to the specified volume."""
         copy_image_to_volume = self.driver.copy_image_to_volume
         volume_id = volume_ref['id']
-        LOG.debug(_("Attempting download of %(image_id)s (%(image_location)s)"
-                    " to volume %(volume_id)s.") %
+        LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
+                  " to volume %(volume_id)s." %
                   {'image_id': image_id, 'volume_id': volume_id,
                    'image_location': image_location})
         try:
@@ -463,8 +463,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             else:
                 raise
 
-        LOG.debug(_("Downloaded image %(image_id)s (%(image_location)s)"
-                    " to volume %(volume_id)s successfully.") %
+        LOG.debug("Downloaded image %(image_id)s (%(image_location)s)"
+                  " to volume %(volume_id)s successfully." %
                   {'image_id': image_id, 'volume_id': volume_id,
                    'image_location': image_location})
 
@@ -500,8 +500,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # which means we can have partial create/update failure.
         volume_metadata = dict(property_metadata)
         volume_metadata.update(base_metadata)
-        LOG.debug(_("Creating volume glance metadata for volume %(volume_id)s"
-                    " backed by image %(image_id)s with: %(vol_metadata)s.") %
+        LOG.debug("Creating volume glance metadata for volume %(volume_id)s"
+                  " backed by image %(image_id)s with: %(vol_metadata)s." %
                   {'volume_id': volume_id, 'image_id': image_id,
                    'vol_metadata': volume_metadata})
         for (key, value) in volume_metadata.items():
@@ -514,8 +514,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     def _create_from_image(self, context, volume_ref,
                            image_location, image_id, image_meta,
                            image_service, **kwargs):
-        LOG.debug(_("Cloning %(volume_id)s from image %(image_id)s "
-                    " at location %(image_location)s.") %
+        LOG.debug("Cloning %(volume_id)s from image %(image_id)s "
+                  " at location %(image_location)s." %
                   {'volume_id': volume_ref['id'],
                    'image_location': image_location, 'image_id': image_id})
         # Create the volume from an image.

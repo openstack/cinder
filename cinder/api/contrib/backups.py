@@ -158,7 +158,7 @@ class BackupsController(wsgi.Controller):
     @wsgi.serializers(xml=BackupTemplate)
     def show(self, req, id):
         """Return data about the given backup."""
-        LOG.debug(_('show called for member %s'), id)
+        LOG.debug('show called for member %s', id)
         context = req.environ['cinder.context']
 
         try:
@@ -170,7 +170,7 @@ class BackupsController(wsgi.Controller):
 
     def delete(self, req, id):
         """Delete a backup."""
-        LOG.debug(_('delete called for member %s'), id)
+        LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
         LOG.audit(_('Delete backup with id: %s'), id, context=context)
@@ -215,7 +215,7 @@ class BackupsController(wsgi.Controller):
     @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Create a new backup."""
-        LOG.debug(_('Creating new backup %s'), body)
+        LOG.debug('Creating new backup %s', body)
         if not self.is_valid_body(body, 'backup'):
             raise exc.HTTPBadRequest()
 
@@ -254,7 +254,7 @@ class BackupsController(wsgi.Controller):
     @wsgi.deserializers(xml=RestoreDeserializer)
     def restore(self, req, id, body):
         """Restore an existing backup to a volume."""
-        LOG.debug(_('Restoring backup %(backup_id)s (%(body)s)'),
+        LOG.debug('Restoring backup %(backup_id)s (%(body)s)',
                   {'backup_id': id, 'body': body})
         if not self.is_valid_body(body, 'restore'):
             msg = _("Incorrect request body format")
@@ -297,7 +297,7 @@ class BackupsController(wsgi.Controller):
     @wsgi.serializers(xml=BackupExportImportTemplate)
     def export_record(self, req, id):
         """Export a backup."""
-        LOG.debug(_('export record called for member %s.'), id)
+        LOG.debug('export record called for member %s.', id)
         context = req.environ['cinder.context']
 
         try:
@@ -309,7 +309,7 @@ class BackupsController(wsgi.Controller):
 
         retval = self._view_builder.export_summary(
             req, dict(backup_info.iteritems()))
-        LOG.debug(_('export record output: %s.'), retval)
+        LOG.debug('export record output: %s.', retval)
         return retval
 
     @wsgi.response(201)
@@ -317,7 +317,7 @@ class BackupsController(wsgi.Controller):
     @wsgi.deserializers(xml=BackupImportDeserializer)
     def import_record(self, req, body):
         """Import a backup."""
-        LOG.debug(_('Importing record from %s.'), body)
+        LOG.debug('Importing record from %s.', body)
         if not self.is_valid_body(body, 'backup-record'):
             msg = _("Incorrect request body format.")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -330,7 +330,7 @@ class BackupsController(wsgi.Controller):
         except KeyError:
             msg = _("Incorrect request body format.")
             raise exc.HTTPBadRequest(explanation=msg)
-        LOG.debug(_('Importing backup using %(service)s and url %(url)s.'),
+        LOG.debug('Importing backup using %(service)s and url %(url)s.',
                   {'service': backup_service, 'url': backup_url})
 
         try:
@@ -345,7 +345,7 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPInternalServerError(explanation=error.msg)
 
         retval = self._view_builder.summary(req, dict(new_backup.iteritems()))
-        LOG.debug(_('import record output: %s.'), retval)
+        LOG.debug('import record output: %s.', retval)
         return retval
 
 

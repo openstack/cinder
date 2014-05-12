@@ -1438,18 +1438,18 @@ class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
 
     def _run_ssh(self, cmd, check_exit_code=True, attempts=1):
         try:
-            LOG.debug(_('Run CLI command: %s') % cmd)
+            LOG.debug('Run CLI command: %s' % cmd)
             utils.check_ssh_injection(cmd)
             ret = self.fake_storage.execute_command(cmd, check_exit_code)
             (stdout, stderr) = ret
-            LOG.debug(_('CLI output:\n stdout: %(stdout)s\n stderr: '
-                        '%(stderr)s') % {'stdout': stdout, 'stderr': stderr})
+            LOG.debug('CLI output:\n stdout: %(stdout)s\n stderr: '
+                      '%(stderr)s' % {'stdout': stdout, 'stderr': stderr})
 
         except processutils.ProcessExecutionError as e:
             with excutils.save_and_reraise_exception():
-                LOG.debug(_('CLI Exception output:\n stdout: %(out)s\n '
-                            'stderr: %(err)s') % {'out': e.stdout,
-                                                  'err': e.stderr})
+                LOG.debug('CLI Exception output:\n stdout: %(out)s\n '
+                          'stderr: %(err)s' % {'out': e.stdout,
+                                               'err': e.stderr})
 
         return ret
 

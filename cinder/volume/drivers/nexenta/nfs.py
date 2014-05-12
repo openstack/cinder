@@ -111,7 +111,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         vol, dataset = self._get_share_datasets(nfs_share)
         folder = '%s/%s' % (dataset, volume['name'])
-        LOG.debug(_('Creating folder on Nexenta Store %s'), folder)
+        LOG.debug('Creating folder on Nexenta Store %s', folder)
         nms.folder.create_with_props(
             vol, folder,
             {'compression': self.configuration.nexenta_volume_compression}
@@ -362,7 +362,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'recursive': 'true',
             'anonymous_rw': 'true',
         }
-        LOG.debug(_('Sharing folder %s on Nexenta Store'), folder)
+        LOG.debug('Sharing folder %s on Nexenta Store', folder)
         nms.netstorsvc.share_folder('svc:/network/nfs/server:default', path,
                                     share_opts)
 
@@ -390,7 +390,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self.shares[share_address] = share_opts
             self.share2nms[share_address] = self._get_nms_for_url(nms_url)
 
-        LOG.debug(_('Shares loaded: %s') % self.shares)
+        LOG.debug('Shares loaded: %s' % self.shares)
 
     def _get_capacity_info(self, nfs_share):
         """Calculate available space on the NFS share.

@@ -91,8 +91,8 @@ def start_transfer(context, timeout_secs, read_file_handle, max_data_size,
 
 def fetch_flat_image(context, timeout_secs, image_service, image_id, **kwargs):
     """Download flat image from the glance image server."""
-    LOG.debug(_("Downloading image: %s from glance image server as a flat vmdk"
-                " file.") % image_id)
+    LOG.debug("Downloading image: %s from glance image server as a flat vmdk"
+              " file." % image_id)
     file_size = int(kwargs.get('image_size'))
     read_iter = image_service.download(context, image_id)
     read_handle = rw_util.GlanceFileRead(read_iter)
@@ -110,8 +110,8 @@ def fetch_flat_image(context, timeout_secs, image_service, image_id, **kwargs):
 def fetch_stream_optimized_image(context, timeout_secs, image_service,
                                  image_id, **kwargs):
     """Download stream optimized image from glance image server."""
-    LOG.debug(_("Downloading image: %s from glance image server using HttpNfc"
-                " import.") % image_id)
+    LOG.debug("Downloading image: %s from glance image server using HttpNfc"
+              " import." % image_id)
     file_size = int(kwargs.get('image_size'))
     read_iter = image_service.download(context, image_id)
     read_handle = rw_util.GlanceFileRead(read_iter)
@@ -129,8 +129,8 @@ def fetch_stream_optimized_image(context, timeout_secs, image_service,
 def upload_image(context, timeout_secs, image_service, image_id, owner_id,
                  **kwargs):
     """Upload the vm's disk file to Glance image server."""
-    LOG.debug(_("Uploading image: %s to the Glance image server using HttpNfc"
-                " export.") % image_id)
+    LOG.debug("Uploading image: %s to the Glance image server using HttpNfc"
+              " export." % image_id)
     file_size = kwargs.get('vmdk_size')
     read_handle = rw_util.VMwareHTTPReadVmdk(kwargs.get('session'),
                                              kwargs.get('host'),

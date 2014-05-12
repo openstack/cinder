@@ -221,7 +221,7 @@ class CoraidAppliance(object):
                 relogin_attempts -= 1
                 if relogin_attempts <= 0:
                     raise exception.CoraidESMReloginFailed()
-                LOG.debug(_('Session is expired. Relogin on ESM.'))
+                LOG.debug('Session is expired. Relogin on ESM.')
                 self._relogin()
             else:
                 return reply
@@ -281,7 +281,7 @@ class CoraidAppliance(object):
         try:
             self.rpc('fetch', {}, None, allow_empty_response=True)
         except Exception as e:
-            LOG.debug(_('Coraid Appliance ping failed: %s'), e)
+            LOG.debug('Coraid Appliance ping failed: %s', e)
             raise exception.CoraidESMNotAvailable(reason=e)
 
     def create_lun(self, repository_name, volume_name, volume_size_in_gb):
@@ -294,7 +294,7 @@ class CoraidAppliance(object):
                    'op': 'orchStrLun',
                    'args': 'add'}
         esm_result = self.esm_command(request)
-        LOG.debug(_('Volume "%(name)s" created with VSX LUN "%(lun)s"') %
+        LOG.debug('Volume "%(name)s" created with VSX LUN "%(lun)s"' %
                   {'name': volume_name,
                    'lun': esm_result['firstParam']})
         return esm_result
@@ -308,15 +308,15 @@ class CoraidAppliance(object):
                    'op': 'orchStrLun/verified',
                    'args': 'delete'}
         esm_result = self.esm_command(request)
-        LOG.debug(_('Volume "%s" deleted.'), volume_name)
+        LOG.debug('Volume "%s" deleted.', volume_name)
         return esm_result
 
     def resize_volume(self, volume_name, new_volume_size_in_gb):
-        LOG.debug(_('Resize volume "%(name)s" to %(size)s GB.') %
+        LOG.debug('Resize volume "%(name)s" to %(size)s GB.' %
                   {'name': volume_name,
                    'size': new_volume_size_in_gb})
         repository = self.get_volume_repository(volume_name)
-        LOG.debug(_('Repository for volume "%(name)s" found: "%(repo)s"') %
+        LOG.debug('Repository for volume "%(name)s" found: "%(repo)s"' %
                   {'name': volume_name,
                    'repo': repository})
 
@@ -330,7 +330,7 @@ class CoraidAppliance(object):
                    'args': 'resize'}
         esm_result = self.esm_command(request)
 
-        LOG.debug(_('Volume "%(name)s" resized. New size is %(size)s GB.') %
+        LOG.debug('Volume "%(name)s" resized. New size is %(size)s GB.' %
                   {'name': volume_name,
                    'size': new_volume_size_in_gb})
         return esm_result
@@ -502,7 +502,7 @@ class CoraidDriver(driver.VolumeDriver):
         shelf = volume_info['shelf']
         lun = volume_info['lun']
 
-        LOG.debug(_('Initialize connection %(shelf)s/%(lun)s for %(name)s') %
+        LOG.debug('Initialize connection %(shelf)s/%(lun)s for %(name)s' %
                   {'shelf': shelf,
                    'lun': lun,
                    'name': volume['name']})

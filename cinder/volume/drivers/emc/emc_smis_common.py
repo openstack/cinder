@@ -79,7 +79,7 @@ class EMCSMISCommon():
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VNX) volume."""
-        LOG.debug(_('Entering create_volume.'))
+        LOG.debug('Entering create_volume.')
         volumesize = int(volume['size']) * units.GiB
         volumename = volume['name']
 
@@ -91,15 +91,15 @@ class EMCSMISCommon():
 
         storage_type = self._get_storage_type(volume)
 
-        LOG.debug(_('Create Volume: %(volume)s  '
-                  'Storage type: %(storage_type)s')
+        LOG.debug('Create Volume: %(volume)s  '
+                  'Storage type: %(storage_type)s'
                   % {'volume': volumename,
                      'storage_type': storage_type})
 
         pool, storage_system = self._find_pool(storage_type[POOL])
 
-        LOG.debug(_('Create Volume: %(volume)s  Pool: %(pool)s  '
-                  'Storage System: %(storage_system)s')
+        LOG.debug('Create Volume: %(volume)s  Pool: %(pool)s  '
+                  'Storage System: %(storage_system)s'
                   % {'volume': volumename,
                      'pool': pool,
                      'storage_system': storage_system})
@@ -117,10 +117,10 @@ class EMCSMISCommon():
 
         provisioning = self._get_provisioning(storage_type)
 
-        LOG.debug(_('Create Volume: %(name)s  Method: '
+        LOG.debug('Create Volume: %(name)s  Method: '
                   'CreateOrModifyElementFromStoragePool  ConfigServicie: '
                   '%(service)s  ElementName: %(name)s  InPool: %(pool)s  '
-                  'ElementType: %(provisioning)s  Size: %(size)lu')
+                  'ElementType: %(provisioning)s  Size: %(size)lu'
                   % {'service': configservice,
                      'name': volumename,
                      'pool': pool,
@@ -133,7 +133,7 @@ class EMCSMISCommon():
             ElementType=self._getnum(provisioning, '16'),
             Size=self._getnum(volumesize, '64'))
 
-        LOG.debug(_('Create Volume: %(volumename)s  Return code: %(rc)lu')
+        LOG.debug('Create Volume: %(volumename)s  Return code: %(rc)lu'
                   % {'volumename': volumename,
                      'rc': rc})
 
@@ -161,9 +161,9 @@ class EMCSMISCommon():
         keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
         name['keybindings'] = keys
 
-        LOG.debug(_('Leaving create_volume: %(volumename)s  '
+        LOG.debug('Leaving create_volume: %(volumename)s  '
                   'Return code: %(rc)lu '
-                  'volume instance: %(name)s')
+                  'volume instance: %(name)s'
                   % {'volumename': volumename,
                      'rc': rc,
                      'name': name})
@@ -173,7 +173,7 @@ class EMCSMISCommon():
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
 
-        LOG.debug(_('Entering create_volume_from_snapshot.'))
+        LOG.debug('Entering create_volume_from_snapshot.')
 
         snapshotname = snapshot['name']
         volumename = volume['name']
@@ -188,9 +188,9 @@ class EMCSMISCommon():
         snapshot_instance = self._find_lun(snapshot)
         storage_system = snapshot_instance['SystemName']
 
-        LOG.debug(_('Create Volume from Snapshot: Volume: %(volumename)s  '
+        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
                   'Snapshot: %(snapshotname)s  Snapshot Instance: '
-                  '%(snapshotinstance)s  Storage System: %(storage_system)s.')
+                  '%(snapshotinstance)s  Storage System: %(storage_system)s.'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'snapshotinstance': snapshot_instance.path,
@@ -218,11 +218,11 @@ class EMCSMISCommon():
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        LOG.debug(_('Create Volume from Snapshot: Volume: %(volumename)s  '
+        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
                   'Snapshot: %(snapshotname)s  Method: CreateElementReplica  '
                   'ReplicationService: %(service)s  ElementName: '
                   '%(elementname)s  SyncType: 8  SourceElement: '
-                  '%(sourceelement)s')
+                  '%(sourceelement)s'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'service': repservice,
@@ -265,9 +265,9 @@ class EMCSMISCommon():
         keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
         name['keybindings'] = keys
 
-        LOG.debug(_('Create Volume from Snapshot: Volume: %(volumename)s  '
+        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
                   'Snapshot: %(snapshotname)s.  Successfully clone volume '
-                  'from snapshot.  Finding the clone relationship.')
+                  'from snapshot.  Finding the clone relationship.'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname})
 
@@ -277,11 +277,11 @@ class EMCSMISCommon():
 
         # Remove the Clone relationshop so it can be used as a regular lun
         # 8 - Detach operation
-        LOG.debug(_('Create Volume from Snapshot: Volume: %(volumename)s  '
+        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
                   'Snapshot: %(snapshotname)s.  Remove the clone '
                   'relationship. Method: ModifyReplicaSynchronization '
                   'ReplicationService: %(service)s  Operation: 8  '
-                  'Synchronization: %(sync_name)s')
+                  'Synchronization: %(sync_name)s'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'service': repservice,
@@ -293,8 +293,8 @@ class EMCSMISCommon():
             Operation=self._getnum(8, '16'),
             Synchronization=sync_name)
 
-        LOG.debug(_('Create Volume from Snapshot: Volume: %(volumename)s  '
-                    'Snapshot: %(snapshotname)s  Return code: %(rc)lu')
+        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
+                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
@@ -314,9 +314,9 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
-        LOG.debug(_('Leaving create_volume_from_snapshot: Volume: '
+        LOG.debug('Leaving create_volume_from_snapshot: Volume: '
                   '%(volumename)s Snapshot: %(snapshotname)s  '
-                  'Return code: %(rc)lu.')
+                  'Return code: %(rc)lu.'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
@@ -325,7 +325,7 @@ class EMCSMISCommon():
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        LOG.debug(_('Entering create_cloned_volume.'))
+        LOG.debug('Entering create_cloned_volume.')
 
         srcname = src_vref['name']
         volumename = volume['name']
@@ -340,9 +340,9 @@ class EMCSMISCommon():
         src_instance = self._find_lun(src_vref)
         storage_system = src_instance['SystemName']
 
-        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
                   'Source Volume: %(srcname)s  Source Instance: '
-                  '%(src_instance)s  Storage System: %(storage_system)s.')
+                  '%(src_instance)s  Storage System: %(storage_system)s.'
                   % {'volumename': volumename,
                      'srcname': srcname,
                      'src_instance': src_instance.path,
@@ -359,11 +359,11 @@ class EMCSMISCommon():
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
                   'Source Volume: %(srcname)s  Method: CreateElementReplica  '
                   'ReplicationService: %(service)s  ElementName: '
                   '%(elementname)s  SyncType: 8  SourceElement: '
-                  '%(sourceelement)s')
+                  '%(sourceelement)s'
                   % {'volumename': volumename,
                      'srcname': srcname,
                      'service': repservice,
@@ -406,9 +406,9 @@ class EMCSMISCommon():
         keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
         name['keybindings'] = keys
 
-        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
                   'Source Volume: %(srcname)s.  Successfully cloned volume '
-                  'from source volume.  Finding the clone relationship.')
+                  'from source volume.  Finding the clone relationship.'
                   % {'volumename': volumename,
                      'srcname': srcname})
 
@@ -418,11 +418,11 @@ class EMCSMISCommon():
 
         # Remove the Clone relationshop so it can be used as a regular lun
         # 8 - Detach operation
-        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
+        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
                   'Source Volume: %(srcname)s.  Remove the clone '
                   'relationship. Method: ModifyReplicaSynchronization '
                   'ReplicationService: %(service)s  Operation: 8  '
-                  'Synchronization: %(sync_name)s')
+                  'Synchronization: %(sync_name)s'
                   % {'volumename': volumename,
                      'srcname': srcname,
                      'service': repservice,
@@ -434,8 +434,8 @@ class EMCSMISCommon():
             Operation=self._getnum(8, '16'),
             Synchronization=sync_name)
 
-        LOG.debug(_('Create Cloned Volume: Volume: %(volumename)s  '
-                  'Source Volume: %(srcname)s  Return code: %(rc)lu')
+        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
+                  'Source Volume: %(srcname)s  Return code: %(rc)lu'
                   % {'volumename': volumename,
                      'srcname': srcname,
                      'rc': rc})
@@ -455,9 +455,9 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
-        LOG.debug(_('Leaving create_cloned_volume: Volume: '
+        LOG.debug('Leaving create_cloned_volume: Volume: '
                   '%(volumename)s Source Volume: %(srcname)s  '
-                  'Return code: %(rc)lu.')
+                  'Return code: %(rc)lu.'
                   % {'volumename': volumename,
                      'srcname': srcname,
                      'rc': rc})
@@ -466,7 +466,7 @@ class EMCSMISCommon():
 
     def delete_volume(self, volume):
         """Deletes an EMC volume."""
-        LOG.debug(_('Entering delete_volume.'))
+        LOG.debug('Entering delete_volume.')
         volumename = volume['name']
         LOG.info(_('Delete Volume: %(volume)s')
                  % {'volume': volumename})
@@ -493,12 +493,12 @@ class EMCSMISCommon():
 
         device_id = vol_instance['DeviceID']
 
-        LOG.debug(_('Delete Volume: %(name)s  DeviceID: %(deviceid)s')
+        LOG.debug('Delete Volume: %(name)s  DeviceID: %(deviceid)s'
                   % {'name': volumename,
                      'deviceid': device_id})
 
-        LOG.debug(_('Delete Volume: %(name)s  Method: EMCReturnToStoragePool '
-                  'ConfigServic: %(service)s  TheElement: %(vol_instance)s')
+        LOG.debug('Delete Volume: %(name)s  Method: EMCReturnToStoragePool '
+                  'ConfigServic: %(service)s  TheElement: %(vol_instance)s'
                   % {'service': configservice,
                      'name': volumename,
                      'vol_instance': vol_instance.path})
@@ -520,14 +520,14 @@ class EMCSMISCommon():
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
 
-        LOG.debug(_('Leaving delete_volume: %(volumename)s  Return code: '
-                  '%(rc)lu')
+        LOG.debug('Leaving delete_volume: %(volumename)s  Return code: '
+                  '%(rc)lu'
                   % {'volumename': volumename,
                      'rc': rc})
 
     def create_snapshot(self, snapshot, volume):
         """Creates a snapshot."""
-        LOG.debug(_('Entering create_snapshot.'))
+        LOG.debug('Entering create_snapshot.')
 
         snapshotname = snapshot['name']
         volumename = snapshot['volume_name']
@@ -541,8 +541,8 @@ class EMCSMISCommon():
 
         device_id = vol_instance['DeviceID']
         storage_system = vol_instance['SystemName']
-        LOG.debug(_('Device ID: %(deviceid)s: Storage System: '
-                  '%(storagesystem)s')
+        LOG.debug('Device ID: %(deviceid)s: Storage System: '
+                  '%(storagesystem)s'
                   % {'deviceid': device_id,
                      'storagesystem': storage_system})
 
@@ -555,10 +555,10 @@ class EMCSMISCommon():
                                  % volumename)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        LOG.debug(_("Create Snapshot:  Method: CreateElementReplica: "
+        LOG.debug("Create Snapshot:  Method: CreateElementReplica: "
                   "Target: %(snapshot)s  Source: %(volume)s  Replication "
                   "Service: %(service)s  ElementName: %(elementname)s  Sync "
-                  "Type: 7  SourceElement: %(sourceelement)s.")
+                  "Type: 7  SourceElement: %(sourceelement)s."
                   % {'snapshot': snapshotname,
                      'volume': volumename,
                      'service': repservice,
@@ -571,8 +571,8 @@ class EMCSMISCommon():
                                    SyncType=self._getnum(7, '16'),
                                    SourceElement=vol_instance.path)
 
-        LOG.debug(_('Create Snapshot: Volume: %(volumename)s  '
-                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu')
+        LOG.debug('Create Snapshot: Volume: %(volumename)s  '
+                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
@@ -602,15 +602,15 @@ class EMCSMISCommon():
         keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
         name['keybindings'] = keys
 
-        LOG.debug(_('Leaving create_snapshot: Snapshot: %(snapshot)s '
-                  'Volume: %(volume)s  Return code: %(rc)lu.') %
+        LOG.debug('Leaving create_snapshot: Snapshot: %(snapshot)s '
+                  'Volume: %(volume)s  Return code: %(rc)lu.' %
                   {'snapshot': snapshotname, 'volume': volumename, 'rc': rc})
 
         return name
 
     def delete_snapshot(self, snapshot, volume):
         """Deletes a snapshot."""
-        LOG.debug(_('Entering delete_snapshot.'))
+        LOG.debug('Entering delete_snapshot.')
 
         snapshotname = snapshot['name']
         volumename = snapshot['volume_name']
@@ -620,8 +620,8 @@ class EMCSMISCommon():
 
         self.conn = self._get_ecom_connection()
 
-        LOG.debug(_('Delete Snapshot: %(snapshot)s: volume: %(volume)s. '
-                  'Finding StorageSychronization_SV_SV.')
+        LOG.debug('Delete Snapshot: %(snapshot)s: volume: %(volume)s. '
+                  'Finding StorageSychronization_SV_SV.'
                   % {'snapshot': snapshotname,
                      'volume': volumename})
 
@@ -643,11 +643,11 @@ class EMCSMISCommon():
 
         # Delete snapshot - deletes both the target element
         # and the snap session
-        LOG.debug(_("Delete Snapshot: Target: %(snapshot)s  "
+        LOG.debug("Delete Snapshot: Target: %(snapshot)s  "
                   "Source: %(volume)s.  Method: "
                   "ModifyReplicaSynchronization:  "
                   "Replication Service: %(service)s  Operation: 19  "
-                  "Synchronization: %(sync_name)s.")
+                  "Synchronization: %(sync_name)s."
                   % {'snapshot': snapshotname,
                      'volume': volumename,
                      'service': repservice,
@@ -659,8 +659,8 @@ class EMCSMISCommon():
                                    Operation=self._getnum(19, '16'),
                                    Synchronization=sync_name)
 
-        LOG.debug(_('Delete Snapshot: Volume: %(volumename)s  Snapshot: '
-                  '%(snapshotname)s  Return code: %(rc)lu')
+        LOG.debug('Delete Snapshot: Volume: %(volumename)s  Snapshot: '
+                  '%(snapshotname)s  Return code: %(rc)lu'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
@@ -721,8 +721,8 @@ class EMCSMISCommon():
                                 'error': str(ex.args)})
                 break
 
-        LOG.debug(_('Leaving delete_snapshot: Volume: %(volumename)s  '
-                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu.')
+        LOG.debug('Leaving delete_snapshot: Volume: %(volumename)s  '
+                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu.'
                   % {'volumename': volumename,
                      'snapshotname': snapshotname,
                      'rc': rc})
@@ -742,9 +742,9 @@ class EMCSMISCommon():
         lunmask_ctrl = self._find_lunmasking_scsi_protocol_controller(
             storage_system, connector)
 
-        LOG.debug(_('ExposePaths: %(vol)s  ConfigServicie: %(service)s  '
+        LOG.debug('ExposePaths: %(vol)s  ConfigServicie: %(service)s  '
                   'LUNames: %(lun_name)s  InitiatorPortIDs: %(initiator)s  '
-                  'DeviceAccesses: 2')
+                  'DeviceAccesses: 2'
                   % {'vol': vol_instance.path,
                      'service': configservice,
                      'lun_name': lun_name,
@@ -757,9 +757,9 @@ class EMCSMISCommon():
                                        InitiatorPortIDs=initiators,
                                        DeviceAccesses=[self._getnum(2, '16')])
         else:
-            LOG.debug(_('ExposePaths parameter '
+            LOG.debug('ExposePaths parameter '
                       'LunMaskingSCSIProtocolController: '
-                      '%(lunmasking)s')
+                      '%(lunmasking)s'
                       % {'lunmasking': lunmask_ctrl})
             rc, controller =\
                 self.conn.InvokeMethod('ExposePaths',
@@ -772,7 +772,7 @@ class EMCSMISCommon():
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug(_('ExposePaths for volume %s completed successfully.')
+        LOG.debug('ExposePaths for volume %s completed successfully.'
                   % volumename)
 
     # Unmapping method for VNX
@@ -788,9 +788,9 @@ class EMCSMISCommon():
         lunmask_ctrl = self._find_lunmasking_scsi_protocol_controller_for_vol(
             vol_instance, connector)
 
-        LOG.debug(_('HidePaths: %(vol)s  ConfigServicie: %(service)s  '
+        LOG.debug('HidePaths: %(vol)s  ConfigServicie: %(service)s  '
                   'LUNames: %(device_id)s  LunMaskingSCSIProtocolController: '
-                  '%(lunmasking)s')
+                  '%(lunmasking)s'
                   % {'vol': vol_instance.path,
                      'service': configservice,
                      'device_id': device_id,
@@ -805,7 +805,7 @@ class EMCSMISCommon():
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug(_('HidePaths for volume %s completed successfully.')
+        LOG.debug('HidePaths for volume %s completed successfully.'
                   % volumename)
 
     # Mapping method for VMAX
@@ -818,8 +818,8 @@ class EMCSMISCommon():
         volumename = vol_instance['ElementName']
         masking_group = self._find_device_masking_group()
 
-        LOG.debug(_('AddMembers: ConfigServicie: %(service)s  MaskingGroup: '
-                  '%(masking_group)s  Members: %(vol)s')
+        LOG.debug('AddMembers: ConfigServicie: %(service)s  MaskingGroup: '
+                  '%(masking_group)s  Members: %(vol)s'
                   % {'service': configservice,
                      'masking_group': masking_group,
                      'vol': vol_instance.path})
@@ -838,7 +838,7 @@ class EMCSMISCommon():
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug(_('AddMembers for volume %s completed successfully.')
+        LOG.debug('AddMembers for volume %s completed successfully.'
                   % volumename)
 
     # Unmapping method for VMAX
@@ -851,8 +851,8 @@ class EMCSMISCommon():
         volumename = vol_instance['ElementName']
         masking_group = self._find_device_masking_group()
 
-        LOG.debug(_('RemoveMembers: ConfigServicie: %(service)s  '
-                  'MaskingGroup: %(masking_group)s  Members: %(vol)s')
+        LOG.debug('RemoveMembers: ConfigServicie: %(service)s  '
+                  'MaskingGroup: %(masking_group)s  Members: %(vol)s'
                   % {'service': configservice,
                      'masking_group': masking_group,
                      'vol': vol_instance.path})
@@ -869,7 +869,7 @@ class EMCSMISCommon():
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug(_('RemoveMembers for volume %s completed successfully.')
+        LOG.debug('RemoveMembers for volume %s completed successfully.'
                   % volumename)
 
     def _map_lun(self, volume, connector):
@@ -953,7 +953,7 @@ class EMCSMISCommon():
 
     def extend_volume(self, volume, new_size):
         """Extends an existing  volume."""
-        LOG.debug(_('Entering extend_volume.'))
+        LOG.debug('Entering extend_volume.')
         volumesize = int(new_size) * units.GiB
         volumename = volume['name']
 
@@ -969,8 +969,8 @@ class EMCSMISCommon():
 
         device_id = vol_instance['DeviceID']
         storage_system = vol_instance['SystemName']
-        LOG.debug(_('Device ID: %(deviceid)s: Storage System: '
-                  '%(storagesystem)s')
+        LOG.debug('Device ID: %(deviceid)s: Storage System: '
+                  '%(storagesystem)s'
                   % {'deviceid': device_id,
                      'storagesystem': storage_system})
 
@@ -985,10 +985,10 @@ class EMCSMISCommon():
 
         provisioning = self._get_provisioning(storage_type)
 
-        LOG.debug(_('Extend Volume: %(name)s  Method: '
+        LOG.debug('Extend Volume: %(name)s  Method: '
                   'CreateOrModifyElementFromStoragePool  ConfigServicie: '
                   '%(service)s ElementType: %(provisioning)s  Size: %(size)lu'
-                  'Volume path: %(volumepath)s')
+                  'Volume path: %(volumepath)s'
                   % {'service': configservice,
                      'name': volumename,
                      'provisioning': provisioning,
@@ -1001,7 +1001,7 @@ class EMCSMISCommon():
             Size=self._getnum(volumesize, '64'),
             TheElement=vol_instance.path)
 
-        LOG.debug(_('Extend Volume: %(volumename)s  Return code: %(rc)lu')
+        LOG.debug('Extend Volume: %(volumename)s  Return code: %(rc)lu'
                   % {'volumename': volumename,
                      'rc': rc})
 
@@ -1015,14 +1015,14 @@ class EMCSMISCommon():
                              'error': errordesc})
                 raise exception.VolumeBackendAPIException(data=errordesc)
 
-        LOG.debug(_('Leaving extend_volume: %(volumename)s  '
-                  'Return code: %(rc)lu ')
+        LOG.debug('Leaving extend_volume: %(volumename)s  '
+                  'Return code: %(rc)lu '
                   % {'volumename': volumename,
                      'rc': rc})
 
     def update_volume_stats(self):
         """Retrieve stats info."""
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         self.stats['total_capacity_gb'] = 'unknown'
         self.stats['free_capacity_gb'] = 'unknown'
 
@@ -1037,7 +1037,7 @@ class EMCSMISCommon():
         specs = self._get_volumetype_extraspecs(volume)
         if not specs:
             specs = self._get_storage_type_conffile()
-        LOG.debug(_("Storage Type: %s") % (specs))
+        LOG.debug("Storage Type: %s" % (specs))
         return specs
 
     def _get_storage_type_conffile(self, filename=None):
@@ -1054,7 +1054,7 @@ class EMCSMISCommon():
             storageType = storageTypes[0].toxml()
             storageType = storageType.replace('<StorageType>', '')
             storageType = storageType.replace('</StorageType>', '')
-            LOG.debug(_("Found Storage Type in config file: %s")
+            LOG.debug("Found Storage Type in config file: %s"
                       % (storageType))
             specs = {}
             specs[POOL] = storageType
@@ -1076,10 +1076,10 @@ class EMCSMISCommon():
         if views is not None and len(views) > 0:
             view = views[0].toxml().replace('<MaskingView>', '')
             view = view.replace('</MaskingView>', '')
-            LOG.debug(_("Found Masking View: %s") % (view))
+            LOG.debug("Found Masking View: %s" % (view))
             return view
         else:
-            LOG.debug(_("Masking View not found."))
+            LOG.debug("Masking View not found.")
             return None
 
     def _get_timeout(self, filename=None):
@@ -1094,10 +1094,10 @@ class EMCSMISCommon():
         if timeouts is not None and len(timeouts) > 0:
             timeout = timeouts[0].toxml().replace('<Timeout>', '')
             timeout = timeout.replace('</Timeout>', '')
-            LOG.debug(_("Found Timeout: %s") % (timeout))
+            LOG.debug("Found Timeout: %s" % (timeout))
             return timeout
         else:
-            LOG.debug(_("Timeout not specified."))
+            LOG.debug("Timeout not specified.")
             return 10
 
     def _get_ecom_cred(self, filename=None):
@@ -1119,7 +1119,7 @@ class EMCSMISCommon():
         if ecomUser is not None and ecomPasswd is not None:
             return ecomUser, ecomPasswd
         else:
-            LOG.debug(_("Ecom user not found."))
+            LOG.debug("Ecom user not found.")
             return None
 
     def _get_ecom_server(self, filename=None):
@@ -1139,11 +1139,11 @@ class EMCSMISCommon():
             ecomPort = ecomPorts[0].toxml().replace('<EcomServerPort>', '')
             ecomPort = ecomPort.replace('</EcomServerPort>', '')
         if ecomIp is not None and ecomPort is not None:
-            LOG.debug(_("Ecom IP: %(ecomIp)s Port: %(ecomPort)s"),
+            LOG.debug("Ecom IP: %(ecomIp)s Port: %(ecomPort)s",
                       {'ecomIp': ecomIp, 'ecomPort': ecomPort})
             return ecomIp, ecomPort
         else:
-            LOG.debug(_("Ecom server not found."))
+            LOG.debug("Ecom server not found.")
             return None
 
     def _get_ecom_connection(self, filename=None):
@@ -1162,7 +1162,7 @@ class EMCSMISCommon():
         for repservice in repservices:
             if storage_system == repservice['SystemName']:
                 foundRepService = repservice
-                LOG.debug(_("Found Replication Service: %s")
+                LOG.debug("Found Replication Service: %s"
                           % (repservice))
                 break
 
@@ -1175,7 +1175,7 @@ class EMCSMISCommon():
         for configservice in configservices:
             if storage_system == configservice['SystemName']:
                 foundConfigService = configservice
-                LOG.debug(_("Found Storage Configuration Service: %s")
+                LOG.debug("Found Storage Configuration Service: %s"
                           % (configservice))
                 break
 
@@ -1188,7 +1188,7 @@ class EMCSMISCommon():
         for configservice in configservices:
             if storage_system == configservice['SystemName']:
                 foundConfigService = configservice
-                LOG.debug(_("Found Controller Configuration Service: %s")
+                LOG.debug("Found Controller Configuration Service: %s"
                           % (configservice))
                 break
 
@@ -1201,7 +1201,7 @@ class EMCSMISCommon():
         for configservice in configservices:
             if storage_system == configservice['SystemName']:
                 foundConfigService = configservice
-                LOG.debug(_("Found Storage Hardware ID Management Service: %s")
+                LOG.debug("Found Storage Hardware ID Management Service: %s"
                           % (configservice))
                 break
 
@@ -1257,7 +1257,7 @@ class EMCSMISCommon():
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        LOG.debug(_("Pool: %(pool)s  SystemName: %(systemname)s.")
+        LOG.debug("Pool: %(pool)s  SystemName: %(systemname)s."
                   % {'pool': foundPool,
                      'systemname': systemname})
         return foundPool, systemname
@@ -1274,7 +1274,7 @@ class EMCSMISCommon():
         if len(idarray) > 2:
             systemname = idarray[0] + '+' + idarray[1]
 
-        LOG.debug(_("Pool name: %(poolname)s  System name: %(systemname)s.")
+        LOG.debug("Pool name: %(poolname)s  System name: %(systemname)s."
                   % {'poolname': poolname, 'systemname': systemname})
         return poolname, systemname
 
@@ -1289,11 +1289,11 @@ class EMCSMISCommon():
         foundinstance = self.conn.GetInstance(instancename)
 
         if foundinstance is None:
-            LOG.debug(_("Volume %(volumename)s not found on the array.")
+            LOG.debug("Volume %(volumename)s not found on the array."
                       % {'volumename': volumename})
         else:
-            LOG.debug(_("Volume name: %(volumename)s  Volume instance: "
-                      "%(vol_instance)s.")
+            LOG.debug("Volume name: %(volumename)s  Volume instance: "
+                      "%(vol_instance)s."
                       % {'volumename': volumename,
                          'vol_instance': foundinstance.path})
 
@@ -1307,7 +1307,7 @@ class EMCSMISCommon():
 
         snapshotname = snapshot['name']
         volumename = volume['name']
-        LOG.debug(_("Source: %(volumename)s  Target: %(snapshotname)s.")
+        LOG.debug("Source: %(volumename)s  Target: %(snapshotname)s."
                   % {'volumename': volumename, 'snapshotname': snapshotname})
 
         snapshot_instance = self._find_lun(snapshot)
@@ -1319,13 +1319,13 @@ class EMCSMISCommon():
         foundsyncname = self._getinstancename(classname, bindings)
 
         if foundsyncname is None:
-            LOG.debug(_("Source: %(volumename)s  Target: %(snapshotname)s. "
-                      "Storage Synchronized not found. ")
+            LOG.debug("Source: %(volumename)s  Target: %(snapshotname)s. "
+                      "Storage Synchronized not found. "
                       % {'volumename': volumename,
                          'snapshotname': snapshotname})
         else:
-            LOG.debug(_("Storage system: %(storage_system)s  "
-                      "Storage Synchronized instance: %(sync)s.")
+            LOG.debug("Storage system: %(storage_system)s  "
+                      "Storage Synchronized instance: %(sync)s."
                       % {'storage_system': storage_system,
                          'sync': foundsyncname})
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced
@@ -1354,7 +1354,7 @@ class EMCSMISCommon():
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug(_("Found %(name)s: %(initiator)s.")
+        LOG.debug("Found %(name)s: %(initiator)s."
                   % {'name': name,
                      'initiator': foundinitiatornames})
         return foundinitiatornames
@@ -1414,9 +1414,9 @@ class EMCSMISCommon():
             if foundCtrl is not None:
                 break
 
-        LOG.debug(_("LunMaskingSCSIProtocolController for storage system "
+        LOG.debug("LunMaskingSCSIProtocolController for storage system "
                   "%(storage_system)s and initiator %(initiator)s is  "
-                  "%(ctrl)s.")
+                  "%(ctrl)s."
                   % {'storage_system': storage_system,
                      'initiator': initiators,
                      'ctrl': foundCtrl})
@@ -1455,8 +1455,8 @@ class EMCSMISCommon():
             if foundCtrl is not None:
                 break
 
-        LOG.debug(_("LunMaskingSCSIProtocolController for storage volume "
-                  "%(vol)s and initiator %(initiator)s is  %(ctrl)s.")
+        LOG.debug("LunMaskingSCSIProtocolController for storage volume "
+                  "%(vol)s and initiator %(initiator)s is  %(ctrl)s."
                   % {'vol': vol_instance.path,
                      'initiator': initiators,
                      'ctrl': foundCtrl})
@@ -1481,8 +1481,8 @@ class EMCSMISCommon():
             storage_system,
             connector)
 
-        LOG.debug(_("LunMaskingSCSIProtocolController for storage system "
-                  "%(storage)s and %(connector)s is %(ctrl)s.")
+        LOG.debug("LunMaskingSCSIProtocolController for storage system "
+                  "%(storage)s and %(connector)s is %(ctrl)s."
                   % {'storage': storage_system,
                      'connector': connector,
                      'ctrl': ctrl})
@@ -1493,8 +1493,8 @@ class EMCSMISCommon():
 
         numVolumesMapped = len(associators)
 
-        LOG.debug(_("Found %(numVolumesMapped)d volumes on storage system "
-                  "%(storage)s mapped to %(initiator)s.")
+        LOG.debug("Found %(numVolumesMapped)d volumes on storage system "
+                  "%(storage)s mapped to %(connector)s."
                   % {'numVolumesMapped': numVolumesMapped,
                      'storage': storage_system,
                      'connector': connector})
@@ -1528,7 +1528,7 @@ class EMCSMISCommon():
 
         out_device_number = '%06d' % out_num_device_number
 
-        LOG.debug(_("Available device number on %(storage)s: %(device)s.")
+        LOG.debug("Available device number on %(storage)s: %(device)s."
                   % {'storage': storage_system, 'device': out_device_number})
         return out_device_number
 
@@ -1553,9 +1553,9 @@ class EMCSMISCommon():
                 vol_instance,
                 connector)
 
-            LOG.debug(_("LunMaskingSCSIProtocolController for "
+            LOG.debug("LunMaskingSCSIProtocolController for "
                       "volume %(vol)s and connector %(connector)s "
-                      "is %(ctrl)s.")
+                      "is %(ctrl)s."
                       % {'vol': vol_instance.path,
                          'connector': connector,
                          'ctrl': ctrl})
@@ -1594,8 +1594,8 @@ class EMCSMISCommon():
                      {'volumename': volumename,
                       'vol_instance': vol_instance.path})
         else:
-            LOG.debug(_("Found device number %(device)d for volume "
-                      "%(volumename)s %(vol_instance)s.") %
+            LOG.debug("Found device number %(device)d for volume "
+                      "%(volumename)s %(vol_instance)s." %
                       {'device': out_num_device_number,
                        'volumename': volumename,
                        'vol_instance': vol_instance.path})
@@ -1604,7 +1604,7 @@ class EMCSMISCommon():
                 'storagesystem': storage_system,
                 'owningsp': sp}
 
-        LOG.debug(_("Device info: %(data)s.") % {'data': data})
+        LOG.debug("Device info: %(data)s." % {'data': data})
 
         return data
 
@@ -1626,7 +1626,7 @@ class EMCSMISCommon():
             ResultClass='SE_DeviceMaskingGroup')
         foundMaskingGroup = groups[0]
 
-        LOG.debug(_("Masking view: %(view)s DeviceMaskingGroup: %(masking)s.")
+        LOG.debug("Masking view: %(view)s DeviceMaskingGroup: %(masking)s."
                   % {'view': maskingview_name,
                      'masking': foundMaskingGroup})
 
@@ -1648,7 +1648,7 @@ class EMCSMISCommon():
             if (storage_system == storsystemname and
                     owningsp == sp):
                 foundSystem = system
-                LOG.debug(_("Found Storage Processor System: %s")
+                LOG.debug("Found Storage Processor System: %s"
                           % (system))
                 break
 
@@ -1676,9 +1676,9 @@ class EMCSMISCommon():
                     if len(arr2) > 1:
                         foundEndpoints.append(arr2[0])
 
-        LOG.debug(_("iSCSIProtocolEndpoint for storage system "
+        LOG.debug("iSCSIProtocolEndpoint for storage system "
                   "%(storage_system)s and SP %(sp)s is  "
-                  "%(endpoint)s.")
+                  "%(endpoint)s."
                   % {'storage_system': storage_system,
                      'sp': owningsp,
                      'endpoint': foundEndpoints})
@@ -1723,8 +1723,8 @@ class EMCSMISCommon():
 
         hardwareids = self._find_storage_hardwareids(connector)
 
-        LOG.debug(_('EMCGetTargetEndpoints: Service: %(service)s  '
-                  'Storage HardwareIDs: %(hardwareids)s.')
+        LOG.debug('EMCGetTargetEndpoints: Service: %(service)s  '
+                  'Storage HardwareIDs: %(hardwareids)s.'
                   % {'service': configservice,
                      'hardwareids': hardwareids})
 
@@ -1745,9 +1745,9 @@ class EMCSMISCommon():
                 # Add target wwn to the list if it is not already there
                 if not any(d == wwn for d in target_wwns):
                     target_wwns.append(wwn)
-                LOG.debug(_('Add target WWN: %s.') % wwn)
+                LOG.debug('Add target WWN: %s.' % wwn)
 
-        LOG.debug(_('Target WWNs: %s.') % target_wwns)
+        LOG.debug('Target WWNs: %s.' % target_wwns)
 
         return target_wwns
 
@@ -1763,8 +1763,8 @@ class EMCSMISCommon():
                 if wwpn.lower() == storid.lower():
                     foundInstances.append(hardwareid.path)
 
-        LOG.debug(_("Storage Hardware IDs for %(wwpns)s is "
-                  "%(foundInstances)s.")
+        LOG.debug("Storage Hardware IDs for %(wwpns)s is "
+                  "%(foundInstances)s."
                   % {'wwpns': wwpns,
                      'foundInstances': foundInstances})
 

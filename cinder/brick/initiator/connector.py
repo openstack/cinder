@@ -239,8 +239,8 @@ class ISCSIConnector(InitiatorConnector):
                 time.sleep(tries ** 2)
 
         if tries != 0:
-            LOG.debug(_("Found iSCSI node %(host_device)s "
-                        "(after %(tries)s rescans)"),
+            LOG.debug("Found iSCSI node %(host_device)s "
+                      "(after %(tries)s rescans)",
                       {'host_device': host_device, 'tries': tries})
 
         if self.use_multipath:
@@ -616,7 +616,7 @@ class FibreChannelConnector(InitiatorConnector):
         def _wait_for_device_discovery(host_devices):
             tries = self.tries
             for device in host_devices:
-                LOG.debug(_("Looking for Fibre Channel dev %(device)s"),
+                LOG.debug("Looking for Fibre Channel dev %(device)s",
                           {'device': device})
                 if os.path.exists(device):
                     self.host_device = device
@@ -646,8 +646,8 @@ class FibreChannelConnector(InitiatorConnector):
 
         tries = self.tries
         if self.host_device is not None and self.device_name is not None:
-            LOG.debug(_("Found Fibre Channel volume %(name)s "
-                        "(after %(tries)s rescans)"),
+            LOG.debug("Found Fibre Channel volume %(name)s "
+                      "(after %(tries)s rescans)",
                       {'name': self.device_name, 'tries': tries})
 
         # see if the new drive is part of a multipath
@@ -655,7 +655,7 @@ class FibreChannelConnector(InitiatorConnector):
         if self.use_multipath:
             mdev_info = self._linuxscsi.find_multipath_device(self.device_name)
             if mdev_info is not None:
-                LOG.debug(_("Multipath device discovered %(device)s")
+                LOG.debug("Multipath device discovered %(device)s"
                           % {'device': mdev_info['device']})
                 device_path = mdev_info['device']
                 devices = mdev_info['devices']
@@ -787,8 +787,8 @@ class AoEConnector(InitiatorConnector):
         timer.start(interval=2).wait()
 
         if waiting_status['tries']:
-            LOG.debug(_("Found AoE device %(path)s "
-                        "(after %(tries)s rediscover)"),
+            LOG.debug("Found AoE device %(path)s "
+                      "(after %(tries)s rediscover)",
                       {'path': aoe_path,
                        'tries': waiting_status['tries']})
 
@@ -813,7 +813,7 @@ class AoEConnector(InitiatorConnector):
                                    root_helper=self._root_helper,
                                    check_exit_code=0)
 
-        LOG.debug(_('aoe-discover: stdout=%(out)s stderr%(err)s') %
+        LOG.debug('aoe-discover: stdout=%(out)s stderr%(err)s' %
                   {'out': out, 'err': err})
 
     def _aoe_revalidate(self, aoe_device):
@@ -823,7 +823,7 @@ class AoEConnector(InitiatorConnector):
                                    root_helper=self._root_helper,
                                    check_exit_code=0)
 
-        LOG.debug(_('aoe-revalidate %(dev)s: stdout=%(out)s stderr%(err)s') %
+        LOG.debug('aoe-revalidate %(dev)s: stdout=%(out)s stderr%(err)s' %
                   {'dev': aoe_device, 'out': out, 'err': err})
 
     def _aoe_flush(self, aoe_device):
@@ -832,7 +832,7 @@ class AoEConnector(InitiatorConnector):
                                    run_as_root=True,
                                    root_helper=self._root_helper,
                                    check_exit_code=0)
-        LOG.debug(_('aoe-flush %(dev)s: stdout=%(out)s stderr%(err)s') %
+        LOG.debug('aoe-flush %(dev)s: stdout=%(out)s stderr%(err)s' %
                   {'dev': aoe_device, 'out': out, 'err': err})
 
 
