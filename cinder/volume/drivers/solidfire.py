@@ -681,7 +681,8 @@ class SolidFireDriver(SanISCSIDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
 
-        data['total_capacity_gb'] = results['maxProvisionedSpace']
+        data['total_capacity_gb'] =\
+            float(results['maxProvisionedSpace'] / units.GiB)
 
         data['free_capacity_gb'] = float(free_capacity / units.GiB)
         data['reserved_percentage'] = self.configuration.reserved_percentage

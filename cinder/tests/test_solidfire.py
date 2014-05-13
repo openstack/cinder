@@ -60,8 +60,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         if method is 'GetClusterCapacity' and version == '1.0':
             LOG.info('Called Fake GetClusterCapacity...')
             data = {'result':
-                    {'clusterCapacity': {'maxProvisionedSpace': 99999999,
-                     'usedSpace': 999,
+                    {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
+                     'usedSpace': 1073741824,
                      'compressionPercent': 100,
                      'deDuplicationPercent': 100,
                      'thinProvisioningPercent': 100}}}
@@ -552,3 +552,11 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertTrue(sfv.retype(self.ctxt,
                                    testvol,
                                    test_type, diff, host))
+
+    def test_update_cluster_status(self):
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        sfv = SolidFireDriver(configuration=self.configuration)
+        sfv._update_cluster_status()
+        self.assertEqual(sfv.cluster_stats['free_capacity_gb'], 99.0)
+        self.assertEqual(sfv.cluster_stats['total_capacity_gb'], 100.0)
