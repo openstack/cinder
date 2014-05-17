@@ -625,3 +625,61 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual(drv._stats['free_capacity_gb'], 5.0)
 
         mox.VerifyAll()
+
+    def _check_is_share_eligible(self, total_size, total_available,
+                                 total_allocated, requested_volume_size):
+        with mock.patch.object(self._driver, '_get_capacity_info')\
+                as mock_get_capacity_info:
+            mock_get_capacity_info.return_value = (total_size,
+                                                   total_available,
+                                                   total_allocated)
+            return self._driver._is_share_eligible('fake_share',
+                                                   requested_volume_size)
+
+    def test_is_share_eligible(self):
+        total_size = 100.0 * units.GiB
+        total_available = 90.0 * units.GiB
+        total_allocated = 10.0 * units.GiB
+        requested_volume_size = 1  # GiB
+
+        self.assertTrue(self._check_is_share_eligible(total_size,
+                                                      total_available,
+                                                      total_allocated,
+                                                      requested_volume_size))
+
+    def test_is_share_eligible_above_used_ratio(self):
+        total_size = 100.0 * units.GiB
+        total_available = 4.0 * units.GiB
+        total_allocated = 96.0 * units.GiB
+        requested_volume_size = 1  # GiB
+
+        # Check used > used_ratio statement entered
+        self.assertFalse(self._check_is_share_eligible(total_size,
+                                                       total_available,
+                                                       total_allocated,
+                                                       requested_volume_size))
+
+    def test_is_share_eligible_above_oversub_ratio(self):
+        total_size = 100.0 * units.GiB
+        total_available = 10.0 * units.GiB
+        total_allocated = 90.0 * units.GiB
+        requested_volume_size = 10  # GiB
+
+        # Check apparent_available <= requested_volume_size statement entered
+        self.assertFalse(self._check_is_share_eligible(total_size,
+                                                       total_available,
+                                                       total_allocated,
+                                                       requested_volume_size))
+
+    def test_is_share_eligible_reserved_space_above_oversub_ratio(self):
+        total_size = 100.0 * units.GiB
+        total_available = 10.0 * units.GiB
+        total_allocated = 100.0 * units.GiB
+        requested_volume_size = 1  # GiB
+
+        # Check total_allocated / total_size >= oversub_ratio
+        # statement entered
+        self.assertFalse(self._check_is_share_eligible(total_size,
+                                                       total_available,
+                                                       total_allocated,
+                                                       requested_volume_size))
