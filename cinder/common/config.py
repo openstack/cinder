@@ -157,6 +157,7 @@ global_opts = [
                default=None,
                help='Default volume type to use'),
     cfg.StrOpt('volume_usage_audit_period',
+               default='month',
                help='Time period for which to generate volume usages. '
                     'The options are hour, day, month, or year.'),
     cfg.StrOpt('rootwrap_config',
