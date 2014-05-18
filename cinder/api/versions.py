@@ -35,16 +35,8 @@ _KNOWN_VERSIONS = {
         "links": [
             {
                 "rel": "describedby",
-                "type": "application/pdf",
-                "href": "http://jorgew.github.com/block-storage-api/"
-                        "content/os-block-storage-1.0.pdf",
-            },
-            {
-                "rel": "describedby",
-                "type": "application/vnd.sun.wadl+xml",
-                #(anthony) FIXME
-                "href": "http://docs.rackspacecloud.com/"
-                        "servers/api/v1.1/application.wadl",
+                "type": "text/html",
+                "href": "http://docs.openstack.org/",
             },
         ],
         "media-types": [
@@ -65,16 +57,8 @@ _KNOWN_VERSIONS = {
         "links": [
             {
                 "rel": "describedby",
-                "type": "application/pdf",
-                "href": "http://jorgew.github.com/block-storage-api/"
-                        "content/os-block-storage-1.0.pdf",
-            },
-            {
-                "rel": "describedby",
-                "type": "application/vnd.sun.wadl+xml",
-                #(anthony) FIXME
-                "href": "http://docs.rackspacecloud.com/"
-                        "servers/api/v1.1/application.wadl",
+                "type": "text/html",
+                "href": "http://docs.openstack.org/",
             },
         ],
         "media-types": [
