@@ -3,7 +3,6 @@ hacking>=0.8.0,<0.9
 coverage>=3.6
 discover
 fixtures>=0.3.14
-hplefthandclient>=1.0.0,<2.0.0
 mock>=1.0
 mox>=0.5.3
 MySQL-python
