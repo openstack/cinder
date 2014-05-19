@@ -947,7 +947,7 @@ class ISERDriver(ISCSIDriver):
             self.configuration.iser_target_prefix
         self.configuration.iscsi_ip_address = \
             self.configuration.iser_ip_address
-        self.configuration.iser_port = self.configuration.iser_port
+        self.configuration.iscsi_port = self.configuration.iser_port
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
