@@ -45,9 +45,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
         super(BrcdFCSanLookupService, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
         self.create_configuration()
-        self.client = paramiko.SSHClient()
-        self.client.load_system_host_keys()
-        self.client.set_missing_host_key_policy(paramiko.WarningPolicy())
+        self.client = self.create_ssh_client(**kwargs)
 
     def create_configuration(self):
         """Configuration specific to SAN context values."""
@@ -61,6 +59,19 @@ class BrcdFCSanLookupService(FCSanLookupService):
         if len(fabric_names) > 0:
             self.fabric_configs = fabric_opts.load_fabric_configurations(
                 fabric_names)
+
+    def create_ssh_client(self, **kwargs):
+        ssh_client = paramiko.SSHClient()
+        known_hosts_file = kwargs.get('known_hosts_file', None)
+        if known_hosts_file is None:
+            ssh_client.load_system_host_keys()
+        else:
+            ssh_client.load_host_keys(known_hosts_file)
+        missing_key_policy = kwargs.get('missing_key_policy', None)
+        if missing_key_policy is None:
+            missing_key_policy = paramiko.WarningPolicy()
+        ssh_client.set_missing_host_key_policy(missing_key_policy)
+        return ssh_client
 
     def get_device_mapping_from_network(self,
                                         initiator_wwn_list,
