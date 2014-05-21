@@ -189,12 +189,24 @@ class SSHPool(pools.Pool):
         self.password = password
         self.conn_timeout = conn_timeout if conn_timeout else None
         self.privatekey = privatekey
+        if 'missing_key_policy' in kwargs.keys():
+            self.missing_key_policy = kwargs.pop('missing_key_policy')
+        else:
+            self.missing_key_policy = paramiko.AutoAddPolicy()
+        if 'hosts_key_file' in kwargs.keys():
+            self.hosts_key_file = kwargs.pop('hosts_key_file')
+        else:
+            self.hosts_key_file = None
         super(SSHPool, self).__init__(*args, **kwargs)
 
     def create(self):
         try:
             ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.set_missing_host_key_policy(self.missing_key_policy)
+            if not self.hosts_key_file:
+                ssh.load_system_host_keys()
+            else:
+                ssh.load_host_keys(self.hosts_key_file)
             if self.password:
                 ssh.connect(self.ip,
                             port=self.port,
