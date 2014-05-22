@@ -140,6 +140,15 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['status'], "error")
         self.volume.delete_volume(self.context, volume_id)
 
+    def test_init_host_resumes_deletes(self):
+        """init_host will resume deleting volume in deleting status."""
+        volume = tests_utils.create_volume(self.context, status='deleting',
+                                           size=0, host=CONF.host)
+        volume_id = volume['id']
+        self.volume.init_host()
+        self.assertRaises(exception.VolumeNotFound, db.volume_get,
+                          context.get_admin_context(), volume_id)
+
     @mock.patch.object(QUOTAS, 'reserve')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'rollback')
@@ -484,6 +493,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, volume['id'])
         self.assertRaises(exception.NotFound, db.volume_get,
                           self.context, volume['id'])
+
+    @mock.patch.object(db, 'volume_get', side_effect=exception.VolumeNotFound(
+                       volume_id='12345678-1234-5678-1234-567812345678'))
+    def test_delete_volume_not_found(self, mock_get_volume):
+        """"Test delete volume moves on if the volume does not exist."""
+        volume_id = '12345678-1234-5678-1234-567812345678'
+        self.assertTrue(self.volume.delete_volume(self.context, volume_id))
+        self.assertTrue(mock_get_volume.called)
 
     def test_create_volume_from_snapshot(self):
         """Test volume can be created from a snapshot."""
