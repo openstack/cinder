@@ -323,14 +323,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         super(CreateVolumeFromSpecTask, self).__init__(addons=[ACTION])
         self.db = db
         self.driver = driver
-        # This maps the different volume specification types into the methods
-        # that can create said volume type (aka this is a jump table).
-        self._create_func_mapping = {
-            'raw': self._create_raw_volume,
-            'snap': self._create_from_snapshot,
-            'source_vol': self._create_from_source_volume,
-            'image': self._create_from_image,
-        }
 
     def _handle_bootable_volume_glance_meta(self, context, volume_id,
                                             **kwargs):
@@ -566,6 +558,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     def execute(self, context, volume_ref, volume_spec):
         volume_spec = dict(volume_spec)
         volume_id = volume_spec.pop('volume_id', None)
+        if not volume_id:
+            volume_id = volume_ref['id']
 
         # we can't do anything if the driver didn't init
         if not self.driver.initialized:
@@ -578,20 +572,27 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             raise exception.DriverNotInitialized()
 
         create_type = volume_spec.pop('type', None)
-        create_functor = self._create_func_mapping.get(create_type)
-        if not create_functor:
-            raise exception.VolumeTypeNotFound(volume_type_id=create_type)
-
-        if not volume_id:
-            volume_id = volume_ref['id']
-        LOG.info(_("Volume %(volume_id)s: being created using %(functor)s "
+        LOG.info(_("Volume %(volume_id)s: being created as %(create_type)s "
                    "with specification: %(volume_spec)s") %
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
-                  'functor': common.make_pretty_name(create_functor)})
-
-        # Call the given functor to make the volume.
-        model_update = create_functor(context, volume_ref=volume_ref,
-                                      **volume_spec)
+                  'create_type': create_type})
+        if create_type == 'raw':
+            model_update = self._create_raw_volume(context,
+                                                   volume_ref=volume_ref,
+                                                   **volume_spec)
+        elif create_type == 'snap':
+            model_update = self._create_from_snapshot(context,
+                                                      volume_ref=volume_ref,
+                                                      **volume_spec)
+        elif create_type == 'source_vol':
+            model_update = self._create_from_source_volume(
+                context, volume_ref=volume_ref, **volume_spec)
+        elif create_type == 'image':
+            model_update = self._create_from_image(context,
+                                                   volume_ref=volume_ref,
+                                                   **volume_spec)
+        else:
+            raise exception.VolumeTypeNotFound(volume_type_id=create_type)
 
         # Persist any model information provided on creation.
         try:
