@@ -216,6 +216,12 @@ class RestClient(WebserviceClient):
         port = {'type': port_type, 'port': port_id, 'label': port_label}
         return self.create_host(label, host_type, [port], group_id)
 
+    def update_host_type(self, host_ref, host_type):
+        """Updates host type for a given host."""
+        path = "/storage-systems/{system-id}/hosts/{object-id}"
+        data = {'hostType': host_type}
+        return self._invoke('POST', path, data, **{'object-id': host_ref})
+
     def list_host_types(self):
         """Lists host types in storage system."""
         path = "/storage-systems/{system-id}/host-types"

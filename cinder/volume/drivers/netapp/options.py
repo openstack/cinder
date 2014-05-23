@@ -161,7 +161,13 @@ netapp_eseries_opts = [
                      'specified storage pools. Only dynamic disk pools are '
                      'currently supported. Specify the value of this option to'
                      ' be a comma separated list of disk pool names to be used'
-                     ' for provisioning.')), ]
+                     ' for provisioning.')),
+    cfg.StrOpt('netapp_eseries_host_type',
+               default='linux_dm_mp',
+               help=('This option is used to define how the controllers in '
+                     'the E-Series storage array will work with the '
+                     'particular operating system on the hosts that are '
+                     'connected to it.')), ]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
                default=None,
