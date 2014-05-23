@@ -543,7 +543,7 @@
 
 # Time period for which to generate volume usages. The options
 # are hour, day, month, or year. (string value)
-#volume_usage_audit_period=<None>
+#volume_usage_audit_period=month
 
 # Path to the rootwrap configuration file to use for running
 # commands as root (string value)
