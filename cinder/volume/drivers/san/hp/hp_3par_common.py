@@ -128,10 +128,11 @@ class HP3PARCommon(object):
         2.0.9 - Remove unused 3PAR driver method bug #1310807
         2.0.10 - Fixed an issue with 3PAR vlun location bug #1315542
         2.0.11 - Remove hp3parclient requirement from unit tests #1315195
+        2.0.12 - Volume detach hangs when host is in a host set bug #1317134
 
     """
 
-    VERSION = "2.0.11"
+    VERSION = "2.0.12"
 
     stats = {}
 
@@ -492,7 +493,7 @@ class HP3PARCommon(object):
         if found_vlun is None:
             msg = (_("3PAR vlun %(name)s not found on host %(host)s") %
                    {'name': volume_name, 'host': hostname})
-            LOG.warn(msg)
+            LOG.info(msg)
         return found_vlun
 
     def create_vlun(self, volume, host, nsp=None):
@@ -506,26 +507,59 @@ class HP3PARCommon(object):
 
     def delete_vlun(self, volume, hostname):
         volume_name = self._get_3par_vol_name(volume['id'])
-        vlun = self._get_vlun(volume_name, hostname)
+        vluns = self.client.getHostVLUNs(hostname)
 
-        if vlun is not None:
-            # VLUN Type of MATCHED_SET 4 requires the port to be provided
-            if self.VLUN_TYPE_MATCHED_SET == vlun['type']:
-                self.client.deleteVLUN(volume_name, vlun['lun'], hostname,
-                                       vlun['portPos'])
-            else:
-                self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
+        for vlun in vluns:
+            if volume_name in vlun['volumeName']:
+                break
+        else:
+            msg = (
+                _("3PAR vlun for volume %(name)s not found on host %(host)s") %
+                {'name': volume_name, 'host': hostname})
+            LOG.info(msg)
+            return
 
-        try:
-            self._delete_3par_host(hostname)
-            self._remove_hosts_naming_dict_host(hostname)
-        except hpexceptions.HTTPConflict as ex:
-            # host will only be removed after all vluns
-            # have been removed
-            if 'has exported VLUN' in ex.get_description():
-                pass
-            else:
-                raise
+        # VLUN Type of MATCHED_SET 4 requires the port to be provided
+        if self.VLUN_TYPE_MATCHED_SET == vlun['type']:
+            self.client.deleteVLUN(volume_name, vlun['lun'], hostname,
+                                   vlun['portPos'])
+        else:
+            self.client.deleteVLUN(volume_name, vlun['lun'], hostname)
+
+        # Determine if there are other volumes attached to the host.
+        # This will determine whether we should try removing host from host set
+        # and deleting the host.
+        for vlun in vluns:
+            if volume_name not in vlun['volumeName']:
+                # Found another volume
+                break
+        else:
+            # We deleted the last vlun, so try to delete the host too.
+            # This check avoids the old unnecessary try/fail when vluns exist
+            # but adds a minor race condition if a vlun is manually deleted
+            # externally at precisely the wrong time. Worst case is leftover
+            # host, so it is worth the unlikely risk.
+
+            try:
+                self._delete_3par_host(hostname)
+                self._remove_hosts_naming_dict_host(hostname)
+            except Exception as ex:
+                # Any exception down here is only logged.  The vlun is deleted.
+
+                # If the host is in a host set, the delete host will fail and
+                # the host will remain in the host set.  This is desired
+                # because cinder was not responsible for the host set
+                # assignment.  The host set could be used outside of cinder
+                # for future needs (e.g. export volume to host set).
+
+                # The log info explains why the host was left alone.
+                msg = (_("3PAR vlun for volume '%(name)s' was deleted, "
+                         "but the host '%(host)s' was not deleted because: "
+                         "%(reason)s") %
+                       {'name': volume_name,
+                        'host': hostname,
+                        'reason': ex.get_description()})
+                LOG.info(msg)
 
     def _remove_hosts_naming_dict_host(self, hostname):
         items = self.hosts_naming_dict.items()

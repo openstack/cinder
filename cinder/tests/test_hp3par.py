@@ -1047,11 +1047,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
              'volumeName': self.VOLUME_3PAR_NAME,
              'lun': None, 'type': 0}]
 
-        self.driver.terminate_connection(
-            self.volume,
-            self.connector,
-            force=True)
-
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getHostVLUNs(self.FAKE_HOST),
@@ -1063,7 +1058,50 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.getPorts(),
             mock.call.logout()]
 
+        self.driver.terminate_connection(self.volume, self.connector)
         mock_client.assert_has_calls(expected)
+        mock_client.reset_mock()
+
+        # mock some deleteHost exceptions that are handled
+        delete_with_vlun = hpexceptions.HTTPConflict(
+            error={'message': "has exported VLUN"})
+        delete_with_hostset = hpexceptions.HTTPConflict(
+            error={'message': "host is a member of a set"})
+        mock_client.deleteHost = mock.Mock(
+            side_effect=[delete_with_vlun, delete_with_hostset])
+
+        self.driver.terminate_connection(self.volume, self.connector)
+        mock_client.assert_has_calls(expected)
+        mock_client.reset_mock()
+
+        self.driver.terminate_connection(self.volume, self.connector)
+        mock_client.assert_has_calls(expected)
+
+    def test_terminate_connection_more_vols(self):
+        mock_client = self.setup_driver()
+        # mock more than one vlun on the host (don't even try to remove host)
+        mock_client.getHostVLUNs.return_value = \
+            [
+                {'active': True,
+                 'volumeName': self.VOLUME_3PAR_NAME,
+                 'lun': None, 'type': 0},
+                {'active': True,
+                 'volumeName': 'there-is-another-volume',
+                 'lun': None, 'type': 0},
+            ]
+
+        expect_less = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
+            mock.call.deleteVLUN(
+                self.VOLUME_3PAR_NAME,
+                None,
+                self.FAKE_HOST),
+            mock.call.getPorts(),
+            mock.call.logout()]
+
+        self.driver.terminate_connection(self.volume, self.connector)
+        mock_client.assert_has_calls(expect_less)
 
     def test_get_volume_stats(self):
         # setup_mock_client drive with default configuration
