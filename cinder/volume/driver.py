@@ -939,7 +939,7 @@ class ISERDriver(ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(ISERDriver, self).__init__(*args, **kwargs)
         # for backward compatibility
-        self.configuration.num_iscsi_scan_tries = \
+        self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
         self.configuration.iscsi_num_targets = \
             self.configuration.iser_num_targets

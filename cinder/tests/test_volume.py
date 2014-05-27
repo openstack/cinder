@@ -3046,7 +3046,6 @@ class ISCSITestCase(DriverTestCase):
     def setUp(self):
         super(ISCSITestCase, self).setUp()
         self.configuration = mox.MockObject(conf.Configuration)
-        self.configuration.num_iscsi_scan_tries = 3
         self.configuration.iscsi_num_targets = 100
         self.configuration.iscsi_target_prefix = 'iqn.2010-10.org.openstack:'
         self.configuration.iscsi_ip_address = '0.0.0.0'
