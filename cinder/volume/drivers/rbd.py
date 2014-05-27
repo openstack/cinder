@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 import io
 import json
+import math
 import os
 import tempfile
 import urllib
@@ -68,7 +69,11 @@ rbd_opts = [
                default=5,
                help='Maximum number of nested volume clones that are '
                     'taken before a flatten occurs. Set to 0 to disable '
-                    'cloning.')]
+                    'cloning.'),
+    cfg.IntOpt('rbd_store_chunk_size', default=4,
+               help=_('Volumes will be chunked into objects of this size '
+                      '(in megabytes).')),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(rbd_opts)
@@ -471,6 +476,8 @@ class RBDDriver(driver.VolumeDriver):
 
         old_format = True
         features = 0
+        chunk_size = CONF.rbd_store_chunk_size * units.MiB
+        order = int(math.log(chunk_size, 2))
         if self._supports_layering():
             old_format = False
             features = self.rbd.RBD_FEATURE_LAYERING
@@ -479,6 +486,7 @@ class RBDDriver(driver.VolumeDriver):
             self.rbd.RBD().create(client.ioctx,
                                   str(volume['name']),
                                   size,
+                                  order,
                                   old_format=old_format,
                                   features=features)
 
@@ -782,10 +790,13 @@ class RBDDriver(driver.VolumeDriver):
 
             self.delete_volume(volume)
 
+            chunk_size = CONF.rbd_store_chunk_size * units.MiB
+            order = int(math.log(chunk_size, 2))
             # keep using the command line import instead of librbd since it
             # detects zeroes to preserve sparseness in the image
             args = ['rbd', 'import',
                     '--pool', self.configuration.rbd_pool,
+                    '--order', order,
                     tmp.name, volume['name']]
             if self._supports_layering():
                 args.append('--new-format')
