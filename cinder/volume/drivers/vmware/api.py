@@ -94,7 +94,6 @@ class Retry(object):
 class VMwareAPISession(object):
     """Sets up a session with the server and handles all calls made to it."""
 
-    @Retry(exceptions=(Exception))
     def __init__(self, server_ip, server_username, server_password,
                  api_retry_count, task_poll_interval, scheme='https',
                  create_session=True, wsdl_loc=None, pbm_wsdl=None):
@@ -145,6 +144,7 @@ class VMwareAPISession(object):
                                       host=self._server_ip)
         return self._pbm
 
+    @Retry(exceptions=(error_util.VimConnectionException,))
     def create_session(self):
         """Establish session with the server."""
         # Login and setup the session with the server for making
@@ -213,7 +213,8 @@ class VMwareAPISession(object):
         """
 
         @Retry(max_retry_count=self._api_retry_count,
-               exceptions=(error_util.VimException))
+               exceptions=(error_util.SessionOverLoadException,
+                           error_util.VimConnectionException))
         def _invoke_api(module, method, *args, **kwargs):
             while True:
                 try:

@@ -165,7 +165,7 @@ class VMwareAPISessionTest(test.TestCase):
     def test_invoke_api_with_expected_exception(self):
         api_session = self._create_api_session(True)
         ret = mock.Mock()
-        responses = [error_util.VimException(None), ret]
+        responses = [error_util.VimConnectionException(None), ret]
 
         def api(*args, **kwargs):
             response = responses.pop(0)
@@ -212,6 +212,32 @@ class VMwareAPISessionTest(test.TestCase):
         api_session.create_session = mock.Mock()
         vim_obj = api_session.vim
         vim_obj.SessionIsActive.return_value = False
+        result = mock.Mock()
+        responses = [error_util.VimFaultException(
+            [error_util.NOT_AUTHENTICATED], "error"), result]
+
+        def api(*args, **kwargs):
+            response = responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+        module = mock.Mock()
+        module.api = api
+        ret = api_session.invoke_api(module, 'api')
+        self.assertEqual(result, ret)
+        vim_obj.SessionIsActive.assert_called_once_with(
+            vim_obj.service_content.sessionManager,
+            sessionID=api_session._session_id,
+            userName=api_session._session_username)
+        api_session.create_session.assert_called_once_with()
+
+    def test_invoke_api_with_session_is_active_error(self):
+        api_session = self._create_api_session(True)
+        api_session.create_session = mock.Mock()
+        vim_obj = api_session.vim
+        vim_obj.SessionIsActive.side_effect = error_util.VimFaultException(
+            None, None)
         result = mock.Mock()
         responses = [error_util.VimFaultException(
             [error_util.NOT_AUTHENTICATED], "error"), result]
