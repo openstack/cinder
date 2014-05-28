@@ -179,6 +179,12 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # exist, this is expected as it signals that the image_id is missing.
         image_meta = self.image_service.show(context, image_id)
 
+        #check whether image is active
+        if image_meta['status'] != 'active':
+            msg = _('Image %(image_id)s is not active.')\
+                % {'image_id': image_id}
+            raise exception.InvalidInput(reason=msg)
+
         # Check image size is not larger than volume size.
         image_size = utils.as_int(image_meta['size'], quiet=False)
         image_size_in_gb = (image_size + GB - 1) / GB
