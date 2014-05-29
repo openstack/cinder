@@ -333,6 +333,11 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
+        # If an exception (e.g. timeout) occurred during delete_snapshot, the
+        # base volume may linger around, so just delete it if it exists
+        base_volume_path = self._local_path_volume(volume)
+        fileutils.delete_if_exists(base_volume_path)
+
         info_path = self._local_path_volume_info(volume)
         fileutils.delete_if_exists(info_path)
 
@@ -661,8 +666,13 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             if base_file is None:
                 # There should always be at least the original volume
                 # file as base.
-                msg = _('No base file found for %s.') % snapshot_path
-                raise exception.GlusterfsException(msg)
+                msg = _('No backing file found for %s, allowing snapshot '
+                        'to be deleted.') % snapshot_path
+                LOG.warn(msg)
+
+                # Snapshot may be stale, so just delete it and update the
+                # info file instead of blocking
+                return self._delete_stale_snapshot(snapshot)
 
             base_path = os.path.join(
                 self._local_volume_dir(snapshot['volume']), base_file)
@@ -880,6 +890,23 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         path_to_delete = os.path.join(
             self._local_volume_dir(snapshot['volume']), file_to_delete)
         self._execute('rm', '-f', path_to_delete, run_as_root=True)
+
+    def _delete_stale_snapshot(self, snapshot):
+        info_path = self._local_path_volume(snapshot['volume']) + '.info'
+        snap_info = self._read_info_file(info_path)
+
+        if snapshot['id'] in snap_info:
+            snapshot_file = snap_info[snapshot['id']]
+            active_file = self.get_active_image_from_info(snapshot['volume'])
+            snapshot_path = os.path.join(
+                self._local_volume_dir(snapshot['volume']), snapshot_file)
+            if (snapshot_file == active_file):
+                return
+
+            LOG.info(_('Deleting stale snapshot: %s') % snapshot['id'])
+            fileutils.delete_if_exists(snapshot_path)
+            del(snap_info[snapshot['id']])
+            self._write_info_file(info_path, snap_info)
 
     def _get_backing_chain_for_path(self, volume, path):
         """Returns list of dicts containing backing-chain information.
