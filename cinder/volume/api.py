@@ -260,14 +260,16 @@ class API(base.Base):
     def update(self, context, volume, fields):
         self.db.volume_update(context, volume['id'], fields)
 
-    def get(self, context, volume_id):
+    def get(self, context, volume_id, viewable_admin_meta=False):
+        if viewable_admin_meta:
+            context = context.elevated()
         rv = self.db.volume_get(context, volume_id)
         volume = dict(rv.iteritems())
         check_policy(context, 'get', volume)
         return volume
 
     def get_all(self, context, marker=None, limit=None, sort_key='created_at',
-                sort_dir='desc', filters=None):
+                sort_dir='desc', filters=None, viewable_admin_meta=False):
         check_policy(context, 'get_all')
         if filters == None:
             filters = {}
@@ -298,6 +300,8 @@ class API(base.Base):
             volumes = self.db.volume_get_all(context, marker, limit, sort_key,
                                              sort_dir, filters=filters)
         else:
+            if viewable_admin_meta:
+                context = context.elevated()
             volumes = self.db.volume_get_all_by_project(context,
                                                         context.project_id,
                                                         marker, limit,

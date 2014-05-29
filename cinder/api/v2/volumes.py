@@ -164,13 +164,13 @@ class VolumeController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         try:
-            vol = self.volume_api.get(context, id)
+            vol = self.volume_api.get(context, id, viewable_admin_meta=True)
             req.cache_resource(vol)
         except exception.NotFound:
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
 
-        utils.add_visible_admin_metadata(context, vol, self.volume_api)
+        utils.add_visible_admin_metadata(vol)
 
         return self._view_builder.detail(req, vol)
 
@@ -226,12 +226,13 @@ class VolumeController(wsgi.Controller):
             filters['metadata'] = ast.literal_eval(filters['metadata'])
 
         volumes = self.volume_api.get_all(context, marker, limit, sort_key,
-                                          sort_dir, filters)
+                                          sort_dir, filters,
+                                          viewable_admin_meta=True)
 
         volumes = [dict(vol.iteritems()) for vol in volumes]
 
         for volume in volumes:
-            utils.add_visible_admin_metadata(context, volume, self.volume_api)
+            utils.add_visible_admin_metadata(volume)
 
         limited_list = common.limited(volumes, req)
 
@@ -349,9 +350,6 @@ class VolumeController(wsgi.Controller):
         #             trying to lazy load, but for now we turn it into
         #             a dict to avoid an error.
         new_volume = dict(new_volume.iteritems())
-
-        utils.add_visible_admin_metadata(context, new_volume, self.volume_api)
-
         retval = self._view_builder.detail(req, new_volume)
 
         return retval
@@ -399,7 +397,7 @@ class VolumeController(wsgi.Controller):
             del update_dict['description']
 
         try:
-            volume = self.volume_api.get(context, id)
+            volume = self.volume_api.get(context, id, viewable_admin_meta=True)
             volume_utils.notify_about_volume_usage(context, volume,
                                                    'update.start')
             self.volume_api.update(context, volume, update_dict)
@@ -409,7 +407,7 @@ class VolumeController(wsgi.Controller):
 
         volume.update(update_dict)
 
-        utils.add_visible_admin_metadata(context, volume, self.volume_api)
+        utils.add_visible_admin_metadata(volume)
 
         volume_utils.notify_about_volume_usage(context, volume,
                                                'update.end')

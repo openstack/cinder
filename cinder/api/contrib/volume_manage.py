@@ -144,7 +144,7 @@ class VolumeManageController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=msg)
 
         new_volume = dict(new_volume.iteritems())
-        utils.add_visible_admin_metadata(context, new_volume, self.volume_api)
+        utils.add_visible_admin_metadata(new_volume)
 
         return self._view_builder.detail(req, new_volume)
 
