@@ -859,3 +859,66 @@ class RBDDriver(driver.VolumeDriver):
 
         LOG.debug("Extend volume from %(old_size)s GB to %(new_size)s GB.",
                   {'old_size': old_size, 'new_size': new_size})
+
+    def manage_existing(self, volume, existing_ref):
+        """Manages an existing image.
+
+        Renames the image name to match the expected name for the volume.
+        Error checking done by manage_existing_get_size is not repeated.
+
+        :param volume:
+            volume ref info to be set
+        :param existing_ref:
+            existing_ref is a dictionary of the form:
+            {'rbd_name': <name of rbd image>}
+        """
+        # Raise an exception if we didn't find a suitable rbd image.
+        with RADOSClient(self) as client:
+            rbd_name = existing_ref['rbd_name']
+            self.rbd.RBD().rename(client.ioctx, strutils.safe_encode(rbd_name),
+                                  strutils.safe_encode(volume['name']))
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of an existing image for manage_existing.
+
+        :param volume:
+            volume ref info to be set
+        :param existing_ref:
+            existing_ref is a dictionary of the form:
+            {'rbd_name': <name of rbd image>}
+        """
+
+        # Check that the reference is valid
+        if 'rbd_name' not in existing_ref:
+            reason = _('Reference must contain rbd_name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+
+        rbd_name = strutils.safe_encode(existing_ref['rbd_name'])
+
+        with RADOSClient(self) as client:
+            # Raise an exception if we didn't find a suitable rbd image.
+            try:
+                rbd_image = self.rbd.Image(client.ioctx, rbd_name)
+                image_size = rbd_image.size()
+            except self.rbd.ImageNotFound:
+                kwargs = {'existing_ref': rbd_name,
+                          'reason': 'Specified rbd image does not exist.'}
+                raise exception.ManageExistingInvalidReference(**kwargs)
+            finally:
+                rbd_image.close()
+
+            # RBD image size is returned in bytes.  Attempt to parse
+            # size as a float and round up to the next integer.
+            try:
+                convert_size = int(math.ceil(int(image_size))) / units.Gi
+                return convert_size
+            except ValueError:
+                exception_message = (_("Failed to manage existing volume "
+                                       "%(name)s, because reported size "
+                                       "%(size)s was not a floating-point"
+                                       " number.")
+                                     % {'name': rbd_name,
+                                        'size': image_size})
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)

@@ -58,6 +58,10 @@ class MockImageBusyException(MockException):
     """Used as mock for rbd.ImageBusy."""
 
 
+class MockImageExistsException(MockException):
+    """Used as mock for rbd.ImageExists."""
+
+
 def common_mocks(f):
     """Decorator to set mocks common to all tests.
 
@@ -84,6 +88,7 @@ def common_mocks(f):
             inst.mock_rados.Error = Exception
             inst.mock_rbd.ImageBusy = MockImageBusyException
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
+            inst.mock_rbd.ImageExists = MockImageExistsException
 
             inst.driver.rbd = inst.mock_rbd
             inst.driver.rados = inst.mock_rados
@@ -174,6 +179,76 @@ class RBDTestCase(test.TestCase):
             client.__enter__.assert_called_once()
             client.__exit__.assert_called_once()
             mock_supports_layering.assert_called_once()
+
+    @common_mocks
+    def test_manage_existing_get_size(self):
+        with mock.patch.object(self.driver.rbd.Image, 'size') as \
+                mock_rbd_image_size:
+            with mock.patch.object(self.driver.rbd.Image, 'close') \
+                    as mock_rbd_image_close:
+                mock_rbd_image_size.return_value = 2 * units.Gi
+                existing_ref = {'rbd_name': self.volume_name}
+                return_size = self.driver.manage_existing_get_size(
+                    self.volume,
+                    existing_ref)
+                self.assertEqual(2, return_size)
+                mock_rbd_image_size.assert_called_once_with()
+                mock_rbd_image_close.assert_called_once_with()
+
+    @common_mocks
+    def test_manage_existing_get_invalid_size(self):
+
+        with mock.patch.object(self.driver.rbd.Image, 'size') as \
+                mock_rbd_image_size:
+            with mock.patch.object(self.driver.rbd.Image, 'close') \
+                    as mock_rbd_image_close:
+                mock_rbd_image_size.return_value = 'abcd'
+                existing_ref = {'rbd_name': self.volume_name}
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.driver.manage_existing_get_size,
+                                  self.volume, existing_ref)
+
+                mock_rbd_image_size.assert_called_once_with()
+                mock_rbd_image_close.assert_called_once_with()
+
+    @common_mocks
+    def test_manage_existing(self):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+
+        with mock.patch.object(driver, 'RADOSClient') as mock_rados_client:
+            with mock.patch.object(self.driver.rbd.RBD(), 'rename') as \
+                    mock_rbd_image_rename:
+                exist_volume = 'vol-exist'
+                existing_ref = {'rbd_name': exist_volume}
+                mock_rbd_image_rename.return_value = 0
+                mock_rbd_image_rename(mock_rados_client.ioctx,
+                                      exist_volume,
+                                      self.volume_name)
+                self.driver.manage_existing(self.volume, existing_ref)
+                mock_rbd_image_rename.assert_called_with(
+                    mock_rados_client.ioctx,
+                    exist_volume,
+                    self.volume_name)
+
+    @common_mocks
+    def test_manage_existing_with_exist_rbd_image(self):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+
+        self.mock_rbd.Image.rename = mock.Mock()
+        self.mock_rbd.Image.rename.side_effect = \
+            MockImageExistsException
+
+        exist_volume = 'vol-exist'
+        existing_ref = {'rbd_name': exist_volume}
+        self.assertRaises(self.mock_rbd.ImageExists,
+                          self.driver.manage_existing,
+                          self.volume, existing_ref)
+
+        #make sure the exception was raised
+        self.assertEqual(RAISED_EXCEPTIONS,
+                         [self.mock_rbd.ImageExists])
 
     @common_mocks
     def test_create_volume_no_layering(self):
