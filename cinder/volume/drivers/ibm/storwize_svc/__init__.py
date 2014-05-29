@@ -431,6 +431,10 @@ class StorwizeSVCDriver(san.SanDriver):
                 i_t_map = self._make_initiator_target_map(connector['wwpns'],
                                                           conn_wwpns)
                 properties['initiator_target_map'] = i_t_map
+
+                # specific for z/VM, refer to cinder bug 1323993
+                if "zvm_fcp" in connector:
+                    properties['zvm_fcp'] = connector['zvm_fcp']
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.terminate_connection(volume, connector)
