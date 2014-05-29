@@ -1612,11 +1612,10 @@
 #netapp_server_hostname=<None>
 
 # The TCP port to use for communication with the storage
-# system or proxy server. Traditionally, port 80 is used for
-# HTTP and port 443 is used for HTTPS; however, this value
-# should be changed if an alternate port has been configured
-# on the storage system or proxy server. (integer value)
-#netapp_server_port=80
+# system or proxy server. If not specified, Data ONTAP drivers
+# will use 80 for HTTP and 443 for HTTPS; E-Series will use
+# 8080 for HTTP and 8443 for HTTPS. (integer value)
+#netapp_server_port=<None>
 
 # This option is used to specify the path to the E-Series
 # proxy application on a proxy server. The value is combined

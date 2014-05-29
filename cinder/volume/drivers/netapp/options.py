@@ -44,12 +44,11 @@ netapp_connection_opts = [
                help='The hostname (or IP address) for the storage system or '
                     'proxy server.'),
     cfg.IntOpt('netapp_server_port',
-               default=80,
+               default=None,
                help=('The TCP port to use for communication with the storage '
-                     'system or proxy server. Traditionally, port 80 is used '
-                     'for HTTP and port 443 is used for HTTPS; however, this '
-                     'value should be changed if an alternate port has been '
-                     'configured on the storage system or proxy server.')), ]
+                     'system or proxy server. If not specified, Data ONTAP '
+                     'drivers will use 80 for HTTP and 443 for HTTPS; '
+                     'E-Series will use 8080 for HTTP and 8443 for HTTPS.')), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
