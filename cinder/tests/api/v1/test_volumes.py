@@ -29,6 +29,7 @@ from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import fake_notifier
 from cinder.tests.image import fake as fake_image
+from cinder import utils
 from cinder.volume import api as volume_api
 
 
@@ -97,8 +98,7 @@ class VolumeApiTest(test.TestCase):
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {'attached_mode': 'rw',
-                                            'readonly': 'False'},
+                               'metadata': {},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
@@ -190,8 +190,7 @@ class VolumeApiTest(test.TestCase):
                                'image_id': test_id,
                                'snapshot_id': None,
                                'source_volid': None,
-                               'metadata': {'attached_mode': 'rw',
-                                            'readonly': 'False'},
+                               'metadata': {},
                                'id': '1',
                                'created_at': datetime.datetime(1, 1, 1,
                                                                1, 1, 1),
@@ -546,7 +545,7 @@ class VolumeApiTest(test.TestCase):
         self.assertIsNotNone(req.cached_resource_by_id('1'))
 
     def test_volume_show_no_attachments(self):
-        def stub_volume_get(self, context, volume_id):
+        def stub_volume_get(self, context, volume_id, **kwargs):
             return stubs.stub_volume(volume_id, attach_status='detached')
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
@@ -571,7 +570,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_show_bootable(self):
-        def stub_volume_get(self, context, volume_id):
+        def stub_volume_get(self, context, volume_id, **kwargs):
             return (stubs.stub_volume(volume_id,
                     volume_glance_metadata=dict(foo='bar')))
 
@@ -616,7 +615,8 @@ class VolumeApiTest(test.TestCase):
         def volume_detail_limit_offset(is_admin):
             def stub_volume_get_all_by_project(context, project_id, marker,
                                                limit, sort_key, sort_dir,
-                                               filters=None):
+                                               filters=None,
+                                               viewable_admin_meta=False):
                 return [
                     stubs.stub_volume(1, display_name='vol1'),
                     stubs.stub_volume(2, display_name='vol2'),
@@ -678,7 +678,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_volume_show_with_encrypted_volume(self):
-        def stub_volume_get(self, context, volume_id):
+        def stub_volume_get(self, context, volume_id, **kwargs):
             return stubs.stub_volume(volume_id, encryption_key_id='fake_id')
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
@@ -688,7 +688,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(res_dict['volume']['encrypted'], True)
 
     def test_volume_show_with_unencrypted_volume(self):
-        def stub_volume_get(self, context, volume_id):
+        def stub_volume_get(self, context, volume_id, **kwargs):
             return stubs.stub_volume(volume_id, encryption_key_id=None)
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
@@ -758,9 +758,7 @@ class VolumeApiTest(test.TestCase):
         metadata = [{"key": "key", "value": "value"}]
         volume = dict(volume_admin_metadata=admin_metadata,
                       volume_metadata=metadata)
-        admin_ctx = context.get_admin_context()
-        self.controller._add_visible_admin_metadata(admin_ctx,
-                                                    volume)
+        utils.add_visible_admin_metadata(volume)
         self.assertEqual(volume['volume_metadata'],
                          [{"key": "key", "value": "value"},
                           {"key": "readonly", "value": "visible"},
@@ -772,9 +770,7 @@ class VolumeApiTest(test.TestCase):
         metadata = {"key": "value"}
         volume = dict(admin_metadata=admin_metadata,
                       metadata=metadata)
-        admin_ctx = context.get_admin_context()
-        self.controller._add_visible_admin_metadata(admin_ctx,
-                                                    volume)
+        utils.add_visible_admin_metadata(volume)
         self.assertEqual(volume['metadata'],
                          {'key': 'value',
                           'attached_mode': 'visible',

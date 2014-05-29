@@ -795,36 +795,25 @@ def check_string_length(value, name, min_length=0, max_length=None):
 _visible_admin_metadata_keys = ['readonly', 'attached_mode']
 
 
-def add_visible_admin_metadata(context, volume, volume_api):
+def add_visible_admin_metadata(volume):
     """Add user-visible admin metadata to regular metadata.
 
     Extracts the admin metadata keys that are to be made visible to
     non-administrators, and adds them to the regular metadata structure for the
     passed-in volume.
     """
-    if context is None:
-        return
-
     visible_admin_meta = {}
 
-    if context.is_admin:
-        volume_tmp = volume
-    else:
-        try:
-            volume_tmp = volume_api.get(context.elevated(), volume['id'])
-        except Exception:
-            return
-
-    if volume_tmp.get('volume_admin_metadata'):
-        for item in volume_tmp['volume_admin_metadata']:
+    if volume.get('volume_admin_metadata'):
+        for item in volume['volume_admin_metadata']:
             if item['key'] in _visible_admin_metadata_keys:
                 visible_admin_meta[item['key']] = item['value']
     # avoid circular ref when volume is a Volume instance
-    elif (volume_tmp.get('admin_metadata') and
-            isinstance(volume_tmp.get('admin_metadata'), dict)):
+    elif (volume.get('admin_metadata') and
+            isinstance(volume.get('admin_metadata'), dict)):
         for key in _visible_admin_metadata_keys:
-            if key in volume_tmp['admin_metadata'].keys():
-                visible_admin_meta[key] = volume_tmp['admin_metadata'][key]
+            if key in volume['admin_metadata'].keys():
+                visible_admin_meta[key] = volume['admin_metadata'][key]
 
     if not visible_admin_meta:
         return
