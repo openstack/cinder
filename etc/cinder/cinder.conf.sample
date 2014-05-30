@@ -2016,7 +2016,7 @@
 #auth_uri=<None>
 
 # Complete admin Identity API endpoint. This should specify
-# the unversioned root endpoint eg. https://localhost:35357/
+# the unversioned root endpoint e.g. https://localhost:35357/
 # (string value)
 #identity_uri=<None>
 
@@ -2037,9 +2037,12 @@
 # with Identity API Server. (integer value)
 #http_request_max_retries=3
 
-# Single shared secret with the Keystone configuration used
-# for bootstrapping a Keystone installation, or otherwise
-# bypassing the normal authentication process. (string value)
+# This option is deprecated and may be removed in a future
+# release. Single shared secret with the Keystone
+# configuration used for bootstrapping a Keystone
+# installation, or otherwise bypassing the normal
+# authentication process. This option should not be used, use
+# `admin_user` and `admin_password` instead. (string value)
 #admin_token=<None>
 
 # Keystone account username (string value)
@@ -2091,7 +2094,7 @@
 # number of revocation events combined with a low cache
 # duration may significantly reduce performance. (integer
 # value)
-#revocation_cache_time=300
+#revocation_cache_time=10
 
 # (optional) if defined, indicate whether token data should be
 # authenticated or authenticated and encrypted. Acceptable
@@ -2123,6 +2126,23 @@
 # binding method that must be present in tokens. (string
 # value)
 #enforce_token_bind=permissive
+
+# If true, the revocation list will be checked for cached
+# tokens. This requires that PKI tokens are configured on the
+# Keystone server. (boolean value)
+#check_revocations_for_cached=false
+
+# Hash algorithms to use for hashing PKI tokens. This may be a
+# single algorithm or multiple. The algorithms are those
+# supported by Python standard hashlib.new(). The hashes will
+# be tried in the order given, so put the preferred one first
+# for performance. The result of the first hash will be stored
+# in the cache. This will typically be set to multiple values
+# only while migrating from a less secure algorithm to a more
+# secure one. Once all the old tokens are expired this option
+# should be set to a single value for better performance.
+# (list value)
+#hash_algorithms=md5
 
 
 [matchmaker_ring]
