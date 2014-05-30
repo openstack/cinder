@@ -18,10 +18,9 @@ Handles all requests relating to transferring ownership of volumes.
 """
 
 
-import datetime
 import hashlib
 import hmac
-import random
+import os
 
 from oslo.config import cfg
 
@@ -81,9 +80,13 @@ class API(base.Base):
     def _get_random_string(self, length):
         """Get a random hex string of the specified length."""
         rndstr = ""
-        random.seed(datetime.datetime.now().microsecond)
+
+        # Note that the string returned by this function must contain only
+        # characters that the recipient can enter on their keyboard. The
+        # function ssh224().hexdigit() achieves this by generating a hash
+        # which will only contain hexidecimal digits.
         while len(rndstr) < length:
-            rndstr += hashlib.sha224(str(random.random())).hexdigest()
+            rndstr += hashlib.sha224(os.urandom(255)).hexdigest()
 
         return rndstr[0:length]
 
