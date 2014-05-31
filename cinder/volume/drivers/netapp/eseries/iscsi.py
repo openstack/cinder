@@ -26,6 +26,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import units
+from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
@@ -515,6 +516,7 @@ class Driver(driver.ISCSIDriver):
         raise exception.NetAppDriverException(
             msg % self._client.get_system_id())
 
+    @cinder_utils.synchronized('map_es_volume')
     def _map_volume_to_host(self, vol, initiator):
         """Maps the e-series volume to host with initiator."""
         host = self._get_or_create_host(initiator)
