@@ -309,6 +309,7 @@ class VolumeDriver(object):
                 self._detach_volume(context, dest_attach_info, dest_vol,
                                     properties, force=True, remote=dest_remote)
 
+        copy_error = True
         try:
             size_in_mb = int(src_vol['size']) * 1024    # vol size is in GB
             volume_utils.copy_volume(
@@ -319,9 +320,8 @@ class VolumeDriver(object):
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():
-                msg = _("Failed to copy volume %(src)s to %(dest)d")
+                msg = _("Failed to copy volume %(src)s to %(dest)s.")
                 LOG.error(msg % {'src': src_vol['id'], 'dest': dest_vol['id']})
-                copy_error = True
         finally:
             self._detach_volume(context, dest_attach_info, dest_vol,
                                 properties, force=copy_error,
