@@ -677,12 +677,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         payload = {'volume_id': volume_id, 'image_id': image_meta['id']}
         try:
+            volume = self.db.volume_get(context, volume_id)
+
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
             # and the volume status updated.
             utils.require_driver_initialized(self.driver)
 
-            volume = self.db.volume_get(context, volume_id)
             image_service, image_id = \
                 glance.get_remote_image_service(context, image_meta['id'])
             self.driver.copy_volume_to_image(context, volume, image_service,
