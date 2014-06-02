@@ -413,6 +413,7 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(name, ret.name)
         self.assertEqual('[%s]' % ds_name, ret.files.vmPathName)
         self.assertEqual(1, ret.deviceChange[1].device.capacityInKB)
+        self.assertEqual("vmx-08", ret.version)
         expected = [mock.call.create('ns0:VirtualLsiLogicController'),
                     mock.call.create('ns0:VirtualDeviceConfigSpec'),
                     mock.call.create('ns0:VirtualDisk'),

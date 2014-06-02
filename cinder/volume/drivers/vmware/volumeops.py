@@ -397,6 +397,11 @@ class VMwareVolumeOps(object):
         create_spec.memoryMB = 128
         create_spec.deviceChange = [controller_spec, disk_spec]
         create_spec.files = vm_file_info
+        # set the Hardware version to the lowest version supported by ESXi5.0
+        # and compatible with vCenter Server 5.0
+        # This ensures migration of volume created on a later ESX server
+        # works on any ESX server 5.0 and above.
+        create_spec.version = "vmx-08"
 
         if profileId:
             vmProfile = cf.create('ns0:VirtualMachineDefinedProfileSpec')
