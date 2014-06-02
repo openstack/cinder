@@ -974,7 +974,7 @@
 # value)
 #use_multipath_for_image_xfer=false
 
-# Method used to wipe old voumes (valid options are: none,
+# Method used to wipe old volumes (valid options are: none,
 # zero, shred) (string value)
 #volume_clear=zero
 
