@@ -64,8 +64,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
     def solaris_execute(self, *cmd, **kwargs):
         new_cmd = ['pfexec']
         new_cmd.extend(cmd)
-        return super(SolarisISCSIDriver, self)._execute(*new_cmd,
-                                                        **kwargs)
+        return super(SolarisISCSIDriver, self).san_execute(*new_cmd, **kwargs)
 
     def _view_exists(self, luid):
         (out, _err) = self._execute('/usr/sbin/stmfadm',
