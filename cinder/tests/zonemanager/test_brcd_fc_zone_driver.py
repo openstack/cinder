@@ -19,6 +19,7 @@
 
 """Unit tests for Brocade fc zone driver."""
 
+import mock
 import paramiko
 
 from oslo.config import cfg
@@ -28,6 +29,8 @@ from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver \
+    import BrcdFCZoneDriver
 
 LOG = logging.getLogger(__name__)
 
@@ -109,45 +112,47 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
             'cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver'
             '.BrcdFCZoneDriver', configuration=config)
 
-    def fake_get_active_zone_set(self, fabric_ip, fabric_user, fabric_pwd):
+    def fake__get_active_zone_set(self, brcd_sb_connector, fabric_ip):
         return GlobalVars._active_cfg
 
     def fake_get_san_context(self, target_wwn_list):
         fabric_map = {}
         return fabric_map
 
-    def test_add_connection(self):
+    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    def test_add_connection(self, get_active_zs_mock):
         """Normal flow for i-t mode."""
-        GlobalVars._active_cfg = _active_cfg_before_add
         GlobalVars._is_normal_test = True
         GlobalVars._zone_state = []
-        LOG.info(_("In Add GlobalVars._active_cfg:"
-                   " %s"), GlobalVars._active_cfg)
         LOG.info(_("In Add GlobalVars._is_normal_test: "
                    "%s"), GlobalVars._is_normal_test)
         LOG.info(_("In Add GlobalVars._zone_state:"
                    " %s"), GlobalVars._zone_state)
+        get_active_zs_mock.return_value = _active_cfg_before_add
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
 
-    def test_delete_connection(self):
+    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    def test_delete_connection(self, get_active_zs_mock):
         GlobalVars._is_normal_test = True
-        GlobalVars._active_cfg = _active_cfg_before_delete
+        get_active_zs_mock.return_value = _active_cfg_before_delete
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
         self.assertFalse(_zone_name in GlobalVars._zone_state)
 
-    def test_add_connection_for_initiator_mode(self):
+    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    def test_add_connection_for_initiator_mode(self, get_active_zs_mock):
         """Normal flow for i mode."""
         GlobalVars._is_normal_test = True
-        GlobalVars._active_cfg = _active_cfg_before_add
+        get_active_zs_mock.return_value = _active_cfg_before_add
         self.setup_driver(self.setup_config(True, 2))
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
 
-    def test_delete_connection_for_initiator_mode(self):
+    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    def test_delete_connection_for_initiator_mode(self, get_active_zs_mock):
         GlobalVars._is_normal_test = True
-        GlobalVars._active_cfg = _active_cfg_before_delete
+        get_active_zs_mock.return_value = _active_cfg_before_delete
         self.setup_driver(self.setup_config(True, 2))
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
@@ -178,6 +183,7 @@ class FakeBrcdFCZoneClientCLI(object):
     def __init__(self, ipaddress, username, password, port):
         LOG.info(_("User: %s"), username)
         LOG.info(_("_zone_state: %s"), GlobalVars._zone_state)
+        self.firmware_supported = True
         if not GlobalVars._is_normal_test:
             raise paramiko.SSHException("Unable to connect to fabric")
 
@@ -185,10 +191,10 @@ class FakeBrcdFCZoneClientCLI(object):
         LOG.debug(_("Inside get_active_zone_set %s"), GlobalVars._active_cfg)
         return GlobalVars._active_cfg
 
-    def add_zones(self, zones, isActivate):
+    def add_zones(self, zones, isActivate, active_zone_set):
         GlobalVars._zone_state.extend(zones.keys())
 
-    def delete_zones(self, zone_names, isActivate):
+    def delete_zones(self, zone_names, isActivate, active_zone_set):
         zone_list = zone_names.split(';')
         GlobalVars._zone_state = [
             x for x in GlobalVars._zone_state if x not in zone_list]
