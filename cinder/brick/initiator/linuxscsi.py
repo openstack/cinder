@@ -55,6 +55,9 @@ class LinuxSCSI(executor.Executor):
 
         path = "/sys/block/%s/device/delete" % device.replace("/dev/", "")
         if os.path.exists(path):
+            # flush any outstanding IO first
+            self.flush_device_io(device)
+
             LOG.debug("Remove SCSI device(%s) with %s" % (device, path))
             self.echo_scsi_command(path, "1")
 
@@ -91,8 +94,20 @@ class LinuxSCSI(executor.Executor):
                 self.remove_scsi_device(device['device'])
             self.flush_multipath_device(mpath_dev['id'])
 
+    def flush_device_io(self, device):
+        """This is used to flush any remaining IO in the buffers."""
+        try:
+            LOG.debug("Flushing IO for device %s" % device)
+            self._execute('blockdev', '--flushbufs', device, run_as_root=True,
+                          root_helper=self._root_helper)
+        except putils.ProcessExecutionError as exc:
+            msg = _("Failed to flush IO buffers prior to removing"
+                    "device: (%(code)s)") % {'code': exc.exit_code}
+            LOG.warn(msg)
+
     def flush_multipath_device(self, device):
         try:
+            LOG.debug("Flush multipath device %s" % device)
             self._execute('multipath', '-f', device, run_as_root=True,
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:

@@ -183,6 +183,7 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                               % (iqn, location)),
                              ('iscsiadm -m node --rescan'),
                              ('iscsiadm -m session --rescan'),
+                             ('blockdev --flushbufs /dev/sdb'),
                              ('tee -a /sys/block/sdb/device/delete'),
                              ('iscsiadm -m node -T %s -p %s --op update'
                               ' -n node.startup -v manual' % (iqn, location)),
