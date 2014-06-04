@@ -585,7 +585,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._driver.volumeops = self._volumeops
         host1 = FakeObj(obj=FakeMor('HostSystem', 'my_host1'))
         host2 = FakeObj(obj=FakeMor('HostSystem', 'my_host2'))
-        retrieve_result = FakeRetrieveResult([host1, host2], None)
+        host3 = FakeObj(obj=FakeMor('HostSystem', 'my_host3'))
+        retrieve_result = FakeRetrieveResult([host1, host3, host2], None)
         m.StubOutWithMock(self._volumeops, 'get_hosts')
         self._volumeops.get_hosts().AndReturn(retrieve_result)
         m.StubOutWithMock(self._driver, '_create_backing')
@@ -594,6 +595,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         backing = FakeMor('VirtualMachine', 'my_back')
         mux = self._driver._create_backing(volume, host1.obj)
         mux.AndRaise(error_util.VimException('Maintenance mode'))
+        mux = self._driver._create_backing(volume, host3.obj)
+        mux.AndRaise(error_util.VimFaultException(
+            [], 'Bad host connection state'))
         mux = self._driver._create_backing(volume, host2.obj)
         mux.AndReturn(backing)
         m.StubOutWithMock(self._volumeops, 'cancel_retrieval')
