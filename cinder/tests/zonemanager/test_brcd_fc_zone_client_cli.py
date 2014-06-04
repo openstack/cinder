@@ -94,24 +94,20 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
                                             apply_zone_change_mock,
                                             cfg_save_mock):
         get_active_zs_mock.return_value = active_zoneset
-        self.add_zones(new_zones, False)
+        self.add_zones(new_zones, False, None)
         get_active_zs_mock.assert_called_once()
         apply_zone_change_mock.assert_called_twice()
         cfg_save_mock.assert_called_once()
 
     @mock.patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
     @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
-    @mock.patch.object(BrcdFCZoneClientCLI, '_cfg_save')
     @mock.patch.object(BrcdFCZoneClientCLI, 'activate_zoneset')
     def test_add_zones_new_zone_activate(self, get_active_zs_mock,
                                          apply_zone_change_mock,
-                                         cfg_save_mock,
                                          activate_zoneset_mock):
         get_active_zs_mock.return_value = active_zoneset
-        self.add_zones(new_zone, True)
-        get_active_zs_mock.assert_called_once()
+        self.add_zones(new_zone, True, active_zoneset)
         apply_zone_change_mock.assert_called_once()
-        cfg_save_mock.assert_called_once()
         activate_zoneset_mock.assert_called_once()
 
     @mock.patch.object(BrcdFCZoneClientCLI, '_ssh_execute')
@@ -126,44 +122,34 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
         return_value = self.deactivate_zoneset()
         self.assertTrue(return_value)
 
-    @mock.patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
     @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
     @mock.patch.object(BrcdFCZoneClientCLI, '_cfg_save')
-    def test_delete_zones_activate_false(self, get_active_zs_mock,
-                                         apply_zone_change_mock,
+    def test_delete_zones_activate_false(self, apply_zone_change_mock,
                                          cfg_save_mock):
-        get_active_zs_mock.return_value = active_zoneset_multiple_zones
         with mock.patch.object(self, '_zone_delete') \
                 as zone_delete_mock:
-            self.delete_zones(zone_names_to_delete, False)
-            get_active_zs_mock.assert_called_once()
+            self.delete_zones(zone_names_to_delete, False,
+                              active_zoneset_multiple_zones)
             apply_zone_change_mock.assert_called_once()
             zone_delete_mock.assert_called_once_with(zone_names_to_delete)
             cfg_save_mock.assert_called_once()
 
-    @patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
     @patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
-    @patch.object(BrcdFCZoneClientCLI, '_cfg_save')
     @patch.object(BrcdFCZoneClientCLI, 'activate_zoneset')
-    def test_delete_zones_activate_true(self, get_active_zs_mock,
-                                        apply_zone_change_mock,
-                                        cfg_save_mock,
+    def test_delete_zones_activate_true(self, apply_zone_change_mock,
                                         activate_zs_mock):
-        get_active_zs_mock.return_value = active_zoneset_multiple_zones
         with mock.patch.object(self, '_zone_delete') \
                 as zone_delete_mock:
-            self.delete_zones(zone_names_to_delete, True)
-            get_active_zs_mock.assert_called_once()
+            self.delete_zones(zone_names_to_delete, True,
+                              active_zoneset_multiple_zones)
             apply_zone_change_mock.assert_called_once()
             zone_delete_mock.assert_called_once_with(zone_names_to_delete)
-            cfg_save_mock.assert_called_once()
             activate_zs_mock.assert_called_once()
 
     @patch.object(BrcdFCZoneClientCLI, '_get_switch_info')
     def test_get_nameserver_info(self, get_switch_info_mock):
         ns_info_list = []
-        ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29',
-                                 '20:1a:00:05:1e:e8:e3:29']
+        ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29']
         get_switch_info_mock.return_value = (switch_data)
         ns_info_list = self.get_nameserver_info()
         self.assertEqual(ns_info_list, ns_info_list_expected)

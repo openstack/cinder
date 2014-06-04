@@ -48,6 +48,9 @@ class TestFCZoneManager(test.TestCase):
                        fake_build_driver)
 
         self.zm = fc_zone_manager.ZoneManager(configuration=config)
+        self.configuration = conf.Configuration(None)
+        self.configuration.fc_fabric_names = fabric_name
+        self.driver = Mock(FCZoneDriver)
 
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
