@@ -67,3 +67,8 @@ class VMwaredriverConfigurationException(VMwareDriverException):
     """Base class for all configuration exceptions.
     """
     message = _("VMware VMDK driver configuration error.")
+
+
+class InvalidAdapterTypeException(VMwareDriverException):
+    """Thrown when the disk adapter type is invalid."""
+    message = _("Invalid disk adapter type: %(invalid_type)s.")

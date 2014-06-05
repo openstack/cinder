@@ -46,6 +46,9 @@ THIN_VMDK_TYPE = 'thin'
 THICK_VMDK_TYPE = 'thick'
 EAGER_ZEROED_THICK_VMDK_TYPE = 'eagerZeroedThick'
 
+CREATE_PARAM_ADAPTER_TYPE = 'adapter_type'
+CREATE_PARAM_DISK_LESS = 'disk_less'
+
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                default=None,
@@ -426,11 +429,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                             EAGER_ZEROED_THICK_VMDK_TYPE),
                                            THIN_VMDK_TYPE)
 
-    def _create_backing(self, volume, host):
+    def _create_backing(self, volume, host, create_params={}):
         """Create volume backing under the given host.
 
         :param volume: Volume object
         :param host: Reference of the host
+        :param create_params: Dictionary specifying optional parameters for
+                              backing VM creation
         :return: Reference to the created backing
         """
         # Get datastores and resource pool of the host
@@ -439,21 +444,41 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         (folder, summary) = self._get_folder_ds_summary(volume,
                                                         resource_pool,
                                                         datastores)
-        disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
-        size_kb = volume['size'] * units.Mi
+
+        # check if a storage profile needs to be associated with the backing VM
         storage_profile = self._get_storage_profile(volume)
         profileId = None
         if self._storage_policy_enabled and storage_profile:
             profile = self.volumeops.retrieve_profile_id(storage_profile)
             if profile:
                 profileId = profile.uniqueId
+
+        # default is a backing with single disk
+        disk_less = create_params.get(CREATE_PARAM_DISK_LESS, False)
+        if disk_less:
+            # create a disk-less backing-- disk can be added later; for e.g.,
+            # by copying an image
+            return self.volumeops.create_backing_disk_less(volume['name'],
+                                                           folder,
+                                                           resource_pool,
+                                                           host,
+                                                           summary.name,
+                                                           profileId)
+
+        # create a backing with single disk
+        disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
+        size_kb = volume['size'] * units.Mi
+        adapter_type = create_params.get(CREATE_PARAM_ADAPTER_TYPE,
+                                         'lsiLogic')
         return self.volumeops.create_backing(volume['name'],
                                              size_kb,
-                                             disk_type, folder,
+                                             disk_type,
+                                             folder,
                                              resource_pool,
                                              host,
                                              summary.name,
-                                             profileId)
+                                             profileId,
+                                             adapter_type)
 
     def _relocate_backing(self, volume, backing, host):
         pass
@@ -495,13 +520,15 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         LOG.error(msg)
         raise error_util.VimException(msg)
 
-    def _create_backing_in_inventory(self, volume):
+    def _create_backing_in_inventory(self, volume, create_params={}):
         """Creates backing under any suitable host.
 
         The method tries to pick datastore that can fit the volume under
         any host in the inventory.
 
         :param volume: Volume object
+        :param create_params: Dictionary specifying optional parameters for
+                              backing VM creation
         :return: Reference to the created backing
         """
 
@@ -513,7 +540,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             backing = None
             for host in hosts:
                 try:
-                    backing = self._create_backing(volume, host.obj)
+                    backing = self._create_backing(volume,
+                                                   host.obj,
+                                                   create_params)
                     if backing:
                         break
                 except error_util.VimException as excep:
@@ -879,10 +908,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # The size of stream optimized glance image is often suspect,
         # so better let VC figure out the disk capacity during import.
         dummy_disk_size = 0
-        vm_create_spec = self.volumeops._get_create_spec(volume['name'],
-                                                         dummy_disk_size,
-                                                         disk_type,
-                                                         summary.name)
+        vm_create_spec = self.volumeops.get_create_spec(volume['name'],
+                                                        dummy_disk_size,
+                                                        disk_type,
+                                                        summary.name)
         # convert vm_create_spec to vm_import_spec
         cf = self.session.vim.client.factory
         vm_import_spec = cf.create('ns0:VirtualMachineImportSpec')
