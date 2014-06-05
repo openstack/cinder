@@ -1027,10 +1027,13 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(vmware_images, 'fetch_stream_optimized_image')
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
     @mock.patch.object(VMDK_DRIVER, 'session')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_copy_image_to_volume_stream_optimized(self, volumeops,
+    def test_copy_image_to_volume_stream_optimized(self,
+                                                   volumeops,
                                                    session,
+                                                   get_profile_id,
                                                    _select_ds_for_volume,
                                                    _extend_virtual_disk,
                                                    fetch_optimized_image):
@@ -1040,12 +1043,14 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """
         self._test_copy_image_to_volume_stream_optimized(volumeops,
                                                          session,
+                                                         get_profile_id,
                                                          _select_ds_for_volume,
                                                          _extend_virtual_disk,
                                                          fetch_optimized_image)
 
     def _test_copy_image_to_volume_stream_optimized(self, volumeops,
                                                     session,
+                                                    get_profile_id,
                                                     _select_ds_for_volume,
                                                     _extend_virtual_disk,
                                                     fetch_optimized_image):
@@ -1055,9 +1060,10 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         size = 5 * units.Gi
         size_gb = float(size) / units.Gi
         fake_volume_size = 1 + size_gb
+        adapter_type = 'ide'
         fake_image_meta = {'disk_format': 'vmdk', 'size': size,
-                           'properties': {'vmware_disktype':
-                                          'streamOptimized'}}
+                           'properties': {'vmware_disktype': 'streamOptimized',
+                                          'vmware_adaptertype': adapter_type}}
         image_service = mock.Mock(glance.GlanceImageService)
         fake_host = mock.sentinel.host
         fake_rp = mock.sentinel.rp
@@ -1092,14 +1098,19 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         _select_ds_for_volume.side_effect = None
         _select_ds_for_volume.return_value = (fake_host, fake_rp,
                                               fake_folder, fake_summary)
+        profile_id = 'profile-1'
+        get_profile_id.return_value = profile_id
         self._driver.copy_image_to_volume(fake_context, fake_volume,
                                           image_service, fake_image_id)
         image_service.show.assert_called_with(fake_context, fake_image_id)
         _select_ds_for_volume.assert_called_with(fake_volume)
+        get_profile_id.assert_called_once_with(fake_volume)
         volumeops.get_create_spec.assert_called_with(fake_volume['name'],
                                                      0,
                                                      fake_disk_type,
-                                                     fake_summary.name)
+                                                     fake_summary.name,
+                                                     profile_id,
+                                                     adapter_type)
         self.assertTrue(fetch_optimized_image.called)
         fetch_optimized_image.assert_called_with(fake_context, timeout,
                                                  image_service,
@@ -1882,10 +1893,12 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(vmware_images, 'fetch_stream_optimized_image')
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
     @mock.patch.object(VMDK_DRIVER, 'session')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_copy_image_to_volume_stream_optimized(self, volumeops,
                                                    session,
+                                                   get_profile_id,
                                                    _select_ds_for_volume,
                                                    _extend_virtual_disk,
                                                    fetch_optimized_image):
@@ -1895,6 +1908,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         """
         self._test_copy_image_to_volume_stream_optimized(volumeops,
                                                          session,
+                                                         get_profile_id,
                                                          _select_ds_for_volume,
                                                          _extend_virtual_disk,
                                                          fetch_optimized_image)

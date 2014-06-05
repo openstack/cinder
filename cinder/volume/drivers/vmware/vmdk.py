@@ -429,6 +429,15 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                             EAGER_ZEROED_THICK_VMDK_TYPE),
                                            THIN_VMDK_TYPE)
 
+    def _get_storage_profile_id(self, volume):
+        storage_profile = self._get_storage_profile(volume)
+        profile_id = None
+        if self._storage_policy_enabled and storage_profile:
+            profile = self.volumeops.retrieve_profile_id(storage_profile)
+            if profile:
+                profile_id = profile.uniqueId
+        return profile_id
+
     def _create_backing(self, volume, host, create_params={}):
         """Create volume backing under the given host.
 
@@ -446,12 +455,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                                         datastores)
 
         # check if a storage profile needs to be associated with the backing VM
-        storage_profile = self._get_storage_profile(volume)
-        profileId = None
-        if self._storage_policy_enabled and storage_profile:
-            profile = self.volumeops.retrieve_profile_id(storage_profile)
-            if profile:
-                profileId = profile.uniqueId
+        profile_id = self._get_storage_profile_id(volume)
 
         # default is a backing with single disk
         disk_less = create_params.get(CREATE_PARAM_DISK_LESS, False)
@@ -463,7 +467,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                                            resource_pool,
                                                            host,
                                                            summary.name,
-                                                           profileId)
+                                                           profile_id)
 
         # create a backing with single disk
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
@@ -477,7 +481,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                              resource_pool,
                                              host,
                                              summary.name,
-                                             profileId,
+                                             profile_id,
                                              adapter_type)
 
     def _relocate_backing(self, volume, backing, host):
@@ -882,7 +886,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def _fetch_stream_optimized_image(self, context, volume, image_service,
-                                      image_id, image_size):
+                                      image_id, image_size, adapter_type):
         """Creates volume from image using HttpNfc VM import.
 
         Uses Nfc API to download the VMDK file from Glance. Nfc creates the
@@ -903,6 +907,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                   "%(size)s GB." % {'ds': summary.name, 'size': size_gb})
 
         # prepare create spec for backing vm
+        profile_id = self._get_storage_profile_id(volume)
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
 
         # The size of stream optimized glance image is often suspect,
@@ -911,7 +916,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         vm_create_spec = self.volumeops.get_create_spec(volume['name'],
                                                         dummy_disk_size,
                                                         disk_type,
-                                                        summary.name)
+                                                        summary.name,
+                                                        profile_id,
+                                                        adapter_type)
         # convert vm_create_spec to vm_import_spec
         cf = self.session.vim.client.factory
         vm_import_spec = cf.create('ns0:VirtualMachineImportSpec')
@@ -1001,18 +1008,23 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         metadata = image_service.show(context, image_id)
         VMwareEsxVmdkDriver._validate_disk_format(metadata['disk_format'])
 
-        # Get disk_type for vmdk disk
-        disk_type = None
+        # Get the disk type, adapter type and size of vmdk image
+        disk_type = 'preallocated'
+        adapter_type = 'lsiLogic'
         image_size_in_bytes = metadata['size']
         properties = metadata['properties']
-        if properties and 'vmware_disktype' in properties:
-            disk_type = properties['vmware_disktype']
+        if properties:
+            if 'vmware_disktype' in properties:
+                disk_type = properties['vmware_disktype']
+            if 'vmware_adaptertype' in properties:
+                adapter_type = properties['vmware_adaptertype']
 
         try:
             if disk_type == 'streamOptimized':
                 self._fetch_stream_optimized_image(context, volume,
                                                    image_service, image_id,
-                                                   image_size_in_bytes)
+                                                   image_size_in_bytes,
+                                                   adapter_type)
             else:
                 self._fetch_flat_image(context, volume, image_service,
                                        image_id, image_size_in_bytes)
