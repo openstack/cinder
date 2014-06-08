@@ -693,6 +693,7 @@ class FibreChannelConnector(InitiatorConnector):
             mdev_info = self._linuxscsi.find_multipath_device(multipath_id)
             devices = mdev_info['devices']
             LOG.debug("devices to remove = %s" % devices)
+            self._linuxscsi.flush_multipath_device(multipath_id)
 
         # There may have been more than 1 device mounted
         # by the kernel for this volume.  We have to remove
