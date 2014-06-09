@@ -68,7 +68,7 @@ volume_opts = [
                      'for volume to image and image to volume transfers?'),
     cfg.StrOpt('volume_clear',
                default='zero',
-               help='Method used to wipe old voumes (valid options are: '
+               help='Method used to wipe old volumes (valid options are: '
                     'none, zero, shred)'),
     cfg.IntOpt('volume_clear_size',
                default=0,
