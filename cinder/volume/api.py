@@ -382,8 +382,20 @@ class API(base.Base):
         # If we are in the middle of a volume migration, we don't want the user
         # to see that the volume is 'detaching'. Having 'migration_status' set
         # will have the same effect internally.
-        if not volume['migration_status']:
-            self.update(context, volume, {"status": "detaching"})
+        if volume['migration_status']:
+            return
+
+        if (volume['status'] != 'in-use' and
+                volume['attach_status'] != 'attached'):
+            msg = (_("Unable to detach volume. Volume status must be 'in-use' "
+                     "and attached_status must be 'attached' to detach. "
+                     "Currently: status: '%(status)s', "
+                     "attach_status: '%(attach_status)s'") %
+                   {'status': volume['status'],
+                    'attach_status': volume['attach_status']})
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+        self.update(context, volume, {"status": "detaching"})
 
     @wrap_check_policy
     def roll_detaching(self, context, volume):
