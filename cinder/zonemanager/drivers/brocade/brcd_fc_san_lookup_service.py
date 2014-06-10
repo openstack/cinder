@@ -51,7 +51,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
         """Configuration specific to SAN context values."""
         config = self.configuration
 
-        fabric_names = config.fc_fabric_names.split(',')
+        fabric_names = [x.strip() for x in config.fc_fabric_names.split(',')]
         LOG.debug(_('Fabric Names: %s'), fabric_names)
 
         # There can be more than one SAN in the network and we need to
@@ -105,7 +105,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
                 err=_("Missing Fibre Channel SAN configuration "
                       "param - fc_fabric_names"))
 
-        fabrics = fabric_names.split(',')
+        fabrics = [x.strip() for x in fabric_names.split(',')]
         LOG.debug(_("FC Fabric List: %s"), fabrics)
         if fabrics:
             for t in target_wwn_list:
