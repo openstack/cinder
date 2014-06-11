@@ -346,7 +346,15 @@ class VolumeManager(manager.SchedulerDependentManager):
     def delete_volume(self, context, volume_id, unmanage_only=False):
         """Deletes and unexports volume."""
         context = context.elevated()
-        volume_ref = self.db.volume_get(context, volume_id)
+
+        try:
+            volume_ref = self.db.volume_get(context, volume_id)
+        except exception.VolumeNotFound:
+            # NOTE(thingee): It could be possible for a volume to
+            # be deleted when resuming deletes from init_host().
+            LOG.info(_("Tried to delete volume %s, but it no longer exists, "
+                       "moving on") % (volume_id))
+            return True
 
         if context.project_id != volume_ref['project_id']:
             project_id = volume_ref['project_id']
