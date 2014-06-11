@@ -77,7 +77,10 @@ class BlockDeviceDriver(driver.ISCSIDriver):
     def create_export(self, context, volume):
         """Creates an export for a logical volume."""
         volume_path = self.local_path(volume)
-        data = self.target_helper.create_export(context, volume, volume_path)
+        data = self.target_helper.create_export(context,
+                                                volume,
+                                                volume_path,
+                                                self.configuration)
         return {
             'provider_location': data['location'] + ' ' + volume_path,
             'provider_auth': data['auth'],
