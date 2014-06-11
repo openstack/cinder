@@ -20,6 +20,13 @@ class HTTPConflict(Exception):
     http_status = 409
     message = "Conflict"
 
+    def __init__(self, error=None):
+        if error and 'message' in error:
+            self._error_desc = error['message']
+
+    def get_description(self):
+        return self._error_desc
+
 
 class HTTPNotFound(Exception):
     http_status = 404
@@ -31,9 +38,8 @@ class HTTPForbidden(Exception):
     message = "Forbidden"
 
     def __init__(self, error=None):
-        if error:
-            if 'code' in error:
-                self._error_code = error['code']
+        if error and 'code' in error:
+            self._error_code = error['code']
 
     def get_code(self):
         return self._error_code
@@ -49,9 +55,8 @@ class HTTPServerError(Exception):
     message = "Error"
 
     def __init__(self, error=None):
-        if error:
-            if 'message' in error:
-                self._error_desc = error['message']
+        if error and 'message' in error:
+            self._error_desc = error['message']
 
     def get_description(self):
         return self._error_desc
