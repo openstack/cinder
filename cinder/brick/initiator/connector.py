@@ -129,12 +129,12 @@ class InitiatorConnector(executor.Executor):
                    dict(protocol=protocol))
             raise ValueError(msg)
 
-    def check_valid_device(self, path):
+    def check_valid_device(self, path, run_as_root=True):
         cmd = ('dd', 'if=%(path)s' % {"path": path},
                'of=/dev/null', 'count=1')
         out, info = None, None
         try:
-            out, info = self._execute(*cmd, run_as_root=True,
+            out, info = self._execute(*cmd, run_as_root=run_as_root,
                                       root_helper=self._root_helper)
         except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to access the device on the path "

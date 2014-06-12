@@ -71,11 +71,12 @@ class TestUtils(test.TestCase):
         TEST_IMG_SIZE_IN_GB = 1
 
         utils.execute('qemu-img', 'resize', TEST_IMG_SOURCE,
-                      '%sG' % TEST_IMG_SIZE_IN_GB, run_as_root=False)
+                      '%sG' % TEST_IMG_SIZE_IN_GB, run_as_root=True)
 
         mox.ReplayAll()
 
-        image_utils.resize_image(TEST_IMG_SOURCE, TEST_IMG_SIZE_IN_GB)
+        image_utils.resize_image(TEST_IMG_SOURCE, TEST_IMG_SIZE_IN_GB,
+                                 run_as_root=True)
 
         mox.VerifyAll()
 
@@ -100,7 +101,8 @@ class TestUtils(test.TestCase):
 
         mox.ReplayAll()
 
-        image_utils.convert_image(TEST_SOURCE, TEST_DEST, TEST_OUT_FORMAT)
+        image_utils.convert_image(TEST_SOURCE, TEST_DEST, TEST_OUT_FORMAT,
+                                  run_as_root=True)
 
         mox.VerifyAll()
 
@@ -135,7 +137,7 @@ class TestUtils(test.TestCase):
 
         mox.ReplayAll()
 
-        inf = image_utils.qemu_img_info(TEST_PATH)
+        inf = image_utils.qemu_img_info(TEST_PATH, run_as_root=True)
 
         self.assertEqual(inf.image, 'qemu.qcow2')
         self.assertEqual(inf.backing_file, 'qemu.qcow2')
@@ -187,7 +189,7 @@ class TestUtils(test.TestCase):
 
         mox.ReplayAll()
 
-        inf = image_utils.qemu_img_info(TEST_PATH)
+        inf = image_utils.qemu_img_info(TEST_PATH, run_as_root=True)
 
         self.assertEqual(inf.image, 'qemu.qcow2')
         self.assertEqual(inf.backing_file, 'qemu.qcow2')
@@ -285,7 +287,7 @@ class TestUtils(test.TestCase):
 
         image_utils.fetch_to_raw(context, self._image_service,
                                  self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
-                                 mox.IgnoreArg())
+                                 mox.IgnoreArg(), run_as_root=True)
         self._mox.VerifyAll()
 
     @mock.patch('os.stat')

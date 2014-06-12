@@ -1466,6 +1466,23 @@
 # (string value)
 #nas_private_key=
 
+# Allow network-attached storage systems to operate in a
+# secure environment where root level access is not permitted.
+# If set to False, access is as the root user and insecure. If
+# set to True, access is not as root. If set to auto, a check
+# is done to determine if this is a new installation: True is
+# used if so, otherwise False. Default is auto. (string value)
+#nas_secure_file_operations=auto
+
+# Set more secure file permissions on network-attached storage
+# volume files to restrict broad other/world access. If set to
+# False, volumes are created with open permissions. If set to
+# True, volumes are created with permissions for the cinder
+# user and group (660). If set to auto, a check is done to
+# determine if this is a new installation: True is used if so,
+# otherwise False. Default is auto. (string value)
+#nas_secure_file_permissions=auto
+
 # IBMNAS platform type to be used as backend storage; valid
 # values are - v7ku : for using IBM Storwize V7000 Unified,
 # sonas : for using IBM Scale Out NAS, gpfs-nas : for using
@@ -1903,6 +1920,23 @@
 # Filename of private key to use for SSH authentication.
 # (string value)
 #nas_private_key=
+
+# Allow network-attached storage systems to operate in a
+# secure environment where root level access is not permitted.
+# If set to False, access is as the root user and insecure. If
+# set to True, access is not as root. If set to auto, a check
+# is done to determine if this is a new installation: True is
+# used if so, otherwise False. Default is auto. (string value)
+#nas_secure_file_operations=auto
+
+# Set more secure file permissions on network-attached storage
+# volume files to restrict broad other/world access. If set to
+# False, volumes are created with open permissions. If set to
+# True, volumes are created with permissions for the cinder
+# user and group (660). If set to auto, a check is done to
+# determine if this is a new installation: True is used if so,
+# otherwise False. Default is auto. (string value)
+#nas_secure_file_permissions=auto
 
 
 #

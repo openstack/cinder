@@ -13,6 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 """
 Volume manager manages creating, attaching, detaching, and persistent storage.
 
@@ -176,11 +177,17 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.warn(_("Driver path %s is deprecated, update your "
                        "configuration to the new path."), volume_driver)
             volume_driver = MAPPING[volume_driver]
+
+        vol_db_empty = self._set_voldb_empty_at_startup_indicator(
+            context.get_admin_context())
+        LOG.debug("Cinder Volume DB check: vol_db_empty=%s" % vol_db_empty)
+
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
             db=self.db,
-            host=self.host)
+            host=self.host,
+            is_vol_db_empty=vol_db_empty)
 
         self.driver = profiler.trace_cls("driver")(self.driver)
         try:
@@ -236,6 +243,24 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.stats['pools'][pool]['allocated_capacity_gb'] = pool_sum
         self.stats['allocated_capacity_gb'] += volume['size']
+
+    def _set_voldb_empty_at_startup_indicator(self, ctxt):
+        """Determine if the Cinder volume DB is empty.
+
+        A check of the volume DB is done to determine whether it is empty or
+        not at this point.
+
+        :param ctxt: our working context
+        """
+        vol_entries = self.db.volume_get_all(ctxt, None, 1, 'created_at',
+                                             None, filters=None)
+
+        if len(vol_entries) == 0:
+            LOG.info(_("Determined volume DB was empty at startup."))
+            return True
+        else:
+            LOG.info(_("Determined volume DB was not empty at startup."))
+            return False
 
     def init_host(self):
         """Do any initialization that needs to be run if this is a

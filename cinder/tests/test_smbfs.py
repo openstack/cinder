@@ -319,6 +319,7 @@ class SmbFsTestCase(test.TestCase):
             return_value=not extend_failed)
         drv._qemu_img_info = mock.Mock(
             return_value=mock.Mock(file_format=image_format))
+        drv._delete = mock.Mock()
 
         with contextlib.nested(
                 mock.patch.object(image_utils, 'resize_image'),
