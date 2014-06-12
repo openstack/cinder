@@ -34,7 +34,7 @@ from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume.drivers import nfs
 
 
-HDS_HNAS_NFS_VERSION = '1.0.0'
+HDS_HNAS_NFS_VERSION = '2.2.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ NFS_OPTS = [
 CONF = cfg.CONF
 CONF.register_opts(NFS_OPTS)
 
-HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc'}
+HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc', 'ssh_port': '22'}
 
 
 def _xml_read(root, element, check=None):
@@ -92,13 +92,27 @@ def _read_config(xml_config_file):
 
     # mandatory parameters
     config = {}
-    arg_prereqs = ['mgmt_ip0', 'username', 'password']
+    arg_prereqs = ['mgmt_ip0', 'username']
     for req in arg_prereqs:
         config[req] = _xml_read(root, req, 'check')
 
     # optional parameters
-    config['hnas_cmd'] = _xml_read(root, 'hnas_cmd') or\
-        HNAS_DEFAULT_CONFIG['hnas_cmd']
+    opt_parameters = ['hnas_cmd', 'ssh_enabled', 'cluster_admin_ip0']
+    for req in opt_parameters:
+        config[req] = _xml_read(root, req)
+
+    if config['ssh_enabled'] == 'True':
+        config['ssh_private_key'] = _xml_read(root, 'ssh_private_key', 'check')
+        config['password'] = _xml_read(root, 'password')
+        config['ssh_port'] = _xml_read(root, 'ssh_port')
+        if config['ssh_port'] is None:
+            config['ssh_port'] = HNAS_DEFAULT_CONFIG['ssh_port']
+    else:
+        # password is mandatory when not using SSH
+        config['password'] = _xml_read(root, 'password', 'check')
+
+    if config['hnas_cmd'] is None:
+        config['hnas_cmd'] = HNAS_DEFAULT_CONFIG['hnas_cmd']
 
     config['hdp'] = {}
     config['services'] = {}
@@ -122,15 +136,19 @@ def _read_config(xml_config_file):
     return config
 
 
-def factory_bend():
+def factory_bend(drv_config):
     """Factory over-ride in self-tests."""
 
-    return hnas_backend.HnasBackend()
+    return hnas_backend.HnasBackend(drv_config)
 
 
 class HDSNFSDriver(nfs.NfsDriver):
     """Base class for Hitachi NFS driver.
-      Executes commands relating to Volumes.
+    Executes commands relating to Volumes.
+
+    Version 1.0.0: Initial driver version
+    Version 2.2.0:  Added support to SSH authentication
+
     """
 
     def __init__(self, *args, **kwargs):
@@ -145,8 +163,7 @@ class HDSNFSDriver(nfs.NfsDriver):
                 self.configuration.hds_hnas_nfs_config_file)
 
         super(HDSNFSDriver, self).__init__(*args, **kwargs)
-        self.bend = factory_bend()
-        (self.arid, self.nfs_name, self.lumax) = self._array_info_get()
+        self.bend = factory_bend(self.config)
 
     def _array_info_get(self):
         """Get array parameters."""
