@@ -565,36 +565,17 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper, run_as_root=True,
                           check_exit_code=False)
 
+        # LV removal seems to be a race with other writers or udev in
+        # some cases (see LP #1270192), so we enable retry deactivation
+        LVM_CONFIG = 'activation { retry_deactivation = 1} '
+
         try:
-            need_force_remove = False
-            # LV removal seems to be a race with udev in
-            # some cases (see LP #1270192), so we do it in several steps:
-
-            # - Deactivate the LV/Snapshot, which triggers udev events
-            # - Wait for udev to finish its job with udevadmn settle
-            # - Remove the LV
-
-            try:
-                self._execute('lvchange', '-y', '-an',
-                              '%s/%s' % (self.vg_name, name),
-                              root_helper=self._root_helper, run_as_root=True)
-            except putils.ProcessExecutionError as err:
-                mesg = (_('Error during lvchange -an: CMD: %(command)s, '
-                        'RESPONSE: %(response)s') %
-                        {'command': err.cmd, 'response': err.stderr})
-                LOG.debug(mesg)
-                need_force_remove = True
-
-            run_udevadm_settle()
-
-            cmd = ['lvremove', ]
-
-            # if deactivation failed, use the --force, lvm!
-            if need_force_remove:
-                cmd.append('-f')
-            cmd.append('%s/%s' % (self.vg_name, name))
-            self._execute(*cmd,
-                          root_helper=self._root_helper, run_as_root=True)
+            self._execute(
+                'lvremove',
+                '--config', LVM_CONFIG,
+                '-f',
+                '%s/%s' % (self.vg_name, name),
+                root_helper=self._root_helper, run_as_root=True)
         except putils.ProcessExecutionError as err:
             mesg = (_('Error reported running lvremove: CMD: %(command)s, '
                     'RESPONSE: %(response)s') %
@@ -604,10 +585,18 @@ class LVM(executor.Executor):
             LOG.debug(_('Attempting udev settle and retry of lvremove...'))
             run_udevadm_settle()
 
-            self._execute('lvremove',
-                          '-f',
-                          '%s/%s' % (self.vg_name, name),
-                          root_helper=self._root_helper, run_as_root=True)
+            # The previous failing lvremove -f might leave behind
+            # suspended devices; when lvmetad is not available, any
+            # further lvm command will block forever.
+            # Therefore we need to skip suspended devices on retry.
+            LVM_CONFIG += 'devices { ignore_suspended_devices = 1}'
+
+            self._execute(
+                'lvremove',
+                '--config', LVM_CONFIG,
+                '-f',
+                '%s/%s' % (self.vg_name, name),
+                root_helper=self._root_helper, run_as_root=True)
 
     def revert(self, snapshot_name):
         """Revert an LV from snapshot.
