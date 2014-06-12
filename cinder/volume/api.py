@@ -39,6 +39,7 @@ from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows.api import create_volume
+from cinder.volume.flows import common as flow_common
 from cinder.volume import qos_specs
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
@@ -186,9 +187,12 @@ class API(base.Base):
             raise exception.CinderException(
                 _("Failed to create api volume flow"))
 
-        flow_engine.run()
-        volume = flow_engine.storage.fetch('volume')
-        return volume
+        # Attaching this listener will capture all of the notifications that
+        # taskflow sends out and redirect them to a more useful log for
+        # cinders debugging (or error reporting) usage.
+        with flow_common.DynamicLogListener(flow_engine, logger=LOG):
+            flow_engine.run()
+            return flow_engine.storage.fetch('volume')
 
     @wrap_check_policy
     def delete(self, context, volume, force=False, unmanage_only=False):
