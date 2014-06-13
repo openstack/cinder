@@ -19,6 +19,8 @@ import contextlib
 import mox
 import tempfile
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
@@ -26,6 +28,9 @@ from cinder.openstack.common import processutils
 from cinder import test
 from cinder import units
 from cinder import utils
+from cinder.volume import utils as volume_utils
+
+CONF = cfg.CONF
 
 
 class FakeImageService:
@@ -191,16 +196,20 @@ class TestUtils(test.TestCase):
 
         self.assertEqual(str(inf), TEST_STR)
 
-    def _test_fetch_to_raw(self, has_qemu=True, src_inf=None, dest_inf=None):
+    def _test_fetch_to_raw(self, has_qemu=True, src_inf=None, dest_inf=None,
+                           bps_limit=0):
         mox = self._mox
         mox.StubOutWithMock(image_utils, 'create_temporary_file')
         mox.StubOutWithMock(utils, 'execute')
         mox.StubOutWithMock(image_utils, 'fetch')
+        mox.StubOutWithMock(volume_utils, 'setup_blkio_cgroup')
 
         TEST_INFO = ("image: qemu.qcow2\n"
                      "file format: raw\n"
                      "virtual size: 0 (0 bytes)\n"
                      "disk size: 0")
+
+        CONF.set_override('volume_copy_bps_limit', bps_limit)
 
         image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
 
@@ -223,9 +232,19 @@ class TestUtils(test.TestCase):
                 )
 
         if has_qemu and dest_inf:
-            utils.execute(
-                'qemu-img', 'convert', '-O', 'raw',
-                self.TEST_DEV_PATH, self.TEST_DEV_PATH, run_as_root=True)
+            if bps_limit:
+                prefix = ('cgexec', '-g', 'blkio:test')
+                postfix = ('-t', 'none')
+            else:
+                prefix = postfix = ()
+            cmd = prefix + ('qemu-img', 'convert', '-O', 'raw',
+                            self.TEST_DEV_PATH, self.TEST_DEV_PATH) + postfix
+
+            volume_utils.setup_blkio_cgroup(
+                self.TEST_DEV_PATH, self.TEST_DEV_PATH,
+                bps_limit).AndReturn(prefix)
+
+            utils.execute(*cmd, run_as_root=True)
 
             utils.execute(
                 'env', 'LC_ALL=C', 'qemu-img', 'info',
@@ -248,6 +267,26 @@ class TestUtils(test.TestCase):
                     "disk_size: 196K (200704 bytes)\n")
 
         self._test_fetch_to_raw(src_inf=SRC_INFO, dest_inf=DST_INFO)
+
+        image_utils.fetch_to_raw(context, self._image_service,
+                                 self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
+                                 mox.IgnoreArg())
+        self._mox.VerifyAll()
+
+    def test_fetch_to_raw_with_bps_limit(self):
+        SRC_INFO = ("image: qemu.qcow2\n"
+                    "file_format: qcow2 \n"
+                    "virtual_size: 50M (52428800 bytes)\n"
+                    "cluster_size: 65536\n"
+                    "disk_size: 196K (200704 bytes)")
+        DST_INFO = ("image: qemu.raw\n"
+                    "file_format: raw\n"
+                    "virtual_size: 50M (52428800 bytes)\n"
+                    "cluster_size: 65536\n"
+                    "disk_size: 196K (200704 bytes)\n")
+
+        self._test_fetch_to_raw(src_inf=SRC_INFO, dest_inf=DST_INFO,
+                                bps_limit=1048576)
 
         image_utils.fetch_to_raw(context, self._image_service,
                                  self.TEST_IMAGE_ID, self.TEST_DEV_PATH,
@@ -385,19 +424,29 @@ class TestUtils(test.TestCase):
 
         self._test_fetch_verify_image(TEST_RETURN)
 
-    def test_upload_volume(self):
+    def test_upload_volume(self, bps_limit=0):
         image_meta = {'id': 1, 'disk_format': 'qcow2'}
         TEST_RET = "image: qemu.qcow2\n"\
                    "file_format: qcow2 \n"\
                    "virtual_size: 50M (52428800 bytes)\n"\
                    "cluster_size: 65536\n"\
                    "disk_size: 196K (200704 bytes)"
+        if bps_limit:
+            CONF.set_override('volume_copy_bps_limit', bps_limit)
+            prefix = ('cgexec', '-g', 'blkio:test')
+            postfix = ('-t', 'none')
+        else:
+            prefix = postfix = ()
+        cmd = prefix + ('qemu-img', 'convert', '-O', 'qcow2',
+                        mox.IgnoreArg(), mox.IgnoreArg()) + postfix
 
         m = self._mox
         m.StubOutWithMock(utils, 'execute')
+        m.StubOutWithMock(volume_utils, 'setup_blkio_cgroup')
 
-        utils.execute('qemu-img', 'convert', '-O', 'qcow2',
-                      mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
+        volume_utils.setup_blkio_cgroup(mox.IgnoreArg(), mox.IgnoreArg(),
+                                        bps_limit).AndReturn(prefix)
+        utils.execute(*cmd, run_as_root=True)
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
             mox.IgnoreArg(), run_as_root=True).AndReturn(
@@ -409,6 +458,9 @@ class TestUtils(test.TestCase):
         image_utils.upload_volume(context, FakeImageService(),
                                   image_meta, '/dev/loop1')
         m.VerifyAll()
+
+    def test_upload_volume_with_bps_limit(self):
+        self.test_upload_volume(bps_limit=1048576)
 
     def test_upload_volume_with_raw_image(self):
         image_meta = {'id': 1, 'disk_format': 'raw'}

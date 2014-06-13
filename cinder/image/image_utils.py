@@ -59,9 +59,13 @@ def qemu_img_info(path):
     return imageutils.QemuImgInfo(out)
 
 
-def convert_image(source, dest, out_format):
+def convert_image(source, dest, out_format, bps_limit=None):
     """Convert image to other format."""
     cmd = ('qemu-img', 'convert', '-O', out_format, source, dest)
+    cgcmd = volume_utils.setup_blkio_cgroup(source, dest, bps_limit)
+    if cgcmd:
+        cmd = tuple(cgcmd) + cmd
+        cmd += ('-t', 'none')  # required to enable ratelimit by blkio cgroup
     utils.execute(*cmd, run_as_root=True)
 
 
@@ -215,7 +219,8 @@ def fetch_to_volume_format(context, image_service,
         # malicious.
         LOG.debug("%s was %s, converting to %s " % (image_id, fmt,
                                                     volume_format))
-        convert_image(tmp, dest, volume_format)
+        convert_image(tmp, dest, volume_format,
+                      bps_limit=CONF.volume_copy_bps_limit)
 
         data = qemu_img_info(dest)
         if data.file_format != volume_format:
@@ -251,7 +256,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
     with fileutils.remove_path_on_error(tmp):
         LOG.debug("%s was %s, converting to %s" %
                   (image_id, volume_format, image_meta['disk_format']))
-        convert_image(volume_path, tmp, image_meta['disk_format'])
+        convert_image(volume_path, tmp, image_meta['disk_format'],
+                      bps_limit=CONF.volume_copy_bps_limit)
 
         data = qemu_img_info(tmp)
         if data.file_format != image_meta['disk_format']:
