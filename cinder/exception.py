@@ -22,6 +22,7 @@ SHOULD include dedicated exception logging.
 
 """
 
+import six
 import sys
 
 from oslo.config import cfg
@@ -77,6 +78,10 @@ class CinderException(Exception):
             except AttributeError:
                 pass
 
+        for k, v in self.kwargs.iteritems():
+            if isinstance(v, Exception):
+                self.kwargs[k] = six.text_type(v)
+
         if not message:
             try:
                 message = self.message % kwargs
@@ -92,6 +97,8 @@ class CinderException(Exception):
                     raise exc_info[0], exc_info[1], exc_info[2]
                 # at least get the core message out if something happened
                 message = self.message
+        elif isinstance(message, Exception):
+            message = six.text_type(message)
 
         # NOTE(luisg): We put the actual message in 'msg' so that we can access
         # it, because if we try to access the message via 'message' it will be
