@@ -1130,6 +1130,23 @@
 
 
 #
+# Options defined in cinder.volume.drivers.hds.iscsi
+#
+
+# configuration file for HDS iSCSI cinder plugin (string
+# value)
+#hds_hnas_iscsi_config_file=/opt/hds/hnas/cinder_iscsi_conf.xml
+
+
+#
+# Options defined in cinder.volume.drivers.hds.nfs
+#
+
+# configuration file for HDS NFS cinder plugin (string value)
+#hds_hnas_nfs_config_file=/opt/hds/hnas/cinder_nfs_conf.xml
+
+
+#
 # Options defined in cinder.volume.drivers.huawei
 #
 
