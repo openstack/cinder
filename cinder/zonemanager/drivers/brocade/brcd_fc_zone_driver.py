@@ -98,7 +98,9 @@ class BrcdFCZoneDriver(FCZoneDriver):
             if len(base_san_opts) > 0:
                 CONF.register_opts(base_san_opts)
                 self.configuration.append_config_values(base_san_opts)
-            fabric_names = self.configuration.fc_fabric_names.split(',')
+
+            fc_fabric_names = self.configuration.fc_fabric_names
+            fabric_names = [x.strip() for x in fc_fabric_names.split(',')]
 
             # There can be more than one SAN in the network and we need to
             # get credentials for each SAN.
@@ -373,7 +375,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
         # TODO(Santhosh Kolathur): consider refactoring to use lookup service.
         formatted_target_list = []
         fabric_map = {}
-        fabrics = self.configuration.fc_fabric_names.split(',')
+        fc_fabric_names = self.configuration.fc_fabric_names
+        fabrics = [x.strip() for x in fc_fabric_names.split(',')]
         LOG.debug(_("Fabric List: %s"), fabrics)
         LOG.debug(_("Target wwn List: %s"), target_wwn_list)
         if len(fabrics) > 0:
