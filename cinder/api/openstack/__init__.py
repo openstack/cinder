@@ -35,6 +35,15 @@ class APIMapper(routes.Mapper):
             return result[0], result[1]
         return routes.Mapper.routematch(self, url, environ)
 
+    def connect(self, *args, **kwargs):
+        # NOTE(inhye): Default the format part of a route to only accept json
+        #             and xml so it doesn't eat all characters after a '.'
+        #             in the url.
+        kwargs.setdefault('requirements', {})
+        if not kwargs['requirements'].get('format'):
+            kwargs['requirements']['format'] = 'json|xml'
+        return routes.Mapper.connect(self, *args, **kwargs)
+
 
 class ProjectMapper(APIMapper):
     def resource(self, member_name, collection_name, **kwargs):
