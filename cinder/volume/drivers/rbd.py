@@ -517,17 +517,13 @@ class RBDDriver(driver.VolumeDriver):
         if int(volume['size']):
             self._resize(volume)
 
-    def _delete_backup_snaps(self, client, volume_name):
-        rbd_image = self.rbd.Image(client.ioctx, volume_name)
-        try:
-            backup_snaps = self._get_backup_snaps(rbd_image)
-            if backup_snaps:
-                for snap in backup_snaps:
-                    rbd_image.remove_snap(snap['name'])
-            else:
-                LOG.debug(_("volume has no backup snaps"))
-        finally:
-            rbd_image.close()
+    def _delete_backup_snaps(self, rbd_image):
+        backup_snaps = self._get_backup_snaps(rbd_image)
+        if backup_snaps:
+            for snap in backup_snaps:
+                rbd_image.remove_snap(snap['name'])
+        else:
+            LOG.debug(_("volume has no backup snaps"))
 
     def _get_clone_info(self, volume, volume_name, snap=None):
         """If volume is a clone, return its parent info.
@@ -601,7 +597,7 @@ class RBDDriver(driver.VolumeDriver):
             parent = None
 
             # Ensure any backup snapshots are deleted
-            self._delete_backup_snaps(client, volume_name)
+            self._delete_backup_snaps(rbd_image)
 
             # If the volume has non-clone snapshots this delete is expected to
             # raise VolumeIsBusy so do so straight away.

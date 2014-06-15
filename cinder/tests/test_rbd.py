@@ -205,6 +205,17 @@ class RBDTestCase(test.TestCase):
             mock_supports_layering.assert_called_once()
 
     @common_mocks
+    def test_delete_backup_snaps(self):
+        self.driver.rbd.Image.remove_snap = mock.Mock()
+        with mock.patch.object(self.driver, '_get_backup_snaps') as \
+                mock_get_backup_snaps:
+            mock_get_backup_snaps.return_value = [{'name': 'snap1'}]
+            rbd_image = self.driver.rbd.Image()
+            self.driver._delete_backup_snaps(rbd_image)
+            mock_get_backup_snaps.assert_called_once_with(rbd_image)
+            self.assertTrue(self.driver.rbd.Image.remove_snap.called)
+
+    @common_mocks
     def test_delete_volume(self):
         client = self.mock_client.return_value
 
