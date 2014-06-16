@@ -1290,8 +1290,8 @@
 # value)
 #volume_group=cinder-volumes
 
-# If set, create lvms with multiple mirrors. Note that this
-# requires lvm_mirrors + 2 pvs with available space (integer
+# If >0, create LVs with multiple mirrors. Note that this
+# requires lvm_mirrors + 2 PVs with available space (integer
 # value)
 #lvm_mirrors=0
 
