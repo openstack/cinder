@@ -37,13 +37,24 @@ import webob.exc
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import network_utils
 from cinder import utils
 
 
 socket_opts = [
+    cfg.BoolOpt('tcp_keepalive',
+                default=True,
+                help="Sets the value of TCP_KEEPALIVE (True/False) for each "
+                     "server socket."),
     cfg.IntOpt('tcp_keepidle',
                default=600,
                help="Sets the value of TCP_KEEPIDLE in seconds for each "
+                    "server socket. Not supported on OS X."),
+    cfg.IntOpt('tcp_keepalive_interval',
+               help="Sets the value of TCP_KEEPINTVL in seconds for each "
+                    "server socket. Not supported on OS X."),
+    cfg.IntOpt('tcp_keepalive_count',
+               help="Sets the value of TCP_KEEPCNT for each "
                     "server socket. Not supported on OS X."),
     cfg.StrOpt('ssl_ca_file',
                default=None,
@@ -179,15 +190,15 @@ class Server(object):
                                "after trying for 30 seconds") %
                                {'host': host, 'port': port})
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # sockets can hang around forever without keepalive
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
-        # This option isn't available in the OS X version of eventlet
-        if hasattr(socket, 'TCP_KEEPIDLE'):
-            sock.setsockopt(socket.IPPROTO_TCP,
-                            socket.TCP_KEEPIDLE,
-                            CONF.tcp_keepidle)
-
+        # NOTE(praneshp): Call set_tcp_keepalive in oslo to set
+        # tcp keepalive parameters. Sockets can hang around forever
+        # without keepalive
+        network_utils.set_tcp_keepalive(sock,
+                                        CONF.tcp_keepalive,
+                                        CONF.tcp_keepidle,
+                                        CONF.tcp_keepalive_count,
+                                        CONF.tcp_keepalive_interval)
         return sock
 
     def _start(self):
