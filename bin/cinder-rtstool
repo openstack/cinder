@@ -17,7 +17,6 @@
 #    limitations under the License.
 
 import gettext
-import re
 import sys
 
 import rtslib
@@ -55,30 +54,6 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
     tpg_new.set_attribute('authentication', '1')
 
     lun_new = rtslib.LUN(tpg_new, storage_object=so_new)
-
-    initiator_name = None
-    name_file = '/etc/iscsi/initiatorname.iscsi'
-
-    try:
-        with open(name_file, 'r') as f:
-            for line in f:
-                m = re.match('InitiatorName=(.+)', line)
-                if m != None:
-                    initiator_name = m.group(1)
-                    break
-    except IOError:
-        raise RtstoolError(_('Could not open %s') % name_file)
-
-    if initiator_name == None:
-        raise RtstoolError(_('Could not read InitiatorName from %s') %
-                           name_file)
-
-    acl_new = rtslib.NodeACL(tpg_new, initiator_name, mode='create')
-
-    acl_new.chap_userid = userid
-    acl_new.chap_password = password
-
-    rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
 
     if initiator_iqns:
         initiator_iqns = initiator_iqns.strip(' ')
