@@ -408,7 +408,7 @@ class EntryCreateTask(flow_utils.CinderTask):
         self.db = db
         self.provides.update()
 
-    def execute(self, context, **kwargs):
+    def execute(self, context, optional_args, **kwargs):
         """Creates a database entry for the given inputs and returns details.
 
         Accesses the database and creates a new entry for the to be created
@@ -449,11 +449,12 @@ class EntryCreateTask(flow_utils.CinderTask):
             'volume': volume,
         }
 
-    def revert(self, context, result, **kwargs):
+    def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, misc.Failure):
             return
-        if context.quota_committed:
+
+        if optional_args['is_quota_committed']:
             # Committed quota doesn't rollback as the volume has already been
             # created at this point, and the quota has already been absorbed.
             return
@@ -488,7 +489,7 @@ class QuotaReserveTask(flow_utils.CinderTask):
     def __init__(self):
         super(QuotaReserveTask, self).__init__(addons=[ACTION])
 
-    def execute(self, context, size, volume_type_id):
+    def execute(self, context, size, volume_type_id, optional_args):
         try:
             reserve_opts = {'volumes': 1, 'gigabytes': size}
             QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
@@ -533,11 +534,12 @@ class QuotaReserveTask(flow_utils.CinderTask):
                 # If nothing was reraised, ensure we reraise the initial error
                 raise
 
-    def revert(self, context, result, **kwargs):
+    def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, misc.Failure):
             return
-        if context.quota_committed:
+
+        if optional_args['is_quota_committed']:
             # The reservations have already been committed and can not be
             # rolled back at this point.
             return
@@ -571,9 +573,11 @@ class QuotaCommitTask(flow_utils.CinderTask):
     def __init__(self):
         super(QuotaCommitTask, self).__init__(addons=[ACTION])
 
-    def execute(self, context, reservations, volume_properties):
+    def execute(self, context, reservations, volume_properties,
+                optional_args):
         QUOTAS.commit(context, reservations)
-        context.quota_committed = True
+        # updating is_quota_committed attribute of optional_args dictionary
+        optional_args['is_quota_committed'] = True
         return {'volume_properties': volume_properties}
 
     def revert(self, context, result, **kwargs):

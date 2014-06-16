@@ -174,6 +174,7 @@ class API(base.Base):
             'scheduler_hints': scheduler_hints,
             'key_manager': self.key_manager,
             'backup_source_volume': backup_source_volume,
+            'optional_args': {'is_quota_committed': False}
         }
 
         try:
