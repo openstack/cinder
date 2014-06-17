@@ -627,11 +627,11 @@ class TestNexentaNfsDriver(test.TestCase):
 
         self.mox.StubOutWithMock(self.drv, '_read_config_file')
         config_data = [
-            '%s %s' % (self.TEST_EXPORT1, self.TEST_NMS1),
-            '# %s %s' % (self.TEST_EXPORT2, self.TEST_NMS2),
+            '%s  %s' % (self.TEST_EXPORT1, self.TEST_NMS1),
+            '# %s   %s' % (self.TEST_EXPORT2, self.TEST_NMS2),
             '',
-            '%s %s %s' % (self.TEST_EXPORT2, self.TEST_NMS2,
-                          self.TEST_EXPORT2_OPTIONS)
+            '%s  %s %s' % (self.TEST_EXPORT2, self.TEST_NMS2,
+                           self.TEST_EXPORT2_OPTIONS)
         ]
 
         self.drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\

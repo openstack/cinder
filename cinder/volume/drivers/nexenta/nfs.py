@@ -23,6 +23,7 @@
 
 import hashlib
 import os
+import re
 
 from cinder import context
 from cinder import db
@@ -381,11 +382,16 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             if share.startswith('#'):
                 continue
 
-            share_info = share.split(' ', 2)
+            share_info = re.split(r'\s+', share, 2)
 
             share_address = share_info[0].strip().decode('unicode_escape')
             nms_url = share_info[1].strip()
             share_opts = share_info[2].strip() if len(share_info) > 2 else None
+
+            if not re.match(r'.+:/.+', share_address):
+                LOG.warn("Share %s ignored due to invalid format.  Must be of "
+                         "form address:/export." % share_address)
+                continue
 
             self.shares[share_address] = share_opts
             self.share2nms[share_address] = self._get_nms_for_url(nms_url)
