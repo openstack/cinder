@@ -16,6 +16,7 @@
 #    under the License.
 
 
+import math
 import mock
 import os
 import tempfile
@@ -144,6 +145,7 @@ class RBDTestCase(test.TestCase):
         self.cfg.rbd_secret_uuid = None
         self.cfg.rbd_user = None
         self.cfg.volume_dd_blocksize = '1M'
+        self.cfg.rbd_store_chunk_size = 4
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')
@@ -171,8 +173,10 @@ class RBDTestCase(test.TestCase):
 
             self.driver.create_volume(self.volume)
 
+            chunk_size = self.cfg.rbd_store_chunk_size * units.MiB
+            order = int(math.log(chunk_size, 2))
             args = [client.ioctx, str(self.volume_name),
-                    self.volume_size * units.GiB]
+                    self.volume_size * units.GiB, order]
             kwargs = {'old_format': False,
                       'features': self.mock_rbd.RBD_FEATURE_LAYERING}
             self.mock_rbd.RBD.create.assert_called_once_with(*args, **kwargs)
@@ -192,8 +196,10 @@ class RBDTestCase(test.TestCase):
 
             self.driver.create_volume(self.volume)
 
+            chunk_size = self.cfg.rbd_store_chunk_size * units.MiB
+            order = int(math.log(chunk_size, 2))
             args = [client.ioctx, str(self.volume_name),
-                    self.volume_size * units.GiB]
+                    self.volume_size * units.GiB, order]
             kwargs = {'old_format': True,
                       'features': 0}
             self.mock_rbd.RBD.create.assert_called_once_with(*args, **kwargs)

@@ -1578,6 +1578,10 @@
 # value)
 #rbd_max_clone_depth=5
 
+# Volumes will be chunked into objects of this size (in
+# megabytes). (integer value)
+#rbd_store_chunk_size=4
+
 
 #
 # Options defined in cinder.volume.drivers.san.hp.hp_3par_common
