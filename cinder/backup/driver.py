@@ -63,7 +63,7 @@ class BackupMetadataAPI(base.Base):
         save them in the provided container dictionary.
         """
         type_tag = self.TYPE_TAG_VOL_BASE_META
-        LOG.debug(_("Getting metadata type '%s'") % type_tag)
+        LOG.debug("Getting metadata type '%s'" % type_tag)
         meta = self.db.volume_get(self.context, volume_id)
         if meta:
             container[type_tag] = {}
@@ -75,9 +75,9 @@ class BackupMetadataAPI(base.Base):
                     continue
                 container[type_tag][key] = value
 
-            LOG.debug(_("Completed fetching metadata type '%s'") % type_tag)
+            LOG.debug("Completed fetching metadata type '%s'" % type_tag)
         else:
-            LOG.debug(_("No metadata type '%s' available") % type_tag)
+            LOG.debug("No metadata type '%s' available" % type_tag)
 
     def _save_vol_meta(self, container, volume_id):
         """Save volume metadata to container.
@@ -86,7 +86,7 @@ class BackupMetadataAPI(base.Base):
         volume_id and save them in the provided container dictionary.
         """
         type_tag = self.TYPE_TAG_VOL_META
-        LOG.debug(_("Getting metadata type '%s'") % type_tag)
+        LOG.debug("Getting metadata type '%s'" % type_tag)
         meta = self.db.volume_metadata_get(self.context, volume_id)
         if meta:
             container[type_tag] = {}
@@ -98,9 +98,9 @@ class BackupMetadataAPI(base.Base):
                     continue
                 container[type_tag][entry] = meta[entry]
 
-            LOG.debug(_("Completed fetching metadata type '%s'") % type_tag)
+            LOG.debug("Completed fetching metadata type '%s'" % type_tag)
         else:
-            LOG.debug(_("No metadata type '%s' available") % type_tag)
+            LOG.debug("No metadata type '%s' available" % type_tag)
 
     def _save_vol_glance_meta(self, container, volume_id):
         """Save volume Glance metadata to container.
@@ -109,7 +109,7 @@ class BackupMetadataAPI(base.Base):
         volume_id and save them in the provided container dictionary.
         """
         type_tag = self.TYPE_TAG_VOL_GLANCE_META
-        LOG.debug(_("Getting metadata type '%s'") % type_tag)
+        LOG.debug("Getting metadata type '%s'" % type_tag)
         try:
             meta = self.db.volume_glance_metadata_get(self.context, volume_id)
             if meta:
@@ -122,9 +122,9 @@ class BackupMetadataAPI(base.Base):
                         continue
                     container[type_tag][entry.key] = entry.value
 
-            LOG.debug(_("Completed fetching metadata type '%s'") % type_tag)
+            LOG.debug("Completed fetching metadata type '%s'" % type_tag)
         except exception.GlanceMetadataNotFound:
-            LOG.debug(_("No metadata type '%s' available") % type_tag)
+            LOG.debug("No metadata type '%s' available" % type_tag)
 
     @staticmethod
     def _filter(metadata, fields):
@@ -140,13 +140,13 @@ class BackupMetadataAPI(base.Base):
             if field in metadata:
                 subset[field] = metadata[field]
             else:
-                LOG.debug(_("Excluding field '%s'") % (field))
+                LOG.debug("Excluding field '%s'" % (field))
 
         return subset
 
     def _restore_vol_base_meta(self, metadata, volume_id, fields):
         """Restore values to Volume object for provided fields."""
-        LOG.debug(_("Restoring volume base metadata"))
+        LOG.debug("Restoring volume base metadata")
         # Only set the display_name if it was not None since the
         # restore action will have set a name which is more useful than
         # None.
@@ -159,7 +159,7 @@ class BackupMetadataAPI(base.Base):
 
     def _restore_vol_meta(self, metadata, volume_id, fields):
         """Restore values to VolumeMetadata object for provided fields."""
-        LOG.debug(_("Restoring volume metadata"))
+        LOG.debug("Restoring volume metadata")
         metadata = self._filter(metadata, fields)
         self.db.volume_metadata_update(self.context, volume_id, metadata, True)
 
@@ -168,7 +168,7 @@ class BackupMetadataAPI(base.Base):
 
         First delete any existing metadata then save new values.
         """
-        LOG.debug(_("Restoring volume glance metadata"))
+        LOG.debug("Restoring volume glance metadata")
         metadata = self._filter(metadata, fields)
         self.db.volume_glance_metadata_delete_by_volume(self.context,
                                                         volume_id)
@@ -235,7 +235,7 @@ class BackupMetadataAPI(base.Base):
             if type in meta_container:
                 func(meta_container[type], volume_id, fields)
             else:
-                msg = _("No metadata of type '%s' to restore") % (type)
+                msg = "No metadata of type '%s' to restore" % (type)
                 LOG.debug(msg)
 
 

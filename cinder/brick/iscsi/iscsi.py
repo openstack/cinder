@@ -178,8 +178,8 @@ class TgtAdm(TargetAdmin):
         f = open(volume_path, 'w+')
         f.write(volume_conf)
         f.close()
-        LOG.debug(_('Created volume path %(vp)s,\n'
-                    'content: %(vc)s')
+        LOG.debug('Created volume path %(vp)s,\n'
+                  'content: %(vc)s'
                   % {'vp': volume_path, 'vc': volume_conf})
 
         old_persist_file = None

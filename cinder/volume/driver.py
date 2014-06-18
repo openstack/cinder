@@ -275,7 +275,7 @@ class VolumeDriver(object):
 
     def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""
-        LOG.debug(_('copy_data_between_volumes %(src)s -> %(dest)s.')
+        LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.'
                   % {'src': src_vol['name'], 'dest': dest_vol['name']})
 
         properties = utils.brick_get_connector_properties()
@@ -332,7 +332,7 @@ class VolumeDriver(object):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        LOG.debug(_('copy_image_to_volume %s.') % volume['name'])
+        LOG.debug('copy_image_to_volume %s.' % volume['name'])
 
         properties = utils.brick_get_connector_properties()
         attach_info = self._attach_volume(context, volume, properties)
@@ -349,7 +349,7 @@ class VolumeDriver(object):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        LOG.debug(_('copy_volume_to_image %s.') % volume['name'])
+        LOG.debug('copy_volume_to_image %s.' % volume['name'])
 
         properties = utils.brick_get_connector_properties()
         attach_info = self._attach_volume(context, volume, properties)
@@ -375,7 +375,7 @@ class VolumeDriver(object):
             # clean this up in the future.
             model_update = None
             try:
-                LOG.debug(_("Volume %s: creating export"), volume['id'])
+                LOG.debug("Volume %s: creating export", volume['id'])
                 model_update = self.create_export(context, volume)
                 if model_update:
                     volume = self.db.volume_update(context, volume['id'],
@@ -453,7 +453,7 @@ class VolumeDriver(object):
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
             try:
-                LOG.debug(_("volume %s: removing export"), volume['id'])
+                LOG.debug("volume %s: removing export", volume['id'])
                 self.remove_export(context, volume)
             except Exception as ex:
                 LOG.exception(_("Error detaching volume %(volume)s, "
@@ -487,7 +487,7 @@ class VolumeDriver(object):
         """Create a new backup from an existing volume."""
         volume = self.db.volume_get(context, backup['volume_id'])
 
-        LOG.debug(_('Creating a new backup for volume %s.') %
+        LOG.debug('Creating a new backup for volume %s.' %
                   volume['name'])
 
         properties = utils.brick_get_connector_properties()
@@ -504,8 +504,8 @@ class VolumeDriver(object):
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        LOG.debug(_('Restoring backup %(backup)s to '
-                    'volume %(volume)s.') %
+        LOG.debug('Restoring backup %(backup)s to '
+                  'volume %(volume)s.' %
                   {'backup': backup['id'],
                    'volume': volume['name']})
 
@@ -651,7 +651,7 @@ class ISCSIDriver(VolumeDriver):
         except processutils.ProcessExecutionError as ex:
             LOG.error(_("ISCSI discovery attempt failed for:%s") %
                       volume['host'].split('@')[0])
-            LOG.debug(_("Error from iscsiadm -m discovery: %s") % ex.stderr)
+            LOG.debug("Error from iscsiadm -m discovery: %s" % ex.stderr)
             return None
 
         for target in out.splitlines():
@@ -702,7 +702,7 @@ class ISCSIDriver(VolumeDriver):
                         (volume['name']))
                 raise exception.InvalidVolume(reason=msg)
 
-            LOG.debug(_("ISCSI Discovery: Found %s") % (location))
+            LOG.debug("ISCSI Discovery: Found %s" % (location))
             properties['target_discovered'] = True
 
         results = location.split(" ")
@@ -820,7 +820,7 @@ class ISCSIDriver(VolumeDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSCSI'
@@ -880,7 +880,7 @@ class FakeISCSIDriver(ISCSIDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug(_("FAKE ISCSI: %s"), cmd)
+        LOG.debug("FAKE ISCSI: %s", cmd)
         return (None, None)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -978,7 +978,7 @@ class ISERDriver(ISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSER'
@@ -1017,7 +1017,7 @@ class FakeISERDriver(FakeISCSIDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug(_("FAKE ISER: %s"), cmd)
+        LOG.debug("FAKE ISER: %s", cmd)
         return (None, None)
 
 

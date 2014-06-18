@@ -54,7 +54,7 @@ class FakeISCSIDriver(lvm.LVMISCSIDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug(_("FAKE ISCSI: %s"), cmd)
+        LOG.debug("FAKE ISCSI: %s", cmd)
         return (None, None)
 
 
@@ -73,7 +73,7 @@ class FakeISERDriver(FakeISCSIDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug(_("FAKE ISER: %s"), cmd)
+        LOG.debug("FAKE ISER: %s", cmd)
         return (None, None)
 
 
@@ -121,12 +121,12 @@ class LoggingVolumeDriver(driver.VolumeDriver):
     @staticmethod
     def log_action(action, parameters):
         """Logs the command."""
-        LOG.debug(_("LoggingVolumeDriver: %s") % (action))
+        LOG.debug("LoggingVolumeDriver: %s" % (action))
         log_dictionary = {}
         if parameters:
             log_dictionary = dict(parameters)
         log_dictionary['action'] = action
-        LOG.debug(_("LoggingVolumeDriver: %s") % (log_dictionary))
+        LOG.debug("LoggingVolumeDriver: %s" % (log_dictionary))
         LoggingVolumeDriver._LOGS.append(log_dictionary)
 
     @staticmethod

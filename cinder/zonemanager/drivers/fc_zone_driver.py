@@ -41,7 +41,7 @@ class FCZoneDriver(fc_common.FCCommon):
 
     def __init__(self, **kwargs):
         super(FCZoneDriver, self).__init__(**kwargs)
-        LOG.debug(_("Initializing FCZoneDriver"))
+        LOG.debug("Initializing FCZoneDriver")
 
     def add_connection(self, fabric, initiator_target_map):
         """Add connection control.

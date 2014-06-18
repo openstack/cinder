@@ -295,7 +295,7 @@ class API(base.Base):
             filters['no_migration_targets'] = True
 
         if filters:
-            LOG.debug(_("Searching by: %s") % str(filters))
+            LOG.debug("Searching by: %s" % str(filters))
 
         if (context.is_admin and 'all_tenants' in filters):
             # Need to remove all_tenants to pass the filtering below.
@@ -337,7 +337,7 @@ class API(base.Base):
                 context, context.project_id)
 
         if search_opts:
-            LOG.debug(_("Searching by: %s") % search_opts)
+            LOG.debug("Searching by: %s" % search_opts)
 
             results = []
             not_found = object()

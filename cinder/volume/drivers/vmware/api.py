@@ -234,8 +234,8 @@ class VMwareAPISession(object):
                     # case of an inactive session. Therefore, we need a way to
                     # differentiate between these two cases.
                     if self._is_current_session_active():
-                        LOG.debug(_("Returning empty response for "
-                                    "%(module)s.%(method)s invocation."),
+                        LOG.debug("Returning empty response for "
+                                  "%(module)s.%(method)s invocation.",
                                   {'module': module,
                                    'method': method})
                         return []
@@ -257,7 +257,7 @@ class VMwareAPISession(object):
 
         :returns: True if the session is active; False otherwise
         """
-        LOG.debug(_("Checking if the current session: %s is active."),
+        LOG.debug("Checking if the current session: %s is active.",
                   self._session_id)
 
         is_active = False
@@ -302,11 +302,11 @@ class VMwareAPISession(object):
                 # If task already completed on server, it will not return
                 # the progress.
                 if hasattr(task_info, 'progress'):
-                    LOG.debug(_("Task: %(task)s progress: %(prog)s.") %
+                    LOG.debug("Task: %(task)s progress: %(prog)s." %
                               {'task': task, 'prog': task_info.progress})
                 return
             elif task_info.state == 'success':
-                LOG.debug(_("Task %s status: success.") % task)
+                LOG.debug("Task %s status: success." % task)
             else:
                 error_msg = str(task_info.error.localizedMessage)
                 LOG.exception(_("Task: %(task)s failed with error: %(err)s.") %
@@ -329,9 +329,9 @@ class VMwareAPISession(object):
                                     self.vim, lease, 'state')
             if state == 'ready':
                 # done
-                LOG.debug(_("Lease is ready."))
+                LOG.debug("Lease is ready.")
             elif state == 'initializing':
-                LOG.debug(_("Lease initializing..."))
+                LOG.debug("Lease initializing...")
                 return
             elif state == 'error':
                 error_msg = self.invoke_api(vim_util, 'get_object_property',

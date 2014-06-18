@@ -182,7 +182,7 @@ class FakeBrcdFCZoneClientCLI(object):
             raise paramiko.SSHException("Unable to connect to fabric")
 
     def get_active_zone_set(self):
-        LOG.debug(_("Inside get_active_zone_set %s"), GlobalVars._active_cfg)
+        LOG.debug("Inside get_active_zone_set %s", GlobalVars._active_cfg)
         return GlobalVars._active_cfg
 
     def add_zones(self, zones, isActivate):

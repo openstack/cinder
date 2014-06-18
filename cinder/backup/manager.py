@@ -102,7 +102,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 msg = _("NULL host not allowed for volume backend lookup.")
                 raise exception.BackupFailedToGetVolumeBackend(msg)
         else:
-            LOG.debug(_("Checking hostname '%s' for backend info.") % (host))
+            LOG.debug("Checking hostname '%s' for backend info." % (host))
             part = host.partition('@')
             if (part[1] == '@') and (part[2] != ''):
                 backend = part[2]
@@ -119,10 +119,10 @@ class BackupManager(manager.SchedulerDependentManager):
         return 'default'
 
     def _get_manager(self, backend):
-        LOG.debug(_("Manager requested for volume_backend '%s'.") %
+        LOG.debug("Manager requested for volume_backend '%s'." %
                   (backend))
         if backend is None:
-            LOG.debug(_("Fetching default backend."))
+            LOG.debug("Fetching default backend.")
             backend = self._get_volume_backend(allow_null_host=True)
         if backend not in self.volume_managers:
             msg = (_("Volume manager for backend '%s' does not exist.") %
@@ -131,10 +131,10 @@ class BackupManager(manager.SchedulerDependentManager):
         return self.volume_managers[backend]
 
     def _get_driver(self, backend=None):
-        LOG.debug(_("Driver requested for volume_backend '%s'.") %
+        LOG.debug("Driver requested for volume_backend '%s'." %
                   (backend))
         if backend is None:
-            LOG.debug(_("Fetching default backend."))
+            LOG.debug("Fetching default backend.")
             backend = self._get_volume_backend(allow_null_host=True)
         mgr = self._get_manager(backend)
         mgr.driver.db = self.db
@@ -149,14 +149,14 @@ class BackupManager(manager.SchedulerDependentManager):
                                                 service_name=backend)
                 config = mgr.configuration
                 backend_name = config.safe_get('volume_backend_name')
-                LOG.debug(_("Registering backend %(backend)s (host=%(host)s "
-                            "backend_name=%(backend_name)s).") %
+                LOG.debug("Registering backend %(backend)s (host=%(host)s "
+                          "backend_name=%(backend_name)s)." %
                           {'backend': backend, 'host': host,
                            'backend_name': backend_name})
                 self.volume_managers[backend] = mgr
         else:
             default = importutils.import_object(CONF.volume_manager)
-            LOG.debug(_("Registering default backend %s.") % (default))
+            LOG.debug("Registering default backend %s." % (default))
             self.volume_managers['default'] = default
 
     def _init_volume_driver(self, ctxt, driver):

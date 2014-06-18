@@ -161,7 +161,7 @@ class LinuxSCSI(executor.Executor):
                              % {'line': line})
                     return None
 
-                LOG.debug(_("Found multipath device = %(mdev)s")
+                LOG.debug("Found multipath device = %(mdev)s"
                           % {'mdev': mdev})
                 device_lines = lines[3:]
                 for dev_line in device_lines:

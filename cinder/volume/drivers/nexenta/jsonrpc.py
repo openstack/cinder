@@ -80,7 +80,7 @@ class NexentaJSONProxy(object):
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
         }
-        LOG.debug(_('Sending JSON data: %s'), data)
+        LOG.debug('Sending JSON data: %s', data)
         request = urllib2.Request(self.url, data, headers)
         response_obj = urllib2.urlopen(request)
         if response_obj.info().status == 'EOF in headers':
@@ -93,7 +93,7 @@ class NexentaJSONProxy(object):
             response_obj = urllib2.urlopen(request)
 
         response_data = response_obj.read()
-        LOG.debug(_('Got response: %s'), response_data)
+        LOG.debug('Got response: %s', response_data)
         response = jsonutils.loads(response_data)
         if response.get('error') is not None:
             raise NexentaJSONException(response['error'].get('message', ''))

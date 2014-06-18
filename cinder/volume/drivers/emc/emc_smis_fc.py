@@ -163,7 +163,7 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
                          'target_wwn': target_wwns,
                          'initiator_target_map': init_targ_map}}
 
-        LOG.debug(_('Return FC data: %(data)s.')
+        LOG.debug('Return FC data: %(data)s.'
                   % {'data': data})
 
         return data
@@ -181,7 +181,7 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
                 'data': {'target_wwn': target_wwns,
                          'initiator_target_map': init_targ_map}}
 
-        LOG.debug(_('Return FC data: %(data)s.')
+        LOG.debug('Return FC data: %(data)s.'
                   % {'data': data})
 
         return data
@@ -215,7 +215,7 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
 
     def update_volume_stats(self):
         """Retrieve stats info from volume group."""
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or 'EMCSMISFCDriver'

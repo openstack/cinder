@@ -105,7 +105,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         cliq_args['output'] = 'XML'
         (out, _err) = self._cliq_run(verb, cliq_args, check_cliq_result)
 
-        LOG.debug(_("CLIQ command returned %s"), out)
+        LOG.debug("CLIQ command returned %s", out)
 
         result_xml = etree.fromstring(out.encode('utf8'))
         if check_cliq_result:
@@ -202,7 +202,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
             for k, v in status_node.attrib.items():
                 volume_attributes["permission." + k] = v
 
-        LOG.debug(_("Volume info: %(volume_name)s => %(volume_attributes)s") %
+        LOG.debug("Volume info: %(volume_name)s => %(volume_attributes)s" %
                   {'volume_name': volume_name,
                    'volume_attributes': volume_attributes})
         return volume_attributes
@@ -258,7 +258,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
             for k, v in status_node.attrib.items():
                 snapshot_attributes["permission." + k] = v
 
-        LOG.debug(_("Snapshot info: %(name)s => %(attributes)s") %
+        LOG.debug("Snapshot info: %(name)s => %(attributes)s" %
                   {'name': snapshot_name, 'attributes': snapshot_attributes})
         return snapshot_attributes
 

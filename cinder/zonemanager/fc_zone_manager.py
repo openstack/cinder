@@ -80,7 +80,7 @@ class ZoneManager(fc_common.FCCommon):
             self.configuration.append_config_values(zone_manager_opts)
 
         zone_driver = self.configuration.zone_driver
-        LOG.debug(_("Zone Driver from config: {%s}"), zone_driver)
+        LOG.debug("Zone Driver from config: {%s}", zone_driver)
 
         zm_config = config.Configuration(zone_manager_opts, 'fc-zone-manager')
         # Initialize vendor specific implementation of  FCZoneDriver
@@ -114,11 +114,11 @@ class ZoneManager(fc_common.FCCommon):
         try:
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.debug(_("Target List :%s"), {initiator: target_list})
+                LOG.debug("Target List :%s", {initiator: target_list})
 
                 # get SAN context for the target list
                 fabric_map = self.get_san_context(target_list)
-                LOG.debug(_("Fabric Map after context lookup:%s"), fabric_map)
+                LOG.debug("Fabric Map after context lookup:%s", fabric_map)
                 # iterate over each SAN and apply connection control
                 for fabric in fabric_map.keys():
                     connected_fabric = fabric
@@ -162,8 +162,8 @@ class ZoneManager(fc_common.FCCommon):
 
                 # get SAN context for the target list
                 fabric_map = self.get_san_context(target_list)
-                LOG.debug(_("Delete connection Fabric Map from SAN "
-                            "context: %s"), fabric_map)
+                LOG.debug("Delete connection Fabric Map from SAN "
+                          "context: %s", fabric_map)
 
                 # iterate over each SAN and apply connection control
                 for fabric in fabric_map.keys():
@@ -180,8 +180,8 @@ class ZoneManager(fc_common.FCCommon):
                     if len(valid_i_t_map) > 0:
                         self.driver.delete_connection(fabric, valid_i_t_map)
 
-            LOG.debug(_("Delete Connection - Finished iterating over all"
-                        " target list"))
+            LOG.debug("Delete Connection - Finished iterating over all"
+                      " target list")
         except Exception as e:
             msg = _("Failed removing connection for fabric=%(fabric)s: "
                     "Error:%(err)s") % {'fabric': connected_fabric,
@@ -196,7 +196,7 @@ class ZoneManager(fc_common.FCCommon):
         to list of target WWNs visible to the fabric.
         """
         fabric_map = self.driver.get_san_context(target_wwn_list)
-        LOG.debug(_("Got SAN context:%s"), fabric_map)
+        LOG.debug("Got SAN context:%s", fabric_map)
         return fabric_map
 
     def get_valid_initiator_target_map(self, initiator_target_map,

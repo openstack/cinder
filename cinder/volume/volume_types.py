@@ -64,7 +64,7 @@ def get_all_types(context, inactive=0, search_opts={}):
     vol_types = db.volume_type_get_all(context, inactive)
 
     if search_opts:
-        LOG.debug(_("Searching by: %s") % search_opts)
+        LOG.debug("Searching by: %s" % search_opts)
 
         def _check_extra_specs_match(vol_type, searchdict):
             for k, v in searchdict.iteritems():

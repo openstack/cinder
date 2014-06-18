@@ -50,7 +50,7 @@ def restore_source_status(context, db, volume_spec):
     source_volid = volume_spec['source_volid']
     source_status = volume_spec['source_volstatus']
     try:
-        LOG.debug(_('Restoring source %(source_volid)s status to %(status)s') %
+        LOG.debug('Restoring source %(source_volid)s status to %(status)s' %
                   {'status': source_status, 'source_volid': source_volid})
         db.volume_update(context, source_volid, {'status': source_status})
     except exception.CinderException:
@@ -81,10 +81,10 @@ def error_out_volume(context, db, volume_id, reason=None):
     # if reason:
     #     status['details'] = reason
     try:
-        LOG.debug(_('Updating volume: %(volume_id)s with %(update)s'
-                    ' due to: %(reason)s') % {'volume_id': volume_id,
-                                              'reason': reason,
-                                              'update': update})
+        LOG.debug('Updating volume: %(volume_id)s with %(update)s'
+                  ' due to: %(reason)s' % {'volume_id': volume_id,
+                                           'reason': reason,
+                                           'update': update})
         db.volume_update(context, volume_id, update)
     except exception.CinderException:
         # Don't let this cause further exceptions.

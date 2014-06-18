@@ -139,7 +139,7 @@ class SolidFireDriver(SanISCSIDriver):
                                                cluster_password))[:-1]
                 header['Authorization'] = 'Basic %s' % auth_key
 
-            LOG.debug(_("Payload for SolidFire API call: %s"), payload)
+            LOG.debug("Payload for SolidFire API call: %s", payload)
 
             api_endpoint = '/json-rpc/%s' % version
             connection = httplib.HTTPSConnection(host, port)
@@ -178,7 +178,7 @@ class SolidFireDriver(SanISCSIDriver):
 
                 connection.close()
 
-            LOG.debug(_("Results of SolidFire API call: %s"), data)
+            LOG.debug("Results of SolidFire API call: %s", data)
 
             if 'error' in data:
                 if data['error']['name'] in max_simultaneous_clones:
@@ -217,7 +217,7 @@ class SolidFireDriver(SanISCSIDriver):
         params = {'username': sf_account_name}
         data = self._issue_api_request('GetAccountByName', params)
         if 'result' in data and 'account' in data['result']:
-            LOG.debug(_('Found solidfire account: %s'), sf_account_name)
+            LOG.debug('Found solidfire account: %s', sf_account_name)
             sfaccount = data['result']['account']
         return sfaccount
 
@@ -248,7 +248,7 @@ class SolidFireDriver(SanISCSIDriver):
         sf_account_name = self._get_sf_account_name(project_id)
         sfaccount = self._get_sfaccount_by_name(sf_account_name)
         if sfaccount is None:
-            LOG.debug(_('solidfire account: %s does not exist, create it...'),
+            LOG.debug('solidfire account: %s does not exist, create it...',
                       sf_account_name)
             chap_secret = self._generate_random_string(12)
             params = {'username': sf_account_name,
@@ -464,8 +464,8 @@ class SolidFireDriver(SanISCSIDriver):
             if uuid in v['name']:
                 found_count += 1
                 sf_volref = v
-                LOG.debug(_("Mapped SolidFire volumeID %(sfid)s "
-                            "to cinder ID %(uuid)s.") %
+                LOG.debug("Mapped SolidFire volumeID %(sfid)s "
+                          "to cinder ID %(uuid)s." %
                           {'sfid': v['volumeID'],
                            'uuid': uuid})
 
@@ -545,7 +545,7 @@ class SolidFireDriver(SanISCSIDriver):
 
         """
 
-        LOG.debug(_("Enter SolidFire delete_volume..."))
+        LOG.debug("Enter SolidFire delete_volume...")
 
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
@@ -570,11 +570,11 @@ class SolidFireDriver(SanISCSIDriver):
             LOG.error(_("Volume ID %s was not found on "
                         "the SolidFire Cluster!"), volume['id'])
 
-        LOG.debug(_("Leaving SolidFire delete_volume"))
+        LOG.debug("Leaving SolidFire delete_volume")
 
     def ensure_export(self, context, volume):
         """Verify the iscsi export info."""
-        LOG.debug(_("Executing SolidFire ensure_export..."))
+        LOG.debug("Executing SolidFire ensure_export...")
         try:
             return self._do_export(volume)
         except exception.SolidFireAPIException:
@@ -582,7 +582,7 @@ class SolidFireDriver(SanISCSIDriver):
 
     def create_export(self, context, volume):
         """Setup the iscsi export info."""
-        LOG.debug(_("Executing SolidFire create_export..."))
+        LOG.debug("Executing SolidFire create_export...")
         return self._do_export(volume)
 
     def delete_snapshot(self, snapshot):
@@ -633,7 +633,7 @@ class SolidFireDriver(SanISCSIDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
-        LOG.debug(_("Entering SolidFire extend_volume..."))
+        LOG.debug("Entering SolidFire extend_volume...")
 
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
@@ -655,12 +655,12 @@ class SolidFireDriver(SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-        LOG.debug(_("Leaving SolidFire extend_volume"))
+        LOG.debug("Leaving SolidFire extend_volume")
 
     def _update_cluster_status(self):
         """Retrieve status info for the Cluster."""
 
-        LOG.debug(_("Updating cluster status info"))
+        LOG.debug("Updating cluster status info")
 
         params = {}
 
@@ -699,7 +699,7 @@ class SolidFireDriver(SanISCSIDriver):
                       instance_uuid, host_name,
                       mountpoint):
 
-        LOG.debug(_("Entering SolidFire attach_volume..."))
+        LOG.debug("Entering SolidFire attach_volume...")
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
 
@@ -724,7 +724,7 @@ class SolidFireDriver(SanISCSIDriver):
 
     def detach_volume(self, context, volume):
 
-        LOG.debug(_("Entering SolidFire attach_volume..."))
+        LOG.debug("Entering SolidFire attach_volume...")
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
 
@@ -769,7 +769,7 @@ class SolidFireDriver(SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-        LOG.debug(_("Leaving SolidFire transfer volume"))
+        LOG.debug("Leaving SolidFire transfer volume")
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.

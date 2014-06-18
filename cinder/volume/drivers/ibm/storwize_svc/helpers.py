@@ -176,7 +176,7 @@ class StorwizeHelpers(object):
 
     def get_host_from_connector(self, connector):
         """Return the Storwize host described by the connector."""
-        LOG.debug(_('enter: get_host_from_connector: %s') % connector)
+        LOG.debug('enter: get_host_from_connector: %s' % connector)
 
         # If we have FC information, we have a faster lookup option
         host_name = None
@@ -209,7 +209,7 @@ class StorwizeHelpers(object):
                           [str(x).lower() for x in connector['wwpns']]):
                         host_name = name
 
-        LOG.debug(_('leave: get_host_from_connector: host %s') % host_name)
+        LOG.debug('leave: get_host_from_connector: host %s' % host_name)
         return host_name
 
     def create_host(self, connector):
@@ -220,7 +220,7 @@ class StorwizeHelpers(object):
         host name (at most 55 characters), plus a random 8-character suffix to
         avoid collisions. The total length should be at most 63 characters.
         """
-        LOG.debug(_('enter: create_host: host %s') % connector['host'])
+        LOG.debug('enter: create_host: host %s' % connector['host'])
 
         # Before we start, make sure host name is a string and that we have at
         # least one port.
@@ -267,7 +267,7 @@ class StorwizeHelpers(object):
         for port in ports:
             self.ssh.addhostport(host_name, port[0], port[1])
 
-        LOG.debug(_('leave: create_host: host %(host)s - %(host_name)s') %
+        LOG.debug('leave: create_host: host %(host)s - %(host_name)s' %
                   {'host': connector['host'], 'host_name': host_name})
         return host_name
 
@@ -277,8 +277,8 @@ class StorwizeHelpers(object):
     def map_vol_to_host(self, volume_name, host_name, multihostmap):
         """Create a mapping between a volume to a host."""
 
-        LOG.debug(_('enter: map_vol_to_host: volume %(volume_name)s to '
-                    'host %(host_name)s')
+        LOG.debug('enter: map_vol_to_host: volume %(volume_name)s to '
+                  'host %(host_name)s'
                   % {'volume_name': volume_name, 'host_name': host_name})
 
         # Check if this volume is already mapped to this host
@@ -303,8 +303,8 @@ class StorwizeHelpers(object):
             self.ssh.mkvdiskhostmap(host_name, volume_name, result_lun,
                                     multihostmap)
 
-        LOG.debug(_('leave: map_vol_to_host: LUN %(result_lun)s, volume '
-                    '%(volume_name)s, host %(host_name)s') %
+        LOG.debug('leave: map_vol_to_host: LUN %(result_lun)s, volume '
+                  '%(volume_name)s, host %(host_name)s' %
                   {'result_lun': result_lun,
                    'volume_name': volume_name,
                    'host_name': host_name})
@@ -313,8 +313,8 @@ class StorwizeHelpers(object):
     def unmap_vol_from_host(self, volume_name, host_name):
         """Unmap the volume and delete the host if it has no more mappings."""
 
-        LOG.debug(_('enter: unmap_vol_from_host: volume %(volume_name)s from '
-                    'host %(host_name)s')
+        LOG.debug('enter: unmap_vol_from_host: volume %(volume_name)s from '
+                  'host %(host_name)s'
                   % {'volume_name': volume_name, 'host_name': host_name})
 
         # Check if the mapping exists
@@ -350,8 +350,8 @@ class StorwizeHelpers(object):
         if not len(resp):
             self.delete_host(host_name)
 
-        LOG.debug(_('leave: unmap_vol_from_host: volume %(volume_name)s from '
-                    'host %(host_name)s')
+        LOG.debug('leave: unmap_vol_from_host: volume %(volume_name)s from '
+                  'host %(host_name)s'
                   % {'volume_name': volume_name, 'host_name': host_name})
 
     @staticmethod
@@ -498,10 +498,10 @@ class StorwizeHelpers(object):
         return params
 
     def create_vdisk(self, name, size, units, pool, opts):
-        LOG.debug(_('enter: create_vdisk: vdisk %s ') % name)
+        LOG.debug('enter: create_vdisk: vdisk %s ' % name)
         params = self._get_vdisk_create_params(opts)
         self.ssh.mkvdisk(name, size, units, pool, opts, params)
-        LOG.debug(_('leave: _create_vdisk: volume %s ') % name)
+        LOG.debug('leave: _create_vdisk: volume %s ' % name)
 
     def get_vdisk_attributes(self, vdisk):
         attrs = self.ssh.lsvdisk(vdisk)
@@ -547,16 +547,16 @@ class StorwizeHelpers(object):
 
     def run_flashcopy(self, source, target, timeout, full_copy=True):
         """Create a FlashCopy mapping from the source to the target."""
-        LOG.debug(_('enter: run_flashcopy: execute FlashCopy from source '
-                    '%(source)s to target %(target)s') %
+        LOG.debug('enter: run_flashcopy: execute FlashCopy from source '
+                  '%(source)s to target %(target)s' %
                   {'source': source, 'target': target})
 
         fc_map_id = self.ssh.mkfcmap(source, target, full_copy)
         self._prepare_fc_map(fc_map_id, timeout)
         self.ssh.startfcmap(fc_map_id)
 
-        LOG.debug(_('leave: run_flashcopy: FlashCopy started from '
-                    '%(source)s to %(target)s') %
+        LOG.debug('leave: run_flashcopy: FlashCopy started from '
+                  '%(source)s to %(target)s' %
                   {'source': source, 'target': target})
 
     def _get_vdisk_fc_mappings(self, vdisk):
@@ -575,7 +575,7 @@ class StorwizeHelpers(object):
 
     def _check_vdisk_fc_mappings(self, name, allow_snaps=True):
         """FlashCopy mapping check helper."""
-        LOG.debug(_('Loopcall: _check_vdisk_fc_mappings(), vdisk %s') % name)
+        LOG.debug('Loopcall: _check_vdisk_fc_mappings(), vdisk %s' % name)
         mapping_ids = self._get_vdisk_fc_mappings(name)
         wait_for_copy = False
         for map_id in mapping_ids:
@@ -634,7 +634,7 @@ class StorwizeHelpers(object):
         # before it finishes. Don't set the sleep interval shorter
         # than the heartbeat. Otherwise volume service heartbeat
         # will not be serviced.
-        LOG.debug(_('Calling _ensure_vdisk_no_fc_mappings: vdisk %s')
+        LOG.debug('Calling _ensure_vdisk_no_fc_mappings: vdisk %s'
                   % name)
         ret = timer.start(interval=self.check_fcmapping_interval).wait()
         timer.stop()
@@ -642,17 +642,17 @@ class StorwizeHelpers(object):
 
     def delete_vdisk(self, vdisk, force):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
-        LOG.debug(_('enter: delete_vdisk: vdisk %s') % vdisk)
+        LOG.debug('enter: delete_vdisk: vdisk %s' % vdisk)
         if not self.is_vdisk_defined(vdisk):
             LOG.info(_('Tried to delete non-existant vdisk %s.') % vdisk)
             return
         self.ensure_vdisk_no_fc_mappings(vdisk)
         self.ssh.rmvdisk(vdisk, force=force)
-        LOG.debug(_('leave: delete_vdisk: vdisk %s') % vdisk)
+        LOG.debug('leave: delete_vdisk: vdisk %s' % vdisk)
 
     def create_copy(self, src, tgt, src_id, config, opts, full_copy):
         """Create a new snapshot using FlashCopy."""
-        LOG.debug(_('enter: create_copy: snapshot %(src)s to %(tgt)s') %
+        LOG.debug('enter: create_copy: snapshot %(src)s to %(tgt)s' %
                   {'tgt': tgt, 'src': src})
 
         src_attrs = self.get_vdisk_attributes(src)
@@ -672,8 +672,8 @@ class StorwizeHelpers(object):
             with excutils.save_and_reraise_exception():
                 self.delete_vdisk(tgt, True)
 
-        LOG.debug(_('leave: _create_copy: snapshot %(tgt)s from '
-                    'vdisk %(src)s') %
+        LOG.debug('leave: _create_copy: snapshot %(tgt)s from '
+                  'vdisk %(src)s' %
                   {'tgt': tgt, 'src': src})
 
     def extend_vdisk(self, vdisk, amount):
@@ -739,8 +739,8 @@ class StorwizeHelpers(object):
 
     def change_vdisk_iogrp(self, vdisk, state, iogrp):
         if state['code_level'] < (6, 4, 0, 0):
-            LOG.debug(_('Ignore change IO group as storage code level is '
-                        '%(code_level)s, below the required 6.4.0.0') %
+            LOG.debug('Ignore change IO group as storage code level is '
+                      '%(code_level)s, below the required 6.4.0.0' %
                       {'code_level': state['code_level']})
         else:
             self.ssh.movevdisk(vdisk, str(iogrp[0]))

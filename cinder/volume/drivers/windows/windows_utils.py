@@ -150,8 +150,8 @@ class WindowsUtils(object):
         try:
             disk = self._conn_wmi.WT_Disk(Description=vol_name)
             if not disk:
-                LOG.debug(_('Skipping deleting disk %s as it does not '
-                            'exist.') % vol_name)
+                LOG.debug('Skipping deleting disk %s as it does not '
+                          'exist.' % vol_name)
                 return
             wt_disk = disk[0]
             wt_disk.Delete_()
@@ -242,8 +242,8 @@ class WindowsUtils(object):
         try:
             host = self._conn_wmi.WT_Host(HostName=target_name)
             if not host:
-                LOG.debug(_('Skipping removing target %s as it does not '
-                            'exist.') % target_name)
+                LOG.debug('Skipping removing target %s as it does not '
+                          'exist.' % target_name)
                 return
             wt_host = host[0]
             wt_host.RemoveAllWTDisks()

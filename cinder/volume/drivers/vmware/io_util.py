@@ -48,12 +48,12 @@ class ThreadSafePipe(queue.LightQueue):
         if self.transferred < self.max_transfer_size:
             data_item = self.get()
             self.transferred += len(data_item)
-            LOG.debug(_("Read %(bytes)s out of %(max)s from ThreadSafePipe.") %
+            LOG.debug("Read %(bytes)s out of %(max)s from ThreadSafePipe." %
                       {'bytes': self.transferred,
                        'max': self.max_transfer_size})
             return data_item
         else:
-            LOG.debug(_("Completed transfer of size %s.") % self.transferred)
+            LOG.debug("Completed transfer of size %s." % self.transferred)
             return ""
 
     def write(self, data):
@@ -99,9 +99,9 @@ class GlanceWriteThread(object):
             Function to do the image data transfer through an update
             and thereon checks if the state is 'active'.
             """
-            LOG.debug(_("Initiating image service update on image: %(image)s "
-                        "with meta: %(meta)s") % {'image': self.image_id,
-                                                  'meta': self.image_meta})
+            LOG.debug("Initiating image service update on image: %(image)s "
+                      "with meta: %(meta)s" % {'image': self.image_id,
+                                               'meta': self.image_meta})
             self.image_service.update(self.context,
                                       self.image_id,
                                       self.image_meta,
@@ -114,7 +114,7 @@ class GlanceWriteThread(object):
                     image_status = image_meta.get('status')
                     if image_status == 'active':
                         self.stop()
-                        LOG.debug(_("Glance image: %s is now active.") %
+                        LOG.debug("Glance image: %s is now active." %
                                   self.image_id)
                         self.done.send(True)
                     # If the state is killed, then raise an exception.

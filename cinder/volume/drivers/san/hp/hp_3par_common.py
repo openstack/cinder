@@ -260,8 +260,8 @@ class HP3PARCommon(object):
         volume_name = self._get_3par_vol_name(volume['id'])
         old_size = volume['size']
         growth_size = int(new_size) - old_size
-        LOG.debug(_("Extending Volume %(vol)s from %(old)s to %(new)s, "
-                    " by %(diff)s GB.") %
+        LOG.debug("Extending Volume %(vol)s from %(old)s to %(new)s, "
+                  " by %(diff)s GB." %
                   {'vol': volume_name, 'old': old_size, 'new': new_size,
                    'diff': growth_size})
         growth_size_mib = growth_size * units.KiB
@@ -271,7 +271,7 @@ class HP3PARCommon(object):
                        _convert_to_base=False):
         try:
             if _convert_to_base:
-                LOG.debug(_("Converting to base volume prior to growing."))
+                LOG.debug("Converting to base volume prior to growing.")
                 self._convert_to_base_volume(volume)
             self.client.growVolume(volume_name, growth_size_mib)
         except Exception as ex:
@@ -842,7 +842,7 @@ class HP3PARCommon(object):
     def _copy_volume(self, src_name, dest_name, cpg, snap_cpg=None,
                      tpvv=True):
         # Virtual volume sets are not supported with the -online option
-        LOG.debug(_('Creating clone of a volume %(src)s to %(dest)s.') %
+        LOG.debug('Creating clone of a volume %(src)s to %(dest)s.' %
                   {'src': src_name, 'dest': dest_name})
 
         optional = {'tpvv': tpvv, 'online': True}
@@ -899,7 +899,7 @@ class HP3PARCommon(object):
             except hpexceptions.HTTPBadRequest as ex:
                 if ex.get_code() == 29:
                     if self.client.isOnlinePhysicalCopy(volume_name):
-                        LOG.debug(_("Found an online copy for %(volume)s")
+                        LOG.debug("Found an online copy for %(volume)s"
                                   % {'volume': volume_name})
                         # the volume is in process of being cloned.
                         # stopOnlinePhysicalCopy will also delete
@@ -999,11 +999,11 @@ class HP3PARCommon(object):
             growth_size = volume['size'] - snapshot['volume_size']
             if growth_size > 0:
                 try:
-                    LOG.debug(_('Converting to base volume type: %s.') %
+                    LOG.debug('Converting to base volume type: %s.' %
                               volume['id'])
                     self._convert_to_base_volume(volume)
                     growth_size_mib = growth_size * units.GiB / units.MiB
-                    LOG.debug(_('Growing volume: %(id)s by %(size)s GiB.') %
+                    LOG.debug('Growing volume: %(id)s by %(size)s GiB.' %
                               {'id': volume['id'], 'size': growth_size})
                     self.client.growVolume(volume_name, growth_size_mib)
                 except Exception as ex:
@@ -1140,14 +1140,14 @@ class HP3PARCommon(object):
         """
 
         dbg = {'id': volume['id'], 'host': host['host']}
-        LOG.debug(_('enter: migrate_volume: id=%(id)s, host=%(host)s.') % dbg)
+        LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s.' % dbg)
 
         false_ret = (False, None)
 
         # Make sure volume is not attached
         if volume['status'] != 'available':
-            LOG.debug(_('Volume is attached: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug('Volume is attached: migrate_volume: '
+                      'id=%(id)s, host=%(host)s.' % dbg)
             return false_ret
 
         if 'location_info' not in host['capabilities']:
@@ -1162,30 +1162,30 @@ class HP3PARCommon(object):
         sys_info = self.client.getStorageSystemInfo()
         if not (dest_type == 'HP3PARDriver' and
                 dest_id == sys_info['serialNumber']):
-            LOG.debug(_('Dest does not match: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug('Dest does not match: migrate_volume: '
+                      'id=%(id)s, host=%(host)s.' % dbg)
             return false_ret
 
         type_info = self.get_volume_settings_from_type(volume)
 
         if dest_cpg == type_info['cpg']:
-            LOG.debug(_('CPGs are the same: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug('CPGs are the same: migrate_volume: '
+                      'id=%(id)s, host=%(host)s.' % dbg)
             return false_ret
 
         # Check to make sure CPGs are in the same domain
         src_domain = self.get_domain(type_info['cpg'])
         dst_domain = self.get_domain(dest_cpg)
         if src_domain != dst_domain:
-            LOG.debug(_('CPGs in different domains: migrate_volume: '
-                        'id=%(id)s, host=%(host)s.') % dbg)
+            LOG.debug('CPGs in different domains: migrate_volume: '
+                      'id=%(id)s, host=%(host)s.' % dbg)
             return false_ret
 
         self._convert_to_base_volume(volume, new_cpg=dest_cpg)
 
         # TODO(Ramy) When volume retype is available,
         # use that to change the type
-        LOG.debug(_('leave: migrate_volume: id=%(id)s, host=%(host)s.') % dbg)
+        LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s.' % dbg)
         return (True, None)
 
     def _convert_to_base_volume(self, volume, new_cpg=None):
@@ -1205,8 +1205,8 @@ class HP3PARCommon(object):
             task_id = self._copy_volume(volume_name, temp_vol_name,
                                         cpg, cpg, type_info['tpvv'])
 
-            LOG.debug(_('Copy volume scheduled: convert_to_base_volume: '
-                        'id=%s.') % volume['id'])
+            LOG.debug('Copy volume scheduled: convert_to_base_volume: '
+                      'id=%s.' % volume['id'])
 
             # Wait for the physical copy task to complete
             def _wait_for_task(task_id):
@@ -1229,19 +1229,19 @@ class HP3PARCommon(object):
                         'id=%(id)s, status=%(status)s.') % dbg
                 raise exception.CinderException(msg)
             else:
-                LOG.debug(_('Copy volume completed: convert_to_base_volume: '
-                            'id=%s.') % volume['id'])
+                LOG.debug('Copy volume completed: convert_to_base_volume: '
+                          'id=%s.' % volume['id'])
 
             comment = self._get_3par_vol_comment(volume_name)
             if comment:
                 self.client.modifyVolume(temp_vol_name, {'comment': comment})
-            LOG.debug(_('Volume rename completed: convert_to_base_volume: '
-                        'id=%s.') % volume['id'])
+            LOG.debug('Volume rename completed: convert_to_base_volume: '
+                      'id=%s.' % volume['id'])
 
             # Delete source volume after the copy is complete
             self.client.deleteVolume(volume_name)
-            LOG.debug(_('Delete src volume completed: convert_to_base_volume: '
-                        'id=%s.') % volume['id'])
+            LOG.debug('Delete src volume completed: convert_to_base_volume: '
+                      'id=%s.' % volume['id'])
 
             # Rename the new volume to the original name
             self.client.modifyVolume(temp_vol_name, {'newName': volume_name})

@@ -115,9 +115,9 @@ if __name__ == '__main__':
     print(_("Found %d volumes") % len(volumes))
     for volume_ref in volumes:
         try:
-            LOG.debug(_("Send exists notification for <volume_id: "
-                        "%(volume_id)s> <project_id %(project_id)s> "
-                        "<%(extra_info)s>") %
+            LOG.debug("Send exists notification for <volume_id: "
+                      "%(volume_id)s> <project_id %(project_id)s> "
+                      "<%(extra_info)s>" %
                       {'volume_id': volume_ref.id,
                        'project_id': volume_ref.project_id,
                        'extra_info': extra_info})
@@ -138,9 +138,9 @@ if __name__ == '__main__':
                     'audit_period_beginning': str(volume_ref.created_at),
                     'audit_period_ending': str(volume_ref.created_at),
                 }
-                LOG.debug(_("Send create notification for "
+                LOG.debug("Send create notification for "
                           "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>") %
+                          "<project_id %(project_id)s> <%(extra_info)s>" %
                           {'volume_id': volume_ref.id,
                            'project_id': volume_ref.project_id,
                            'extra_info': local_extra_info})
@@ -165,9 +165,9 @@ if __name__ == '__main__':
                     'audit_period_beginning': str(volume_ref.deleted_at),
                     'audit_period_ending': str(volume_ref.deleted_at),
                 }
-                LOG.debug(_("Send delete notification for "
+                LOG.debug("Send delete notification for "
                           "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>") %
+                          "<project_id %(project_id)s> <%(extra_info)s>" %
                           {'volume_id': volume_ref.id,
                            'project_id': volume_ref.project_id,
                            'extra_info': local_extra_info})
@@ -190,8 +190,8 @@ if __name__ == '__main__':
     print(_("Found %d snapshots") % len(snapshots))
     for snapshot_ref in snapshots:
         try:
-            LOG.debug(_("Send notification for <snapshot_id: %(snapshot_id)s> "
-                      "<project_id %(project_id)s> <%(extra_info)s>") %
+            LOG.debug("Send notification for <snapshot_id: %(snapshot_id)s> "
+                      "<project_id %(project_id)s> <%(extra_info)s>" %
                       {'snapshot_id': snapshot_ref.id,
                        'project_id': snapshot_ref.project_id,
                        'extra_info': extra_info})
@@ -212,9 +212,9 @@ if __name__ == '__main__':
                     'audit_period_beginning': str(snapshot_ref.created_at),
                     'audit_period_ending': str(snapshot_ref.created_at),
                 }
-                LOG.debug(_("Send create notification for "
+                LOG.debug("Send create notification for "
                           "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>") %
+                          "<project_id %(project_id)s> <%(extra_info)s>" %
                           {'snapshot_id': snapshot_ref.id,
                            'project_id': snapshot_ref.project_id,
                            'extra_info': local_extra_info})
@@ -239,9 +239,9 @@ if __name__ == '__main__':
                     'audit_period_beginning': str(snapshot_ref.deleted_at),
                     'audit_period_ending': str(snapshot_ref.deleted_at),
                 }
-                LOG.debug(_("Send delete notification for "
+                LOG.debug("Send delete notification for "
                           "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>") %
+                          "<project_id %(project_id)s> <%(extra_info)s>" %
                           {'snapshot_id': snapshot_ref.id,
                            'project_id': snapshot_ref.project_id,
                            'extra_info': local_extra_info})

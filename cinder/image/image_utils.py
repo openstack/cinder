@@ -175,9 +175,9 @@ def fetch_to_volume_format(context, image_service,
             # qemu-img is not installed but we do have a RAW image.  As a
             # result we only need to copy the image to the destination and then
             # return.
-            LOG.debug(_('Copying image from %(tmp)s to volume %(dest)s - '
-                        'size: %(size)s') % {'tmp': tmp, 'dest': dest,
-                                             'size': image_meta['size']})
+            LOG.debug('Copying image from %(tmp)s to volume %(dest)s - '
+                      'size: %(size)s' % {'tmp': tmp, 'dest': dest,
+                                          'size': image_meta['size']})
             volume_utils.copy_volume(tmp, dest, image_meta['size'], blocksize)
             return
 

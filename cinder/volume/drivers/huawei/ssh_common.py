@@ -98,7 +98,7 @@ class TseriesCommon():
 
     def do_setup(self, context):
         """Check config file."""
-        LOG.debug(_('do_setup'))
+        LOG.debug('do_setup')
 
         self._check_conf_file()
         self.login_info = self._get_login_info()
@@ -221,7 +221,7 @@ class TseriesCommon():
         """Create a new volume."""
         volume_name = self._name_translate(volume['name'])
 
-        LOG.debug(_('create_volume: volume name: %s') % volume_name)
+        LOG.debug('create_volume: volume name: %s' % volume_name)
 
         self._update_login_info()
         if int(volume['size']) == 0:
@@ -239,8 +239,8 @@ class TseriesCommon():
         """
         newname = VOL_AND_SNAP_NAME_PREFIX + str(hash(name))
 
-        LOG.debug(_('_name_translate: Name in cinder: %(old)s, new name in '
-                    'storage system: %(new)s') % {'old': name, 'new': newname})
+        LOG.debug('_name_translate: Name in cinder: %(old)s, new name in '
+                  'storage system: %(new)s' % {'old': name, 'new': newname})
 
         return newname
 
@@ -392,8 +392,8 @@ class TseriesCommon():
             elif conf_params['PrefetchType'] == '2':
                 conf_params['PrefetchTimes'] = prefetch.attrib['Value'].strip()
         else:
-            LOG.debug(_('_parse_conf_lun_params: Use default prefetch type. '
-                        'Prefetch type: Intelligent'))
+            LOG.debug('_parse_conf_lun_params: Use default prefetch type. '
+                      'Prefetch type: Intelligent')
 
         pools_conf = root.findall('LUN/StoragePool')
         for pool in pools_conf:
@@ -431,7 +431,7 @@ class TseriesCommon():
 
         """
 
-        LOG.debug(_('CLI command: %s') % cmd)
+        LOG.debug('CLI command: %s' % cmd)
         connect_times = 1
         ip0 = self.login_info['ControllerIP0']
         ip1 = self.login_info['ControllerIP1']
@@ -506,7 +506,7 @@ class TseriesCommon():
     def delete_volume(self, volume):
         volume_name = self._name_translate(volume['name'])
 
-        LOG.debug(_('delete_volume: volume name: %s') % volume_name)
+        LOG.debug('delete_volume: volume name: %s' % volume_name)
 
         self._update_login_info()
         volume_id = volume.get('provider_location', None)
@@ -565,8 +565,8 @@ class TseriesCommon():
         snapshot_name = self._name_translate(snapshot['name'])
         volume_name = self._name_translate(volume['name'])
 
-        LOG.debug(_('create_volume_from_snapshot: snapshot '
-                    'name: %(snapshot)s, volume name: %(volume)s')
+        LOG.debug('create_volume_from_snapshot: snapshot '
+                  'name: %(snapshot)s, volume name: %(volume)s'
                   % {'snapshot': snapshot_name,
                      'volume': volume_name})
 
@@ -683,9 +683,9 @@ class TseriesCommon():
         src_vol_name = self._name_translate(src_volume['name'])
         tgt_vol_name = self._name_translate(tgt_volume['name'])
 
-        LOG.debug(_('create_cloned_volume: src volume: %(src)s, '
-                    'tgt volume: %(tgt)s') % {'src': src_vol_name,
-                                              'tgt': tgt_vol_name})
+        LOG.debug('create_cloned_volume: src volume: %(src)s, '
+                  'tgt volume: %(tgt)s' % {'src': src_vol_name,
+                                           'tgt': tgt_vol_name})
 
         self._update_login_info()
         src_vol_id = src_volume.get('provider_location', None)
@@ -734,9 +734,9 @@ class TseriesCommon():
                           str(len(added_vol_ids)))
         added_vol_size = str(int(new_size) - int(volume['size'])) + 'G'
 
-        LOG.debug(_('extend_volume: extended volume name: %(extended_name)s '
-                    'new added volume name: %(added_name)s '
-                    'new added volume size: %(added_size)s')
+        LOG.debug('extend_volume: extended volume name: %(extended_name)s '
+                  'new added volume name: %(added_name)s '
+                  'new added volume size: %(added_size)s'
                   % {'extended_name': extended_vol_name,
                      'added_name': added_vol_name,
                      'added_size': added_vol_size})
@@ -774,8 +774,8 @@ class TseriesCommon():
         snapshot_name = self._name_translate(snapshot['name'])
         volume_name = self._name_translate(snapshot['volume_name'])
 
-        LOG.debug(_('create_snapshot: snapshot name: %(snapshot)s, '
-                    'volume name: %(volume)s')
+        LOG.debug('create_snapshot: snapshot name: %(snapshot)s, '
+                  'volume name: %(volume)s'
                   % {'snapshot': snapshot_name,
                      'volume': volume_name})
 
@@ -850,9 +850,9 @@ class TseriesCommon():
         snapshot_name = self._name_translate(snapshot['name'])
         volume_name = self._name_translate(snapshot['volume_name'])
 
-        LOG.debug(_('delete_snapshot: snapshot name: %(snapshot)s, '
-                    'volume name: %(volume)s') % {'snapshot': snapshot_name,
-                                                  'volume': volume_name})
+        LOG.debug('delete_snapshot: snapshot name: %(snapshot)s, '
+                  'volume name: %(volume)s' % {'snapshot': snapshot_name,
+                                               'volume': volume_name})
 
         self._update_login_info()
         snapshot_id = snapshot.get('provider_location', None)
@@ -1074,7 +1074,7 @@ class TseriesCommon():
         return lun_details
 
     def change_lun_ctr(self, lun_id, ctr):
-        LOG.debug(_('change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s.')
+        LOG.debug('change_lun_ctr: Changing LUN %(lun)s ctr to %(ctr)s.'
                   % {'lun': lun_id, 'ctr': ctr})
 
         cli_cmd = 'chglun -lun %s -c %s' % (lun_id, ctr)
@@ -1133,9 +1133,9 @@ class TseriesCommon():
                 if (re.search('there are IOs accessing the system', out) and
                         (attempts > 0)):
 
-                    LOG.debug(_('_delete_map: There are IOs accessing '
-                                'the system. Retry to delete host map '
-                                '%(mapid)s 10s later.') % {'mapid': mapid})
+                    LOG.debug('_delete_map: There are IOs accessing '
+                              'the system. Retry to delete host map '
+                              '%(mapid)s 10s later.' % {'mapid': mapid})
 
                     time.sleep(10)
                     attempts -= 1
@@ -1180,7 +1180,7 @@ class TseriesCommon():
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("_update_volume_stats: Updating volume stats."))
+        LOG.debug("_update_volume_stats: Updating volume stats.")
         data = {}
         data['vendor_name'] = 'Huawei'
         data['total_capacity_gb'] = 'infinite'
@@ -1244,7 +1244,7 @@ class DoradoCommon(TseriesCommon):
 
     def do_setup(self, context):
         """Check config file."""
-        LOG.debug(_('do_setup'))
+        LOG.debug('do_setup')
 
         self._check_conf_file()
         exist_luns = self._get_all_luns_info()

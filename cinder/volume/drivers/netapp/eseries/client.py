@@ -118,9 +118,9 @@ class RestClient(WebserviceClient):
         """Invokes end point for resource on path."""
         params = {'m': method, 'p': path, 'd': data, 'sys': use_system,
                   't': timeout, 'v': verify, 'k': kwargs}
-        LOG.debug(_("Invoking rest with method: %(m)s, path: %(p)s,"
-                    " data: %(d)s, use_system: %(sys)s, timeout: %(t)s,"
-                    " verify: %(v)s, kwargs: %(k)s.") % (params))
+        LOG.debug("Invoking rest with method: %(m)s, path: %(p)s,"
+                  " data: %(d)s, use_system: %(sys)s, timeout: %(t)s,"
+                  " verify: %(v)s, kwargs: %(k)s." % (params))
         url = self._get_resource_url(path, use_system, **kwargs)
         if self._content_type == 'json':
                 headers = {'Accept': 'application/json',

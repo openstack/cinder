@@ -136,7 +136,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         while not out.endswith(ending):
             out += chan.recv(102400)
 
-        LOG.debug(_("CLI output\n%s"), out)
+        LOG.debug("CLI output\n%s", out)
         return out.splitlines()
 
     def _get_prefixed_value(self, lines, prefix):
@@ -151,15 +151,15 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         chan = transport.open_session()
         chan.invoke_shell()
 
-        LOG.debug(_("Reading CLI MOTD"))
+        LOG.debug("Reading CLI MOTD")
         self._get_output(chan)
 
         cmd = 'stty columns 255'
-        LOG.debug(_("Setting CLI terminal width: '%s'"), cmd)
+        LOG.debug("Setting CLI terminal width: '%s'", cmd)
         chan.send(cmd + '\r')
         out = self._get_output(chan)
 
-        LOG.debug(_("Sending CLI command: '%s'"), command)
+        LOG.debug("Sending CLI command: '%s'", command)
         chan.send(command + '\r')
         out = self._get_output(chan)
 
@@ -244,7 +244,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from eqlx group."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
         backend_name = "eqlx"
         if self.configuration:
@@ -279,8 +279,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         except processutils.ProcessExecutionError as err:
             with excutils.save_and_reraise_exception():
                 if err.stdout.find('does not exist.\n') > -1:
-                    LOG.debug(_('Volume %s does not exist, '
-                                'it may have already been deleted'),
+                    LOG.debug('Volume %s does not exist, '
+                              'it may have already been deleted',
                               volume['name'])
                     raise exception.VolumeNotFound(volume_id=volume['id'])
 

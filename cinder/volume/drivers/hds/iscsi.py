@@ -177,7 +177,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                 conf[ip]['ctl'] = ctl
                 conf[ip]['port'] = port
                 conf[ip]['iscsi_port'] = ipp
-                msg = _('portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(port)s')
+                msg = ('portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(port)s')
                 LOG.debug(msg
                           % {'ip': ip,
                              'ipp': ipp,
@@ -285,7 +285,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         for line in out.split('\n'):
             if 'HDP' in line:
                 (hdp, size, _ign, used) = line.split()[1:5]  # in MB
-                LOG.debug(_("stats: looking for: %s") % hdp)
+                LOG.debug("stats: looking for: %s", hdp)
                 if int(hdp) >= units.KiB:        # HNAS fsid
                     hdp = line.split()[11]
                 if hdp in self.config['hdp'].keys():
@@ -404,7 +404,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         """
 
         name = volume['name']
-        LOG.debug(_("create_export %(name)s") % {'name': name})
+        LOG.debug("create_export %(name)s" % {'name': name})
 
         pass
 
@@ -416,7 +416,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         provider = volume['provider_location']
         name = volume['name']
-        LOG.debug(_("remove_export provider %(provider)s on %(name)s")
+        LOG.debug("remove_export provider %(provider)s on %(name)s"
                   % {'provider': provider,
                      'name': name})
 
@@ -471,7 +471,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
 
-        LOG.debug(_("LUN %(lun)s of size %(size)s MB is cloned.")
+        LOG.debug("LUN %(lun)s of size %(size)s MB is cloned."
                   % {'lun': lun,
                      'size': size})
         return {'provider_location': lun}
@@ -520,7 +520,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         name = self.hnas_name
 
-        LOG.debug(_("delete lun %(lun)s on %(name)s")
+        LOG.debug("delete lun %(lun)s on %(name)s"
                   % {'lun': lun,
                      'name': name})
 
@@ -628,7 +628,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         lun = self.arid + '.' + out.split()[1]
         sz = int(out.split()[5])
 
-        LOG.debug(_("LUN %(lun)s of size %(sz)s MB is created from snapshot.")
+        LOG.debug("LUN %(lun)s of size %(sz)s MB is created from snapshot."
                   % {'lun': lun, 'sz': sz})
         return {'provider_location': lun}
 
@@ -652,7 +652,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
 
-        LOG.debug(_("LUN %(lun)s of size %(size)s MB is created.")
+        LOG.debug("LUN %(lun)s of size %(size)s MB is created."
                   % {'lun': lun, 'size': size})
         return {'provider_location': lun}
 
@@ -687,7 +687,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                             self.config['password'],
                             hdp, lun)
 
-        LOG.debug(_("LUN %s is deleted.") % lun)
+        LOG.debug("LUN %s is deleted.", lun)
         return
 
     def get_volume_stats(self, refresh=False):

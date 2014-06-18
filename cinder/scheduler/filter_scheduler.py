@@ -256,7 +256,7 @@ class FilterScheduler(driver.Scheduler):
         if not hosts:
             return []
 
-        LOG.debug(_("Filtered %s") % hosts)
+        LOG.debug("Filtered %s" % hosts)
         # weighted_host = WeightedHost() ... the best
         # host for the job.
         weighed_hosts = self.host_manager.get_weighed_hosts(hosts,
@@ -273,7 +273,7 @@ class FilterScheduler(driver.Scheduler):
     def _choose_top_host(self, weighed_hosts, request_spec):
         top_host = weighed_hosts[0]
         host_state = top_host.obj
-        LOG.debug(_("Choosing %s") % host_state.host)
+        LOG.debug("Choosing %s" % host_state.host)
         volume_properties = request_spec['volume_properties']
         host_state.consume_from_volume(volume_properties)
         return top_host

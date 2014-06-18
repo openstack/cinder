@@ -250,8 +250,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 file_name = 'img-cache-%s' % image_id
                 file_path = '%s/%s' % (dir, file_name)
                 if os.path.exists(file_path):
-                    LOG.debug(_('Found cache file for image %(image_id)s'
-                                ' on share %(share)s')
+                    LOG.debug('Found cache file for image %(image_id)s'
+                              ' on share %(share)s'
                               % {'image_id': image_id, 'share': share})
                     result.append((share, file_name))
         return result
@@ -271,7 +271,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _spawn_clean_cache_job(self):
         """Spawns a clean task if not running."""
         if getattr(self, 'cleaning', None):
-                LOG.debug(_('Image cache cleaning in progress. Returning... '))
+                LOG.debug('Image cache cleaning in progress. Returning... ')
                 return
         else:
                 #set cleaning to True
@@ -282,7 +282,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _clean_image_cache(self):
         """Clean the image cache files in cache of space crunch."""
         try:
-            LOG.debug(_('Image cache cleaning in progress.'))
+            LOG.debug('Image cache cleaning in progress.')
             thres_size_perc_start =\
                 self.configuration.thres_avl_size_perc_start
             thres_size_perc_stop =\
@@ -298,7 +298,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                         threshold_size = int(
                             (thres_size_perc_stop * total_size) / 100)
                         bytes_to_free = int(threshold_size - total_avl)
-                        LOG.debug(_('Files to be queued for deletion %s'),
+                        LOG.debug('Files to be queued for deletion %s',
                                   eligible_files)
                         self._delete_files_till_bytes_free(
                             eligible_files, share, bytes_to_free)
@@ -311,7 +311,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                         % {'share': share, 'ex': e.__str__()})
                     continue
         finally:
-            LOG.debug(_('Image cache cleaning done.'))
+            LOG.debug('Image cache cleaning done.')
             self.cleaning = False
 
     def _shortlist_del_eligible_files(self, share, old_files):
@@ -336,14 +336,14 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _delete_files_till_bytes_free(self, file_list, share, bytes_to_free=0):
         """Delete files from disk till bytes are freed or list exhausted."""
-        LOG.debug(_('Bytes to free %s'), bytes_to_free)
+        LOG.debug('Bytes to free %s', bytes_to_free)
         if file_list and bytes_to_free > 0:
             sorted_files = sorted(file_list, key=lambda x: x[1], reverse=True)
             mount_fs = self._get_mount_point_for_share(share)
             for f in sorted_files:
                 if f:
                     file_path = '%s/%s' % (mount_fs, f[0])
-                    LOG.debug(_('Delete file path %s'), file_path)
+                    LOG.debug('Delete file path %s', file_path)
 
                     @utils.synchronized(f[0], external=True)
                     def _do_delete():
@@ -358,7 +358,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _delete_file(self, path):
         """Delete file from disk and return result as boolean."""
         try:
-            LOG.debug(_('Deleting file at path %s'), path)
+            LOG.debug('Deleting file at path %s', path)
             cmd = ['rm', '-f', path]
             self._execute(*cmd, run_as_root=True)
             return True
@@ -415,7 +415,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         for res in cache_result:
             # Repeat tries in other shares if failed in some
             (share, file_name) = res
-            LOG.debug(_('Cache share: %s'), share)
+            LOG.debug('Cache share: %s', share)
             if (share and
                     self._is_share_vol_compatible(volume, share)):
                 try:
@@ -436,14 +436,14 @@ class NetAppNFSDriver(nfs.NfsDriver):
         image_location = self._construct_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
         if share and self._is_share_vol_compatible(volume, share):
-            LOG.debug(_('Share is cloneable %s'), share)
+            LOG.debug('Share is cloneable %s', share)
             volume['provider_location'] = share
             (__, ___, img_file) = image_location.rpartition('/')
             dir_path = self._get_mount_point_for_share(share)
             img_path = '%s/%s' % (dir_path, img_file)
             img_info = image_utils.qemu_img_info(img_path)
             if img_info.file_format == 'raw':
-                LOG.debug(_('Image is raw %s'), image_id)
+                LOG.debug('Image is raw %s', image_id)
                 self._clone_volume(
                     img_file, volume['name'],
                     volume_id=None, share=share)
@@ -478,7 +478,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _resize_image_file(self, path, new_size):
         """Resize the image file on share to new size."""
-        LOG.debug(_('Checking file for resize'))
+        LOG.debug('Checking file for resize')
         if self._is_file_size_equal(path, new_size):
             return
         else:
@@ -536,8 +536,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                  '*(/[^\/\\\\]+)$)')
             matched = re.match(nfs_loc_pattern, image_location, flags=0)
             if not matched:
-                LOG.debug(_('Image location not in the'
-                            ' expected format %s'), image_location)
+                LOG.debug('Image location not in the'
+                          ' expected format %s', image_location)
             else:
                 conn = matched.group(2)
                 dr = matched.group(3) or '/'
@@ -564,7 +564,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     if sh_exp == dir:
                         share_candidates.append(sh)
                 if share_candidates:
-                    LOG.debug(_('Found possible share matches %s'),
+                    LOG.debug('Found possible share matches %s',
                               share_candidates)
                     return self._share_match_for_ip(ip, share_candidates)
         except Exception:
@@ -1030,17 +1030,17 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             path = '/vol/%s/%s' % (exp_volume, file)
             u_bytes = self._get_cluster_file_usage(path, vserver)
             file_list.append((file, u_bytes))
-        LOG.debug(_('Shortlisted del elg files %s'), file_list)
+        LOG.debug('Shortlisted del elg files %s', file_list)
         return file_list
 
     def _get_cluster_file_usage(self, path, vserver):
         """Gets the file unique bytes."""
-        LOG.debug(_('Getting file usage for %s'), path)
+        LOG.debug('Getting file usage for %s', path)
         file_use = NaElement.create_node_with_children(
             'file-usage-get', **{'path': path})
         res = self._invoke_successfully(file_use, vserver)
         bytes = res.get_child_content('unique-bytes')
-        LOG.debug(_('file-usage for path %(path)s is %(bytes)s')
+        LOG.debug('file-usage for path %(path)s is %(bytes)s'
                   % {'path': path, 'bytes': bytes})
         return bytes
 
@@ -1057,9 +1057,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 ip_sh = share.split(':')[0]
                 sh_vserver = self._get_vserver_for_ip(ip_sh)
                 if sh_vserver == ip_vserver:
-                    LOG.debug(_('Share match found for ip %s'), ip)
+                    LOG.debug('Share match found for ip %s', ip)
                     return share
-        LOG.debug(_('No share match found for ip %s'), ip)
+        LOG.debug('No share match found for ip %s', ip)
         return None
 
     def _get_vserver_for_ip(self, ip):
@@ -1090,7 +1090,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def _is_share_vol_type_match(self, volume, share):
         """Checks if share matches volume type."""
         netapp_vol = self._get_vol_for_share(share)
-        LOG.debug(_("Found volume %(vol)s for share %(share)s.")
+        LOG.debug("Found volume %(vol)s for share %(share)s."
                   % {'vol': netapp_vol, 'share': share})
         extra_specs = get_volume_extra_specs(volume)
         vols = ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
@@ -1127,8 +1127,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                            ' offload workflow.')
                          % {'img': image_id, 'vol': volume['id']})
             else:
-                LOG.debug(_("Copy offload either not configured or"
-                            " unsupported."))
+                LOG.debug("Copy offload either not configured or"
+                          " unsupported.")
         except Exception as e:
             LOG.exception(_('Copy offload workflow unsuccessful. %s'), e)
         finally:
@@ -1159,12 +1159,12 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
     def _copy_from_cache(self, volume, image_id, cache_result):
         """Try copying image file_name from cached file_name."""
-        LOG.debug(_("Trying copy from cache using copy offload."))
+        LOG.debug("Trying copy from cache using copy offload.")
         copied = False
         for res in cache_result:
             try:
                 (share, file_name) = res
-                LOG.debug(_("Found cache file_name on share %s."), share)
+                LOG.debug("Found cache file_name on share %s.", share)
                 if share != self._get_provider_location(volume['id']):
                     col_path = self.configuration.netapp_copyoffload_tool_path
                     src_ip = self._get_ip_verify_on_cluster(
@@ -1178,14 +1178,14 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                                   src_path, dst_path, run_as_root=False,
                                   check_exit_code=0)
                     self._register_image_in_cache(volume, image_id)
-                    LOG.debug(_("Copied image from cache to volume %s using"
-                                " copy offload."), volume['id'])
+                    LOG.debug("Copied image from cache to volume %s using"
+                              " copy offload.", volume['id'])
                 else:
                     self._clone_file_dst_exists(share, file_name,
                                                 volume['name'],
                                                 dest_exists=True)
-                    LOG.debug(_("Copied image from cache to volume %s using"
-                                " cloning."), volume['id'])
+                    LOG.debug("Copied image from cache to volume %s using"
+                              " cloning.", volume['id'])
                 self._post_clone_image(volume)
                 copied = True
                 break
@@ -1203,7 +1203,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def _copy_from_img_service(self, context, volume, image_service,
                                image_id):
         """Copies from the image service using copy offload."""
-        LOG.debug(_("Trying copy from image service using copy offload."))
+        LOG.debug("Trying copy from image service using copy offload.")
         image_loc = image_service.get_location(context, image_id)
         image_loc = self._construct_image_nfs_url(image_loc)
         conn, dr = self._check_get_nfs_path_segs(image_loc)
@@ -1236,19 +1236,19 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             else:
                 self._clone_file_dst_exists(dst_share, img_file, tmp_img_file)
             self._discover_file_till_timeout(dst_img_local, timeout=120)
-            LOG.debug(_('Copied image %(img)s to tmp file %(tmp)s.')
+            LOG.debug('Copied image %(img)s to tmp file %(tmp)s.'
                       % {'img': image_id, 'tmp': tmp_img_file})
             dst_img_cache_local = os.path.join(dst_dir,
                                                'img-cache-%s' % (image_id))
             if img_info['disk_format'] == 'raw':
-                LOG.debug(_('Image is raw %s.'), image_id)
+                LOG.debug('Image is raw %s.', image_id)
                 self._clone_file_dst_exists(dst_share, tmp_img_file,
                                             volume['name'], dest_exists=True)
                 self._move_nfs_file(dst_img_local, dst_img_cache_local)
-                LOG.debug(_('Copied raw image %(img)s to volume %(vol)s.')
+                LOG.debug('Copied raw image %(img)s to volume %(vol)s.'
                           % {'img': image_id, 'vol': volume['id']})
             else:
-                LOG.debug(_('Image will be converted to raw %s.'), image_id)
+                LOG.debug('Image will be converted to raw %s.', image_id)
                 img_conv = str(uuid.uuid4())
                 dst_img_conv_local = os.path.join(dst_dir, img_conv)
 
@@ -1268,8 +1268,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                                                     dest_exists=True)
                         self._move_nfs_file(dst_img_conv_local,
                                             dst_img_cache_local)
-                        LOG.debug(_('Copied locally converted raw image'
-                                    ' %(img)s to volume %(vol)s.')
+                        LOG.debug('Copied locally converted raw image'
+                                  ' %(img)s to volume %(vol)s.'
                                   % {'img': image_id, 'vol': volume['id']})
                 finally:
                     if os.path.exists(dst_img_conv_local):
@@ -1356,7 +1356,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         """
 
         msg_fmt = {'src_path': src_path, 'dest_path': dest_path}
-        LOG.debug(_("""Cloning with src %(src_path)s, dest %(dest_path)s""")
+        LOG.debug("""Cloning with src %(src_path)s, dest %(dest_path)s"""
                   % msg_fmt)
         clone_start = NaElement.create_node_with_children(
             'clone-start',
@@ -1438,17 +1438,17 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             path = '/vol/%s/%s' % (exp_volume, file)
             u_bytes = self._get_filer_file_usage(path)
             file_list.append((file, u_bytes))
-        LOG.debug(_('Shortlisted del elg files %s'), file_list)
+        LOG.debug('Shortlisted del elg files %s', file_list)
         return file_list
 
     def _get_filer_file_usage(self, path):
         """Gets the file unique bytes."""
-        LOG.debug(_('Getting file usage for %s'), path)
+        LOG.debug('Getting file usage for %s', path)
         file_use = NaElement.create_node_with_children(
             'file-usage-get', **{'path': path})
         res = self._invoke_successfully(file_use)
         bytes = res.get_child_content('unique-bytes')
-        LOG.debug(_('file-usage for path %(path)s is %(bytes)s')
+        LOG.debug('file-usage for path %(path)s is %(bytes)s'
                   % {'path': path, 'bytes': bytes})
         return bytes
 
@@ -1485,9 +1485,9 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             for share in shares:
                 ip_sh = share.split(':')[0]
                 if self._is_filer_ip(ip_sh):
-                    LOG.debug(_('Share match found for ip %s'), ip)
+                    LOG.debug('Share match found for ip %s', ip)
                     return share
-        LOG.debug(_('No share match found for ip %s'), ip)
+        LOG.debug('No share match found for ip %s', ip)
         return None
 
     def _is_share_vol_compatible(self, volume, share):

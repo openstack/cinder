@@ -166,7 +166,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                                           " for volume %s") %
                                           (volume['name']))
 
-        LOG.debug(_("ISCSI Discovery: Found %s") % (location))
+        LOG.debug("ISCSI Discovery: Found %s" % (location))
         properties['target_discovered'] = True
 
         hostname = connector['host']
@@ -199,7 +199,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 break
             for endpoint in endpoints:
                 if properties['target_iqn'] == endpoint:
-                    LOG.debug(_("Found iSCSI endpoint: %s") % endpoint)
+                    LOG.debug("Found iSCSI endpoint: %s" % endpoint)
                     foundEndpoint = True
                     break
             if foundEndpoint:
@@ -244,7 +244,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
     def update_volume_stats(self):
         """Retrieve status info from volume group."""
-        LOG.debug(_("Updating volume status"))
+        LOG.debug("Updating volume status")
         # retrieving the volume update from the VNX
         data = self.cli.update_volume_status()
         backend_name = self.configuration.safe_get('volume_backend_name')

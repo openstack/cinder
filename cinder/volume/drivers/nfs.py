@@ -125,8 +125,8 @@ class RemoteFsDriver(driver.VolumeDriver):
            raising exception to continue working for cases
            when not used with brick.
         """
-        LOG.debug(_("Driver specific implementation needs to return"
-                    " mount_point_base."))
+        LOG.debug("Driver specific implementation needs to return"
+                  " mount_point_base.")
         return None
 
     def create_volume(self, volume):
@@ -501,7 +501,7 @@ class NfsDriver(RemoteFsDriver):
             raise exception.NfsNoSuitableShareFound(
                 volume_size=volume_size_in_gib)
 
-        LOG.debug(_('Selected %s as target nfs share.'), target_share)
+        LOG.debug('Selected %s as target nfs share.', target_share)
 
         return target_share
 
@@ -534,13 +534,13 @@ class NfsDriver(RemoteFsDriver):
             # available space but be within our oversubscription limit
             # therefore allowing this share to still be selected as a valid
             # target.
-            LOG.debug(_('%s is above nfs_used_ratio'), nfs_share)
+            LOG.debug('%s is above nfs_used_ratio', nfs_share)
             return False
         if apparent_available <= requested_volume_size:
-            LOG.debug(_('%s is above nfs_oversub_ratio'), nfs_share)
+            LOG.debug('%s is above nfs_oversub_ratio', nfs_share)
             return False
         if total_allocated / total_size >= oversub_ratio:
-            LOG.debug(_('%s reserved space is above nfs_oversub_ratio'),
+            LOG.debug('%s reserved space is above nfs_oversub_ratio',
                       nfs_share)
             return False
         return True

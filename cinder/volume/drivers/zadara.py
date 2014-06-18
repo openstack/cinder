@@ -233,7 +233,7 @@ class ZadaraVPSAConnection(object):
         self.ensure_connection(cmd)
 
         (method, url, body) = self._generate_vpsa_cmd(cmd, **kwargs)
-        LOG.debug(_('Sending %(method)s to %(url)s. Body "%(body)s"'),
+        LOG.debug('Sending %(method)s to %(url)s. Body "%(body)s"',
                   {'method': method, 'url': url, 'body': body})
 
         if self.conf.zadara_vpsa_use_ssl:
@@ -257,7 +257,7 @@ class ZadaraVPSAConnection(object):
             raise exception.FailedCmdWithDump(status=status, data=data)
 
         if method in ['POST', 'DELETE']:
-            LOG.debug(_('Operation completed. %(data)s'), {'data': data})
+            LOG.debug('Operation completed. %(data)s', {'data': data})
         return xml_tree
 
 
@@ -354,7 +354,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         if pool is not None:
             total = int(pool.findtext('capacity'))
             free = int(float(pool.findtext('available-capacity')))
-            LOG.debug(_('Pool %(name)s: %(total)sGB total, %(free)sGB free'),
+            LOG.debug('Pool %(name)s: %(total)sGB total, %(free)sGB free',
                       {'name': pool_name, 'total': total, 'free': free})
             return (total, free)
 
@@ -435,7 +435,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
 
-        LOG.debug(_('Create snapshot: %s'), snapshot['name'])
+        LOG.debug('Create snapshot: %s', snapshot['name'])
 
         # Retrieve the CG name for the base volume
         volume_name = self.configuration.zadara_vol_name_template\
@@ -453,7 +453,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
 
-        LOG.debug(_('Delete snapshot: %s'), snapshot['name'])
+        LOG.debug('Delete snapshot: %s', snapshot['name'])
 
         # Retrieve the CG name for the base volume
         volume_name = self.configuration.zadara_vol_name_template\
@@ -480,7 +480,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
 
-        LOG.debug(_('Creating volume from snapshot: %s') % snapshot['name'])
+        LOG.debug('Creating volume from snapshot: %s' % snapshot['name'])
 
         # Retrieve the CG name for the base volume
         volume_name = self.configuration.zadara_vol_name_template\
@@ -506,7 +506,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
 
-        LOG.debug(_('Creating clone of volume: %s') % src_vref['name'])
+        LOG.debug('Creating clone of volume: %s' % src_vref['name'])
 
         # Retrieve the CG name for the base volume
         volume_name = self.configuration.zadara_vol_name_template\
@@ -611,7 +611,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         properties['auth_username'] = ctrl['chap_user']
         properties['auth_password'] = ctrl['chap_passwd']
 
-        LOG.debug(_('Attach properties: %(properties)s'),
+        LOG.debug('Attach properties: %(properties)s',
                   {'properties': properties})
         return {'driver_volume_type': 'iscsi',
                 'data': properties}
@@ -647,7 +647,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(_("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         data = {}
 
         backend_name = self.configuration.safe_get('volume_backend_name')
