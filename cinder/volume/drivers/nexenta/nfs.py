@@ -277,14 +277,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param path: path to new file
         :param size: size of file
         """
-        block_size_mb = 1
-        block_count = size * units.GiB / (block_size_mb * units.MiB)
-
         nms.appliance.execute(
-            'dd if=/dev/zero of=%(path)s bs=%(bs)dM count=0 seek=%(count)d' % {
+            'truncate --size %(size)dG %(path)s' % {
                 'path': path,
-                'bs': block_size_mb,
-                'count': block_count
+                'size': size
             }
         )
 

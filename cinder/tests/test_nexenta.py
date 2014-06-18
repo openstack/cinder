@@ -555,9 +555,7 @@ class TestNexentaNfsDriver(test.TestCase):
                                               'stack/share/volume-1',
                                               self.TEST_SHARE_OPTS)
         self.nms_mock.appliance.execute(
-            'dd if=/dev/zero of=/volumes/stack/share/volume-1/volume bs=1M '
-            'count=0 seek=1024'
-        )
+            'truncate --size 1G /volumes/stack/share/volume-1/volume')
         self.nms_mock.appliance.execute('chmod ugo+rw '
                                         '/volumes/stack/share/volume-1/volume')
 
@@ -581,8 +579,7 @@ class TestNexentaNfsDriver(test.TestCase):
                           volume)
 
     def test_create_sparsed_file(self):
-        self.nms_mock.appliance.execute('dd if=/dev/zero of=/tmp/path bs=1M '
-                                        'count=0 seek=1024')
+        self.nms_mock.appliance.execute('truncate --size 1G /tmp/path')
         self.mox.ReplayAll()
 
         self.drv._create_sparsed_file(self.nms_mock, '/tmp/path', 1)
