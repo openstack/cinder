@@ -570,3 +570,25 @@ class NfsDriver(RemoteFsDriver):
 
     def _get_mount_point_base(self):
         return self.base
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume to the new size."""
+        LOG.info(_('Extending volume %s.'), volume['id'])
+        extend_by = int(new_size) - volume['size']
+        if not self._is_share_eligible(volume['provider_location'],
+                                       extend_by):
+            raise exception.ExtendVolumeError(reason='Insufficient space to'
+                                              ' extend volume %s to %sG'
+                                              % (volume['id'], new_size))
+        path = self.local_path(volume)
+        LOG.info(_('Resizing file to %sG...'), new_size)
+        image_utils.resize_image(path, new_size)
+        if not self._is_file_size_equal(path, new_size):
+            raise exception.ExtendVolumeError(
+                reason='Resizing image file failed.')
+
+    def _is_file_size_equal(self, path, size):
+        """Checks if file size at path is equal to size."""
+        data = image_utils.qemu_img_info(path)
+        virt_size = data.virtual_size / units.GiB
+        return virt_size == size
