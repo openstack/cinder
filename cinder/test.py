@@ -39,6 +39,7 @@ from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.openstack.common.db.sqlalchemy import session
 from cinder.openstack.common import log as oslo_logging
+from cinder.openstack.common import strutils
 from cinder.openstack.common import timeutils
 from cinder import rpc
 from cinder import service
@@ -121,17 +122,23 @@ class TestCase(testtools.TestCase):
         self.useFixture(fixtures.NestedTempfile())
         self.useFixture(fixtures.TempHomeDir())
 
-        if (os.environ.get('OS_STDOUT_CAPTURE') == 'True' or
-                os.environ.get('OS_STDOUT_CAPTURE') == '1'):
+        environ_enabled = (lambda var_name:
+                           strutils.bool_from_string(os.environ.get(var_name)))
+        if environ_enabled('OS_STDOUT_CAPTURE'):
             stdout = self.useFixture(fixtures.StringStream('stdout')).stream
             self.useFixture(fixtures.MonkeyPatch('sys.stdout', stdout))
-        if (os.environ.get('OS_STDERR_CAPTURE') == 'True' or
-                os.environ.get('OS_STDERR_CAPTURE') == '1'):
+        if environ_enabled('OS_STDERR_CAPTURE'):
             stderr = self.useFixture(fixtures.StringStream('stderr')).stream
             self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
-
-        self.log_fixture = self.useFixture(fixtures.FakeLogger(
-            level=logging.DEBUG))
+        if environ_enabled('OS_LOG_CAPTURE'):
+            log_format = '%(levelname)s [%(name)s] %(message)s'
+            if environ_enabled('OS_DEBUG'):
+                level = logging.DEBUG
+            else:
+                level = logging.INFO
+            self.useFixture(fixtures.LoggerFixture(nuke_handlers=False,
+                                                   format=log_format,
+                                                   level=level))
 
         rpc.add_extra_exmods("cinder.tests")
         self.addCleanup(rpc.clear_extra_exmods)
@@ -153,8 +160,6 @@ class TestCase(testtools.TestCase):
 
         CONF.set_default('connection', 'sqlite://', 'database')
         CONF.set_default('sqlite_synchronous', False)
-
-        self.log_fixture = self.useFixture(fixtures.FakeLogger())
 
         global _DB_CACHE
         if not _DB_CACHE:
