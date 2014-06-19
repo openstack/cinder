@@ -19,6 +19,7 @@ Volume Drivers for Huawei OceanStor HVS storage arrays.
 
 from cinder.volume import driver
 from cinder.volume.drivers.huawei.rest_common import HVSCommon
+from cinder.zonemanager import utils as fczm_utils
 
 
 class HuaweiHVSISCSIDriver(driver.ISCSIDriver):
@@ -150,10 +151,12 @@ class HuaweiHVSFCDriver(driver.FibreChannelDriver):
         data['driver_version'] = self.VERSION
         return data
 
+    @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Map a volume to a host."""
         return self.common.initialize_connection_fc(volume, connector)
 
+    @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate the map."""
         self.common.terminate_connection(volume, connector, **kwargs)

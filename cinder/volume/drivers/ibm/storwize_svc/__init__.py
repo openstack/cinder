@@ -49,6 +49,7 @@ from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -294,6 +295,7 @@ class StorwizeSVCDriver(san.SanDriver):
         return self._helpers.get_vdisk_params(self.configuration, self._state,
                                               type_id, volume_type=volume_type)
 
+    @fczm_utils.AddFCZone
     @utils.synchronized('storwize-host', external=True)
     def initialize_connection(self, volume, connector):
         """Perform the necessary work so that an iSCSI/FC connection can
@@ -464,6 +466,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         return i_t_map
 
+    @fczm_utils.RemoveFCZone
     @utils.synchronized('storwize-host', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an iSCSI connection has been terminated.

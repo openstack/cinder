@@ -25,7 +25,7 @@ from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
-from cinder.zonemanager.fc_zone_manager import ZoneManager
+from cinder.zonemanager import fc_zone_manager
 from mock import Mock
 
 fabric_name = 'BRCD_FAB_3'
@@ -34,45 +34,52 @@ fabric_map = {'BRCD_FAB_3': ['20240002ac000a50']}
 target_list = ['20240002ac000a50']
 
 
-class TestFCZoneManager(ZoneManager, test.TestCase):
+class TestFCZoneManager(test.TestCase):
 
     def setUp(self):
         super(TestFCZoneManager, self).setUp()
-        self.configuration = conf.Configuration(None)
-        self.configuration.set_default('fc_fabric_names', fabric_name)
-        self.driver = Mock(FCZoneDriver)
+        config = conf.Configuration(None)
+        config.fc_fabric_names = fabric_name
+
+        def fake_build_driver(self):
+            self.driver = Mock(FCZoneDriver)
+
+        self.stubs.Set(fc_zone_manager.ZoneManager, '_build_driver',
+                       fake_build_driver)
+
+        self.zm = fc_zone_manager.ZoneManager(configuration=config)
 
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
 
     def test_add_connection(self):
-        with mock.patch.object(self.driver, 'add_connection')\
+        with mock.patch.object(self.zm.driver, 'add_connection')\
                 as add_connection_mock:
-            self.driver.get_san_context.return_value = fabric_map
-            self.add_connection(init_target_map)
-            self.driver.get_san_context.assert_called_once(target_list)
+            self.zm.driver.get_san_context.return_value = fabric_map
+            self.zm.add_connection(init_target_map)
+            self.zm.driver.get_san_context.assert_called_once(target_list)
             add_connection_mock.assert_called_once_with(fabric_name,
                                                         init_target_map)
 
     def test_add_connection_error(self):
-        with mock.patch.object(self.driver, 'add_connection')\
+        with mock.patch.object(self.zm.driver, 'add_connection')\
                 as add_connection_mock:
             add_connection_mock.side_effect = exception.FCZoneDriverException
             self.assertRaises(exception.ZoneManagerException,
-                              self.add_connection, init_target_map)
+                              self.zm.add_connection, init_target_map)
 
     def test_delete_connection(self):
-        with mock.patch.object(self.driver, 'delete_connection')\
+        with mock.patch.object(self.zm.driver, 'delete_connection')\
                 as delete_connection_mock:
-            self.driver.get_san_context.return_value = fabric_map
-            self.delete_connection(init_target_map)
-            self.driver.get_san_context.assert_called_once_with(target_list)
+            self.zm.driver.get_san_context.return_value = fabric_map
+            self.zm.delete_connection(init_target_map)
+            self.zm.driver.get_san_context.assert_called_once_with(target_list)
             delete_connection_mock.assert_called_once_with(fabric_name,
                                                            init_target_map)
 
     def test_delete_connection_error(self):
-        with mock.patch.object(self.driver, 'delete_connection')\
+        with mock.patch.object(self.zm.driver, 'delete_connection')\
                 as del_connection_mock:
             del_connection_mock.side_effect = exception.FCZoneDriverException
             self.assertRaises(exception.ZoneManagerException,
-                              self.delete_connection, init_target_map)
+                              self.zm.delete_connection, init_target_map)

@@ -25,6 +25,7 @@ from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import ssh_common
+from cinder.zonemanager import utils as fczm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -438,6 +439,7 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
+    @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Create FC connection between a volume and a host."""
         LOG.debug('initialize_connection: volume name: %(vol)s, '
@@ -547,6 +549,7 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
     def _get_fc_port_ctr(self, port_details):
         return port_details['ControllerID']
 
+    @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate the map."""
         LOG.debug('terminate_connection: volume: %(vol)s, host: %(host)s, '

@@ -21,6 +21,7 @@ from cinder import context
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_smis_common
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
+    @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -168,6 +170,7 @@ class EMCSMISFCDriver(driver.FibreChannelDriver):
 
         return data
 
+    @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         self.common.terminate_connection(volume, connector)

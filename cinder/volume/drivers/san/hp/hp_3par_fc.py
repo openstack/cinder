@@ -39,6 +39,7 @@ from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -163,6 +164,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         finally:
             self.common.client_logout()
 
+    @fczm_utils.AddFCZone
     @utils.synchronized('3par', external=True)
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
@@ -221,6 +223,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         finally:
             self.common.client_logout()
 
+    @fczm_utils.RemoveFCZone
     @utils.synchronized('3par', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
