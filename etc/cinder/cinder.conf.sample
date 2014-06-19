@@ -918,6 +918,10 @@
 # Options defined in cinder.volume.api
 #
 
+# Cache volume availability zones in memory for the provided
+# duration in seconds (integer value)
+#az_cache_duration=3600
+
 # Create volume from snapshot at the host where snapshot
 # resides (boolean value)
 #snapshot_same_host=true

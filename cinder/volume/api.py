@@ -20,6 +20,7 @@ Handles all requests relating to volumes.
 
 
 import collections
+import datetime
 import functools
 
 from oslo.config import cfg
@@ -54,10 +55,16 @@ volume_same_az_opt = cfg.BoolOpt('cloned_volume_same_az',
                                  default=True,
                                  help='Ensure that the new volumes are the '
                                       'same AZ as snapshot or source volume')
+az_cache_time_opt = cfg.IntOpt('az_cache_duration',
+                               default=3600,
+                               help='Cache volume availability zones in '
+                                    'memory for the provided duration in '
+                                    'seconds')
 
 CONF = cfg.CONF
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
+CONF.register_opt(az_cache_time_opt)
 
 CONF.import_opt('glance_core_properties', 'cinder.image.glance')
 CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
@@ -98,40 +105,54 @@ class API(base.Base):
                               glance.get_default_image_service())
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
-        self.availability_zone_names = ()
+        self.availability_zones = []
+        self.availability_zones_last_fetched = None
         self.key_manager = keymgr.API()
         super(API, self).__init__(db_driver)
 
     def _valid_availability_zone(self, availability_zone):
-        #NOTE(bcwaldon): This approach to caching fails to handle the case
-        # that an availability zone is disabled/removed.
-        if availability_zone in self.availability_zone_names:
-            return True
-        if CONF.storage_availability_zone == availability_zone:
-            return True
+        azs = self.list_availability_zones(enable_cache=True)
+        names = set([az['name'] for az in azs])
+        if CONF.storage_availability_zone:
+            names.add(CONF.storage_availability_zone)
+        return availability_zone in names
 
-        azs = self.list_availability_zones()
-        self.availability_zone_names = [az['name'] for az in azs]
-        return availability_zone in self.availability_zone_names
-
-    def list_availability_zones(self):
+    def list_availability_zones(self, enable_cache=False):
         """Describe the known availability zones
 
         :retval list of dicts, each with a 'name' and 'available' key
         """
-        topic = CONF.volume_topic
-        ctxt = context.get_admin_context()
-        services = self.db.service_get_all_by_topic(ctxt, topic)
-        az_data = [(s['availability_zone'], s['disabled']) for s in services]
-
-        disabled_map = {}
-        for (az_name, disabled) in az_data:
-            tracked_disabled = disabled_map.get(az_name, True)
-            disabled_map[az_name] = tracked_disabled and disabled
-
-        azs = [{'name': name, 'available': not disabled}
-               for (name, disabled) in disabled_map.items()]
-
+        refresh_cache = False
+        if enable_cache:
+            if self.availability_zones_last_fetched is None:
+                refresh_cache = True
+            else:
+                cache_age = timeutils.delta_seconds(
+                    self.availability_zones_last_fetched,
+                    timeutils.utcnow())
+                if cache_age >= CONF.az_cache_duration:
+                    refresh_cache = True
+        if refresh_cache or not enable_cache:
+            topic = CONF.volume_topic
+            ctxt = context.get_admin_context()
+            services = self.db.service_get_all_by_topic(ctxt, topic)
+            az_data = [(s['availability_zone'], s['disabled'])
+                       for s in services]
+            disabled_map = {}
+            for (az_name, disabled) in az_data:
+                tracked_disabled = disabled_map.get(az_name, True)
+                disabled_map[az_name] = tracked_disabled and disabled
+            azs = [{'name': name, 'available': not disabled}
+                   for (name, disabled) in disabled_map.items()]
+            if refresh_cache:
+                now = timeutils.utcnow()
+                self.availability_zones = azs
+                self.availability_zones_last_fetched = now
+                LOG.debug("Availability zone cache updated, next update will"
+                          " occur around %s", now + datetime.timedelta(
+                              seconds=CONF.az_cache_duration))
+        else:
+            azs = self.availability_zones
         return tuple(azs)
 
     def create(self, context, size, name, description, snapshot=None,
