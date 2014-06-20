@@ -613,7 +613,7 @@ class StorwizeSVCDriver(san.SanDriver):
             if not len(self._vdiskcopyops):
                 self._vdiskcopyops_loop.stop()
                 self._vdiskcopyops_loop = None
-        except IndexError:
+        except KeyError:
             msg = (_('_rm_vdisk_copy_op: Volume %s does not have any '
                      'registered vdisk copy operations.') % volume['id'])
             LOG.error(msg)

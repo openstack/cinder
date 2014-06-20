@@ -21,7 +21,6 @@ Tests for the IBM Storwize family and SVC volume driver.
 import mock
 import random
 import re
-import testtools
 
 from cinder import context
 from cinder import exception
@@ -1504,14 +1503,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.db = self.db
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
-        self.sleeppatch = mock.patch('eventlet.greenthread.sleep')
-        self.sleeppatch.start()
         self.driver._helpers.check_fcmapping_interval = 0
-
-    def tearDown(self):
-        if self.USESIM:
-            self.sleeppatch.stop()
-        super(StorwizeSVCDriverTestCase, self).tearDown()
 
     def _set_flag(self, flag, value):
         group = self.driver.configuration.config_group
@@ -2371,7 +2363,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertEqual((7, 2, 0, 0), res['code_level'],
                              'Get code level error')
 
-    @testtools.skip("Bug #1302670")
     def test_storwize_vdisk_copy_ops(self):
         ctxt = testutils.get_test_admin_context()
         volume = self._create_volume()
