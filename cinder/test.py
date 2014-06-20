@@ -32,6 +32,7 @@ import mox
 from oslo.concurrency import lockutils
 from oslo.config import cfg
 from oslo.config import fixture as config_fixture
+from oslo.i18n import _lazy
 from oslo.messaging import conffixture as messaging_conffixture
 from oslo.utils import strutils
 from oslo.utils import timeutils
@@ -111,6 +112,9 @@ class TestCase(testtools.TestCase):
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        # Unit tests do not need to use lazy gettext
+        _lazy.enable_lazy(enable=False)
 
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:

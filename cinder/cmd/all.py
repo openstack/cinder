@@ -25,24 +25,15 @@ continue attempting to launch the rest of the services.
 
 """
 
-
 import eventlet
-
 eventlet.monkey_patch()
 
-import os
 import sys
 import warnings
 
 warnings.simplefilter('once', DeprecationWarning)
 
 from oslo.config import cfg
-
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(possible_topdir, "cinder", "__init__.py")):
-    sys.path.insert(0, possible_topdir)
 
 from cinder import i18n
 i18n.enable_lazy()
@@ -59,7 +50,7 @@ from cinder import version
 CONF = cfg.CONF
 
 
-if __name__ == '__main__':
+def main():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup("cinder")

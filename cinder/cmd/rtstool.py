@@ -231,6 +231,3 @@ def main(argv=None):
         usage()
 
     return 0
-
-if __name__ == '__main__':
-    sys.exit(main())
