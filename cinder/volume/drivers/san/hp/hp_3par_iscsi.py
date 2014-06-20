@@ -64,10 +64,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         1.3.0 - Removed all SSH code.  We rely on the hp3parclient now.
         2.0.0 - Update hp3parclient API uses 3.0.x
         2.0.2 - Add back-end assisted volume migrate
+        2.0.3 - Added support for managing/unmanaging of volumes
 
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -439,6 +440,32 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.common.client_login()
         try:
             self.common.extend_volume(volume, new_size)
+        finally:
+            self.common.client_logout()
+
+    @utils.synchronized('3par', external=True)
+    def manage_existing(self, volume, existing_ref):
+        self.common.client_login()
+        try:
+            return self.common.manage_existing(volume, existing_ref)
+        finally:
+            self.common.client_logout()
+
+    @utils.synchronized('3par', external=True)
+    def manage_existing_get_size(self, volume, existing_ref):
+        self.common.client_login()
+        try:
+            size = self.common.manage_existing_get_size(volume, existing_ref)
+        finally:
+            self.common.client_logout()
+
+        return size
+
+    @utils.synchronized('3par', external=True)
+    def unmanage(self, volume):
+        self.common.client_login()
+        try:
+            self.common.unmanage(volume)
         finally:
             self.common.client_logout()
 

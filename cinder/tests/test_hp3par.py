@@ -942,6 +942,282 @@ class HP3PARBaseDriver(object):
                                                          host, None)
         self.assertEqual(expected_info, vlun_info)
 
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing(self, _mock_volume_types):
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'tpvv': True,
+                'volume_type': self.volume_type}}
+        comment = (
+            '{"display_name": "Foo Volume"}')
+        new_comment = (
+            '{"volume_type_name": "gold",'
+            ' "display_name": "Foo Volume",'
+            ' "name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",'
+            ' "volume_type_id": "acfa9fa4-54a0-4340-a3d8-bfcf19aea65e",'
+            ' "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e",'
+            ' "qos": {},'
+            ' "type": "OpenStack"}')
+        volume = {'display_name': None,
+                  'volume_type': 'gold',
+                  'volume_type_id': 'acfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
+
+        mock_client.getVolume.return_value = {'comment': comment}
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
+        existing_ref = {'name': unm_matcher}
+
+        obj = self.driver.manage_existing(volume, existing_ref)
+
+        expected_obj = {'display_name': 'Foo Volume'}
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.modifyVolume(existing_ref['name'],
+                                   {'newName': osv_matcher,
+                                    'comment': new_comment}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_obj, obj)
+
+        volume['display_name'] = 'Test Volume'
+
+        obj = self.driver.manage_existing(volume, existing_ref)
+
+        expected_obj = {'display_name': 'Test Volume'}
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.modifyVolume(existing_ref['name'],
+                                   {'newName': osv_matcher,
+                                    'comment': new_comment}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_obj, obj)
+
+    def test_manage_existing_no_volume_type(self):
+        mock_client = self.setup_driver()
+
+        comment = (
+            '{"display_name": "Foo Volume"}')
+        new_comment = (
+            '{"type": "OpenStack",'
+            ' "display_name": "Foo Volume",'
+            ' "name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",'
+            ' "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e"}')
+        volume = {'display_name': None,
+                  'volume_type': None,
+                  'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
+
+        mock_client.getVolume.return_value = {'comment': comment}
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
+        existing_ref = {'name': unm_matcher}
+
+        obj = self.driver.manage_existing(volume, existing_ref)
+
+        expected_obj = {'display_name': 'Foo Volume'}
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.modifyVolume(existing_ref['name'],
+                                   {'newName': osv_matcher,
+                                    'comment': new_comment}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_obj, obj)
+
+        volume['display_name'] = 'Test Volume'
+
+        obj = self.driver.manage_existing(volume, existing_ref)
+
+        expected_obj = {'display_name': 'Test Volume'}
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.modifyVolume(existing_ref['name'],
+                                   {'newName': osv_matcher,
+                                    'comment': new_comment}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_obj, obj)
+
+        mock_client.getVolume.return_value = {}
+        volume['display_name'] = None
+
+        obj = self.driver.manage_existing(volume, existing_ref)
+
+        expected_obj = {'display_name': None}
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.modifyVolume(existing_ref['name'],
+                                   {'newName': osv_matcher,
+                                    'comment': new_comment}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_obj, obj)
+
+    def test_manage_existing_invalid_input(self):
+        mock_client = self.setup_driver()
+
+        volume = {'display_name': None,
+                  'volume_type': None,
+                  'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
+
+        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound('fake')
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        existing_ref = {'name': unm_matcher}
+
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing,
+                          volume=volume,
+                          existing_ref=existing_ref)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    def test_manage_existing_volume_type_exception(self):
+        mock_client = self.setup_driver()
+
+        comment = (
+            '{"display_name": "Foo Volume"}')
+        volume = {'display_name': None,
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
+
+        mock_client.getVolume.return_value = {'comment': comment}
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        existing_ref = {'name': unm_matcher}
+
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing,
+                          volume=volume,
+                          existing_ref=existing_ref)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    def test_manage_existing_get_size(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'sizeMiB': 2048}
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        volume = {}
+        existing_ref = {'name': unm_matcher}
+
+        size = self.driver.manage_existing_get_size(volume, existing_ref)
+
+        expected_size = 2
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected, True)
+        self.assertEqual(expected_size, size)
+
+    def test_manage_existing_get_size_invalid_reference(self):
+        mock_client = self.setup_driver()
+        volume = {}
+        existing_ref = {'name': self.VOLUME_3PAR_NAME}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          volume=volume,
+                          existing_ref=existing_ref)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+        existing_ref = {}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          volume=volume,
+                          existing_ref=existing_ref)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    def test_manage_existing_get_size_invalid_input(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound('fake')
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        volume = {}
+        existing_ref = {'name': unm_matcher}
+
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing_get_size,
+                          volume=volume,
+                          existing_ref=existing_ref)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(existing_ref['name']),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    def test_unmanage(self):
+        mock_client = self.setup_driver()
+
+        self.driver.unmanage(self.volume)
+
+        osv_matcher = self.driver.common._get_3par_vol_name(self.volume['id'])
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.modifyVolume(osv_matcher, {'newName': unm_matcher}),
+            mock.call.logout()]
+
+        mock_client.assert_has_calls(expected)
+
 
 class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 

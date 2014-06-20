@@ -37,6 +37,7 @@ array.
 import ast
 import base64
 import json
+import math
 import pprint
 import re
 import uuid
@@ -129,10 +130,11 @@ class HP3PARCommon(object):
         2.0.10 - Fixed an issue with 3PAR vlun location bug #1315542
         2.0.11 - Remove hp3parclient requirement from unit tests #1315195
         2.0.12 - Volume detach hangs when host is in a host set bug #1317134
+        2.0.13 - Added support for managing/unmanaging of volumes
 
     """
 
-    VERSION = "2.0.12"
+    VERSION = "2.0.13"
 
     stats = {}
 
@@ -267,6 +269,116 @@ class HP3PARCommon(object):
         growth_size_mib = growth_size * units.Ki
         self._extend_volume(volume, volume_name, growth_size_mib)
 
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing 3PAR volume."""
+        # Check for the existence of the virtual volume.
+        try:
+            vol = self.client.getVolume(existing_ref['name'])
+        except hpexceptions.HTTPNotFound:
+            err = (_("Virtual volume '%s' doesn't exist on array.") %
+                   existing_ref['name'])
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        new_comment = {}
+
+        # Use the display name from the existing volume if no new name
+        # was chosen by the user.
+        if volume['display_name']:
+            display_name = volume['display_name']
+            new_comment['display_name'] = volume['display_name']
+        elif 'comment' in vol:
+            display_name = self._get_3par_vol_comment_value(vol['comment'],
+                                                            'display_name')
+            if display_name:
+                new_comment['display_name'] = display_name
+        else:
+            display_name = None
+
+        # Generate the new volume information based off of the new ID.
+        new_vol_name = self._get_3par_vol_name(volume['id'])
+        name = 'volume-' + volume['id']
+
+        new_comment['volume_id'] = volume['id']
+        new_comment['name'] = name
+        new_comment['type'] = 'OpenStack'
+
+        # Create new comments for the existing volume depending on
+        # whether the user's volume type choice.
+        # TODO(Anthony) when retype is available handle retyping of
+        # a volume.
+        if volume['volume_type']:
+            try:
+                settings = self.get_volume_settings_from_type(volume)
+            except Exception:
+                reason = (_("Volume type ID '%s' is invalid.") %
+                          volume['volume_type_id'])
+                raise exception.ManageExistingVolumeTypeMismatch(reason=reason)
+
+            volume_type = self._get_volume_type(volume['volume_type_id'])
+
+            new_comment['volume_type_name'] = volume_type['name']
+            new_comment['volume_type_id'] = volume['volume_type_id']
+            new_comment['qos'] = settings['qos']
+
+        # Update the existing volume with the new name and comments.
+        self.client.modifyVolume(existing_ref['name'],
+                                 {'newName': new_vol_name,
+                                  'comment': json.dumps(new_comment)})
+
+        LOG.info(_("Virtual volume '%(ref)s' renamed to '%(new)s'.") %
+                 {'ref': existing_ref['name'], 'new': new_vol_name})
+        LOG.info(_("Virtual volume %(disp)s '%(new)s' is now being managed.") %
+                 {'disp': display_name, 'new': new_vol_name})
+
+        # Return display name to update the name displayed in the GUI.
+        return {'display_name': display_name}
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'name': <name of the virtual volume>}
+        """
+        # Check that a valid reference was provided.
+        if 'name' not in existing_ref:
+            reason = _("Reference must contain name element.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason)
+
+        # Make sure the reference is not in use.
+        if re.match('osv-*|oss-*|vvs-*', existing_ref['name']):
+            reason = _("Reference must be for an unmanaged virtual volume.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason)
+
+        # Check for the existence of the virtual volume.
+        try:
+            vol = self.client.getVolume(existing_ref['name'])
+        except hpexceptions.HTTPNotFound:
+            err = (_("Virtual volume '%s' doesn't exist on array.") %
+                   existing_ref['name'])
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        return int(math.ceil(float(vol['sizeMiB']) / units.Ki))
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management."""
+        # Rename the volume's name to unm-* format so that it can be
+        # easily found later.
+        vol_name = self._get_3par_vol_name(volume['id'])
+        new_vol_name = self._get_3par_unm_name(volume['id'])
+        self.client.modifyVolume(vol_name, {'newName': new_vol_name})
+
+        LOG.info(_("Virtual volume %(disp)s '%(vol)s' is no longer managed. "
+                   "Volume renamed to '%(new)s'.") %
+                 {'disp': volume['display_name'],
+                  'vol': vol_name,
+                  'new': new_vol_name})
+
     def _extend_volume(self, volume, volume_name, growth_size_mib,
                        _convert_to_base=False):
         try:
@@ -319,6 +431,10 @@ class HP3PARCommon(object):
     def _get_3par_vvs_name(self, volume_id):
         vvs_name = self._encode_name(volume_id)
         return "vvs-%s" % vvs_name
+
+    def _get_3par_unm_name(self, volume_id):
+        unm_name = self._encode_name(volume_id)
+        return "unm-%s" % unm_name
 
     def _encode_name(self, name):
         uuid_str = name.replace("-", "")
