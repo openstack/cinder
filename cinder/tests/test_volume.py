@@ -1250,10 +1250,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertIsNone(vol['attached_host'])
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
-        self.assertEqual(admin_metadata[0]['key'], 'readonly')
-        self.assertEqual(admin_metadata[0]['value'], 'True')
-        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
-        self.assertEqual(admin_metadata[1]['value'], 'ro')
+        expected = dict(readonly='True', attached_mode='ro')
+        ret = {}
+        for item in admin_metadata:
+            ret.update({item['key']: item['value']})
+        self.assertDictMatch(ret, expected)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -1293,10 +1294,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(vol['attached_host'], 'fake-host')
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
-        self.assertEqual(admin_metadata[0]['key'], 'readonly')
-        self.assertEqual(admin_metadata[0]['value'], 'False')
-        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
-        self.assertEqual(admin_metadata[1]['value'], 'rw')
+        expected = dict(readonly='False', attached_mode='rw')
+        ret = {}
+        for item in admin_metadata:
+            ret.update({item['key']: item['value']})
+        self.assertDictMatch(ret, expected)
+
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -1338,10 +1341,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertIsNone(vol['attached_host'])
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
-        self.assertEqual(admin_metadata[0]['key'], 'readonly')
-        self.assertEqual(admin_metadata[0]['value'], 'True')
-        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
-        self.assertEqual(admin_metadata[1]['value'], 'ro')
+        expected = dict(readonly='True', attached_mode='ro')
+        ret = {}
+        for item in admin_metadata:
+            ret.update({item['key']: item['value']})
+        self.assertDictMatch(ret, expected)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -1369,10 +1373,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(vol['attached_host'], 'fake-host')
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
-        self.assertEqual(admin_metadata[0]['key'], 'readonly')
-        self.assertEqual(admin_metadata[0]['value'], 'True')
-        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
-        self.assertEqual(admin_metadata[1]['value'], 'ro')
+        expected = dict(readonly='True', attached_mode='ro')
+        ret = {}
+        for item in admin_metadata:
+            ret.update({item['key']: item['value']})
+        self.assertDictMatch(ret, expected)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -1418,10 +1423,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(vol['attach_status'], "detached")
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
-        self.assertEqual(admin_metadata[0]['key'], 'readonly')
-        self.assertEqual(admin_metadata[0]['value'], 'True')
-        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
-        self.assertEqual(admin_metadata[1]['value'], 'rw')
+        expected = dict(readonly='True', attached_mode='rw')
+        ret = {}
+        for item in admin_metadata:
+            ret.update({item['key']: item['value']})
+        self.assertDictMatch(ret, expected)
 
         db.volume_update(self.context, volume_id, {'status': 'available'})
         self.assertRaises(exception.InvalidVolumeAttachMode,
@@ -1437,10 +1443,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(vol['attach_status'], "detached")
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
-        self.assertEqual(admin_metadata[0]['key'], 'readonly')
-        self.assertEqual(admin_metadata[0]['value'], 'True')
-        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
-        self.assertEqual(admin_metadata[1]['value'], 'rw')
+        expected = dict(readonly='True', attached_mode='rw')
+        ret = {}
+        for item in admin_metadata:
+            ret.update({item['key']: item['value']})
+        self.assertDictMatch(ret, expected)
 
     def test_run_api_attach_detach_volume_with_wrong_attach_mode(self):
         # Not allow using 'read-write' mode attach readonly volume
