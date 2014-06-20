@@ -16,8 +16,6 @@
 import os
 import re
 
-from oslo.config import cfg
-
 from cinder.brick.iscsi import iscsi
 from cinder import exception
 from cinder.openstack.common.gettextutils import _
@@ -26,7 +24,6 @@ from cinder.openstack.common import processutils as putils
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
 
 
 class _ExportMixin(object):
@@ -35,14 +32,19 @@ class _ExportMixin(object):
         self.db = kwargs.pop('db', None)
         super(_ExportMixin, self).__init__(*args, **kwargs)
 
-    def create_export(self, context, volume, volume_path):
+    def create_export(self, context, volume, volume_path, conf):
         """Creates an export for a logical volume."""
-        iscsi_name = "%s%s" % (CONF.iscsi_target_prefix,
+        iscsi_name = "%s%s" % (conf.iscsi_target_prefix,
                                volume['name'])
-        iscsi_target, lun = self._get_target_and_lun(context, volume)
+        max_targets = conf.safe_get('iscsi_num_targets')
+        (iscsi_target, lun) = self._get_target_and_lun(context,
+                                                       volume,
+                                                       max_targets)
+
         chap_username = utils.generate_username()
         chap_password = utils.generate_password()
-        chap_auth = self._iscsi_authentication('IncomingUser', chap_username,
+        chap_auth = self._iscsi_authentication('IncomingUser',
+                                               chap_username,
                                                chap_password)
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
@@ -53,7 +55,7 @@ class _ExportMixin(object):
                                        chap_auth)
         data = {}
         data['location'] = self._iscsi_location(
-            CONF.iscsi_ip_address, tid, iscsi_name, lun)
+            conf.iscsi_ip_address, tid, iscsi_name, conf.iscsi_port, lun)
         data['auth'] = self._iscsi_authentication(
             'CHAP', chap_username, chap_password)
         return data
@@ -84,7 +86,7 @@ class _ExportMixin(object):
         self.remove_iscsi_target(iscsi_target, 0, volume['id'], volume['name'])
 
     def ensure_export(self, context, volume, iscsi_name, volume_path,
-                      old_name=None):
+                      vg_name, old_name=None):
         iscsi_target = self._get_target_for_ensure_export(context,
                                                           volume['id'])
         if iscsi_target is None:
@@ -106,18 +108,18 @@ class _ExportMixin(object):
                                  chap_auth, check_exit_code=False,
                                  old_name=old_name)
 
-    def _ensure_iscsi_targets(self, context, host):
+    def _ensure_iscsi_targets(self, context, host, max_targets):
         """Ensure that target ids have been created in datastore."""
         # NOTE(jdg): tgtadm doesn't use the iscsi_targets table
         # TODO(jdg): In the future move all of the dependent stuff into the
         # cooresponding target admin class
         host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
                                                                 host)
-        if host_iscsi_targets >= CONF.iscsi_num_targets:
+        if host_iscsi_targets >= max_targets:
             return
 
         # NOTE(vish): Target ids start at 1, not 0.
-        target_end = CONF.iscsi_num_targets + 1
+        target_end = max_targets + 1
         for target_num in xrange(1, target_end):
             target = {'host': host, 'target_num': target_num}
             self.db.iscsi_target_create_safe(context, target)
@@ -130,9 +132,9 @@ class _ExportMixin(object):
         except exception.NotFound:
             return None
 
-    def _get_target_and_lun(self, context, volume):
+    def _get_target_and_lun(self, context, volume, max_targets):
         lun = 0
-        self._ensure_iscsi_targets(context, volume['host'])
+        self._ensure_iscsi_targets(context, volume['host'], max_targets)
         iscsi_target = self.db.volume_allocate_iscsi_target(context,
                                                             volume['id'],
                                                             volume['host'])
@@ -144,11 +146,11 @@ class _ExportMixin(object):
     def _iscsi_authentication(self, chap, name, password):
         return "%s %s %s" % (chap, name, password)
 
-    def _iscsi_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, CONF.iscsi_port,
+    def _iscsi_location(self, ip, target, iqn, port, lun=None):
+        return "%s:%s,%s %s %s" % (ip, port,
                                    target, iqn, lun)
 
-    def _fix_id_migration(self, context, volume):
+    def _fix_id_migration(self, context, volume, vg_name):
         """Fix provider_location and dev files to address bug 1065702.
 
         For volumes that the provider_location has NOT been updated
@@ -174,12 +176,13 @@ class _ExportMixin(object):
         self.db.volume_update(context, volume['id'], model_update)
 
         start = os.getcwd()
-        os.chdir('/dev/%s' % CONF.volume_group)
+
+        os.chdir('/dev/%s' % vg_name)
 
         try:
             (out, err) = self._execute('readlink', old_name)
         except putils.ProcessExecutionError:
-            link_path = '/dev/%s/%s' % (CONF.volume_group,
+            link_path = '/dev/%s/%s' % (vg_name,
                                         old_name)
             LOG.debug('Symbolic link %s not found' % link_path)
             os.chdir(start)
@@ -196,7 +199,7 @@ class _ExportMixin(object):
 
 class TgtAdm(_ExportMixin, iscsi.TgtAdm):
 
-    def _get_target_and_lun(self, context, volume):
+    def _get_target_and_lun(self, context, volume, max_targets):
         lun = 1  # For tgtadm the controller is lun 0, dev starts at lun 1
         iscsi_target = 0  # NOTE(jdg): Not used by tgtadm
         return iscsi_target, lun
@@ -210,7 +213,7 @@ class TgtAdm(_ExportMixin, iscsi.TgtAdm):
 
 class FakeIscsiHelper(_ExportMixin, iscsi.FakeIscsiHelper):
 
-    def create_export(self, context, volume, volume_path):
+    def create_export(self, context, volume, volume_path, conf):
         return {
             'location': "fake_location",
             'auth': "fake_auth"
@@ -219,8 +222,8 @@ class FakeIscsiHelper(_ExportMixin, iscsi.FakeIscsiHelper):
     def remove_export(self, context, volume):
         pass
 
-    def ensure_export(self, context, volume_id, iscsi_name, volume_path,
-                      old_name=None):
+    def ensure_export(self, context, volume, iscsi_name, volume_path,
+                      vg_name, old_name=None):
         pass
 
 
@@ -237,10 +240,10 @@ class LioAdm(_ExportMixin, iscsi.LioAdm):
 
         self.remove_iscsi_target(iscsi_target, 0, volume['id'], volume['name'])
 
-    def ensure_export(self, context, volume_id, iscsi_name, volume_path,
-                      old_name=None):
+    def ensure_export(self, context, volume, iscsi_name, volume_path,
+                      vg_name, old_name=None):
         try:
-            volume_info = self.db.volume_get(context, volume_id)
+            volume_info = self.db.volume_get(context, volume['id'])
             (auth_method,
              auth_user,
              auth_pass) = volume_info['provider_auth'].split(' ', 3)
@@ -250,7 +253,7 @@ class LioAdm(_ExportMixin, iscsi.LioAdm):
         except exception.NotFound:
             LOG.debug("volume_info:%s", volume_info)
             LOG.info(_("Skipping ensure_export. No iscsi_target "
-                       "provision for volume: %s"), volume_id)
+                       "provision for volume: %s"), volume['id'])
 
         iscsi_target = 1
 
