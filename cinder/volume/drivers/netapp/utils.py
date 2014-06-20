@@ -23,14 +23,17 @@ NetApp drivers to achieve the desired functionality.
 import base64
 import binascii
 import copy
+import platform
 import socket
 import uuid
 
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils as putils
 from cinder.openstack.common import timeutils
 from cinder import utils
+from cinder import version
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaErrors
@@ -41,29 +44,31 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 
-def provide_ems(requester, server, stats, netapp_backend,
+def provide_ems(requester, server, netapp_backend, app_version,
                 server_type="cluster"):
     """Provide ems with volume stats for the requester.
 
     :param server_type: cluster or 7mode.
     """
-    def _create_ems(stats, netapp_backend, server_type):
+
+    def _create_ems(netapp_backend, app_version, server_type):
         """Create ems api request."""
         ems_log = NaElement('ems-autosupport-log')
         host = socket.getfqdn() or 'Cinder_node'
-        dest = "cluster node" if server_type == "cluster"\
-               else "7 mode controller"
+        if server_type == "cluster":
+            dest = "cluster node"
+        else:
+            dest = "7 mode controller"
         ems_log.add_new_child('computer-name', host)
         ems_log.add_new_child('event-id', '0')
         ems_log.add_new_child('event-source',
                               'Cinder driver %s' % netapp_backend)
-        ems_log.add_new_child('app-version', stats.get('driver_version',
-                              'Undefined'))
+        ems_log.add_new_child('app-version', app_version)
         ems_log.add_new_child('category', 'provisioning')
         ems_log.add_new_child('event-description',
-                              'OpenStack volume created on %s' % dest)
+                              'OpenStack Cinder connected to %s' % dest)
         ems_log.add_new_child('log-level', '6')
-        ems_log.add_new_child('auto-support', 'true')
+        ems_log.add_new_child('auto-support', 'false')
         return ems_log
 
     def _create_vs_get():
@@ -95,14 +100,13 @@ def provide_ems(requester, server, stats, netapp_backend,
 
     do_ems = True
     if hasattr(requester, 'last_ems'):
-        sec_limit = 604800
-        if not (timeutils.is_older_than(requester.last_ems, sec_limit) or
-                timeutils.is_older_than(requester.last_ems, sec_limit - 59)):
+        sec_limit = 3559
+        if not (timeutils.is_older_than(requester.last_ems, sec_limit)):
             do_ems = False
     if do_ems:
         na_server = copy.copy(server)
         na_server.set_timeout(25)
-        ems = _create_ems(stats, netapp_backend, server_type)
+        ems = _create_ems(netapp_backend, app_version, server_type)
         try:
             if server_type == "cluster":
                 api_version = na_server.get_api_version()
@@ -354,3 +358,126 @@ def convert_es_fmt_to_uuid(es_label):
     """Converts e-series name format to uuid."""
     es_label_b32 = es_label.ljust(32, '=')
     return uuid.UUID(binascii.hexlify(base64.b32decode(es_label_b32)))
+
+
+class OpenStackInfo(object):
+    """OS/distribution, release, and version.
+
+    NetApp uses these fields as content for EMS log entry.
+    """
+
+    PACKAGE_NAME = 'python-cinder'
+
+    def __init__(self):
+        self._version = 'unknown version'
+        self._release = 'unknown release'
+        self._vendor = 'unknown vendor'
+        self._platform = 'unknown platform'
+
+    def _update_version_from_version_string(self):
+        try:
+            self._version = version.version_info.version_string()
+        except Exception:
+            pass
+
+    def _update_release_from_release_string(self):
+        try:
+            self._release = version.version_info.release_string()
+        except Exception:
+            pass
+
+    def _update_platform(self):
+        try:
+            self._platform = platform.platform()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _get_version_info_version():
+        return version.version_info.version
+
+    @staticmethod
+    def _get_version_info_release():
+        return version.version_info.release
+
+    def _update_info_from_version_info(self):
+        try:
+            ver = self._get_version_info_version()
+            if ver:
+                self._version = ver
+        except Exception:
+            pass
+        try:
+            rel = self._get_version_info_release()
+            if rel:
+                self._release = rel
+        except Exception:
+            pass
+
+    # RDO, RHEL-OSP, Mirantis on Redhat, SUSE
+    def _update_info_from_rpm(self):
+        LOG.debug('Trying rpm command.')
+        try:
+            out, err = putils.execute("rpm", "-qa", "--queryformat",
+                                      "'%{version}\t%{release}\t%{vendor}'",
+                                      self.PACKAGE_NAME)
+            if not out:
+                LOG.info(_('No rpm info found for %(pkg)s package.') % {
+                    'pkg': self.PACKAGE_NAME})
+                return False
+            parts = out.split()
+            self._version = parts[0]
+            self._release = parts[1]
+            self._vendor = ' '.join(parts[2::])
+            return True
+        except Exception as e:
+            LOG.info(_('Could not run rpm command: %(msg)s.') % {
+                'msg': e})
+            return False
+
+    # ubuntu, mirantis on ubuntu
+    def _update_info_from_dpkg(self):
+        LOG.debug('Trying dpkg-query command.')
+        try:
+            _vendor = None
+            out, err = putils.execute("dpkg-query", "-W", "-f='${Version}'",
+                                      self.PACKAGE_NAME)
+            if not out:
+                LOG.info(_('No dpkg-query info found for %(pkg)s package.') % {
+                    'pkg': self.PACKAGE_NAME})
+                return False
+            # debian format: [epoch:]upstream_version[-debian_revision]
+            deb_version = out
+            # in case epoch or revision is missing, copy entire string
+            _release = deb_version
+            if ':' in deb_version:
+                deb_epoch, upstream_version = deb_version.split(':')
+                _release = upstream_version
+            if '-' in deb_version:
+                deb_revision = deb_version.split('-')[1]
+                _vendor = deb_revision
+            self._release = _release
+            if _vendor:
+                self._vendor = _vendor
+            return True
+        except Exception as e:
+            LOG.info(_('Could not run dpkg-query command: %(msg)s.') % {
+                'msg': e})
+            return False
+
+    def _update_openstack_info(self):
+        self._update_version_from_version_string()
+        self._update_release_from_release_string()
+        self._update_platform()
+        # some distributions override with more meaningful information
+        self._update_info_from_version_info()
+        # see if we have still more targeted info from rpm or apt
+        found_package = self._update_info_from_rpm()
+        if not found_package:
+            self._update_info_from_dpkg()
+
+    def info(self):
+        self._update_openstack_info()
+        return '%(version)s|%(release)s|%(vendor)s|%(platform)s' % {
+            'version': self._version, 'release': self._release,
+            'vendor': self._vendor, 'platform': self._platform}

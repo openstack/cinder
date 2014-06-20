@@ -79,6 +79,7 @@ class NetAppLun(object):
 class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     """NetApp Direct iSCSI volume driver."""
 
+    # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
 
     IGROUP_PREFIX = 'openstack-'
@@ -87,6 +88,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                       'netapp_server_port']
 
     def __init__(self, *args, **kwargs):
+        self._app_version = kwargs.pop("app_version", "unknown")
         super(NetAppDirectISCSIDriver, self).__init__(*args, **kwargs)
         validate_instantiation(**kwargs)
         self.configuration.append_config_values(netapp_connection_opts)
@@ -1073,7 +1075,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._update_cluster_vol_stats(data)
-        provide_ems(self, self.client, data, netapp_backend)
+        provide_ems(self, self.client, netapp_backend, self._app_version)
         self._stats = data
 
     def _update_cluster_vol_stats(self, data):
@@ -1484,8 +1486,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._get_capacity_info(data)
-        provide_ems(self, self.client, data, netapp_backend,
-                    server_type="7mode")
+        provide_ems(self, self.client, netapp_backend,
+                    self._app_version, server_type='7mode')
         self._stats = data
 
     def _get_lun_block_count(self, path):
