@@ -20,6 +20,7 @@
 
 
 import sys
+import threading
 import uuid
 import warnings
 
@@ -35,6 +36,7 @@ from cinder.common import sqlalchemyutils
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.openstack.common.db import exception as db_exc
+from cinder.openstack.common.db import options
 from cinder.openstack.common.db.sqlalchemy import session as db_session
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -44,11 +46,33 @@ from cinder.openstack.common import uuidutils
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
-db_session.set_defaults(sql_connection='sqlite:///$state_path/$sqlite_db',
-                        sqlite_db='cinder.sqlite')
+options.set_defaults(sql_connection='sqlite:///$state_path/$sqlite_db',
+                     sqlite_db='cinder.sqlite')
 
-get_engine = db_session.get_engine
-get_session = db_session.get_session
+_LOCK = threading.Lock()
+_FACADE = None
+
+
+def _create_facade_lazily():
+    global _LOCK
+    with _LOCK:
+        global _FACADE
+        if _FACADE is None:
+            _FACADE = db_session.EngineFacade(
+                CONF.database.connection,
+                **dict(CONF.database.iteritems())
+            )
+        return _FACADE
+
+
+def get_engine():
+    facade = _create_facade_lazily()
+    return facade.get_engine()
+
+
+def get_session(**kwargs):
+    facade = _create_facade_lazily()
+    return facade.get_session(**kwargs)
 
 _DEFAULT_QUOTA_NAME = 'default'
 
@@ -361,8 +385,11 @@ def service_create(context, values):
     service_ref.update(values)
     if not CONF.enable_new_services:
         service_ref.disabled = True
-    service_ref.save()
-    return service_ref
+
+    session = get_session()
+    with session.begin():
+        service_ref.save(session)
+        return service_ref
 
 
 @require_admin_context
@@ -422,11 +449,13 @@ def iscsi_target_create_safe(context, values):
 
     for (key, value) in values.iteritems():
         iscsi_target_ref[key] = value
-    try:
-        iscsi_target_ref.save()
-        return iscsi_target_ref
-    except IntegrityError:
-        return None
+    session = get_session()
+    with session.begin():
+        try:
+            iscsi_target_ref.save(session)
+            return iscsi_target_ref
+        except IntegrityError:
+            return None
 
 
 ###################
@@ -472,8 +501,11 @@ def quota_create(context, project_id, resource, limit):
     quota_ref.project_id = project_id
     quota_ref.resource = resource
     quota_ref.hard_limit = limit
-    quota_ref.save()
-    return quota_ref
+
+    session = get_session()
+    with session.begin():
+        quota_ref.save(session)
+        return quota_ref
 
 
 @require_admin_context
@@ -548,8 +580,11 @@ def quota_class_create(context, class_name, resource, limit):
     quota_class_ref.class_name = class_name
     quota_class_ref.resource = resource
     quota_class_ref.hard_limit = limit
-    quota_class_ref.save()
-    return quota_class_ref
+
+    session = get_session()
+    with session.begin():
+        quota_class_ref.save(session)
+        return quota_class_ref
 
 
 @require_admin_context
@@ -2591,8 +2626,11 @@ def backup_create(context, values):
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
     backup.update(values)
-    backup.save()
-    return backup
+
+    session = get_session()
+    with session.begin():
+        backup.save(session)
+        return backup
 
 
 @require_context
