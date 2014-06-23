@@ -120,6 +120,39 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             else:
                 raise
 
+        self._refresh_mounts()
+
+    def _unmount_shares(self):
+        self._load_shares_config(self.configuration.glusterfs_shares_config)
+        for share in self.shares.keys():
+            try:
+                self._do_umount(True, share)
+            except Exception as exc:
+                LOG.warning(_('Exception during unmounting %s') % (exc))
+
+    def _do_umount(self, ignore_not_mounted, share):
+        mount_path = self._get_mount_point_for_share(share)
+        command = ['umount', mount_path]
+        try:
+            self._execute(*command, run_as_root=True)
+        except processutils.ProcessExecutionError as exc:
+            if ignore_not_mounted and 'not mounted' in exc.stderr:
+                LOG.info(_("%s is already umounted"), share)
+            else:
+                LOG.error(_("Failed to umount %(share)s, reason=%(stderr)s"),
+                          {'share': share, 'stderr': exc.stderr})
+                raise
+
+    def _refresh_mounts(self):
+        try:
+            self._unmount_shares()
+        except processutils.ProcessExecutionError as exc:
+            if 'target is busy' in exc.stderr:
+                LOG.warn(_("Failed to refresh mounts, reason=%s") %
+                         exc.stderr)
+            else:
+                raise
+
         self._ensure_shares_mounted()
 
     def check_for_setup_error(self):

@@ -460,6 +460,9 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         drv._execute('mount.glusterfs', check_exit_code=False)
 
+        drv._execute('umount', '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005',
+                     run_as_root=True)
+
         drv._execute('mkdir', '-p', mox_lib.IgnoreArg())
 
         os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
@@ -728,6 +731,208 @@ class GlusterFsDriverTestCase(test.TestCase):
                                                  run_as_root=True)
             mock_local_path_volume_info.assert_called_once_with(volume)
             mock_delete_if_exists.assert_called_once_with(info_file)
+
+    def test_refresh_mounts(self):
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_unmount_shares'),
+            mock.patch.object(self._driver, '_ensure_shares_mounted')
+        ) as (mock_unmount_shares, mock_ensure_shares_mounted):
+            self._driver._refresh_mounts()
+
+            self.assertTrue(mock_unmount_shares.called)
+            self.assertTrue(mock_ensure_shares_mounted.called)
+
+    def test_refresh_mounts_with_excp(self):
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_unmount_shares'),
+            mock.patch.object(self._driver, '_ensure_shares_mounted'),
+            mock.patch.object(glusterfs, 'LOG')
+        ) as (mock_unmount_shares, mock_ensure_shares_mounted,
+              mock_logger):
+            mock_stderr = _("umount: <mnt_path>: target is busy")
+            mock_unmount_shares.side_effect = \
+                putils.ProcessExecutionError(stderr=mock_stderr)
+
+            self._driver._refresh_mounts()
+
+            self.assertTrue(mock_unmount_shares.called)
+            self.assertTrue(mock_logger.warn.called)
+            self.assertTrue(mock_ensure_shares_mounted.called)
+
+            mock_unmount_shares.reset_mock()
+            mock_ensure_shares_mounted.reset_mock()
+            mock_logger.reset_mock()
+            mock_logger.warn.reset_mock()
+
+            mock_stderr = _("umount: <mnt_path>: some other error")
+            mock_unmount_shares.side_effect = \
+                putils.ProcessExecutionError(stderr=mock_stderr)
+
+            self.assertRaises(putils.ProcessExecutionError,
+                              self._driver._refresh_mounts)
+
+            self.assertTrue(mock_unmount_shares.called)
+            self.assertFalse(mock_ensure_shares_mounted.called)
+
+    def test_unmount_shares_with_excp(self):
+        self._driver.shares = {'127.7.7.7:/gluster1': None}
+
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_load_shares_config'),
+            mock.patch.object(self._driver, '_do_umount'),
+            mock.patch.object(glusterfs, 'LOG')
+        ) as (mock_load_shares_config, mock_do_umount, mock_logger):
+            mock_do_umount.side_effect = Exception()
+
+            self._driver._unmount_shares()
+
+            self.assertTrue(mock_do_umount.called)
+            self.assertTrue(mock_logger.warning.called)
+            mock_logger.debug.assert_not_called()
+
+    def test_unmount_shares_1share(self):
+        self._driver.shares = {'127.7.7.7:/gluster1': None}
+
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_load_shares_config'),
+            mock.patch.object(self._driver, '_do_umount')
+        ) as (mock_load_shares_config, mock_do_umount):
+            self._driver._unmount_shares()
+
+            self.assertTrue(mock_do_umount.called)
+            mock_do_umount.assert_called_once_with(True,
+                                                   '127.7.7.7:/gluster1')
+
+    def test_unmount_shares_2share(self):
+        self._driver.shares = {'127.7.7.7:/gluster1': None,
+                               '127.7.7.8:/gluster2': None}
+
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_load_shares_config'),
+            mock.patch.object(self._driver, '_do_umount')
+        ) as (mock_load_shares_config, mock_do_umount):
+            self._driver._unmount_shares()
+
+            mock_do_umount.assert_any_call(True,
+                                           '127.7.7.7:/gluster1')
+            mock_do_umount.assert_any_call(True,
+                                           '127.7.7.8:/gluster2')
+
+    def test_do_umount(self):
+        test_share = '127.7.7.7:/gluster1'
+        test_hashpath = '/hashed/mnt/path'
+
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_get_mount_point_for_share'),
+            mock.patch.object(putils, 'execute')
+        ) as (mock_get_mntp_share, mock_execute):
+            mock_get_mntp_share.return_value = test_hashpath
+
+            self._driver._do_umount(True, test_share)
+
+            self.assertTrue(mock_get_mntp_share.called)
+            self.assertTrue(mock_execute.called)
+            mock_get_mntp_share.assert_called_once_with(test_share)
+
+            cmd = ['umount', test_hashpath]
+            self.assertEqual(cmd[0], mock_execute.call_args[0][0])
+            self.assertEqual(cmd[1], mock_execute.call_args[0][1])
+            self.assertEqual(True,
+                             mock_execute.call_args[1]['run_as_root'])
+
+            mock_get_mntp_share.reset_mock()
+            mock_get_mntp_share.return_value = test_hashpath
+            mock_execute.reset_mock()
+
+            self._driver._do_umount(False, test_share)
+
+            self.assertTrue(mock_get_mntp_share.called)
+            self.assertTrue(mock_execute.called)
+            mock_get_mntp_share.assert_called_once_with(test_share)
+            cmd = ['umount', test_hashpath]
+            self.assertEqual(cmd[0], mock_execute.call_args[0][0])
+            self.assertEqual(cmd[1], mock_execute.call_args[0][1])
+            self.assertEqual(True,
+                             mock_execute.call_args[1]['run_as_root'])
+
+    def test_do_umount_with_excp1(self):
+        test_share = '127.7.7.7:/gluster1'
+        test_hashpath = '/hashed/mnt/path'
+
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_get_mount_point_for_share'),
+            mock.patch.object(putils, 'execute'),
+            mock.patch.object(glusterfs, 'LOG')
+        ) as (mock_get_mntp_share, mock_execute, mock_logger):
+            mock_get_mntp_share.return_value = test_hashpath
+            mock_execute.side_effect = putils.ProcessExecutionError
+            self.assertRaises(putils.ProcessExecutionError,
+                              self._driver._do_umount, False,
+                              test_share)
+
+            mock_logger.reset_mock()
+            mock_logger.info.reset_mock()
+            mock_logger.error.reset_mock()
+            mock_execute.side_effect = putils.ProcessExecutionError
+            try:
+                self._driver._do_umount(False, test_share)
+            except putils.ProcessExecutionError:
+                self.assertFalse(mock_logger.info.called)
+                self.assertTrue(mock_logger.error.called)
+            except Exception as e:
+                self.fail('Unexpected exception thrown:', e)
+            else:
+                self.fail('putils.ProcessExecutionError not thrown')
+
+    def test_do_umount_with_excp2(self):
+        test_share = '127.7.7.7:/gluster1'
+        test_hashpath = '/hashed/mnt/path'
+
+        with contextlib.nested(
+            mock.patch.object(self._driver, '_get_mount_point_for_share'),
+            mock.patch.object(putils, 'execute'),
+            mock.patch.object(glusterfs, 'LOG')
+        ) as (mock_get_mntp_share, mock_execute, mock_logger):
+            mock_get_mntp_share.return_value = test_hashpath
+
+            mock_stderr = _("umount: %s: not mounted") % test_hashpath
+            mock_execute.side_effect = putils.ProcessExecutionError(
+                stderr=mock_stderr)
+
+            self._driver._do_umount(True, test_share)
+
+            self.assertTrue(mock_logger.info.called)
+            self.assertFalse(mock_logger.error.called)
+
+            mock_logger.reset_mock()
+            mock_logger.info.reset_mock()
+            mock_logger.error.reset_mock()
+            mock_stderr = _("umount: %s: target is busy") %\
+                           (test_hashpath)
+            mock_execute.side_effect = putils.ProcessExecutionError(
+                stderr=mock_stderr)
+
+            self.assertRaises(putils.ProcessExecutionError,
+                              self._driver._do_umount, True,
+                              test_share)
+
+            mock_logger.reset_mock()
+            mock_logger.info.reset_mock()
+            mock_logger.error.reset_mock()
+            mock_stderr = _('umount: %s: target is busy') %\
+                           (test_hashpath)
+            mock_execute.side_effect = putils.ProcessExecutionError(
+                stderr=mock_stderr)
+
+            try:
+                self._driver._do_umount(True, test_share)
+            except putils.ProcessExecutionError:
+                mock_logger.info.assert_not_called()
+                self.assertTrue(mock_logger.error.called)
+            except Exception as e:
+                self.fail('Unexpected exception thrown:', e)
+            else:
+                self.fail('putils.ProcessExecutionError not thrown')
 
     def test_delete_should_ensure_share_mounted(self):
         """delete_volume should ensure that corresponding share is mounted."""
