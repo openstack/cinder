@@ -177,7 +177,7 @@ class BlockDeviceDriver(driver.ISCSIDriver):
 
     def _get_used_devices(self):
         lst = api.volume_get_all_by_host(context.get_admin_context(),
-                                         self.configuration.host)
+                                         self.host)
         used_devices = set()
         for volume in lst:
             local_path = self.local_path(volume)
