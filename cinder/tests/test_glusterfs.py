@@ -27,6 +27,7 @@ from mox import stubout
 from oslo.config import cfg
 
 from cinder import brick
+from cinder import compute
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -98,6 +99,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             glusterfs.GlusterfsDriver(configuration=self._configuration,
                                       db=FakeDb())
         self._driver.shares = {}
+        compute.API = mock.MagicMock()
         self.addCleanup(self._mox.UnsetStubs)
 
     def stub_out_not_replaying(self, obj, attr_name):
