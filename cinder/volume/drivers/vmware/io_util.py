@@ -18,6 +18,8 @@ Utility classes for defining the time saving transfer of data from the reader
 to the write using a LightQueue as a Pipe between the reader and the writer.
 """
 
+import errno
+
 from eventlet import event
 from eventlet import greenthread
 from eventlet import queue
@@ -62,7 +64,8 @@ class ThreadSafePipe(queue.LightQueue):
 
     def seek(self, offset, whence=0):
         """Set the file's current position at the offset."""
-        pass
+        # Illegal seek; the file object is a pipe
+        raise IOError(errno.ESPIPE, "Illegal seek")
 
     def tell(self):
         """Get size of the file to be read."""
