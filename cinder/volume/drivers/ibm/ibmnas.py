@@ -182,7 +182,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         """Resize the image file on share to new size."""
         LOG.info(_('Resizing file to %sG'), new_size)
         try:
-            image_utils.resize_image(path, new_size)
+            image_utils.resize_image(path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as e:
             msg = (_("Failed to resize volume "
                      "%(volume_id)s, error: %(error)s") %
