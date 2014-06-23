@@ -373,6 +373,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         data['total_capacity_gb'] = float(self.vg.vg_size)
         data['free_capacity_gb'] = float(self.vg.vg_free_space)
+        if self.configuration.lvm_type == 'thin':
+            data['total_capacity_gb'] = float(self.vg.vg_thin_pool_size)
+            data['free_capacity_gb'] = float(self.vg.vg_thin_pool_free_space)
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
         data['location_info'] =\

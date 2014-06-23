@@ -100,6 +100,9 @@ class BrickLvmTestCase(test.TestCase):
             data = "  fake-volumes:/dev/sda:10.00g:8.99g\n"
             data += "  fake-volumes-2:/dev/sdb:10.00g:8.99g\n"
             data += "  fake-volumes-3:/dev/sdc:10.00g:8.99g\n"
+        elif 'lvs, --noheadings, --unit=g, -o, size,data_percent, ' \
+             '--separator, :' in cmd_string:
+            data = "  9:12\n"
         else:
             pass
 
@@ -223,6 +226,13 @@ class BrickLvmTestCase(test.TestCase):
         # size.
         for size in ("1g", "1.2g", "1.75g"):
             self.assertEqual(size, self.vg.create_thin_pool(size_str=size))
+
+    def test_thin_pool_free_space(self):
+        # The size of fake-volumes-pool is 9g and the allocated data sums up to
+        # 12% so the calculated free space should be 7.92
+        self.assertEqual(float("7.92"),
+                         self.vg._get_thin_pool_free_space("fake-vg",
+                                                           "fake-vg-pool"))
 
     def test_volume_create_after_thin_creation(self):
         """Test self.vg.vg_thin_pool is set to pool_name
