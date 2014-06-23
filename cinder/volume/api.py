@@ -28,6 +28,7 @@ from oslo.config import cfg
 from cinder import context
 from cinder.db import base
 from cinder import exception
+from cinder import flow_utils
 from cinder.image import glance
 from cinder import keymgr
 from cinder.openstack.common import excutils
@@ -40,7 +41,6 @@ from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows.api import create_volume
-from cinder.volume.flows import common as flow_common
 from cinder.volume import qos_specs
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
@@ -214,7 +214,7 @@ class API(base.Base):
         # Attaching this listener will capture all of the notifications that
         # taskflow sends out and redirect them to a more useful log for
         # cinders debugging (or error reporting) usage.
-        with flow_common.DynamicLogListener(flow_engine, logger=LOG):
+        with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
             return flow_engine.storage.fetch('volume')
 
