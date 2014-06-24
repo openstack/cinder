@@ -26,6 +26,7 @@ from oslo.config import cfg
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
+from cinder.volume.drivers.windows import constants
 from cinder.volume.drivers.windows import windows_utils
 
 LOG = logging.getLogger(__name__)
@@ -165,11 +166,24 @@ class WindowsDriver(driver.ISCSIDriver):
         self.utils.remove_iscsi_target(target_name)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
+        """Fetch the image from image_service and create a volume using it."""
         # Convert to VHD and file back to VHD
-        image_utils.fetch_to_vhd(context, image_service, image_id,
-                                 self.local_path(volume),
-                                 self.configuration.volume_dd_blocksize)
+        if (CONF.image_conversion_dir and not
+                os.path.exists(CONF.image_conversion_dir)):
+            os.makedirs(CONF.image_conversion_dir)
+        with image_utils.temporary_file(suffix='.vhd') as tmp:
+            volume_path = self.local_path(volume)
+            image_utils.fetch_to_vhd(context, image_service, image_id, tmp,
+                                     self.configuration.volume_dd_blocksize)
+            # The vhd must be disabled and deleted before being replaced with
+            # the desired image.
+            self.utils.change_disk_status(volume['name'], False)
+            os.unlink(volume_path)
+            self.utils.convert_vhd(tmp, volume_path,
+                                   constants.VHD_TYPE_FIXED)
+            self.utils.resize_vhd(volume_path,
+                                  volume['size'] << 30)
+            self.utils.change_disk_status(volume['name'], True)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
