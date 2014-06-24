@@ -79,24 +79,13 @@ CONF = cfg.CONF
 CONF.register_opts(rbd_opts)
 
 
-def ascii_str(string):
-    """Convert a string to ascii, or return None if the input is None.
-
-    This is useful when a parameter is None by default, or a string. LibRBD
-    only accepts ascii, hence the need for conversion.
-    """
-    if string is None:
-        return string
-    return str(string)
-
-
 class RBDImageMetadata(object):
     """RBD image metadata to be used with RBDImageIOWrapper."""
     def __init__(self, image, pool, user, conf):
         self.image = image
-        self.pool = str(pool)
-        self.user = str(user)
-        self.conf = str(conf)
+        self.pool = strutils.safe_encode(pool)
+        self.user = strutils.safe_encode(user)
+        self.conf = strutils.safe_encode(conf)
 
 
 class RBDImageIOWrapper(io.RawIOBase):
@@ -209,9 +198,12 @@ class RBDVolumeProxy(object):
     def __init__(self, driver, name, pool=None, snapshot=None,
                  read_only=False):
         client, ioctx = driver._connect_to_rados(pool)
+        if snapshot is not None:
+            snapshot = strutils.safe_encode(snapshot)
+
         try:
-            self.volume = driver.rbd.Image(ioctx, str(name),
-                                           snapshot=ascii_str(snapshot),
+            self.volume = driver.rbd.Image(ioctx, strutils.safe_encode(name),
+                                           snapshot=snapshot,
                                            read_only=read_only)
         except driver.rbd.Error:
             LOG.exception(_("error opening rbd image %s"), name)
@@ -260,6 +252,13 @@ class RBDDriver(driver.VolumeDriver):
         self.rados = kwargs.get('rados', rados)
         self.rbd = kwargs.get('rbd', rbd)
 
+        # All string args used with librbd must be None or utf-8 otherwise
+        # librbd will break.
+        for attr in ['rbd_user', 'rbd_ceph_conf', 'rbd_pool']:
+            val = getattr(self.configuration, attr)
+            if val is not None:
+                setattr(self.configuration, attr, strutils.safe_encode(val))
+
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         if rados is None:
@@ -282,13 +281,16 @@ class RBDDriver(driver.VolumeDriver):
         return args
 
     def _connect_to_rados(self, pool=None):
-        ascii_user = ascii_str(self.configuration.rbd_user)
-        ascii_conf = ascii_str(self.configuration.rbd_ceph_conf)
-        client = self.rados.Rados(rados_id=ascii_user, conffile=ascii_conf)
+        client = self.rados.Rados(rados_id=self.configuration.rbd_user,
+                                  conffile=self.configuration.rbd_ceph_conf)
+        if pool is not None:
+            pool = strutils.safe_encode(pool)
+        else:
+            pool = self.configuration.rbd_pool
+
         try:
             client.connect()
-            pool_to_open = str(pool or self.configuration.rbd_pool)
-            ioctx = client.open_ioctx(pool_to_open)
+            ioctx = client.open_ioctx(pool)
             return client, ioctx
         except self.rados.Error:
             # shutdown cannot raise an exception
@@ -397,8 +399,8 @@ class RBDDriver(driver.VolumeDriver):
         and that clone has rbd_max_clone_depth clones behind it, the source
         volume will be flattened.
         """
-        src_name = str(src_vref['name'])
-        dest_name = str(volume['name'])
+        src_name = strutils.safe_encode(src_vref['name'])
+        dest_name = strutils.safe_encode(volume['name'])
         flatten_parent = False
 
         # Do full copy if requested
@@ -484,7 +486,7 @@ class RBDDriver(driver.VolumeDriver):
 
         with RADOSClient(self) as client:
             self.rbd.RBD().create(client.ioctx,
-                                  str(volume['name']),
+                                  strutils.safe_encode(volume['name']),
                                   size,
                                   order,
                                   old_format=old_format,
@@ -503,10 +505,10 @@ class RBDDriver(driver.VolumeDriver):
         with RADOSClient(self, src_pool) as src_client:
             with RADOSClient(self) as dest_client:
                 self.rbd.RBD().clone(src_client.ioctx,
-                                     str(src_image),
-                                     str(src_snap),
+                                     strutils.safe_encode(src_image),
+                                     strutils.safe_encode(src_snap),
                                      dest_client.ioctx,
-                                     str(volume['name']),
+                                     strutils.safe_encode(volume['name']),
                                      features=self.rbd.RBD_FEATURE_LAYERING)
 
     def _resize(self, volume, **kwargs):
@@ -659,7 +661,7 @@ class RBDDriver(driver.VolumeDriver):
     def create_snapshot(self, snapshot):
         """Creates an rbd snapshot."""
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
-            snap = str(snapshot['name'])
+            snap = strutils.safe_encode(snapshot['name'])
             volume.create_snap(snap)
             if self._supports_layering():
                 volume.protect_snap(snap)
@@ -819,9 +821,9 @@ class RBDDriver(driver.VolumeDriver):
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
         volume = self.db.volume_get(context, backup['volume_id'])
-        pool = self.configuration.rbd_pool
 
-        with RBDVolumeProxy(self, volume['name'], pool) as rbd_image:
+        with RBDVolumeProxy(self, volume['name'],
+                            self.configuration.rbd_pool) as rbd_image:
             rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
                                         self.configuration.rbd_user,
                                         self.configuration.rbd_ceph_conf)
@@ -832,9 +834,8 @@ class RBDDriver(driver.VolumeDriver):
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        pool = self.configuration.rbd_pool
-
-        with RBDVolumeProxy(self, volume['name'], pool) as rbd_image:
+        with RBDVolumeProxy(self, volume['name'],
+                            self.configuration.rbd_pool) as rbd_image:
             rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
                                         self.configuration.rbd_user,
                                         self.configuration.rbd_ceph_conf)

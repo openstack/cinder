@@ -122,15 +122,6 @@ CEPH_MON_DUMP = """dumped monmap epoch 1
 """
 
 
-class TestUtil(test.TestCase):
-    def test_ascii_str(self):
-        self.assertIsNone(driver.ascii_str(None))
-        self.assertEqual('foo', driver.ascii_str('foo'))
-        self.assertEqual('foo', driver.ascii_str(u'foo'))
-        self.assertRaises(UnicodeEncodeError,
-                          driver.ascii_str, 'foo' + unichr(300))
-
-
 class RBDTestCase(test.TestCase):
 
     def setUp(self):
