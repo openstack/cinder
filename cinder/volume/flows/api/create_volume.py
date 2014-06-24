@@ -59,13 +59,11 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id'])
 
-    def __init__(self, image_service, az_check_functor=None, **kwargs):
+    def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
         self.image_service = image_service
-        self.az_check_functor = az_check_functor
-        if not self.az_check_functor:
-            self.az_check_functor = lambda az: True
+        self.availability_zones = availability_zones
 
     @staticmethod
     def _extract_snapshot(snapshot):
@@ -256,7 +254,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             else:
                 # For backwards compatibility use the storage_availability_zone
                 availability_zone = CONF.storage_availability_zone
-        if not self.az_check_functor(availability_zone):
+        if availability_zone not in self.availability_zones:
             msg = _("Availability zone '%s' is invalid") % (availability_zone)
             LOG.warn(msg)
             raise exception.InvalidInput(reason=msg)
@@ -692,9 +690,8 @@ class VolumeCastTask(flow_utils.CinderTask):
         LOG.error(_('Unexpected build error:'), exc_info=exc_info)
 
 
-def get_flow(scheduler_rpcapi, volume_rpcapi, db,
-             image_service,
-             az_check_functor,
+def get_flow(scheduler_rpcapi, volume_rpcapi, db_api,
+             image_service_api, availability_zones,
              create_what):
     """Constructs and returns the api entrypoint flow.
 
@@ -712,18 +709,18 @@ def get_flow(scheduler_rpcapi, volume_rpcapi, db,
     api_flow = linear_flow.Flow(flow_name)
 
     api_flow.add(ExtractVolumeRequestTask(
-        image_service,
-        az_check_functor,
+        image_service_api,
+        availability_zones,
         rebind={'size': 'raw_size',
                 'availability_zone': 'raw_availability_zone',
                 'volume_type': 'raw_volume_type'}))
     api_flow.add(QuotaReserveTask(),
-                 EntryCreateTask(db),
+                 EntryCreateTask(db_api),
                  QuotaCommitTask())
 
     # This will cast it out to either the scheduler or volume manager via
     # the rpc apis provided.
-    api_flow.add(VolumeCastTask(scheduler_rpcapi, volume_rpcapi, db))
+    api_flow.add(VolumeCastTask(scheduler_rpcapi, volume_rpcapi, db_api))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(api_flow, store=create_what)
