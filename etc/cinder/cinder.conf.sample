@@ -2135,7 +2135,7 @@
 [keystone_authtoken]
 
 #
-# Options defined in keystoneclient.middleware.auth_token
+# Options defined in keystonemiddleware.auth_token
 #
 
 # Prefix to prepend at the beginning of the path. Deprecated,
