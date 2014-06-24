@@ -57,6 +57,43 @@ def split_datastore_path(datastore_path):
     return (datastore_name.strip(), folder_path.strip(), file_name.strip())
 
 
+class ControllerType:
+    """Encapsulate various controller types."""
+
+    LSI_LOGIC = 'VirtualLsiLogicController'
+    BUS_LOGIC = 'VirtualBusLogicController'
+    LSI_LOGIC_SAS = 'VirtualLsiLogicSASController'
+    IDE = 'VirtualIDEController'
+
+    CONTROLLER_TYPE_DICT = {'lsiLogic': LSI_LOGIC,
+                            'busLogic': BUS_LOGIC,
+                            'lsiLogicsas': LSI_LOGIC_SAS,
+                            'ide': IDE}
+
+    @staticmethod
+    def get_controller_type(adapter_type):
+        """Get the disk controller type based on the given adapter type.
+
+        :param adapter_type: disk adapter type
+        :return: controller type corresponding to the given adapter type
+        :raises: InvalidAdapterTypeException
+        """
+        if adapter_type in ControllerType.CONTROLLER_TYPE_DICT:
+            return ControllerType.CONTROLLER_TYPE_DICT[adapter_type]
+        raise error_util.InvalidAdapterTypeException(invalid_type=adapter_type)
+
+    @staticmethod
+    def is_scsi_controller(controller_type):
+        """Check if the given controller is a SCSI controller.
+
+        :param controller_type: controller type
+        :return: True if the controller is a SCSI controller
+        """
+        return controller_type in [ControllerType.LSI_LOGIC,
+                                   ControllerType.BUS_LOGIC,
+                                   ControllerType.LSI_LOGIC_SAS]
+
+
 class VMwareVolumeOps(object):
     """Manages volume operations."""
 
@@ -364,22 +401,21 @@ class VMwareVolumeOps(object):
                    "%(size)s GB."),
                  {'name': name, 'size': requested_size_in_gb})
 
-    def _get_create_spec(self, name, size_kb, disk_type, ds_name,
-                         profileId=None):
-        """Return spec for creating volume backing.
+    def _create_specs_for_disk_add(self, size_kb, disk_type, adapter_type):
+        """Create controller and disk specs for adding a new disk.
 
-        :param name: Name of the backing
-        :param size_kb: Size in KB of the backing
-        :param disk_type: VMDK type for the disk
-        :param ds_name: Datastore name where the disk is to be provisioned
-        :param profileId: storage profile ID for the backing
-        :return: Spec for creation
+        :param size_kb: disk size in KB
+        :param disk_type: disk provisioning type
+        :param adapter_type: disk adapter type
+        :return: list containing controller and disk specs
         """
         cf = self._session.vim.client.factory
-        controller_device = cf.create('ns0:VirtualLsiLogicController')
+        controller_type = ControllerType.get_controller_type(adapter_type)
+        controller_device = cf.create('ns0:%s' % controller_type)
         controller_device.key = -100
         controller_device.busNumber = 0
-        controller_device.sharedBus = 'noSharing'
+        if ControllerType.is_scsi_controller(controller_type):
+            controller_device.sharedBus = 'noSharing'
         controller_spec = cf.create('ns0:VirtualDeviceConfigSpec')
         controller_spec.operation = 'add'
         controller_spec.device = controller_device
@@ -403,6 +439,17 @@ class VMwareVolumeOps(object):
         disk_spec.fileOperation = 'create'
         disk_spec.device = disk_device
 
+        return [controller_spec, disk_spec]
+
+    def _get_create_spec_disk_less(self, name, ds_name, profileId=None):
+        """Return spec for creating disk-less backing.
+
+        :param name: Name of the backing
+        :param ds_name: Datastore name where the disk is to be provisioned
+        :param profileId: storage profile ID for the backing
+        :return: Spec for creation
+        """
+        cf = self._session.vim.client.factory
         vm_file_info = cf.create('ns0:VirtualMachineFileInfo')
         vm_file_info.vmPathName = '[%s]' % ds_name
 
@@ -411,7 +458,6 @@ class VMwareVolumeOps(object):
         create_spec.guestId = 'otherGuest'
         create_spec.numCPUs = 1
         create_spec.memoryMB = 128
-        create_spec.deviceChange = [controller_spec, disk_spec]
         create_spec.files = vm_file_info
         # set the Hardware version to the lowest version supported by ESXi5.0
         # and compatible with vCenter Server 5.0
@@ -424,11 +470,38 @@ class VMwareVolumeOps(object):
             vmProfile.profileId = profileId
             create_spec.vmProfile = [vmProfile]
 
-        LOG.debug("Spec for creating the backing: %s." % create_spec)
         return create_spec
 
+    def get_create_spec(self, name, size_kb, disk_type, ds_name,
+                        profileId=None, adapter_type='lsiLogic'):
+        """Return spec for creating backing with a single disk.
+
+        :param name: name of the backing
+        :param size_kb: disk size in KB
+        :param disk_type: disk provisioning type
+        :param ds_name: datastore name where the disk is to be provisioned
+        :param profileId: storage profile ID for the backing
+        :param adapter_type: disk adapter type
+        :return: spec for creation
+        """
+        create_spec = self._get_create_spec_disk_less(name, ds_name, profileId)
+        create_spec.deviceChange = self._create_specs_for_disk_add(
+            size_kb, disk_type, adapter_type)
+        return create_spec
+
+    def _create_backing_int(self, folder, resource_pool, host, create_spec):
+        """Helper for create backing methods."""
+        LOG.debug("Creating volume backing with spec: %s.", create_spec)
+        task = self._session.invoke_api(self._session.vim, 'CreateVM_Task',
+                                        folder, config=create_spec,
+                                        pool=resource_pool, host=host)
+        task_info = self._session.wait_for_task(task)
+        backing = task_info.result
+        LOG.info(_("Successfully created volume backing: %s."), backing)
+        return backing
+
     def create_backing(self, name, size_kb, disk_type, folder, resource_pool,
-                       host, ds_name, profileId=None):
+                       host, ds_name, profileId=None, adapter_type='lsiLogic'):
         """Create backing for the volume.
 
         Creates a VM with one VMDK based on the given inputs.
@@ -441,26 +514,51 @@ class VMwareVolumeOps(object):
         :param host: Host reference
         :param ds_name: Datastore name where the disk is to be provisioned
         :param profileId: storage profile ID to be associated with backing
+        :param adapter_type: Disk adapter type
         :return: Reference to the created backing entity
         """
-        LOG.debug("Creating volume backing name: %(name)s "
-                  "disk_type: %(disk_type)s size_kb: %(size_kb)s at "
-                  "folder: %(folder)s resourse pool: %(resource_pool)s "
-                  "datastore name: %(ds_name)s profileId: %(profile)s." %
+        LOG.debug("Creating volume backing with name: %(name)s "
+                  "disk_type: %(disk_type)s size_kb: %(size_kb)s "
+                  "adapter_type: %(adapter_type)s profileId: %(profile)s at "
+                  "folder: %(folder)s resource_pool: %(resource_pool)s "
+                  "host: %(host)s datastore_name: %(ds_name)s.",
                   {'name': name, 'disk_type': disk_type, 'size_kb': size_kb,
                    'folder': folder, 'resource_pool': resource_pool,
-                   'ds_name': ds_name, 'profile': profileId})
+                   'ds_name': ds_name, 'profile': profileId, 'host': host,
+                   'adapter_type': adapter_type})
 
-        create_spec = self._get_create_spec(name, size_kb, disk_type, ds_name,
-                                            profileId)
-        task = self._session.invoke_api(self._session.vim, 'CreateVM_Task',
-                                        folder, config=create_spec,
-                                        pool=resource_pool, host=host)
-        LOG.debug("Initiated creation of volume backing: %s." % name)
-        task_info = self._session.wait_for_task(task)
-        backing = task_info.result
-        LOG.info(_("Successfully created volume backing: %s.") % backing)
-        return backing
+        create_spec = self.get_create_spec(name, size_kb, disk_type, ds_name,
+                                           profileId, adapter_type)
+        return self._create_backing_int(folder, resource_pool, host,
+                                        create_spec)
+
+    def create_backing_disk_less(self, name, folder, resource_pool,
+                                 host, ds_name, profileId=None):
+        """Create disk-less volume backing.
+
+        This type of backing is useful for creating volume from image. The
+        downloaded image from the image service can be copied to a virtual
+        disk of desired provisioning type and added to the backing VM.
+
+        :param name: Name of the backing
+        :param folder: Folder where the backing is created
+        :param resource_pool: Resource pool reference
+        :param host: Host reference
+        :param ds_name: Name of the datastore used for VM storage
+        :param profileId: Storage profile ID to be associated with backing
+        :return: Reference to the created backing entity
+        """
+        LOG.debug("Creating disk-less volume backing with name: %(name)s "
+                  "profileId: %(profile)s at folder: %(folder)s "
+                  "resource pool: %(resource_pool)s host: %(host)s "
+                  "datastore_name: %(ds_name)s.",
+                  {'name': name, 'profile': profileId, 'folder': folder,
+                   'resource_pool': resource_pool, 'host': host,
+                   'ds_name': ds_name})
+
+        create_spec = self._get_create_spec_disk_less(name, ds_name, profileId)
+        return self._create_backing_int(folder, resource_pool, host,
+                                        create_spec)
 
     def get_datastore(self, backing):
         """Get datastore where the backing resides.

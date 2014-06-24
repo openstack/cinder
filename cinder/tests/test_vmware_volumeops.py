@@ -418,29 +418,60 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(expected_invoke_api,
                          self.session.invoke_api.mock_calls)
 
-    def test_get_create_spec(self):
+    def test_create_specs_for_ide_disk_add(self):
         factory = self.session.vim.client.factory
         factory.create.return_value = mock.Mock(spec=object)
-        name = mock.sentinel.name
+
         size_kb = 0.5
         disk_type = 'thin'
-        ds_name = mock.sentinel.ds_name
-        ret = self.vops._get_create_spec(name, size_kb, disk_type, ds_name)
-        self.assertEqual(name, ret.name)
-        self.assertEqual('[%s]' % ds_name, ret.files.vmPathName)
-        self.assertEqual(1, ret.deviceChange[1].device.capacityInKB)
-        self.assertEqual("vmx-08", ret.version)
-        expected = [mock.call.create('ns0:VirtualLsiLogicController'),
+        adapter_type = 'ide'
+        ret = self.vops._create_specs_for_disk_add(size_kb, disk_type,
+                                                   adapter_type)
+        self.assertFalse(hasattr(ret[0].device, 'sharedBus'))
+        self.assertEqual(1, ret[1].device.capacityInKB)
+        expected = [mock.call.create('ns0:VirtualIDEController'),
                     mock.call.create('ns0:VirtualDeviceConfigSpec'),
                     mock.call.create('ns0:VirtualDisk'),
                     mock.call.create('ns0:VirtualDiskFlatVer2BackingInfo'),
+                    mock.call.create('ns0:VirtualDeviceConfigSpec')]
+        factory.create.assert_has_calls(expected, any_order=True)
+
+    def test_create_specs_for_scsi_disk_add(self):
+        factory = self.session.vim.client.factory
+        factory.create.return_value = mock.Mock(spec=object)
+
+        size_kb = 2
+        disk_type = 'thin'
+        adapter_type = 'lsiLogicsas'
+        ret = self.vops._create_specs_for_disk_add(size_kb, disk_type,
+                                                   adapter_type)
+        self.assertEqual('noSharing', ret[0].device.sharedBus)
+        self.assertEqual(size_kb, ret[1].device.capacityInKB)
+        expected = [mock.call.create('ns0:VirtualLsiLogicSASController'),
                     mock.call.create('ns0:VirtualDeviceConfigSpec'),
-                    mock.call.create('ns0:VirtualMachineFileInfo'),
-                    mock.call.create('ns0:VirtualMachineConfigSpec')]
+                    mock.call.create('ns0:VirtualDisk'),
+                    mock.call.create('ns0:VirtualDiskFlatVer2BackingInfo'),
+                    mock.call.create('ns0:VirtualDeviceConfigSpec')]
+        factory.create.assert_has_calls(expected, any_order=True)
+
+    def test_get_create_spec_disk_less(self):
+        factory = self.session.vim.client.factory
+        factory.create.return_value = mock.Mock(spec=object)
+        name = mock.sentinel.name
+        ds_name = mock.sentinel.ds_name
+        profile_id = mock.sentinel.profile_id
+        ret = self.vops._get_create_spec_disk_less(name, ds_name, profile_id)
+        self.assertEqual(name, ret.name)
+        self.assertEqual('[%s]' % ds_name, ret.files.vmPathName)
+        self.assertEqual("vmx-08", ret.version)
+        self.assertEqual(profile_id, ret.vmProfile[0].profileId)
+        expected = [mock.call.create('ns0:VirtualMachineFileInfo'),
+                    mock.call.create('ns0:VirtualMachineConfigSpec'),
+                    mock.call.create('ns0:VirtualMachineDefinedProfileSpec')]
         factory.create.assert_has_calls(expected, any_order=True)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
-                '_get_create_spec')
+                'get_create_spec')
     def test_create_backing(self, get_create_spec):
         create_spec = mock.sentinel.create_spec
         get_create_spec.return_value = create_spec
@@ -452,15 +483,49 @@ class VolumeOpsTestCase(test.TestCase):
         name = 'backing_name'
         size_kb = mock.sentinel.size_kb
         disk_type = mock.sentinel.disk_type
+        adapter_type = mock.sentinel.adapter_type
         folder = mock.sentinel.folder
         resource_pool = mock.sentinel.resource_pool
         host = mock.sentinel.host
         ds_name = mock.sentinel.ds_name
+        profile_id = mock.sentinel.profile_id
         ret = self.vops.create_backing(name, size_kb, disk_type, folder,
-                                       resource_pool, host, ds_name)
+                                       resource_pool, host, ds_name,
+                                       profile_id, adapter_type)
         self.assertEqual(mock.sentinel.result, ret)
         get_create_spec.assert_called_once_with(name, size_kb, disk_type,
-                                                ds_name, None)
+                                                ds_name, profile_id,
+                                                adapter_type)
+        self.session.invoke_api.assert_called_once_with(self.session.vim,
+                                                        'CreateVM_Task',
+                                                        folder,
+                                                        config=create_spec,
+                                                        pool=resource_pool,
+                                                        host=host)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_create_spec_disk_less')
+    def test_create_backing_disk_less(self, get_create_spec_disk_less):
+        create_spec = mock.sentinel.create_spec
+        get_create_spec_disk_less.return_value = create_spec
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+        task_info = mock.Mock(spec=object)
+        task_info.result = mock.sentinel.result
+        self.session.wait_for_task.return_value = task_info
+        name = 'backing_name'
+        folder = mock.sentinel.folder
+        resource_pool = mock.sentinel.resource_pool
+        host = mock.sentinel.host
+        ds_name = mock.sentinel.ds_name
+        profile_id = mock.sentinel.profile_id
+        ret = self.vops.create_backing_disk_less(name, folder, resource_pool,
+                                                 host, ds_name, profile_id)
+
+        self.assertEqual(mock.sentinel.result, ret)
+        get_create_spec_disk_less.assert_called_once_with(name, ds_name,
+                                                          profile_id)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         'CreateVM_Task',
                                                         folder,
@@ -830,3 +895,34 @@ class VolumeOpsTestCase(test.TestCase):
                                            newCapacityKb=fake_size_in_kb,
                                            eagerZero=False)
         self.session.wait_for_task.assert_called_once_with(task)
+
+
+class ControllerTypeTest(test.TestCase):
+    """Unit tests for ControllerType."""
+
+    def test_get_controller_type(self):
+        self.assertEqual(volumeops.ControllerType.LSI_LOGIC,
+                         volumeops.ControllerType.get_controller_type(
+                             'lsiLogic'))
+        self.assertEqual(volumeops.ControllerType.BUS_LOGIC,
+                         volumeops.ControllerType.get_controller_type(
+                             'busLogic'))
+        self.assertEqual(volumeops.ControllerType.LSI_LOGIC_SAS,
+                         volumeops.ControllerType.get_controller_type(
+                             'lsiLogicsas'))
+        self.assertEqual(volumeops.ControllerType.IDE,
+                         volumeops.ControllerType.get_controller_type(
+                             'ide'))
+        self.assertRaises(error_util.InvalidAdapterTypeException,
+                          volumeops.ControllerType.get_controller_type,
+                          'invalid_type')
+
+    def test_is_scsi_controller(self):
+        self.assertTrue(volumeops.ControllerType.is_scsi_controller(
+            volumeops.ControllerType.LSI_LOGIC))
+        self.assertTrue(volumeops.ControllerType.is_scsi_controller(
+            volumeops.ControllerType.BUS_LOGIC))
+        self.assertTrue(volumeops.ControllerType.is_scsi_controller(
+            volumeops.ControllerType.LSI_LOGIC_SAS))
+        self.assertFalse(volumeops.ControllerType.is_scsi_controller(
+            volumeops.ControllerType.IDE))
