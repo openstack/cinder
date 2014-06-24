@@ -997,7 +997,9 @@
 # "-c3" for idle only priority. (string value)
 #volume_clear_ionice=<None>
 
-# iSCSI target user-land tool to use (string value)
+# iSCSI target user-land tool to use. tgtadm is default, use
+# lioadm for LIO iSCSI support, iseradm for the ISER protocol,
+# or fake for testing. (string value)
 #iscsi_helper=tgtadm
 
 # Volume configuration file storage directory (string value)

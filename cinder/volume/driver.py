@@ -80,7 +80,9 @@ volume_opts = [
                     'for example "-c3" for idle only priority.'),
     cfg.StrOpt('iscsi_helper',
                default='tgtadm',
-               help='iSCSI target user-land tool to use'),
+               help='iSCSI target user-land tool to use. tgtadm is default, '
+                    'use lioadm for LIO iSCSI support, iseradm for the ISER '
+                    'protocol, or fake for testing.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
