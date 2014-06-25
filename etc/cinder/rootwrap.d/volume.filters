@@ -41,11 +41,12 @@ iscsiadm: CommandFilter, iscsiadm, root
 # cinder/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
 shred: CommandFilter, shred, root
 
-#cinder/volume/.py: utils.temporary_chown(path, 0), ...
+# cinder/volume/utils.py: utils.temporary_chown(path, 0)
 chown: CommandFilter, chown, root
-ionice_1: RegExpFilter, ionice, root, ionice, -c[0-3]( -n[0-7])?, dd, if=\S+, of=\S+, count=\d+, bs=\S+
-ionice_2: RegExpFilter, ionice, root, ionice, -c[0-3]( -n[0-7])?, dd, if=\S+, of=\S+, count=\d+, bs=\S+, iflag=direct, oflag=direct
-ionice_3: RegExpFilter, ionice, root, ionice, -c[0-3]( -n[0-7])?, dd, if=\S+, of=\S+, count=\d+, bs=\S+, conv=fdatasync
+
+# cinder/volume/utils.py: copy_volume(..., ionice='...')
+ionice_1: ChainingRegExpFilter, ionice, root, ionice, -c[0-3], -n[0-7]
+ionice_2: ChainingRegExpFilter, ionice, root, ionice, -c[0-3]
 
 # cinder/volume/utils.py: setup_blkio_cgroup()
 cgcreate: CommandFilter, cgcreate, root
