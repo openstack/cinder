@@ -573,6 +573,59 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertEqual(gid, 33333)
         mock_stat.assert_called_once_with(test_file)
 
+    @mock.patch('os.stat')
+    def test_get_blkdev_major_minor(self, mock_stat):
+
+        class stat_result:
+            st_mode = 0o60660
+            st_rdev = os.makedev(253, 7)
+
+        test_device = '/dev/made_up_blkdev'
+        mock_stat.return_value = stat_result
+        dev = utils.get_blkdev_major_minor(test_device)
+        self.assertEqual('253:7', dev)
+        mock_stat.aseert_called_once_with(test_device)
+
+    @mock.patch('os.stat')
+    @mock.patch.object(utils, 'execute')
+    def test_get_blkdev_major_minor_file(self, mock_exec, mock_stat):
+
+        mock_exec.return_value = (
+            'Filesystem Size Used Avail Use% Mounted on\n'
+            '/dev/made_up_disk1 4096 2048 2048 50% /tmp\n', None)
+
+        test_file = '/tmp/file'
+        test_partition = '/dev/made_up_disk1'
+        test_disk = '/dev/made_up_disk'
+
+        class stat_result_file:
+            st_mode = 0o660
+
+        class stat_result_partition:
+            st_mode = 0o60660
+            st_rdev = os.makedev(8, 65)
+
+        class stat_result_disk:
+            st_mode = 0o60660
+            st_rdev = os.makedev(8, 64)
+
+        def fake_stat(path):
+            try:
+                return {test_file: stat_result_file,
+                        test_partition: stat_result_partition,
+                        test_disk: stat_result_disk}[path]
+            except KeyError:
+                raise OSError
+
+        mock_stat.side_effect = fake_stat
+
+        dev = utils.get_blkdev_major_minor(test_file)
+        self.assertEqual('8:64', dev)
+        mock_exec.aseert_called_once_with(test_file)
+        mock_stat.aseert_called_once_with(test_file)
+        mock_stat.aseert_called_once_with(test_partition)
+        mock_stat.aseert_called_once_with(test_disk)
+
 
 class MonkeyPatchTestCase(test.TestCase):
     """Unit test for utils.monkey_patch()."""

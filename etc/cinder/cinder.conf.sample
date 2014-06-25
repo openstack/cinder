@@ -1019,6 +1019,14 @@
 # (string value)
 #volume_dd_blocksize=1M
 
+# The blkio cgroup name to be used to limit bandwidth of
+# volume copy (string value)
+#volume_copy_blkio_cgroup_name=cinder-volume-copy
+
+# The upper limit of bandwidth of volume copy. 0 => unlimited
+# (integer value)
+#volume_copy_bps_limit=0
+
 
 #
 # Options defined in cinder.volume.drivers.block_device

@@ -783,6 +783,50 @@ def get_file_gid(path):
     return os.stat(path).st_gid
 
 
+def _get_disk_of_partition(devpath, st=None):
+    """Returns a disk device path from a partition device path, and stat for
+    the device. If devpath is not a partition, devpath is returned as it is.
+    For example, '/dev/sda' is returned for '/dev/sda1', and '/dev/disk1' is
+    for '/dev/disk1p1' ('p' is prepended to the partition number if the disk
+    name ends with numbers).
+    """
+    if st is None:
+        st = os.stat(devpath)
+    diskpath = re.sub('(?:(?<=\d)p)?\d+$', '', devpath)
+    if diskpath != devpath:
+        try:
+            st = os.stat(diskpath)
+            if stat.S_ISBLK(st.st_mode):
+                return (diskpath, st)
+        except OSError:
+            pass
+    # devpath is not a partition
+    return (devpath, st)
+
+
+def get_blkdev_major_minor(path, lookup_for_file=True):
+    """Get the device's "major:minor" number of a block device to control
+    I/O ratelimit of the specified path.
+    If lookup_for_file is True and the path is a regular file, lookup a disk
+    device which the file lies on and returns the result for the device.
+    """
+    st = os.stat(path)
+    if stat.S_ISBLK(st.st_mode):
+        path, st = _get_disk_of_partition(path, st)
+        return '%d:%d' % (os.major(st.st_rdev), os.minor(st.st_rdev))
+    elif stat.S_ISCHR(st.st_mode):
+        # No I/O ratelimit control is provided for character devices
+        return None
+    elif lookup_for_file:
+        # lookup the mounted disk which the file lies on
+        out, _err = execute('df', path)
+        devpath = out.split("\n")[1].split()[0]
+        return get_blkdev_major_minor(devpath, False)
+    else:
+        msg = _("Unable to get a block device for file \'%s\'") % path
+        raise exception.Error(msg)
+
+
 def check_string_length(value, name, min_length=0, max_length=None):
     """Check the length of specified string
     :param value: the value of the string
