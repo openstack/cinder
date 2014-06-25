@@ -713,12 +713,14 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(self._driver, '_local_volume_dir'),
                 mock.patch.object(self._driver, 'get_active_image_from_info'),
                 mock.patch.object(self._driver, '_execute'),
+                mock.patch.object(self._driver, '_local_path_volume'),
                 mock.patch.object(self._driver, '_local_path_volume_info')
         ) as (mock_ensure_share_mounted, mock_local_volume_dir,
               mock_active_image_from_info, mock_execute,
-              mock_local_path_volume_info):
+              mock_local_path_volume, mock_local_path_volume_info):
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
             mock_active_image_from_info.return_value = volume_filename
+            mock_local_path_volume.return_value = volume_path
             mock_local_path_volume_info.return_value = info_file
 
             self._driver.delete_volume(volume)
@@ -730,7 +732,9 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_execute.assert_called_once_with('rm', '-f', volume_path,
                                                  run_as_root=True)
             mock_local_path_volume_info.assert_called_once_with(volume)
-            mock_delete_if_exists.assert_called_once_with(info_file)
+            mock_local_path_volume.assert_called_once_with(volume)
+            mock_delete_if_exists.assert_any_call(volume_path)
+            mock_delete_if_exists.assert_any_call(info_file)
 
     def test_refresh_mounts(self):
         with contextlib.nested(
@@ -1733,6 +1737,136 @@ class GlusterFsDriverTestCase(test.TestCase):
                                            snap_ref)
 
         mox.VerifyAll()
+
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_delete_stale_snapshot')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                'get_active_image_from_info')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_qemu_img_info')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_read_info_file')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_local_path_volume')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_local_volume_dir')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_ensure_share_writable')
+    def test_delete_snapshot_online_stale_snapshot(self,
+                                                   mock_ensure_share_writable,
+                                                   mock_local_volume_dir,
+                                                   mock_local_path_volume,
+                                                   mock_read_info_file,
+                                                   mock_qemu_img_info,
+                                                   mock_get_active_image,
+                                                   mock_delete_stale_snap):
+        volume = self._simple_volume()
+        ctxt = context.RequestContext('fake_user', 'fake_project')
+        volume['status'] = 'in-use'
+        volume_filename = 'volume-%s' % self.VOLUME_UUID
+        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume_filename)
+        info_path = volume_path + '.info'
+        stale_snapshot = {'name': 'fake-volume',
+                          'volume_id': self.VOLUME_UUID,
+                          'volume': volume,
+                          'id': self.SNAP_UUID_2,
+                          'context': ctxt}
+        active_snap_file = volume['name'] + '.' + self.SNAP_UUID_2
+        stale_snap_file = volume['name'] + '.' + stale_snapshot['id']
+        stale_snap_path = '%s/%s' % (self.TEST_MNT_POINT, stale_snap_file)
+        snap_info = {'active': active_snap_file,
+                     stale_snapshot['id']: stale_snap_file}
+        qemu_img_info = imageutils.QemuImgInfo()
+        qemu_img_info.file_format = 'qcow2'
+
+        mock_local_path_volume.return_value = volume_path
+        mock_read_info_file.return_value = snap_info
+        mock_local_volume_dir.return_value = self.TEST_MNT_POINT
+        mock_qemu_img_info.return_value = qemu_img_info
+        mock_get_active_image.return_value = active_snap_file
+
+        self._driver.delete_snapshot(stale_snapshot)
+
+        mock_ensure_share_writable.assert_called_once_with(
+            self.TEST_MNT_POINT)
+        mock_local_path_volume.assert_called_once_with(
+            stale_snapshot['volume'])
+        mock_read_info_file.assert_called_once_with(info_path,
+                                                    empty_if_missing=True)
+        mock_qemu_img_info.assert_called_once_with(stale_snap_path)
+        mock_get_active_image.assert_called_once_with(
+            stale_snapshot['volume'])
+        mock_delete_stale_snap.assert_called_once_with(stale_snapshot)
+
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_write_info_file')
+    @mock.patch('cinder.openstack.common.fileutils.delete_if_exists')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                'get_active_image_from_info')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_local_volume_dir')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_read_info_file')
+    @mock.patch('cinder.volume.drivers.glusterfs.GlusterfsDriver.'
+                '_local_path_volume')
+    def test_delete_stale_snapshot(self, mock_local_path_volume,
+                                   mock_read_info_file,
+                                   mock_local_volume_dir,
+                                   mock_get_active_image,
+                                   mock_delete_if_exists,
+                                   mock_write_info_file):
+        volume = self._simple_volume()
+        volume['status'] = 'in-use'
+        volume_filename = 'volume-%s' % self.VOLUME_UUID
+        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume_filename)
+        info_path = volume_path + '.info'
+
+        # Test case where snapshot_file = active_file
+        snapshot = {'name': 'fake-volume',
+                    'volume_id': self.VOLUME_UUID,
+                    'volume': volume,
+                    'id': self.SNAP_UUID_2}
+        active_snap_file = volume['name'] + '.' + self.SNAP_UUID_2
+        stale_snap_file = volume['name'] + '.' + snapshot['id']
+        stale_snap_path = '%s/%s' % (self.TEST_MNT_POINT, stale_snap_file)
+        snap_info = {'active': active_snap_file,
+                     snapshot['id']: stale_snap_file}
+
+        mock_local_path_volume.return_value = volume_path
+        mock_read_info_file.return_value = snap_info
+        mock_get_active_image.return_value = active_snap_file
+        mock_local_volume_dir.return_value = self.TEST_MNT_POINT
+
+        self._driver._delete_stale_snapshot(snapshot)
+
+        mock_local_path_volume.assert_called_with(snapshot['volume'])
+        mock_read_info_file.assert_called_with(info_path)
+        mock_delete_if_exists.assert_not_called()
+        mock_write_info_file.assert_not_called()
+
+        # Test case where snapshot_file != active_file
+        snapshot = {'name': 'fake-volume',
+                    'volume_id': self.VOLUME_UUID,
+                    'volume': volume,
+                    'id': self.SNAP_UUID}
+        active_snap_file = volume['name'] + '.' + self.SNAP_UUID_2
+        stale_snap_file = volume['name'] + '.' + snapshot['id']
+        stale_snap_path = '%s/%s' % (self.TEST_MNT_POINT, stale_snap_file)
+        snap_info = {'active': active_snap_file,
+                     snapshot['id']: stale_snap_file}
+
+        mock_local_path_volume.return_value = volume_path
+        mock_read_info_file.return_value = snap_info
+        mock_get_active_image.return_value = active_snap_file
+        mock_local_volume_dir.return_value = self.TEST_MNT_POINT
+
+        self._driver._delete_stale_snapshot(snapshot)
+
+        mock_local_path_volume.assert_called_with(snapshot['volume'])
+        mock_read_info_file.assert_called_with(info_path)
+        mock_delete_if_exists.assert_called_once_with(stale_snap_path)
+        snap_info.pop(snapshot['id'], None)
+        mock_write_info_file.assert_called_once_with(info_path, snap_info)
 
     def test_get_backing_chain_for_path(self):
         (mox, drv) = self._mox, self._driver
