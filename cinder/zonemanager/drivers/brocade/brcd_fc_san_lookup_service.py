@@ -124,9 +124,6 @@ class BrcdFCSanLookupService(FCSanLookupService):
                     'fc_fabric_password')
                 fabric_port = self.fabric_configs[fabric_name].safe_get(
                     'fc_fabric_port')
-                fabric_principal_wwn = \
-                    self.fabric_configs[fabric_name].safe_get(
-                        'principal_switch_wwn')
 
                 # Get name server data from fabric and find the targets
                 # logged in
@@ -148,7 +145,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
                     LOG.error(msg)
                     raise exception.FCSanLookupServiceException(message=msg)
                 finally:
-                    self.close_connection()
+                    self.client.close()
                 LOG.debug("Lookup service:nsinfo-%s", nsinfo)
                 LOG.debug("Lookup service:initiator list from "
                           "caller-%s", formatted_initiator_list)
@@ -182,7 +179,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
                     'initiator_port_wwn_list': visible_initiators,
                     'target_port_wwn_list': visible_targets
                 }
-                device_map[fabric_principal_wwn] = fabric_map
+                device_map[fabric_name] = fabric_map
         LOG.debug("Device map for SAN context: %s", device_map)
         return device_map
 
@@ -210,11 +207,6 @@ class BrcdFCSanLookupService(FCSanLookupService):
             nsinfo_list.extend(self._parse_ns_output(cli_output))
         LOG.debug("Connector returning nsinfo-%s", nsinfo_list)
         return nsinfo_list
-
-    def close_connection(self):
-        """This will close the client connection."""
-        self.client.close()
-        self.client = None
 
     def _get_switch_data(self, cmd):
         stdin, stdout, stderr = None, None, None
