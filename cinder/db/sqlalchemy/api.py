@@ -1004,16 +1004,23 @@ def volume_create(context, values):
 
 
 @require_admin_context
-def volume_data_get_for_host(context, host):
-    result = model_query(context,
-                         func.count(models.Volume.id),
-                         func.sum(models.Volume.size),
-                         read_deleted="no").\
-        filter_by(host=host).\
-        first()
-
-    # NOTE(vish): convert None to 0
-    return (result[0] or 0, result[1] or 0)
+def volume_data_get_for_host(context, host, count_only=False):
+    if count_only:
+        result = model_query(context,
+                             func.count(models.Volume.id),
+                             read_deleted="no").\
+            filter_by(host=host).\
+            first()
+        return result[0] or 0
+    else:
+        result = model_query(context,
+                             func.count(models.Volume.id),
+                             func.sum(models.Volume.size),
+                             read_deleted="no").\
+            filter_by(host=host).\
+            first()
+        # NOTE(vish): convert None to 0
+        return (result[0] or 0, result[1] or 0)
 
 
 @require_admin_context
