@@ -276,7 +276,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.volume.create_volume,
                           self.context, volume_id)
 
-        # NOTE(flaper87): The volume status should be error_deleting.
         volume = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(volume.status, "error")
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -310,7 +309,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.volume.delete_volume,
                           self.context, volume_id)
 
-        # NOTE(flaper87): The volume status should be error.
         volume = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(volume.status, "error_deleting")
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -1490,8 +1488,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
         self.assertEqual(admin_metadata[0]['value'], 'True')
 
-    @mock.patch.object(db, 'volume_get')
     @mock.patch.object(cinder.volume.api.API, 'update')
+    @mock.patch.object(db, 'volume_get')
     def test_reserve_volume_success(self, volume_get, volume_update):
         fake_volume = {
             'id': FAKE_UUID,
