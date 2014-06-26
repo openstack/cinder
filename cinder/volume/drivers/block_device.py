@@ -21,6 +21,7 @@ from cinder import context
 from cinder.db.sqlalchemy import api
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume import utils as volutils

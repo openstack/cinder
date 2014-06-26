@@ -21,6 +21,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.views import types as views_types
 from cinder.api import xmlutil
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.volume import volume_types
 
 

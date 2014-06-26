@@ -18,6 +18,7 @@ from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
 from migrate import ForeignKeyConstraint
 
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

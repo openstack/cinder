@@ -15,6 +15,7 @@
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 

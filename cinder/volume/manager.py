@@ -48,6 +48,7 @@ from cinder import flow_utils
 from cinder.image import glance
 from cinder import manager
 from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging

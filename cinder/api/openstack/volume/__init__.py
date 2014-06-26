@@ -15,6 +15,7 @@
 #    under the License.
 
 from cinder.api.v1.router import APIRouter as v1_router
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

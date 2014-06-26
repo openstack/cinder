@@ -23,6 +23,7 @@ import mox
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import xiv_ds8k

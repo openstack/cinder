@@ -41,6 +41,7 @@ from cinder import context
 from cinder import exception
 from cinder import manager
 from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import utils

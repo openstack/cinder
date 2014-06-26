@@ -27,6 +27,7 @@ import time
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.openstack.common import fileutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
 

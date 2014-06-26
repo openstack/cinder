@@ -17,6 +17,7 @@
 
 from cinder.db import base
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from oslo.config import cfg

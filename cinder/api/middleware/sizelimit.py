@@ -21,6 +21,7 @@ from oslo.config import cfg
 import webob.dec
 import webob.exc
 
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import wsgi
 

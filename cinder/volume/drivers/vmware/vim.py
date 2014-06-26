@@ -22,6 +22,7 @@ import urllib2
 
 import suds
 
+from cinder.openstack.common.gettextutils import _
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 

@@ -15,6 +15,7 @@
 #    under the License.
 
 from cinder.api import urlmap
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 

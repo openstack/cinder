@@ -17,6 +17,7 @@
 
 from cinder import context
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder import utils

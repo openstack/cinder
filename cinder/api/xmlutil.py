@@ -17,6 +17,7 @@ import os.path
 
 from lxml import etree
 
+from cinder.openstack.common.gettextutils import _
 from cinder import utils
 
 

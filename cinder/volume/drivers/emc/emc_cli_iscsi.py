@@ -18,6 +18,7 @@ iSCSI Drivers for EMC VNX array based on CLI.
 """
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver

@@ -25,6 +25,7 @@ from lxml import etree
 import six
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf

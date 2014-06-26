@@ -22,6 +22,7 @@ Contains classes required to issue api calls to ONTAP and OnCommand DFM.
 from lxml import etree
 import urllib2
 
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

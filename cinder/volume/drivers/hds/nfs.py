@@ -26,6 +26,7 @@ from xml.etree import ElementTree as ETree
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import units

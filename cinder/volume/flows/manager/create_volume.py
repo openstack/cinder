@@ -20,6 +20,7 @@ from taskflow.utils import misc
 from cinder import exception
 from cinder import flow_utils
 from cinder.image import glance
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import timeutils

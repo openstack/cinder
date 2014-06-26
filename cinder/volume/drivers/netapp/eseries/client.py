@@ -22,6 +22,7 @@ import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 
 

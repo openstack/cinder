@@ -26,6 +26,7 @@ from xml.parsers import expat
 
 from cinder import exception
 from cinder.openstack.common import gettextutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import utils

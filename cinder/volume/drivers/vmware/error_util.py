@@ -18,6 +18,7 @@ Exception classes and SOAP response error checking module.
 """
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 
 NOT_AUTHENTICATED = 'NotAuthenticated'
 

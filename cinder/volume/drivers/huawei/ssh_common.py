@@ -30,6 +30,7 @@ from xml.etree import ElementTree as ET
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.huawei import huawei_utils

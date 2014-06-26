@@ -16,6 +16,7 @@ from taskflow.patterns import linear_flow
 from cinder import exception
 from cinder import flow_utils
 from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils

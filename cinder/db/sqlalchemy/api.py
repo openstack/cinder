@@ -38,6 +38,7 @@ from cinder import exception
 from cinder.openstack.common.db import exception as db_exc
 from cinder.openstack.common.db import options
 from cinder.openstack.common.db.sqlalchemy import session as db_session
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils

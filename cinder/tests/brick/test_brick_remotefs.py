@@ -18,6 +18,7 @@ import mox
 
 from cinder.brick import exception
 from cinder.brick.remotefs import remotefs
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import test
 

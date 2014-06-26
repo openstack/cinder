@@ -20,6 +20,7 @@ Supports call to multiple storage systems of different families and protocols.
 """
 
 from cinder import exception
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
