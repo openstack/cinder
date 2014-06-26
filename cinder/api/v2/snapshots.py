@@ -93,7 +93,7 @@ class SnapshotsTemplate(xmlutil.TemplateBuilder):
 
 
 class SnapshotsController(wsgi.Controller):
-    """The Volumes API controller for the OpenStack API."""
+    """The Snapshots API controller for the OpenStack API."""
 
     def __init__(self, ext_mgr=None):
         self.volume_api = volume.API()
