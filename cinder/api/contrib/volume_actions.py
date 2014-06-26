@@ -188,14 +188,15 @@ class VolumeActionsController(wsgi.Controller):
         try:
             connector = body['os-initialize_connection']['connector']
         except KeyError:
-            raise webob.exc.HTTPBadRequest("Must specify 'connector'")
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Must specify 'connector'"))
         try:
             info = self.volume_api.initialize_connection(context,
                                                          volume,
                                                          connector)
         except exception.VolumeBackendAPIException as error:
             msg = _("Unable to fetch connection information from backend.")
-            raise webob.exc.HTTPInternalServerError(msg)
+            raise webob.exc.HTTPInternalServerError(explanation=msg)
 
         return {'connection_info': info}
 
@@ -210,7 +211,8 @@ class VolumeActionsController(wsgi.Controller):
         try:
             connector = body['os-terminate_connection']['connector']
         except KeyError:
-            raise webob.exc.HTTPBadRequest("Must specify 'connector'")
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Must specify 'connector'"))
         try:
             self.volume_api.terminate_connection(context, volume, connector)
         except exception.VolumeBackendAPIException as error:
