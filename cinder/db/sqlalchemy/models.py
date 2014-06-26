@@ -203,12 +203,34 @@ class VolumeTypes(BASE, CinderBase):
     # A reference to qos_specs entity
     qos_specs_id = Column(String(36),
                           ForeignKey('quality_of_service_specs.id'))
+    is_public = Column(Boolean, default=True)
     volumes = relationship(Volume,
                            backref=backref('volume_type', uselist=False),
                            foreign_keys=id,
                            primaryjoin='and_('
                            'Volume.volume_type_id == VolumeTypes.id, '
                            'VolumeTypes.deleted == False)')
+
+
+class VolumeTypeProjects(BASE, CinderBase):
+    """Represent projects associated volume_types."""
+    __tablename__ = "volume_type_projects"
+    __table_args__ = (schema.UniqueConstraint(
+        "volume_type_id", "project_id", "deleted",
+        name="uniq_volume_type_projects0volume_type_id0project_id0deleted"),
+    )
+    id = Column(Integer, primary_key=True)
+    volume_type_id = Column(Integer, ForeignKey('volume_types.id'),
+                            nullable=False)
+    project_id = Column(String(255))
+
+    volume_type = relationship(
+        VolumeTypes,
+        backref="projects",
+        foreign_keys=volume_type_id,
+        primaryjoin='and_('
+        'VolumeTypeProjects.volume_type_id == VolumeTypes.id,'
+        'VolumeTypeProjects.deleted == False)')
 
 
 class VolumeTypeExtraSpecs(BASE, CinderBase):

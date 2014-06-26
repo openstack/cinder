@@ -50,11 +50,11 @@ def return_volume_types_with_volumes_destroy(context, id):
     pass
 
 
-def return_volume_types_create(context, name, specs):
+def return_volume_types_create(context, name, specs, is_public):
     pass
 
 
-def return_volume_types_create_duplicate_type(context, name, specs):
+def return_volume_types_create_duplicate_type(context, name, specs, is_public):
     raise exception.VolumeTypeExists(id=name)
 
 

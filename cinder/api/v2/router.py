@@ -54,7 +54,8 @@ class APIRouter(cinder.api.openstack.APIRouter):
 
         self.resources['types'] = types.create_resource()
         mapper.resource("type", "types",
-                        controller=self.resources['types'])
+                        controller=self.resources['types'],
+                        member={'action': 'POST'})
 
         self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
         mapper.resource("snapshot", "snapshots",

@@ -1298,3 +1298,53 @@ class TestMigrations(test.TestCase):
                 execute().scalar()
 
             self.assertEqual(4, num_defaults)
+
+    def test_migration_032(self):
+        """Test adding volume_type_projects table works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.db_initial_version())
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 31)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 32)
+
+            self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                     "volume_type_projects"))
+
+            volume_type_projects = sqlalchemy.Table('volume_type_projects',
+                                                    metadata,
+                                                    autoload=True)
+            self.assertIsInstance(volume_type_projects.c.created_at.type,
+                                  self.time_type[engine.name])
+            self.assertIsInstance(volume_type_projects.c.updated_at.type,
+                                  self.time_type[engine.name])
+            self.assertIsInstance(volume_type_projects.c.deleted_at.type,
+                                  self.time_type[engine.name])
+            self.assertIsInstance(volume_type_projects.c.deleted.type,
+                                  self.bool_type[engine.name])
+            self.assertIsInstance(volume_type_projects.c.id.type,
+                                  sqlalchemy.types.INTEGER)
+            self.assertIsInstance(volume_type_projects.c.volume_type_id.type,
+                                  sqlalchemy.types.VARCHAR)
+            self.assertIsInstance(volume_type_projects.c.project_id.type,
+                                  sqlalchemy.types.VARCHAR)
+
+            volume_types = sqlalchemy.Table('volume_types',
+                                            metadata,
+                                            autoload=True)
+            self.assertIsInstance(volume_types.c.is_public.type,
+                                  self.bool_type[engine.name])
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 31)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                      "volume_type_projects"))
+            volume_types = sqlalchemy.Table('volume_types',
+                                            metadata,
+                                            autoload=True)
+            self.assertNotIn('is_public', volume_types.c)

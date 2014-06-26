@@ -229,6 +229,24 @@ class VolumeTypeTestCase(test.TestCase):
                                              encryption)
         self.assertTrue(volume_types.is_encrypted(self.ctxt, volume_type_id))
 
+    def test_add_access(self):
+        project_id = '456'
+        vtype = volume_types.create(self.ctxt, 'type1')
+        vtype_id = vtype.get('id')
+
+        volume_types.add_volume_type_access(self.ctxt, vtype_id, project_id)
+        vtype_access = db.volume_type_access_get_all(self.ctxt, vtype_id)
+        self.assertIn(project_id, [a.project_id for a in vtype_access])
+
+    def test_remove_access(self):
+        project_id = '456'
+        vtype = volume_types.create(self.ctxt, 'type1', projects=['456'])
+        vtype_id = vtype.get('id')
+
+        volume_types.remove_volume_type_access(self.ctxt, vtype_id, project_id)
+        vtype_access = db.volume_type_access_get_all(self.ctxt, vtype_id)
+        self.assertNotIn(project_id, vtype_access)
+
     def test_get_volume_type_qos_specs(self):
         qos_ref = qos_specs.create(self.ctxt, 'qos-specs-1', {'k1': 'v1',
                                                               'k2': 'v2',
