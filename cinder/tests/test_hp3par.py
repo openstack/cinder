@@ -1318,10 +1318,13 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getHostVLUNs.return_value = [
-            {'active': True,
-             'volumeName': self.VOLUME_3PAR_NAME,
-             'lun': None, 'type': 0}]
+
+        effects = [
+            [{'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': None, 'type': 0}],
+            hpexceptions.HTTPNotFound]
+
+        mock_client.getHostVLUNs.side_effect = effects
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
@@ -1331,12 +1334,18 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 None,
                 self.FAKE_HOST),
             mock.call.deleteHost(self.FAKE_HOST),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getPorts(),
             mock.call.logout()]
 
-        self.driver.terminate_connection(self.volume, self.connector)
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
         mock_client.assert_has_calls(expected)
+        self.assertIn('data', conn_info)
+        self.assertIn('initiator_target_map', conn_info['data'])
         mock_client.reset_mock()
+
+        mock_client.getHostVLUNs.side_effect = effects
 
         # mock some deleteHost exceptions that are handled
         delete_with_vlun = hpexceptions.HTTPConflict(
@@ -1346,11 +1355,14 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.deleteHost = mock.Mock(
             side_effect=[delete_with_vlun, delete_with_hostset])
 
-        self.driver.terminate_connection(self.volume, self.connector)
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
         mock_client.assert_has_calls(expected)
         mock_client.reset_mock()
+        mock_client.getHostVLUNs.side_effect = effects
 
-        self.driver.terminate_connection(self.volume, self.connector)
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
         mock_client.assert_has_calls(expected)
 
     def test_terminate_connection_more_vols(self):
@@ -1373,11 +1385,13 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 self.VOLUME_3PAR_NAME,
                 None,
                 self.FAKE_HOST),
-            mock.call.getPorts(),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.logout()]
 
-        self.driver.terminate_connection(self.volume, self.connector)
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
         mock_client.assert_has_calls(expect_less)
+        self.assertNotIn('initiator_target_map', conn_info['data'])
 
     def test_get_volume_stats(self):
         # setup_mock_client drive with default configuration
