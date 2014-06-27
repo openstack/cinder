@@ -800,7 +800,7 @@
 #log_dir=<None>
 
 # Use syslog for logging. Existing syslog format is DEPRECATED
-# during I, and will chang in J to honor RFC5424. (boolean
+# during I, and will change in J to honor RFC5424. (boolean
 # value)
 #use_syslog=false
 
