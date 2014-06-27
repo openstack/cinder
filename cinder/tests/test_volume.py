@@ -50,6 +50,7 @@ from cinder import quota
 from cinder import test
 from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.tests import conf_fixture
+from cinder.tests import fake_driver
 from cinder.tests import fake_notifier
 from cinder.tests.image import fake as fake_image
 from cinder.tests.keymgr import fake as fake_keymgr
@@ -1227,6 +1228,33 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                           'fake_volume_id',
                                                           connector)
             self.assertIsNone(conn_info['data']['qos_specs'])
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db, 'volume_update')
+    def test_initialize_connection_export_failure(self,
+                                                  _mock_volume_get,
+                                                  _mock_volume_update,
+                                                  _mock_create_export):
+        """Test exception path for create_export failure."""
+        _fake_admin_meta = {'fake-key': 'fake-value'}
+        _fake_volume = {'volume_type_id': 'fake_type_id',
+                        'name': 'fake_name',
+                        'host': 'fake_host',
+                        'id': 'fake_volume_id',
+                        'volume_admin_metadata': _fake_admin_meta}
+
+        _mock_volume_get.return_value = _fake_volume
+        _mock_volume_update.return_value = _fake_volume
+        _mock_create_export.side_effect = exception.CinderException
+
+        connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume.initialize_connection,
+                          self.context,
+                          'fake_volume_id',
+                          connector)
 
     def test_run_attach_detach_volume_for_instance(self):
         """Make sure volume can be attached and detached from instance."""
