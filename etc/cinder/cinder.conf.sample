@@ -272,6 +272,10 @@
 # Port on which OpenStack Volume API listens (integer value)
 #osapi_volume_listen_port=8776
 
+# Number of workers for OpenStack Volume API service (integer
+# value)
+#osapi_volume_workers=1
+
 
 #
 # Options defined in cinder.test
