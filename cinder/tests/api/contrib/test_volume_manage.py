@@ -13,7 +13,6 @@
 #   under the License.
 
 import mock
-
 import webob
 
 from cinder import context

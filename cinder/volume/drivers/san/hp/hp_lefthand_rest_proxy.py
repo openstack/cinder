@@ -15,6 +15,8 @@
 #
 """HP LeftHand SAN ISCSI REST Proxy."""
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
@@ -23,7 +25,6 @@ from cinder.openstack.common import units
 from cinder.volume.driver import ISCSIDriver
 from cinder.volume import utils
 from cinder.volume import volume_types
-from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
 

@@ -18,11 +18,11 @@ import io
 import json
 import math
 import os
-import six
 import tempfile
 import urllib
 
 from oslo.config import cfg
+import six
 
 from cinder import exception
 from cinder.i18n import _

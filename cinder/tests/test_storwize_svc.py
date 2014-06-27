@@ -18,10 +18,11 @@
 Tests for the IBM Storwize family and SVC volume driver.
 """
 
-import mock
 import random
 import re
 import time
+
+import mock
 
 from cinder import context
 from cinder import exception

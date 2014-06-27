@@ -16,12 +16,12 @@
 
 import contextlib
 import errno
-import mock
 import os
 import tempfile
 import time
 import traceback
 
+import mock
 import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA

@@ -42,13 +42,13 @@ was deemed the safest action to take. It is therefore recommended to always
 restore to a new volume (default).
 """
 
-import eventlet
 import fcntl
 import os
 import re
 import subprocess
 import time
 
+import eventlet
 from oslo.config import cfg
 
 from cinder.backup.driver import BackupDriver

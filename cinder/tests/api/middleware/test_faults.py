@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import gettext
 from xml.dom import minidom
 
-import gettext
 import mock
 from oslo.i18n import _lazy
 import webob.dec

@@ -20,8 +20,8 @@ Tests for NetApp volume driver
 
 import BaseHTTPServer
 import httplib
-from lxml import etree
 
+from lxml import etree
 import six
 
 from cinder import exception

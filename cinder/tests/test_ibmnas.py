@@ -21,7 +21,6 @@ Tests for the IBM NAS family (SONAS, Storwize V7000 Unified).
 """
 
 import mock
-
 from oslo.config import cfg
 
 from cinder import context

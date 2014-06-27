@@ -18,8 +18,8 @@ Unit Tests for cinder.scheduler.rpcapi
 """
 
 import copy
-import mock
 
+import mock
 from oslo.config import cfg
 
 from cinder import context

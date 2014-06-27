@@ -14,6 +14,7 @@
 #    under the License.
 
 import errno
+
 import six
 
 from cinder import exception

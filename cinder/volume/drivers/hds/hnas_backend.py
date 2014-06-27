@@ -18,10 +18,11 @@
 Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 """
 
+import re
+
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder import utils
-import re
 
 LOG = logging.getLogger("cinder.volume.driver")
 

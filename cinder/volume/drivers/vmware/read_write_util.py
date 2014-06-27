@@ -20,10 +20,10 @@ Collection of classes to handle image upload/download to/from Image service
 """
 
 import httplib
-import netaddr
 import urllib
 import urllib2
 
+import netaddr
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _

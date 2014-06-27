@@ -22,15 +22,12 @@ import os
 import shutil
 import tempfile
 
+import mox
 from oslo.config import cfg
 
-import mox
-
-from cinder import test
-
 from cinder.image import image_utils
-
 from cinder.openstack.common import fileutils
+from cinder import test
 from cinder.tests.windows import db_fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.windows import constants

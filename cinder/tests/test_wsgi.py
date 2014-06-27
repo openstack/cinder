@@ -16,11 +16,11 @@
 
 """Unit tests for `cinder.wsgi`."""
 
-import mock
 import os.path
 import tempfile
 import urllib2
 
+import mock
 from oslo.config import cfg
 from oslo.i18n import _lazy
 import testtools

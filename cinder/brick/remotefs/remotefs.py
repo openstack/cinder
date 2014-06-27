@@ -18,6 +18,7 @@
 import hashlib
 import os
 import re
+
 import six
 
 from cinder.brick import exception

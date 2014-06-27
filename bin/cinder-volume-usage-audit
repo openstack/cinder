@@ -54,7 +54,6 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
 
 from cinder import i18n
 i18n.enable_lazy()
-
 from cinder import context
 from cinder import db
 from cinder.i18n import _

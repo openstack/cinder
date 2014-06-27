@@ -19,9 +19,9 @@ Volume driver for HDS HNAS NFS storage.
 
 import os
 import time
+from xml.etree import ElementTree as ETree
 
 from oslo.config import cfg
-from xml.etree import ElementTree as ETree
 
 from cinder import exception
 from cinder.i18n import _

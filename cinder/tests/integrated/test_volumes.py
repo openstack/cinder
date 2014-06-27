@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import testtools
 import time
+
+import testtools
 
 from cinder.openstack.common import log as logging
 from cinder import service

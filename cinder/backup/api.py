@@ -19,7 +19,6 @@ Handles all requests relating to the volume backups service.
 
 
 from eventlet import greenthread
-
 from oslo.config import cfg
 
 from cinder.backup import rpcapi as backup_rpcapi
@@ -28,9 +27,8 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder import utils
-
 import cinder.policy
+from cinder import utils
 import cinder.volume
 
 CONF = cfg.CONF

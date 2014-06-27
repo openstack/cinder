@@ -14,8 +14,9 @@
 #    under the License.
 """ Tests for the backup service base driver. """
 
-import mock
 import uuid
+
+import mock
 
 from cinder.backup import driver
 from cinder import context

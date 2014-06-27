@@ -19,8 +19,9 @@ import os
 import socket
 import zlib
 
-from cinder.openstack.common import log as logging
 from swiftclient import client as swift
+
+from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

@@ -15,10 +15,10 @@
 
 """The hosts admin extension."""
 
+from xml.parsers import expat
 
 from oslo.config import cfg
 import webob.exc
-from xml.parsers import expat
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi

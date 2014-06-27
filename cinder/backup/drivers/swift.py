@@ -33,11 +33,12 @@
 import hashlib
 import json
 import os
-import six
 import socket
 
 import eventlet
 from oslo.config import cfg
+import six
+from swiftclient import client as swift
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
@@ -46,7 +47,6 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
-from swiftclient import client as swift
 
 
 LOG = logging.getLogger(__name__)

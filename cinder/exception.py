@@ -22,10 +22,10 @@ SHOULD include dedicated exception logging.
 
 """
 
-import six
 import sys
 
 from oslo.config import cfg
+import six
 import webob.exc
 
 from cinder.i18n import _

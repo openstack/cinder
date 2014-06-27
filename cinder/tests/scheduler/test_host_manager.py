@@ -17,7 +17,6 @@ Tests For HostManager
 """
 
 import mock
-
 from oslo.config import cfg
 
 from cinder import exception

@@ -17,8 +17,8 @@ Client classes for web services.
 """
 
 import json
-import requests
 
+import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception

@@ -29,14 +29,14 @@ import shutil
 import stat
 import sys
 import tempfile
-
-from oslo.config import cfg
-import six
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
 from xml.sax import expatreader
 from xml.sax import saxutils
+
+from oslo.config import cfg
+import six
 
 from cinder.brick.initiator import connector
 from cinder import exception
