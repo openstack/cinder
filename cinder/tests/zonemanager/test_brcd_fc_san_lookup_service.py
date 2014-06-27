@@ -39,7 +39,7 @@ switch_data = [' N 011a00;2,3;20:1a:00:05:1e:e8:e3:29;\
                  20:1a:00:05:1e:e8:e3:29;na']
 nsshow_data = ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50']
 _device_map_to_verify = {
-    '100000051e55a100': {
+    'BRCD_FAB_2': {
         'initiator_port_wwn_list': ['10008c7cff523b01'],
         'target_port_wwn_list': ['20240002ac000a50']}}
 
