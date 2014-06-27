@@ -55,9 +55,16 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             configuration=self.configuration)
         self.volume_name = "fakevolume"
         self.volid = "fakeid"
-        self.connector = {'ip': '10.0.0.2',
-                          'initiator': 'iqn.1993-08.org.debian:01:222',
-                          'host': 'fakehost'}
+        self.connector = {
+            'ip': '10.0.0.2',
+            'initiator': 'iqn.1993-08.org.debian:01:2227dab76162',
+            'host': 'fakehost'}
+        self.access_record_output = [
+            "ID  Initiator       Ipaddress     AuthMethod UserName   Apply-To",
+            "--- --------------- ------------- ---------- ---------- --------",
+            "1   iqn.1993-08.org.debian:01:222 *.*.*.*       none        both",
+            "       7dab76162"]
+
         self.fake_iqn = 'iqn.2003-10.com.equallogic:group01:25366:fakev'
         self.driver._group_ip = '10.0.1.6'
         self.properties = {
@@ -85,6 +92,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                  self.configuration.eqlx_pool,
                                  'thin-provision').\
             AndReturn(['iSCSI target name is %s.' % self.fake_iqn])
+        self.driver._eql_execute('volume', 'select', volume['name'],
+                                 'multihost-access', 'enable')
         self.mox.ReplayAll()
         model_update = self.driver.create_volume(volume)
         self.assertEqual(model_update, self._model_update)
@@ -140,6 +149,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                  'snapshot', 'select', snapshot['name'],
                                  'clone', volume['name']).\
             AndReturn(['iSCSI target name is %s.' % self.fake_iqn])
+        self.driver._eql_execute('volume', 'select', volume['name'],
+                                 'multihost-access', 'enable')
         self.mox.ReplayAll()
         model_update = self.driver.create_volume_from_snapshot(volume,
                                                                snapshot)
@@ -155,6 +166,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.driver._eql_execute('volume', 'select', src_volume_name, 'clone',
                                  volume['name']).\
             AndReturn(['iSCSI target name is %s.' % self.fake_iqn])
+        self.driver._eql_execute('volume', 'select', volume['name'],
+                                 'multihost-access', 'enable')
         self.mox.ReplayAll()
         model_update = self.driver.create_cloned_volume(volume, src_vref)
         self.assertEqual(model_update, self._model_update)
@@ -200,6 +213,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.driver._eql_execute = self.mox.\
             CreateMock(self.driver._eql_execute)
         volume = {'name': self.volume_name}
+        self.driver._eql_execute('volume', 'select', volume['name'], 'access',
+                                 'show').AndReturn(self.access_record_output)
         self.driver._eql_execute('volume', 'select', volume['name'], 'access',
                                  'delete', '1')
         self.mox.ReplayAll()
