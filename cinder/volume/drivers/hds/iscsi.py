@@ -169,7 +169,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         # dict based on iSCSI portal ip addresses
         conf = {}
         for line in lines:
-           # only record up links
+            # only record up links
             if 'CTL' in line and 'Up' in line:
                 inf = line.split()
                 (ctl, port, ip, ipp) = (inf[1], inf[3], inf[5], inf[7])
@@ -510,7 +510,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         (arid, lun) = info['id_lu']
         if 'tgt' in info.keys():  # connected?
             LOG.info("delete lun loc %s" % info['tgt'])
-           # loc = id.lun
+            # loc = id.lun
             (_portal, iqn, loc, ctl, port, hlun) = info['tgt']
             self.bend.del_iscsi_conn(self.config['hnas_cmd'],
                                      self.config['mgmt_ip0'],

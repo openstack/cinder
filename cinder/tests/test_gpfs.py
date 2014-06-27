@@ -558,7 +558,7 @@ class GPFSDriverTestCase(test.TestCase):
                    gpfs_images_share_mode=org_value_share_mode)
         CONF.gpfs_images_dir = org_value_dir
 
-         # fail directory.startswith('/')
+        # fail directory.startswith('/')
         org_value_mount = self.driver.configuration.gpfs_mount_point_base
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base='_' + self.volumes_path)
@@ -573,7 +573,7 @@ class GPFSDriverTestCase(test.TestCase):
                    gpfs_mount_point_base=org_value_mount)
         CONF.gpfs_images_dir = org_value_dir
 
-         # fail os.path.isdir(directory)
+        # fail os.path.isdir(directory)
         org_value_mount = self.driver.configuration.gpfs_mount_point_base
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base=self.volumes_path + '_')
