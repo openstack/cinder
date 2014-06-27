@@ -573,9 +573,9 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
             try:
                 (vg for vg in vg_list if vg['name'] == dest_vg).next()
             except StopIteration:
-                message = ("Destination Volume Group %s does not exist" %
+                message = (_("Destination Volume Group %s does not exist") %
                            dest_vg)
-                LOG.error(_('%s'), message)
+                LOG.error(message)
                 return false_ret
 
             helper = utils.get_root_helper()
