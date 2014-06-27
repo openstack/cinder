@@ -735,7 +735,7 @@ class API(base.Base):
                 volume_image_metadata = self.get_volume_image_metadata(context,
                                                                        volume)
                 custom_property_set = (set(volume_image_metadata).difference
-                                      (set(glance_core_properties)))
+                                       (set(glance_core_properties)))
                 if custom_property_set:
                     metadata.update(dict(properties=dict((custom_property,
                                                           volume_image_metadata

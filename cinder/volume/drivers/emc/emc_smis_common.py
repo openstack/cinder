@@ -108,8 +108,8 @@ class EMCSMISCommon():
             storage_system)
         if configservice is None:
             exception_message = (_("Error Create Volume: %(volumename)s. "
-                                 "Storage Configuration Service not found for "
-                                 "pool %(storage_type)s.")
+                                   "Storage Configuration Service not found "
+                                   "for pool %(storage_type)s.")
                                  % {'volumename': volumename,
                                     'storage_type': storage_type})
             LOG.error(exception_message)
@@ -199,9 +199,9 @@ class EMCSMISCommon():
         isVMAX = storage_system.find('SYMMETRIX')
         if isVMAX > -1:
             exception_message = (_('Error Create Volume from Snapshot: '
-                                 'Volume: %(volumename)s  Snapshot: '
-                                 '%(snapshotname)s. Create Volume '
-                                 'from Snapshot is NOT supported on VMAX.')
+                                   'Volume: %(volumename)s  Snapshot: '
+                                   '%(snapshotname)s. Create Volume '
+                                   'from Snapshot is NOT supported on VMAX.')
                                  % {'volumename': volumename,
                                     'snapshotname': snapshotname})
             LOG.error(exception_message)
@@ -210,9 +210,9 @@ class EMCSMISCommon():
         repservice = self._find_replication_service(storage_system)
         if repservice is None:
             exception_message = (_('Error Create Volume from Snapshot: '
-                                 'Volume: %(volumename)s  Snapshot: '
-                                 '%(snapshotname)s. Cannot find Replication '
-                                 'Service to create volume from snapshot.')
+                                   'Volume: %(volumename)s  Snapshot: '
+                                   '%(snapshotname)s. Cannot find Replication '
+                                   'Service to create volume from snapshot.')
                                  % {'volumename': volumename,
                                     'snapshotname': snapshotname})
             LOG.error(exception_message)
@@ -240,9 +240,9 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Create Volume from Snapshot: '
-                                     'Volume: %(volumename)s  Snapshot:'
-                                     '%(snapshotname)s.  Return code: %(rc)lu.'
-                                     'Error: %(error)s')
+                                       'Volume: %(volumename)s  Snapshot:'
+                                       '%(snapshotname)s.  Return code: '
+                                       '%(rc)lu. Error: %(error)s')
                                      % {'volumename': volumename,
                                         'snapshotname': snapshotname,
                                         'rc': rc,
@@ -303,9 +303,10 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Create Volume from Snapshot: '
-                                     'Volume: %(volumename)s  '
-                                     'Snapshot: %(snapshotname)s.  '
-                                     'Return code: %(rc)lu.  Error: %(error)s')
+                                       'Volume: %(volumename)s  '
+                                       'Snapshot: %(snapshotname)s.  '
+                                       'Return code: %(rc)lu.  Error: '
+                                       '%(error)s')
                                      % {'volumename': volumename,
                                         'snapshotname': snapshotname,
                                         'rc': rc,
@@ -351,9 +352,9 @@ class EMCSMISCommon():
         repservice = self._find_replication_service(storage_system)
         if repservice is None:
             exception_message = (_('Error Create Cloned Volume: '
-                                 'Volume: %(volumename)s  Source Volume: '
-                                 '%(srcname)s. Cannot find Replication '
-                                 'Service to create cloned volume.')
+                                   'Volume: %(volumename)s  Source Volume: '
+                                   '%(srcname)s. Cannot find Replication '
+                                   'Service to create cloned volume.')
                                  % {'volumename': volumename,
                                     'srcname': srcname})
             LOG.error(exception_message)
@@ -381,9 +382,9 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Create Cloned Volume: '
-                                     'Volume: %(volumename)s  Source Volume:'
-                                     '%(srcname)s.  Return code: %(rc)lu.'
-                                     'Error: %(error)s')
+                                       'Volume: %(volumename)s  Source Volume:'
+                                       '%(srcname)s.  Return code: %(rc)lu.'
+                                       'Error: %(error)s')
                                      % {'volumename': volumename,
                                         'srcname': srcname,
                                         'rc': rc,
@@ -444,9 +445,10 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Create Cloned Volume: '
-                                     'Volume: %(volumename)s  '
-                                     'Source Volume: %(srcname)s.  '
-                                     'Return code: %(rc)lu.  Error: %(error)s')
+                                       'Volume: %(volumename)s  '
+                                       'Source Volume: %(srcname)s.  '
+                                       'Return code: %(rc)lu.  Error: '
+                                       '%(error)s')
                                      % {'volumename': volumename,
                                         'srcname': srcname,
                                         'rc': rc,
@@ -486,7 +488,7 @@ class EMCSMISCommon():
             self._find_storage_configuration_service(storage_system)
         if configservice is None:
             exception_message = (_("Error Delete Volume: %(volumename)s. "
-                                 "Storage Configuration Service not found.")
+                                   "Storage Configuration Service not found.")
                                  % {'volumename': volumename})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
@@ -512,7 +514,8 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Delete Volume: %(volumename)s.  '
-                                     'Return code: %(rc)lu.  Error: %(error)s')
+                                       'Return code: %(rc)lu.  Error: '
+                                       '%(error)s')
                                      % {'volumename': volumename,
                                         'rc': rc,
                                         'error': errordesc})
@@ -581,7 +584,8 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Create Snapshot: %(snapshot)s '
-                                     'Volume: %(volume)s Error: %(errordesc)s')
+                                       'Volume: %(volume)s Error: '
+                                       '%(errordesc)s')
                                      % {'snapshot': snapshotname, 'volume':
                                         volumename, 'errordesc': errordesc})
                 LOG.error(exception_message)
@@ -669,9 +673,9 @@ class EMCSMISCommon():
             rc, errordesc = self._wait_for_job_complete(job)
             if rc != 0L:
                 exception_message = (_('Error Delete Snapshot: Volume: '
-                                     '%(volumename)s  Snapshot: '
-                                     '%(snapshotname)s. Return code: %(rc)lu.'
-                                     ' Error: %(error)s')
+                                       '%(volumename)s  Snapshot: '
+                                       '%(snapshotname)s. Return code: '
+                                       '%(rc)lu.  Error: %(error)s')
                                      % {'volumename': volumename,
                                         'snapshotname': snapshotname,
                                         'rc': rc,
@@ -694,7 +698,7 @@ class EMCSMISCommon():
                     self._find_storage_sync_sv_sv(snapshot, volume, False)
                 if sync_name is None:
                     LOG.info(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                             'Snapshot is deleted.')
+                               'Snapshot is deleted.')
                              % {'snapshot': snapshotname,
                                 'volume': volumename})
                     break
@@ -709,7 +713,7 @@ class EMCSMISCommon():
                 if ex.args[0] == 6:
                     # 6 means object not found, so snapshot is deleted cleanly
                     LOG.info(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                             'Snapshot is deleted.')
+                               'Snapshot is deleted.')
                              % {'snapshot': snapshotname,
                                 'volume': volumename})
                 else:

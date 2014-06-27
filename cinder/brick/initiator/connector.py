@@ -199,11 +199,11 @@ class ISCSIConnector(InitiatorConnector):
             #multipath installed, discovering other targets if available
             target_portal = connection_properties['target_portal']
             out = self._run_iscsiadm_bare(['-m',
-                                          'discovery',
-                                          '-t',
-                                          'sendtargets',
-                                          '-p',
-                                          target_portal],
+                                           'discovery',
+                                           '-t',
+                                           'sendtargets',
+                                           '-p',
+                                           target_portal],
                                           check_exit_code=[0, 255])[0] \
                 or ""
 
@@ -361,10 +361,10 @@ class ISCSIConnector(InitiatorConnector):
         # Targets for multiple paths for the same multipath device
         # may not be the same.
         out = self._run_iscsiadm_bare(['-m',
-                                      'discovery',
-                                      '-t',
-                                      'sendtargets',
-                                      '-p',
+                                       'discovery',
+                                       '-t',
+                                       'sendtargets',
+                                       '-p',
                                       connection_properties['target_portal']],
                                       check_exit_code=[0, 255])[0] \
             or ""
@@ -599,9 +599,10 @@ class FibreChannelConnector(InitiatorConnector):
                 for wwn in wwns:
                     target_wwn = "0x%s" % wwn.lower()
                     host_device = ("/dev/disk/by-path/pci-%s-fc-%s-lun-%s" %
-                                  (pci_num,
-                                   target_wwn,
-                                   connection_properties.get('target_lun', 0)))
+                                   (pci_num,
+                                    target_wwn,
+                                    connection_properties.get(
+                                        'target_lun', 0)))
                     host_devices.append(host_device)
 
         if len(host_devices) == 0:

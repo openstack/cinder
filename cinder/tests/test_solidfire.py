@@ -61,10 +61,10 @@ class SolidFireVolumeTestCase(test.TestCase):
             LOG.info('Called Fake GetClusterCapacity...')
             data = {'result':
                     {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
-                     'usedSpace': 1073741824,
-                     'compressionPercent': 100,
-                     'deDuplicationPercent': 100,
-                     'thinProvisioningPercent': 100}}}
+                                         'usedSpace': 1073741824,
+                                         'compressionPercent': 100,
+                                         'deDuplicationPercent': 100,
+                                         'thinProvisioningPercent': 100}}}
             return data
 
         elif method is 'GetClusterInfo' and version == '1.0':

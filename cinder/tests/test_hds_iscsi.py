@@ -163,7 +163,7 @@ class SimulatedHnasBackend(object):
     def create_lu(self, cmd, ip0, user, pw, hdp, size, name):
         vol_id = name
         _out = ("LUN: %d HDP: fs2 size: %s MB, is successfully created" %
-               (self.start_lun, size))
+                (self.start_lun, size))
         self.createVolume(name, vol_id, size, "create-lu")
         self.start_lun += 1
         return _out
@@ -179,7 +179,7 @@ class SimulatedHnasBackend(object):
 
     def create_dup(self, cmd, ip0, user, pw, src_lun, hdp, size, name):
         _out = ("LUN: %s HDP: 9 size: %s MB, is successfully created" %
-               (self.start_lun, size))
+                (self.start_lun, size))
 
         id = name
         LOG.info("HNAS Create_Dup: %d" % self.start_lun)
