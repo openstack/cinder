@@ -73,3 +73,8 @@ class VMwaredriverConfigurationException(VMwareDriverException):
 class InvalidAdapterTypeException(VMwareDriverException):
     """Thrown when the disk adapter type is invalid."""
     message = _("Invalid disk adapter type: %(invalid_type)s.")
+
+
+class InvalidDiskTypeException(VMwareDriverException):
+    """Thrown when the disk type is invalid."""
+    message = _("Invalid disk type: %(disk_type)s.")
