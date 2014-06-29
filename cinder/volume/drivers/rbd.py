@@ -73,6 +73,10 @@ rbd_opts = [
     cfg.IntOpt('rbd_store_chunk_size', default=4,
                help=_('Volumes will be chunked into objects of this size '
                       '(in megabytes).')),
+    cfg.IntOpt('rados_connect_timeout', default=-1,
+               help=_('Timeout value (in seconds) used when connecting to '
+                      'ceph cluster. If value < 0, no timeout is set and '
+                      'default librados value is used.'))
 ]
 
 CONF = cfg.CONF
@@ -281,6 +285,9 @@ class RBDDriver(driver.VolumeDriver):
         return args
 
     def _connect_to_rados(self, pool=None):
+        LOG.debug("opening connection to ceph cluster (timeout=%s)." %
+                  (self.configuration.rados_connect_timeout))
+
         client = self.rados.Rados(rados_id=self.configuration.rbd_user,
                                   conffile=self.configuration.rbd_ceph_conf)
         if pool is not None:
@@ -289,13 +296,18 @@ class RBDDriver(driver.VolumeDriver):
             pool = self.configuration.rbd_pool
 
         try:
-            client.connect()
+            if self.configuration.rados_connect_timeout >= 0:
+                client.connect(timeout=
+                               self.configuration.rados_connect_timeout)
+            else:
+                client.connect()
             ioctx = client.open_ioctx(pool)
             return client, ioctx
-        except self.rados.Error:
+        except self.rados.Error as exc:
+            LOG.error("error connecting to ceph cluster.")
             # shutdown cannot raise an exception
             client.shutdown()
-            raise
+            raise exception.VolumeBackendAPIException(data=str(exc))
 
     def _disconnect_from_rados(self, client, ioctx):
         # closing an ioctx cannot raise an exception
