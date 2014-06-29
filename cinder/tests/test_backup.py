@@ -45,8 +45,12 @@ class BaseBackupTest(test.TestCase):
         super(BaseBackupTest, self).setUp()
         vol_tmpdir = tempfile.mkdtemp()
         self.flags(volumes_dir=vol_tmpdir)
-        self.backup_mgr = \
-            importutils.import_object(CONF.backup_manager)
+        with mock.patch("osprofiler.profiler.trace_cls") as mock_trace_cls:
+            side_effect = lambda value: value
+            mock_decorator = mock.MagicMock(side_effect=side_effect)
+            mock_trace_cls.return_value = mock_decorator
+            self.backup_mgr = \
+                importutils.import_object(CONF.backup_manager)
         self.backup_mgr.host = 'testhost'
         self.ctxt = context.get_admin_context()
         self.backup_mgr.driver.set_initialized()

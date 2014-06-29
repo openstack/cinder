@@ -40,6 +40,7 @@ import time
 
 from oslo.config import cfg
 from oslo import messaging
+from osprofiler import profiler
 
 from cinder import compute
 from cinder import context
@@ -180,6 +181,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             db=self.db,
             host=self.host)
 
+        self.driver = profiler.trace_cls("driver")(self.driver)
         try:
             self.extra_capabilities = jsonutils.loads(
                 self.driver.configuration.extra_capabilities)

@@ -2359,6 +2359,19 @@
 #ringfile=/etc/oslo/matchmaker_ring.json
 
 
+[profiler]
+
+#
+# Options defined in cinder.service
+#
+
+# If False fully disable profiling feature. (boolean value)
+#profiler_enabled=false
+
+# If False doesn't trace SQL requests. (boolean value)
+#trace_sqlalchemy=false
+
+
 [ssl]
 
 #

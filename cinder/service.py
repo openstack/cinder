@@ -24,6 +24,9 @@ import random
 
 from oslo.config import cfg
 from oslo import messaging
+import osprofiler.notifier
+from osprofiler import profiler
+import osprofiler.web
 
 from cinder import context
 from cinder import db
@@ -64,8 +67,35 @@ service_opts = [
                help='Number of workers for OpenStack Volume API service. '
                     'The default is equal to the number of CPUs available.'), ]
 
+profiler_opts = [
+    cfg.BoolOpt("profiler_enabled", default=False,
+                help=_('If False fully disable profiling feature.')),
+    cfg.BoolOpt("trace_sqlalchemy", default=False,
+                help=_("If False doesn't trace SQL requests."))
+]
+
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
+CONF.register_opts(profiler_opts, group="profiler")
+
+
+def setup_profiler(binary, host):
+    if CONF.profiler.profiler_enabled:
+        _notifier = osprofiler.notifier.create(
+            "Messaging", messaging, context.get_admin_context().to_dict(),
+            rpc.TRANSPORT, "cinder", binary, host)
+        osprofiler.notifier.set(_notifier)
+        LOG.warning("OSProfiler is enabled.\nIt means that person who knows "
+                    "any of hmac_keys that are specified in "
+                    "/etc/cinder/api-paste.ini can trace his requests. \n"
+                    "In real life only operator can read this file so there "
+                    "is no security issue. Note that even if person can "
+                    "trigger profiler, only admin user can retrieve trace "
+                    "information.\n"
+                    "To disable OSprofiler set in cinder.conf:\n"
+                    "[profiler]\nenabled=false")
+    else:
+        osprofiler.web.disable()
 
 
 class Service(service.Service):
@@ -89,6 +119,8 @@ class Service(service.Service):
         self.topic = topic
         self.manager_class_name = manager
         manager_class = importutils.import_class(self.manager_class_name)
+        manager_class = profiler.trace_cls("rpc")(manager_class)
+
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
                                      *args, **kwargs)
@@ -98,6 +130,8 @@ class Service(service.Service):
         self.basic_config_check()
         self.saved_args, self.saved_kwargs = args, kwargs
         self.timers = []
+
+        setup_profiler(binary, host)
 
     def start(self):
         version_string = version.version_string()
@@ -296,6 +330,8 @@ class WSGIService(object):
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
         self.workers = getattr(CONF, '%s_workers' % name,
                                processutils.get_worker_count())
+        setup_profiler(name, self.host)
+
         if self.workers < 1:
             LOG.warn(_("Value of config option %(name)s_workers must be "
                        "integer greater than 1.  Input value ignored.") %

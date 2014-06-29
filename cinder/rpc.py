@@ -28,6 +28,7 @@ __all__ = [
 
 from oslo.config import cfg
 from oslo import messaging
+from osprofiler import profiler
 
 import cinder.context
 import cinder.exception
@@ -116,9 +117,22 @@ class RequestContextSerializer(messaging.Serializer):
         return self._base.deserialize_entity(context, entity)
 
     def serialize_context(self, context):
-        return context.to_dict()
+        _context = context.to_dict()
+        prof = profiler.get()
+        if prof:
+            trace_info = {
+                "hmac_key": prof.hmac_key,
+                "base_id": prof.get_base_id(),
+                "parent_id": prof.get_id()
+            }
+            _context.update({"trace_info": trace_info})
+        return _context
 
     def deserialize_context(self, context):
+        trace_info = context.pop("trace_info", None)
+        if trace_info:
+            profiler.init(**trace_info)
+
         return cinder.context.RequestContext.from_dict(context)
 
 
