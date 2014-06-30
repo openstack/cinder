@@ -146,7 +146,7 @@ class TestWindowsDriver(test.TestCase):
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'create_volume_from_snapshot')
         windows_utils.WindowsUtils.\
-            create_volume_from_snapshot(volume['name'], snapshot['name'])
+            create_volume_from_snapshot(volume, snapshot['name'])
 
         self.mox.ReplayAll()
 

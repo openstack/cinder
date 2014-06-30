@@ -16,8 +16,11 @@
 Utility class for Windows Storage Server 2012 volume related operations.
 """
 
+import ctypes
 import os
 import time
+
+from oslo.config import cfg
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -26,6 +29,10 @@ from cinder.volume.drivers.windows import constants
 # Check needed for unit testing on Unix
 if os.name == 'nt':
     import wmi
+
+    from ctypes import wintypes
+
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
@@ -132,13 +139,17 @@ class WindowsUtils(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-    def create_volume(self, vhd_path, vol_name, vol_size):
+    def create_volume(self, vhd_path, vol_name, vol_size=None):
         """Creates a volume."""
         try:
             cl = self._conn_wmi.__getattr__("WT_Disk")
+            if vol_size:
+                size_mb = vol_size * 1024
+            else:
+                size_mb = None
             cl.NewWTDisk(DevicePath=vhd_path,
                          Description=vol_name,
-                         SizeInMB=vol_size * 1024)
+                         SizeInMB=size_mb)
         except wmi.x_wmi as exc:
             err_msg = (_(
                 'create_volume: error when creating the volume name: '
@@ -203,14 +214,24 @@ class WindowsUtils(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-    def create_volume_from_snapshot(self, vol_name, snap_name):
+    def create_volume_from_snapshot(self, volume, snap_name):
         """Driver entry point for exporting snapshots as volumes."""
         try:
+            vol_name = volume['name']
+            vol_path = self.local_path(volume)
+
             wt_snapshot = self._conn_wmi.WT_Snapshot(Description=snap_name)[0]
             disk_id = wt_snapshot.Export()[0]
+            # This export is read-only, so it needs to be copied
+            # to another disk.
             wt_disk = self._conn_wmi.WT_Disk(WTD=disk_id)[0]
-            wt_disk.Description = vol_name
+            wt_disk.Description = '%s-temp' % vol_name
             wt_disk.put()
+            src_path = wt_disk.DevicePath
+
+            self.copy(src_path, vol_path)
+            self.create_volume(vol_path, vol_name)
+            wt_disk.Delete_()
         except wmi.x_wmi as exc:
             err_msg = (_(
                 'create_volume_from_snapshot: error when creating the volume '
@@ -321,6 +342,16 @@ class WindowsUtils(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
+    def local_path(self, volume, format=None):
+        base_vhd_folder = CONF.windows_iscsi_lun_path
+        if not os.path.exists(base_vhd_folder):
+            LOG.debug('Creating folder: %s' % base_vhd_folder)
+            os.makedirs(base_vhd_folder)
+        if not format:
+            format = self.get_supported_format()
+        return os.path.join(base_vhd_folder, str(volume['name']) + "." +
+                            format)
+
     def check_min_windows_version(self, major, minor, build=0):
         version_str = self.get_windows_version()
         return map(int, version_str.split('.')) >= [major, minor, build]
@@ -346,6 +377,19 @@ class WindowsUtils(object):
         elif ret_val not in success_values:
             raise exception.VolumeBackendAPIException(
                 _('Operation failed with return value: %s') % ret_val)
+
+    def copy(self, src, dest):
+        # With large files this is 2x-3x faster than shutil.copy(src, dest),
+        # especially with UNC targets.
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CopyFileW.restype = wintypes.BOOL
+
+        retcode = kernel32.CopyFileW(ctypes.c_wchar_p(src),
+                                     ctypes.c_wchar_p(dest),
+                                     wintypes.BOOL(True))
+        if not retcode:
+            raise IOError(_('The file copy from %(src)s to %(dest)s failed.')
+                          % {'src': src, 'dest': dest})
 
     def _wait_for_job(self, job_path):
         """Poll WMI job state and wait for completion."""
