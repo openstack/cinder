@@ -194,10 +194,25 @@ class BackupsController(wsgi.Controller):
         """Returns a detailed list of backups."""
         return self._get_backups(req, is_detail=True)
 
+    @staticmethod
+    def _get_backup_filter_options():
+        """Return volume search options allowed by non-admin."""
+        return ('name', 'status', 'volume_id')
+
     def _get_backups(self, req, is_detail):
         """Returns a list of backups, transformed through view builder."""
         context = req.environ['cinder.context']
-        backups = self.backup_api.get_all(context)
+        filters = req.params.copy()
+
+        utils.remove_invalid_filter_options(context,
+                                            filters,
+                                            self._get_backup_filter_options())
+
+        if 'name' in filters:
+            filters['display_name'] = filters['name']
+            del filters['name']
+
+        backups = self.backup_api.get_all(context, search_opts=filters)
         limited_list = common.limited(backups, req)
 
         if is_detail:

@@ -214,8 +214,9 @@ class VolumeController(wsgi.Controller):
         params.pop('offset', None)
         filters = params
 
-        remove_invalid_options(context,
-                               filters, self._get_volume_filter_options())
+        utils.remove_invalid_filter_options(context,
+                                            filters,
+                                            self._get_volume_filter_options())
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in filters:
@@ -417,18 +418,3 @@ class VolumeController(wsgi.Controller):
 
 def create_resource(ext_mgr):
     return wsgi.Resource(VolumeController(ext_mgr))
-
-
-def remove_invalid_options(context, filters, allowed_search_options):
-    """Remove search options that are not valid for non-admin API/context."""
-    if context.is_admin:
-        # Allow all options
-        return
-    # Otherwise, strip out all unknown options
-    unknown_options = [opt for opt in filters
-                       if opt not in allowed_search_options]
-    bad_options = ", ".join(unknown_options)
-    log_msg = _("Removing options '%s' from query") % bad_options
-    LOG.debug(log_msg)
-    for opt in unknown_options:
-        del filters[opt]

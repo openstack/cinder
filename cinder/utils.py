@@ -890,3 +890,21 @@ def add_visible_admin_metadata(volume):
         volume['metadata'].update(visible_admin_meta)
     else:
         volume['metadata'] = visible_admin_meta
+
+
+def remove_invalid_filter_options(context, filters,
+                                  allowed_search_options):
+    """Remove search options that are not valid
+    for non-admin API/context.
+    """
+    if context.is_admin:
+        # Allow all options
+        return
+    # Otherwise, strip out all unknown options
+    unknown_options = [opt for opt in filters
+                       if opt not in allowed_search_options]
+    bad_options = ", ".join(unknown_options)
+    log_msg = "Removing options '%s' from query." % bad_options
+    LOG.debug(log_msg)
+    for opt in unknown_options:
+        del filters[opt]
