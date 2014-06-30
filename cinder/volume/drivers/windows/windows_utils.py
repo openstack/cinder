@@ -37,7 +37,6 @@ class WindowsUtils(object):
         # Set the flags
         self._conn_wmi = wmi.WMI(moniker='//./root/wmi')
         self._conn_cimv2 = wmi.WMI(moniker='//./root/cimv2')
-        self._conn_virt = wmi.WMI(moniker='//./root/virtualization')
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
@@ -322,19 +321,24 @@ class WindowsUtils(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-    def convert_vhd(self, src, dest, vhd_type):
-        # Due to the fact that qemu does not fully support vhdx format yet,
-        # we must use WMI make conversions between vhd and vhdx formats
-        image_man_svc = self._conn_virt.Msvm_ImageManagementService()[0]
-        (job_path, ret_val) = image_man_svc.ConvertVirtualHardDisk(
-            SourcePath=src, DestinationPath=dest, Type=vhd_type)
-        self.check_ret_val(ret_val, job_path)
+    def check_min_windows_version(self, major, minor, build=0):
+        version_str = self.get_windows_version()
+        return map(int, version_str.split('.')) >= [major, minor, build]
 
-    def resize_vhd(self, vhd_path, new_max_size):
-        image_man_svc = self._conn_virt.Msvm_ImageManagementService()[0]
-        (job_path, ret_val) = image_man_svc.ExpandVirtualHardDisk(
-            Path=vhd_path, MaxInternalSize=new_max_size)
-        self.check_ret_val(ret_val, job_path)
+    def get_windows_version(self):
+        return self._conn_cimv2.Win32_OperatingSystem()[0].Version
+
+    def get_supported_format(self):
+        if self.check_min_windows_version(6, 3):
+            return 'vhdx'
+        else:
+            return 'vhd'
+
+    def get_supported_vhd_type(self):
+        if self.check_min_windows_version(6, 3):
+            return constants.VHD_TYPE_DYNAMIC
+        else:
+            return constants.VHD_TYPE_FIXED
 
     def check_ret_val(self, ret_val, job_path, success_values=[0]):
         if ret_val == constants.WMI_JOB_STATUS_STARTED:

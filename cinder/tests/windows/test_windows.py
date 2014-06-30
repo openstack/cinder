@@ -30,9 +30,12 @@ from cinder import test
 
 from cinder.image import image_utils
 
+from cinder.openstack.common import fileutils
 from cinder.tests.windows import db_fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.windows import constants
+from cinder.volume.drivers.windows import utilsfactory
+from cinder.volume.drivers.windows import vhdutils
 from cinder.volume.drivers.windows import windows
 from cinder.volume.drivers.windows import windows_utils
 
@@ -56,7 +59,6 @@ class TestWindowsDriver(test.TestCase):
         self._setup_stubs()
         configuration = conf.Configuration(None)
         configuration.append_config_values(windows.windows_opts)
-
         self._driver = windows.WindowsDriver(configuration=configuration)
         self._driver.do_setup({})
 
@@ -64,7 +66,13 @@ class TestWindowsDriver(test.TestCase):
 
         def fake_wutils__init__(self):
             pass
+
+        def fake_get_vhdutils():
+            return vhdutils.VHDUtils()
+
         windows_utils.WindowsUtils.__init__ = fake_wutils__init__
+        vhdutils.VHDUtils.__init__ = lambda x: None
+        utilsfactory.get_vhdutils = fake_get_vhdutils
 
     def fake_local_path(self, volume):
         return os.path.join(CONF.windows_iscsi_lun_path,
@@ -257,14 +265,17 @@ class TestWindowsDriver(test.TestCase):
 
         volume = db_fakes.get_fake_volume_info()
 
+        fake_get_supported_type = lambda x: constants.VHD_TYPE_FIXED
         self.stubs.Set(drv, 'local_path', self.fake_local_path)
+        self.stubs.Set(windows_utils.WindowsUtils, 'get_supported_vhd_type',
+                       fake_get_supported_type)
 
         self.mox.StubOutWithMock(os, 'makedirs')
         self.mox.StubOutWithMock(os, 'unlink')
         self.mox.StubOutWithMock(image_utils, 'create_temporary_file')
         self.mox.StubOutWithMock(image_utils, 'fetch_to_vhd')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils, 'convert_vhd')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils, 'resize_vhd')
+        self.mox.StubOutWithMock(vhdutils.VHDUtils, 'convert_vhd')
+        self.mox.StubOutWithMock(vhdutils.VHDUtils, 'resize_vhd')
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'change_disk_status')
 
@@ -283,11 +294,11 @@ class TestWindowsDriver(test.TestCase):
         windows_utils.WindowsUtils.change_disk_status(volume['name'],
                                                       mox.IsA(bool))
         os.unlink(mox.IsA(str))
-        windows_utils.WindowsUtils.convert_vhd(fake_temp_path,
-                                               fake_volume_path,
-                                               constants.VHD_TYPE_FIXED)
-        windows_utils.WindowsUtils.resize_vhd(fake_volume_path,
-                                              volume['size'] << 30)
+        vhdutils.VHDUtils.convert_vhd(fake_temp_path,
+                                      fake_volume_path,
+                                      constants.VHD_TYPE_FIXED)
+        vhdutils.VHDUtils.resize_vhd(fake_volume_path,
+                                     volume['size'] << 30)
         windows_utils.WindowsUtils.change_disk_status(volume['name'],
                                                       mox.IsA(bool))
         os.unlink(mox.IsA(str))
@@ -296,31 +307,48 @@ class TestWindowsDriver(test.TestCase):
 
         drv.copy_image_to_volume(None, volume, None, None)
 
-    def test_copy_volume_to_image(self):
+    def _test_copy_volume_to_image(self, supported_format):
         drv = self._driver
 
         vol = db_fakes.get_fake_volume_info()
 
         image_meta = db_fakes.get_fake_image_meta()
 
+        fake_get_supported_format = lambda x: supported_format
         self.stubs.Set(drv, 'local_path', self.fake_local_path)
+        self.stubs.Set(windows_utils.WindowsUtils, 'get_supported_format',
+                       fake_get_supported_format)
 
+        self.mox.StubOutWithMock(fileutils, 'delete_if_exists')
         self.mox.StubOutWithMock(image_utils, 'upload_volume')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils, 'copy_vhd_disk')
+        self.mox.StubOutWithMock(vhdutils.VHDUtils, 'convert_vhd')
 
         temp_vhd_path = os.path.join(CONF.image_conversion_dir,
-                                     str(image_meta['id']) + ".vhd")
-
-        image_utils.upload_volume(None, None, image_meta, temp_vhd_path, 'vpc')
-
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'copy_vhd_disk')
+                                     str(image_meta['id']) + "." +
+                                     supported_format)
+        upload_image = temp_vhd_path
 
         windows_utils.WindowsUtils.copy_vhd_disk(self.fake_local_path(vol),
                                                  temp_vhd_path)
+        if supported_format == 'vhdx':
+            upload_image = upload_image[:-1]
+            vhdutils.VHDUtils.convert_vhd(temp_vhd_path, upload_image)
+
+        image_utils.upload_volume(None, None, image_meta, upload_image, 'vpc')
+
+        fileutils.delete_if_exists(temp_vhd_path)
+        fileutils.delete_if_exists(upload_image)
 
         self.mox.ReplayAll()
 
         drv.copy_volume_to_image(None, vol, None, image_meta)
+
+    def test_copy_volume_to_image_using_vhd(self):
+        self._test_copy_volume_to_image('vhd')
+
+    def test_copy_volume_to_image_using_vhdx(self):
+        self._test_copy_volume_to_image('vhdx')
 
     def test_create_cloned_volume(self):
         drv = self._driver
@@ -330,6 +358,8 @@ class TestWindowsDriver(test.TestCase):
 
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'create_volume')
+
+        self.stubs.Set(drv, 'local_path', self.fake_local_path)
 
         windows_utils.WindowsUtils.create_volume(mox.IgnoreArg(),
                                                  mox.IgnoreArg(),
