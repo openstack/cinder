@@ -859,7 +859,7 @@ class TestMigrations(test.TestCase):
     def test_migration_017(self):
         """Test that added encryption information works correctly."""
 
-            # upgrade schema
+        # upgrade schema
         for (key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,

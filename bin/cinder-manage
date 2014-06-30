@@ -484,9 +484,9 @@ category_opt = cfg.SubCommandOpt('category',
 def get_arg_string(args):
     arg = None
     if args[0] == '-':
-    # (Note)zhiteng: args starts with FLAGS.oparser.prefix_chars
-    # is optional args. Notice that cfg module takes care of
-    # actual ArgParser so prefix_chars is always '-'.
+        # (Note)zhiteng: args starts with FLAGS.oparser.prefix_chars
+        # is optional args. Notice that cfg module takes care of
+        # actual ArgParser so prefix_chars is always '-'.
         if args[1] == '-':
             # This is long optional arg
             arg = args[2:]
