@@ -1,5 +1,5 @@
 # Install bounded pep8/pyflakes first, then let flake8 install
-hacking>=0.8.0,<0.9
+hacking>=0.9.2,<0.10
 coverage>=3.6
 discover
 fixtures>=0.3.14
