@@ -117,7 +117,7 @@ class SnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['cinder.context']
 
-        LOG.audit(_("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_("Delete snapshot with id: %s"), id, context=context)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
@@ -191,7 +191,7 @@ class SnapshotsController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=msg)
         force = snapshot.get('force', False)
         msg = _("Create snapshot from volume %s")
-        LOG.audit(msg, volume_id, context=context)
+        LOG.info(msg, volume_id, context=context)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:

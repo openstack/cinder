@@ -179,7 +179,7 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
-        LOG.audit(_("Delete volume with id: %s"), id, context=context)
+        LOG.info(_("Delete volume with id: %s"), id, context=context)
 
         try:
             volume = self.volume_api.get(context, id)
@@ -331,7 +331,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
 
-        LOG.audit(_("Create volume of %s GB"), size, context=context)
+        LOG.info(_("Create volume of %s GB"), size, context=context)
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_href = volume.get('imageRef')

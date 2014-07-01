@@ -101,8 +101,8 @@ class Service(service.Service):
 
     def start(self):
         version_string = version.version_string()
-        LOG.audit(_('Starting %(topic)s node (version %(version_string)s)'),
-                  {'topic': self.topic, 'version_string': version_string})
+        LOG.info(_('Starting %(topic)s node (version %(version_string)s)'),
+                 {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         self.manager.init_host()
         ctxt = context.get_admin_context()
