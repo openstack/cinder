@@ -35,6 +35,8 @@ Limitations:
 """
 
 import math
+import time
+
 from oslo.config import cfg
 
 from cinder import context
@@ -137,6 +139,9 @@ class StorwizeSVCDriver(san.SanDriver):
                        'system_id': None,
                        'code_level': None,
                        }
+        # Storwize has the limitation that can not burst more than 3 new ssh
+        # connections within 1 second. So slow down the initialization.
+        time.sleep(1)
 
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
