@@ -17,6 +17,7 @@ paramiko>=1.13.0
 Paste
 PasteDeploy>=1.5.0
 pycrypto>=2.6
+python-barbicanclient>=2.1.0
 python-glanceclient>=0.13.1
 python-novaclient>=2.17.0
 python-swiftclient>=2.0.2

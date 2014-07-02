@@ -2182,6 +2182,17 @@
 #fixed_key=<None>
 
 
+#
+# Options defined in cinder.keymgr.key_mgr
+#
+
+# Authentication url for encryption service. (string value)
+#encryption_auth_url=http://localhost:5000/v2.0
+
+# Url for encryption service. (string value)
+#encryption_api_url=http://localhost:9311/v1
+
+
 [keystone_authtoken]
 
 #

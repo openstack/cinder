@@ -19,7 +19,20 @@ Key manager API
 
 import abc
 
+from oslo.config import cfg
 import six
+
+encryption_opts = [
+    cfg.StrOpt('encryption_auth_url',
+               default='http://localhost:5000/v2.0',
+               help='Authentication url for encryption service.'),
+    cfg.StrOpt('encryption_api_url',
+               default='http://localhost:9311/v1',
+               help='Url for encryption service.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(encryption_opts, 'keymgr')
 
 
 @six.add_metaclass(abc.ABCMeta)
