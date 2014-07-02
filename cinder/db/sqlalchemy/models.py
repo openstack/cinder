@@ -137,7 +137,7 @@ class VolumeMetadata(BASE, CinderBase):
 
 
 class VolumeAdminMetadata(BASE, CinderBase):
-    """Represents a administrator metadata key/value pair for a volume."""
+    """Represents an administrator metadata key/value pair for a volume."""
     __tablename__ = 'volume_admin_metadata'
     id = Column(Integer, primary_key=True)
     key = Column(String(255))

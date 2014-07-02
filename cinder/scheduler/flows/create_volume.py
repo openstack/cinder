@@ -103,7 +103,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                       {'cause': cause, 'name': self.name})
 
     def _notify_failure(self, context, request_spec, cause):
-        """When scheduling fails send out a event that it failed."""
+        """When scheduling fails send out an event that it failed."""
         payload = {
             'request_spec': request_spec,
             'volume_properties': request_spec.get('volume_properties', {}),
@@ -158,7 +158,7 @@ def get_flow(context, db_api, driver_api, request_spec=None,
     2. Extracts a scheduler specification from the provided inputs.
     3. Attaches 2 activated only on *failure* tasks (one to update the db
        status and one to notify on the MQ of the failure that occurred).
-    4. Uses provided driver to to then select and continue processing of
+    4. Uses provided driver to then select and continue processing of
        volume request.
     """
     create_what = {

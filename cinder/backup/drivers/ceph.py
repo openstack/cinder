@@ -590,7 +590,7 @@ class CephBackupDriver(BackupDriver):
 
     def _backup_rbd(self, backup_id, volume_id, volume_file, volume_name,
                     length):
-        """Create a incremental backup from an RBD image."""
+        """Create an incremental backup from an RBD image."""
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
