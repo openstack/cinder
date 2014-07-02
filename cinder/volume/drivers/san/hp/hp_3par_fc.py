@@ -62,10 +62,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.2 - Add back-end assisted volume migrate
         2.0.3 - Added initiator-target map for FC Zone Manager
         2.0.4 - Added support for managing/unmanaging of volumes
+        2.0.5 - Only remove FC Zone on last volume detach
 
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -229,12 +230,20 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             self.common.terminate_connection(volume, hostname,
                                              wwn=connector['wwpns'])
 
-            target_wwns, init_targ_map = self._build_initiator_target_map(
-                connector)
-
             info = {'driver_volume_type': 'fibre_channel',
-                    'data': {'target_wwn': target_wwns,
-                             'initiator_target_map': init_targ_map}}
+                    'data': {}}
+
+            try:
+                self.common.client.getHostVLUNs(hostname)
+            except hpexceptions.HTTPNotFound:
+                # No more exports for this host.
+                LOG.info(_("Need to remove FC Zone, building initiator "
+                         "target map"))
+                target_wwns, init_targ_map = self._build_initiator_target_map(
+                    connector)
+
+                info['data'] = {'target_wwn': target_wwns,
+                                'initiator_target_map': init_targ_map}
             return info
 
         finally:
