@@ -102,7 +102,8 @@ def get_flow(context, db, driver, host, volume_id, ref):
     create_what = {
         'context': context,
         'volume_id': volume_id,
-        'manage_existing_ref': ref
+        'manage_existing_ref': ref,
+        'optional_args': {'is_quota_committed': False}
     }
 
     volume_flow.add(create_mgr.ExtractVolumeRefTask(db, host),
