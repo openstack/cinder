@@ -25,6 +25,9 @@ import uuid
 import warnings
 
 from oslo.config import cfg
+from oslo.db import exception as db_exc
+from oslo.db import options
+from oslo.db.sqlalchemy import session as db_session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, joinedload_all
@@ -35,9 +38,6 @@ from sqlalchemy.sql import func
 from cinder.common import sqlalchemyutils
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.openstack.common.db import exception as db_exc
-from cinder.openstack.common.db import options
-from cinder.openstack.common.db.sqlalchemy import session as db_session
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -47,8 +47,7 @@ from cinder.openstack.common import uuidutils
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
-options.set_defaults(sql_connection='sqlite:///$state_path/cinder.sqlite',
-                     sqlite_db='cinder.sqlite')
+options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
 
 _LOCK = threading.Lock()
 _FACADE = None
