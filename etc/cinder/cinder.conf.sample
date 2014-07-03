@@ -892,6 +892,15 @@
 
 
 #
+# Options defined in cinder.scheduler.weights.volume_number
+#
+
+# Multiplier used for weighing volume number. Negative numbers
+# mean to spread vs stack. (floating point value)
+#volume_number_multiplier=-1.0
+
+
+#
 # Options defined in cinder.transfer.api
 #
 

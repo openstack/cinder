@@ -215,10 +215,11 @@ def volume_create(context, values):
     return IMPL.volume_create(context, values)
 
 
-def volume_data_get_for_host(context, host):
+def volume_data_get_for_host(context, host, count_only=False):
     """Get (volume_count, gigabytes) for project."""
     return IMPL.volume_data_get_for_host(context,
-                                         host)
+                                         host,
+                                         count_only)
 
 
 def volume_data_get_for_project(context, project_id):
