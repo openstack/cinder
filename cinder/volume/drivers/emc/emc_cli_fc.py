@@ -13,19 +13,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-iSCSI Drivers for EMC VNX array based on CLI.
+Fibre Channel Driver for EMC VNX array based on CLI.
 
 """
 
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
+from cinder.zonemanager.utils import AddFCZone
+from cinder.zonemanager.utils import RemoveFCZone
+
 
 LOG = logging.getLogger(__name__)
 
 
-class EMCCLIISCSIDriver(driver.ISCSIDriver):
-    """EMC ISCSI Drivers for VNX using CLI.
+class EMCCLIFCDriver(driver.FibreChannelDriver):
+    """EMC FC Driver for VNX using CLI.
 
     Version history:
         1.0.0 - Initial driver
@@ -47,9 +50,9 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
 
-        super(EMCCLIISCSIDriver, self).__init__(*args, **kwargs)
+        super(EMCCLIFCDriver, self).__init__(*args, **kwargs)
         self.cli = emc_vnx_cli.getEMCVnxCli(
-            'iSCSI',
+            'FC',
             configuration=self.configuration)
         self.VERSION = self.cli.VERSION
 
@@ -57,7 +60,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         pass
 
     def create_volume(self, volume):
-        """Creates a VNX volume."""
+        """Creates a volume."""
         return self.cli.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -73,10 +76,11 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         self.cli.extend_volume(volume, new_size)
 
     def delete_volume(self, volume):
-        """Deletes a VNX volume."""
+        """Deletes a volume."""
         self.cli.delete_volume(volume)
 
     def migrate_volume(self, ctxt, volume, host):
+        """Migrate volume via EMC migration functionality."""
         return self.cli.migrate_volume(ctxt, volume, host)
 
     def retype(self, ctxt, volume, new_type, diff, host):
@@ -97,7 +101,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
     def create_export(self, context, volume):
         """Driver entry point to get the export info for a new volume."""
-        self.cli.create_export(context, volume)
+        pass
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume."""
@@ -107,33 +111,75 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         """Make sure volume is exported."""
         pass
 
+    @AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
-        The iscsi driver returns a driver_volume_type of 'iscsi'.
-        the format of the driver data is defined in vnx_get_iscsi_properties.
-        Example return value::
+        Assign any created volume to a compute node/host so that it can be
+        used from that host.
+
+        The  driver returns a driver_volume_type of 'fibre_channel'.
+        The target_wwn can be a single entry or a list of wwns that
+        correspond to the list of remote wwn(s) that will export the volume.
+        The initiator_target_map is a map that represents the remote wwn(s)
+        and a list of wwns which are visiable to the remote wwn(s).
+        Example return values:
 
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'fibre_channel'
                 'data': {
                     'target_discovered': True,
-                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
-                    'target_portal': '127.0.0.0.1:3260',
                     'target_lun': 1,
+                    'target_wwn': '1234567890123',
                     'access_mode': 'rw'
+                    'initiator_target_map': {
+                        '1122334455667788': ['1234567890123']
+                    }
+                }
+            }
+
+            or
+
+             {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': ['1234567890123', '0987654321321'],
+                    'access_mode': 'rw'
+                    'initiator_target_map': {
+                        '1122334455667788': ['1234567890123',
+                                             '0987654321321']
+                    }
                 }
             }
 
         """
-        return self.cli.initialize_connection(volume, connector)
+        conn_info = self.cli.initialize_connection(volume,
+                                                   connector)
+        conn_info = self.cli.adjust_fc_conn_info(conn_info, connector)
+        LOG.debug("Exit initialize_connection"
+                  " - Returning FC connection info: %(conn_info)s."
+                  % {'conn_info': conn_info})
 
+        return conn_info
+
+    @RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        self.cli.terminate_connection(volume, connector)
+        remove_zone = self.cli.terminate_connection(volume, connector)
+        conn_info = {'driver_volume_type': 'fibre_channel',
+                     'data': {}}
+        conn_info = self.cli.adjust_fc_conn_info(conn_info, connector,
+                                                 remove_zone)
+        LOG.debug("Exit terminate_connection"
+                  " - Returning FC connection info: %(conn_info)s."
+                  % {'conn_info': conn_info})
+
+        return conn_info
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status.
+        """Get volume stats.
 
         If 'refresh' is True, run update the stats first.
         """
@@ -143,15 +189,12 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         return self._stats
 
     def update_volume_stats(self):
-        """Retrieve status info from volume group."""
-        LOG.debug("Updating volume status.")
-        # retrieving the volume update from the VNX
+        """Retrieve stats info from volume group."""
+        LOG.debug("Updating volume stats.")
         data = self.cli.update_volume_stats()
-
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or 'EMCCLIISCSIDriver'
-        data['storage_protocol'] = 'iSCSI'
-
+        data['volume_backend_name'] = backend_name or 'EMCCLIFCDriver'
+        data['storage_protocol'] = 'FC'
         self._stats = data
 
     def manage_existing(self, volume, existing_ref):
