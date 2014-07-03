@@ -238,6 +238,8 @@ class BackupManager(manager.SchedulerDependentManager):
         LOG.info(_LI('Create backup started, backup: %(backup_id)s '
                      'volume: %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
+
+        self._notify_about_backup_usage(context, backup, "create.start")
         volume_host = volume_utils.extract_host(volume['host'], 'backend')
         backend = self._get_volume_backend(host=volume_host)
 
@@ -289,11 +291,12 @@ class BackupManager(manager.SchedulerDependentManager):
                                        'fail_reason': unicode(err)})
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
-        self.db.backup_update(context, backup_id, {'status': 'available',
-                                                   'size': volume['size'],
-                                                   'availability_zone':
-                                                   self.az})
+        backup = self.db.backup_update(context, backup_id,
+                                       {'status': 'available',
+                                        'size': volume['size'],
+                                        'availability_zone': self.az})
         LOG.info(_LI('Create backup finished. backup: %s.'), backup_id)
+        self._notify_about_backup_usage(context, backup, "create.end")
 
     def restore_backup(self, context, backup_id, volume_id):
         """Restore volume backups from configured backup service."""
@@ -305,6 +308,7 @@ class BackupManager(manager.SchedulerDependentManager):
         volume = self.db.volume_get(context, volume_id)
         volume_host = volume_utils.extract_host(volume['host'], 'backend')
         backend = self._get_volume_backend(host=volume_host)
+        self._notify_about_backup_usage(context, backup, "restore.start")
 
         self.db.backup_update(context, backup_id, {'host': self.host})
 
@@ -372,10 +376,12 @@ class BackupManager(manager.SchedulerDependentManager):
                                       {'status': 'available'})
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
-        self.db.backup_update(context, backup_id, {'status': 'available'})
+        backup = self.db.backup_update(context, backup_id,
+                                       {'status': 'available'})
         LOG.info(_LI('Restore backup finished, backup %(backup_id)s restored'
                      ' to volume %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
+        self._notify_about_backup_usage(context, backup, "restore.end")
 
     def delete_backup(self, context, backup_id):
         """Delete volume backup from configured backup service."""
@@ -394,6 +400,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         LOG.info(_LI('Delete backup started, backup: %s.'), backup_id)
         backup = self.db.backup_get(context, backup_id)
+        self._notify_about_backup_usage(context, backup, "delete.start")
         self.db.backup_update(context, backup_id, {'host': self.host})
 
         expected_status = 'deleting'
@@ -453,6 +460,17 @@ class BackupManager(manager.SchedulerDependentManager):
                           project_id=backup['project_id'])
 
         LOG.info(_LI('Delete backup finished, backup %s deleted.'), backup_id)
+        self._notify_about_backup_usage(context, backup, "delete.end")
+
+    def _notify_about_backup_usage(self,
+                                   context,
+                                   backup,
+                                   event_suffix,
+                                   extra_usage_info=None):
+        volume_utils.notify_about_backup_usage(
+            context, backup, event_suffix,
+            extra_usage_info=extra_usage_info,
+            host=self.host)
 
     def export_record(self, context, backup_id):
         """Export all volume backup metadata details to allow clean import.

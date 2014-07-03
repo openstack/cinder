@@ -31,7 +31,15 @@ service_opts = [
     cfg.IntOpt('backup_metadata_version', default=2,
                help='Backup metadata version to be used when backing up '
                     'volume metadata. If this number is bumped, make sure the '
-                    'service doing the restore supports the new version.')
+                    'service doing the restore supports the new version.'),
+    cfg.IntOpt('backup_object_number_per_notification',
+               default=10,
+               help='The number of chunks or objects, for which one '
+                    'Ceilometer notification will be sent'),
+    cfg.IntOpt('backup_timer_interval',
+               default=120,
+               help='Interval, in seconds, between two progress notifications '
+                    'reporting the backup status'),
 ]
 
 CONF = cfg.CONF

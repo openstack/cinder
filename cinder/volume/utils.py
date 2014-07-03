@@ -68,6 +68,25 @@ def _usage_from_volume(context, volume_ref, **kw):
     return usage_info
 
 
+def _usage_from_backup(context, backup_ref, **kw):
+    usage_info = dict(tenant_id=backup_ref['project_id'],
+                      user_id=backup_ref['user_id'],
+                      availability_zone=backup_ref['availability_zone'],
+                      backup_id=backup_ref['id'],
+                      host=backup_ref['host'],
+                      display_name=backup_ref['display_name'],
+                      created_at=str(backup_ref['created_at']),
+                      status=backup_ref['status'],
+                      volume_id=backup_ref['volume_id'],
+                      size=backup_ref['size'],
+                      service_metadata=backup_ref['service_metadata'],
+                      service=backup_ref['service'],
+                      fail_reason=backup_ref['fail_reason'])
+
+    usage_info.update(kw)
+    return usage_info
+
+
 def notify_about_volume_usage(context, volume, event_suffix,
                               extra_usage_info=None, host=None):
     if not host:
@@ -79,6 +98,21 @@ def notify_about_volume_usage(context, volume, event_suffix,
     usage_info = _usage_from_volume(context, volume, **extra_usage_info)
 
     rpc.get_notifier("volume", host).info(context, 'volume.%s' % event_suffix,
+                                          usage_info)
+
+
+def notify_about_backup_usage(context, backup, event_suffix,
+                              extra_usage_info=None,
+                              host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_usage_info:
+        extra_usage_info = {}
+
+    usage_info = _usage_from_backup(context, backup, **extra_usage_info)
+
+    rpc.get_notifier("backup", host).info(context, 'backup.%s' % event_suffix,
                                           usage_info)
 
 
