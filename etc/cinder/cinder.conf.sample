@@ -1083,6 +1083,14 @@
 # value)
 #iscsi_write_cache=on
 
+# The path to the client certificate key for verification, if
+# the driver supports it. (string value)
+#driver_client_cert_key=<None>
+
+# The path to the client certificate for verification, if the
+# driver supports it. (string value)
+#driver_client_cert=<None>
+
 
 #
 # Options defined in cinder.volume.drivers.block_device
@@ -1112,6 +1120,23 @@
 # Volume Type key name to store ESM Repository Name (string
 # value)
 #coraid_repository_key=coraid_repository
+
+
+#
+# Options defined in cinder.volume.drivers.datera
+#
+
+# Datera API token. (string value)
+#datera_api_token=<None>
+
+# Datera API port. (string value)
+#datera_api_port=7717
+
+# Datera API version. (string value)
+#datera_api_version=1
+
+# Number of replicas to create of an inode. (string value)
+#datera_num_replicas=3
 
 
 #
