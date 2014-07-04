@@ -357,6 +357,14 @@ class WSGIService(object):
         """
         self.server.wait()
 
+    def reset(self):
+        """Reset server greenpool size to default.
+
+        :returns: None
+
+        """
+        self.server.reset()
+
 
 def process_launcher():
     return service.ProcessLauncher()
