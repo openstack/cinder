@@ -52,6 +52,7 @@ from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
+from cinder import flow_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
@@ -60,6 +61,8 @@ from cinder.openstack.common import units
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
+import taskflow.engines
+from taskflow.patterns import linear_flow
 
 LOG = logging.getLogger(__name__)
 
@@ -133,10 +136,11 @@ class HP3PARCommon(object):
         2.0.12 - Volume detach hangs when host is in a host set bug #1317134
         2.0.13 - Added support for managing/unmanaging of volumes
         2.0.14 - Modified manage volume to use standard 'source-name' element.
+        2.0.15 - Added support for volume retype
 
     """
 
-    VERSION = "2.0.14"
+    VERSION = "2.0.15"
 
     stats = {}
 
@@ -146,6 +150,10 @@ class HP3PARCommon(object):
     VLUN_TYPE_HOST = 3
     VLUN_TYPE_MATCHED_SET = 4
     VLUN_TYPE_HOST_SET = 5
+
+    THIN = 2
+    CONVERT_TO_THIN = 1
+    CONVERT_TO_FULL = 2
 
     # Valid values for volume type extra specs
     # The first value in the list is the default value
@@ -815,21 +823,21 @@ class HP3PARCommon(object):
             return vol['comment']
         return None
 
-    def get_persona_type(self, volume, hp3par_keys=None):
-        default_persona = self.valid_persona_values[0]
-        type_id = volume.get('volume_type_id', None)
-        volume_type = None
-        if type_id is not None:
-            volume_type = self._get_volume_type(type_id)
-            if hp3par_keys is None:
-                hp3par_keys = self._get_keys_by_volume_type(volume_type)
-        persona_value = self._get_key_value(hp3par_keys, 'persona',
-                                            default_persona)
+    def validate_persona(self, persona_value):
+        """Validate persona value.
+
+        If the passed in persona_value is not valid, raise InvalidInput,
+        otherwise return the persona ID.
+
+        :param persona_value:
+        :raises: exception.InvalidInput
+        :return: persona ID
+        """
         if persona_value not in self.valid_persona_values:
-            err = _("Must specify a valid persona %(valid)s, "
-                    "value '%(persona)s' is invalid.") % \
+            err = (_("Must specify a valid persona %(valid)s,"
+                     "value '%(persona)s' is invalid.") %
                    ({'valid': self.valid_persona_values,
-                     'persona': persona_value})
+                    'persona': persona_value}))
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
         # persona is set by the id so remove the text and return the id
@@ -837,20 +845,48 @@ class HP3PARCommon(object):
         persona_id = persona_value.split(' ')
         return persona_id[0]
 
-    def get_volume_settings_from_type(self, volume):
-        cpg = None
-        snap_cpg = None
+    def get_persona_type(self, volume, hp3par_keys=None):
+        default_persona = self.valid_persona_values[0]
+        type_id = volume.get('volume_type_id', None)
+        if type_id is not None:
+            volume_type = self._get_volume_type(type_id)
+            if hp3par_keys is None:
+                hp3par_keys = self._get_keys_by_volume_type(volume_type)
+        persona_value = self._get_key_value(hp3par_keys, 'persona',
+                                            default_persona)
+        return self.validate_persona(persona_value)
+
+    def get_type_info(self, type_id):
+        """Get 3PAR type info for the given type_id.
+
+        Reconciles VV Set, old-style extra-specs, and QOS specs
+        and returns commonly used info about the type.
+
+        :returns: hp3par_keys, qos, volume_type, vvs_name
+        """
         volume_type = None
         vvs_name = None
         hp3par_keys = {}
         qos = {}
-        type_id = volume.get('volume_type_id', None)
         if type_id is not None:
             volume_type = self._get_volume_type(type_id)
             hp3par_keys = self._get_keys_by_volume_type(volume_type)
             vvs_name = self._get_key_value(hp3par_keys, 'vvs')
             if vvs_name is None:
                 qos = self._get_qos_by_volume_type(volume_type)
+        return hp3par_keys, qos, volume_type, vvs_name
+
+    def get_volume_settings_from_type_id(self, type_id):
+        """Get 3PAR volume settings given a type_id.
+
+        Combines type info and config settings to return a dictionary
+        describing the 3PAR volume settings.  Does some validation (CPG).
+
+        :param type_id:
+        :return: dict
+        """
+
+        hp3par_keys, qos, volume_type, vvs_name = self.get_type_info(type_id)
 
         cpg = self._get_key_value(hp3par_keys, 'cpg',
                                   self.config.hp3par_cpg)
@@ -888,14 +924,32 @@ class HP3PARCommon(object):
         if prov_value == "full":
             tpvv = False
 
+        return {'hp3par_keys': hp3par_keys,
+                'cpg': cpg, 'snap_cpg': snap_cpg,
+                'vvs_name': vvs_name, 'qos': qos,
+                'tpvv': tpvv, 'volume_type': volume_type}
+
+    def get_volume_settings_from_type(self, volume):
+        """Get 3PAR volume settings given a volume.
+
+        Combines type info and config settings to return a dictionary
+        describing the 3PAR volume settings.  Does some validation (CPG and
+        persona).
+
+        :param volume:
+        :return: dict
+        """
+
+        type_id = volume.get('volume_type_id', None)
+
+        volume_settings = self.get_volume_settings_from_type_id(type_id)
+
         # check for valid persona even if we don't use it until
         # attach time, this will give the end user notice that the
         # persona type is invalid at volume creation time
-        self.get_persona_type(volume, hp3par_keys)
+        self.get_persona_type(volume, volume_settings['hp3par_keys'])
 
-        return {'cpg': cpg, 'snap_cpg': snap_cpg,
-                'vvs_name': vvs_name, 'qos': qos,
-                'tpvv': tpvv, 'volume_type': volume_type}
+        return volume_settings
 
     def create_volume(self, volume):
         LOG.debug("CREATE VOLUME (%s : %s %s)" %
@@ -1092,17 +1146,10 @@ class HP3PARCommon(object):
             extra = {'volume_id': volume['id'],
                      'snapshot_id': snapshot['id']}
 
-            volume_type = None
             type_id = volume.get('volume_type_id', None)
-            vvs_name = None
-            qos = {}
-            hp3par_keys = {}
-            if type_id is not None:
-                volume_type = self._get_volume_type(type_id)
-                hp3par_keys = self._get_keys_by_volume_type(volume_type)
-                vvs_name = self._get_key_value(hp3par_keys, 'vvs')
-                if vvs_name is None:
-                    qos = self._get_qos_by_volume_type(volume_type)
+
+            hp3par_keys, qos, volume_type, vvs_name = self.get_type_info(
+                type_id)
 
             name = volume.get('display_name', None)
             if name:
@@ -1466,3 +1513,438 @@ class HP3PARCommon(object):
         portPos['slot'] = int(split[1])
         portPos['cardPort'] = int(split[2])
         return portPos
+
+    def tune_vv(self, old_tpvv, new_tpvv, old_cpg, new_cpg, volume_name):
+        """Tune the volume to change the userCPG and/or provisioningType.
+
+        The volume will be modified/tuned/converted to the new userCPG and
+        provisioningType, as needed.
+
+        TaskWaiter is used to make this function wait until the 3PAR task
+        is no longer active.  When the task is no longer active, then it must
+        either be done or it is in a state that we need to treat as an error.
+        """
+
+        if old_tpvv == new_tpvv:
+            if new_cpg != old_cpg:
+                LOG.info(_("Modifying %(volume_name)s userCPG from %(old_cpg)s"
+                           " to %(new_cpg)s") %
+                         {'volume_name': volume_name,
+                          'old_cpg': old_cpg, 'new_cpg': new_cpg})
+                response, body = self.client.modifyVolume(
+                    volume_name,
+                    {'action': 6,
+                     'tuneOperation': 1,
+                     'userCPG': new_cpg})
+                task_id = body['taskid']
+                status = self.TaskWaiter(self.client, task_id).wait_for_task()
+                if status['status'] is not self.client.TASK_DONE:
+                    msg = (_('Tune volume task stopped before it was done: '
+                             'volume_name=%(volume_name)s, '
+                             'task-status=%(status)s.') %
+                           {'status': status, 'volume_name': volume_name})
+                    raise exception.VolumeBackendAPIException(msg)
+        else:
+            if old_tpvv:
+                cop = self.CONVERT_TO_FULL
+                LOG.info(_("Converting %(volume_name)s to full provisioning "
+                           "with userCPG=%(new_cpg)s") %
+                         {'volume_name': volume_name, 'new_cpg': new_cpg})
+            else:
+                cop = self.CONVERT_TO_THIN
+                LOG.info(_("Converting %(volume_name)s to thin provisioning "
+                           "with userCPG=%(new_cpg)s") %
+                         {'volume_name': volume_name, 'new_cpg': new_cpg})
+
+            try:
+                response, body = self.client.modifyVolume(
+                    volume_name,
+                    {'action': 6,
+                     'tuneOperation': 1,
+                     'userCPG': new_cpg,
+                     'conversionOperation': cop})
+            except hpexceptions.HTTPBadRequest as ex:
+                if ex.get_code() == 40 and "keepVV" in str(ex):
+                    # Cannot retype with snapshots because we don't want to
+                    # use keepVV and have straggling volumes.  Log additional
+                    # info and then raise.
+                    LOG.info(_("tunevv failed because the volume '%s' "
+                               "has snapshots.") % volume_name)
+                    raise ex
+
+            task_id = body['taskid']
+            status = self.TaskWaiter(self.client, task_id).wait_for_task()
+            if status['status'] is not self.client.TASK_DONE:
+                msg = (_('Tune volume task stopped before it was done: '
+                         'volume_name=%(volume_name)s, '
+                         'task-status=%(status)s.') %
+                       {'status': status, 'volume_name': volume_name})
+                raise exception.VolumeBackendAPIException(msg)
+
+    def _retype_pre_checks(self, host, new_persona,
+                           old_cpg, new_cpg,
+                           old_snap_cpg, new_snap_cpg):
+        """Test retype parameters before making retype changes.
+
+        Do pre-retype parameter validation.  These checks will
+        raise an exception if we should not attempt this retype.
+        """
+
+        if new_persona:
+            self.validate_persona(new_persona)
+
+        (host_type, host_id, host_cpg) = (
+            host['capabilities']['location_info']).split(':')
+
+        if not (host_type == 'HP3PARDriver'):
+            reason = (_("Cannot retype from HP3PARDriver to %s.") % host_type)
+            raise exception.InvalidHost(reason)
+
+        sys_info = self.client.getStorageSystemInfo()
+        if not (host_id == sys_info['serialNumber']):
+            reason = (_("Cannot retype from one 3PAR array to another."))
+            raise exception.InvalidHost(reason)
+
+        if not old_snap_cpg:
+            reason = (_("Invalid current snapCPG name for retype.  The volume "
+                        "may be in a transitioning state.  snapCpg='%s'.") %
+                      old_snap_cpg)
+            raise exception.InvalidVolume(reason)
+
+        # Validate new_snap_cpg.  A white-space snapCPG will fail eventually,
+        # but we'd prefer to fail fast -- if this ever happens.
+        if not new_snap_cpg or new_snap_cpg.isspace():
+            reason = (_("Invalid new snapCPG name for retype.  "
+                        "new_snap_cpg='%s'.") % new_snap_cpg)
+            raise exception.InvalidInput(reason)
+
+        # Check to make sure CPGs are in the same domain
+        if self.get_domain(old_cpg) != self.get_domain(new_cpg):
+            reason = (_('Cannot retype to a CPG in a different domain.'))
+            raise exception.Invalid3PARDomain(reason)
+
+        if self.get_domain(old_snap_cpg) != self.get_domain(new_snap_cpg):
+            reason = (_('Cannot retype to a snap CPG in a different domain.'))
+            raise exception.Invalid3PARDomain(reason)
+
+    def _retype(self, volume, volume_name, new_type_name, new_type_id, host,
+                new_persona, old_cpg, new_cpg, old_snap_cpg, new_snap_cpg,
+                old_tpvv, new_tpvv, old_vvs, new_vvs, old_qos, new_qos,
+                old_comment):
+
+        action = "volume:retype"
+
+        self._retype_pre_checks(host, new_persona,
+                                old_cpg, new_cpg,
+                                old_snap_cpg, new_snap_cpg)
+
+        flow_name = action.replace(":", "_") + "_api"
+        retype_flow = linear_flow.Flow(flow_name)
+        # Keep this linear and do the big tunevv last.  Everything leading
+        # up to that is reversible, but we'd let the 3PAR deal with tunevv
+        # errors on its own.
+        retype_flow.add(
+            ModifyVolumeTask(action),
+            ModifySpecsTask(action),
+            TuneVolumeTask(action))
+
+        taskflow.engines.run(
+            retype_flow,
+            store={'common': self,
+                   'volume_name': volume_name, 'volume': volume,
+                   'old_tpvv': old_tpvv, 'new_tpvv': new_tpvv,
+                   'old_cpg': old_cpg, 'new_cpg': new_cpg,
+                   'old_snap_cpg': old_snap_cpg, 'new_snap_cpg': new_snap_cpg,
+                   'old_vvs': old_vvs, 'new_vvs': new_vvs,
+                   'old_qos': old_qos, 'new_qos': new_qos,
+                   'new_type_name': new_type_name, 'new_type_id': new_type_id,
+                   'old_comment': old_comment
+                   })
+
+    def retype(self, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+        Returns True if the retype was successful.
+        Uses taskflow to revert changes if errors occur.
+
+        :param volume: A dictionary describing the volume to retype
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.debug(("enter: retype: id=%(id)s, new_type=%(new_type)s,"
+                   "diff=%(diff)s, host=%(host)s") % {'id': volume['id'],
+                                                      'new_type': new_type,
+                                                      'diff': diff,
+                                                      'host': host})
+        volume_id = volume['id']
+        volume_name = self._get_3par_vol_name(volume_id)
+
+        new_type_name = new_type['name']
+        new_type_id = new_type['id']
+        new_volume_settings = self.get_volume_settings_from_type_id(
+            new_type_id)
+        new_cpg = new_volume_settings['cpg']
+        new_snap_cpg = new_volume_settings['snap_cpg']
+        new_tpvv = new_volume_settings['tpvv']
+        new_qos = new_volume_settings['qos']
+        new_vvs = new_volume_settings['vvs_name']
+        new_persona = None
+        new_hp3par_keys = new_volume_settings['hp3par_keys']
+        if 'persona' in new_hp3par_keys:
+            new_persona = new_hp3par_keys['persona']
+
+        old_volume_settings = self.get_volume_settings_from_type(volume)
+        old_qos = old_volume_settings['qos']
+        old_vvs = old_volume_settings['vvs_name']
+
+        # Get the current volume info because we can get in a bad state
+        # if we trust that all the volume type settings are still the
+        # same settings that were used with this volume.
+        old_volume_info = self.client.getVolume(volume_name)
+        old_tpvv = old_volume_info['provisioningType'] == self.THIN
+        old_cpg = old_volume_info['userCPG']
+        old_comment = old_volume_info['comment']
+        old_snap_cpg = None
+        if 'snapCPG' in old_volume_info:
+            old_snap_cpg = old_volume_info['snapCPG']
+
+        LOG.debug("retype old_volume_info=%s" % old_volume_info)
+        LOG.debug("retype old_volume_settings=%s" % old_volume_settings)
+        LOG.debug("retype new_volume_settings=%s" % new_volume_settings)
+
+        self._retype(volume, volume_name, new_type_name, new_type_id,
+                     host, new_persona, old_cpg, new_cpg,
+                     old_snap_cpg, new_snap_cpg, old_tpvv, new_tpvv,
+                     old_vvs, new_vvs, old_qos, new_qos, old_comment)
+        return True
+
+    class TaskWaiter(object):
+        """TaskWaiter waits for task to be not active and returns status."""
+
+        def __init__(self, client, task_id, interval=1, initial_delay=0):
+            self.client = client
+            self.task_id = task_id
+            self.interval = interval
+            self.initial_delay = initial_delay
+
+        def _wait_for_task(self):
+            status = self.client.getTask(self.task_id)
+            LOG.debug("3PAR Task id %(id)s status = %(status)s" %
+                      {'id': self.task_id,
+                       'status': status['status']})
+            if status['status'] is not self.client.TASK_ACTIVE:
+                raise loopingcall.LoopingCallDone(status)
+
+        def wait_for_task(self):
+            timer = loopingcall.FixedIntervalLoopingCall(self._wait_for_task)
+            return timer.start(interval=self.interval,
+                               initial_delay=self.initial_delay).wait()
+
+
+class ModifyVolumeTask(flow_utils.CinderTask):
+
+    """Task to change a volume's snapCPG and comment.
+
+    This is a task for changing the snapCPG and comment.  It is intended for
+    use during retype().  These changes are done together with a single
+    modify request which should be fast and easy to revert.
+
+    Because we do not support retype with existing snapshots, we can change
+    the snapCPG without using a keepVV.  If snapshots exist, then this will
+    fail, as desired.
+
+    This task does not change the userCPG or provisioningType.  Those changes
+    may require tunevv, so they are done by the TuneVolumeTask.
+
+    The new comment will contain the new type, VVS and QOS information along
+    with whatever else was in the old comment dict.
+
+    The old comment and snapCPG are restored if revert is called.
+    """
+
+    def __init__(self, action):
+        self.needs_revert = False
+        super(ModifyVolumeTask, self).__init__(addons=[action])
+
+    def _get_new_comment(self, old_comment, new_vvs, new_qos,
+                         new_type_name, new_type_id):
+        # Modify the comment during ModifyVolume
+        comment_dict = dict(ast.literal_eval(old_comment))
+        if 'vvs' in comment_dict:
+            del comment_dict['vvs']
+        if 'qos' in comment_dict:
+            del comment_dict['qos']
+        if new_vvs:
+            comment_dict['vvs'] = new_vvs
+        elif new_qos:
+            comment_dict['qos'] = new_qos
+        else:
+            comment_dict['qos'] = {}
+        comment_dict['volume_type_name'] = new_type_name
+        comment_dict['volume_type_id'] = new_type_id
+        return comment_dict
+
+    def execute(self, common, volume_name, old_snap_cpg, new_snap_cpg,
+                old_comment, new_vvs, new_qos, new_type_name, new_type_id):
+
+        comment_dict = self._get_new_comment(
+            old_comment, new_vvs, new_qos, new_type_name, new_type_id)
+
+        if new_snap_cpg != old_snap_cpg:
+            # Modify the snap_cpg.  This will fail with snapshots.
+            LOG.info(_("Modifying %(volume_name)s snap_cpg from "
+                       "%(old_snap_cpg)s to %(new_snap_cpg)s.") %
+                     {'volume_name': volume_name,
+                      'old_snap_cpg': old_snap_cpg,
+                      'new_snap_cpg': new_snap_cpg})
+            common.client.modifyVolume(
+                volume_name,
+                {'snapCPG': new_snap_cpg,
+                 'comment': json.dumps(comment_dict)})
+            self.needs_revert = True
+        else:
+            LOG.info(_("Modifying %s comments.") % volume_name)
+            common.client.modifyVolume(
+                volume_name,
+                {'comment': json.dumps(comment_dict)})
+            self.needs_revert = True
+
+    def revert(self, common, volume_name, old_snap_cpg, new_snap_cpg,
+               old_comment, **kwargs):
+        if self.needs_revert:
+            LOG.info(_("Retype revert %(volume_name)s snap_cpg from "
+                       "%(new_snap_cpg)s back to %(old_snap_cpg)s.") %
+                     {'volume_name': volume_name,
+                      'new_snap_cpg': new_snap_cpg,
+                      'old_snap_cpg': old_snap_cpg})
+            try:
+                common.client.modifyVolume(
+                    volume_name,
+                    {'snapCPG': old_snap_cpg, 'comment': old_comment})
+            except Exception as ex:
+                LOG.error(_("Exception during snapCPG revert: %s") % ex)
+
+
+class TuneVolumeTask(flow_utils.CinderTask):
+
+    """Task to change a volume's CPG and/or provisioning type.
+
+    This is a task for changing the CPG and/or provisioning type.  It is
+    intended for use during retype().  This task has no revert.  The current
+    design is to do this task last and do revert-able tasks first. Un-doing a
+    tunevv can be expensive and should be avoided.
+    """
+
+    def __init__(self, action, **kwargs):
+        super(TuneVolumeTask, self).__init__(addons=[action])
+
+    def execute(self, common, old_tpvv, new_tpvv, old_cpg, new_cpg,
+                volume_name):
+        common.tune_vv(old_tpvv, new_tpvv, old_cpg, new_cpg, volume_name)
+
+
+class ModifySpecsTask(flow_utils.CinderTask):
+
+    """Set/unset the QOS settings and/or VV set for the volume's new type.
+
+    This is a task for changing the QOS settings and/or VV set.  It is intended
+    for use during retype().  If changes are made during execute(), then they
+    need to be undone if revert() is called (i.e., if a later task fails).
+
+    For 3PAR, we ignore QOS settings if a VVS is explicitly set, otherwise we
+    create a VV set and use that for QOS settings.  That is why they are lumped
+    together here.  Most of the decision-making about VVS vs. QOS settings vs.
+    old-style scoped extra-specs is handled in existing reusable code.  Here
+    we mainly need to know what old stuff to remove before calling the function
+    that knows how to set the new stuff.
+
+    Basic task flow is as follows:  Remove the volume from the old externally
+    created VVS (when appropriate), delete the old cinder-created VVS, call
+    the function that knows how to set a new VVS or QOS settings.
+
+    If any changes are made during execute, then revert needs to reverse them.
+    """
+
+    def __init__(self, action):
+        self.needs_revert = False
+        super(ModifySpecsTask, self).__init__(addons=[action])
+
+    def execute(self, common, volume_name, volume, old_cpg, new_cpg,
+                old_vvs, new_vvs, old_qos, new_qos):
+
+        if old_vvs != new_vvs or old_qos != new_qos:
+
+            # Remove VV from old VV Set.
+            if old_vvs is not None and old_vvs != new_vvs:
+                common.client.removeVolumeFromVolumeSet(old_vvs,
+                                                        volume_name)
+                self.needs_revert = True
+
+            # If any extra or qos specs changed then remove the old
+            # special VV set that we create.  We'll recreate it
+            # as needed.
+            vvs_name = common._get_3par_vvs_name(volume['id'])
+            try:
+                common.client.deleteVolumeSet(vvs_name)
+                self.needs_revert = True
+            except hpexceptions.HTTPNotFound as ex:
+                # HTTPNotFound(code=102) is OK.  Set does not exist.
+                if ex.get_code() != 102:
+                    LOG.error(
+                        _("Unexpected error when retype() tried to "
+                            "deleteVolumeSet(%s)") % vvs_name)
+                    raise ex
+
+            if new_vvs or new_qos:
+                common._add_volume_to_volume_set(
+                    volume, volume_name, new_cpg, new_vvs, new_qos)
+                self.needs_revert = True
+
+    def revert(self, common, volume_name, volume, old_vvs, new_vvs, old_qos,
+               old_cpg, **kwargs):
+        if self.needs_revert:
+            # If any extra or qos specs changed then remove the old
+            # special VV set that we create and recreate it per
+            # the old type specs.
+            vvs_name = common._get_3par_vvs_name(volume['id'])
+            try:
+                common.client.deleteVolumeSet(vvs_name)
+            except hpexceptions.HTTPNotFound as ex:
+                # HTTPNotFound(code=102) is OK.  Set does not exist.
+                if ex.get_code() != 102:
+                    LOG.error(
+                        _("Unexpected error when retype() revert "
+                            "tried to deleteVolumeSet(%s)") % vvs_name)
+            except Exception:
+                LOG.error(
+                    _("Unexpected error when retype() revert "
+                        "tried to deleteVolumeSet(%s)") % vvs_name)
+
+            if old_vvs is not None or old_qos is not None:
+                try:
+                    common._add_volume_to_volume_set(
+                        volume, volume_name, old_cpg, old_vvs, old_qos)
+                except Exception as ex:
+                    LOG.error(
+                        _("%(exception)s: Exception during revert of "
+                            "retype for volume %(volume_name)s. "
+                            "Original volume set/QOS settings may not "
+                            "have been fully restored.") %
+                        {'exception': ex, 'volume_name': volume_name})
+
+            if new_vvs is not None and old_vvs != new_vvs:
+                try:
+                    common.client.removeVolumeFromVolumeSet(
+                        new_vvs, volume_name)
+                except Exception as ex:
+                    LOG.error(
+                        _("%(exception)s: Exception during revert of "
+                            "retype for volume %(volume_name)s. "
+                            "Failed to remove from new volume set "
+                            "%(new_vvs)s.") %
+                        {'exception': ex,
+                            'volume_name': volume_name,
+                            'new_vvs': new_vvs})

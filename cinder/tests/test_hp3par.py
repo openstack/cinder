@@ -158,17 +158,166 @@ class HP3PARBaseDriver(object):
          'state': 1,
          'uuid': '29c214aa-62b9-41c8-b198-543f6cf24edf'}]
 
+    TASK_DONE = 1
+    TASK_ACTIVE = 2
+    STATUS_DONE = {'status': 1}
+    STATUS_ACTIVE = {'status': 2}
+
     mock_client_conf = {
         'PORT_MODE_TARGET': 2,
         'PORT_STATE_READY': 4,
         'PORT_PROTO_ISCSI': 2,
         'PORT_PROTO_FC': 1,
-        'TASK_DONE': 1,
+        'TASK_DONE': TASK_DONE,
+        'TASK_ACTIVE': TASK_ACTIVE,
         'HOST_EDIT_ADD': 1,
         'getPorts.return_value': {
             'members': FAKE_FC_PORTS + [FAKE_ISCSI_PORT]
         }
     }
+
+    RETYPE_VVS_NAME = "yourvvs"
+
+    RETYPE_HOST = {
+        u'host': u'mark-stack1@3parfc',
+        u'capabilities': {
+            'QoS_support': True,
+            u'location_info': u'HP3PARDriver:1234567:MARK_TEST_CPG',
+            u'timestamp': u'2014-06-04T19:03:32.485540',
+            u'allocated_capacity_gb': 0,
+            u'volume_backend_name': u'3parfc',
+            u'free_capacity_gb': u'infinite',
+            u'driver_version': u'2.0.3',
+            u'total_capacity_gb': u'infinite',
+            u'reserved_percentage': 0,
+            u'vendor_name': u'Hewlett-Packard',
+            u'storage_protocol': u'FC'
+        }
+    }
+
+    RETYPE_HOST_NOT3PAR = {
+        u'host': u'mark-stack1@3parfc',
+        u'capabilities': {
+            u'location_info': u'XXXDriverXXX:1610771:MARK_TEST_CPG',
+        }
+    }
+
+    RETYPE_QOS_SPECS = {'maxIOPS': '1000', 'maxBWS': '50',
+                        'minIOPS': '100', 'minBWS': '25',
+                        'latency': '25', 'priority': 'high'}
+
+    RETYPE_VOLUME_TYPE_ID = "FakeVolId"
+
+    RETYPE_VOLUME_TYPE_0 = {
+        'name': 'red',
+        'id': RETYPE_VOLUME_TYPE_ID,
+        'extra_specs': {
+            'cpg': HP3PAR_CPG,
+            'snap_cpg': HP3PAR_CPG_SNAP,
+            'vvs': RETYPE_VVS_NAME,
+            'qos': RETYPE_QOS_SPECS,
+            'tpvv': True,
+            'volume_type': volume_type
+        }
+    }
+
+    RETYPE_VOLUME_TYPE_1 = {
+        'name': 'white',
+        'id': RETYPE_VOLUME_TYPE_ID,
+        'extra_specs': {
+            'cpg': HP3PAR_CPG,
+            'snap_cpg': HP3PAR_CPG_SNAP,
+            'vvs': VVS_NAME,
+            'qos': QOS,
+            'tpvv': True,
+            'volume_type': volume_type
+        }
+    }
+
+    RETYPE_VOLUME_TYPE_2 = {
+        'name': 'blue',
+        'id': RETYPE_VOLUME_TYPE_ID,
+        'extra_specs': {
+            'cpg': HP3PAR_CPG,
+            'snap_cpg': HP3PAR_CPG_SNAP,
+            'vvs': RETYPE_VVS_NAME,
+            'qos': RETYPE_QOS_SPECS,
+            'tpvv': True,
+            'volume_type': volume_type
+        }
+    }
+
+    RETYPE_VOLUME_TYPE_BAD_PERSONA = {
+        'name': 'bad_persona',
+        'id': 'any_id',
+        'extra_specs': {
+            'hp3par:persona': '99 - invalid'
+        }
+    }
+
+    RETYPE_VOLUME_TYPE_BAD_CPG = {
+        'name': 'bad_cpg',
+        'id': 'any_id',
+        'extra_specs': {
+            'cpg': 'bogus',
+            'snap_cpg': 'bogus',
+            'hp3par:persona': '1 - Generic'
+        }
+    }
+
+    RETYPE_TEST_COMMENT = "{'retype_test': 'test comment'}"
+
+    RETYPE_VOLUME_INFO_0 = {
+        'name': VOLUME_NAME,
+        'id': VOLUME_ID,
+        'display_name': 'Retype Vol0',
+        'size': 1,
+        'host': RETYPE_HOST,
+        'userCPG': 'testUserCpg0',
+        'snapCPG': 'testSnapCpg0',
+        'provisioningType': 1,
+        'comment': RETYPE_TEST_COMMENT
+    }
+
+    RETYPE_TEST_COMMENT_1 = "{'retype_test': 'test comment 1'}"
+
+    RETYPE_VOLUME_INFO_1 = {
+        'name': VOLUME_NAME,
+        'id': VOLUME_ID,
+        'display_name': 'Retype Vol1',
+        'size': 1,
+        'host': RETYPE_HOST,
+        'userCPG': HP3PAR_CPG,
+        'snapCPG': HP3PAR_CPG_SNAP,
+        'provisioningType': 1,
+        'comment': RETYPE_TEST_COMMENT
+    }
+
+    # Test for when we don't get a snapCPG.
+    RETYPE_VOLUME_INFO_NO_SNAP = {
+        'name': VOLUME_NAME,
+        'id': VOLUME_ID,
+        'display_name': 'Retype Vol2',
+        'size': 1,
+        'host': RETYPE_HOST,
+        'userCPG': 'testUserCpg2',
+        'provisioningType': 1,
+        'comment': '{}'
+    }
+
+    RETYPE_CONF = {
+        'TASK_ACTIVE': TASK_ACTIVE,
+        'TASK_DONE': TASK_DONE,
+        'getTask.return_value': STATUS_DONE,
+        'getStorageSystemInfo.return_value': {'serialNumber': '1234567'},
+        'getVolume.return_value': RETYPE_VOLUME_INFO_0,
+        'modifyVolume.return_value': ("anyResponse", {'taskid': 1})
+    }
+
+    # 3PAR retype currently doesn't use the diff.  Existing code and fresh info
+    # from the array work better for the most part.  Some use of the diff was
+    # intentionally removed to make _retype more usable for other use cases.
+    RETYPE_DIFF = None
 
     def setup_configuration(self):
         configuration = mock.Mock()
@@ -211,6 +360,29 @@ class HP3PARBaseDriver(object):
         self.driver = driver(configuration=conf)
         self.driver.do_setup(None)
         return _m_client
+
+    def test_task_waiter(self):
+
+        task_statuses = [self.STATUS_ACTIVE, self.STATUS_ACTIVE]
+
+        def side_effect(*args):
+            return task_statuses and task_statuses.pop(0) or self.STATUS_DONE
+
+        conf = {'getTask.side_effect': side_effect}
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        task_id = 1234
+        interval = .001
+        waiter = self.driver.common.TaskWaiter(mock_client, task_id, interval)
+        status = waiter.wait_for_task()
+
+        expected = [
+            mock.call.getTask(task_id),
+            mock.call.getTask(task_id),
+            mock.call.getTask(task_id)
+        ]
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(status, self.STATUS_DONE)
 
     def test_create_volume(self):
 
@@ -269,6 +441,324 @@ class HP3PARBaseDriver(object):
                     'snapCPG': HP3PAR_CPG_SNAP}),
             mock.call.logout()]
 
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_not_3par(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        self.assertRaises(exception.InvalidHost,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_1,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST_NOT3PAR)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_volume_not_found(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound
+
+        self.assertRaises(hpexceptions.HTTPNotFound,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_1,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_snap_cpg_check(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolume.return_value = self.RETYPE_VOLUME_INFO_NO_SNAP
+
+        self.assertRaises(exception.InvalidVolume,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_NO_SNAP,
+                          self.RETYPE_VOLUME_TYPE_1,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.getStorageSystemInfo(),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_specs_error_reverts_snap_cpg(self, _mock_volume_types):
+        _mock_volume_types.side_effect = [
+            self.RETYPE_VOLUME_TYPE_1, self.RETYPE_VOLUME_TYPE_0]
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolume.return_value = self.RETYPE_VOLUME_INFO_0
+
+        # Fail the QOS setting to test the revert of the snap CPG rename.
+        mock_client.addVolumeToVolumeSet.side_effect = \
+            hpexceptions.HTTPForbidden
+
+        self.assertRaises(hpexceptions.HTTPForbidden,
+                          self.driver.retype,
+                          self.ctxt,
+                          {'id': self.VOLUME_ID},
+                          self.RETYPE_VOLUME_TYPE_0,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        old_settings = {
+            'snapCPG': self.RETYPE_VOLUME_INFO_0['snapCPG'],
+            'comment': self.RETYPE_VOLUME_INFO_0['comment']}
+        new_settings = {
+            'snapCPG': self.RETYPE_VOLUME_TYPE_1['extra_specs']['snap_cpg'],
+            'comment': mock.ANY}
+
+        expected = [
+            mock.call.modifyVolume(self.VOLUME_3PAR_NAME, new_settings)
+        ]
+        mock_client.assert_has_calls(expected)
+        expected = [
+            mock.call.modifyVolume(self.VOLUME_3PAR_NAME, old_settings),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_revert_comment(self, _mock_volume_types):
+        _mock_volume_types.side_effect = [
+            self.RETYPE_VOLUME_TYPE_2, self.RETYPE_VOLUME_TYPE_1]
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getVolume.return_value = self.RETYPE_VOLUME_INFO_1
+
+        # Fail the QOS setting to test the revert of the snap CPG rename.
+        mock_client.deleteVolumeSet.side_effect = hpexceptions.HTTPForbidden
+
+        self.assertRaises(hpexceptions.HTTPForbidden,
+                          self.driver.retype,
+                          self.ctxt,
+                          {'id': self.VOLUME_ID},
+                          self.RETYPE_VOLUME_TYPE_2,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        original = {
+            'snapCPG': self.RETYPE_VOLUME_INFO_1['snapCPG'],
+            'comment': self.RETYPE_VOLUME_INFO_1['comment']}
+
+        expected = [
+            mock.call.modifyVolume('osv-0DM4qZEVSKON-DXN-NwVpw', original),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_different_array(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        mock_client.getStorageSystemInfo.return_value = {
+            'serialNumber': 'XXXXXXX'}
+
+        self.assertRaises(exception.InvalidHost,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_1,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.getStorageSystemInfo(),
+            mock.call.logout()]
+
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_across_cpg_domains(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        mock_client.getCPG.side_effect = [
+            {'domain': 'domain1'},
+            {'domain': 'domain2'},
+        ]
+
+        self.assertRaises(exception.Invalid3PARDomain,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_1,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.getStorageSystemInfo(),
+            mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['userCPG']),
+            mock.call.getCPG(self.RETYPE_VOLUME_TYPE_1['extra_specs']['cpg']),
+            mock.call.logout()
+        ]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_across_snap_cpg_domains(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        mock_client.getCPG.side_effect = [
+            {'domain': 'cpg_domain'},
+            {'domain': 'cpg_domain'},
+            {'domain': 'snap_cpg_domain_1'},
+            {'domain': 'snap_cpg_domain_2'},
+        ]
+
+        self.assertRaises(exception.Invalid3PARDomain,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_1,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.getStorageSystemInfo(),
+            mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['userCPG']),
+            mock.call.getCPG(self.RETYPE_VOLUME_TYPE_1['extra_specs']['cpg']),
+            mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['snapCPG']),
+            mock.call.getCPG(
+                self.RETYPE_VOLUME_TYPE_1['extra_specs']['snap_cpg']),
+            mock.call.logout()
+        ]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_to_bad_persona(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_BAD_PERSONA
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_BAD_PERSONA,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.logout()
+        ]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_to_bad_cpg(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_BAD_CPG
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+        mock_client.getCPG.side_effect = hpexceptions.HTTPNotFound
+
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.retype,
+                          self.ctxt,
+                          self.RETYPE_VOLUME_INFO_0,
+                          self.RETYPE_VOLUME_TYPE_BAD_CPG,
+                          self.RETYPE_DIFF,
+                          self.RETYPE_HOST)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getCPG(
+                self.RETYPE_VOLUME_TYPE_BAD_CPG['extra_specs']['cpg']),
+            mock.call.logout()
+        ]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_tune(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        qos_ref = qos_specs.create(self.ctxt, 'qos-specs-1', self.QOS)
+        type_ref = volume_types.create(self.ctxt,
+                                       "type1", {"qos:maxIOPS": "100",
+                                                 "qos:maxBWS": "50",
+                                                 "qos:minIOPS": "10",
+                                                 "qos:minBWS": "20",
+                                                 "qos:latency": "5",
+                                                 "qos:priority": "high"})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+
+        type_ref = volume_types.get_volume_type(self.ctxt, type_ref['id'])
+
+        volume = {'id': HP3PARBaseDriver.CLONE_ID}
+
+        self.driver.retype(self.ctxt, volume, type_ref, None, self.RETYPE_HOST)
+
+        expected = [
+            mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                   {'comment': mock.ANY,
+                                    'snapCPG': 'OpenStackCPGSnap'}),
+            mock.call.deleteVolumeSet('vvs-0DM4qZEVSKON-AAAAAAAAA'),
+            mock.call.addVolumeToVolumeSet('myvvs',
+                                           'osv-0DM4qZEVSKON-AAAAAAAAA'),
+            mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                   {'action': 6,
+                                    'userCPG': 'OpenStackCPG',
+                                    'conversionOperation': 1,
+                                    'tuneOperation': 1}),
+            mock.call.getTask(1),
+            mock.call.logout()
+        ]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_qos_spec(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        cpg = "any_cpg"
+        snap_cpg = "any_cpg"
+        self.driver.common._retype(self.volume,
+                                   HP3PARBaseDriver.VOLUME_3PAR_NAME,
+                                   "old_type", "old_type_id",
+                                   HP3PARBaseDriver.RETYPE_HOST,
+                                   None, cpg, cpg, snap_cpg, snap_cpg,
+                                   True, True, None, None,
+                                   self.QOS_SPECS, self.RETYPE_QOS_SPECS,
+                                   "{}")
+
+        expected = [
+            mock.call.createVolumeSet('vvs-0DM4qZEVSKON-DXN-NwVpw', None),
+            mock.call.createQoSRules(
+                'vvs-0DM4qZEVSKON-DXN-NwVpw',
+                {'ioMinGoal': 100, 'ioMaxLimit': 1000,
+                 'bwMinGoalKB': 25600, 'bwMaxLimitKB': 51200,
+                 'priority': 3,
+                 'latencyGoal': 25}
+            ),
+            mock.call.addVolumeToVolumeSet(
+                'vvs-0DM4qZEVSKON-DXN-NwVpw', 'osv-0DM4qZEVSKON-DXN-NwVpw')]
         mock_client.assert_has_calls(expected)
 
     def test_delete_volume(self):

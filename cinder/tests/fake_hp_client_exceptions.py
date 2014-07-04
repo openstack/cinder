@@ -16,6 +16,58 @@
 """Fake HP client exceptions to use when mocking HP clients."""
 
 
+class ClientException(Exception):
+    """The base exception class for these fake exceptions."""
+    _error_code = None
+    _error_desc = None
+    _error_ref = None
+
+    _debug1 = None
+    _debug2 = None
+
+    def __init__(self, error=None):
+        if error:
+            if 'code' in error:
+                self._error_code = error['code']
+            if 'desc' in error:
+                self._error_desc = error['desc']
+            if 'ref' in error:
+                self._error_ref = error['ref']
+
+            if 'debug1' in error:
+                self._debug1 = error['debug1']
+            if 'debug2' in error:
+                self._debug2 = error['debug2']
+
+    def get_code(self):
+        return self._error_code
+
+    def get_description(self):
+        return self._error_desc
+
+    def get_ref(self):
+        return self._error_ref
+
+    def __str__(self):
+        formatted_string = self.message
+        if self.http_status:
+            formatted_string += " (HTTP %s)" % self.http_status
+        if self._error_code:
+            formatted_string += " %s" % self._error_code
+        if self._error_desc:
+            formatted_string += " - %s" % self._error_desc
+        if self._error_ref:
+            formatted_string += " - %s" % self._error_ref
+
+        if self._debug1:
+            formatted_string += " (1: '%s')" % self._debug1
+
+        if self._debug2:
+            formatted_string += " (2: '%s')" % self._debug2
+
+        return formatted_string
+
+
 class HTTPConflict(Exception):
     http_status = 409
     message = "Conflict"
@@ -33,16 +85,9 @@ class HTTPNotFound(Exception):
     message = "Not found"
 
 
-class HTTPForbidden(Exception):
+class HTTPForbidden(ClientException):
     http_status = 403
     message = "Forbidden"
-
-    def __init__(self, error=None):
-        if error and 'code' in error:
-            self._error_code = error['code']
-
-    def get_code(self):
-        return self._error_code
 
 
 class HTTPBadRequest(Exception):
