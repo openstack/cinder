@@ -44,8 +44,8 @@ volume_opts = [
                help='Name for the VG that will contain exported volumes'),
     cfg.IntOpt('lvm_mirrors',
                default=0,
-               help='If set, create lvms with multiple mirrors. Note that '
-                    'this requires lvm_mirrors + 2 pvs with available space'),
+               help='If >0, create LVs with multiple mirrors. Note that '
+                    'this requires lvm_mirrors + 2 PVs with available space'),
     cfg.StrOpt('lvm_type',
                default='default',
                help='Type of LVM volumes to deploy; (default or thin)'),
