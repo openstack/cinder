@@ -301,3 +301,21 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
         self.assertEqual(diff['encryption']['key_size'], (256, 128))
+
+        # Check diff equals type specs when one type is None
+        diff, same = volume_types.volume_types_diff(self.ctxt, None,
+                                                    type_ref1['id'])
+        self.assertEqual(same, False)
+        self.assertEqual(diff['extra_specs'],
+                         {'key1': (None, 'val1'), 'key2': (None, 'val2')})
+        self.assertEqual(diff['qos_specs'],
+                         {'consumer': (None, 'back-end'),
+                          'k1': (None, 'v1'),
+                          'k2': (None, 'v2'),
+                          'k3': (None, 'v3')})
+        self.assertEqual(diff['encryption'],
+                         {'cipher': (None, 'c1'),
+                          'control_location': (None, 'front-end'),
+                          'deleted': (None, False),
+                          'key_size': (None, 256),
+                          'provider': (None, 'p1')})
