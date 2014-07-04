@@ -2592,7 +2592,10 @@ class VolumeTestCase(BaseVolumeTestCase):
                                            volume_type_id=old_vol_type['id'])
         if snap:
             self._create_snapshot(volume['id'], size=volume['size'])
-        host_obj = {'host': 'newhost', 'capabilities': {}}
+        if driver or diff_equal:
+            host_obj = {'host': CONF.host, 'capabilities': {}}
+        else:
+            host_obj = {'host': 'newhost', 'capabilities': {}}
 
         reserve_opts = {'volumes': 1, 'gigabytes': volume['size']}
         QUOTAS.add_volume_type_opts(self.context,
@@ -2633,10 +2636,15 @@ class VolumeTestCase(BaseVolumeTestCase):
             volumes_in_use = 0
 
         # check properties
-        if not exc:
+        if driver or diff_equal:
             self.assertEqual(volume['volume_type_id'], vol_type['id'])
             self.assertEqual(volume['status'], 'available')
-            self.assertEqual(volume['host'], 'newhost')
+            self.assertEqual(volume['host'], CONF.host)
+            self.assertEqual(volumes_in_use, 1)
+        elif not exc:
+            self.assertEqual(volume['volume_type_id'], old_vol_type['id'])
+            self.assertEqual(volume['status'], 'retyping')
+            self.assertEqual(volume['host'], CONF.host)
             self.assertEqual(volumes_in_use, 1)
         else:
             self.assertEqual(volume['volume_type_id'], old_vol_type['id'])

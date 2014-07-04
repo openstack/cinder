@@ -578,7 +578,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                         volume_metadata.get('attached_mode') != mode):
                     msg = _("being attached by different mode")
                     raise exception.InvalidVolume(reason=msg)
-            elif volume['status'] != "available":
+            elif (not volume['migration_status'] and
+                  volume['status'] != "available"):
                 msg = _("status must be available or attaching")
                 raise exception.InvalidVolume(reason=msg)
 
@@ -633,6 +634,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              instance_uuid,
                                              host_name_sanitized,
                                              mountpoint)
+            if volume['migration_status']:
+                self.db.volume_update(context, volume_id,
+                                      {'migration_status': None})
             self._notify_about_volume_usage(context, volume, "attach.end")
         return do_attach()
 
@@ -1017,6 +1021,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Delete the source volume (if it fails, don't fail the migration)
         try:
+            if status_update['status'] == 'in-use':
+                self.detach_volume(ctxt, volume_id)
             self.delete_volume(ctxt, volume_id)
         except Exception as ex:
             msg = _("Failed to delete migration source vol %(vol)s: %(err)s")
@@ -1024,10 +1030,20 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
-        updates = {'migration_status': None}
         if status_update:
+            updates = {'migration_status': 'completing'}
             updates.update(status_update)
+        else:
+            updates = {'migration_status': None}
         self.db.volume_update(ctxt, volume_id, updates)
+
+        if status_update:
+            rpcapi.attach_volume(ctxt,
+                                 volume,
+                                 volume['instance_uuid'],
+                                 volume['attached_host'],
+                                 volume['mountpoint'],
+                                 'rw')
         return volume['id']
 
     def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
@@ -1285,11 +1301,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 with excutils.save_and_reraise_exception():
                     _retype_error(context, volume_id, old_reservations,
                                   new_reservations, status_update)
-
-        self.db.volume_update(context, volume_id,
-                              {'volume_type_id': new_type_id,
-                               'host': host['host'],
-                               'status': status_update['status']})
+        else:
+            self.db.volume_update(context, volume_id,
+                                  {'volume_type_id': new_type_id,
+                                   'host': host['host'],
+                                   'status': status_update['status']})
 
         if old_reservations:
             QUOTAS.commit(context, old_reservations, project_id=project_id)
