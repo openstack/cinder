@@ -32,9 +32,10 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         super(TestBlockDeviceDriver, self).setUp()
         self.configuration = mox.MockAnything()
         self.configuration.available_devices = ['/dev/loop1', '/dev/loop2']
-        self.configuration.host = 'localhost'
+        self.host = 'localhost'
         self.configuration.iscsi_port = 3260
-        self.drv = BlockDeviceDriver(configuration=self.configuration)
+        self.drv = BlockDeviceDriver(configuration=self.configuration,
+                                     host='localhost')
 
     def test_initialize_connection(self):
         TEST_VOLUME1 = {'host': 'localhost1',
@@ -181,8 +182,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.mox.StubOutWithMock(api, 'volume_get_all_by_host')
         self.mox.StubOutWithMock(context, 'get_admin_context')
         context.get_admin_context()
-        api.volume_get_all_by_host(None,
-                                   self.configuration.host) \
+        api.volume_get_all_by_host(None, self.host) \
             .AndReturn([TEST_VOLUME1, TEST_VOLUME2])
         self.mox.StubOutWithMock(self.drv, 'local_path')
         path1 = self.drv.local_path(TEST_VOLUME1).AndReturn('/dev/loop1')
