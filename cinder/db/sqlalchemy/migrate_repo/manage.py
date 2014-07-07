@@ -18,7 +18,7 @@ import os
 from oslo.config import cfg
 
 from cinder.openstack.common import gettextutils
-gettextutils.install('cinder', lazy=False)
+gettextutils.install('cinder')
 
 from cinder.db.sqlalchemy import migrate_repo
 from cinder import version
