@@ -272,9 +272,10 @@
 # Port on which OpenStack Volume API listens (integer value)
 #osapi_volume_listen_port=8776
 
-# Number of workers for OpenStack Volume API service (integer
+# Number of workers for OpenStack Volume API service. The
+# default is equal to the number of CPUs available. (integer
 # value)
-#osapi_volume_workers=1
+#osapi_volume_workers=<None>
 
 
 #
@@ -1964,7 +1965,7 @@
 # Deprecated group/name - [DEFAULT]/sql_connection
 # Deprecated group/name - [DATABASE]/sql_connection
 # Deprecated group/name - [sql]/connection
-#connection=sqlite:///$state_path/$sqlite_db
+#connection=sqlite:///$state_path/cinder.sqlite
 
 # The SQL mode to be used for MySQL sessions. This option,
 # including the default, overrides any server-set SQL mode. To
