@@ -49,6 +49,8 @@ class TargetAdminTestCase(object):
                        self.fake_verify_backing_lun)
         self.driver = driver.ISCSIDriver()
         self.flags(iscsi_target_prefix='iqn.2011-09.org.foo.bar:')
+        self.persist_tempdir = tempfile.mkdtemp()
+        self.addCleanup(self._cleanup, self.persist_tempdir)
 
     def fake_verify_backing_lun(obj, iqn, tid):
         return True
@@ -103,13 +105,18 @@ class TargetAdminTestCase(object):
         self.run_commands()
         self.verify()
 
+    def _cleanup(self, persist_tempdir):
+        try:
+            shutil.rmtree(persist_tempdir)
+        except OSError:
+            pass
+
 
 class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
 
     def setUp(self):
         super(TgtAdmTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
-        self.persist_tempdir = tempfile.mkdtemp()
         self.flags(iscsi_helper='tgtadm')
         self.flags(volumes_dir=self.persist_tempdir)
         self.script_template = "\n".join([
@@ -118,13 +125,6 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
             'tgt-admin --force '
             '--delete %(target_name)s',
             'tgtadm --lld iscsi --op show --mode target'])
-
-    def tearDown(self):
-        try:
-            shutil.rmtree(self.persist_tempdir)
-        except OSError:
-            pass
-        super(TgtAdmTestCase, self).tearDown()
 
 
 class IetAdmTestCase(test.TestCase, TargetAdminTestCase):
@@ -196,7 +196,6 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
     def setUp(self):
         super(LioAdmTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
-        self.persist_tempdir = tempfile.mkdtemp()
         self.flags(iscsi_helper='lioadm')
         self.script_template = "\n".join([
             'cinder-rtstool create '

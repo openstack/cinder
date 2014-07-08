@@ -899,9 +899,11 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         self.data = EMCSMISCommonData()
 
         self.tempdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tempdir)
         super(EMCSMISISCSIDriverTestCase, self).setUp()
         self.config_file_path = None
         self.create_fake_config_file()
+        self.addCleanup(os.remove, self.config_file_path)
 
         configuration = mock.Mock()
         configuration.cinder_emc_config_file = self.config_file_path
@@ -1088,16 +1090,6 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
                           self.driver.extend_volume,
                           self.data.failed_extend_vol,
                           '10')
-
-    def _cleanup(self):
-        bExists = os.path.exists(self.config_file_path)
-        if bExists:
-            os.remove(self.config_file_path)
-        shutil.rmtree(self.tempdir)
-
-    def tearDown(self):
-        self._cleanup()
-        super(EMCSMISISCSIDriverTestCase, self).tearDown()
 
 
 class EMCSMISFCDriverTestCase(test.TestCase):

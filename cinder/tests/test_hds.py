@@ -167,6 +167,7 @@ class HUSiSCSIDriverTest(test.TestCase):
     def setUp(self):
         super(HUSiSCSIDriverTest, self).setUp()
         (handle, self.config_file) = tempfile.mkstemp('.xml')
+        self.addCleanup(os.remove, self.config_file)
         os.write(handle, CONF)
         os.close(handle)
         SimulatedHusBackend.alloc_lun = []
@@ -179,11 +180,7 @@ class HUSiSCSIDriverTest(test.TestCase):
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.hds_cinder_config_file = self.config_file
         self.driver = hds.HUSDriver(configuration=self.configuration)
-
-    def tearDown(self):
-        os.remove(self.config_file)
-        self.mox.UnsetStubs()
-        super(HUSiSCSIDriverTest, self).tearDown()
+        self.addCleanup(self.mox.UnsetStubs)
 
     def test_get_volume_stats(self):
         stats = self.driver.get_volume_stats(True)
