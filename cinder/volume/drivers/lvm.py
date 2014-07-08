@@ -519,7 +519,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
             context, volume,
             iscsi_name,
             volume_path,
-            self.configuration.volume_group)
+            self.configuration.volume_group,
+            self.configuration)
         if model_update:
             self.db.volume_update(context, volume['id'], model_update)
 

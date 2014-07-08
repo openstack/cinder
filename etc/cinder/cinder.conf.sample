@@ -1036,6 +1036,12 @@
 # (integer value)
 #volume_copy_bps_limit=0
 
+# Sets the behavior of the iSCSI target to either perform
+# write-back(on) or write-through(off). This parameter is
+# valid if iscsi_helper is set to tgtadm or iseradm. (string
+# value)
+#iscsi_write_cache=on
+
 
 #
 # Options defined in cinder.volume.drivers.block_device
