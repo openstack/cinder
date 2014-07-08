@@ -23,7 +23,7 @@ Routes>=1.12.3,!=2.0
 taskflow>=0.3,<0.4
 rtslib-fb>=2.1.39
 six>=1.7.0
-SQLAlchemy>=0.7.8,!=0.9.5,<=0.9.99
+SQLAlchemy>=0.8.4,!=0.9.5,<=0.9.99
 sqlalchemy-migrate>=0.9.1
 stevedore>=0.14
 suds>=0.4
