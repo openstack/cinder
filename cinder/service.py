@@ -57,7 +57,10 @@ service_opts = [
                help='IP address on which OpenStack Volume API listens'),
     cfg.IntOpt('osapi_volume_listen_port',
                default=8776,
-               help='Port on which OpenStack Volume API listens'), ]
+               help='Port on which OpenStack Volume API listens'),
+    cfg.IntOpt('osapi_volume_workers',
+               default=1,
+               help='Number of workers for OpenStack Volume API service'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
