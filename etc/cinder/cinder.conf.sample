@@ -1532,22 +1532,6 @@
 # Options defined in cinder.volume.drivers.nfs
 #
 
-# IP address or Hostname of NAS system. (string value)
-#nas_ip=
-
-# User name to connect to NAS system. (string value)
-#nas_login=admin
-
-# Password to connect to NAS system. (string value)
-#nas_password=
-
-# SSH port to use to connect to NAS system. (integer value)
-#nas_ssh_port=22
-
-# Filename of private key to use for SSH authentication.
-# (string value)
-#nas_private_key=
-
 # File with the list of available nfs shares (string value)
 #nfs_shares_config=/etc/cinder/nfs_shares
 
@@ -1626,6 +1610,27 @@
 # cluster. If value < 0, no timeout is set and default
 # librados value is used. (integer value)
 #rados_connect_timeout=-1
+
+
+#
+# Options defined in cinder.volume.drivers.remotefs
+#
+
+# IP address or Hostname of NAS system. (string value)
+#nas_ip=
+
+# User name to connect to NAS system. (string value)
+#nas_login=admin
+
+# Password to connect to NAS system. (string value)
+#nas_password=
+
+# SSH port to use to connect to NAS system. (integer value)
+#nas_ssh_port=22
+
+# Filename of private key to use for SSH authentication.
+# (string value)
+#nas_private_key=
 
 
 #

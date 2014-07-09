@@ -32,6 +32,7 @@ from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
+from cinder.volume.drivers import remotefs
 
 
 class DumbVolume(object):
@@ -49,7 +50,7 @@ class RemoteFsDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(RemoteFsDriverTestCase, self).setUp()
-        self._driver = nfs.RemoteFsDriver()
+        self._driver = remotefs.RemoteFSDriver()
         self._mox = mox_lib.Mox()
         self.addCleanup(self._mox.UnsetStubs)
 

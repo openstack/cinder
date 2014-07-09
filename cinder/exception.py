@@ -460,6 +460,10 @@ class ExportFailure(Invalid):
     message = _("Failed to export for volume: %(reason)s")
 
 
+class RemoveExportException(VolumeDriverException):
+    message = _("Failed to remove export for volume %(volume)s: %(reason)s")
+
+
 class MetadataCreateFailure(Invalid):
     message = _("Failed to create metadata for volume: %(reason)s")
 
@@ -665,34 +669,43 @@ class Invalid3PARDomain(VolumeDriverException):
     message = _("Invalid 3PAR Domain: %(err)s")
 
 
+# RemoteFS drivers
+class RemoteFSException(VolumeDriverException):
+    message = _("Unknown RemoteFS exception")
+
+
+class RemoteFSNoSharesMounted(RemoteFSException):
+    message = _("No mounted shares found")
+
+
+class RemoteFSNoSuitableShareFound(RemoteFSException):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
 # NFS driver
-class NfsException(VolumeDriverException):
+class NfsException(RemoteFSException):
     message = _("Unknown NFS exception")
 
 
-class NfsNoSharesMounted(VolumeDriverException):
+class NfsNoSharesMounted(RemoteFSNoSharesMounted):
     message = _("No mounted NFS shares found")
 
 
-class NfsNoSuitableShareFound(VolumeDriverException):
+class NfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
 # Gluster driver
-class GlusterfsException(VolumeDriverException):
+class GlusterfsException(RemoteFSException):
     message = _("Unknown Gluster exception")
 
 
-class GlusterfsNoSharesMounted(VolumeDriverException):
+class GlusterfsNoSharesMounted(RemoteFSNoSharesMounted):
     message = _("No mounted Gluster shares found")
 
 
-class GlusterfsNoSuitableShareFound(VolumeDriverException):
+class GlusterfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
-
-
-class RemoveExportException(VolumeDriverException):
-    message = _("Failed to remove export for volume %(volume)s: %(reason)s")
 
 
 # HP MSA

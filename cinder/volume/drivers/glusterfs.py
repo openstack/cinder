@@ -14,16 +14,13 @@
 #    under the License.
 
 import errno
-import hashlib
-import json
 import os
 import stat
-import tempfile
 import time
 
 from oslo.config import cfg
 
-from cinder.brick.remotefs import remotefs
+from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import compute
 from cinder import db
 from cinder import exception
@@ -34,7 +31,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import units
 from cinder import utils
-from cinder.volume.drivers import nfs
+from cinder.volume.drivers import remotefs as remotefs_drv
 
 LOG = logging.getLogger(__name__)
 
@@ -60,7 +57,7 @@ CONF.register_opts(volume_opts)
 CONF.import_opt('volume_name_template', 'cinder.db')
 
 
-class GlusterfsDriver(nfs.RemoteFsDriver):
+class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     """Gluster based cinder driver. Creates file on Gluster share for using it
     as block device on hypervisor.
 
@@ -72,7 +69,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
     driver_volume_type = 'glusterfs'
     driver_prefix = 'glusterfs'
     volume_backend_name = 'GlusterFS'
-    VERSION = '1.1.1'
+    VERSION = '1.2.0'
 
     def __init__(self, execute=processutils.execute, *args, **kwargs):
         self._remotefsclient = None
@@ -82,7 +79,7 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         self.base = getattr(self.configuration,
                             'glusterfs_mount_point_base',
                             CONF.glusterfs_mount_point_base)
-        self._remotefsclient = remotefs.RemoteFsClient(
+        self._remotefsclient = remotefs_brick.RemoteFsClient(
             'glusterfs',
             execute,
             glusterfs_mount_point_base=self.base)
@@ -165,30 +162,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         path = '%s/%s' % (self.configuration.glusterfs_mount_point_base,
                           hashed)
         return path
-
-    def _local_path_volume(self, volume):
-        path_to_disk = '%s/%s' % (
-            self._local_volume_dir(volume),
-            volume['name'])
-
-        return path_to_disk
-
-    def _local_path_volume_info(self, volume):
-        return '%s%s' % (self._local_path_volume(volume), '.info')
-
-    def _qemu_img_info(self, path):
-        """Sanitize image_utils' qemu_img_info.
-
-        This code expects to deal only with relative filenames.
-        """
-
-        info = image_utils.qemu_img_info(path)
-        if info.image:
-            info.image = os.path.basename(info.image)
-        if info.backing_file:
-            info.backing_file = os.path.basename(info.backing_file)
-
-        return info
 
     def get_active_image_from_info(self, volume):
         """Returns filename of the active image from the info file."""
@@ -571,32 +544,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
         snap_info[snapshot['id']] = os.path.basename(new_snap_path)
         self._write_info_file(info_path, snap_info)
 
-    def _read_file(self, filename):
-        """This method is to make it easier to stub out code for testing.
-
-        Returns a string representing the contents of the file.
-        """
-
-        with open(filename, 'r') as f:
-            return f.read()
-
-    def _read_info_file(self, info_path, empty_if_missing=False):
-        """Return dict of snapshot information."""
-
-        if not os.path.exists(info_path):
-            if empty_if_missing is True:
-                return {}
-
-        return json.loads(self._read_file(info_path))
-
-    def _write_info_file(self, info_path, snap_info):
-        if 'active' not in snap_info.keys():
-            msg = _("'active' must be present when writing snap_info.")
-            raise exception.GlusterfsException(msg)
-
-        with open(info_path, 'w') as f:
-            json.dump(snap_info, f, indent=1, sort_keys=True)
-
     def _get_matching_backing_file(self, backing_chain, snapshot_file):
         return next(f for f in backing_chain
                     if f.get('backing-filename', '') == snapshot_file)
@@ -909,45 +856,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             del(snap_info[snapshot['id']])
             self._write_info_file(info_path, snap_info)
 
-    def _get_backing_chain_for_path(self, volume, path):
-        """Returns list of dicts containing backing-chain information.
-
-        Includes 'filename', and 'backing-filename' for each
-        applicable entry.
-
-        Consider converting this to use --backing-chain and --output=json
-        when environment supports qemu-img 1.5.0.
-
-        :param volume: volume reference
-        :param path: path to image file at top of chain
-
-        """
-
-        output = []
-
-        info = self._qemu_img_info(path)
-        new_info = {}
-        new_info['filename'] = os.path.basename(path)
-        new_info['backing-filename'] = info.backing_file
-
-        output.append(new_info)
-
-        while new_info['backing-filename']:
-            filename = new_info['backing-filename']
-            path = os.path.join(self._local_volume_dir(volume), filename)
-            info = self._qemu_img_info(path)
-            backing_filename = info.backing_file
-            new_info = {}
-            new_info['filename'] = filename
-            new_info['backing-filename'] = backing_filename
-
-            output.append(new_info)
-
-        return output
-
-    def _qemu_img_commit(self, path):
-        return self._execute('qemu-img', 'commit', path, run_as_root=True)
-
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
 
@@ -955,7 +863,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
     def create_export(self, ctx, volume):
         """Exports the volume."""
-
         pass
 
     def remove_export(self, ctx, volume):
@@ -1105,26 +1012,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         LOG.debug('Available shares: %s' % self._mounted_shares)
 
-    def _ensure_share_writable(self, path):
-        """Ensure that the Cinder user can write to the share.
-
-        If not, raise an exception.
-
-        :param path: path to test
-        :raises: GlusterfsException
-        :returns: None
-        """
-
-        prefix = '.cinder-write-test-' + str(os.getpid()) + '-'
-
-        try:
-            tempfile.NamedTemporaryFile(prefix=prefix, dir=path)
-        except OSError:
-            msg = _('GlusterFS share at %(dir)s is not writable by the '
-                    'Cinder volume service. Snapshot operations will not be '
-                    'supported.') % {'dir': path}
-            raise exception.GlusterfsException(msg)
-
     def _ensure_share_mounted(self, glusterfs_share):
         """Mount GlusterFS share.
         :param glusterfs_share: string
@@ -1170,39 +1057,9 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                 volume_size=volume_size_for)
         return greatest_share
 
-    def _get_hash_str(self, base_str):
-        """Return a string that represents hash of base_str
-        (in a hex format).
-        """
-        return hashlib.md5(base_str).hexdigest()
-
-    def _get_mount_point_for_share(self, glusterfs_share):
-        """Return mount point for share.
-        :param glusterfs_share: example 172.18.194.100:/var/glusterfs
-        """
-        return self._remotefsclient.get_mount_point(glusterfs_share)
-
-    def _get_available_capacity(self, glusterfs_share):
-        """Calculate available space on the GlusterFS share.
-        :param glusterfs_share: example 172.18.194.100:/var/glusterfs
-        """
-        mount_point = self._get_mount_point_for_share(glusterfs_share)
-
-        out, _ = self._execute('df', '--portability', '--block-size', '1',
-                               mount_point, run_as_root=True)
-        out = out.splitlines()[1]
-
-        size = int(out.split()[1])
-        available = int(out.split()[3])
-
-        return available, size
-
-    def _get_capacity_info(self, glusterfs_share):
-        available, size = self._get_available_capacity(glusterfs_share)
-        return size, available, size - available
-
     def _mount_glusterfs(self, glusterfs_share, mount_path, ensure=False):
         """Mount GlusterFS share to mount path."""
+        # TODO(eharney): make this fs-agnostic and factor into remotefs
         self._execute('mkdir', '-p', mount_path)
 
         command = ['mount', '-t', 'glusterfs', glusterfs_share,
@@ -1211,9 +1068,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
             command.extend(self.shares[glusterfs_share].split())
 
         self._do_mount(command, ensure, glusterfs_share)
-
-    def _get_mount_point_base(self):
-        return self.base
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume.
