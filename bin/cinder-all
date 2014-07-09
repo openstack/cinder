@@ -32,6 +32,9 @@ eventlet.monkey_patch()
 
 import os
 import sys
+import warnings
+
+warnings.simplefilter('once', DeprecationWarning)
 
 from oslo.config import cfg
 

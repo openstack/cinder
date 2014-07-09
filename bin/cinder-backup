@@ -20,6 +20,9 @@
 
 import os
 import sys
+import warnings
+
+warnings.simplefilter('once', DeprecationWarning)
 
 import eventlet
 
