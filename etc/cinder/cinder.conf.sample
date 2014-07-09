@@ -272,9 +272,10 @@
 # Port on which OpenStack Volume API listens (integer value)
 #osapi_volume_listen_port=8776
 
-# Number of workers for OpenStack Volume API service (integer
+# Number of workers for OpenStack Volume API service. The
+# default is equal to the number of CPUs available. (integer
 # value)
-#osapi_volume_workers=1
+#osapi_volume_workers=<None>
 
 
 #

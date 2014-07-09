@@ -58,5 +58,5 @@ if __name__ == '__main__':
     rpc.init(CONF)
     launcher = service.process_launcher()
     server = service.WSGIService('osapi_volume')
-    launcher.launch_service(server, workers=server.workers or 1)
+    launcher.launch_service(server, workers=server.workers)
     launcher.wait()
