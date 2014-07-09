@@ -505,8 +505,8 @@ port_speed!N/A
         for host_info in host_infos:
             for wwpn in host_info['wwpns']:
                 rows.append([wwpn, '123456', host_info['id'], 'nodeN',
-                            'AABBCCDDEEFF0011', '1', '0123ABC', 'active',
-                            host_info['host_name'], '', 'host'])
+                             'AABBCCDDEEFF0011', '1', '0123ABC', 'active',
+                             host_info['host_name'], '', 'host'])
 
         if self._next_cmd_error['lsfabric'] == 'header_mismatch':
             rows[0].pop(0)
@@ -664,13 +664,13 @@ port_speed!N/A
                 else:
                     cap = vol['capacity']
                 rows.append([str(vol['id']), vol['name'], vol['IO_group_id'],
-                            vol['IO_group_name'], 'online', '0',
-                            self._flags['storwize_svc_volpool_name'],
-                            cap, 'striped',
-                            fcmap_info['fc_id'], fcmap_info['fc_name'],
-                            '', '', vol['uid'],
-                            fcmap_info['fc_map_count'], '1', 'empty',
-                            '1', 'no'])
+                             vol['IO_group_name'], 'online', '0',
+                             self._flags['storwize_svc_volpool_name'],
+                             cap, 'striped',
+                             fcmap_info['fc_id'], fcmap_info['fc_name'],
+                             '', '', vol['uid'],
+                             fcmap_info['fc_map_count'], '1', 'empty',
+                             '1', 'no'])
 
         if 'obj' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
@@ -1191,10 +1191,10 @@ port_speed!N/A
                     to_delete.append(k)
                 else:
                     rows.append([v['id'], v['name'], source['id'],
-                                source['name'], target['id'], target['name'],
-                                '', '', v['status'], v['progress'],
-                                v['copyrate'], '100', 'off', '', '', 'no', '',
-                                'no'])
+                                 source['name'], target['id'], target['name'],
+                                 '', '', v['status'], v['progress'],
+                                 v['copyrate'], '100', 'off', '', '', 'no', '',
+                                 'no'])
 
         for d in to_delete:
             del self._fcmappings_list[d]

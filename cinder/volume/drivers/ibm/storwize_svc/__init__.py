@@ -424,9 +424,9 @@ class StorwizeSVCDriver(san.SanDriver):
                             break
                     else:
                         LOG.warning(_('Unable to find a preferred node match '
-                                    'for node %(node)s in the list of '
-                                    'available WWPNs on %(host)s. '
-                                    'Using first available.') %
+                                      'for node %(node)s in the list of '
+                                      'available WWPNs on %(host)s. '
+                                      'Using first available.') %
                                     {'node': preferred_node,
                                      'host': host_name})
                         properties['target_wwn'] = conn_wwpns[0]

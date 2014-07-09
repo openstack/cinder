@@ -366,7 +366,7 @@ class HuaweiTCLIResSimulator():
             if LUN_INFO['ID'] is None:
                 out = 'command operates successfully, but no information.'
             elif CLONED_LUN_INFO['ID'] is None:
-                out = """/>showlun
+                msg = """/>showlun
 ===========================================================================
                            LUN Information
 ---------------------------------------------------------------------------
@@ -375,10 +375,13 @@ class HuaweiTCLIResSimulator():
 ---------------------------------------------------------------------------
   %s    %s    --    Normal    %s    %s    %s    64    THICK
 ===========================================================================
-""" % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
-       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'])
+"""
+                out = msg % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'],
+                             LUN_INFO['Owner Controller'],
+                             str(int(LUN_INFO['Size']) * 1024),
+                             LUN_INFO['Name'])
             else:
-                out = """/>showlun
+                msg = """/>showlun
 ============================================================================
                                LUN Information
 ----------------------------------------------------------------------------
@@ -388,15 +391,18 @@ class HuaweiTCLIResSimulator():
   %s    %s    --    Normal    %s    %s    %s    64    THICK
   %s    %s    --    Normal    %s    %s    %s    64    THICK
 ============================================================================
-""" % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
-       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'],
-       CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['RAID Group ID'],
-       CLONED_LUN_INFO['Owner Controller'],
-       str(int(CLONED_LUN_INFO['Size']) * 1024),
-       CLONED_LUN_INFO['Name'])
+"""
+                out = msg % (
+                    LUN_INFO['ID'], LUN_INFO['RAID Group ID'],
+                    LUN_INFO['Owner Controller'],
+                    str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'],
+                    CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['RAID Group ID'],
+                    CLONED_LUN_INFO['Owner Controller'],
+                    str(int(CLONED_LUN_INFO['Size']) * 1024),
+                    CLONED_LUN_INFO['Name'])
 
         elif params[params.index('-lun') + 1] in VOLUME_SNAP_ID.values():
-            out = """/>showlun
+            msg = """/>showlun
 ================================================
                  LUN Information
 ------------------------------------------------
@@ -411,17 +417,23 @@ class HuaweiTCLIResSimulator():
   SnapShot ID            |  %s
   LunCopy ID             |  %s
 ================================================
-""" % ((LUN_INFO['ID'], LUN_INFO['Name'], LUN_INFO['Visible Capacity'],
-        LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
-        LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
-        LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
-       if params[params.index('-lun') + 1] == VOLUME_SNAP_ID['vol'] else
-       (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
-        CLONED_LUN_INFO['Visible Capacity'], CLONED_LUN_INFO['RAID Group ID'],
-        CLONED_LUN_INFO['Owner Controller'],
-        CLONED_LUN_INFO['Worker Controller'],
-        CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
-        CLONED_LUN_INFO['LunCopy ID']))
+"""
+            out = msg % (
+                (LUN_INFO['ID'], LUN_INFO['Name'],
+                 LUN_INFO['Visible Capacity'],
+                 LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
+                 LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
+                 LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
+                if (params[params.index('-lun') + 1] ==
+                    VOLUME_SNAP_ID['vol']) else
+                (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
+                 CLONED_LUN_INFO['Visible Capacity'],
+                 CLONED_LUN_INFO['RAID Group ID'],
+                 CLONED_LUN_INFO['Owner Controller'],
+                 CLONED_LUN_INFO['Worker Controller'],
+                 CLONED_LUN_INFO['Lun Type'],
+                 CLONED_LUN_INFO['SnapShot ID'],
+                 CLONED_LUN_INFO['LunCopy ID']))
         else:
             out = 'ERROR: The object does not exist.'
         return out
@@ -452,7 +464,7 @@ class HuaweiTCLIResSimulator():
         return out
 
     def cli_showrg(self, params):
-        out = """/>showrg
+        msg = """/>showrg
 =====================================================================
                       RAID Group Information
 ---------------------------------------------------------------------
@@ -461,9 +473,10 @@ class HuaweiTCLIResSimulator():
   0     RAID6    Normal    1024                 0,0;0,2;     RAID003
   %s    %s       %s        %s                   %s           %s
 =====================================================================
--""" % (POOL_SETTING['ID'], POOL_SETTING['Level'],
-        POOL_SETTING['Status'], POOL_SETTING['Free Capacity'],
-        POOL_SETTING['Disk List'], POOL_SETTING['Name'])
+-"""
+        out = msg % (POOL_SETTING['ID'], POOL_SETTING['Level'],
+                     POOL_SETTING['Status'], POOL_SETTING['Free Capacity'],
+                     POOL_SETTING['Disk List'], POOL_SETTING['Name'])
         return out
 
     def cli_showpool(self, params):
@@ -499,7 +512,7 @@ class HuaweiTCLIResSimulator():
             LUNCOPY_INFO['State'] = 'Copying'
         elif LUNCOPY_INFO['State'] == 'Copying':
             LUNCOPY_INFO['State'] = 'Complete'
-        out = """/>showluncopy
+        msg = """/>showluncopy
 ============================================================================
                             LUN Copy Information
 ----------------------------------------------------------------------------
@@ -507,8 +520,10 @@ class HuaweiTCLIResSimulator():
 ----------------------------------------------------------------------------
   %s               %s             %s      %s                %s
 ============================================================================
-""" % (LUNCOPY_INFO['Name'], LUNCOPY_INFO['ID'], LUNCOPY_INFO['Type'],
-       LUNCOPY_INFO['State'], LUNCOPY_INFO['Status'])
+"""
+        out = msg % (LUNCOPY_INFO['Name'], LUNCOPY_INFO['ID'],
+                     LUNCOPY_INFO['Type'], LUNCOPY_INFO['State'],
+                     LUNCOPY_INFO['Status'])
         return out
 
     def cli_delluncopy(self, params):
@@ -566,7 +581,7 @@ class HuaweiTCLIResSimulator():
         return out
 
     def cli_showrespool(self, params):
-        out = """/>showrespool
+        msg = """/>showrespool
 ===========================================================================
                          Resource Pool Information
 ---------------------------------------------------------------------------
@@ -575,8 +590,9 @@ class HuaweiTCLIResSimulator():
   A          %s          0.0          %s                80
   B          %s          0.0         %s                80
 ===========================================================================
--""" % (RESPOOL_A_SIM['Size'], RESPOOL_A_SIM['Valid Size'],
-        RESPOOL_B_SIM['Size'], RESPOOL_B_SIM['Valid Size'])
+-"""
+        out = msg % (RESPOOL_A_SIM['Size'], RESPOOL_A_SIM['Valid Size'],
+                     RESPOOL_B_SIM['Size'], RESPOOL_B_SIM['Valid Size'])
         return out
 
     def cli_showiscsitgtname(self, params):
@@ -696,7 +712,7 @@ class HuaweiTCLIResSimulator():
         if MAP_INFO['INI Port ID'] is None:
             out = 'command operates successfully, but no information.'
         else:
-            out = """/>showhostport
+            msg = """/>showhostport
 ============================================================================
                         Host Port Information
 ----------------------------------------------------------------------------
@@ -705,9 +721,10 @@ Multipath Type
 ----------------------------------------------------------------------------
  %s      %s       %s       %s       %s       Unconnected       Default
 ============================================================================
-""" % (MAP_INFO['INI Port ID'], MAP_INFO['INI Port Name'],
-       MAP_INFO['INI Port Info'], MAP_INFO['INI Port Type'],
-       MAP_INFO['Host ID'])
+"""
+            out = msg % (MAP_INFO['INI Port ID'], MAP_INFO['INI Port Name'],
+                         MAP_INFO['INI Port Info'], MAP_INFO['INI Port Type'],
+                         MAP_INFO['Host ID'])
         return out
 
     def cli_addhostport(self, params):
@@ -734,7 +751,7 @@ Multipath Type
         if MAP_INFO['DEV LUN ID'] is None:
             out = 'command operates successfully, but no information.'
         else:
-            out = """/>showhostmap
+            msg = """/>showhostmap
 ===========================================================================
                            Map Information
 ---------------------------------------------------------------------------
@@ -743,9 +760,11 @@ Multipath Type
 ----------------------------------------------------------------------------
   2147483649   %s   %s   %s   %s   Host: %s   %s   %s   HOST   No   --
 ============================================================================
-""" % (LUN_INFO['Worker Controller'], LUN_INFO['ID'], LUN_INFO['LUN WWN'],
-       MAP_INFO['Host LUN ID'], MAP_INFO['Host ID'], LUN_INFO['RAID Group ID'],
-       str(int(LUN_INFO['Size']) * 1024))
+"""
+            out = msg % (LUN_INFO['Worker Controller'], LUN_INFO['ID'],
+                         LUN_INFO['LUN WWN'], MAP_INFO['Host LUN ID'],
+                         MAP_INFO['Host ID'], LUN_INFO['RAID Group ID'],
+                         str(int(LUN_INFO['Size']) * 1024))
         return out
 
     def cli_addhostmap(self, params):
@@ -854,7 +873,7 @@ class HuaweiDorado5100CLIResSimulator(HuaweiTCLIResSimulator):
             if LUN_INFO['ID'] is None:
                 out = 'command operates successfully, but no information.'
             elif CLONED_LUN_INFO['ID'] is None:
-                out = """/>showlun
+                msg = """/>showlun
 ===========================================================================
                            LUN Information
 ---------------------------------------------------------------------------
@@ -863,11 +882,13 @@ class HuaweiDorado5100CLIResSimulator(HuaweiTCLIResSimulator):
 ---------------------------------------------------------------------------
   %s      %s       Normal       %s      %s       %s       64       THICK
 ===========================================================================
-""" % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'],
-       LUN_INFO['Owner Controller'], str(int(LUN_INFO['Size']) * 1024),
-       LUN_INFO['Name'])
+"""
+                out = msg % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'],
+                             LUN_INFO['Owner Controller'],
+                             str(int(LUN_INFO['Size']) * 1024),
+                             LUN_INFO['Name'])
             else:
-                out = """/>showlun
+                msg = """/>showlun
 ===========================================================================
                            LUN Information
 ---------------------------------------------------------------------------
@@ -877,14 +898,17 @@ class HuaweiDorado5100CLIResSimulator(HuaweiTCLIResSimulator):
   %s      %s       Normal      %s      %s       %s        64       THICK
   %s      %s       Norma       %s      %s       %s        64       THICK
 ===========================================================================
-""" % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
-       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'],
-       CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['RAID Group ID'],
-       CLONED_LUN_INFO['Owner Controller'],
-       str(int(CLONED_LUN_INFO['Size']) * 1024),
-       CLONED_LUN_INFO['Name'])
+"""
+                out = msg % (LUN_INFO['ID'], LUN_INFO['RAID Group ID'],
+                             LUN_INFO['Owner Controller'],
+                             str(int(LUN_INFO['Size']) * 1024),
+                             LUN_INFO['Name'], CLONED_LUN_INFO['ID'],
+                             CLONED_LUN_INFO['RAID Group ID'],
+                             CLONED_LUN_INFO['Owner Controller'],
+                             str(int(CLONED_LUN_INFO['Size']) * 1024),
+                             CLONED_LUN_INFO['Name'])
         elif params[params.index('-lun') + 1] in VOLUME_SNAP_ID.values():
-            out = """/>showlun
+            msg = """/>showlun
 ================================================
                  LUN Information
 ------------------------------------------------
@@ -899,17 +923,22 @@ class HuaweiDorado5100CLIResSimulator(HuaweiTCLIResSimulator):
   SnapShot ID            |  %s
   LunCopy ID             |  %s
 ================================================
-""" % ((LUN_INFO['ID'], LUN_INFO['Name'], LUN_INFO['Visible Capacity'],
-        LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
-        LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
-        LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
-       if params[params.index('-lun') + 1] == VOLUME_SNAP_ID['vol'] else
-       (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
-        CLONED_LUN_INFO['Visible Capacity'], CLONED_LUN_INFO['RAID Group ID'],
-        CLONED_LUN_INFO['Owner Controller'],
-        CLONED_LUN_INFO['Worker Controller'],
-        CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
-        CLONED_LUN_INFO['LunCopy ID']))
+"""
+            out = msg % (
+                (LUN_INFO['ID'], LUN_INFO['Name'],
+                 LUN_INFO['Visible Capacity'],
+                 LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
+                 LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
+                 LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
+                if (params[params.index('-lun') + 1] ==
+                    VOLUME_SNAP_ID['vol']) else
+                (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
+                 CLONED_LUN_INFO['Visible Capacity'],
+                 CLONED_LUN_INFO['RAID Group ID'],
+                 CLONED_LUN_INFO['Owner Controller'],
+                 CLONED_LUN_INFO['Worker Controller'],
+                 CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
+                 CLONED_LUN_INFO['LunCopy ID']))
         else:
             out = 'ERROR: The object does not exist.'
         return out
@@ -962,7 +991,7 @@ class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
             if LUN_INFO['ID'] is None:
                 out = 'command operates successfully, but no information.'
             elif CLONED_LUN_INFO['ID'] is None:
-                out = """/>showlun
+                msg = """/>showlun
 ===========================================================================
                            LUN Information
 ---------------------------------------------------------------------------
@@ -970,10 +999,12 @@ class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
 ---------------------------------------------------------------------------
   %s   Normal   %s          %s                     %s        THICK
 ===========================================================================
-""" % (LUN_INFO['ID'], LUN_INFO['Owner Controller'],
-       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'])
+"""
+                out = msg % (LUN_INFO['ID'], LUN_INFO['Owner Controller'],
+                             str(int(LUN_INFO['Size']) * 1024),
+                             LUN_INFO['Name'])
             else:
-                out = """/>showlun
+                msg = """/>showlun
 ===========================================================================
                            LUN Information
 ---------------------------------------------------------------------------
@@ -982,13 +1013,17 @@ class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
   %s   Normal   %s          %s                     %s         THICK
   %s   Normal   %s          %s                     %s         THICK
 ===========================================================================
-""" % (LUN_INFO['ID'], LUN_INFO['Owner Controller'],
-       str(int(LUN_INFO['Size']) * 1024), LUN_INFO['Name'],
-       CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Owner Controller'],
-       str(int(CLONED_LUN_INFO['Size']) * 1024), CLONED_LUN_INFO['Name'])
+"""
+                out = msg % (LUN_INFO['ID'], LUN_INFO['Owner Controller'],
+                             str(int(LUN_INFO['Size']) * 1024),
+                             LUN_INFO['Name'],
+                             CLONED_LUN_INFO['ID'],
+                             CLONED_LUN_INFO['Owner Controller'],
+                             str(int(CLONED_LUN_INFO['Size']) * 1024),
+                             CLONED_LUN_INFO['Name'])
 
         elif params[params.index('-lun') + 1] in VOLUME_SNAP_ID.values():
-            out = """/>showlun
+            msg = """/>showlun
 ================================================
                  LUN Information
 ------------------------------------------------
@@ -1003,17 +1038,21 @@ class HuaweiDorado2100G2CLIResSimulator(HuaweiTCLIResSimulator):
   SnapShot ID            |  %s
   LunCopy ID             |  %s
 ================================================
-""" % ((LUN_INFO['ID'], LUN_INFO['Name'], LUN_INFO['Visible Capacity'],
-        LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
-        LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
-        LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
-       if params[params.index('-lun')] == VOLUME_SNAP_ID['vol'] else
-       (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
-        CLONED_LUN_INFO['Visible Capacity'], CLONED_LUN_INFO['RAID Group ID'],
-        CLONED_LUN_INFO['Owner Controller'],
-        CLONED_LUN_INFO['Worker Controller'],
-        CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
-        CLONED_LUN_INFO['LunCopy ID']))
+"""
+            out = msg % (
+                (LUN_INFO['ID'], LUN_INFO['Name'],
+                 LUN_INFO['Visible Capacity'],
+                 LUN_INFO['RAID Group ID'], LUN_INFO['Owner Controller'],
+                 LUN_INFO['Worker Controller'], LUN_INFO['Lun Type'],
+                 LUN_INFO['SnapShot ID'], LUN_INFO['LunCopy ID'])
+                if params[params.index('-lun')] == VOLUME_SNAP_ID['vol'] else
+                (CLONED_LUN_INFO['ID'], CLONED_LUN_INFO['Name'],
+                 CLONED_LUN_INFO['Visible Capacity'],
+                 CLONED_LUN_INFO['RAID Group ID'],
+                 CLONED_LUN_INFO['Owner Controller'],
+                 CLONED_LUN_INFO['Worker Controller'],
+                 CLONED_LUN_INFO['Lun Type'], CLONED_LUN_INFO['SnapShot ID'],
+                 CLONED_LUN_INFO['LunCopy ID']))
 
         else:
             out = 'ERROR: The object does not exist.'

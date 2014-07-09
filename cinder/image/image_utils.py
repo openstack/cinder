@@ -42,9 +42,9 @@ from cinder.volume import utils as volume_utils
 LOG = logging.getLogger(__name__)
 
 image_helper_opt = [cfg.StrOpt('image_conversion_dir',
-                    default='$state_path/conversion',
-                    help='Directory used for temporary storage '
-                         'during image conversion'), ]
+                               default='$state_path/conversion',
+                               help='Directory used for temporary storage '
+                                    'during image conversion'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(image_helper_opt)

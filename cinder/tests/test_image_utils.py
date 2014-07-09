@@ -121,8 +121,7 @@ class TestUtils(test.TestCase):
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
             TEST_PATH, run_as_root=True).AndReturn(
-                (TEST_RETURN, 'ignored')
-            )
+                (TEST_RETURN, 'ignored'))
 
         mox.ReplayAll()
 
@@ -228,8 +227,7 @@ class TestUtils(test.TestCase):
             utils.execute(
                 'env', 'LC_ALL=C', 'qemu-img', 'info',
                 self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                    (src_inf, 'ignored')
-                )
+                    (src_inf, 'ignored'))
 
         if has_qemu and dest_inf:
             if bps_limit:
@@ -249,8 +247,7 @@ class TestUtils(test.TestCase):
             utils.execute(
                 'env', 'LC_ALL=C', 'qemu-img', 'info',
                 self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                    (dest_inf, 'ignored')
-                )
+                    (dest_inf, 'ignored'))
 
         self._mox.ReplayAll()
 
@@ -378,8 +375,7 @@ class TestUtils(test.TestCase):
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
             self.TEST_DEV_PATH, run_as_root=True).AndReturn(
-                (qemu_info, 'ignored')
-            )
+                (qemu_info, 'ignored'))
 
         self._mox.ReplayAll()
         self.assertRaises(exception.ImageUnacceptable,
@@ -450,8 +446,7 @@ class TestUtils(test.TestCase):
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
             mox.IgnoreArg(), run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
+                (TEST_RET, 'ignored'))
 
         m.ReplayAll()
 
@@ -491,8 +486,7 @@ class TestUtils(test.TestCase):
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
             mox.IgnoreArg(), run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored')
-            )
+                (TEST_RET, 'ignored'))
 
         m.ReplayAll()
 
@@ -510,8 +504,7 @@ class TestExtractTo(test.TestCase):
 
         utils.execute(
             'tar', '-xzf', 'archive.tgz', '-C', 'targetpath').AndReturn(
-                ('ignored', 'ignored')
-            )
+                ('ignored', 'ignored'))
 
         mox.ReplayAll()
 
@@ -526,8 +519,7 @@ class TestSetVhdParent(test.TestCase):
 
         utils.execute(
             'vhd-util', 'modify', '-n', 'child', '-p', 'parent').AndReturn(
-                ('ignored', 'ignored')
-            )
+                ('ignored', 'ignored'))
 
         mox.ReplayAll()
 
@@ -567,8 +559,7 @@ class TestGetSize(test.TestCase):
 
         utils.execute(
             'vhd-util', 'query', '-n', 'vhdfile', '-v').AndReturn(
-                ('1024', 'ignored')
-            )
+                ('1024', 'ignored'))
 
         mox.ReplayAll()
 

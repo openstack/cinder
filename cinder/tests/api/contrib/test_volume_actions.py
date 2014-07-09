@@ -508,16 +508,17 @@ class VolumeImageActionsTest(test.TestCase):
         body = {"os-volume_upload_image": vol}
         req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
         res_dict = self.controller._volume_upload_image(req, id, body)
-        expected = {'os-volume_upload_image': {'id': id,
-                    'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                    'status': 'uploading',
-                    'display_description': 'displaydesc',
-                    'size': 1,
-                    'volume_type': {'name': 'vol_type_name'},
-                    'image_id': 1,
-                    'container_format': 'bare',
-                    'disk_format': 'raw',
-                    'image_name': 'image_name'}}
+        expected = {'os-volume_upload_image':
+                    {'id': id,
+                     'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                     'status': 'uploading',
+                     'display_description': 'displaydesc',
+                     'size': 1,
+                     'volume_type': {'name': 'vol_type_name'},
+                     'image_id': 1,
+                     'container_format': 'bare',
+                     'disk_format': 'raw',
+                     'image_name': 'image_name'}}
         self.assertDictMatch(res_dict, expected)
 
     def test_copy_volume_to_image_volumenotfound(self):

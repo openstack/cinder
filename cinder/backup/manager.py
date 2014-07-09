@@ -241,9 +241,9 @@ class BackupManager(manager.SchedulerDependentManager):
         if actual_status != expected_status:
             err = _('Create backup aborted, expected volume status '
                     '%(expected_status)s but got %(actual_status)s.') % {
-                        'expected_status': expected_status,
-                        'actual_status': actual_status,
-                    }
+                'expected_status': expected_status,
+                'actual_status': actual_status,
+            }
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             raise exception.InvalidVolume(reason=err)
@@ -253,9 +253,9 @@ class BackupManager(manager.SchedulerDependentManager):
         if actual_status != expected_status:
             err = _('Create backup aborted, expected backup status '
                     '%(expected_status)s but got %(actual_status)s.') % {
-                        'expected_status': expected_status,
-                        'actual_status': actual_status,
-                    }
+                'expected_status': expected_status,
+                'actual_status': actual_status,
+            }
             self.db.volume_update(context, volume_id, {'status': 'available'})
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
@@ -333,9 +333,9 @@ class BackupManager(manager.SchedulerDependentManager):
                     ' configured [%(configured_service)s] is not the'
                     ' backup service that was used to create this'
                     ' backup [%(backup_service)s].') % {
-                        'configured_service': configured_service,
-                        'backup_service': backup_service,
-                    }
+                'configured_service': configured_service,
+                'backup_service': backup_service,
+            }
             self.db.backup_update(context, backup_id, {'status': 'available'})
             self.db.volume_update(context, volume_id, {'status': 'error'})
             raise exception.InvalidBackup(reason=err)
@@ -388,9 +388,9 @@ class BackupManager(manager.SchedulerDependentManager):
         if actual_status != expected_status:
             err = _('Delete_backup aborted, expected backup status '
                     '%(expected_status)s but got %(actual_status)s.') % {
-                        'expected_status': expected_status,
-                        'actual_status': actual_status,
-                    }
+                'expected_status': expected_status,
+                'actual_status': actual_status,
+            }
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             raise exception.InvalidBackup(reason=err)
@@ -403,9 +403,9 @@ class BackupManager(manager.SchedulerDependentManager):
                         ' configured [%(configured_service)s] is not the'
                         ' backup service that was used to create this'
                         ' backup [%(backup_service)s].') % {
-                            'configured_service': configured_service,
-                            'backup_service': backup_service,
-                        }
+                    'configured_service': configured_service,
+                    'backup_service': backup_service,
+                }
                 self.db.backup_update(context, backup_id,
                                       {'status': 'error'})
                 raise exception.InvalidBackup(reason=err)
@@ -525,7 +525,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 self.db.backup_update(context,
                                       backup_id,
                                       {'status': 'error',
-                                      'fail_reason': msg})
+                                       'fail_reason': msg})
                 raise exception.InvalidBackup(reason=msg)
 
             required_import_options = ['display_name',

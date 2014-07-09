@@ -324,8 +324,8 @@ class TSMBackupDriver(BackupDriver):
             restore_cmd.append('-replace=yes')  # suppress prompt
 
         restore_cmd.extend(['-quiet',
-                           '-password=%s' % self.tsm_password,
-                           backup_path])
+                            '-password=%s' % self.tsm_password,
+                            backup_path])
 
         if restore_path != backup_path:
             restore_cmd.append(restore_path)

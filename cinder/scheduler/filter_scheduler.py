@@ -176,7 +176,7 @@ class FilterScheduler(driver.Scheduler):
                     'volume_id': volume_id,
                     'last_host': last_host,
                     'exc': exc,
-                }
+        }
         LOG.error(msg)
 
     def _populate_retry(self, filter_properties, properties):
@@ -208,7 +208,7 @@ class FilterScheduler(driver.Scheduler):
                     "volume %(volume_id)s") % {
                         'max_attempts': max_attempts,
                         'volume_id': volume_id,
-                    }
+            }
             raise exception.NoValidHost(reason=msg)
 
     def _get_weighted_candidates(self, context, request_spec,

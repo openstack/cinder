@@ -222,10 +222,10 @@ class HostController(wsgi.Controller):
         snap_count_total = 0
         snap_sum_total = 0
         resources = [{'resource': {'host': host, 'project': '(total)',
-                      'volume_count': str(count),
-                      'total_volume_gb': str(sum),
-                      'snapshot_count': str(snap_count_total),
-                      'total_snapshot_gb': str(snap_sum_total)}}]
+                                   'volume_count': str(count),
+                                   'total_volume_gb': str(sum),
+                                   'snapshot_count': str(snap_count_total),
+                                   'total_snapshot_gb': str(snap_sum_total)}}]
 
         project_ids = [v['project_id'] for v in volume_refs]
         project_ids = list(set(project_ids))

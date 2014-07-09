@@ -212,8 +212,8 @@ class EMCVnxCli(object):
                      'out': out})
         if rc == 97:
             msg = (_('The LUN cannot be expanded or shrunk because '
-                   'it has snapshots. Command to extend the specified '
-                   'volume failed.'))
+                     'it has snapshots. Command to extend the specified '
+                     'volume failed.'))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         if rc != 0:
@@ -601,9 +601,9 @@ class EMCVnxCli(object):
 
                     if len(host_lun_id_list) >= self.max_luns:
                         msg = (_('The storage group has reached the '
-                               'maximum capacity of LUNs. '
-                               'Command to add LUN for volume - %s '
-                               'in storagegroup failed') % (volumename))
+                                 'maximum capacity of LUNs. '
+                                 'Command to add LUN for volume - %s '
+                                 'in storagegroup failed') % (volumename))
                         LOG.error(msg)
                         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -611,10 +611,10 @@ class EMCVnxCli(object):
 
                     if host_lun_id is None:
                         msg = (_('Unable to get new host lun id. Please '
-                               'check if the storage group can accommodate '
-                               'new LUN. '
-                               'Command to add LUN for volume - %s '
-                               'in storagegroup failed') % (volumename))
+                                 'check if the storage group can accommodate '
+                                 'new LUN. '
+                                 'Command to add LUN for volume - %s '
+                                 'in storagegroup failed') % (volumename))
                         LOG.error(msg)
                         raise exception.VolumeBackendAPIException(data=msg)
                 else:
