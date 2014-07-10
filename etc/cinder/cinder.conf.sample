@@ -1993,6 +1993,61 @@
 
 
 #
+# Options defined in cinder.volume.drivers.zfssa.zfssaiscsi
+#
+
+# Storage pool name. (string value)
+#zfssa_pool=<None>
+
+# Project name. (string value)
+#zfssa_project=<None>
+
+# Block size: 512, 1k, 2k, 4k, 8k, 16k, 32k, 64k, 128k.
+# (string value)
+#zfssa_lun_volblocksize=8k
+
+# Flag to enable sparse (thin-provisioned): True, False.
+# (boolean value)
+#zfssa_lun_sparse=false
+
+# Data compression-off, lzjb, gzip-2, gzip, gzip-9. (string
+# value)
+#zfssa_lun_compression=
+
+# Synchronous write bias-latency, throughput. (string value)
+#zfssa_lun_logbias=
+
+# iSCSI initiator group. (string value)
+#zfssa_initiator_group=
+
+# iSCSI initiator IQNs. (comma separated) (string value)
+#zfssa_initiator=
+
+# iSCSI initiator CHAP user. (string value)
+#zfssa_initiator_user=
+
+# iSCSI initiator CHAP password. (string value)
+#zfssa_initiator_password=
+
+# iSCSI target group name. (string value)
+#zfssa_target_group=tgt-grp
+
+# iSCSI target CHAP user. (string value)
+#zfssa_target_user=
+
+# iSCSI target CHAP password. (string value)
+#zfssa_target_password=
+
+# iSCSI target portal (Data-IP:Port, w.x.y.z:3260). (string
+# value)
+#zfssa_target_portal=<None>
+
+# Network interfaces of iSCSI targets. (comma separated)
+# (string value)
+#zfssa_target_interfaces=<None>
+
+
+#
 # Options defined in cinder.volume.manager
 #
 
