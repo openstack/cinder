@@ -1251,7 +1251,7 @@ class HP3PARCommon(object):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         :returns (False, None) if the driver does not support migration,
-                 (True, None) if sucessful
+                 (True, None) if successful
 
         """
 
