@@ -35,7 +35,7 @@ def get_moref(value, type):
 
     :param value: value for the managed object
     :param type: type of the managed object
-    :return: Managed object reference with with input value and type
+    :return: Managed object reference with input value and type
     """
     moref = suds.sudsobject.Property(value)
     moref._type = type

@@ -2061,7 +2061,7 @@ def qos_specs_create(context, values):
             # Insert a root entry for QoS specs
             specs_root = models.QualityOfServiceSpecs()
             root = dict(id=specs_id)
-            # 'QoS_Specs_Name' is a internal reserved key to store
+            # 'QoS_Specs_Name' is an internal reserved key to store
             # the name of QoS specs
             root['key'] = 'QoS_Specs_Name'
             root['value'] = values['name']
@@ -2282,7 +2282,7 @@ def _qos_specs_get_item(context, qos_specs_id, key, session=None):
 
 @require_admin_context
 def qos_specs_update(context, qos_specs_id, specs):
-    """Make updates to a existing qos specs.
+    """Make updates to an existing qos specs.
 
     Perform add, update or delete key/values to a qos specs.
     """

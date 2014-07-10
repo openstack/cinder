@@ -308,7 +308,7 @@ class TSMBackupDriver(BackupDriver):
         """Perform the actual restore operation.
 
         :param backup_path: the path the backup was created from, this
-        identifes the backup to tsm
+        identifies the backup to tsm
         :param restore_path: volume path to restore into
         :param vol_id: volume id
         :param backup_mode: mode used to create the backup ('image' or 'file')

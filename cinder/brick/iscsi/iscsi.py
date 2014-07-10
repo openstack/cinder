@@ -49,11 +49,11 @@ class TargetAdmin(executor.Executor):
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
-        """Create a iSCSI target and logical unit."""
+        """Create an iSCSI target and logical unit."""
         raise NotImplementedError()
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-        """Remove a iSCSI target and logical unit."""
+        """Remove an iSCSI target and logical unit."""
         raise NotImplementedError()
 
     def _new_target(self, name, tid, **kwargs):
@@ -284,7 +284,7 @@ class TgtAdm(TargetAdmin):
         # For now work-around by checking if the target was deleted,
         # if it wasn't, try again without the force.
 
-        # This will NOT do any good for the case of mutliple sessions
+        # This will NOT do any good for the case of multiple sessions
         # which the force was aded for but it will however address
         # the cases pointed out in bug:
         #    https://bugs.launchpad.net/cinder/+bug/1304122

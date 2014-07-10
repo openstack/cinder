@@ -254,7 +254,7 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
                 'type': 'source_vol',
             })
         elif kwargs.get('image_id'):
-            # We are making a image based volume instead of a raw volume.
+            # We are making an image based volume instead of a raw volume.
             image_href = kwargs['image_id']
             image_service, image_id = get_remote_image_service(context,
                                                                image_href)
@@ -329,7 +329,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         """Enable bootable flag and properly handle glance metadata.
 
         Caller should provide one and only one of snapshot_id,source_volid
-        and image_id. If an image_id specified, a image_meta should also be
+        and image_id. If an image_id specified, an image_meta should also be
         provided, otherwise will be treated as an empty dictionary.
         """
 

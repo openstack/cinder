@@ -925,7 +925,7 @@ class VolumeApiTest(test.TestCase):
             volumes_links = res_dict['volumes_links']
             _verify_links(volumes_links, key)
 
-        # Number of volumes less then max, do not include
+        # Number of volumes less than max, do not include
         def stub_volume_get_all2(context, marker, limit,
                                  sort_key, sort_dir,
                                  filters=None,
@@ -943,7 +943,7 @@ class VolumeApiTest(test.TestCase):
             self.assertEqual(len(res_dict['volumes']), 100)
             self.assertFalse('volumes_links' in res_dict)
 
-        # Number of volumes more then the max, include next link
+        # Number of volumes more than the max, include next link
         def stub_volume_get_all3(context, marker, limit,
                                  sort_key, sort_dir,
                                  filters=None,
@@ -961,7 +961,7 @@ class VolumeApiTest(test.TestCase):
             self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
             volumes_links = res_dict['volumes_links']
             _verify_links(volumes_links, key)
-        # Pass a limit that is greater then the max and the total number of
+        # Pass a limit that is greater than the max and the total number of
         # volumes, ensure only the maximum is returned and that the next
         # link is present
         for key, fn in zip(api_keys, fns):

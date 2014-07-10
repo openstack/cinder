@@ -51,7 +51,7 @@ CONF.register_opts(image_helper_opt)
 
 
 def qemu_img_info(path):
-    """Return a object containing the parsed output from qemu-img info."""
+    """Return an object containing the parsed output from qemu-img info."""
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
         cmd = cmd[2:]

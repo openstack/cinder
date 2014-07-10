@@ -914,7 +914,7 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
         # Raise error as if the copyoffload file can not be found
         drv._clone_file_dst_exists = mock.Mock(side_effect=OSError())
 
-        # Verify the orignal error is propagated
+        # Verify the original error is propagated
         self.assertRaises(OSError, drv._try_copyoffload,
                           context, volume, image_service, image_id)
 

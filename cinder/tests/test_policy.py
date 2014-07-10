@@ -198,7 +198,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         self.assertTrue(ctx.is_admin)
 
     def test_custom_admin_role_is_admin(self):
-        # define explict rules for context_is_admin
+        # define explicit rules for context_is_admin
         rules = {
             'context_is_admin': [["role:administrator"], ["role:johnny-admin"]]
         }

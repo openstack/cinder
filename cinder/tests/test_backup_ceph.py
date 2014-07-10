@@ -63,7 +63,7 @@ def common_mocks(f):
     """Decorator to set mocks common to all tests.
 
     The point of doing these mocks here is so that we don't accidentally set
-    mocks that can't/dont't get unset.
+    mocks that can't/don't get unset.
     """
     def _common_inner_inner1(inst, *args, **kwargs):
         # NOTE(dosaboy): mock Popen to, by default, raise Exception in order to
@@ -1037,7 +1037,7 @@ def common_meta_backup_mocks(f):
     """Decorator to set mocks common to all metadata backup tests.
 
     The point of doing these mocks here is so that we don't accidentally set
-    mocks that can't/dont't get unset.
+    mocks that can't/don't get unset.
     """
     def _common_inner_inner1(inst, *args, **kwargs):
         @mock.patch('cinder.backup.drivers.ceph.rbd', spec=object)
