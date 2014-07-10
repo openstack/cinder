@@ -2199,6 +2199,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.assertRaises(exception.InvalidVolume, volume_api.begin_detaching,
                           self.context, volume)
+        volume['status'] = "in-use"
+        volume['attach_status'] = "detached"
+        # Should raise an error since not attached
+        self.assertRaises(exception.InvalidVolume, volume_api.begin_detaching,
+                          self.context, volume)
+        volume['attach_status'] = "attached"
+        # Ensure when attached no exception raised
+        volume_api.begin_detaching(self.context, volume)
 
     def test_begin_roll_detaching_volume(self):
         """Test begin_detaching and roll_detaching functions."""

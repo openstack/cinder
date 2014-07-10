@@ -392,10 +392,10 @@ class API(base.Base):
         if volume['migration_status']:
             return
 
-        if (volume['status'] != 'in-use' and
+        if (volume['status'] != 'in-use' or
                 volume['attach_status'] != 'attached'):
             msg = (_("Unable to detach volume. Volume status must be 'in-use' "
-                     "and attached_status must be 'attached' to detach. "
+                     "and attach_status must be 'attached' to detach. "
                      "Currently: status: '%(status)s', "
                      "attach_status: '%(attach_status)s'") %
                    {'status': volume['status'],
