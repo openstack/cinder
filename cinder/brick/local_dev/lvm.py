@@ -566,7 +566,6 @@ class LVM(executor.Executor):
                           check_exit_code=False)
 
         try:
-            need_force_remove = False
             # LV removal seems to be a race with udev in
             # some cases (see LP #1270192), so we do it in several steps:
 
@@ -583,15 +582,11 @@ class LVM(executor.Executor):
                         'RESPONSE: %(response)s') %
                         {'command': err.cmd, 'response': err.stderr})
                 LOG.debug(mesg)
-                need_force_remove = True
 
             run_udevadm_settle()
 
-            cmd = ['lvremove', ]
-
-            # if deactivation failed, use the --force, lvm!
-            if need_force_remove:
-                cmd.append('-f')
+            # Note(jdg): use -f for bug #1336811
+            cmd = ['lvremove', '-f']
             cmd.append('%s/%s' % (self.vg_name, name))
             self._execute(*cmd,
                           root_helper=self._root_helper, run_as_root=True)
