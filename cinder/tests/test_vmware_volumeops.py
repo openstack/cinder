@@ -635,20 +635,58 @@ class VolumeOpsTestCase(test.TestCase):
                                                         'summary')
 
     def test_get_relocate_spec(self):
+
+        delete_disk_attribute = True
+
+        def _create_side_effect(type):
+            obj = mock.Mock()
+            if type == "ns0:VirtualDiskFlatVer2BackingInfo":
+                del obj.eagerlyScrub
+            elif (type == "ns0:VirtualMachineRelocateSpec" and
+                  delete_disk_attribute):
+                    del obj.disk
+            else:
+                pass
+            return obj
+
         factory = self.session.vim.client.factory
-        spec = mock.Mock(spec=object)
-        factory.create.return_value = spec
+        factory.create.side_effect = _create_side_effect
+
         datastore = mock.sentinel.datastore
         resource_pool = mock.sentinel.resource_pool
         host = mock.sentinel.host
         disk_move_type = mock.sentinel.disk_move_type
         ret = self.vops._get_relocate_spec(datastore, resource_pool, host,
                                            disk_move_type)
-        self.assertEqual(spec, ret)
+
         self.assertEqual(datastore, ret.datastore)
         self.assertEqual(resource_pool, ret.pool)
         self.assertEqual(host, ret.host)
         self.assertEqual(disk_move_type, ret.diskMoveType)
+
+        # Test with disk locator.
+        delete_disk_attribute = False
+        disk_type = 'thin'
+        disk_device = mock.Mock()
+        ret = self.vops._get_relocate_spec(datastore, resource_pool, host,
+                                           disk_move_type, disk_type,
+                                           disk_device)
+
+        factory.create.side_effect = None
+        self.assertEqual(datastore, ret.datastore)
+        self.assertEqual(resource_pool, ret.pool)
+        self.assertEqual(host, ret.host)
+        self.assertEqual(disk_move_type, ret.diskMoveType)
+        self.assertIsInstance(ret.disk, list)
+        self.assertEqual(1, len(ret.disk))
+        disk_locator = ret.disk[0]
+        self.assertEqual(datastore, disk_locator.datastore)
+        self.assertEqual(disk_device.key, disk_locator.diskId)
+        backing = disk_locator.diskBackingInfo
+        self.assertIsInstance(backing.thinProvisioned, bool)
+        self.assertTrue(backing.thinProvisioned)
+        self.assertEqual('', backing.fileName)
+        self.assertEqual('persistent', backing.diskMode)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_get_relocate_spec')
@@ -792,22 +830,48 @@ class VolumeOpsTestCase(test.TestCase):
             self.assertEqual(folder, ret)
             get_parent.assert_called_once_with(backing, 'Folder')
 
-    def test_get_clone_spec(self):
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_relocate_spec')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_disk_device')
+    def test_get_clone_spec(self, get_disk_device, get_relocate_spec):
         factory = self.session.vim.client.factory
-        spec = mock.Mock(spec=object)
-        factory.create.return_value = spec
+        factory.create.side_effect = lambda *args: mock.Mock()
+        relocate_spec = mock.sentinel.relocate_spec
+        get_relocate_spec.return_value = relocate_spec
+
         datastore = mock.sentinel.datastore
         disk_move_type = mock.sentinel.disk_move_type
         snapshot = mock.sentinel.snapshot
-        ret = self.vops._get_clone_spec(datastore, disk_move_type, snapshot)
-        self.assertEqual(spec, ret)
+        disk_type = None
+        backing = mock.sentinel.backing
+        ret = self.vops._get_clone_spec(datastore, disk_move_type, snapshot,
+                                        backing, disk_type)
+
+        self.assertEqual(relocate_spec, ret.location)
+        self.assertFalse(ret.powerOn)
+        self.assertFalse(ret.template)
         self.assertEqual(snapshot, ret.snapshot)
-        self.assertEqual(spec, ret.location)
-        self.assertEqual(datastore, ret.location.datastore)
-        self.assertEqual(disk_move_type, ret.location.diskMoveType)
-        expected_calls = [mock.call('ns0:VirtualMachineRelocateSpec'),
-                          mock.call('ns0:VirtualMachineCloneSpec')]
-        factory.create.assert_has_calls(expected_calls, any_order=True)
+        get_relocate_spec.assert_called_once_with(datastore, None, None,
+                                                  disk_move_type, disk_type,
+                                                  None)
+
+        disk_device = mock.sentinel.disk_device
+        get_disk_device.return_value = disk_device
+
+        disk_type = 'thin'
+        ret = self.vops._get_clone_spec(datastore, disk_move_type, snapshot,
+                                        backing, disk_type)
+
+        factory.create.side_effect = None
+        self.assertEqual(relocate_spec, ret.location)
+        self.assertFalse(ret.powerOn)
+        self.assertFalse(ret.template)
+        self.assertEqual(snapshot, ret.snapshot)
+        get_disk_device.assert_called_once_with(backing)
+        get_relocate_spec.assert_called_with(datastore, None, None,
+                                             disk_move_type, disk_type,
+                                             disk_device)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_get_clone_spec')
@@ -815,7 +879,8 @@ class VolumeOpsTestCase(test.TestCase):
         folder = mock.Mock(name='folder', spec=object)
         folder._type = 'Folder'
         task = mock.sentinel.task
-        self.session.invoke_api.side_effect = [folder, task, folder, task]
+        self.session.invoke_api.side_effect = [folder, task, folder, task,
+                                               folder, task]
         task_info = mock.Mock(spec=object)
         task_info.result = mock.sentinel.new_backing
         self.session.wait_for_task.return_value = task_info
@@ -833,7 +898,8 @@ class VolumeOpsTestCase(test.TestCase):
         # verify calls
         self.assertEqual(mock.sentinel.new_backing, ret)
         disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
-        get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot)
+        get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot,
+                                          backing, None)
         expected = [mock.call(vim_util, 'get_object_property',
                               self.session.vim, backing, 'parent'),
                     mock.call(self.session.vim, 'CloneVM_Task', backing,
@@ -842,17 +908,32 @@ class VolumeOpsTestCase(test.TestCase):
 
         # Test linked clone_backing
         clone_type = volumeops.LINKED_CLONE_TYPE
+        self.session.invoke_api.reset_mock()
         ret = self.vops.clone_backing(name, backing, snapshot, clone_type,
                                       datastore)
         # verify calls
         self.assertEqual(mock.sentinel.new_backing, ret)
         disk_move_type = 'createNewChildDiskBacking'
-        get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot)
+        get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot,
+                                          backing, None)
         expected = [mock.call(vim_util, 'get_object_property',
                               self.session.vim, backing, 'parent'),
                     mock.call(self.session.vim, 'CloneVM_Task', backing,
-                              folder=folder, name=name, spec=clone_spec),
-                    mock.call(vim_util, 'get_object_property',
+                              folder=folder, name=name, spec=clone_spec)]
+        self.assertEqual(expected, self.session.invoke_api.mock_calls)
+
+        # Test disk type conversion.
+        clone_type = None
+        disk_type = 'thin'
+        self.session.invoke_api.reset_mock()
+        ret = self.vops.clone_backing(name, backing, snapshot, clone_type,
+                                      datastore, disk_type)
+
+        self.assertEqual(mock.sentinel.new_backing, ret)
+        disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
+        get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot,
+                                          backing, disk_type)
+        expected = [mock.call(vim_util, 'get_object_property',
                               self.session.vim, backing, 'parent'),
                     mock.call(self.session.vim, 'CloneVM_Task', backing,
                               folder=folder, name=name, spec=clone_spec)]
@@ -943,6 +1024,9 @@ class VolumeOpsTestCase(test.TestCase):
         invoke_api.assert_called_once_with(vim_util, 'get_object_property',
                                            self.session.vim, backing,
                                            'config.hardware.device')
+
+        backing.__class__.__name__ = ' VirtualDiskSparseVer2BackingInfo'
+        self.assertRaises(AssertionError, self.vops.get_vmdk_path, backing)
 
     def test_create_virtual_disk(self):
         task = mock.Mock()
