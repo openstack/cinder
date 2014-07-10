@@ -46,7 +46,7 @@ from cinder.openstack.common import uuidutils
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
-options.set_defaults(sql_connection='sqlite:///$state_path/$sqlite_db',
+options.set_defaults(sql_connection='sqlite:///$state_path/cinder.sqlite',
                      sqlite_db='cinder.sqlite')
 
 _LOCK = threading.Lock()
