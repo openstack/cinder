@@ -19,10 +19,14 @@ import contextlib
 
 import mock
 from oslo_concurrency import processutils
+from oslo_utils import importutils
 from oslo_utils import units
+import six
 
+from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import sheepdog
 
 
@@ -58,7 +62,13 @@ class FakeImageService:
 class SheepdogTestCase(test.TestCase):
     def setUp(self):
         super(SheepdogTestCase, self).setUp()
-        self.driver = sheepdog.SheepdogDriver()
+        self.driver = sheepdog.SheepdogDriver(
+            configuration=conf.Configuration(None))
+
+        db_driver = self.driver.configuration.db_driver
+        self.db = importutils.import_module(db_driver)
+        self.driver.db = self.db
+        self.driver.do_setup(None)
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
@@ -126,6 +136,124 @@ class SheepdogTestCase(test.TestCase):
         self.driver.copy_image_to_volume(None, {'name': 'test',
                                                 'size': 1},
                                          FakeImageService(), None)
+
+    def test_create_cloned_volume(self):
+        src_vol = {
+            'project_id': 'testprjid',
+            'name': six.text_type('volume-00000001'),
+            'size': '20',
+            'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+        }
+        target_vol = {
+            'project_id': 'testprjid',
+            'name': six.text_type('volume-00000002'),
+            'size': '20',
+            'id': '582a1efa-be6a-11e4-a73b-0aa186c60fe0',
+        }
+
+        with mock.patch.object(self.driver,
+                               '_try_execute') as mock_exe:
+            self.driver.create_cloned_volume(target_vol, src_vol)
+
+            snapshot_name = src_vol['name'] + '-temp-snapshot'
+            qemu_src_volume_name = "sheepdog:%s" % src_vol['name']
+            qemu_snapshot_name = '%s:%s' % (qemu_src_volume_name,
+                                            snapshot_name)
+            qemu_target_volume_name = "sheepdog:%s" % target_vol['name']
+            calls = [
+                mock.call('qemu-img', 'snapshot', '-c',
+                          snapshot_name, qemu_src_volume_name),
+                mock.call('qemu-img', 'create', '-b',
+                          qemu_snapshot_name,
+                          qemu_target_volume_name,
+                          '%sG' % target_vol['size']),
+            ]
+            mock_exe.assert_has_calls(calls)
+
+    def test_create_cloned_volume_failure(self):
+        fake_name = six.text_type('volume-00000001')
+        fake_size = '20'
+        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
+                    'size': fake_size,
+                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+        src_vol = fake_vol
+
+        patch = mock.patch.object
+        with patch(self.driver, '_try_execute',
+                   side_effect=processutils.ProcessExecutionError):
+            with patch(self.driver, 'create_snapshot'):
+                with patch(self.driver, 'delete_snapshot'):
+                    self.assertRaises(exception.VolumeBackendAPIException,
+                                      self.driver.create_cloned_volume,
+                                      fake_vol,
+                                      src_vol)
+
+    def test_clone_image_success(self):
+        context = {}
+        fake_name = six.text_type('volume-00000001')
+        fake_size = '2'
+        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
+                    'size': fake_size,
+                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+
+        image_location = ('sheepdog:192.168.1.111:7000:Alice', None)
+        image_id = "caa4ffd0-fake-fake-fake-f8631a807f5a"
+        image_meta = {'id': image_id, 'size': 1, 'disk_format': 'raw'}
+        image_service = ''
+
+        patch = mock.patch.object
+        with patch(self.driver, '_try_execute', return_value=True):
+            with patch(self.driver, 'create_cloned_volume'):
+                with patch(self.driver, '_resize'):
+                    model_updated, cloned = self.driver.clone_image(
+                        context, fake_vol, image_location,
+                        image_meta, image_service)
+
+        self.assertTrue(cloned)
+        self.assertEqual("sheepdog:%s" % fake_name,
+                         model_updated['provider_location'])
+
+    def test_clone_image_failure(self):
+        context = {}
+        fake_vol = {}
+        image_location = ('image_location', None)
+        image_meta = {}
+        image_service = ''
+
+        with mock.patch.object(self.driver, '_is_cloneable',
+                               lambda *args: False):
+            result = self.driver.clone_image(
+                context, fake_vol, image_location, image_meta, image_service)
+            self.assertEqual(({}, False), result)
+
+    def test_is_cloneable(self):
+        uuid = '87f1b01c-f46c-4537-bd5d-23962f5f4316'
+        location = 'sheepdog:ip:port:%s' % uuid
+        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
+
+        with mock.patch.object(self.driver, '_try_execute') as try_execute:
+            self.assertTrue(
+                self.driver._is_cloneable(location, image_meta))
+            expected_cmd = ('collie', 'vdi', 'list',
+                            '--address', 'ip',
+                            '--port', 'port',
+                            uuid)
+            try_execute.assert_called_once_with(*expected_cmd)
+
+            # check returning False without executing a command
+            self.assertFalse(
+                self.driver._is_cloneable('invalid-location', image_meta))
+            self.assertFalse(
+                self.driver._is_cloneable(location, invalid_image_meta))
+            self.assertEqual(1, try_execute.call_count)
+
+        error = processutils.ProcessExecutionError
+        with mock.patch.object(self.driver, '_try_execute',
+                               side_effect=error) as fail_try_execute:
+            self.assertFalse(
+                self.driver._is_cloneable(location, image_meta))
+            fail_try_execute.assert_called_once_with(*expected_cmd)
 
     def test_extend_volume(self):
         fake_name = u'volume-00000001'
