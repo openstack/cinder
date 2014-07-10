@@ -50,6 +50,8 @@ from cinder import utils
 from cinder import version
 
 
+host_opt = cfg.StrOpt('host',
+                      help='Backend override of host value.')
 CONF = cfg.CONF
 
 
@@ -61,7 +63,9 @@ if __name__ == '__main__':
     launcher = service.get_launcher()
     if CONF.enabled_backends:
         for backend in CONF.enabled_backends:
-            host = "%s@%s" % (CONF.host, backend)
+            CONF.register_opts([host_opt], group=backend)
+            backend_host = getattr(CONF, backend).host
+            host = "%s@%s" % (backend_host or CONF.host, backend)
             server = service.Service.create(host=host,
                                             service_name=backend)
             launcher.launch_service(server)
