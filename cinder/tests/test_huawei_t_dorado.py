@@ -34,6 +34,7 @@ from cinder import exception
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import HuaweiVolumeDriver
 from cinder.volume.drivers.huawei import ssh_common
 from cinder.volume import volume_types
@@ -150,7 +151,8 @@ FAKE_SNAPSHOT = {'name': 'keke34fe-223f-dd33-4423-asdfghjklqwf',
 FAKE_CONNECTOR = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                   'wwpns': ['1000000164s45126'],
                   'wwnns': ['2000666666666565'],
-                  'host': 'fakehost'}
+                  'host': 'fakehost',
+                  'ip': '10.10.0.1'}
 
 RESPOOL_A_SIM = {'Size': '10240', 'Valid Size': '5120'}
 RESPOOL_B_SIM = {'Size': '10240', 'Valid Size': '10240'}
@@ -299,6 +301,11 @@ def create_fake_conf_file(filename):
     initiator.setAttribute('Name', 'iqn.1993-08.debian:01:ec2bff7ac3a3')
     initiator.setAttribute('TargetIP', '192.168.100.2')
     iscsi.appendChild(initiator)
+
+    os_type = doc.createElement('Host')
+    os_type.setAttribute('OSType', 'Linux')
+    os_type.setAttribute('HostIP', '10.10.0.1')
+    config.appendChild(os_type)
 
     tmp_file = open(filename, 'w')
     tmp_file.write(doc.toprettyxml(indent=''))
@@ -1080,6 +1087,13 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           tmp_driver.create_volume, FAKE_VOLUME)
         modify_conf(self.fake_conf_file, 'LUN/LUNType', 'Thick')
+        # Test OSType invalid
+        modify_conf(self.fake_conf_file, 'Host', 'invalid_type',
+                    attrib='OSType')
+        tmp_driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.assertRaises(exception.InvalidInput,
+                          tmp_driver.do_setup, None)
+        modify_conf(self.fake_conf_file, 'Host', 'Linux', attrib='OSType')
         # Test TargetIP not found
         modify_conf(self.fake_conf_file, 'iSCSI/DefaultTargetIP', '')
         modify_conf(self.fake_conf_file, 'iSCSI/Initiator', '', attrib='Name')
@@ -1643,3 +1657,59 @@ class SSHMethodTestCase(test.TestCase):
 
     def _fake_recv2(self, nBytes):
         raise socket.timeout()
+
+
+class HuaweiUtilsTestCase(test.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(HuaweiUtilsTestCase, self).__init__(*args, **kwargs)
+
+    def setUp(self):
+        super(HuaweiUtilsTestCase, self).setUp()
+
+        self.tmp_dir = tempfile.mkdtemp()
+        self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        create_fake_conf_file(self.fake_conf_file)
+
+    def tearDown(self):
+        if os.path.exists(self.fake_conf_file):
+            os.remove(self.fake_conf_file)
+        shutil.rmtree(self.tmp_dir)
+        super(HuaweiUtilsTestCase, self).tearDown()
+
+    def test_parse_xml_file_ioerror(self):
+        tmp_fonf_file = '/xxx/cinder_huawei_conf.xml'
+        self.assertRaises(IOError, huawei_utils.parse_xml_file, tmp_fonf_file)
+
+    def test_is_xml_item_exist(self):
+        root = huawei_utils.parse_xml_file(self.fake_conf_file)
+        res = huawei_utils.is_xml_item_exist(root, 'Storage/UserName')
+        self.assertTrue(res)
+        res = huawei_utils.is_xml_item_exist(root, 'xxx')
+        self.assertFalse(res)
+        res = huawei_utils.is_xml_item_exist(root, 'LUN/StoragePool', 'Name')
+        self.assertTrue(res)
+        res = huawei_utils.is_xml_item_exist(root, 'LUN/StoragePool', 'xxx')
+        self.assertFalse(res)
+
+    def test_is_xml_item_valid(self):
+        root = huawei_utils.parse_xml_file(self.fake_conf_file)
+        res = huawei_utils.is_xml_item_valid(root, 'LUN/LUNType',
+                                             ['Thin', 'Thick'])
+        self.assertTrue(res)
+        res = huawei_utils.is_xml_item_valid(root, 'LUN/LUNType', ['test'])
+        self.assertFalse(res)
+        res = huawei_utils.is_xml_item_valid(root, 'Host',
+                                             ['Linux', 'Windows'], 'OSType')
+        self.assertTrue(res)
+        res = huawei_utils.is_xml_item_valid(root, 'Host', ['test'], 'OSType')
+        self.assertFalse(res)
+
+    def test_get_conf_host_os_type(self):
+        # Default os is Linux
+        res = huawei_utils.get_conf_host_os_type('10.10.10.1',
+                                                 self.fake_conf_file)
+        self.assertEqual(res, '0')
+        modify_conf(self.fake_conf_file, 'Host', 'Windows', 'OSType')
+        res = huawei_utils.get_conf_host_os_type(FAKE_CONNECTOR['ip'],
+                                                 self.fake_conf_file)
+        self.assertEqual(res, '1')

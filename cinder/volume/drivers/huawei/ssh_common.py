@@ -34,6 +34,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume import volume_types
 
 
@@ -42,17 +43,6 @@ LOG = logging.getLogger(__name__)
 HOST_GROUP_NAME = 'HostGroup_OpenStack'
 HOST_NAME_PREFIX = 'Host_'
 VOL_AND_SNAP_NAME_PREFIX = 'OpenStack_'
-
-
-def parse_xml_file(filepath):
-    """Get root of xml file."""
-    try:
-        tree = ET.parse(filepath)
-        root = tree.getroot()
-        return root
-    except IOError as err:
-        LOG.error(_('parse_xml_file: %s') % err)
-        raise err
 
 
 def ssh_read(user, channel, cmd, timeout):
@@ -105,7 +95,7 @@ class TseriesCommon():
         self.hostgroup_id = None
         self.ssh_pool = None
         self.lock_ip = threading.Lock()
-        self.luncopy_list = []  # to storage LUNCopy name
+        self.luncopy_list = []  # to store LUNCopy name
 
     def do_setup(self, context):
         """Check config file."""
@@ -119,27 +109,34 @@ class TseriesCommon():
 
     def _check_conf_file(self):
         """Check config file, make sure essential items are set."""
-        root = parse_xml_file(self.xml_conf)
-        IP1 = root.findtext('Storage/ControllerIP0')
-        IP2 = root.findtext('Storage/ControllerIP1')
-        username = root.findtext('Storage/UserName')
-        pwd = root.findtext('Storage/UserPassword')
-        pool_node = root.findall('LUN/StoragePool')
+        root = huawei_utils.parse_xml_file(self.xml_conf)
+        check_list = ['Storage/ControllerIP0', 'Storage/ControllerIP1',
+                      'Storage/UserName', 'Storage/UserPassword']
+        for item in check_list:
+            if not huawei_utils.is_xml_item_exist(root, item):
+                err_msg = (_('_check_conf_file: Config file invalid. '
+                             '%s must be set.') % item)
+                LOG.error(err_msg)
+                raise exception.InvalidInput(reason=err_msg)
 
-        if (not IP1 or not IP2) or (not username) or (not pwd):
-            err_msg = (_('_check_conf_file: Config file invalid. Controler IP,'
-                         ' UserName and UserPassword must be set.'))
+        # make sure storage pool is set
+        if not huawei_utils.is_xml_item_exist(root, 'LUN/StoragePool', 'Name'):
+            err_msg = _('_check_conf_file: Config file invalid. '
+                        'StoragePool must be set.')
             LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
 
-        for pool in pool_node:
-            if pool.attrib['Name']:
-                return
-        # If pool_node is None or pool.attrib['Name'] is None.
-        err_msg = (_('_check_conf_file: Config file invalid. '
-                     'StoragePool must be set.'))
-        LOG.error(err_msg)
-        raise exception.InvalidInput(reason=err_msg)
+        # If setting os type, make sure it valid
+        if huawei_utils.is_xml_item_exist(root, 'Host', 'OSType'):
+            os_list = huawei_utils.os_type.keys()
+            if not huawei_utils.is_xml_item_valid(root, 'Host', os_list,
+                                                  'OSType'):
+                err_msg = (_('_check_conf_file: Config file invalid. '
+                             'Host OSType is invalid.\n'
+                             'The valid values are: %(os_list)s')
+                           % {'os_list': os_list})
+                LOG.error(err_msg)
+                raise exception.InvalidInput(reason=err_msg)
 
     def _get_login_info(self):
         """Get login IP, username and password from config file."""
@@ -356,7 +353,7 @@ class TseriesCommon():
                        'PrefetchTimes': '0',
                        'StoragePool': []}
 
-        root = parse_xml_file(self.xml_conf)
+        root = huawei_utils.parse_xml_file(self.xml_conf)
 
         luntype = root.findtext('LUN/LUNType')
         if luntype:
@@ -405,7 +402,7 @@ class TseriesCommon():
         maxpool_id = None
         maxpool_size = 0.0
         nameindex, sizeindex = ((1, 4) if luntype == 'Thin' else (5, 3))
-        pools_dev = sorted(pools_dev, key=lambda x: int(x[sizeindex]))
+        pools_dev = sorted(pools_dev, key=lambda x: float(x[sizeindex]))
         while len(pools_dev) > 0:
             pool = pools_dev.pop()
             if pool[nameindex] in pools_conf:
@@ -892,7 +889,7 @@ class TseriesCommon():
 
         return hostlun_id
 
-    def add_host(self, host_name, initiator=None):
+    def add_host(self, host_name, host_ip, initiator=None):
         """Create a host and add it to hostgroup."""
         # Create an OpenStack hostgroup if not created before.
         hostgroup_name = HOST_GROUP_NAME
@@ -913,7 +910,9 @@ class TseriesCommon():
         host_name = HOST_NAME_PREFIX + host_name
         host_id = self._get_host_id(host_name, self.hostgroup_id)
         if host_id is None:
-            self._create_host(host_name, self.hostgroup_id)
+            os_type = huawei_utils.get_conf_host_os_type(host_ip,
+                                                         self.xml_conf)
+            self._create_host(host_name, self.hostgroup_id, os_type)
             host_id = self._get_host_id(host_name, self.hostgroup_id)
 
         return host_id
@@ -955,11 +954,12 @@ class TseriesCommon():
                     return tmp_line[0]
         return None
 
-    def _create_host(self, hostname, hostgroupid):
+    def _create_host(self, hostname, hostgroupid, type):
         """Run CLI command to add host."""
-        cli_cmd = ('addhost -group %(groupid)s -n %(hostname)s -t 0'
+        cli_cmd = ('addhost -group %(groupid)s -n %(hostname)s -t %(type)s'
                    % {'groupid': hostgroupid,
-                      'hostname': hostname})
+                      'hostname': hostname,
+                      'type': type})
         out = self._execute_cli(cli_cmd)
 
         self._assert_cli_operate_out('_create_host',
@@ -1178,27 +1178,38 @@ class DoradoCommon(TseriesCommon):
 
     def _check_conf_file(self):
         """Check the config file, make sure the key elements are set."""
-        root = parse_xml_file(self.xml_conf)
+        root = huawei_utils.parse_xml_file(self.xml_conf)
         # Check login infomation
-        IP1 = root.findtext('Storage/ControllerIP0')
-        IP2 = root.findtext('Storage/ControllerIP1')
-        username = root.findtext('Storage/UserName')
-        pwd = root.findtext('Storage/UserPassword')
-        if (not IP1 and not IP2) or (not username) or (not pwd):
-            err_msg = (_('Config file invalid. Controler IP, UserName, '
-                         'UserPassword must be specified.'))
-            LOG.error(err_msg)
-            raise exception.InvalidInput(reason=err_msg)
+        check_list = ['Storage/ControllerIP0', 'Storage/ControllerIP1',
+                      'Storage/UserName', 'Storage/UserPassword']
+        for item in check_list:
+            if not huawei_utils.is_xml_item_exist(root, item):
+                err_msg = (_('_check_conf_file: Config file invalid. '
+                             '%s must be set.') % item)
+                LOG.error(err_msg)
+                raise exception.InvalidInput(reason=err_msg)
 
         # Check storage pool
         # No need for Dorado2100 G2
         self.login_info = self._get_login_info()
         self.device_type = self._get_device_type()
         if self.device_type == 'Dorado5100':
-            pool_node = root.findall('LUN/StoragePool')
-            if not pool_node:
+            if not huawei_utils.is_xml_item_exist(root, 'LUN/StoragePool',
+                                                  'Name'):
                 err_msg = (_('_check_conf_file: Config file invalid. '
                              'StoragePool must be specified.'))
+                LOG.error(err_msg)
+                raise exception.InvalidInput(reason=err_msg)
+
+        # If setting os type, make sure it valid
+        if huawei_utils.is_xml_item_exist(root, 'Host', 'OSType'):
+            os_list = huawei_utils.os_type.keys()
+            if not huawei_utils.is_xml_item_valid(root, 'Host', os_list,
+                                                  'OSType'):
+                err_msg = (_('_check_conf_file: Config file invalid. '
+                             'Host OSType is invalid.\n'
+                             'The valid values are: %(os_list)s')
+                           % {'os_list': os_list})
                 LOG.error(err_msg)
                 raise exception.InvalidInput(reason=err_msg)
 
@@ -1333,7 +1344,7 @@ class DoradoCommon(TseriesCommon):
                        'WriteType': '1',
                        'MirrorSwitch': '1'}
 
-        root = parse_xml_file(self.xml_conf)
+        root = huawei_utils.parse_xml_file(self.xml_conf)
 
         luntype = root.findtext('LUN/LUNType')
         if luntype:

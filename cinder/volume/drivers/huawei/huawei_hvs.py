@@ -34,11 +34,11 @@ class HuaweiHVSISCSIDriver(driver.ISCSIDriver):
     def do_setup(self, context):
         """Instantiate common class and log in storage system."""
         self.common = HVSCommon(configuration=self.configuration)
-        self.common.login()
 
     def check_for_setup_error(self):
         """Check configuration  file."""
         self.common._check_conf_file()
+        self.common.login()
 
     def create_volume(self, volume):
         """Create a volume."""
