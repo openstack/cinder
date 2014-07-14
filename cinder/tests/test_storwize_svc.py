@@ -21,6 +21,7 @@ Tests for the IBM Storwize family and SVC volume driver.
 import mock
 import random
 import re
+import time
 
 from cinder import context
 from cinder import exception
@@ -1455,7 +1456,8 @@ class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
 
 
 class StorwizeSVCDriverTestCase(test.TestCase):
-    def setUp(self):
+    @mock.patch.object(time, 'sleep')
+    def setUp(self, mock_sleep):
         super(StorwizeSVCDriverTestCase, self).setUp()
         self.USESIM = True
         if self.USESIM:
