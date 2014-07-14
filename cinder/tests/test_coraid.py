@@ -250,7 +250,7 @@ class CoraidDriverTestCase(test.TestCase):
         self.driver = coraid.CoraidDriver(configuration=configuration)
         self.driver.do_setup({})
 
-    def mock_volume_types(self, repositories=[]):
+    def mock_volume_types(self, repositories=None):
         if not repositories:
             repositories = [fake_repository_name]
         self.mox.StubOutWithMock(volume_types, 'get_volume_type_extra_specs')

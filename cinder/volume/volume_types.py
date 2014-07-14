@@ -33,8 +33,9 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-def create(context, name, extra_specs={}):
+def create(context, name, extra_specs=None):
     """Creates volume types."""
+    extra_specs = extra_specs or {}
     try:
         type_ref = db.volume_type_create(context,
                                          dict(name=name,
@@ -55,12 +56,13 @@ def destroy(context, id):
         db.volume_type_destroy(context, id)
 
 
-def get_all_types(context, inactive=0, search_opts={}):
+def get_all_types(context, inactive=0, search_opts=None):
     """Get all non-deleted volume_types.
 
     Pass true as argument if you want deleted volume types returned also.
 
     """
+    search_opts = search_opts or {}
     vol_types = db.volume_type_get_all(context, inactive)
 
     if search_opts:

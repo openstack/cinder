@@ -57,8 +57,9 @@ class UsageInfoTestCase(test.TestCase):
         self.volume_size = 0
         self.context = context.RequestContext(self.user_id, self.project_id)
 
-    def _create_volume(self, params={}):
+    def _create_volume(self, params=None):
         """Create a test volume."""
+        params = params or {}
         vol = {}
         vol['snapshot_id'] = self.snapshot_id
         vol['user_id'] = self.user_id

@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import re
 
 """
 Guidelines for writing new hacking checks
@@ -45,5 +46,13 @@ def no_translate_debug_logs(logical_line, filename):
         yield(0, "N319 Don't translate debug level logs")
 
 
+def no_mutable_default_args(logical_line):
+    msg = "N322: Method's default argument shouldn't be mutable!"
+    mutable_default_args = re.compile(r"^\s*def .+\((.+=\{\}|.+=\[\])")
+    if mutable_default_args.match(logical_line):
+        yield (0, msg)
+
+
 def factory(register):
     register(no_translate_debug_logs)
+    register(no_mutable_default_args)

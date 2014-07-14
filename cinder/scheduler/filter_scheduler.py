@@ -99,9 +99,10 @@ class FilterScheduler(driver.Scheduler):
                % {'id': request_spec['volume_id'], 'host': host})
         raise exception.NoValidHost(reason=msg)
 
-    def find_retype_host(self, context, request_spec, filter_properties={},
+    def find_retype_host(self, context, request_spec, filter_properties=None,
                          migration_policy='never'):
         """Find a host that can accept the volume with its new type."""
+        filter_properties = filter_properties or {}
         current_host = request_spec['volume_properties']['host']
 
         # The volume already exists on this host, and so we shouldn't check if
