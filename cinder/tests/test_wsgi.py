@@ -190,7 +190,8 @@ class ExceptionTest(test.TestCase):
         # also we don't want to install the _() system-wide and
         # potentially break other test cases, so we do it here for this
         # test suite only.
-        gettextutils.install('', lazy=True)
+        gettextutils.install('')
+        gettextutils.enable_lazy()
         from cinder.api.middleware import fault
         return fault.FaultWrapper(inner_app)
 
