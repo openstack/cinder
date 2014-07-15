@@ -65,11 +65,22 @@ CONF.register_opts(zone_manager_opts, 'fc-zone-manager')
 
 
 class ZoneManager(fc_common.FCCommon):
-    """Manages Connection control during attach/detach."""
+    """Manages Connection control during attach/detach.
 
-    VERSION = "1.0"
+       Version History:
+           1.0 - Initial version
+           1.0.1 - Added __new__ for singleton
+
+    """
+
+    VERSION = "1.0.1"
     driver = None
     fabric_names = []
+
+    def __new__(class_, *args, **kwargs):
+        if not hasattr(class_, "_instance"):
+            class_._instance = object.__new__(class_, *args, **kwargs)
+        return class_._instance
 
     def __init__(self, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
@@ -79,6 +90,9 @@ class ZoneManager(fc_common.FCCommon):
         if self.configuration:
             self.configuration.append_config_values(zone_manager_opts)
 
+        self._build_driver()
+
+    def _build_driver(self):
         zone_driver = self.configuration.zone_driver
         LOG.debug("Zone Driver from config: {%s}", zone_driver)
 

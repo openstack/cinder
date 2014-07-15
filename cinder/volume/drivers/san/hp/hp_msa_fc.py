@@ -18,6 +18,7 @@ from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_msa_common as hpcommon
 from cinder.volume.drivers.san import san
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class HPMSAFCDriver(cinder.volume.driver.FibreChannelDriver):
         finally:
             self.common.client_logout()
 
+    @fczm_utils.AddFCZone
     @utils.synchronized('msa', external=True)
     def initialize_connection(self, volume, connector):
         self.common.client_login()
@@ -97,6 +99,7 @@ class HPMSAFCDriver(cinder.volume.driver.FibreChannelDriver):
         finally:
             self.common.client_logout()
 
+    @fczm_utils.RemoveFCZone
     @utils.synchronized('msa', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         self.common.client_login()

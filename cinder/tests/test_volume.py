@@ -3538,14 +3538,9 @@ class FibreChannelTestCase(DriverTestCase):
     """Test Case for FibreChannelDriver."""
     driver_name = "cinder.volume.driver.FibreChannelDriver"
 
-    def setUp(self):
-        super(FibreChannelTestCase, self).setUp()
-        self.driver = driver.FibreChannelDriver()
-        self.driver.do_setup(None)
-
     def test_initialize_connection(self):
         self.assertRaises(NotImplementedError,
-                          self.driver.initialize_connection, {}, {})
+                          self.volume.driver.initialize_connection, {}, {})
 
     def test_validate_connector(self):
         """validate_connector() successful use case.
@@ -3555,33 +3550,33 @@ class FibreChannelTestCase(DriverTestCase):
         """
         connector = {'wwpns': ["not empty"],
                      'wwnns': ["not empty"]}
-        self.driver.validate_connector(connector)
+        self.volume.driver.validate_connector(connector)
 
     def test_validate_connector_no_wwpns(self):
         """validate_connector() throws exception when it has no wwpns."""
         connector = {'wwnns': ["not empty"]}
         self.assertRaises(exception.VolumeDriverException,
-                          self.driver.validate_connector, connector)
+                          self.volume.driver.validate_connector, connector)
 
     def test_validate_connector_empty_wwpns(self):
         """validate_connector() throws exception when it has empty wwpns."""
         connector = {'wwpns': [],
                      'wwnns': ["not empty"]}
         self.assertRaises(exception.VolumeDriverException,
-                          self.driver.validate_connector, connector)
+                          self.volume.driver.validate_connector, connector)
 
     def test_validate_connector_no_wwnns(self):
         """validate_connector() throws exception when it has no wwnns."""
         connector = {'wwpns': ["not empty"]}
         self.assertRaises(exception.VolumeDriverException,
-                          self.driver.validate_connector, connector)
+                          self.volume.driver.validate_connector, connector)
 
     def test_validate_connector_empty_wwnns(self):
         """validate_connector() throws exception when it has empty wwnns."""
         connector = {'wwnns': [],
                      'wwpns': ["not empty"]}
         self.assertRaises(exception.VolumeDriverException,
-                          self.driver.validate_connector, connector)
+                          self.volume.driver.validate_connector, connector)
 
 
 class VolumePolicyTestCase(test.TestCase):

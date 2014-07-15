@@ -16,6 +16,7 @@ from cinder.openstack.common import log as logging
 from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
+from cinder.zonemanager import utils as fczm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -75,6 +76,42 @@ class FakeISERDriver(FakeISCSIDriver):
         """Execute that simply logs the command."""
         LOG.debug("FAKE ISER: %s", cmd)
         return (None, None)
+
+
+class FakeFibreChannelDriver(driver.FibreChannelDriver):
+
+    @fczm_utils.AddFCZone
+    def initialize_connection(self, volume, connector):
+        return {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
+            }}
+
+    @fczm_utils.AddFCZone
+    def no_zone_initialize_connection(self, volume, connector):
+        """This shouldn't call the ZM."""
+        return {
+            'driver_volume_type': 'bogus',
+            'data': {
+                'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
+            }}
+
+    @fczm_utils.RemoveFCZone
+    def terminate_connection(self, volume, connector, **kwargs):
+        return {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
+            }}
+
+    @fczm_utils.RemoveFCZone
+    def no_zone_terminate_connection(self, volume, connector, **kwargs):
+        return {
+            'driver_volume_type': 'bogus',
+            'data': {
+                'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
+            }}
 
 
 class LoggingVolumeDriver(driver.VolumeDriver):
