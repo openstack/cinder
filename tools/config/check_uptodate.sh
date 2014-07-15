@@ -20,6 +20,9 @@ tools/config/generate_sample.sh -b ./ -p ${PROJECT_NAME} -o ${TEMPDIR}
 if ! diff -u ${TEMPDIR}/${CFGFILE_NAME} ${CFGFILE}
 then
    echo "${0##*/}: ${PROJECT_NAME}.conf.sample is not up to date."
-   echo "${0##*/}: Please run ${0%%${0##*/}}generate_sample.sh."
+   echo "${0##*/}: Please run ${0%%${0##*/}}generate_sample.sh from within a VENV."
+   echo "  \'source .venv/bin/activate; generate_sample.sh\'"
+   echo "OR simply run tox genconfig"
+   echo "  \'tox -egenconfig\'"
    exit 1
 fi
