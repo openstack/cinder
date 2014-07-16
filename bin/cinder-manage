@@ -294,6 +294,22 @@ class VolumeCommands(object):
         cctxt.cast(ctxt, "attach_volume", instance_id=instance['id'],
                    volume_id=volume['id'], mountpoint=volume['mountpoint'])
 
+    @args('--currenthost', required=True, help='Existing volume host name')
+    @args('--newhost', required=True, help='New volume host name')
+    def update_host(self, currenthost, newhost):
+        """Modify the host name asscoiated with
+        a volume.  Particularly to recover from
+        cases where one has moved their Cinder Volume
+        node, or modfied their backend_name in a
+        multi-backend config.
+        """
+        ctxt = context.get_admin_context()
+        volumes = db.volume_get_all_by_host(ctxt,
+                                            currenthost)
+        for v in volumes:
+            db.volume_update(ctxt, v['id'],
+                             {'host': newhost})
+
 
 class ConfigCommands(object):
     """Class for exposing the flags defined by flag_file(s)."""
