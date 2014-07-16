@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # cinder documentation build configuration file, created by
 # sphinx-quickstart on Sat May  1 15:17:47 2010.
 #
