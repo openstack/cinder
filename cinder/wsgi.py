@@ -36,8 +36,8 @@ import webob.dec
 import webob.exc
 
 from cinder import exception
+from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import network_utils
 from cinder import utils
 
 
@@ -112,18 +112,15 @@ class Server(object):
         self._server = None
         self._socket = None
         self._protocol = protocol
-        self._pool = eventlet.GreenPool(pool_size or self.default_pool_size)
+        self.pool_size = pool_size or self.default_pool_size
+        self._pool = eventlet.GreenPool(self.pool_size)
         self._logger = logging.getLogger("eventlet.wsgi.server")
         self._wsgi_logger = logging.WritableLogger(self._logger)
 
         if backlog < 1:
             raise exception.InvalidInput(
                 reason='The backlog must be more than 1')
-        self._socket = self._get_socket(self._host,
-                                        self._port,
-                                        backlog=backlog)
 
-    def _get_socket(self, host, port, backlog):
         bind_addr = (host, port)
         # TODO(dims): eventlet's green dns/socket module does not actually
         # support IPv6 in getaddrinfo(). We need to get around this in the
@@ -141,90 +138,95 @@ class Server(object):
         cert_file = CONF.ssl_cert_file
         key_file = CONF.ssl_key_file
         ca_file = CONF.ssl_ca_file
-        use_ssl = cert_file or key_file
+        self._use_ssl = cert_file or key_file
 
         if cert_file and not os.path.exists(cert_file):
-            raise RuntimeError(_("Unable to find cert_file : %s") % cert_file)
+            raise RuntimeError(_("Unable to find cert_file : %s")
+                               % cert_file)
 
         if ca_file and not os.path.exists(ca_file):
             raise RuntimeError(_("Unable to find ca_file : %s") % ca_file)
 
         if key_file and not os.path.exists(key_file):
-            raise RuntimeError(_("Unable to find key_file : %s") % key_file)
+            raise RuntimeError(_("Unable to find key_file : %s")
+                               % key_file)
 
-        if use_ssl and (not cert_file or not key_file):
-            raise RuntimeError(_("When running server in SSL mode, you must "
-                                 "specify both a cert_file and key_file "
-                                 "option value in your configuration file"))
+        if self._use_ssl and (not cert_file or not key_file):
+            raise RuntimeError(_("When running server in SSL mode, you "
+                                 "must specify both a cert_file and "
+                                 "key_file option value in your "
+                                 "configuration file."))
 
-        def wrap_ssl(sock):
-            ssl_kwargs = {
-                'server_side': True,
-                'certfile': cert_file,
-                'keyfile': key_file,
-                'cert_reqs': ssl.CERT_NONE,
-            }
-
-            if CONF.ssl_ca_file:
-                ssl_kwargs['ca_certs'] = ca_file
-                ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
-
-            return ssl.wrap_socket(sock, **ssl_kwargs)
-
-        sock = None
         retry_until = time.time() + 30
-        while not sock and time.time() < retry_until:
+        while not self._socket and time.time() < retry_until:
             try:
-                sock = eventlet.listen(bind_addr,
-                                       backlog=backlog,
-                                       family=family)
-                if use_ssl:
-                    sock = wrap_ssl(sock)
-
+                self._socket = eventlet.listen(bind_addr, backlog=backlog,
+                                               family=family)
             except socket.error as err:
                 if err.args[0] != errno.EADDRINUSE:
                     raise
                 eventlet.sleep(0.1)
-        if not sock:
+
+        if not self._socket:
             raise RuntimeError(_("Could not bind to %(host)s:%(port)s "
                                "after trying for 30 seconds") %
                                {'host': host, 'port': port})
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        # NOTE(praneshp): Call set_tcp_keepalive in oslo to set
-        # tcp keepalive parameters. Sockets can hang around forever
-        # without keepalive
-        network_utils.set_tcp_keepalive(sock,
-                                        CONF.tcp_keepalive,
-                                        CONF.tcp_keepidle,
-                                        CONF.tcp_keepalive_count,
-                                        CONF.tcp_keepalive_interval)
-        return sock
+        (self._host, self._port) = self._socket.getsockname()[0:2]
+        LOG.info(_("%(name)s listening on %(_host)s:%(_port)s")
+                 % self.__dict__)
 
-    def _start(self):
-        """Run the blocking eventlet WSGI server.
-
-        :returns: None
-
-        """
-        eventlet.wsgi.server(self._socket,
-                             self.app,
-                             protocol=self._protocol,
-                             custom_pool=self._pool,
-                             log=self._wsgi_logger)
-
-    def start(self, backlog=128):
+    def start(self):
         """Start serving a WSGI application.
 
-        :param backlog: Maximum number of queued connections.
         :returns: None
         :raises: cinder.exception.InvalidInput
 
         """
-        self._server = eventlet.spawn(self._start)
-        (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_("Started %(name)s on %(host)s:%(port)s") %
-                 {'name': self.name, 'host': self.host, 'port': self.port})
+        # The server socket object will be closed after server exits,
+        # but the underlying file descriptor will remain open, and will
+        # give bad file descriptor error. So duplicating the socket object,
+        # to keep file descriptor usable.
+
+        dup_socket = self._socket.dup()
+        if self._use_ssl:
+            try:
+                ssl_kwargs = {
+                    'server_side': True,
+                    'certfile': CONF.ssl_cert_file,
+                    'keyfile': CONF.ssl_key_file,
+                    'cert_reqs': ssl.CERT_NONE,
+                }
+
+                if CONF.ssl_ca_file:
+                    ssl_kwargs['ca_certs'] = CONF.ssl_ca_file
+                    ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
+
+                dup_socket = ssl.wrap_socket(dup_socket,
+                                             **ssl_kwargs)
+
+                dup_socket.setsockopt(socket.SOL_SOCKET,
+                                      socket.SO_REUSEADDR, 1)
+
+                # sockets can hang around forever without keepalive
+                dup_socket.setsockopt(socket.SOL_SOCKET,
+                                      socket.SO_KEEPALIVE, 1)
+
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_("Failed to start %(name)s on %(_host)s:"
+                                "%(_port)s with SSL support.") % self.__dict__)
+
+        wsgi_kwargs = {
+            'func': eventlet.wsgi.server,
+            'sock': dup_socket,
+            'site': self.app,
+            'protocol': self._protocol,
+            'custom_pool': self._pool,
+            'log': self._wsgi_logger
+        }
+
+        self._server = eventlet.spawn(**wsgi_kwargs)
 
     @property
     def host(self):
@@ -262,6 +264,14 @@ class Server(object):
                 self._server.wait()
         except greenlet.GreenletExit:
             LOG.info(_("WSGI server has stopped."))
+
+    def reset(self):
+        """Reset server greenpool size to default.
+
+        :returns: None
+
+        """
+        self._pool.resize(self.pool_size)
 
 
 class Request(webob.Request):
