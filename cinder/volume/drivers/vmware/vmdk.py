@@ -343,6 +343,12 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                "More details: %(excep)s") %
                              {'vol': volume['name'],
                               'host': host.obj, 'excep': excep})
+                except error_util.VimFaultException as ex:
+                    LOG.error(_("Error creating backing file for "
+                                "volume: %(vol)s under host: %(host)s. "
+                                "More details: %(excep)s") %
+                              {'vol': volume['name'], 'host': host.obj,
+                               'excep': ex})
             if backing:
                 self.volumeops.cancel_retrieval(retrv_result)
                 return backing
