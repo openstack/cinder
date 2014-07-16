@@ -67,10 +67,12 @@ class SolidFireDriver(SanISCSIDriver):
     Version history:
         1.0 - Initial driver
         1.1 - Refactor, clone support, qos by type and minor bug fixes
+        1.2 - Add xfr and retype support
+        1.2.1 - Add export/import support
 
     """
 
-    VERSION = '1.2.0'
+    VERSION = '1.2.1'
 
     sf_qos_dict = {'slow': {'minIOPS': 100,
                             'maxIOPS': 200,
@@ -415,7 +417,7 @@ class SolidFireDriver(SanISCSIDriver):
         qos = {}
         valid_presets = self.sf_qos_dict.keys()
 
-        #First look to see if they included a preset
+        # First look to see if they included a preset
         presets = [i.value for i in volume.get('volume_metadata')
                    if i.key == 'sf-qos' and i.value in valid_presets]
         if len(presets) > 0:
@@ -424,7 +426,7 @@ class SolidFireDriver(SanISCSIDriver):
                               'detected, using %s') % presets[0])
             qos = self.sf_qos_dict[presets[0]]
         else:
-            #look for explicit settings
+            # look for explicit settings
             for i in volume.get('volume_metadata'):
                 if i.key in self.sf_qos_keys:
                     qos[i.key] = int(i.value)
@@ -461,7 +463,13 @@ class SolidFireDriver(SanISCSIDriver):
         found_count = 0
         sf_volref = None
         for v in data['result']['volumes']:
-            if uuid in v['name']:
+            # NOTE(jdg): In the case of "name" we can't
+            # update that on manage/import, so we use
+            # the uuid attribute
+            meta = v.get('attributes')
+            alt_id = meta.get('uuid', 'empty')
+
+            if uuid in v['name'] or uuid in alt_id:
                 found_count += 1
                 sf_volref = v
                 LOG.debug("Mapped SolidFire volumeID %(sfid)s "
@@ -808,3 +816,107 @@ class SolidFireDriver(SanISCSIDriver):
 
         self._issue_api_request('ModifyVolume', params)
         return True
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing SolidFire Volume (import to Cinder).
+
+        Renames the Volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+        """
+
+        sfid = external_ref.get('source-id', None)
+        sfname = external_ref.get('name', None)
+        if sfid is None:
+            raise exception.SolidFireAPIException("Manage existing volume "
+                                                  "requires 'source-id'.")
+
+        # First get the volume on the SF cluster (MUST be active)
+        params = {'startVolumeID': sfid,
+                  'limit': 1}
+        data = self._issue_api_request('ListActiveVolumes', params)
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+        sf_ref = data['result']['volumes'][0]
+
+        sfaccount = self._create_sfaccount(volume['project_id'])
+
+        attributes = {}
+        qos = {}
+        if (self.configuration.sf_allow_tenant_qos and
+                volume.get('volume_metadata')is not None):
+            qos = self._set_qos_presets(volume)
+
+        ctxt = context.get_admin_context()
+        type_id = volume.get('volume_type_id', None)
+        if type_id is not None:
+            qos = self._set_qos_by_volume_type(ctxt, type_id)
+
+        import_time = timeutils.strtime(volume['created_at'])
+        attributes = {'uuid': volume['id'],
+                      'is_clone': 'False',
+                      'os_imported_at': import_time,
+                      'old_name': sfname}
+        if qos:
+            for k, v in qos.items():
+                attributes[k] = str(v)
+
+        params = {'name': volume['name'],
+                  'volumeID': sf_ref['volumeID'],
+                  'accountID': sfaccount['accountID'],
+                  'enable512e': self.configuration.sf_emulate_512,
+                  'attributes': attributes,
+                  'qos': qos}
+
+        data = self._issue_api_request('ModifyVolume',
+                                       params, version='5.0')
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+
+        return self._get_model_info(sfaccount, sf_ref['volumeID'])
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing LV for manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'name': <name of existing volume on SF Cluster>}
+        """
+
+        sfid = external_ref.get('source-id', None)
+        if sfid is None:
+            raise exception.SolidFireAPIException("Manage existing get size "
+                                                  "requires 'id'.")
+
+        params = {'startVolumeID': int(sfid),
+                  'limit': 1}
+        data = self._issue_api_request('ListActiveVolumes', params)
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+        sf_ref = data['result']['volumes'][0]
+        return int(sf_ref['totalSize']) / int(units.Gi)
+
+    def unmanage(self, volume):
+        """Mark SolidFire Volume as unmanaged (export from Cinder)."""
+
+        LOG.debug("Enter SolidFire unmanage...")
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        if sfaccount is None:
+            LOG.error(_("Account for Volume ID %s was not found on "
+                        "the SolidFire Cluster!") % volume['id'])
+            raise exception.SolidFireAPIException("Failed to find account "
+                                                  "for volume.")
+
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(volume['id'], params)
+        if sf_vol is None:
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        export_time = timeutils.strtime()
+        attributes = sf_vol['attributes']
+        attributes['os_exported_at'] = export_time
+        params = {'volumeID': int(sf_vol['volumeID']),
+                  'attributes': attributes}
+
+        data = self._issue_api_request('ModifyVolume',
+                                       params, version='5.0')
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
