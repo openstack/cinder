@@ -22,14 +22,17 @@ driver creates a virtual machine for each of the volumes. This virtual
 machine is never powered on and is often referred as the shadow VM.
 """
 
+import contextlib
 import distutils.version as dist_version  # pylint: disable=E0611
 import os
+import tempfile
 
 from oslo.config import cfg
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import excutils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder.openstack.common import uuidutils
@@ -95,6 +98,10 @@ vmdk_opts = [
                     'The driver attempts to retrieve the version from VMware '
                     'VC server. Set this configuration only if you want to '
                     'override the VC server version.'),
+    cfg.StrOpt('vmware_tmp_dir',
+               default='/tmp',
+               help='Directory where virtual disks are stored during volume '
+                    'backup and restore.')
 ]
 
 CONF = cfg.CONF
@@ -181,7 +188,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     # 1.0 - initial version of driver
     # 1.1.0 - selection of datastore based on number of host mounts
     # 1.2.0 - storage profile volume types based placement of volumes
-    VERSION = '1.2.0'
+    # 1.3.0 - support for volume backup/restore
+    VERSION = '1.3.0'
 
     def _do_deprecation_warning(self):
         LOG.warn(_('The VMware ESX VMDK driver is now deprecated and will be '
@@ -1381,6 +1389,227 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                 "extending."), vol_name)
         LOG.info(_("Done extending volume %(vol)s to size %(size)s GB.") %
                  {'vol': vol_name, 'size': new_size})
+
+    @contextlib.contextmanager
+    def _temporary_file(self, *args, **kwargs):
+        """Create a temporary file and return its path."""
+        tmp_dir = self.configuration.vmware_tmp_dir
+        fileutils.ensure_tree(tmp_dir)
+        fd, tmp = tempfile.mkstemp(
+            dir=self.configuration.vmware_tmp_dir, *args, **kwargs)
+        try:
+            os.close(fd)
+            yield tmp
+        finally:
+            fileutils.delete_if_exists(tmp)
+
+    def _download_vmdk(self, context, volume, backing, tmp_file_path):
+        """Download virtual disk in streamOptimized format."""
+        timeout = self.configuration.vmware_image_transfer_timeout_secs
+        host_ip = self.configuration.vmware_host_ip
+        vmdk_ds_file_path = self.volumeops.get_vmdk_path(backing)
+
+        with fileutils.file_open(tmp_file_path, "wb") as tmp_file:
+            vmware_images.download_stream_optimized_disk(
+                context, timeout, tmp_file, session=self.session,
+                host=host_ip, vm=backing, vmdk_file_path=vmdk_ds_file_path,
+                vmdk_size=volume['size'] * units.Gi)
+
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        volume = self.db.volume_get(context, backup['volume_id'])
+
+        LOG.debug("Creating backup: %(backup_id)s for volume: %(name)s.",
+                  {'backup_id': backup['id'],
+                   'name': volume['name']})
+
+        backing = self.volumeops.get_backing(volume['name'])
+        if backing is None:
+            LOG.debug("Creating backing for volume: %s.", volume['name'])
+            backing = self._create_backing_in_inventory(volume)
+
+        tmp_vmdk_name = uuidutils.generate_uuid()
+        with self._temporary_file(suffix=".vmdk",
+                                  prefix=tmp_vmdk_name) as tmp_file_path:
+            # TODO(vbala) Clean up vmware_tmp_dir during driver init.
+            LOG.debug("Using temporary file: %(tmp_path)s for creating backup:"
+                      " %(backup_id)s.",
+                      {'tmp_path': tmp_file_path,
+                       'backup_id': backup['id']})
+            self._download_vmdk(context, volume, backing, tmp_file_path)
+            with fileutils.file_open(tmp_file_path, "rb") as tmp_file:
+                    LOG.debug("Calling backup service to backup file: %s.",
+                              tmp_file_path)
+                    backup_service.backup(backup, tmp_file)
+                    LOG.debug("Created backup: %(backup_id)s for volume: "
+                              "%(name)s.",
+                              {'backup_id': backup['id'],
+                               'name': volume['name']})
+
+    def _create_backing_from_stream_optimized_file(
+            self, context, name, volume, tmp_file_path, file_size_bytes):
+        """Create backing from streamOptimized virtual disk file."""
+        LOG.debug("Creating backing: %(name)s from virtual disk: %(path)s.",
+                  {'name': name,
+                   'path': tmp_file_path})
+
+        (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+        LOG.debug("Selected datastore: %(ds)s for backing: %(name)s.",
+                  {'ds': summary.name,
+                   'name': name})
+
+        # Prepare import spec for backing.
+        cf = self.session.vim.client.factory
+        vm_import_spec = cf.create('ns0:VirtualMachineImportSpec')
+
+        profile_id = self._get_storage_profile_id(volume)
+        disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
+        vm_create_spec = self.volumeops.get_create_spec(name,
+                                                        0,
+                                                        disk_type,
+                                                        summary.name,
+                                                        profile_id)
+        vm_import_spec.configSpec = vm_create_spec
+
+        timeout = self.configuration.vmware_image_transfer_timeout_secs
+        host_ip = self.configuration.vmware_host_ip
+        try:
+            with fileutils.file_open(tmp_file_path, "rb") as tmp_file:
+                vm_ref = vmware_images.upload_stream_optimized_disk(
+                    context, timeout, tmp_file, session=self.session,
+                    host=host_ip, resource_pool=rp, vm_folder=folder,
+                    vm_create_spec=vm_import_spec, vmdk_size=file_size_bytes)
+                LOG.debug("Created backing: %(name)s from virtual disk: "
+                          "%(path)s.",
+                          {'name': name,
+                           'path': tmp_file_path})
+                return vm_ref
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Error occurred while creating temporary "
+                                "backing."))
+                backing = self.volumeops.get_backing(name)
+                if backing is not None:
+                    self._delete_temp_backing(backing)
+
+    def _restore_backing(
+            self, context, volume, backing, tmp_file_path, backup_size):
+        """Restore backing from backup."""
+        # Create temporary backing from streamOptimized file.
+        src_name = uuidutils.generate_uuid()
+        src = self._create_backing_from_stream_optimized_file(
+            context, src_name, volume, tmp_file_path, backup_size)
+
+        # Copy temporary backing for desired disk type conversion.
+        new_backing = (backing is None)
+        if new_backing:
+            # No backing exists; clone can be used as the volume backing.
+            dest_name = volume['name']
+        else:
+            # Backing exists; clone can be used as the volume backing only
+            # after deleting the current backing.
+            dest_name = uuidutils.generate_uuid()
+
+        dest = None
+        tmp_backing_name = None
+        renamed = False
+        try:
+            # Find datastore for clone.
+            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+            datastore = summary.datastore
+
+            disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
+            dest = self.volumeops.clone_backing(dest_name, src, None,
+                                                volumeops.FULL_CLONE_TYPE,
+                                                datastore, disk_type)
+            if new_backing:
+                LOG.debug("Created new backing: %s for restoring backup.",
+                          dest_name)
+                return
+
+            # Rename current backing.
+            tmp_backing_name = uuidutils.generate_uuid()
+            self.volumeops.rename_backing(backing, tmp_backing_name)
+            renamed = True
+
+            # Rename clone in order to treat it as the volume backing.
+            self.volumeops.rename_backing(dest, volume['name'])
+
+            # Now we can delete the old backing.
+            self._delete_temp_backing(backing)
+
+            LOG.debug("Deleted old backing and renamed clone for restoring "
+                      "backup.")
+        except (error_util.VimException, error_util.VMwareDriverException):
+            with excutils.save_and_reraise_exception():
+                if dest is not None:
+                    # Copy happened; we need to delete the clone.
+                    self._delete_temp_backing(dest)
+                    if renamed:
+                        # Old backing was renamed; we need to undo that.
+                        try:
+                            self.volumeops.rename_backing(backing,
+                                                          volume['name'])
+                        except error_util.VimException:
+                            LOG.warn(_("Cannot undo volume rename; old name "
+                                       "was %(old_name)s and new name is "
+                                       "%(new_name)s."),
+                                     {'old_name': volume['name'],
+                                      'new_name': tmp_backing_name},
+                                     exc_info=True)
+        finally:
+            # Delete the temporary backing.
+            self._delete_temp_backing(src)
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume.
+
+        This method raises InvalidVolume if the existing volume contains
+        snapshots since it is not possible to restore the virtual disk of
+        a backing with snapshots.
+        """
+        LOG.debug("Restoring backup: %(backup_id)s to volume: %(name)s.",
+                  {'backup_id': backup['id'],
+                   'name': volume['name']})
+
+        backing = self.volumeops.get_backing(volume['name'])
+        if backing is not None and self.volumeops.snapshot_exists(backing):
+            msg = _("Volume cannot be restored since it contains snapshots.")
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        tmp_vmdk_name = uuidutils.generate_uuid()
+        with self._temporary_file(suffix=".vmdk",
+                                  prefix=tmp_vmdk_name) as tmp_file_path:
+                LOG.debug("Using temporary file: %(tmp_path)s for restoring "
+                          "backup: %(backup_id)s.",
+                          {'tmp_path': tmp_file_path,
+                           'backup_id': backup['id']})
+                with fileutils.file_open(tmp_file_path, "wb") as tmp_file:
+                    LOG.debug("Calling backup service to restore backup: "
+                              "%(backup_id)s to file: %(tmp_path)s.",
+                              {'backup_id': backup['id'],
+                               'tmp_path': tmp_file_path})
+                    backup_service.restore(backup, volume['id'], tmp_file)
+                    LOG.debug("Backup: %(backup_id)s restored to file: "
+                              "%(tmp_path)s.",
+                              {'backup_id': backup['id'],
+                               'tmp_path': tmp_file_path})
+                self._restore_backing(context, volume, backing, tmp_file_path,
+                                      backup['size'] * units.Gi)
+
+                if backup['size'] < volume['size']:
+                    # Current backing size is backup size.
+                    LOG.debug("Backup size: %(backup_size)d is less than "
+                              "volume size: %(vol_size)d; extending volume.",
+                              {'backup_size': backup['size'],
+                               'vol_size': volume['size']})
+                    self.extend_volume(volume, volume['size'])
+
+                LOG.debug("Backup: %(backup_id)s restored to volume: "
+                          "%(name)s.",
+                          {'backup_id': backup['id'],
+                           'name': volume['name']})
 
 
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
