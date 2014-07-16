@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# Generate sample configuration for your project.
+#
+# Aside from the command line flags, it also respects a config file which
+# should be named oslo.config.generator.rc and be placed in the same directory.
+#
+# You can then export the following variables:
+# CINDER_CONFIG_GENERATOR_EXTRA_MODULES: list of modules to interrogate for options.
+# CINDER_CONFIG_GENERATOR_EXTRA_LIBRARIES: list of libraries to discover.
+# CINDER_CONFIG_GENERATOR_EXCLUDED_FILES: list of files to remove from automatic listing.
+
 print_hint() {
     echo "Try \`${0##*/} --help' for more information." >&2
 }
@@ -65,7 +75,7 @@ then
     BASEDIR=$(cd "$BASEDIR" && pwd)
 fi
 
-PACKAGENAME=${PACKAGENAME:-${BASEDIR##*/}}
+PACKAGENAME=${PACKAGENAME:-$(python setup.py --name)}
 TARGETDIR=$BASEDIR/$PACKAGENAME
 if ! [ -d $TARGETDIR ]
 then
@@ -95,6 +105,10 @@ then
     source "$RC_FILE"
 fi
 
+for filename in ${CINDER_CONFIG_GENERATOR_EXCLUDED_FILES}; do
+    FILES="${FILES[@]/$filename/}"
+done
+
 for mod in ${CINDER_CONFIG_GENERATOR_EXTRA_MODULES}; do
     MODULES="$MODULES -m $mod"
 done
@@ -111,6 +125,11 @@ DEFAULT_MODULEPATH=cinder.openstack.common.config.generator
 MODULEPATH=${MODULEPATH:-$DEFAULT_MODULEPATH}
 OUTPUTFILE=$OUTPUTDIR/$PACKAGENAME.conf.sample
 python -m $MODULEPATH $MODULES $LIBRARIES $FILES > $OUTPUTFILE
+if [ $? != 0 ]
+then
+    echo "Can not generate $OUTPUTFILE"
+    exit 1
+fi
 
 # Hook to allow projects to append custom config file snippets
 CONCAT_FILES=$(ls $BASEDIR/tools/config/*.conf.sample 2>/dev/null)
