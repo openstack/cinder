@@ -631,7 +631,7 @@ class RBDDriver(driver.VolumeDriver):
                              "connection from a client that has crashed and, "
                              "if so, may be resolved by retrying the delete "
                              "after 30 seconds has elapsed."))
-                    LOG.error(msg)
+                    LOG.warn(msg)
                     # Now raise this so that volume stays available so that we
                     # delete can be retried.
                     raise exception.VolumeIsBusy(msg, volume_name=volume_name)
