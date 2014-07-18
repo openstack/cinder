@@ -1808,8 +1808,8 @@
 #vmware_api_retry_count=10
 
 # The interval (in seconds) for polling remote tasks invoked
-# on VMware ESX/VC server. (integer value)
-#vmware_task_poll_interval=5
+# on VMware ESX/VC server. (floating point value)
+#vmware_task_poll_interval=0.5
 
 # Name for the folder in the VC datacenter that will contain
 # cinder volumes. (string value)
