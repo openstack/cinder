@@ -19,7 +19,7 @@ gettext for openstack-common modules.
 
 Usual usage in an openstack.common module:
 
-    from /home/jsbryant/cinder-dev/gettextutilsSync/cinder/.openstack.common.gettextutils import _
+    from cinder.openstack.common.gettextutils import _
 """
 
 import copy
@@ -121,7 +121,7 @@ class TranslatorFactory(object):
 # module within each application.
 
 # Create the global translation functions.
-_translators = TranslatorFactory('/home/jsbryant/cinder-dev/gettextutilsSync/cinder/')
+_translators = TranslatorFactory('cinder')
 
 # The primary translation function using the well-known name "_"
 _ = _translators.primary
@@ -182,7 +182,7 @@ class Message(six.text_type):
     """
 
     def __new__(cls, msgid, msgtext=None, params=None,
-                domain='/home/jsbryant/cinder-dev/gettextutilsSync/cinder/', *args):
+                domain='cinder', *args):
         """Create a new Message object.
 
         In order for translation to work gettext requires a message ID, this
