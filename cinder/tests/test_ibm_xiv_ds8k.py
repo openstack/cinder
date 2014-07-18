@@ -33,6 +33,10 @@ FAKE = "fake"
 VOLUME = {'size': 16,
           'name': FAKE,
           'id': 1}
+MANAGED_FAKE = "managed_fake"
+MANAGED_VOLUME = {'size': 16,
+                  'name': MANAGED_FAKE,
+                  'id': 2}
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 
@@ -74,6 +78,20 @@ class XIVDS8KFakeProxyDriver(object):
     def delete_volume(self, volume):
         if self.volumes.get(volume['name'], None) is not None:
             del self.volumes[volume['name']]
+
+    def manage_volume_get_size(self, volume, existing_ref):
+        if self.volumes.get(existing_ref['existing_ref'], None) is None:
+            raise self.exception.VolumeNotFound(volume_id=volume['id'])
+        return self.volumes[existing_ref['existing_ref']]['size']
+
+    def manage_volume(self, volume, existing_ref):
+        if self.volumes.get(existing_ref['existing_ref'], None) is None:
+            raise self.exception.VolumeNotFound(volume_id=volume['id'])
+        volume['size'] = MANAGED_VOLUME['size']
+        return {}
+
+    def unmanage_volume(self, volume):
+        pass
 
     def initialize_connection(self, volume, connector):
         if not self.volume_exists(volume):
@@ -249,3 +267,55 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                           self.driver.terminate_connection,
                           VOLUME,
                           CONNECTOR)
+
+    def test_manage_existing_get_size(self):
+        """Test that manage_existing_get_size returns the expected size. """
+
+        self.driver.do_setup(None)
+        self.driver.create_volume(MANAGED_VOLUME)
+        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        return_size = self.driver.manage_existing_get_size(
+            VOLUME,
+            existing_ref)
+        self.assertEqual(return_size, MANAGED_VOLUME['size'])
+
+        # cover both case, whether driver renames the volume or not
+        self.driver.delete_volume(VOLUME)
+        self.driver.delete_volume(MANAGED_VOLUME)
+
+    def test_manage_existing_get_size_should_fail_on_non_existing_volume(self):
+        """Test that manage_existing_get_size fails on non existing volume. """
+
+        self.driver.do_setup(None)
+        # on purpose - do NOT create managed volume
+        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.manage_existing_get_size,
+                          VOLUME,
+                          existing_ref)
+
+    def test_manage_existing(self):
+        """Test that manage_existing returns successfully. """
+
+        self.driver.do_setup(None)
+        self.driver.create_volume(MANAGED_VOLUME)
+        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        has_volume = self.driver.manage_existing(
+            VOLUME,
+            existing_ref)
+        self.assertEqual(VOLUME['size'], MANAGED_VOLUME['size'])
+
+        # cover both case, whether driver renames the volume or not
+        self.driver.delete_volume(VOLUME)
+        self.driver.delete_volume(MANAGED_VOLUME)
+
+    def test_manage_existing_should_fail_on_non_existing_volume(self):
+        """Test that manage_existing fails on non existing volume. """
+
+        self.driver.do_setup(None)
+        # on purpose - do NOT create managed volume
+        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.manage_existing,
+                          VOLUME,
+                          existing_ref)

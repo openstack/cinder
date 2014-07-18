@@ -159,3 +159,45 @@ class XIVDS8KDriver(san.SanDriver):
         """Migrate the volume to the specified host."""
 
         return self.xiv_ds8k_proxy.migrate_volume(context, volume, host)
+
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        existing_ref is passed straight through from the API request's
+        manage_existing_ref value, and it is up to the driver how this should
+        be interpreted.  It should be sufficient to identify a storage object
+        that the driver should somehow associate with the newly-created cinder
+        volume structure.
+        In the case of XIV, the existing_ref consists of a single field named
+        'existing_ref' representing the name of the volume on the storage.
+
+        There are two ways to do this:
+
+        1. Rename the backend storage object so that it matches the,
+           volume['name'] which is how drivers traditionally map between a
+           cinder volume and the associated backend storage object.
+
+        2. Place some metadata on the volume, or somewhere in the backend, that
+           allows other driver requests (e.g. delete, clone, attach, detach...)
+           to locate the backend storage object when required.
+
+        If the existing_ref doesn't make sense, or doesn't refer to an existing
+        backend storage object, raise a ManageExistingInvalidReference
+        exception.
+
+        The volume may have a volume_type, and the driver can inspect that and
+        compare against the properties of the referenced backend storage
+        object.  If they are incompatible, raise a
+        ManageExistingVolumeTypeMismatch, specifying a reason for the failure.
+        """
+        return self.xiv_ds8k_proxy.manage_volume(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing."""
+
+        return self.xiv_ds8k_proxy.manage_volume_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management."""
+
+        return self.xiv_ds8k_proxy.unmanage_volume(volume)
