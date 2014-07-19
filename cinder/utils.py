@@ -820,6 +820,9 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
         # lookup the mounted disk which the file lies on
         out, _err = execute('df', path)
         devpath = out.split("\n")[1].split()[0]
+        if devpath[0] is not '/':
+            # the file is on a network file system
+            return None
         return get_blkdev_major_minor(devpath, False)
     else:
         msg = _("Unable to get a block device for file \'%s\'") % path

@@ -584,18 +584,17 @@ class GenericUtilsTestCase(test.TestCase):
         mock_stat.return_value = stat_result
         dev = utils.get_blkdev_major_minor(test_device)
         self.assertEqual('253:7', dev)
-        mock_stat.aseert_called_once_with(test_device)
+        mock_stat.assert_called_once_with(test_device)
 
     @mock.patch('os.stat')
     @mock.patch.object(utils, 'execute')
-    def test_get_blkdev_major_minor_file(self, mock_exec, mock_stat):
-
+    def _test_get_blkdev_major_minor_file(self, test_partition,
+                                          mock_exec, mock_stat):
         mock_exec.return_value = (
-            'Filesystem Size Used Avail Use% Mounted on\n'
-            '/dev/made_up_disk1 4096 2048 2048 50% /tmp\n', None)
+            'Filesystem Size Used Avail Use%% Mounted on\n'
+            '%s 4096 2048 2048 50%% /tmp\n' % test_partition, None)
 
         test_file = '/tmp/file'
-        test_partition = '/dev/made_up_disk1'
         test_disk = '/dev/made_up_disk'
 
         class stat_result_file:
@@ -620,11 +619,20 @@ class GenericUtilsTestCase(test.TestCase):
         mock_stat.side_effect = fake_stat
 
         dev = utils.get_blkdev_major_minor(test_file)
+        mock_stat.assert_any_call(test_file)
+        mock_exec.assert_called_once_with('df', test_file)
+        if test_partition.startswith('/'):
+            mock_stat.assert_any_call(test_partition)
+            mock_stat.assert_any_call(test_disk)
+        return dev
+
+    def test_get_blkdev_major_minor_file(self):
+        dev = self._test_get_blkdev_major_minor_file('/dev/made_up_disk1')
         self.assertEqual('8:64', dev)
-        mock_exec.aseert_called_once_with(test_file)
-        mock_stat.aseert_called_once_with(test_file)
-        mock_stat.aseert_called_once_with(test_partition)
-        mock_stat.aseert_called_once_with(test_disk)
+
+    def test_get_blkdev_major_minor_file_nfs(self):
+        dev = self._test_get_blkdev_major_minor_file('nfs-server:/export/path')
+        self.assertIsNone(dev)
 
 
 class MonkeyPatchTestCase(test.TestCase):
