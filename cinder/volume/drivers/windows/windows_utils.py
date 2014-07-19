@@ -18,7 +18,6 @@ Utility class for Windows Storage Server 2012 volume related operations.
 
 import ctypes
 import os
-import time
 
 from oslo.config import cfg
 
@@ -372,13 +371,6 @@ class WindowsUtils(object):
         else:
             return constants.VHD_TYPE_FIXED
 
-    def check_ret_val(self, ret_val, job_path, success_values=[0]):
-        if ret_val == constants.WMI_JOB_STATUS_STARTED:
-            return self._wait_for_job(job_path)
-        elif ret_val not in success_values:
-            raise exception.VolumeBackendAPIException(
-                _('Operation failed with return value: %s') % ret_val)
-
     def copy(self, src, dest):
         # With large files this is 2x-3x faster than shutil.copy(src, dest),
         # especially with UNC targets.
@@ -391,47 +383,3 @@ class WindowsUtils(object):
         if not retcode:
             raise IOError(_('The file copy from %(src)s to %(dest)s failed.')
                           % {'src': src, 'dest': dest})
-
-    def _wait_for_job(self, job_path):
-        """Poll WMI job state and wait for completion."""
-        job = self._get_wmi_obj(job_path)
-
-        while job.JobState == constants.WMI_JOB_STATE_RUNNING:
-            time.sleep(0.1)
-            job = self._get_wmi_obj(job_path)
-        if job.JobState != constants.WMI_JOB_STATE_COMPLETED:
-            job_state = job.JobState
-            if job.path().Class == "Msvm_ConcreteJob":
-                err_sum_desc = job.ErrorSummaryDescription
-                err_desc = job.ErrorDescription
-                err_code = job.ErrorCode
-                raise exception.VolumeBackendAPIException(
-                    _("WMI job failed with status "
-                      "%(job_state)d. Error details: "
-                      "%(err_sum_desc)s - %(err_desc)s - "
-                      "Error code: %(err_code)d") %
-                    {'job_state': job_state,
-                     'err_sum_desc': err_sum_desc,
-                     'err_desc': err_desc,
-                     'err_code': err_code})
-            else:
-                (error, ret_val) = job.GetError()
-                if not ret_val and error:
-                    raise exception.VolumeBackendAPIException(
-                        _("WMI job failed with status %(job_state)d. "
-                          "Job path: %(job_path)s Error details: "
-                          "%(error)s") % {'job_state': job_state,
-                                          'error': error,
-                                          'job_path': job_path})
-                else:
-                    raise exception.VolumeBackendAPIException(
-                        _("WMI job failed with status %d. No error "
-                          "description available") % job_state)
-        desc = job.Description
-        elap = job.ElapsedTime
-        LOG.debug("WMI job succeeded: %(desc)s, Elapsed=%(elap)s" %
-                  {'desc': desc, 'elap': elap})
-        return job
-
-    def _get_wmi_obj(self, path):
-        return wmi.WMI(moniker=path.replace('\\', '/'))

@@ -27,7 +27,8 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.windows import utilsfactory
+from cinder.volume.drivers.windows import constants
+from cinder.volume.drivers.windows import vhdutils
 from cinder.volume.drivers.windows import windows_utils
 
 LOG = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ class WindowsDriver(driver.ISCSIDriver):
         Validate the flags we care about
         """
         self.utils = windows_utils.WindowsUtils()
-        self.vhdutils = utilsfactory.get_vhdutils()
+        self.vhdutils = vhdutils.VHDUtils()
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
@@ -196,7 +197,8 @@ class WindowsDriver(driver.ISCSIDriver):
             # convert the image to vhd before attempting upload
             if disk_format == 'vhdx':
                 upload_image = upload_image[:-1]
-                self.vhdutils.convert_vhd(temp_vhd_path, upload_image)
+                self.vhdutils.convert_vhd(temp_vhd_path, upload_image,
+                                          constants.VHD_TYPE_DYNAMIC)
 
             image_utils.upload_volume(context, image_service, image_meta,
                                       upload_image, 'vpc')

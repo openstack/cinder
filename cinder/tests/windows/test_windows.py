@@ -34,7 +34,6 @@ from cinder.openstack.common import fileutils
 from cinder.tests.windows import db_fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.windows import constants
-from cinder.volume.drivers.windows import utilsfactory
 from cinder.volume.drivers.windows import vhdutils
 from cinder.volume.drivers.windows import windows
 from cinder.volume.drivers.windows import windows_utils
@@ -67,12 +66,7 @@ class TestWindowsDriver(test.TestCase):
         def fake_wutils__init__(self):
             pass
 
-        def fake_get_vhdutils():
-            return vhdutils.VHDUtils()
-
         windows_utils.WindowsUtils.__init__ = fake_wutils__init__
-        vhdutils.VHDUtils.__init__ = lambda x: None
-        utilsfactory.get_vhdutils = fake_get_vhdutils
 
     def fake_local_path(self, volume):
         return os.path.join(CONF.windows_iscsi_lun_path,
@@ -333,7 +327,8 @@ class TestWindowsDriver(test.TestCase):
                                                  temp_vhd_path)
         if supported_format == 'vhdx':
             upload_image = upload_image[:-1]
-            vhdutils.VHDUtils.convert_vhd(temp_vhd_path, upload_image)
+            vhdutils.VHDUtils.convert_vhd(temp_vhd_path, upload_image,
+                                          constants.VHD_TYPE_DYNAMIC)
 
         image_utils.upload_volume(None, None, image_meta, upload_image, 'vpc')
 
