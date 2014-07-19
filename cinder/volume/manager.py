@@ -998,7 +998,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_volume = self.db.volume_get(ctxt, new_volume_id)
         rpcapi = volume_rpcapi.VolumeAPI()
 
-        status_update = None
+        status_update = {}
         if volume['status'] == 'retyping':
             status_update = {'status': self._get_original_status(volume)}
 
@@ -1020,7 +1020,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Delete the source volume (if it fails, don't fail the migration)
         try:
-            if status_update and status_update['status'] == 'in-use':
+            if status_update.get('status') == 'in-use':
                 self.detach_volume(ctxt, volume_id)
             self.delete_volume(ctxt, volume_id)
         except Exception as ex:
@@ -1029,14 +1029,14 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
-        if status_update:
+        if status_update.get('status') == 'in-use':
             updates = {'migration_status': 'completing'}
             updates.update(status_update)
         else:
             updates = {'migration_status': None}
         self.db.volume_update(ctxt, volume_id, updates)
 
-        if status_update:
+        if 'in-use' in (status_update.get('status'), volume['status']):
             rpcapi.attach_volume(ctxt,
                                  volume,
                                  volume['instance_uuid'],
