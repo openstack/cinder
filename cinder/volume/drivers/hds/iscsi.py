@@ -38,7 +38,7 @@ LOG = logging.getLogger(__name__)
 iSCSI_OPTS = [
     cfg.StrOpt('hds_hnas_iscsi_config_file',
                default='/opt/hds/hnas/cinder_iscsi_conf.xml',
-               help='configuration file for HDS iSCSI cinder plugin')]
+               help='Configuration file for HDS iSCSI cinder plugin')]
 
 CONF = cfg.CONF
 CONF.register_opts(iSCSI_OPTS)
