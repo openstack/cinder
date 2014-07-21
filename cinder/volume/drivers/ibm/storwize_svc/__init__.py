@@ -101,6 +101,12 @@ storwize_svc_opts = [
     cfg.BoolOpt('storwize_svc_multihostmap_enabled',
                 default=True,
                 help='Allows vdisk to multi host mapping'),
+    cfg.BoolOpt('storwize_svc_npiv_compatibility_mode',
+                default=False,
+                help='Indicate whether svc driver is compatible for NPIV '
+                     'setup. If it is compatible, it will allow no wwpns '
+                     'being returned on get_conn_fc_wwpns during '
+                     'initialize_connection'),
 ]
 
 CONF = cfg.CONF
@@ -410,12 +416,25 @@ class StorwizeSVCDriver(san.SanDriver):
             else:
                 type_str = 'fibre_channel'
                 conn_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
+
+                # If conn_wwpns is empty, then that means that there were
+                # no target ports with visibility to any of the initiators.
+                # We will either fail the attach, or return all target
+                # ports, depending on the value of the
+                # storwize_svc_npiv_compatibity_mode flag.
                 if len(conn_wwpns) == 0:
-                    msg = (_('Could not get FC connection information for the '
-                             'host-volume connection. Is the host configured '
-                             'properly for FC connections?'))
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
+                    npiv_compat = self.configuration.\
+                        storwize_svc_npiv_compatibility_mode
+                    if not npiv_compat:
+                        msg = (_('Could not get FC connection information for '
+                                 'the host-volume connection. Is the host '
+                                 'configured properly for FC connections?'))
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
+                    else:
+                        for node in self._state['storage_nodes'].itervalues():
+                            conn_wwpns.extend(node['WWPN'])
+
                 if not vol_opts['multipath']:
                     # preferred_node_entry can have a list of WWPNs while only
                     # one WWPN may be available on the storage host.  Here we
