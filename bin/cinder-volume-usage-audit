@@ -57,6 +57,7 @@ gettextutils.enable_lazy()
 
 from cinder import context
 from cinder import db
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
