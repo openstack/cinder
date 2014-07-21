@@ -80,12 +80,12 @@ class XIVDS8KFakeProxyDriver(object):
             del self.volumes[volume['name']]
 
     def manage_volume_get_size(self, volume, existing_ref):
-        if self.volumes.get(existing_ref['existing_ref'], None) is None:
+        if self.volumes.get(existing_ref['source-name'], None) is None:
             raise self.exception.VolumeNotFound(volume_id=volume['id'])
-        return self.volumes[existing_ref['existing_ref']]['size']
+        return self.volumes[existing_ref['source-name']]['size']
 
     def manage_volume(self, volume, existing_ref):
-        if self.volumes.get(existing_ref['existing_ref'], None) is None:
+        if self.volumes.get(existing_ref['source-name'], None) is None:
             raise self.exception.VolumeNotFound(volume_id=volume['id'])
         volume['size'] = MANAGED_VOLUME['size']
         return {}
@@ -273,7 +273,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.driver.create_volume(MANAGED_VOLUME)
-        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        existing_ref = {'source-name': MANAGED_VOLUME['name']}
         return_size = self.driver.manage_existing_get_size(
             VOLUME,
             existing_ref)
@@ -288,7 +288,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         # on purpose - do NOT create managed volume
-        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        existing_ref = {'source-name': MANAGED_VOLUME['name']}
         self.assertRaises(exception.VolumeNotFound,
                           self.driver.manage_existing_get_size,
                           VOLUME,
@@ -299,7 +299,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.driver.create_volume(MANAGED_VOLUME)
-        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        existing_ref = {'source-name': MANAGED_VOLUME['name']}
         has_volume = self.driver.manage_existing(
             VOLUME,
             existing_ref)
@@ -314,7 +314,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         # on purpose - do NOT create managed volume
-        existing_ref = {'existing_ref': MANAGED_VOLUME['name']}
+        existing_ref = {'source-name': MANAGED_VOLUME['name']}
         self.assertRaises(exception.VolumeNotFound,
                           self.driver.manage_existing,
                           VOLUME,

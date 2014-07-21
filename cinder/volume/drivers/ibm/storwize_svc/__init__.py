@@ -822,18 +822,19 @@ class StorwizeSVCDriver(san.SanDriver):
         if we got here then we have a vdisk that isn't in use (or we don't
         care if it is in use.
         """
-        vdisk = self._helpers.vdisk_by_uid(ref['vdisk_UID'])
+        vdisk = self._helpers.vdisk_by_uid(ref['source-id'])
         if vdisk is None:
-            reason = _('No vdisk with the specified vdisk_UID.')
+            reason = (_('No vdisk with the UID specified by source-id %s.')
+                      % ref['source-id'])
             raise exception.ManageExistingInvalidReference(existing_ref=ref,
                                                            reason=reason)
         self._helpers.rename_vdisk(vdisk['name'], volume['name'])
 
     def manage_existing_get_size(self, volume, ref):
-        """Return size of an existing LV for manage_existing.
+        """Return size of an existing Vdisk for manage_existing.
 
         existing_ref is a dictionary of the form:
-        {'vdisk_UID': <uid of disk>}
+        {'source-id': <uid of disk>}
 
         Optional elements are:
           'manage_if_in_use':  True/False (default is False)
@@ -842,15 +843,16 @@ class StorwizeSVCDriver(san.SanDriver):
         """
 
         # Check that the reference is valid
-        if 'vdisk_UID' not in ref:
-            reason = _('Reference must contain vdisk_UID element.')
+        if 'source-id' not in ref:
+            reason = _('Reference must contain source-id element.')
             raise exception.ManageExistingInvalidReference(existing_ref=ref,
                                                            reason=reason)
 
         # Check for existence of the vdisk
-        vdisk = self._helpers.vdisk_by_uid(ref['vdisk_UID'])
+        vdisk = self._helpers.vdisk_by_uid(ref['source-id'])
         if vdisk is None:
-            reason = _('No vdisk with the specified vdisk_UID.')
+            reason = (_('No vdisk with the UID specified by source-id %s.')
+                      % (ref['source-id']))
             raise exception.ManageExistingInvalidReference(existing_ref=ref,
                                                            reason=reason)
 

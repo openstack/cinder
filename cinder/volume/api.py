@@ -994,7 +994,7 @@ class API(base.Base):
 
     def manage_existing(self, context, host, ref, name=None, description=None,
                         volume_type=None, metadata=None,
-                        availability_zone=None):
+                        availability_zone=None, bootable=False):
         if availability_zone is None:
             elevated = context.elevated()
             try:
@@ -1018,7 +1018,8 @@ class API(base.Base):
             'host': host,
             'availability_zone': availability_zone,
             'volume_type_id': volume_type_id,
-            'metadata': metadata
+            'metadata': metadata,
+            'bootable': bootable
         }
 
         # Call the scheduler to ensure that the host exists and that it can

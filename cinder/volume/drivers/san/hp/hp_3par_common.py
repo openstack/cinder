@@ -132,10 +132,11 @@ class HP3PARCommon(object):
         2.0.11 - Remove hp3parclient requirement from unit tests #1315195
         2.0.12 - Volume detach hangs when host is in a host set bug #1317134
         2.0.13 - Added support for managing/unmanaging of volumes
+        2.0.14 - Modified manage volume to use standard 'source-name' element.
 
     """
 
-    VERSION = "2.0.13"
+    VERSION = "2.0.14"
 
     stats = {}
 
@@ -271,13 +272,17 @@ class HP3PARCommon(object):
         self._extend_volume(volume, volume_name, growth_size_mib)
 
     def manage_existing(self, volume, existing_ref):
-        """Manage an existing 3PAR volume."""
+        """Manage an existing 3PAR volume.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the virtual volume>}
+        """
         # Check for the existence of the virtual volume.
         try:
-            vol = self.client.getVolume(existing_ref['name'])
+            vol = self.client.getVolume(existing_ref['source-name'])
         except hpexceptions.HTTPNotFound:
             err = (_("Virtual volume '%s' doesn't exist on array.") %
-                   existing_ref['name'])
+                   existing_ref['source-name'])
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
@@ -323,12 +328,12 @@ class HP3PARCommon(object):
             new_comment['qos'] = settings['qos']
 
         # Update the existing volume with the new name and comments.
-        self.client.modifyVolume(existing_ref['name'],
+        self.client.modifyVolume(existing_ref['source-name'],
                                  {'newName': new_vol_name,
                                   'comment': json.dumps(new_comment)})
 
         LOG.info(_("Virtual volume '%(ref)s' renamed to '%(new)s'.") %
-                 {'ref': existing_ref['name'], 'new': new_vol_name})
+                 {'ref': existing_ref['source-name'], 'new': new_vol_name})
         LOG.info(_("Virtual volume %(disp)s '%(new)s' is now being managed.") %
                  {'disp': display_name, 'new': new_vol_name})
 
@@ -339,17 +344,17 @@ class HP3PARCommon(object):
         """Return size of volume to be managed by manage_existing.
 
         existing_ref is a dictionary of the form:
-        {'name': <name of the virtual volume>}
+        {'source-name': <name of the virtual volume>}
         """
         # Check that a valid reference was provided.
-        if 'name' not in existing_ref:
-            reason = _("Reference must contain name element.")
+        if 'source-name' not in existing_ref:
+            reason = _("Reference must contain source-name element.")
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=reason)
 
         # Make sure the reference is not in use.
-        if re.match('osv-*|oss-*|vvs-*', existing_ref['name']):
+        if re.match('osv-*|oss-*|vvs-*', existing_ref['source-name']):
             reason = _("Reference must be for an unmanaged virtual volume.")
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
@@ -357,10 +362,10 @@ class HP3PARCommon(object):
 
         # Check for the existence of the virtual volume.
         try:
-            vol = self.client.getVolume(existing_ref['name'])
+            vol = self.client.getVolume(existing_ref['source-name'])
         except hpexceptions.HTTPNotFound:
             err = (_("Virtual volume '%s' doesn't exist on array.") %
-                   existing_ref['name'])
+                   existing_ref['source-name'])
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
