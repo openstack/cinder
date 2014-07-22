@@ -16,13 +16,15 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import gettext
 import sys
 
 import rtslib
 
-gettext.install('cinder-rtstool', unicode=1)
-gettext.enable_lazy()
+from cinder.openstack.common import gettextutils
+from cinder.openstack.common.gettextutils import _
+
+gettextutils.install('cinder')
+gettextutils.enable_lazy()
 
 
 class RtstoolError(Exception):

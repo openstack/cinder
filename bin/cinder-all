@@ -49,6 +49,7 @@ gettextutils.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config   # noqa
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import utils
