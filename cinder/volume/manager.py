@@ -997,7 +997,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Delete the source volume (if it fails, don't fail the migration)
         try:
-            if status_update['status'] == 'in-use':
+            if status_update and status_update['status'] == 'in-use':
                 self.detach_volume(ctxt, volume_id)
             self.delete_volume(ctxt, volume_id)
         except Exception as ex:
