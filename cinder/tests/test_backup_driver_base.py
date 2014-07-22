@@ -24,7 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder.openstack.common import jsonutils
 from cinder import test
-
+from cinder.tests.backup import fake_service
 
 _backup_db_fields = ['id', 'user_id', 'project_id',
                      'volume_id', 'host', 'availability_zone',
@@ -54,20 +54,7 @@ class BackupBaseDriverTestCase(test.TestCase):
         self._create_backup_db_entry(self.backup_id, self.volume_id, 1)
         self._create_volume_db_entry(self.volume_id, 1)
         self.backup = db.backup_get(self.ctxt, self.backup_id)
-        self.driver = driver.BackupDriver(self.ctxt)
-
-    def test_backup(self):
-        self.assertRaises(NotImplementedError,
-                          self.driver.backup, self.backup, self.volume_id)
-
-    def test_restore(self):
-        self.assertRaises(NotImplementedError,
-                          self.driver.restore, self.backup, self.volume_id,
-                          None)
-
-    def test_delete(self):
-        self.assertRaises(NotImplementedError,
-                          self.driver.delete, self.backup)
+        self.driver = fake_service.FakeBackupService(self.ctxt)
 
     def test_get_metadata(self):
         json_metadata = self.driver.get_metadata(self.volume_id)
@@ -97,10 +84,6 @@ class BackupBaseDriverTestCase(test.TestCase):
         for key in _backup_db_fields:
             self.assertTrue(key in imported_backup)
             self.assertEqual(imported_backup[key], self.backup[key])
-
-    def test_verify(self):
-        self.assertRaises(NotImplementedError,
-                          self.driver.verify, self.backup)
 
 
 class BackupMetadataAPITestCase(test.TestCase):

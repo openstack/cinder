@@ -13,13 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.backup import driver
 from cinder.openstack.common import log as logging
 from cinder.tests.backup import fake_service
 
 LOG = logging.getLogger(__name__)
 
 
-class FakeBackupServiceWithVerify(fake_service.FakeBackupService):
+class FakeBackupServiceWithVerify(driver.BackupDriverWithVerify,
+                                  fake_service.FakeBackupService):
     def verify(self, backup):
         pass
 

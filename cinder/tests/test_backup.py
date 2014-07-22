@@ -470,18 +470,11 @@ class BackupTestCase(BaseBackupTest):
         export = self._create_exported_record_entry(vol_size=vol_size)
         imported_record = self._create_export_record_db_entry()
         backup_hosts = []
-        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
-        _mock_backup_verify_class = ('%s.%s.%s' %
-                                     (backup_driver.__module__,
-                                      backup_driver.__class__.__name__,
-                                      'verify'))
-        with mock.patch(_mock_backup_verify_class) as _mock_record_verify:
-            _mock_record_verify.side_effect = NotImplementedError()
-            self.backup_mgr.import_record(self.ctxt,
-                                          imported_record,
-                                          export['backup_service'],
-                                          export['backup_url'],
-                                          backup_hosts)
+        self.backup_mgr.import_record(self.ctxt,
+                                      imported_record,
+                                      export['backup_service'],
+                                      export['backup_url'],
+                                      backup_hosts)
         backup = db.backup_get(self.ctxt, imported_record)
         self.assertEqual(backup['status'], 'available')
         self.assertEqual(backup['size'], vol_size)

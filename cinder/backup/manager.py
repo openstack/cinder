@@ -36,6 +36,7 @@ Volume backups can be created, restored, deleted and listed.
 from oslo.config import cfg
 from oslo import messaging
 
+from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
@@ -560,12 +561,14 @@ class BackupManager(manager.SchedulerDependentManager):
 
             # Verify backup
             try:
-                backup_service.verify(backup_id)
-            except NotImplementedError:
-                LOG.warn(_('Backup service %(service)s does not support '
-                           'verify. Backup id %(id)s is not verified. '
-                           'Skipping verify.') % {'service': self.driver_name,
-                                                  'id': backup_id})
+                if isinstance(backup_service, driver.BackupDriverWithVerify):
+                    backup_service.verify(backup_id)
+                else:
+                    LOG.warn(_('Backup service %(service)s does not support '
+                               'verify. Backup id %(id)s is not verified. '
+                               'Skipping verify.') % {'service':
+                                                      self.driver_name,
+                                                      'id': backup_id})
             except exception.InvalidBackup as err:
                 with excutils.save_and_reraise_exception():
                     self.db.backup_update(context, backup_id,
