@@ -1693,6 +1693,10 @@
 # List of target iSCSI addresses to use. (list value)
 #hp3par_iscsi_ips=
 
+# Enable CHAP authentication for iSCSI connections. (boolean
+# value)
+#hp3par_iscsi_chap_enabled=false
+
 
 #
 # Options defined in cinder.volume.drivers.san.hp.hp_lefthand_rest_proxy

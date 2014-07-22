@@ -21,7 +21,7 @@ import sys
 from cinder.tests import fake_hp_client_exceptions as hpexceptions
 
 hp3par = mock.Mock()
-hp3par.version = "3.0.0"
+hp3par.version = "3.1.0"
 hp3par.exceptions = hpexceptions
 
 sys.modules['hp3parclient'] = hp3par
