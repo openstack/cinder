@@ -240,7 +240,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
         LOG.debug("%s was %s, no need to convert to %s" %
                   (image_id, volume_format, image_meta['disk_format']))
         if os.name == 'nt' or os.access(volume_path, os.R_OK):
-            with fileutils.file_open(volume_path) as image_file:
+            with fileutils.file_open(volume_path, 'rb') as image_file:
                 image_service.update(context, image_id, {}, image_file)
         else:
             with utils.temporary_chown(volume_path):
@@ -267,7 +267,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 reason=_("Converted to %(f1)s, but format is now %(f2)s") %
                 {'f1': image_meta['disk_format'], 'f2': data.file_format})
 
-        with fileutils.file_open(tmp) as image_file:
+        with fileutils.file_open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {}, image_file)
         fileutils.delete_if_exists(tmp)
 
