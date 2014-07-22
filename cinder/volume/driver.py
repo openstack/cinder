@@ -113,6 +113,12 @@ volume_opts = [
                default=0,
                help='The upper limit of bandwidth of volume copy. '
                     '0 => unlimited'),
+    cfg.StrOpt('iscsi_write_cache',
+               default='on',
+               help='Sets the behavior of the iSCSI target to either '
+                    'perform write-back(on) or write-through(off). '
+                    'This parameter is valid if iscsi_helper is set '
+                    'to tgtadm or iseradm.'),
 ]
 
 # for backward compatibility

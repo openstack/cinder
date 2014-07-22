@@ -34,6 +34,7 @@ class TargetAdminTestCase(object):
         self.path = '/foo'
         self.vol_id = 'blaa'
         self.vol_name = 'volume-blaa'
+        self.write_cache = 'off'
         self.db = {}
 
         self.script_template = None
@@ -95,7 +96,8 @@ class TargetAdminTestCase(object):
         target_helper = self.driver.get_target_helper(self.db)
         target_helper.set_execute(self.fake_execute)
         target_helper.create_iscsi_target(self.target_name, self.tid,
-                                          self.lun, self.path)
+                                          self.lun, self.path,
+                                          write_cache=self.write_cache)
         target_helper.show_target(self.tid, iqn=self.target_name)
         target_helper.remove_iscsi_target(self.tid, self.lun, self.vol_id,
                                           self.vol_name)

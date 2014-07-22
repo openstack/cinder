@@ -84,6 +84,7 @@ class TgtAdm(TargetAdmin):
                 <target %s>
                     backing-store %s
                     lld iscsi
+                    write-cache %s
                 </target>
                   """
     VOLUME_CONF_WITH_CHAP_AUTH = """
@@ -91,6 +92,7 @@ class TgtAdm(TargetAdmin):
                                     backing-store %s
                                     lld iscsi
                                     %s
+                                    write-cache %s
                                 </target>
                                  """
 
@@ -166,11 +168,13 @@ class TgtAdm(TargetAdmin):
         fileutils.ensure_tree(self.volumes_dir)
 
         vol_id = name.split(':')[1]
+        write_cache = kwargs.get('write_cache', 'on')
         if chap_auth is None:
-            volume_conf = self.VOLUME_CONF % (name, path)
+            volume_conf = self.VOLUME_CONF % (name, path, write_cache)
         else:
             volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name,
-                                                             path, chap_auth)
+                                                             path, chap_auth,
+                                                             write_cache)
 
         LOG.info(_('Creating iscsi_target for: %s') % vol_id)
         volumes_dir = self.volumes_dir
@@ -601,6 +605,7 @@ class ISERTgtAdm(TgtAdm):
                 <target %s>
                     driver iser
                     backing-store %s
+                    write_cache %s
                 </target>
                   """
     VOLUME_CONF_WITH_CHAP_AUTH = """
@@ -608,6 +613,7 @@ class ISERTgtAdm(TgtAdm):
                                     driver iser
                                     backing-store %s
                                     %s
+                                    write_cache %s
                                 </target>
                                  """
 
