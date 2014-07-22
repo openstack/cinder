@@ -229,12 +229,13 @@ def disassociate_all(context, specs_id):
                                                    type_id=None)
 
 
-def get_all_specs(context, inactive=False, search_opts={}):
+def get_all_specs(context, inactive=False, search_opts=None):
     """Get all non-deleted qos specs.
 
     Pass inactive=True as argument and deleted volume types would return
     as well.
     """
+    search_opts = search_opts or {}
     qos_specs = db.qos_specs_get_all(context, inactive)
 
     if search_opts:

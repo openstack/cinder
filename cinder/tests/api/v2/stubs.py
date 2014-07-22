@@ -119,8 +119,9 @@ def stub_volume_get_all(context, search_opts=None, marker=None, limit=None,
 
 
 def stub_volume_get_all_by_project(self, context, marker, limit, sort_key,
-                                   sort_dir, filters={},
+                                   sort_dir, filters=None,
                                    viewable_admin_meta=False):
+    filters = filters or {}
     return [stub_volume_get(self, context, '1')]
 
 

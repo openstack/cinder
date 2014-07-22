@@ -439,7 +439,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 profile_id = profile.uniqueId
         return profile_id
 
-    def _create_backing(self, volume, host, create_params={}):
+    def _create_backing(self, volume, host, create_params=None):
         """Create volume backing under the given host.
 
         :param volume: Volume object
@@ -448,6 +448,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                               backing VM creation
         :return: Reference to the created backing
         """
+        create_params = create_params or {}
         # Get datastores and resource pool of the host
         (datastores, resource_pool) = self.volumeops.get_dss_rp(host)
         # Pick a folder and datastore to create the volume backing on
@@ -525,7 +526,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         LOG.error(msg)
         raise error_util.VimException(msg)
 
-    def _create_backing_in_inventory(self, volume, create_params={}):
+    def _create_backing_in_inventory(self, volume, create_params=None):
         """Creates backing under any suitable host.
 
         The method tries to pick datastore that can fit the volume under
@@ -536,7 +537,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                               backing VM creation
         :return: Reference to the created backing
         """
-
+        create_params = create_params or {}
         retrv_result = self.volumeops.get_hosts()
         while retrv_result:
             hosts = retrv_result.objects

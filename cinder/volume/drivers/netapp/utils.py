@@ -267,12 +267,13 @@ def get_volume_extra_specs(volume):
     return specs
 
 
-def check_apis_on_cluster(na_server, api_list=[]):
+def check_apis_on_cluster(na_server, api_list=None):
     """Checks api availability and permissions on cluster.
 
     Checks api availability and permissions for executing user.
     Returns a list of failed apis.
     """
+    api_list = api_list or []
     failed_apis = []
     if api_list:
         api_version = na_server.get_api_version()

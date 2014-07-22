@@ -69,7 +69,7 @@ class Scheduler(object):
         """Check if the specified host passes the filters."""
         raise NotImplementedError(_("Must implement host_passes_filters"))
 
-    def find_retype_host(self, context, request_spec, filter_properties={},
+    def find_retype_host(self, context, request_spec, filter_properties=None,
                          migration_policy='never'):
         """Find a host that can accept the volume with its new type."""
         raise NotImplementedError(_("Must implement find_retype_host"))

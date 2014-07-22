@@ -474,7 +474,8 @@ class AoEConnectorTestCase(ConnectorTestCase):
                        'FixedIntervalLoopingCall',
                        FakeFixedIntervalLoopingCall)
 
-    def _mock_path_exists(self, aoe_path, mock_values=[]):
+    def _mock_path_exists(self, aoe_path, mock_values=None):
+        mock_values = mock_values or []
         self.mox.StubOutWithMock(os.path, 'exists')
         for value in mock_values:
             os.path.exists(aoe_path).AndReturn(value)

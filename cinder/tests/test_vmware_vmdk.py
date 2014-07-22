@@ -89,8 +89,8 @@ class FakeObject(object):
 
 
 class FakeManagedObjectReference(object):
-    def __init__(self, lis=[]):
-        self.ManagedObjectReference = lis
+    def __init__(self, lis=None):
+        self.ManagedObjectReference = lis or []
 
 
 class FakeDatastoreSummary(object):

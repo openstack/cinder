@@ -69,7 +69,8 @@ class API(base.Base):
             LOG.error(msg)
         self.db.transfer_destroy(context, transfer_id)
 
-    def get_all(self, context, filters={}):
+    def get_all(self, context, filters=None):
+        filters = filters or {}
         volume_api.check_policy(context, 'get_all_transfers')
         if context.is_admin and 'all_tenants' in filters:
             transfers = self.db.transfer_get_all(context)

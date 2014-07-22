@@ -431,7 +431,7 @@ class TemplateElement(object):
         # We have fully rendered the element; return it
         return rootelem
 
-    def render(self, parent, obj, patches=[], nsmap=None):
+    def render(self, parent, obj, patches=None, nsmap=None):
         """Render an object.
 
         Renders an object against this template node.  Returns a list
@@ -448,6 +448,7 @@ class TemplateElement(object):
                       the etree.Element instances.
         """
 
+        patches = patches or []
         # First, get the datum we're rendering
         data = None if obj is None else self.selector(obj)
 
