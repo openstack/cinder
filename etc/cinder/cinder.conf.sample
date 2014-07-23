@@ -1570,6 +1570,17 @@
 
 
 #
+# Options defined in cinder.volume.drivers.nimble
+#
+
+# Nimble Controller pool name (string value)
+#nimble_pool_name=default
+
+# Nimble Subnet Label (string value)
+#nimble_subnet_label=*
+
+
+#
 # Options defined in cinder.volume.drivers.rbd
 #
 
