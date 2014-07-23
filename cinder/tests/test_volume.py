@@ -343,6 +343,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(msg['event_type'], 'volume.create.start')
         expected = {
             'status': 'creating',
+            'host': socket.gethostname(),
             'display_name': 'test_volume',
             'availability_zone': 'nova',
             'tenant_id': 'fake',
