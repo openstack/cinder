@@ -107,6 +107,9 @@ storwize_svc_opts = [
                      'setup. If it is compatible, it will allow no wwpns '
                      'being returned on get_conn_fc_wwpns during '
                      'initialize_connection'),
+    cfg.BoolOpt('storwize_svc_allow_tenant_qos',
+                default=False,
+                help='Allow tenants to specify QOS on create'),
 ]
 
 CONF = cfg.CONF
@@ -128,9 +131,10 @@ class StorwizeSVCDriver(san.SanDriver):
             WWPNs by comparing lower case
     1.2.4 - Fix bug #1278035 (async migration/retype)
     1.2.5 - Added support for manage_existing (unmanage is inherited)
+    1.2.6 - Added QoS support in terms of I/O throttling rate
     """
 
-    VERSION = "1.2.5"
+    VERSION = "1.2.6"
     VDISKCOPYOPS_INTERVAL = 600
 
     def __init__(self, *args, **kwargs):
@@ -298,9 +302,11 @@ class StorwizeSVCDriver(san.SanDriver):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-    def _get_vdisk_params(self, type_id, volume_type=None):
+    def _get_vdisk_params(self, type_id, volume_type=None,
+                          volume_metadata=None):
         return self._helpers.get_vdisk_params(self.configuration, self._state,
-                                              type_id, volume_type=volume_type)
+                                              type_id, volume_type=volume_type,
+                                              volume_metadata=volume_metadata)
 
     @fczm_utils.AddFCZone
     @utils.synchronized('storwize-host', external=True)
@@ -539,10 +545,15 @@ class StorwizeSVCDriver(san.SanDriver):
         return info
 
     def create_volume(self, volume):
-        opts = self._get_vdisk_params(volume['volume_type_id'])
+        opts = self._get_vdisk_params(volume['volume_type_id'],
+                                      volume_metadata=
+                                      volume.get('volume_metadata'))
         pool = self.configuration.storwize_svc_volpool_name
-        return self._helpers.create_vdisk(volume['name'], str(volume['size']),
+        data = self._helpers.create_vdisk(volume['name'], str(volume['size']),
                                           'gb', pool, opts)
+        if opts['qos']:
+            self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
+        return data
 
     def delete_volume(self, volume):
         self._helpers.delete_vdisk(volume['name'], False)
@@ -577,10 +588,14 @@ class StorwizeSVCDriver(san.SanDriver):
             LOG.error(msg)
             raise exception.InvalidInput(message=msg)
 
-        opts = self._get_vdisk_params(volume['volume_type_id'])
+        opts = self._get_vdisk_params(volume['volume_type_id'],
+                                      volume_metadata=
+                                      volume.get('volume_metadata'))
         self._helpers.create_copy(snapshot['name'], volume['name'],
                                   snapshot['id'], self.configuration,
                                   opts, True)
+        if opts['qos']:
+            self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         if src_volume['size'] != tgt_volume['size']:
@@ -589,10 +604,14 @@ class StorwizeSVCDriver(san.SanDriver):
             LOG.error(msg)
             raise exception.InvalidInput(message=msg)
 
-        opts = self._get_vdisk_params(tgt_volume['volume_type_id'])
+        opts = self._get_vdisk_params(tgt_volume['volume_type_id'],
+                                      volume_metadata=
+                                      tgt_volume.get('volume_metadata'))
         self._helpers.create_copy(src_volume['name'], tgt_volume['name'],
                                   src_volume['id'], self.configuration,
                                   opts, True)
+        if opts['qos']:
+            self._helpers.add_vdisk_qos(tgt_volume['name'], opts['qos'])
 
     def extend_volume(self, volume, new_size):
         LOG.debug('enter: extend_volume: volume %s' % volume['id'])
@@ -782,7 +801,9 @@ class StorwizeSVCDriver(san.SanDriver):
         no_copy_keys = ['warning', 'autoexpand', 'easytier']
         copy_keys = ['rsize', 'grainsize', 'compression']
         all_keys = ignore_keys + no_copy_keys + copy_keys
-        old_opts = self._get_vdisk_params(volume['volume_type_id'])
+        old_opts = self._get_vdisk_params(volume['volume_type_id'],
+                                          volume_metadata=
+                                          volume.get('volume_matadata'))
         new_opts = self._get_vdisk_params(new_type['id'],
                                           volume_type=new_type)
 
@@ -826,6 +847,9 @@ class StorwizeSVCDriver(san.SanDriver):
             self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
                                                new_opts, self._state)
 
+        qos = new_opts['qos'] or old_opts['qos']
+        if qos:
+            self._helpers.add_vdisk_qos(volume['name'], qos)
         LOG.debug('exit: retype: ild=%(id)s, new_type=%(new_type)s,'
                   'diff=%(diff)s, host=%(host)s' % {'id': volume['id'],
                                                     'new_type': new_type,
@@ -909,7 +933,7 @@ class StorwizeSVCDriver(san.SanDriver):
         data['total_capacity_gb'] = 0  # To be overwritten
         data['free_capacity_gb'] = 0   # To be overwritten
         data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = False
+        data['QoS_support'] = True
 
         pool = self.configuration.storwize_svc_volpool_name
         backend_name = self.configuration.safe_get('volume_backend_name')

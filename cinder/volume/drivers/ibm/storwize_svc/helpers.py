@@ -29,6 +29,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import strutils
 from cinder.volume.drivers.ibm.storwize_svc import ssh as storwize_ssh
+from cinder.volume import qos_specs
 from cinder.volume import utils
 from cinder.volume import volume_types
 
@@ -36,6 +37,10 @@ LOG = logging.getLogger(__name__)
 
 
 class StorwizeHelpers(object):
+
+    svc_qos_keys = {'IOThrottling': int}
+    svc_qos_param_dict = {'IOThrottling': 'rate'}
+
     def __init__(self, run_ssh):
         self.ssh = storwize_ssh.StorwizeSSH(run_ssh)
         self.check_fcmapping_interval = 3
@@ -381,7 +386,8 @@ class StorwizeHelpers(object):
                'easytier': config.storwize_svc_vol_easytier,
                'protocol': protocol,
                'multipath': config.storwize_svc_multipath_enabled,
-               'iogrp': config.storwize_svc_vol_iogrp}
+               'iogrp': config.storwize_svc_vol_iogrp,
+               'qos': None}
         return opt
 
     @staticmethod
@@ -434,7 +440,83 @@ class StorwizeHelpers(object):
                 % {'iogrp': opts['iogrp'],
                    'avail': avail_grps})
 
-    def get_vdisk_params(self, config, state, type_id, volume_type=None):
+    def _get_opts_from_specs(self, opts, specs):
+        qos = {}
+        for k, value in specs.iteritems():
+            # Get the scope, if using scope format
+            key_split = k.split(':')
+            if len(key_split) == 1:
+                scope = None
+                key = key_split[0]
+            else:
+                scope = key_split[0]
+                key = key_split[1]
+
+            # We generally do not look at capabilities in the driver, but
+            # protocol is a special case where the user asks for a given
+            # protocol and we want both the scheduler and the driver to act
+            # on the value.
+            if ((not scope or scope == 'capabilities') and
+                    key == 'storage_protocol'):
+                scope = None
+                key = 'protocol'
+                words = value.split()
+                if not (words and len(words) == 2 and words[0] == '<in>'):
+                    LOG.error(_('Protocol must be specified as '
+                                '\'<in> iSCSI\' or \'<in> FC\'.'))
+                del words[0]
+                value = words[0]
+
+            # Add the QoS.
+            if scope and scope == 'qos':
+                type_fn = self.svc_qos_keys[key]
+                try:
+                    value = type_fn(value)
+                    qos[self.svc_qos_param_dict[key]] = value
+                except ValueError:
+                    continue
+
+            # Any keys that the driver should look at should have the
+            # 'drivers' scope.
+            if scope and scope != 'drivers':
+                continue
+            if key in opts:
+                this_type = type(opts[key]).__name__
+                if this_type == 'int':
+                    value = int(value)
+                elif this_type == 'bool':
+                    value = strutils.bool_from_string(value)
+                opts[key] = value
+        if len(qos) != 0:
+            opts['qos'] = qos
+        return opts
+
+    def _get_qos_from_volume_metadata(self, volume_metadata):
+        """Return the QoS information from the volume metadata."""
+        qos = {}
+        for i in volume_metadata:
+            k = i.get('key', None)
+            value = i.get('value', None)
+            key_split = k.split(':')
+            if len(key_split) == 1:
+                scope = None
+                key = key_split[0]
+            else:
+                scope = key_split[0]
+                key = key_split[1]
+            # Add the QoS.
+            if scope and scope == 'qos':
+                if key in self.svc_qos_keys.keys():
+                    type_fn = self.svc_qos_keys[key]
+                    try:
+                        value = type_fn(value)
+                        qos[self.svc_qos_param_dict[key]] = value
+                    except ValueError:
+                        continue
+        return qos
+
+    def get_vdisk_params(self, config, state, type_id, volume_type=None,
+                         volume_metadata=None):
         """Return the parameters for creating the vdisk.
 
         Takes volume type and defaults from config options into account.
@@ -444,45 +526,23 @@ class StorwizeHelpers(object):
             ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
         if volume_type:
+            qos_specs_id = volume_type.get('qos_specs_id')
             specs = dict(volume_type).get('extra_specs')
-            for k, value in specs.iteritems():
-                # Get the scope, if using scope format
-                key_split = k.split(':')
-                if len(key_split) == 1:
-                    scope = None
-                    key = key_split[0]
-                else:
-                    scope = key_split[0]
-                    key = key_split[1]
-
-                # We generally do not look at capabilities in the driver, but
-                # protocol is a special case where the user asks for a given
-                # protocol and we want both the scheduler and the driver to act
-                # on the value.
-                if ((not scope or scope == 'capabilities') and
-                        key == 'storage_protocol'):
-                    scope = None
-                    key = 'protocol'
-                    words = value.split()
-                    if not (words and len(words) == 2 and words[0] == '<in>'):
-                        LOG.error(_('Protocol must be specified as '
-                                    '\'<in> iSCSI\' or \'<in> FC\'.'))
-                    del words[0]
-                    value = words[0]
-
-                # Any keys that the driver should look at should have the
-                # 'drivers' scope.
-                if scope and scope != 'drivers':
-                    continue
-
-                if key in opts:
-                    this_type = type(opts[key]).__name__
-                    if this_type == 'int':
-                        value = int(value)
-                    elif this_type == 'bool':
-                        value = strutils.bool_from_string(value)
-                    opts[key] = value
-
+            # NOTE(vhou): We prefer the qos_specs association
+            # and over-ride any existing
+            # extra-specs settings if present
+            if qos_specs_id is not None:
+                kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+                # Merge the qos_specs into extra_specs and qos_specs has higher
+                # priority than extra_specs if they have different values for
+                # the same key.
+                specs.update(kvs)
+            opts = self._get_opts_from_specs(opts, specs)
+        if (opts['qos'] is None and config.storwize_svc_allow_tenant_qos
+                and volume_metadata):
+            qos = self._get_qos_from_volume_metadata(volume_metadata)
+            if len(qos) != 0:
+                opts['qos'] = qos
         self.check_vdisk_opts(state, opts)
         return opts
 
@@ -735,6 +795,10 @@ class StorwizeHelpers(object):
         if (dest_type != 'StorwizeSVCDriver' or dest_id != state['system_id']):
             return None
         return dest_pool
+
+    def add_vdisk_qos(self, vdisk, qos):
+        for key, value in qos.iteritems():
+            self.ssh.chvdisk(vdisk, ['-' + key, str(value)])
 
     def change_vdisk_options(self, vdisk, changes, opts, state):
         if 'warning' in opts:
