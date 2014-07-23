@@ -18,7 +18,7 @@ python-glanceclient>=0.9.0
 python-keystoneclient>=0.3.2
 python-novaclient>=2.15.0
 python-swiftclient>=1.5
-Routes>=1.12.3
+Routes>=1.12.3,!=2.0
 six>=1.4.1
 SQLAlchemy>=0.7.8,<=0.7.99
 sqlalchemy-migrate>=0.7.2
