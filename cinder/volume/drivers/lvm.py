@@ -395,7 +395,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         Renames the LV to match the expected name for the volume.
         Error checking done by manage_existing_get_size is not repeated.
         """
-        lv_name = existing_ref['lv_name']
+        lv_name = existing_ref['source-name']
         self.vg.get_volume(lv_name)
 
         # Attempt to rename the LV to match the OpenStack internal name.
@@ -413,15 +413,15 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Return size of an existing LV for manage_existing.
 
         existing_ref is a dictionary of the form:
-        {'lv_name': <name of LV>}
+        {'source-name': <name of LV>}
         """
 
         # Check that the reference is valid
-        if 'lv_name' not in existing_ref:
-            reason = _('Reference must contain lv_name element.')
+        if 'source-name' not in existing_ref:
+            reason = _('Reference must contain source-name element.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
-        lv_name = existing_ref['lv_name']
+        lv_name = existing_ref['source-name']
         lv = self.vg.get_volume(lv_name)
 
         # Raise an exception if we didn't find a suitable LV.

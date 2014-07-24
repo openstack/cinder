@@ -974,15 +974,15 @@ class HP3PARBaseDriver(object):
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
         osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
-        existing_ref = {'name': unm_matcher}
+        existing_ref = {'source-name': unm_matcher}
 
         obj = self.driver.manage_existing(volume, existing_ref)
 
         expected_obj = {'display_name': 'Foo Volume'}
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
-            mock.call.modifyVolume(existing_ref['name'],
+            mock.call.getVolume(existing_ref['source-name']),
+            mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
                                     'comment': new_comment}),
             mock.call.logout()
@@ -998,8 +998,8 @@ class HP3PARBaseDriver(object):
         expected_obj = {'display_name': 'Test Volume'}
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
-            mock.call.modifyVolume(existing_ref['name'],
+            mock.call.getVolume(existing_ref['source-name']),
+            mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
                                     'comment': new_comment}),
             mock.call.logout()
@@ -1026,15 +1026,15 @@ class HP3PARBaseDriver(object):
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
         osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
-        existing_ref = {'name': unm_matcher}
+        existing_ref = {'source-name': unm_matcher}
 
         obj = self.driver.manage_existing(volume, existing_ref)
 
         expected_obj = {'display_name': 'Foo Volume'}
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
-            mock.call.modifyVolume(existing_ref['name'],
+            mock.call.getVolume(existing_ref['source-name']),
+            mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
                                     'comment': new_comment}),
             mock.call.logout()
@@ -1050,8 +1050,8 @@ class HP3PARBaseDriver(object):
         expected_obj = {'display_name': 'Test Volume'}
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
-            mock.call.modifyVolume(existing_ref['name'],
+            mock.call.getVolume(existing_ref['source-name']),
+            mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
                                     'comment': new_comment}),
             mock.call.logout()
@@ -1068,8 +1068,8 @@ class HP3PARBaseDriver(object):
         expected_obj = {'display_name': None}
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
-            mock.call.modifyVolume(existing_ref['name'],
+            mock.call.getVolume(existing_ref['source-name']),
+            mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
                                     'comment': new_comment}),
             mock.call.logout()
@@ -1088,7 +1088,7 @@ class HP3PARBaseDriver(object):
         mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound('fake')
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
-        existing_ref = {'name': unm_matcher}
+        existing_ref = {'source-name': unm_matcher}
 
         self.assertRaises(exception.InvalidInput,
                           self.driver.manage_existing,
@@ -1097,7 +1097,7 @@ class HP3PARBaseDriver(object):
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
+            mock.call.getVolume(existing_ref['source-name']),
             mock.call.logout()
         ]
 
@@ -1116,7 +1116,7 @@ class HP3PARBaseDriver(object):
         mock_client.getVolume.return_value = {'comment': comment}
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
-        existing_ref = {'name': unm_matcher}
+        existing_ref = {'source-name': unm_matcher}
 
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver.manage_existing,
@@ -1125,7 +1125,7 @@ class HP3PARBaseDriver(object):
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
+            mock.call.getVolume(existing_ref['source-name']),
             mock.call.logout()
         ]
 
@@ -1137,14 +1137,14 @@ class HP3PARBaseDriver(object):
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
         volume = {}
-        existing_ref = {'name': unm_matcher}
+        existing_ref = {'source-name': unm_matcher}
 
         size = self.driver.manage_existing_get_size(volume, existing_ref)
 
         expected_size = 2
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
+            mock.call.getVolume(existing_ref['source-name']),
             mock.call.logout()
         ]
 
@@ -1154,7 +1154,7 @@ class HP3PARBaseDriver(object):
     def test_manage_existing_get_size_invalid_reference(self):
         mock_client = self.setup_driver()
         volume = {}
-        existing_ref = {'name': self.VOLUME_3PAR_NAME}
+        existing_ref = {'source-name': self.VOLUME_3PAR_NAME}
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size,
@@ -1188,7 +1188,7 @@ class HP3PARBaseDriver(object):
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
         volume = {}
-        existing_ref = {'name': unm_matcher}
+        existing_ref = {'source-name': unm_matcher}
 
         self.assertRaises(exception.InvalidInput,
                           self.driver.manage_existing_get_size,
@@ -1197,7 +1197,7 @@ class HP3PARBaseDriver(object):
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(existing_ref['name']),
+            mock.call.getVolume(existing_ref['source-name']),
             mock.call.logout()
         ]
 

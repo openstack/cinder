@@ -3282,11 +3282,11 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         """
         self._setup_stubs_for_manage_existing()
 
-        ref = {'lv_name': 'fake_lv'}
+        ref = {'source-name': 'fake_lv'}
         vol = {'name': 'test', 'id': 1, 'size': 0}
 
         def _rename_volume(old_name, new_name):
-            self.assertEqual(old_name, ref['lv_name'])
+            self.assertEqual(old_name, ref['source-name'])
             self.assertEqual(new_name, vol['name'])
 
         self.stubs.Set(self.volume.driver.vg, 'rename_volume',
@@ -3306,7 +3306,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         """
         self._setup_stubs_for_manage_existing()
 
-        ref = {'lv_name': 'fake_lv_bad_size'}
+        ref = {'source-name': 'fake_lv_bad_size'}
         vol = {'name': 'test', 'id': 1, 'size': 2}
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -3321,7 +3321,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         """
         self._setup_stubs_for_manage_existing()
 
-        ref = {'lv_name': 'fake_nonexistent_lv'}
+        ref = {'source-name': 'fake_nonexistent_lv'}
         vol = {'name': 'test', 'id': 1, 'size': 0, 'status': 'available'}
 
         self.assertRaises(exception.ManageExistingInvalidReference,

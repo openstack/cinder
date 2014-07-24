@@ -188,7 +188,7 @@ class RBDTestCase(test.TestCase):
             with mock.patch.object(self.driver.rbd.Image, 'close') \
                     as mock_rbd_image_close:
                 mock_rbd_image_size.return_value = 2 * units.Gi
-                existing_ref = {'rbd_name': self.volume_name}
+                existing_ref = {'source-name': self.volume_name}
                 return_size = self.driver.manage_existing_get_size(
                     self.volume,
                     existing_ref)
@@ -204,7 +204,7 @@ class RBDTestCase(test.TestCase):
             with mock.patch.object(self.driver.rbd.Image, 'close') \
                     as mock_rbd_image_close:
                 mock_rbd_image_size.return_value = 'abcd'
-                existing_ref = {'rbd_name': self.volume_name}
+                existing_ref = {'source-name': self.volume_name}
                 self.assertRaises(exception.VolumeBackendAPIException,
                                   self.driver.manage_existing_get_size,
                                   self.volume, existing_ref)
@@ -221,7 +221,7 @@ class RBDTestCase(test.TestCase):
             with mock.patch.object(self.driver.rbd.RBD(), 'rename') as \
                     mock_rbd_image_rename:
                 exist_volume = 'vol-exist'
-                existing_ref = {'rbd_name': exist_volume}
+                existing_ref = {'source-name': exist_volume}
                 mock_rbd_image_rename.return_value = 0
                 mock_rbd_image_rename(mock_rados_client.ioctx,
                                       exist_volume,
@@ -242,7 +242,7 @@ class RBDTestCase(test.TestCase):
             MockImageExistsException
 
         exist_volume = 'vol-exist'
-        existing_ref = {'rbd_name': exist_volume}
+        existing_ref = {'source-name': exist_volume}
         self.assertRaises(self.mock_rbd.ImageExists,
                           self.driver.manage_existing,
                           self.volume, existing_ref)

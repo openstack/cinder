@@ -883,11 +883,11 @@ class RBDDriver(driver.VolumeDriver):
             volume ref info to be set
         :param existing_ref:
             existing_ref is a dictionary of the form:
-            {'rbd_name': <name of rbd image>}
+            {'source-name': <name of rbd image>}
         """
         # Raise an exception if we didn't find a suitable rbd image.
         with RADOSClient(self) as client:
-            rbd_name = existing_ref['rbd_name']
+            rbd_name = existing_ref['source-name']
             self.rbd.RBD().rename(client.ioctx, strutils.safe_encode(rbd_name),
                                   strutils.safe_encode(volume['name']))
 
@@ -898,16 +898,16 @@ class RBDDriver(driver.VolumeDriver):
             volume ref info to be set
         :param existing_ref:
             existing_ref is a dictionary of the form:
-            {'rbd_name': <name of rbd image>}
+            {'source-name': <name of rbd image>}
         """
 
         # Check that the reference is valid
-        if 'rbd_name' not in existing_ref:
-            reason = _('Reference must contain rbd_name element.')
+        if 'source-name' not in existing_ref:
+            reason = _('Reference must contain source-name element.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
 
-        rbd_name = strutils.safe_encode(existing_ref['rbd_name'])
+        rbd_name = strutils.safe_encode(existing_ref['source-name'])
 
         with RADOSClient(self) as client:
             # Raise an exception if we didn't find a suitable rbd image.

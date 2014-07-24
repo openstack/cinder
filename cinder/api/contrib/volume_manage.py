@@ -91,6 +91,7 @@ class VolumeManageController(wsgi.Controller):
                                volume.
             availability_zone  The availability zone to associate with the new
                                volume.
+            bootable           If set to True, marks the volume as bootable.
         """
         context = req.environ['cinder.context']
         authorize(context)
@@ -134,7 +135,7 @@ class VolumeManageController(wsgi.Controller):
         kwargs['description'] = volume.get('description', None)
         kwargs['metadata'] = volume.get('metadata', None)
         kwargs['availability_zone'] = volume.get('availability_zone', None)
-
+        kwargs['bootable'] = volume.get('bootable', False)
         try:
             new_volume = self.volume_api.manage_existing(context,
                                                          volume['host'],

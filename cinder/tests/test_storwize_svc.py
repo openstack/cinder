@@ -2610,7 +2610,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
     def test_manage_existing_bad_uid(self):
         """Error when the specified UUID does not exist."""
         volume = self._generate_vol_info(None, None)
-        ref = {'vdisk_UID': 'bad_uid'}
+        ref = {'source-id': 'bad_uid'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
         pass
@@ -2633,7 +2633,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         new_volume = self._generate_vol_info(None, None)
 
         # Submit the request to manage it.
-        ref = {'vdisk_UID': uid}
+        ref = {'source-id': uid}
         size = self.driver.manage_existing_get_size(new_volume, ref)
         self.assertEqual(size, 10)
         self.driver.manage_existing(new_volume, ref)
@@ -2663,7 +2663,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Descriptor of the Cinder volume that we want to own the vdisk
         # refrerenced by uid.
         volume = self._generate_vol_info(None, None)
-        ref = {'vdisk_UID': uid}
+        ref = {'source-id': uid}
 
         # Attempt to manage this disk, and except an exception beause the
         # volume is already mapped.
@@ -2694,7 +2694,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Submit the request to manage it, specifying that it is OK to
         # manage a volume that is already attached.
-        ref = {'vdisk_UID': uid, 'manage_if_in_use': True}
+        ref = {'source-id': uid, 'manage_if_in_use': True}
         size = self.driver.manage_existing_get_size(new_volume, ref)
         self.assertEqual(size, 10)
         self.driver.manage_existing(new_volume, ref)
