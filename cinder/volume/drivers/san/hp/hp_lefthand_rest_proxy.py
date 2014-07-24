@@ -32,7 +32,7 @@ try:
     from hplefthandclient import client
     from hplefthandclient import exceptions as hpexceptions
 except ImportError:
-    LOG.error(_('Module hplefthandclient not installed.'))
+    import cinder.tests.fake_hp_lefthand_client as hplefthandclient
 
 hplefthand_opts = [
     cfg.StrOpt('hplefthand_api_url',
