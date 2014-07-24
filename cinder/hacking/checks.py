@@ -25,7 +25,7 @@ Guidelines for writing new hacking checks
    on the N3xx value.
  - List the new rule in the top level HACKING.rst file
  - Add test cases for each new rule to
-   cinder/tests/unit/test_hacking.py
+   cinder/tests/test_hacking.py
 
 """
 
