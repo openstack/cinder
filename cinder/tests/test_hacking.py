@@ -58,3 +58,20 @@ class HackingTestCase(test.TestCase):
 
         self.assertEqual(len(list(checks.no_translate_debug_logs(
             "LOG.info(_('foo'))", "cinder/scheduler/foo.py"))), 0)
+
+    def test_check_explicit_underscore_import(self):
+        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "LOG.info(_('My info message'))",
+            "cinder/tests/other_files.py"))), 1)
+        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "msg = _('My message')",
+            "cinder/tests/other_files.py"))), 1)
+        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "from cinder.i18n import _",
+            "cinder/tests/other_files.py"))), 0)
+        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "LOG.info(_('My info message'))",
+            "cinder/tests/other_files.py"))), 0)
+        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "msg = _('My message')",
+            "cinder/tests/other_files.py"))), 0)

@@ -29,6 +29,12 @@ Guidelines for writing new hacking checks
 
 """
 
+UNDERSCORE_IMPORT_FILES = []
+
+log_translation = re.compile(
+    r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)_\(\s*('|\")")
+string_translation = re.compile(r"(.)*_\(\s*('|\")")
+
 
 def no_translate_debug_logs(logical_line, filename):
     """Check for 'LOG.debug(_('
@@ -53,6 +59,27 @@ def no_mutable_default_args(logical_line):
         yield (0, msg)
 
 
+def check_explicit_underscore_import(logical_line, filename):
+    """Check for explicit import of the _ function
+
+    We need to ensure that any files that are using the _() function
+    to translate logs are explicitly importing the _ function.  We
+    can't trust unit test to catch whether the import has been
+    added so we need to check for it here.
+    """
+
+    # Build a list of the files that have _ imported.  No further
+    # checking needed once it is found.
+    if filename in UNDERSCORE_IMPORT_FILES:
+        pass
+    elif logical_line.endswith("import _"):
+        UNDERSCORE_IMPORT_FILES.append(filename)
+    elif(log_translation.match(logical_line) or
+         string_translation.match(logical_line)):
+        yield(0, "N323: Found use of _() without explicit import of _ !")
+
+
 def factory(register):
     register(no_translate_debug_logs)
     register(no_mutable_default_args)
+    register(check_explicit_underscore_import)

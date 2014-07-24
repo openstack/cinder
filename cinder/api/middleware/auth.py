@@ -26,6 +26,7 @@ import webob.exc
 
 from cinder.api.openstack import wsgi
 from cinder import context
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.middleware import request_id

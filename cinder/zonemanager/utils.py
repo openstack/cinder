@@ -19,6 +19,7 @@ Utility functions related to the Zone Manager.
 """
 import logging
 
+from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log
 from cinder.volume.configuration import Configuration
 from cinder.volume import manager
