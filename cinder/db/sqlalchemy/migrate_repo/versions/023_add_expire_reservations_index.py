@@ -13,7 +13,12 @@
 #    under the License.
 
 from sqlalchemy import Index, MetaData, Table
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import OperationalError
+
+from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common import log as logging
+
+LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -28,8 +33,9 @@ def upgrade(migrate_engine):
                   reservations.c.deleted, reservations.c.expire)
     try:
         index.create(migrate_engine)
-    except IntegrityError:
-        pass
+    except OperationalError:
+        LOG.info(_('Skipped adding reservations_deleted_expire_idx '
+                   'because an equivalent index already exists.'))
 
 
 def downgrade(migrate_engine):
@@ -40,4 +46,8 @@ def downgrade(migrate_engine):
 
     index = Index('reservations_deleted_expire_idx',
                   reservations.c.deleted, reservations.c.expire)
-    index.drop(migrate_engine)
+    try:
+        index.drop(migrate_engine)
+    except OperationalError:
+        LOG.info(_('Skipped removing reservations_deleted_expire_idx '
+                   'because index does not exist.'))
