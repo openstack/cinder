@@ -31,6 +31,7 @@ from cinder.brick.initiator import linuxfc
 from cinder import exception
 from cinder.openstack.common import processutils as putils
 from cinder.openstack.common import timeutils
+from cinder import ssh_utils
 from cinder import test
 from cinder import utils
 
@@ -870,24 +871,24 @@ class SSHPoolTestCase(test.TestCase):
         mock_sshclient.return_value = FakeSSHClient()
 
         # create with customized setting
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
-                                "test",
-                                password="test",
-                                min_size=1,
-                                max_size=1,
-                                missing_key_policy=paramiko.RejectPolicy(),
-                                hosts_key_file='dummy_host_keyfile')
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1,
+                                    missing_key_policy=paramiko.RejectPolicy(),
+                                    hosts_key_file='dummy_host_keyfile')
         with sshpool.item() as ssh:
             self.assertTrue(isinstance(ssh.get_policy(),
                                        paramiko.RejectPolicy))
             self.assertEqual(ssh.hosts_key_file, 'dummy_host_keyfile')
 
         # create with default setting
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
-                                "test",
-                                password="test",
-                                min_size=1,
-                                max_size=1)
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
         with sshpool.item() as ssh:
             self.assertTrue(isinstance(ssh.get_policy(),
                                        paramiko.AutoAddPolicy))
@@ -899,11 +900,11 @@ class SSHPoolTestCase(test.TestCase):
         mock_sshclient.return_value = FakeSSHClient()
 
         # create with password
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
-                                "test",
-                                password="test",
-                                min_size=1,
-                                max_size=1)
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
         with sshpool.item() as ssh:
             first_id = ssh.id
 
@@ -914,16 +915,16 @@ class SSHPoolTestCase(test.TestCase):
         mock_sshclient.connect.assert_called_once()
 
         # create with private key
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
-                                "test",
-                                privatekey="test",
-                                min_size=1,
-                                max_size=1)
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    privatekey="test",
+                                    min_size=1,
+                                    max_size=1)
         mock_sshclient.connect.assert_called_once()
 
         # attempt to create with no password or private key
         self.assertRaises(paramiko.SSHException,
-                          utils.SSHPool,
+                          ssh_utils.SSHPool,
                           "127.0.0.1", 22, 10,
                           "test",
                           min_size=1,
@@ -932,11 +933,11 @@ class SSHPoolTestCase(test.TestCase):
     @mock.patch('paramiko.SSHClient')
     def test_closed_reopend_ssh_connections(self, mock_sshclient):
         mock_sshclient.return_value = eval('FakeSSHClient')()
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10,
-                                "test",
-                                password="test",
-                                min_size=1,
-                                max_size=4)
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=4)
         with sshpool.item() as ssh:
             mock_sshclient.reset_mock()
             first_id = ssh.id

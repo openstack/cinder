@@ -29,6 +29,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder import ssh_utils
 from cinder import utils
 from cinder.volume import driver
 
@@ -109,14 +110,15 @@ class SanDriver(driver.VolumeDriver):
             privatekey = self.configuration.san_private_key
             min_size = self.configuration.ssh_min_pool_conn
             max_size = self.configuration.ssh_max_pool_conn
-            self.sshpool = utils.SSHPool(self.configuration.san_ip,
-                                         self.configuration.san_ssh_port,
-                                         self.configuration.ssh_conn_timeout,
-                                         self.configuration.san_login,
-                                         password=password,
-                                         privatekey=privatekey,
-                                         min_size=min_size,
-                                         max_size=max_size)
+            self.sshpool = ssh_utils.SSHPool(
+                self.configuration.san_ip,
+                self.configuration.san_ssh_port,
+                self.configuration.ssh_conn_timeout,
+                self.configuration.san_login,
+                password=password,
+                privatekey=privatekey,
+                min_size=min_size,
+                max_size=max_size)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:

@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
+from cinder import ssh_utils
 from cinder import utils
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume import volume_types
@@ -439,7 +440,8 @@ class TseriesCommon():
         user = self.login_info['UserName']
         pwd = self.login_info['UserPassword']
         if not self.ssh_pool:
-            self.ssh_pool = utils.SSHPool(ip0, 22, 30, user, pwd, max_size=2)
+            self.ssh_pool = ssh_utils.SSHPool(ip0, 22, 30, user, pwd,
+                                              max_size=2)
         ssh_client = None
         while True:
             try:
