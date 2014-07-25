@@ -41,6 +41,10 @@
     "volume_extension:volume_mig_status_attribute": [["rule:admin_api"]],
     "volume_extension:hosts": [["rule:admin_api"]],
     "volume_extension:services": [["rule:admin_api"]],
+
+    "volume_extension:volume_manage": [["rule:admin_api"]],
+    "volume_extension:volume_unmanage": [["rule:admin_api"]],
+
     "volume:services": [["rule:admin_api"]],
 
     "volume:create_transfer": [],
