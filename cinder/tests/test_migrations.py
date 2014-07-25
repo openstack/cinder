@@ -1071,3 +1071,36 @@ class TestMigrations(test.TestCase):
                                         metadata,
                                         autoload=True)
             self.assertNotIn('disabled_reason', services.c)
+
+    def test_migration_023(self):
+        """Test that adding reservations index works correctly."""
+        for (key, engine) in self.engines.items():
+            migration_api.version_control(engine,
+                                          TestMigrations.REPOSITORY,
+                                          migration.db_initial_version())
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 22)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            migration_api.upgrade(engine, TestMigrations.REPOSITORY, 23)
+            reservations = sqlalchemy.Table('reservations',
+                                            metadata,
+                                            autoload=True)
+            index_colums = []
+            for idx in reservations.indexes:
+                if idx.name == 'reservations_deleted_expire_idx':
+                    index_columns = idx.columns.keys()
+                    break
+
+            self.assertEqual(sorted(['deleted', 'expire']),
+                             sorted(index_columns))
+
+            migration_api.downgrade(engine, TestMigrations.REPOSITORY, 22)
+            metadata = sqlalchemy.schema.MetaData()
+            metadata.bind = engine
+
+            reservations = sqlalchemy.Table('reservations',
+                                            metadata,
+                                            autoload=True)
+            index_names = [idx.name for idx in reservations.indexes]
+            self.assertNotIn('reservations_deleted_expire_idx', index_names)
