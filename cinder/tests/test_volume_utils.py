@@ -246,3 +246,13 @@ class BlkioCgroupTestCase(test.TestCase):
                                               execute=fake_utils_execute)
         self.assertEqual(['cgexec', '-g',
                           'blkio:' + CONF.volume_copy_blkio_cgroup_name], cmd)
+
+
+class VolumeUtilsTestCase(test.TestCase):
+    def test_generate_password(self):
+        password = volume_utils.generate_password()
+        self.assertTrue([c for c in password if c in '0123456789'])
+        self.assertTrue([c for c in password
+                         if c in 'abcdefghijklmnopqrstuvwxyz'])
+        self.assertTrue([c for c in password
+                         if c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'])

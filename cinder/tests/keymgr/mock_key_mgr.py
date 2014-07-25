@@ -32,7 +32,7 @@ import uuid
 from cinder import exception
 from cinder.keymgr import key
 from cinder.keymgr import key_mgr
-from cinder import utils
+from cinder.volume import utils
 
 
 class MockKeyManager(key_mgr.KeyManager):

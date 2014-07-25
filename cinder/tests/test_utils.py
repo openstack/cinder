@@ -392,14 +392,6 @@ class GenericUtilsTestCase(test.TestCase):
         mock_reload.assert_called_once_with(fake_data)
         mock_open.assert_called_once_with(fake_file)
 
-    def test_generate_password(self):
-        password = utils.generate_password()
-        self.assertTrue([c for c in password if c in '0123456789'])
-        self.assertTrue([c for c in password
-                         if c in 'abcdefghijklmnopqrstuvwxyz'])
-        self.assertTrue([c for c in password
-                         if c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'])
-
     def test_read_file_as_root(self):
         def fake_execute(*args, **kwargs):
             if args[1] == 'bad':
