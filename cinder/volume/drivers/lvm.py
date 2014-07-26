@@ -291,16 +291,17 @@ class LVMVolumeDriver(driver.VolumeDriver):
                          'id': temp_id}
 
         self.create_snapshot(temp_snapshot)
-        self._create_volume(volume['name'],
-                            self._sizestr(volume['size']),
-                            self.configuration.lvm_type,
-                            mirror_count)
-
-        self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
 
        # copy_volume expects sizes in MiB, we store integer GiB
        # be sure to convert before passing in
         try:
+            self._create_volume(volume['name'],
+                                self._sizestr(volume['size']),
+                                self.configuration.lvm_type,
+                                mirror_count)
+
+            self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
+
             volutils.copy_volume(
                 self.local_path(temp_snapshot),
                 self.local_path(volume),
