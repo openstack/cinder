@@ -279,25 +279,6 @@ class VolumeCommands(object):
         cctxt = self.client.prepare(server=host)
         cctxt.cast(ctxt, "delete_volume", volume_id=volume['id'])
 
-    @args('volume_id',
-          help='Volume ID to be reattached')
-    def reattach(self, volume_id):
-        """Re-attach a volume that has previously been attached
-        to an instance.  Typically called after a compute host
-        has been rebooted.
-        """
-        ctxt = context.get_admin_context()
-        volume = db.volume_get(ctxt, param2id(volume_id))
-        if not volume['instance_id']:
-            print(_("volume is not attached to an instance"))
-            return
-        instance = db.instance_get(ctxt, volume['instance_id'])
-        host = instance['host']
-
-        cctxt = self.client.prepare(topic=CONF.compute_topic, server=host)
-        cctxt.cast(ctxt, "attach_volume", instance_id=instance['id'],
-                   volume_id=volume['id'], mountpoint=volume['mountpoint'])
-
     @args('--currenthost', required=True, help='Existing volume host name')
     @args('--newhost', required=True, help='New volume host name')
     def update_host(self, currenthost, newhost):
