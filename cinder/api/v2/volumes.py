@@ -326,11 +326,30 @@ class VolumeController(wsgi.Controller):
         else:
             kwargs['source_volume'] = None
 
+        source_replica = volume.get('source_replica')
+        if source_replica is not None:
+            try:
+                src_vol = self.volume_api.get_volume(context,
+                                                     source_replica)
+                if src_vol['replication_status'] == 'disabled':
+                    explanation = _('source volume id:%s is not'
+                                    ' replicated') % source_volid
+                    raise exc.HTTPNotFound(explanation=explanation)
+                kwargs['source_replica'] = src_vol
+            except exception.NotFound:
+                explanation = (_('replica source volume id:%s not found') %
+                               source_replica)
+                raise exc.HTTPNotFound(explanation=explanation)
+        else:
+            kwargs['source_replica'] = None
+
         size = volume.get('size', None)
         if size is None and kwargs['snapshot'] is not None:
             size = kwargs['snapshot']['volume_size']
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
+        elif size is None and kwargs['source_replica'] is not None:
+            size = kwargs['source_replica']['size']
 
         LOG.info(_("Create volume of %s GB"), size, context=context)
 

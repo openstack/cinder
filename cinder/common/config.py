@@ -194,6 +194,9 @@ global_opts = [
                 help='Whether snapshots count against GigaByte quota'),
     cfg.StrOpt('transfer_api_class',
                default='cinder.transfer.api.API',
-               help='The full class name of the volume transfer API class'), ]
+               help='The full class name of the volume transfer API class'),
+    cfg.StrOpt('replication_api_class',
+               default='cinder.replication.api.API',
+               help='The full class name of the volume replication API class'), ]
 
 CONF.register_opts(global_opts)

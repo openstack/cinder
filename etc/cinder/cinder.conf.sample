@@ -609,6 +609,10 @@
 # value)
 #transfer_api_class=cinder.transfer.api.API
 
+# The full class name of the volume replication API class
+# (string value)
+#replication_api_class=cinder.replication.api.API
+
 
 #
 # Options defined in cinder.compute

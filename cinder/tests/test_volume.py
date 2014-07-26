@@ -357,6 +357,9 @@ class VolumeTestCase(BaseVolumeTestCase):
             'user_id': 'fake',
             'launched_at': 'DONTCARE',
             'size': 1,
+            'replication_status': 'disabled',
+            'replication_extended_status': None,
+            'replication_driver_data': None,
         }
         self.assertDictMatch(msg['payload'], expected)
         msg = fake_notifier.NOTIFICATIONS[1]
@@ -2445,6 +2448,28 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.CinderException,
                           self.volume.create_volume, ctxt, volume_src['id'])
 
+    @mock.patch(
+        'cinder.volume.driver.VolumeDriver.create_replica_test_volume')
+    def test_create_volume_from_sourcereplica(self, _create_replica_test):
+        """Test volume can be created from a volume replica."""
+        _create_replica_test.return_value = None
+
+        volume_src = tests_utils.create_volume(self.context,
+                                               **self.volume_params)
+        self.volume.create_volume(self.context, volume_src['id'])
+        volume_dst = tests_utils.create_volume(self.context,
+                                               source_replicaid=
+                                               volume_src['id'],
+                                               **self.volume_params)
+        self.volume.create_volume(self.context, volume_dst['id'],
+                                  source_replicaid=volume_src['id'])
+        self.assertEqual('available',
+                         db.volume_get(context.get_admin_context(),
+                                       volume_dst['id']).status)
+        self.assertTrue(_create_replica_test.called)
+        self.volume.delete_volume(self.context, volume_dst['id'])
+        self.volume.delete_volume(self.context, volume_src['id'])
+
     def test_create_volume_from_sourcevol(self):
         """Test volume can be created from a source volume."""
         def fake_create_cloned_volume(volume, src_vref):
@@ -2706,7 +2731,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['status'], 'available')
 
     def _retype_volume_exec(self, driver, snap=False, policy='on-demand',
-                            migrate_exc=False, exc=None, diff_equal=False):
+                            migrate_exc=False, exc=None, diff_equal=False,
+                            replica=False):
         elevated = context.get_admin_context()
         project_id = self.context.project_id
 
@@ -2716,9 +2742,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         vol_type = db.volume_type_get_by_name(elevated, 'new')
         db.quota_create(elevated, project_id, 'volumes_new', 10)
 
+        if replica:
+            rep_status = 'active'
+        else:
+            rep_status = 'disabled'
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host, status='retyping',
-                                           volume_type_id=old_vol_type['id'])
+                                           volume_type_id=old_vol_type['id'],
+                                           replication_status=rep_status)
         if snap:
             self._create_snapshot(volume['id'], size=volume['size'])
         if driver or diff_equal:
@@ -2788,6 +2819,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         # Test volume retype that requires migration by not allowed
         self._retype_volume_exec(False, policy='never',
                                  exc=exception.VolumeMigrationFailed)
+
+    def test_retype_volume_migration_with_replica(self):
+        self._retype_volume_exec(False,
+                                 replica=True,
+                                 exc=exception.InvalidVolume)
 
     def test_retype_volume_migration_with_snaps(self):
         self._retype_volume_exec(False, snap=True, exc=exception.InvalidVolume)

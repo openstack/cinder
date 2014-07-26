@@ -50,7 +50,10 @@ def stub_volume(id, **kwargs):
                                   {'key': 'readonly', 'value': 'False'}],
         'bootable': False,
         'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-        'volume_type': {'name': 'vol_type_name'}}
+        'volume_type': {'name': 'vol_type_name'},
+        'replication_status': 'disabled',
+        'replication_extended_status': None,
+        'replication_driver_data': None}
 
     volume.update(kwargs)
     if kwargs.get('volume_glance_metadata', None):

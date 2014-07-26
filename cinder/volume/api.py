@@ -152,7 +152,8 @@ class API(base.Base):
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
-               scheduler_hints=None, backup_source_volume=None):
+               scheduler_hints=None, backup_source_volume=None,
+               source_replica=None):
 
         if source_volume and volume_type:
             if volume_type['id'] != source_volume['volume_type_id']:
@@ -160,6 +161,12 @@ class API(base.Base):
                         "must match source volume, or be omitted). "
                         "You should omit the argument.")
                 raise exception.InvalidInput(reason=msg)
+
+        # When cloning replica (for testing), volume type must be omitted
+        if source_replica and volume_type:
+            msg = _("No volume_type should be provided when creating test "
+                    "replica, type must be omitted.")
+            raise exception.InvalidInput(reason=msg)
 
         if snapshot and volume_type:
             if volume_type['id'] != snapshot['volume_type_id']:
@@ -190,6 +197,7 @@ class API(base.Base):
             'scheduler_hints': scheduler_hints,
             'key_manager': self.key_manager,
             'backup_source_volume': backup_source_volume,
+            'source_replica': source_replica,
             'optional_args': {'is_quota_committed': False}
         }
         try:
@@ -473,6 +481,11 @@ class API(base.Base):
         if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
             msg = _("Snapshot cannot be created while volume is migrating")
+            raise exception.InvalidVolume(reason=msg)
+
+        if volume['status'].startswith('replica_'):
+            # Can't snapshot secondary replica
+            msg = _("Snapshot of secondary replica is not allowed.")
             raise exception.InvalidVolume(reason=msg)
 
         if ((not force) and (volume['status'] != "available")):
@@ -836,6 +849,13 @@ class API(base.Base):
         snaps = self.db.snapshot_get_all_for_volume(context, volume['id'])
         if snaps:
             msg = _("volume must not have snapshots")
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        # We only handle non-replicated volumes for now
+        rep_status = volume['replication_status']
+        if rep_status is not None and rep_status != 'disabled':
+            msg = _("Volume must not be replicated.")
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 

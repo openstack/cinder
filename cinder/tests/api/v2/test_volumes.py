@@ -104,6 +104,7 @@ class VolumeApiTest(test.TestCase):
                            'rel': 'bookmark'}],
                          'metadata': {},
                          'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
                          'size': 100,
                          'snapshot_id': None,
                          'source_volid': None,
@@ -207,6 +208,7 @@ class VolumeApiTest(test.TestCase):
                            'rel': 'bookmark'}],
                          'metadata': {},
                          'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -286,6 +288,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'Updated Test Name',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'id': '1',
@@ -338,6 +341,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'Updated Test Name',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'id': '1',
@@ -393,6 +397,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'New Name',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'id': '1',
@@ -443,6 +448,7 @@ class VolumeApiTest(test.TestCase):
             'availability_zone': 'fakeaz',
             'bootable': 'false',
             'name': 'displayname',
+            'replication_status': 'disabled',
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -504,6 +510,7 @@ class VolumeApiTest(test.TestCase):
             'availability_zone': 'fakeaz',
             'bootable': 'false',
             'name': 'Updated Test Name',
+            'replication_status': 'disabled',
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -607,6 +614,7 @@ class VolumeApiTest(test.TestCase):
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
                     'name': 'displayname',
+                    'replication_status': 'disabled',
                     'attachments': [
                         {
                             'device': '/',
@@ -667,6 +675,7 @@ class VolumeApiTest(test.TestCase):
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
                     'name': 'displayname',
+                    'replication_status': 'disabled',
                     'attachments': [
                         {
                             'device': '/',
@@ -1066,6 +1075,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'displayname',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'device': '/',
@@ -1115,6 +1125,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'displayname',
+                'replication_status': 'disabled',
                 'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
@@ -1172,6 +1183,7 @@ class VolumeApiTest(test.TestCase):
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
                 'name': 'displayname',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'device': '/',

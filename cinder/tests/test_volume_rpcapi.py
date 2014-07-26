@@ -146,6 +146,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               snapshot_id='fake_snapshot_id',
                               image_id='fake_image_id',
                               source_volid='fake_src_id',
+                              source_replicaid='fake_replica_id',
                               version='1.4')
 
     def test_create_volume_serialization(self):
@@ -160,6 +161,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               snapshot_id='fake_snapshot_id',
                               image_id='fake_image_id',
                               source_volid='fake_src_id',
+                              source_replicaid='fake_replica_id',
                               version='1.4')
 
     def test_delete_volume(self):
@@ -288,3 +290,15 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               ref={'lv_name': 'foo'},
                               version='1.15')
+
+    def test_promote_replica(self):
+        self._test_volume_api('promote_replica',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              version='1.17')
+
+    def test_reenable_replica(self):
+        self._test_volume_api('reenable_replication',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              version='1.17')

@@ -52,6 +52,9 @@
     "volume:delete_transfer": [],
     "volume:get_all_transfers": [],
 
+    "volume_extension:replication:promote": ["rule:admin_api"],
+    "volume_extension:replication:reenable": ["rule:admin_api"],
+
     "backup:create" : [],
     "backup:delete": [],
     "backup:get": [],
