@@ -13,7 +13,6 @@
 #    under the License.
 
 from sqlalchemy import Index, MetaData, Table
-from sqlalchemy.exc import OperationalError
 
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
@@ -21,21 +20,29 @@ from cinder.openstack.common import log as logging
 LOG = logging.getLogger(__name__)
 
 
+def _get_deleted_expire_index(table):
+    members = sorted(['deleted', 'expire'])
+    for idx in table.indexes:
+        if sorted(idx.columns.keys()) == members:
+            return idx
+
+
 def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
     reservations = Table('reservations', meta, autoload=True)
+    if _get_deleted_expire_index(reservations):
+        LOG.info(_('Skipped adding reservations_deleted_expire_idx '
+                   'because an equivalent index already exists.'))
+        return
 
     # Based on expire_reservations query
     # from: cinder/db/sqlalchemy/api.py
     index = Index('reservations_deleted_expire_idx',
                   reservations.c.deleted, reservations.c.expire)
-    try:
-        index.create(migrate_engine)
-    except OperationalError:
-        LOG.info(_('Skipped adding reservations_deleted_expire_idx '
-                   'because an equivalent index already exists.'))
+
+    index.create(migrate_engine)
 
 
 def downgrade(migrate_engine):
@@ -44,10 +51,9 @@ def downgrade(migrate_engine):
 
     reservations = Table('reservations', meta, autoload=True)
 
-    index = Index('reservations_deleted_expire_idx',
-                  reservations.c.deleted, reservations.c.expire)
-    try:
+    index = _get_deleted_expire_index(reservations)
+    if index:
         index.drop(migrate_engine)
-    except OperationalError:
+    else:
         LOG.info(_('Skipped removing reservations_deleted_expire_idx '
                    'because index does not exist.'))
