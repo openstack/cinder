@@ -1286,6 +1286,12 @@
 # Allows vdisk to multi host mapping (boolean value)
 #storwize_svc_multihostmap_enabled=true
 
+# Indicate whether svc driver is compatible for NPIV setup. If
+# it is compatible, it will allow no wwpns being returned on
+# get_conn_fc_wwpns during initialize_connection (boolean
+# value)
+#storwize_svc_npiv_compatibility_mode=false
+
 
 #
 # Options defined in cinder.volume.drivers.ibm.xiv_ds8k
