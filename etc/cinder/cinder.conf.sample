@@ -1587,6 +1587,14 @@
 
 
 #
+# Options defined in cinder.volume.drivers.pure
+#
+
+# REST API authorization token. (string value)
+#pure_api_token=<None>
+
+
+#
 # Options defined in cinder.volume.drivers.rbd
 #
 
