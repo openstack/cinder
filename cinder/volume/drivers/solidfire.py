@@ -415,7 +415,7 @@ class SolidFireDriver(SanISCSIDriver):
         qos = {}
         valid_presets = self.sf_qos_dict.keys()
 
-        #First look to see if they included a preset
+        # First look to see if they included a preset
         presets = [i.value for i in volume.get('volume_metadata')
                    if i.key == 'sf-qos' and i.value in valid_presets]
         if len(presets) > 0:
@@ -424,7 +424,7 @@ class SolidFireDriver(SanISCSIDriver):
                               'detected, using %s') % presets[0])
             qos = self.sf_qos_dict[presets[0]]
         else:
-            #look for explicit settings
+            # look for explicit settings
             for i in volume.get('volume_metadata'):
                 if i.key in self.sf_qos_keys:
                     qos[i.key] = int(i.value)
@@ -768,7 +768,11 @@ class SolidFireDriver(SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-        LOG.debug(_("Leaving SolidFire transfer volume"))
+        volume['project_id': new_project]
+        volume['user_id': new_user]
+        model_update = self._do_export(volume)
+        LOG.debug("Leaving SolidFire transfer volume")
+        return model_update
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
