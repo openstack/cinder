@@ -82,7 +82,7 @@ def enforce(match_list, target_dict, credentials_dict, exc=None,
             can use this to perform simple boolean logic.  For
             example, the following rule would return True if the creds
             contain the role 'admin' OR the if the tenant_id matches
-            the target dict AND the the creds contains the role
+            the target dict AND the creds contains the role
             'compute_sysadmin':
 
             ::

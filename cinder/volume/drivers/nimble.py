@@ -497,7 +497,7 @@ class NimbleAPIExecutor:
     def create_vol(self, volume, pool_name, reserve):
         """Execute createVol API."""
         response = self._execute_create_vol(volume, pool_name, reserve)
-        LOG.info(_('Successfuly create volume %s') % response['name'])
+        LOG.info(_('Successfully create volume %s') % response['name'])
         return response['name']
 
     @_connection_checker
@@ -509,7 +509,7 @@ class NimbleAPIExecutor:
     def get_group_config(self):
         """Execute getGroupConfig API."""
         response = self._execute_get_group_config()
-        LOG.debug('Successfuly retrieved group config information')
+        LOG.debug('Successfully retrieved group config information')
         return response['info']
 
     @_connection_checker
@@ -552,7 +552,7 @@ class NimbleAPIExecutor:
     def get_vol_info(self, vol_name):
         """Execute getVolInfo API."""
         response = self._execute_get_vol_info(vol_name)
-        LOG.info(_('Successfuly got volume information for volume %s')
+        LOG.info(_('Successfully got volume information for volume %s')
                  % vol_name)
         return response['vol']
 
@@ -680,7 +680,7 @@ class NimbleAPIExecutor:
     def get_initiator_grp_list(self):
         """Execute getInitiatorGrpList API."""
         response = self._execute_get_initiator_grp_list()
-        LOG.info(_('Successfuly retrieved InitiatorGrpList'))
+        LOG.info(_('Successfully retrieved InitiatorGrpList'))
         return (response['initiatorgrp-list']
                 if 'initiatorgrp-list' in response else [])
 
