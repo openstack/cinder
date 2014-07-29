@@ -34,6 +34,21 @@ UNDERSCORE_IMPORT_FILES = []
 log_translation = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)_\(\s*('|\")")
 string_translation = re.compile(r"(.)*_\(\s*('|\")")
+vi_header_re = re.compile(r"^#\s+vim?:.+")
+
+
+def no_vi_headers(physical_line, line_number, lines):
+    """Check for vi editor configuration in source files.
+
+    By default vi modelines can only appear in the first or
+    last 5 lines of a source file.
+
+    N314
+    """
+    # NOTE(gilliard): line_number is 1-indexed
+    if line_number <= 5 or line_number > len(lines) - 5:
+        if vi_header_re.match(physical_line):
+            return 0, "N314: Don't put vi configuration in source files"
 
 
 def no_translate_debug_logs(logical_line, filename):
@@ -80,6 +95,7 @@ def check_explicit_underscore_import(logical_line, filename):
 
 
 def factory(register):
+    register(no_vi_headers)
     register(no_translate_debug_logs)
     register(no_mutable_default_args)
     register(check_explicit_underscore_import)
