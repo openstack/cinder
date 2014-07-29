@@ -840,6 +840,58 @@ class VolumeOpsTestCase(test.TestCase):
                                            self.session.vim, backing,
                                            'config.hardware.device')
 
+    def test_create_virtual_disk(self):
+        task = mock.Mock()
+        invoke_api = self.session.invoke_api
+        invoke_api.return_value = task
+        spec = mock.Mock()
+        factory = self.session.vim.client.factory
+        factory.create.return_value = spec
+        disk_mgr = self.session.vim.service_content.virtualDiskManager
+
+        dc_ref = mock.Mock()
+        vmdk_ds_file_path = mock.Mock()
+        size_in_kb = 1024
+        adapter_type = 'ide'
+        disk_type = 'thick'
+        self.vops.create_virtual_disk(dc_ref, vmdk_ds_file_path, size_in_kb,
+                                      adapter_type, disk_type)
+
+        self.assertEqual(volumeops.VirtualDiskAdapterType.IDE,
+                         spec.adapterType)
+        self.assertEqual(volumeops.VirtualDiskType.PREALLOCATED, spec.diskType)
+        self.assertEqual(size_in_kb, spec.capacityKb)
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           'CreateVirtualDisk_Task',
+                                           disk_mgr,
+                                           name=vmdk_ds_file_path,
+                                           datacenter=dc_ref,
+                                           spec=spec)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'create_virtual_disk')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'delete_file')
+    def test_create_flat_extent_virtual_disk_descriptor(self, delete_file,
+                                                        create_virtual_disk):
+        dc_ref = mock.Mock()
+        path = mock.Mock()
+        size_in_kb = 1024
+        adapter_type = 'ide'
+        disk_type = 'thick'
+
+        self.vops.create_flat_extent_virtual_disk_descriptor(dc_ref,
+                                                             path,
+                                                             size_in_kb,
+                                                             adapter_type,
+                                                             disk_type)
+        create_virtual_disk.assert_called_once_with(
+            dc_ref, path.get_descriptor_ds_file_path(), size_in_kb,
+            adapter_type, disk_type)
+        delete_file.assert_called_once_with(
+            path.get_flat_extent_ds_file_path(), dc_ref)
+
     def test_copy_vmdk_file(self):
         task = mock.sentinel.task
         invoke_api = self.session.invoke_api
@@ -895,6 +947,113 @@ class VolumeOpsTestCase(test.TestCase):
                                            newCapacityKb=fake_size_in_kb,
                                            eagerZero=False)
         self.session.wait_for_task.assert_called_once_with(task)
+
+
+class VirtualDiskPathTest(test.TestCase):
+    """Unit tests for VirtualDiskPath."""
+
+    def setUp(self):
+        super(VirtualDiskPathTest, self).setUp()
+        self._path = volumeops.VirtualDiskPath("nfs", "A/B/", "disk")
+
+    def test_get_datastore_file_path(self):
+        self.assertEqual("[nfs] A/B/disk.vmdk",
+                         self._path.get_datastore_file_path("nfs",
+                                                            "A/B/disk.vmdk"))
+
+    def test_get_descriptor_file_path(self):
+        self.assertEqual("A/B/disk.vmdk",
+                         self._path.get_descriptor_file_path())
+
+    def test_get_descriptor_ds_file_path(self):
+        self.assertEqual("[nfs] A/B/disk.vmdk",
+                         self._path.get_descriptor_ds_file_path())
+
+
+class FlatExtentVirtualDiskPathTest(test.TestCase):
+    """Unit tests for FlatExtentVirtualDiskPath."""
+
+    def setUp(self):
+        super(FlatExtentVirtualDiskPathTest, self).setUp()
+        self._path = volumeops.FlatExtentVirtualDiskPath("nfs", "A/B/", "disk")
+
+    def test_get_flat_extent_file_path(self):
+        self.assertEqual("A/B/disk-flat.vmdk",
+                         self._path.get_flat_extent_file_path())
+
+    def test_get_flat_extent_ds_file_path(self):
+        self.assertEqual("[nfs] A/B/disk-flat.vmdk",
+                         self._path.get_flat_extent_ds_file_path())
+
+
+class VirtualDiskTypeTest(test.TestCase):
+    """Unit tests for VirtualDiskType."""
+
+    def test_is_valid(self):
+        self.assertTrue(volumeops.VirtualDiskType.is_valid("thick"))
+        self.assertTrue(volumeops.VirtualDiskType.is_valid("thin"))
+        self.assertTrue(volumeops.VirtualDiskType.is_valid("eagerZeroedThick"))
+        self.assertFalse(volumeops.VirtualDiskType.is_valid("preallocated"))
+
+    def test_validate(self):
+        volumeops.VirtualDiskType.validate("thick")
+        volumeops.VirtualDiskType.validate("thin")
+        volumeops.VirtualDiskType.validate("eagerZeroedThick")
+        self.assertRaises(error_util.InvalidDiskTypeException,
+                          volumeops.VirtualDiskType.validate,
+                          "preallocated")
+
+    def test_get_virtual_disk_type(self):
+        self.assertEqual("preallocated",
+                         volumeops.VirtualDiskType.get_virtual_disk_type(
+                             "thick"))
+        self.assertEqual("thin",
+                         volumeops.VirtualDiskType.get_virtual_disk_type(
+                             "thin"))
+        self.assertEqual("eagerZeroedThick",
+                         volumeops.VirtualDiskType.get_virtual_disk_type(
+                             "eagerZeroedThick"))
+        self.assertRaises(error_util.InvalidDiskTypeException,
+                          volumeops.VirtualDiskType.get_virtual_disk_type,
+                          "preallocated")
+
+
+class VirtualDiskAdapterTypeTest(test.TestCase):
+    """Unit tests for VirtualDiskAdapterType."""
+
+    def test_is_valid(self):
+        self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid("lsiLogic"))
+        self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid("busLogic"))
+        self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid(
+                        "lsiLogicsas"))
+        self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid("ide"))
+        self.assertFalse(volumeops.VirtualDiskAdapterType.is_valid("pvscsi"))
+
+    def test_validate(self):
+        volumeops.VirtualDiskAdapterType.validate("lsiLogic")
+        volumeops.VirtualDiskAdapterType.validate("busLogic")
+        volumeops.VirtualDiskAdapterType.validate("lsiLogicsas")
+        volumeops.VirtualDiskAdapterType.validate("ide")
+        self.assertRaises(error_util.InvalidAdapterTypeException,
+                          volumeops.VirtualDiskAdapterType.validate,
+                          "pvscsi")
+
+    def test_get_adapter_type(self):
+        self.assertEqual("lsiLogic",
+                         volumeops.VirtualDiskAdapterType.get_adapter_type(
+                             "lsiLogic"))
+        self.assertEqual("busLogic",
+                         volumeops.VirtualDiskAdapterType.get_adapter_type(
+                             "busLogic"))
+        self.assertEqual("lsiLogic",
+                         volumeops.VirtualDiskAdapterType.get_adapter_type(
+                             "lsiLogicsas"))
+        self.assertEqual("ide",
+                         volumeops.VirtualDiskAdapterType.get_adapter_type(
+                             "ide"))
+        self.assertRaises(error_util.InvalidAdapterTypeException,
+                          volumeops.VirtualDiskAdapterType.get_adapter_type,
+                          "pvscsi")
 
 
 class ControllerTypeTest(test.TestCase):

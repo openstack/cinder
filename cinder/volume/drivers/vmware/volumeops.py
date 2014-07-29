@@ -58,7 +58,172 @@ def split_datastore_path(datastore_path):
     return (datastore_name.strip(), folder_path.strip(), file_name.strip())
 
 
-class ControllerType:
+class VirtualDiskPath(object):
+    """Class representing paths of files comprising a virtual disk."""
+
+    def __init__(self, ds_name, folder_path, disk_name):
+        """Creates path object for the given disk.
+
+        :param ds_name: name of the datastore where disk is stored
+        :param folder_path: absolute path of the folder containing the disk
+        :param disk_name: name of the virtual disk
+        """
+        self._descriptor_file_path = "%s%s.vmdk" % (folder_path, disk_name)
+        self._descriptor_ds_file_path = self.get_datastore_file_path(
+            ds_name, self._descriptor_file_path)
+
+    def get_datastore_file_path(self, ds_name, file_path):
+        """Get datastore path corresponding to the given file path.
+
+        :param ds_name: name of the datastore containing the file represented
+                        by the given file path
+        :param file_path: absolute path of the file
+        :return: datastore file path
+        """
+        return "[%s] %s" % (ds_name, file_path)
+
+    def get_descriptor_file_path(self):
+        """Get absolute file path of the virtual disk descriptor."""
+        return self._descriptor_file_path
+
+    def get_descriptor_ds_file_path(self):
+        """Get datastore file path of the virtual disk descriptor."""
+        return self._descriptor_ds_file_path
+
+
+class FlatExtentVirtualDiskPath(VirtualDiskPath):
+    """Paths of files in a non-monolithic disk with a single flat extent."""
+
+    def __init__(self, ds_name, folder_path, disk_name):
+        """Creates path object for the given disk.
+
+        :param ds_name: name of the datastore where disk is stored
+        :param folder_path: absolute path of the folder containing the disk
+        :param disk_name: name of the virtual disk
+        """
+        super(FlatExtentVirtualDiskPath, self).__init__(
+            ds_name, folder_path, disk_name)
+        self._flat_extent_file_path = "%s%s-flat.vmdk" % (folder_path,
+                                                          disk_name)
+        self._flat_extent_ds_file_path = self.get_datastore_file_path(
+            ds_name, self._flat_extent_file_path)
+
+    def get_flat_extent_file_path(self):
+        """Get absolute file path of the flat extent."""
+        return self._flat_extent_file_path
+
+    def get_flat_extent_ds_file_path(self):
+        """Get datastore file path of the flat extent."""
+        return self._flat_extent_ds_file_path
+
+
+class MonolithicSparseVirtualDiskPath(VirtualDiskPath):
+    """Paths of file comprising a monolithic sparse disk."""
+    pass
+
+
+class VirtualDiskType(object):
+    """Supported virtual disk types."""
+
+    EAGER_ZEROED_THICK = "eagerZeroedThick"
+    PREALLOCATED = "preallocated"
+    THIN = "thin"
+
+    # thick in extra_spec means lazy-zeroed thick disk
+    EXTRA_SPEC_DISK_TYPE_DICT = {'eagerZeroedThick': EAGER_ZEROED_THICK,
+                                 'thick': PREALLOCATED,
+                                 'thin': THIN
+                                 }
+
+    @staticmethod
+    def is_valid(extra_spec_disk_type):
+        """Check if the given disk type in extra_spec is valid.
+
+        :param extra_spec_disk_type: disk type in extra_spec
+        :return: True if valid
+        """
+        return (extra_spec_disk_type in
+                VirtualDiskType.EXTRA_SPEC_DISK_TYPE_DICT)
+
+    @staticmethod
+    def validate(extra_spec_disk_type):
+        """Validate the given disk type in extra_spec.
+
+        This method throws an instance of InvalidDiskTypeException if the given
+        disk type is invalid.
+
+        :param extra_spec_disk_type: disk type in extra_spec
+        :raises: InvalidDiskTypeException
+        """
+        if not VirtualDiskType.is_valid(extra_spec_disk_type):
+            raise error_util.InvalidDiskTypeException(
+                disk_type=extra_spec_disk_type)
+
+    @staticmethod
+    def get_virtual_disk_type(extra_spec_disk_type):
+        """Return disk type corresponding to the extra_spec disk type.
+
+        :param extra_spec_disk_type: disk type in extra_spec
+        :return: virtual disk type
+        :raises: InvalidDiskTypeException
+        """
+        VirtualDiskType.validate(extra_spec_disk_type)
+        return (VirtualDiskType.EXTRA_SPEC_DISK_TYPE_DICT[
+                extra_spec_disk_type])
+
+
+class VirtualDiskAdapterType(object):
+    """Supported virtual disk adapter types."""
+
+    LSI_LOGIC = "lsiLogic"
+    BUS_LOGIC = "busLogic"
+    LSI_LOGIC_SAS = "lsiLogicsas"
+    IDE = "ide"
+
+    @staticmethod
+    def is_valid(adapter_type):
+        """Check if the given adapter type is valid.
+
+        :param adapter_type: adapter type to check
+        :return: True if valid
+        """
+        return adapter_type in [VirtualDiskAdapterType.LSI_LOGIC,
+                                VirtualDiskAdapterType.BUS_LOGIC,
+                                VirtualDiskAdapterType.LSI_LOGIC_SAS,
+                                VirtualDiskAdapterType.IDE]
+
+    @staticmethod
+    def validate(extra_spec_adapter_type):
+        """Validate the given adapter type in extra_spec.
+
+        This method throws an instance of InvalidAdapterTypeException if the
+        given adapter type is invalid.
+
+        :param extra_spec_adapter_type: adapter type in extra_spec
+        :raises: InvalidAdapterTypeException
+        """
+        if not VirtualDiskAdapterType.is_valid(extra_spec_adapter_type):
+            raise error_util.InvalidAdapterTypeException(
+                invalid_type=extra_spec_adapter_type)
+
+    @staticmethod
+    def get_adapter_type(extra_spec_adapter_type):
+        """Get the adapter type to be used in VirtualDiskSpec.
+
+        :param extra_spec_adapter_type: adapter type in the extra_spec
+        :return: adapter type to be used in VirtualDiskSpec
+        """
+        VirtualDiskAdapterType.validate(extra_spec_adapter_type)
+        # We set the adapter type as lsiLogic for lsiLogicsas since it is not
+        # supported by VirtualDiskManager APIs. This won't be a problem because
+        # we attach the virtual disk to the correct controller type and the
+        # disk adapter type is always resolved using its controller key.
+        if extra_spec_adapter_type == VirtualDiskAdapterType.LSI_LOGIC_SAS:
+            return VirtualDiskAdapterType.LSI_LOGIC
+        return extra_spec_adapter_type
+
+
+class ControllerType(object):
     """Encapsulate various controller types."""
 
     LSI_LOGIC = 'VirtualLsiLogicController'
@@ -66,10 +231,11 @@ class ControllerType:
     LSI_LOGIC_SAS = 'VirtualLsiLogicSASController'
     IDE = 'VirtualIDEController'
 
-    CONTROLLER_TYPE_DICT = {'lsiLogic': LSI_LOGIC,
-                            'busLogic': BUS_LOGIC,
-                            'lsiLogicsas': LSI_LOGIC_SAS,
-                            'ide': IDE}
+    CONTROLLER_TYPE_DICT = {
+        VirtualDiskAdapterType.LSI_LOGIC: LSI_LOGIC,
+        VirtualDiskAdapterType.BUS_LOGIC: BUS_LOGIC,
+        VirtualDiskAdapterType.LSI_LOGIC_SAS: LSI_LOGIC_SAS,
+        VirtualDiskAdapterType.IDE: IDE}
 
     @staticmethod
     def get_controller_type(adapter_type):
@@ -850,6 +1016,69 @@ class VMwareVolumeOps(object):
                 bkng = device.backing
                 if bkng.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo":
                     return bkng.fileName
+
+    def _get_virtual_disk_create_spec(self, size_in_kb, adapter_type,
+                                      disk_type):
+        """Return spec for file-backed virtual disk creation."""
+        cf = self._session.vim.client.factory
+        spec = cf.create('ns0:FileBackedVirtualDiskSpec')
+        spec.capacityKb = size_in_kb
+        spec.adapterType = VirtualDiskAdapterType.get_adapter_type(
+            adapter_type)
+        spec.diskType = VirtualDiskType.get_virtual_disk_type(disk_type)
+        return spec
+
+    def create_virtual_disk(self, dc_ref, vmdk_ds_file_path, size_in_kb,
+                            adapter_type='busLogic', disk_type='preallocated'):
+        """Create virtual disk with the given settings.
+
+        :param dc_ref: datacenter reference
+        :param vmdk_ds_file_path: datastore file path of the virtual disk
+        :param size_in_kb: disk size in KB
+        :param adapter_type: disk adapter type
+        :param disk_type: vmdk type
+        """
+        virtual_disk_spec = self._get_virtual_disk_create_spec(size_in_kb,
+                                                               adapter_type,
+                                                               disk_type)
+        LOG.debug("Creating virtual disk with spec: %s.", virtual_disk_spec)
+        disk_manager = self._session.vim.service_content.virtualDiskManager
+        task = self._session.invoke_api(self._session.vim,
+                                        'CreateVirtualDisk_Task',
+                                        disk_manager,
+                                        name=vmdk_ds_file_path,
+                                        datacenter=dc_ref,
+                                        spec=virtual_disk_spec)
+        LOG.debug("Task: %s created for virtual disk creation.", task)
+        self._session.wait_for_task(task)
+        LOG.debug("Created virtual disk with spec: %s.", virtual_disk_spec)
+
+    def create_flat_extent_virtual_disk_descriptor(
+            self, dc_ref, path, size_in_kb, adapter_type, disk_type):
+        """Create descriptor for a single flat extent virtual disk.
+
+        To create the descriptor, we create a virtual disk and delete its flat
+        extent.
+
+        :param dc_ref: reference to the datacenter
+        :param path: descriptor datastore file path
+        :param size_in_kb: size of the virtual disk in KB
+        :param adapter_type: virtual disk adapter type
+        :param disk_type: type of the virtual disk
+        """
+        LOG.debug("Creating descriptor: %(path)s with size (KB): %(size)s, "
+                  "adapter_type: %(adapter_type)s and disk_type: "
+                  "%(disk_type)s.",
+                  {'path': path.get_descriptor_ds_file_path(),
+                   'size': size_in_kb,
+                   'adapter_type': adapter_type,
+                   'disk_type': disk_type
+                   })
+        self.create_virtual_disk(dc_ref, path.get_descriptor_ds_file_path(),
+                                 size_in_kb, adapter_type, disk_type)
+        self.delete_file(path.get_flat_extent_ds_file_path(), dc_ref)
+        LOG.debug("Created descriptor: %s.",
+                  path.get_descriptor_ds_file_path())
 
     def copy_vmdk_file(self, dc_ref, src_vmdk_file_path, dest_vmdk_file_path):
         """Copy contents of the src vmdk file to dest vmdk file.
