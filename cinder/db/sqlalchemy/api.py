@@ -2401,7 +2401,9 @@ def _volume_glance_metadata_get_all(context, session=None):
                         models.VolumeGlanceMetadata,
                         session=session)
     if is_user_context(context):
-        query = query.filter(models.Volume.project_id == context.project_id)
+        query = query.filter(
+            models.Volume.id == models.VolumeGlanceMetadata.volume_id,
+            models.Volume.project_id == context.project_id)
     return query.all()
 
 
