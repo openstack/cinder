@@ -12,9 +12,5 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-WMI_JOB_STATUS_STARTED = 4096
-WMI_JOB_STATE_RUNNING = 4
-WMI_JOB_STATE_COMPLETED = 7
-
 VHD_TYPE_FIXED = 2
 VHD_TYPE_DYNAMIC = 3
