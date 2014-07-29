@@ -398,6 +398,7 @@ def service_update(context, service_id, values):
     with session.begin():
         service_ref = _service_get(context, service_id, session=session)
         service_ref.update(values)
+        return service_ref
 
 
 ###################
@@ -513,6 +514,7 @@ def quota_update(context, project_id, resource, limit):
     with session.begin():
         quota_ref = _quota_get(context, project_id, resource, session=session)
         quota_ref.hard_limit = limit
+        return quota_ref
 
 
 @require_admin_context
@@ -592,6 +594,7 @@ def quota_class_update(context, class_name, resource, limit):
         quota_class_ref = _quota_class_get(context, class_name, resource,
                                            session=session)
         quota_class_ref.hard_limit = limit
+        return quota_class_ref
 
 
 @require_admin_context
@@ -1647,6 +1650,7 @@ def snapshot_update(context, snapshot_id, values):
     with session.begin():
         snapshot_ref = _snapshot_get(context, snapshot_id, session=session)
         snapshot_ref.update(values)
+        return snapshot_ref
 
 ####################
 
