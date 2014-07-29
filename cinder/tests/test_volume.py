@@ -1635,6 +1635,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertDictMatch(msg['payload'], expected)
         msg = fake_notifier.NOTIFICATIONS[3]
         self.assertEqual(msg['event_type'], 'snapshot.create.end')
+        expected['status'] = 'available'
         self.assertDictMatch(msg['payload'], expected)
 
         self.volume.delete_snapshot(self.context, snapshot_id)
