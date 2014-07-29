@@ -65,10 +65,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.3 - Added initiator-target map for FC Zone Manager
         2.0.4 - Added support for managing/unmanaging of volumes
         2.0.5 - Only remove FC Zone on last volume detach
+        2.0.6 - Added support for volume retype
 
     """
 
-    VERSION = "2.0.5"
+    VERSION = "2.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -403,6 +404,15 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
         self.common.detach_volume(volume)
+
+    @utils.synchronized('3par', external=True)
+    def retype(self, context, volume, new_type, diff, host):
+        """Convert the volume to be of the new type."""
+        self.common.client_login()
+        try:
+            return self.common.retype(volume, new_type, diff, host)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def migrate_volume(self, context, volume, host):

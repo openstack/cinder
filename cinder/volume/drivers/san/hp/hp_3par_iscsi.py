@@ -66,10 +66,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.0 - Update hp3parclient API uses 3.0.x
         2.0.2 - Add back-end assisted volume migrate
         2.0.3 - Added support for managing/unmanaging of volumes
+        2.0.4 - Added support for volume retype
 
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -478,6 +479,15 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
         self.common.detach_volume(volume)
+
+    @utils.synchronized('3par', external=True)
+    def retype(self, context, volume, new_type, diff, host):
+        """Convert the volume to be of the new type."""
+        self.common.client_login()
+        try:
+            return self.common.retype(volume, new_type, diff, host)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def migrate_volume(self, context, volume, host):
