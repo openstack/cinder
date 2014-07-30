@@ -309,7 +309,7 @@ class HP3PARCommon(object):
         else:
             display_name = None
 
-        # Generate the new volume information based off of the new ID.
+        # Generate the new volume information based on the new ID.
         new_vol_name = self._get_3par_vol_name(volume['id'])
         name = 'volume-' + volume['id']
 

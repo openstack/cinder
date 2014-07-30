@@ -2715,7 +2715,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         volume, uid = self._create_volume_and_return_uid('manage_test')
 
         # Descriptor of the Cinder volume that we want to own the vdisk
-        # refrerenced by uid.
+        # referenced by uid.
         new_volume = self._generate_vol_info(None, None)
 
         # Submit the request to manage it.
@@ -2747,7 +2747,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.initialize_connection(volume, conn)
 
         # Descriptor of the Cinder volume that we want to own the vdisk
-        # refrerenced by uid.
+        # referenced by uid.
         volume = self._generate_vol_info(None, None)
         ref = {'source-id': uid}
 
@@ -2760,7 +2760,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         """Tests managing a mapped volume with override.
 
         This test case attempts to manage an existing volume by UID, when it
-        it already mapped to a host, but the ref specifies that this is OK.
+        already mapped to a host, but the ref specifies that this is OK.
         We verify that the backend volume was renamed to have the name of the
         Cinder volume that we asked for it to be associated with.
         """
@@ -2775,7 +2775,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.initialize_connection(volume, conn)
 
         # Descriptor of the Cinder volume that we want to own the vdisk
-        # refrerenced by uid.
+        # referenced by uid.
         new_volume = self._generate_vol_info(None, None)
 
         # Submit the request to manage it, specifying that it is OK to
