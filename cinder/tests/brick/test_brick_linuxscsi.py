@@ -51,12 +51,14 @@ class LinuxSCSITestCase(test.TestCase):
 
     def test_remove_scsi_device(self):
         self.stubs.Set(os.path, "exists", lambda x: False)
-        self.linuxscsi.remove_scsi_device("sdc")
+        self.linuxscsi.remove_scsi_device("/dev/sdc")
         expected_commands = []
         self.assertEqual(expected_commands, self.cmds)
         self.stubs.Set(os.path, "exists", lambda x: True)
-        self.linuxscsi.remove_scsi_device("sdc")
-        expected_commands = [('tee -a /sys/block/sdc/device/delete')]
+        self.linuxscsi.remove_scsi_device("/dev/sdc")
+        expected_commands = [
+            ('blockdev --flushbufs /dev/sdc'),
+            ('tee -a /sys/block/sdc/device/delete')]
         self.assertEqual(expected_commands, self.cmds)
 
     def test_flush_multipath_device(self):
@@ -86,9 +88,12 @@ class LinuxSCSITestCase(test.TestCase):
                        fake_find_multipath_device)
 
         self.linuxscsi.remove_multipath_device('/dev/dm-3')
-        expected_commands = [('tee -a /sys/block/sde/device/delete'),
-                             ('tee -a /sys/block/sdf/device/delete'),
-                             ('multipath -f 350002ac20398383d'), ]
+        expected_commands = [
+            ('blockdev --flushbufs /dev/sde'),
+            ('tee -a /sys/block/sde/device/delete'),
+            ('blockdev --flushbufs /dev/sdf'),
+            ('tee -a /sys/block/sdf/device/delete'),
+            ('multipath -f 350002ac20398383d'), ]
         self.assertEqual(expected_commands, self.cmds)
 
     def test_find_multipath_device_3par(self):
