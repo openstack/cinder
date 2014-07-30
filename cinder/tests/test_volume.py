@@ -24,6 +24,7 @@ import mock
 import os
 import shutil
 import socket
+from sys import platform
 import tempfile
 
 import eventlet
@@ -71,7 +72,7 @@ QUOTAS = quota.QUOTAS
 CONF = cfg.CONF
 
 ENCRYPTION_PROVIDER = 'nova.volume.encryptors.cryptsetup.CryptsetupEncryptor'
-
+PLATFORM = platform
 fake_opt = [
     cfg.StrOpt('fake_opt', default='fake', help='fake opts')
 ]
@@ -1937,6 +1938,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_id)
 
+    @test.testtools.skipIf(platform == "darwin", "SKIP on OSX")
     def test_delete_no_dev_fails(self):
         """Test delete snapshot with no dev file fails."""
         self.stubs.Set(os.path, 'exists', lambda x: False)
