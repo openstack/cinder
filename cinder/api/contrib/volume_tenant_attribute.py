@@ -45,8 +45,8 @@ class VolumeTenantAttributeController(wsgi.Controller):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeListTenantAttributeTemplate())
-            for volume in list(resp_obj.obj['volumes']):
-                self._add_volume_tenant_attribute(context, req, volume)
+            for vol in list(resp_obj.obj['volumes']):
+                self._add_volume_tenant_attribute(context, req, vol)
 
 
 class Volume_tenant_attribute(extensions.ExtensionDescriptor):

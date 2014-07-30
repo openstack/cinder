@@ -47,8 +47,8 @@ class VolumeHostAttributeController(wsgi.Controller):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeListHostAttributeTemplate())
-            for volume in list(resp_obj.obj['volumes']):
-                self._add_volume_host_attribute(context, req, volume)
+            for vol in list(resp_obj.obj['volumes']):
+                self._add_volume_host_attribute(context, req, vol)
 
 
 class Volume_host_attribute(extensions.ExtensionDescriptor):
