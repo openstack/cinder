@@ -35,7 +35,8 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail_list(self, request, volumes):
         """Detailed view of a list of volumes."""
-        return self._list_view(self.detail, request, volumes)
+        return self._list_view(self.detail, request, volumes,
+                               coll_name=self._collection_name + '/detail')
 
     def summary(self, request, volume):
         """Generic, non-detailed view of an volume."""
@@ -114,12 +115,20 @@ class ViewBuilder(common.ViewBuilder):
         else:
             return volume['volume_type_id']
 
-    def _list_view(self, func, request, volumes):
-        """Provide a view for a list of volumes."""
+    def _list_view(self, func, request, volumes, coll_name=_collection_name):
+        """Provide a view for a list of volumes.
+
+        :param func: Function used to format the volume data
+        :param request: API request
+        :param servers: List of volumes in dictionary format
+        :param coll_name: Name of collection, used to generate the next link
+                          for a pagination query
+        :returns: Volume data in dictionary format
+        """
         volumes_list = [func(request, volume)['volume'] for volume in volumes]
         volumes_links = self._get_collection_links(request,
                                                    volumes,
-                                                   self._collection_name)
+                                                   coll_name)
         volumes_dict = dict(volumes=volumes_list)
 
         if volumes_links:
