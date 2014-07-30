@@ -18,6 +18,7 @@ Classes for making VMware VI SOAP calls.
 """
 
 import httplib
+import urllib2
 
 import suds
 
@@ -192,6 +193,12 @@ class Vim(object):
                                                             "%(excep)s.") %
                                                           {'attr': attr_name,
                                                            'excep': excep})
+
+            except (urllib2.URLError, urllib2.HTTPError) as excep:
+                raise error_util.VimConnectionException(
+                    _("urllib2 error in %(attr)s: %(excep)s.") %
+                    {'attr': attr_name,
+                     'excep': excep})
 
             except Exception as excep:
                 # Socket errors which need special handling for they
