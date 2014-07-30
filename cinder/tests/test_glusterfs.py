@@ -2061,7 +2061,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                          self.TEST_MNT_POINT_BASE)
 
     def test_get_mount_point_base(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
         self.assertEqual(drv._get_mount_point_base(),
                          self.TEST_MNT_POINT_BASE)

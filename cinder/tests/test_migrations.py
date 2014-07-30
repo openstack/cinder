@@ -165,7 +165,7 @@ class TestMigrations(test.TestCase):
         def execute_cmd(cmd=None):
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, shell=True)
-            output = proc.communicate()[0]
+            proc.communicate()[0]
             self.assertEqual(0, proc.returncode)
 
         for key, engine in self.engines.items():
@@ -1075,7 +1075,7 @@ class TestMigrations(test.TestCase):
             reservations = sqlalchemy.Table('reservations',
                                             metadata,
                                             autoload=True)
-            index_colums = []
+            index_columns = []
             for idx in reservations.indexes:
                 if idx.name == 'reservations_deleted_expire_idx':
                     index_columns = idx.columns.keys()
