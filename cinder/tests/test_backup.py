@@ -40,11 +40,9 @@ class FakeBackupException(Exception):
     pass
 
 
-class BackupTestCase(test.TestCase):
-    """Test Case for backups."""
-
+class BaseBackupTest(test.TestCase):
     def setUp(self):
-        super(BackupTestCase, self).setUp()
+        super(BaseBackupTest, self).setUp()
         vol_tmpdir = tempfile.mkdtemp()
         self.flags(volumes_dir=vol_tmpdir)
         self.backup_mgr = \
@@ -123,6 +121,10 @@ class BackupTestCase(test.TestCase):
         backup['project_id'] = project_id
         backup['status'] = status
         return db.backup_create(self.ctxt, backup)['id']
+
+
+class BackupTestCase(BaseBackupTest):
+    """Test Case for backups."""
 
     def test_init_host(self):
         """Make sure stuck volumes and backups are reset to correct
@@ -484,31 +486,6 @@ class BackupTestCase(test.TestCase):
         self.assertEqual(backup['status'], 'available')
         self.assertEqual(backup['size'], vol_size)
 
-    def test_import_record_with_verify(self):
-        """Test normal backup record import.
-
-        Test the case when import succeeds for the case that the
-        driver implements verify.
-        """
-        vol_size = 1
-        export = self._create_exported_record_entry(vol_size=vol_size)
-        imported_record = self._create_export_record_db_entry()
-        backup_hosts = []
-        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
-        _mock_backup_verify_class = ('%s.%s.%s' %
-                                     (backup_driver.__module__,
-                                      backup_driver.__class__.__name__,
-                                      'verify'))
-        with mock.patch(_mock_backup_verify_class):
-            self.backup_mgr.import_record(self.ctxt,
-                                          imported_record,
-                                          export['backup_service'],
-                                          export['backup_url'],
-                                          backup_hosts)
-        backup = db.backup_get(self.ctxt, imported_record)
-        self.assertEqual(backup['status'], 'available')
-        self.assertEqual(backup['size'], vol_size)
-
     def test_import_record_with_bad_service(self):
         """Test error handling when attempting an import of a backup
         record with a different service to that used to create the backup.
@@ -563,6 +540,40 @@ class BackupTestCase(test.TestCase):
             self.assertTrue(_mock_record_import.called)
         backup = db.backup_get(self.ctxt, imported_record)
         self.assertEqual(backup['status'], 'error')
+
+
+class BackupTestCaseWithVerify(BaseBackupTest):
+    """Test Case for backups."""
+
+    def setUp(self):
+        CONF.set_override("backup_driver",
+                          "cinder.tests.backup.fake_service_with_verify")
+        super(BackupTestCaseWithVerify, self).setUp()
+
+    def test_import_record_with_verify(self):
+        """Test normal backup record import.
+
+        Test the case when import succeeds for the case that the
+        driver implements verify.
+        """
+        vol_size = 1
+        export = self._create_exported_record_entry(vol_size=vol_size)
+        imported_record = self._create_export_record_db_entry()
+        backup_hosts = []
+        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
+        _mock_backup_verify_class = ('%s.%s.%s' %
+                                     (backup_driver.__module__,
+                                      backup_driver.__class__.__name__,
+                                      'verify'))
+        with mock.patch(_mock_backup_verify_class):
+            self.backup_mgr.import_record(self.ctxt,
+                                          imported_record,
+                                          export['backup_service'],
+                                          export['backup_url'],
+                                          backup_hosts)
+        backup = db.backup_get(self.ctxt, imported_record)
+        self.assertEqual(backup['status'], 'available')
+        self.assertEqual(backup['size'], vol_size)
 
     def test_import_record_with_verify_invalid_backup(self):
         """Test error handling when attempting an import of a backup
