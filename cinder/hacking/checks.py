@@ -39,6 +39,7 @@ vi_header_re = re.compile(r"^#\s+vim?:.+")
 underscore_import_check = re.compile(r"(.)*import _(.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
+no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 
 
 def no_vi_headers(physical_line, line_number, lines):
@@ -99,8 +100,22 @@ def check_explicit_underscore_import(logical_line, filename):
         yield(0, "N323: Found use of _() without explicit import of _ !")
 
 
+def check_no_log_audit(logical_line):
+    """Ensure that we are not using LOG.audit messages
+
+    Plans are in place going forward as discussed in the following
+    spec (https://review.openstack.org/#/c/91446/) to take out
+    LOG.audit messages.  Given that audit was a concept invented
+    for OpenStack we can enforce not using it.
+    """
+
+    if no_audit_log.match(logical_line):
+        yield(0, "N324: Found LOG.audit.  Use LOG.info instead.")
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
     register(no_mutable_default_args)
     register(check_explicit_underscore_import)
+    register(check_no_log_audit)
