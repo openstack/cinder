@@ -19,8 +19,10 @@
 """Implementation of SQLAlchemy backend."""
 
 
+import functools
 import sys
 import threading
+import time
 import uuid
 import warnings
 
@@ -188,6 +190,24 @@ def require_snapshot_exists(f):
         return f(context, snapshot_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
+
+
+def _retry_on_deadlock(f):
+    """Decorator to retry a DB API call if Deadlock was received."""
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        while True:
+            try:
+                return f(*args, **kwargs)
+            except db_exc.DBDeadlock:
+                LOG.warn(_("Deadlock detected when running "
+                           "'%(func_name)s': Retrying..."),
+                         dict(func_name=f.__name__))
+                # Retry!
+                time.sleep(0.5)
+                continue
+    functools.update_wrapper(wrapped, f)
+    return wrapped
 
 
 def model_query(context, *args, **kwargs):
@@ -698,6 +718,7 @@ def _get_quota_usages(context, session, project_id):
 
 
 @require_context
+@_retry_on_deadlock
 def quota_reserve(context, resources, quotas, deltas, expire,
                   until_refresh, max_age, project_id=None):
     elevated = context.elevated()
@@ -849,6 +870,7 @@ def _quota_reservations(session, context, reservations):
 
 
 @require_context
+@_retry_on_deadlock
 def reservation_commit(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
@@ -864,6 +886,7 @@ def reservation_commit(context, reservations, project_id=None):
 
 
 @require_context
+@_retry_on_deadlock
 def reservation_rollback(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
@@ -878,6 +901,7 @@ def reservation_rollback(context, reservations, project_id=None):
 
 
 @require_admin_context
+@_retry_on_deadlock
 def quota_destroy_all_by_project(context, project_id):
     session = get_session()
     with session.begin():
@@ -907,6 +931,7 @@ def quota_destroy_all_by_project(context, project_id):
 
 
 @require_admin_context
+@_retry_on_deadlock
 def reservation_expire(context):
     session = get_session()
     with session.begin():
@@ -929,6 +954,7 @@ def reservation_expire(context):
 
 
 @require_admin_context
+@_retry_on_deadlock
 def volume_allocate_iscsi_target(context, volume_id, host):
     session = get_session()
     with session.begin():
@@ -1059,6 +1085,7 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
 
 
 @require_admin_context
+@_retry_on_deadlock
 def volume_destroy(context, volume_id):
     session = get_session()
     now = timeutils.utcnow()
@@ -1457,6 +1484,7 @@ def volume_metadata_get(context, volume_id):
 
 @require_context
 @require_volume_exists
+@_retry_on_deadlock
 def volume_metadata_delete(context, volume_id, key):
     _volume_user_metadata_get_query(context, volume_id).\
         filter_by(key=key).\
@@ -1467,6 +1495,7 @@ def volume_metadata_delete(context, volume_id, key):
 
 @require_context
 @require_volume_exists
+@_retry_on_deadlock
 def volume_metadata_update(context, volume_id, metadata, delete):
     return _volume_user_metadata_update(context, volume_id, metadata, delete)
 
@@ -1505,6 +1534,7 @@ def volume_admin_metadata_get(context, volume_id):
 
 @require_admin_context
 @require_volume_exists
+@_retry_on_deadlock
 def volume_admin_metadata_delete(context, volume_id, key):
     _volume_admin_metadata_get_query(context, volume_id).\
         filter_by(key=key).\
@@ -1515,6 +1545,7 @@ def volume_admin_metadata_delete(context, volume_id, key):
 
 @require_admin_context
 @require_volume_exists
+@_retry_on_deadlock
 def volume_admin_metadata_update(context, volume_id, metadata, delete):
     return _volume_admin_metadata_update(context, volume_id, metadata, delete)
 
@@ -1539,6 +1570,7 @@ def snapshot_create(context, values):
 
 
 @require_admin_context
+@_retry_on_deadlock
 def snapshot_destroy(context, snapshot_id):
     session = get_session()
     with session.begin():
@@ -1676,6 +1708,7 @@ def snapshot_metadata_get(context, snapshot_id):
 
 @require_context
 @require_snapshot_exists
+@_retry_on_deadlock
 def snapshot_metadata_delete(context, snapshot_id, key):
     _snapshot_metadata_get_query(context, snapshot_id).\
         filter_by(key=key).\
@@ -1700,6 +1733,7 @@ def _snapshot_metadata_get_item(context, snapshot_id, key, session=None):
 
 @require_context
 @require_snapshot_exists
+@_retry_on_deadlock
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
     session = get_session()
     with session.begin():
@@ -1923,6 +1957,7 @@ def volume_type_qos_specs_get(context, type_id):
 
 
 @require_admin_context
+@_retry_on_deadlock
 def volume_type_destroy(context, id):
     session = get_session()
     with session.begin():
@@ -2747,6 +2782,7 @@ def transfer_create(context, values):
 
 
 @require_context
+@_retry_on_deadlock
 def transfer_destroy(context, transfer_id):
     session = get_session()
     with session.begin():
