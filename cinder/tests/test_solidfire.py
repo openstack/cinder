@@ -17,6 +17,7 @@
 
 import mox
 
+from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -36,6 +37,7 @@ def create_configuration():
 
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
+        self.ctxt = context.get_admin_context()
         self._mox = mox.Mox()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.sf_allow_tenant_qos = True
@@ -428,3 +430,18 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertRaises(exception.SfAccountNotFound,
                           sfv.extend_volume,
                           testvol, 2)
+
+    def test_accept_transfer(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+        expected = {'provider_auth': 'CHAP cinder-new_project 123456789012'}
+        self.assertEqual(sfv.accept_transfer(self.ctxt,
+                                             testvol,
+                                             'new_user', 'new_project'),
+                         expected)
