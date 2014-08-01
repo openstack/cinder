@@ -480,6 +480,21 @@ class SolidFireVolumeTestCase(test.TestCase):
                                'maxIOPS': 200,
                                'burstIOPS': 300})
 
+    def test_accept_transfer(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+        expected = {'provider_auth': 'CHAP cinder-new_project 123456789012'}
+        self.assertEqual(sfv.accept_transfer(self.ctxt,
+                                             testvol,
+                                             'new_user', 'new_project'),
+                         expected)
+
     def test_retype(self):
         sfv = SolidFireDriver(configuration=self.configuration)
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
@@ -499,7 +514,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
 
-        sfv = SolidFireDriver(configuration=self.configuration)
         self.assertTrue(sfv.retype(self.ctxt,
                                    testvol,
                                    type_ref, diff, host))
@@ -518,8 +532,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                          'specs': {'minIOPS': '1000',
                                    'maxIOPS': '2000',
                                    'burstIOPS': '3000'}}
-
-        qos_specs
 
         def _fake_get_volume_type(ctxt, type_id):
             return test_type
