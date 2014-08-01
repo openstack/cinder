@@ -1047,7 +1047,7 @@ class EMCSMISCommon():
 
     def _get_storage_type_conffile(self, filename=None):
         """Get the storage type from the config file."""
-        if filename == None:
+        if filename is None:
             filename = self.configuration.cinder_emc_config_file
 
         file = open(filename, 'r')

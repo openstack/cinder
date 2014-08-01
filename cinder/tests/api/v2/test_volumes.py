@@ -913,7 +913,7 @@ class VolumeApiTest(test.TestCase):
                                 viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
                     for i in xrange(CONF.osapi_max_limit)]
-            if limit == None or limit >= len(vols):
+            if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
@@ -932,7 +932,7 @@ class VolumeApiTest(test.TestCase):
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
                     for i in xrange(100)]
-            if limit == None or limit >= len(vols):
+            if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all2)
@@ -950,7 +950,7 @@ class VolumeApiTest(test.TestCase):
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
                     for i in xrange(CONF.osapi_max_limit + 100)]
-            if limit == None or limit >= len(vols):
+            if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all3)

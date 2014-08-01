@@ -292,7 +292,7 @@ class API(base.Base):
     def get_all(self, context, marker=None, limit=None, sort_key='created_at',
                 sort_dir='desc', filters=None, viewable_admin_meta=False):
         check_policy(context, 'get_all')
-        if filters == None:
+        if filters is None:
             filters = {}
 
         try:

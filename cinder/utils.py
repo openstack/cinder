@@ -132,7 +132,7 @@ def check_exclusive_options(**kwargs):
 
 def execute(*cmd, **kwargs):
     """Convenience wrapper around oslo's execute() method."""
-    if 'run_as_root' in kwargs and not 'root_helper' in kwargs:
+    if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
         kwargs['root_helper'] = get_root_helper()
     return processutils.execute(*cmd, **kwargs)
 
