@@ -21,6 +21,7 @@ import datetime
 import mock
 from oslo.config import cfg
 
+from cinder import backup
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqa_api
@@ -49,7 +50,9 @@ class QuotaIntegrationTestCase(test.TestCase):
 
         self.flags(quota_volumes=2,
                    quota_snapshots=2,
-                   quota_gigabytes=20)
+                   quota_gigabytes=20,
+                   quota_backups=2,
+                   quota_backup_gigabytes=20)
 
         self.user_id = 'admin'
         self.project_id = 'admin'
@@ -83,6 +86,15 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot['host'] = volume['host']
         snapshot['status'] = 'available'
         return db.snapshot_create(self.context, snapshot)
+
+    def _create_backup(self, volume):
+        backup = {}
+        backup['user_id'] = self.user_id
+        backup['project_id'] = self.project_id
+        backup['volume_id'] = volume['id']
+        backup['volume_size'] = volume['size']
+        backup['status'] = 'available'
+        return db.backup_create(self.context, backup)
 
     def test_too_many_volumes(self):
         volume_ids = []
@@ -127,6 +139,29 @@ class QuotaIntegrationTestCase(test.TestCase):
         db.snapshot_destroy(self.context, snap_ref['id'])
         db.volume_destroy(self.context, vol_ref['id'])
 
+    def test_too_many_backups(self):
+        resource = 'backups'
+        db.quota_class_create(self.context, 'default', resource, 1)
+        flag_args = {
+            'quota_backups': 2000,
+            'quota_backup_gigabytes': 2000
+        }
+        self.flags(**flag_args)
+        vol_ref = self._create_volume()
+        backup_ref = self._create_backup(vol_ref)
+        with mock.patch.object(backup.API, '_is_backup_service_enabled') as \
+                mock__is_backup_service_enabled:
+            mock__is_backup_service_enabled.return_value = True
+            self.assertRaises(exception.BackupLimitExceeded,
+                              backup.API().create,
+                              self.context,
+                              'name',
+                              'description',
+                              vol_ref['id'],
+                              'container')
+            db.backup_destroy(self.context, backup_ref['id'])
+            db.volume_destroy(self.context, vol_ref['id'])
+
     def test_too_many_gigabytes(self):
         volume_ids = []
         vol_ref = self._create_volume(size=20)
@@ -150,6 +185,23 @@ class QuotaIntegrationTestCase(test.TestCase):
         db.snapshot_destroy(self.context, snap_ref['id'])
         db.volume_destroy(self.context, vol_ref['id'])
 
+    def test_too_many_combined_backup_gigabytes(self):
+        vol_ref = self._create_volume(size=10000)
+        backup_ref = self._create_backup(vol_ref)
+        with mock.patch.object(backup.API, '_is_backup_service_enabled') as \
+                mock__is_backup_service_enabled:
+            mock__is_backup_service_enabled.return_value = True
+            self.assertRaises(
+                exception.VolumeBackupSizeExceedsAvailableQuota,
+                backup.API().create,
+                context=self.context,
+                name='name',
+                description='description',
+                volume_id=vol_ref['id'],
+                container='container')
+            db.backup_destroy(self.context, backup_ref['id'])
+            db.volume_destroy(self.context, vol_ref['id'])
+
     def test_no_snapshot_gb_quota_flag(self):
         self.flags(quota_volumes=2,
                    quota_snapshots=2,
@@ -171,6 +223,35 @@ class QuotaIntegrationTestCase(test.TestCase):
         db.snapshot_destroy(self.context, snap_ref2['id'])
         db.volume_destroy(self.context, vol_ref['id'])
         db.volume_destroy(self.context, vol_ref2['id'])
+
+    def test_backup_gb_quota_flag(self):
+        self.flags(quota_volumes=2,
+                   quota_snapshots=2,
+                   quota_backups=2,
+                   quota_gigabytes=20
+                   )
+        vol_ref = self._create_volume(size=10)
+        backup_ref = self._create_backup(vol_ref)
+        with mock.patch.object(backup.API, '_is_backup_service_enabled') as \
+                mock__is_backup_service_enabled:
+            mock__is_backup_service_enabled.return_value = True
+            backup_ref2 = backup.API().create(self.context,
+                                              'name',
+                                              'description',
+                                              vol_ref['id'],
+                                              'container')
+
+            # Make sure the backup volume_size isn't included in usage.
+            vol_ref2 = volume.API().create(self.context, 10, '', '')
+            usages = db.quota_usage_get_all_by_project(self.context,
+                                                       self.project_id)
+            self.assertEqual(usages['gigabytes']['in_use'], 20)
+            self.assertEqual(usages['gigabytes']['reserved'], 0)
+
+            db.backup_destroy(self.context, backup_ref['id'])
+            db.backup_destroy(self.context, backup_ref2['id'])
+            db.volume_destroy(self.context, vol_ref['id'])
+            db.volume_destroy(self.context, vol_ref2['id'])
 
     def test_too_many_gigabytes_of_type(self):
         resource = 'gigabytes_%s' % self.volume_type_name
@@ -679,7 +760,8 @@ class VolumeTypeQuotaEngineTestCase(test.TestCase):
 
         engine = quota.VolumeTypeQuotaEngine()
         self.assertEqual(engine.resource_names,
-                         ['gigabytes', 'snapshots', 'volumes'])
+                         ['backup_gigabytes', 'backups',
+                          'gigabytes', 'snapshots', 'volumes'])
 
     def test_volume_type_resources(self):
         ctx = context.RequestContext('admin', 'admin', is_admin=True)
@@ -703,7 +785,8 @@ class VolumeTypeQuotaEngineTestCase(test.TestCase):
 
         engine = quota.VolumeTypeQuotaEngine()
         self.assertEqual(engine.resource_names,
-                         ['gigabytes', 'gigabytes_type1', 'gigabytes_type_2',
+                         ['backup_gigabytes', 'backups',
+                          'gigabytes', 'gigabytes_type1', 'gigabytes_type_2',
                           'snapshots', 'snapshots_type1', 'snapshots_type_2',
                           'volumes', 'volumes_type1', 'volumes_type_2'])
         db.volume_type_destroy(ctx, vtype['id'])
@@ -717,6 +800,8 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.flags(quota_volumes=10,
                    quota_snapshots=10,
                    quota_gigabytes=1000,
+                   quota_backups=10,
+                   quota_backup_gigabytes=1000,
                    reservation_expire=86400,
                    until_refresh=0,
                    max_age=0,
@@ -742,7 +827,9 @@ class DbQuotaDriverTestCase(test.TestCase):
             dict(
                 volumes=10,
                 snapshots=10,
-                gigabytes=1000, ))
+                gigabytes=1000,
+                backups=10,
+                backup_gigabytes=1000))
 
     def _stub_quota_class_get_default(self):
         # Stub out quota_class_get_default
@@ -750,7 +837,10 @@ class DbQuotaDriverTestCase(test.TestCase):
             self.calls.append('quota_class_get_default')
             return dict(volumes=10,
                         snapshots=10,
-                        gigabytes=1000,)
+                        gigabytes=1000,
+                        backups=10,
+                        backup_gigabytes=1000
+                        )
         self.stubs.Set(db, 'quota_class_get_default', fake_qcgd)
 
     def _stub_volume_type_get_all(self):
@@ -763,7 +853,8 @@ class DbQuotaDriverTestCase(test.TestCase):
         def fake_qcgabn(context, quota_class):
             self.calls.append('quota_class_get_all_by_name')
             self.assertEqual(quota_class, 'test_class')
-            return dict(gigabytes=500, volumes=10, snapshots=10, )
+            return dict(gigabytes=500, volumes=10, snapshots=10, backups=10,
+                        backup_gigabytes=500)
         self.stubs.Set(db, 'quota_class_get_all_by_name', fake_qcgabn)
 
     def test_get_class_quotas(self):
@@ -775,7 +866,9 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.assertEqual(self.calls, ['quota_class_get_all_by_name'])
         self.assertEqual(result, dict(volumes=10,
                                       gigabytes=500,
-                                      snapshots=10))
+                                      snapshots=10,
+                                      backups=10,
+                                      backup_gigabytes=500))
 
     def test_get_class_quotas_no_defaults(self):
         self._stub_quota_class_get_all_by_name()
@@ -785,20 +878,27 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.assertEqual(self.calls, ['quota_class_get_all_by_name'])
         self.assertEqual(result, dict(volumes=10,
                                       gigabytes=500,
-                                      snapshots=10))
+                                      snapshots=10,
+                                      backups=10,
+                                      backup_gigabytes=500))
 
     def _stub_get_by_project(self):
         def fake_qgabp(context, project_id):
             self.calls.append('quota_get_all_by_project')
             self.assertEqual(project_id, 'test_project')
-            return dict(volumes=10, gigabytes=50, reserved=0, snapshots=10)
+            return dict(volumes=10, gigabytes=50, reserved=0,
+                        snapshots=10, backups=10,
+                        backup_gigabytes=50)
 
         def fake_qugabp(context, project_id):
             self.calls.append('quota_usage_get_all_by_project')
             self.assertEqual(project_id, 'test_project')
             return dict(volumes=dict(in_use=2, reserved=0),
                         snapshots=dict(in_use=2, reserved=0),
-                        gigabytes=dict(in_use=10, reserved=0), )
+                        gigabytes=dict(in_use=10, reserved=0),
+                        backups=dict(in_use=2, reserved=0),
+                        backup_gigabytes=dict(in_use=10, reserved=0)
+                        )
 
         self.stubs.Set(db, 'quota_get_all_by_project', fake_qgabp)
         self.stubs.Set(db, 'quota_usage_get_all_by_project', fake_qugabp)
@@ -825,7 +925,14 @@ class DbQuotaDriverTestCase(test.TestCase):
                                                      reserved=0, ),
                                       gigabytes=dict(limit=50,
                                                      in_use=10,
-                                                     reserved=0, ), ))
+                                                     reserved=0, ),
+                                      backups=dict(limit=10,
+                                                   in_use=2,
+                                                   reserved=0, ),
+                                      backup_gigabytes=dict(limit=50,
+                                                            in_use=10,
+                                                            reserved=0, ),
+                                      ))
 
     def test_get_project_quotas_alt_context_no_class(self):
         self._stub_get_by_project()
@@ -845,7 +952,14 @@ class DbQuotaDriverTestCase(test.TestCase):
                                                      reserved=0, ),
                                       gigabytes=dict(limit=50,
                                                      in_use=10,
-                                                     reserved=0, ), ))
+                                                     reserved=0, ),
+                                      backups=dict(limit=10,
+                                                   in_use=2,
+                                                   reserved=0, ),
+                                      backup_gigabytes=dict(limit=50,
+                                                            in_use=10,
+                                                            reserved=0, ),
+                                      ))
 
     def test_get_project_quotas_alt_context_with_class(self):
         self._stub_get_by_project()
@@ -866,7 +980,14 @@ class DbQuotaDriverTestCase(test.TestCase):
                                                      reserved=0, ),
                                       gigabytes=dict(limit=50,
                                                      in_use=10,
-                                                     reserved=0, ), ))
+                                                     reserved=0, ),
+                                      backups=dict(limit=10,
+                                                   in_use=2,
+                                                   reserved=0, ),
+                                      backup_gigabytes=dict(limit=50,
+                                                            in_use=10,
+                                                            reserved=0, ),
+                                      ))
 
     def test_get_project_quotas_no_defaults(self):
         self._stub_get_by_project()
@@ -880,7 +1001,13 @@ class DbQuotaDriverTestCase(test.TestCase):
                                       'quota_class_get_all_by_name',
                                       'quota_class_get_default', ])
         self.assertEqual(result,
-                         dict(gigabytes=dict(limit=50,
+                         dict(backups=dict(limit=10,
+                                           in_use=2,
+                                           reserved=0, ),
+                              backup_gigabytes=dict(limit=50,
+                                                    in_use=10,
+                                                    reserved=0, ),
+                              gigabytes=dict(limit=50,
                                              in_use=10,
                                              reserved=0, ),
                               snapshots=dict(limit=10,
@@ -888,7 +1015,9 @@ class DbQuotaDriverTestCase(test.TestCase):
                                              reserved=0, ),
                               volumes=dict(limit=10,
                                            in_use=2,
-                                           reserved=0, ), ))
+                                           reserved=0, ),
+
+                              ))
 
     def test_get_project_quotas_no_usages(self):
         self._stub_get_by_project()
@@ -902,7 +1031,9 @@ class DbQuotaDriverTestCase(test.TestCase):
                                       'quota_class_get_default', ])
         self.assertEqual(result, dict(volumes=dict(limit=10, ),
                                       snapshots=dict(limit=10, ),
-                                      gigabytes=dict(limit=50, ), ))
+                                      backups=dict(limit=10, ),
+                                      gigabytes=dict(limit=50, ),
+                                      backup_gigabytes=dict(limit=50, ),))
 
     def _stub_get_project_quotas(self):
         def fake_get_project_quotas(context, resources, project_id,

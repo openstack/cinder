@@ -29,10 +29,13 @@ from cinder import test
 
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
-              volumes=10, tenant_id='foo'):
+              volumes=10, backups=10, backup_gigabytes=1000,
+              tenant_id='foo'):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
-                 'volumes': volumes}
+                 'volumes': volumes,
+                 'backups': backups,
+                 'backup_gigabytes': backup_gigabytes}
     # need to consider preexisting volume types as well
     volume_types = db.volume_type_get_all(context.get_admin_context())
     for volume_type in volume_types:
@@ -76,7 +79,7 @@ class QuotaSetsControllerTest(test.TestCase):
 
     def test_update(self):
         body = make_body(gigabytes=2000, snapshots=15,
-                         volumes=5, tenant_id=None)
+                         volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, 'foo', body)
         self.assertDictMatch(result, body)
 
@@ -115,7 +118,8 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertDictMatch(result_show, make_body())
 
         body = make_body(gigabytes=2000, snapshots=15,
-                         volumes=5, tenant_id=None)
+                         volumes=5, backups=5,
+                         backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, 'foo', body)
         self.assertDictMatch(result_update, body)
 

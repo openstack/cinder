@@ -35,6 +35,8 @@ class UsedLimitsController(wsgi.Controller):
             'totalVolumesUsed': 'volumes',
             'totalGigabytesUsed': 'gigabytes',
             'totalSnapshotsUsed': 'snapshots',
+            'totalBackupsUsed': 'backups',
+            'totalBackupGigabytesUsed': 'backup_gigabytes'
         }
 
         used_limits = {}

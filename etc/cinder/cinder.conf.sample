@@ -221,6 +221,13 @@
 # and snapshots per project (integer value)
 #quota_gigabytes=1000
 
+# Number of volume backups allowed per project (integer value)
+#quota_backups=10
+
+# Total amount of storage, in gigabytes, allowed for backups
+# per project (integer value)
+#quota_backup_gigabytes=1000
+
 # Number of seconds until a reservation expires (integer
 # value)
 #reservation_expire=86400

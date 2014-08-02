@@ -270,6 +270,14 @@ def _sync_snapshots(context, project_id, session, volume_type_id=None,
     return {key: snapshots}
 
 
+def _sync_backups(context, project_id, session, volume_type_id=None,
+                  volume_type_name=None):
+    (backups, gigs) = _backup_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id, session=session)
+    key = 'backups'
+    return {key: backups}
+
+
 def _sync_gigabytes(context, project_id, session, volume_type_id=None,
                     volume_type_name=None):
     (_junk, vol_gigs) = _volume_data_get_for_project(
@@ -292,11 +300,22 @@ def _sync_consistencygroups(context, project_id, session,
     key = 'consistencygroups'
     return {key: groups}
 
+
+def _sync_backup_gigabytes(context, project_id, session, volume_type_id=None,
+                           volume_type_name=None):
+    key = 'backup_gigabytes'
+    (_junk, backup_gigs) = _backup_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id, session=session)
+    return {key: backup_gigs}
+
+
 QUOTA_SYNC_FUNCTIONS = {
     '_sync_volumes': _sync_volumes,
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
     '_sync_consistencygroups': _sync_consistencygroups,
+    '_sync_backups': _sync_backups,
+    '_sync_backup_gigabytes': _sync_backup_gigabytes
 }
 
 
@@ -1065,6 +1084,25 @@ def _volume_data_get_for_project(context, project_id, volume_type_id=None,
     query = model_query(context,
                         func.count(models.Volume.id),
                         func.sum(models.Volume.size),
+                        read_deleted="no",
+                        session=session).\
+        filter_by(project_id=project_id)
+
+    if volume_type_id:
+        query = query.filter_by(volume_type_id=volume_type_id)
+
+    result = query.first()
+
+    # NOTE(vish): convert None to 0
+    return (result[0] or 0, result[1] or 0)
+
+
+@require_admin_context
+def _backup_data_get_for_project(context, project_id, volume_type_id=None,
+                                 session=None):
+    query = model_query(context,
+                        func.count(models.Backup.id),
+                        func.sum(models.Backup.size),
                         read_deleted="no",
                         session=session).\
         filter_by(project_id=project_id)

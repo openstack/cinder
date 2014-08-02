@@ -430,12 +430,22 @@ class VolumeSizeExceedsAvailableQuota(QuotaError):
                 "%(consumed)sG has been consumed.")
 
 
+class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
+    message = _("Requested backup exceeds allowed Backup Gigabytes "
+                "quota. Requested %(requested)sG, quota is %(quota)sG and "
+                "%(consumed)sG has been consumed.")
+
+
 class VolumeLimitExceeded(QuotaError):
     message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
 
 
 class SnapshotLimitExceeded(QuotaError):
     message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
+
+
+class BackupLimitExceeded(QuotaError):
+    message = _("Maximum number of backups allowed (%(allowed)d) exceeded")
 
 
 class DuplicateSfVolumeNames(Duplicate):
