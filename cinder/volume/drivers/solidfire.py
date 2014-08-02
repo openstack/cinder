@@ -770,8 +770,8 @@ class SolidFireDriver(SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-        volume['project_id': new_project]
-        volume['user_id': new_user]
+        volume['project_id'] = new_project
+        volume['user_id'] = new_user
         model_update = self._do_export(volume)
         LOG.debug("Leaving SolidFire transfer volume")
         return model_update
