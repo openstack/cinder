@@ -51,7 +51,7 @@ class VolumeUnmanageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.audit(_("Unmanage volume with id: %s"), id, context=context)
+        LOG.info(_("Unmanage volume with id: %s"), id, context=context)
 
         try:
             vol = self.volume_api.get(context, id)

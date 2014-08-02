@@ -164,10 +164,10 @@ class API(base.Base):
             name = 'restore_backup_%s' % backup_id
             description = 'auto-created_from_restore_from_backup'
 
-            LOG.audit(_("Creating volume of %(size)s GB for restore of "
-                        "backup %(backup_id)s"),
-                      {'size': size, 'backup_id': backup_id},
-                      context=context)
+            LOG.info(_("Creating volume of %(size)s GB for restore of "
+                       "backup %(backup_id)s"),
+                     {'size': size, 'backup_id': backup_id},
+                     context=context)
             volume = self.volume_api.create(context, size, name, description)
             volume_id = volume['id']
 
@@ -191,10 +191,10 @@ class API(base.Base):
                    {'volume_size': volume['size'], 'size': size})
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.audit(_("Overwriting volume %(volume_id)s with restore of "
-                    "backup %(backup_id)s"),
-                  {'volume_id': volume_id, 'backup_id': backup_id},
-                  context=context)
+        LOG.info(_("Overwriting volume %(volume_id)s with restore of "
+                   "backup %(backup_id)s"),
+                 {'volume_id': volume_id, 'backup_id': backup_id},
+                 context=context)
 
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window

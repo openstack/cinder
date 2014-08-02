@@ -174,7 +174,7 @@ class BackupsController(wsgi.Controller):
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
-        LOG.audit(_('Delete backup with id: %s'), id, context=context)
+        LOG.info(_('Delete backup with id: %s'), id, context=context)
 
         try:
             self.backup_api.delete(context, id)
@@ -247,10 +247,10 @@ class BackupsController(wsgi.Controller):
         name = backup.get('name', None)
         description = backup.get('description', None)
 
-        LOG.audit(_("Creating backup of volume %(volume_id)s in container"
-                    " %(container)s"),
-                  {'volume_id': volume_id, 'container': container},
-                  context=context)
+        LOG.info(_("Creating backup of volume %(volume_id)s in container"
+                   " %(container)s"),
+                 {'volume_id': volume_id, 'container': container},
+                 context=context)
 
         try:
             new_backup = self.backup_api.create(context, name, description,
@@ -280,9 +280,9 @@ class BackupsController(wsgi.Controller):
         restore = body['restore']
         volume_id = restore.get('volume_id', None)
 
-        LOG.audit(_("Restoring backup %(backup_id)s to volume %(volume_id)s"),
-                  {'backup_id': id, 'volume_id': volume_id},
-                  context=context)
+        LOG.info(_("Restoring backup %(backup_id)s to volume %(volume_id)s"),
+                 {'backup_id': id, 'volume_id': volume_id},
+                 context=context)
 
         try:
             new_restore = self.backup_api.restore(context,
