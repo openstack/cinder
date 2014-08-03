@@ -31,6 +31,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder import ssh_utils
 from cinder import utils
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
 
@@ -378,13 +379,13 @@ class BrcdFCZoneClientCLI(object):
         command = ' '. join(cmd_list)
 
         if not self.sshpool:
-            self.sshpool = utils.SSHPool(self.switch_ip,
-                                         self.switch_port,
-                                         None,
-                                         self.switch_user,
-                                         self.switch_pwd,
-                                         min_size=1,
-                                         max_size=5)
+            self.sshpool = ssh_utils.SSHPool(self.switch_ip,
+                                             self.switch_port,
+                                             None,
+                                             self.switch_user,
+                                             self.switch_pwd,
+                                             min_size=1,
+                                             max_size=5)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -424,13 +425,13 @@ class BrcdFCZoneClientCLI(object):
         command = ' '. join(cmd_list)
 
         if not self.sshpool:
-            self.sshpool = utils.SSHPool(self.switch_ip,
-                                         self.switch_port,
-                                         None,
-                                         self.switch_user,
-                                         self.switch_pwd,
-                                         min_size=1,
-                                         max_size=5)
+            self.sshpool = ssh_utils.SSHPool(self.switch_ip,
+                                             self.switch_port,
+                                             None,
+                                             self.switch_user,
+                                             self.switch_pwd,
+                                             min_size=1,
+                                             max_size=5)
         stdin, stdout, stderr = None, None, None
         LOG.debug("Executing command via ssh: %s" % command)
         last_exception = None
@@ -499,13 +500,13 @@ class BrcdFCZoneClientCLI(object):
         command = ' '. join(cmd)
         stdout, stderr = None, None
         if not self.sshpool:
-            self.sshpool = utils.SSHPool(self.switch_ip,
-                                         self.switch_port,
-                                         None,
-                                         self.switch_user,
-                                         self.switch_pwd,
-                                         min_size=1,
-                                         max_size=5)
+            self.sshpool = ssh_utils.SSHPool(self.switch_ip,
+                                             self.switch_port,
+                                             None,
+                                             self.switch_user,
+                                             self.switch_pwd,
+                                             min_size=1,
+                                             max_size=5)
         with self.sshpool.item() as ssh:
             LOG.debug('Running cmd (SSH): %s' % command)
             channel = ssh.invoke_shell()

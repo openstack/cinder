@@ -30,8 +30,8 @@ from xml.etree import ElementTree as ET
 
 from cinder import context
 from cinder import exception
+from cinder import ssh_utils
 from cinder import test
-from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import HuaweiVolumeDriver
@@ -1079,7 +1079,7 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         self.configuration.append_config_values(mox.IgnoreArg())
 
         self.stubs.Set(time, 'sleep', Fake_sleep)
-        self.stubs.Set(utils, 'SSHPool', FakeSSHPool)
+        self.stubs.Set(ssh_utils, 'SSHPool', FakeSSHPool)
         self.stubs.Set(ssh_common.TseriesCommon, '_change_file_mode',
                        Fake_change_file_mode)
         self._init_driver()
@@ -1473,7 +1473,7 @@ class HuaweiTFCDriverTestCase(test.TestCase):
         self.configuration.append_config_values(mox.IgnoreArg())
 
         self.stubs.Set(time, 'sleep', Fake_sleep)
-        self.stubs.Set(utils, 'SSHPool', FakeSSHPool)
+        self.stubs.Set(ssh_utils, 'SSHPool', FakeSSHPool)
         self.stubs.Set(ssh_common.TseriesCommon, '_change_file_mode',
                        Fake_change_file_mode)
         self._init_driver()
@@ -1705,7 +1705,7 @@ class SSHMethodTestCase(test.TestCase):
         self.configuration.append_config_values(mox.IgnoreArg())
 
         self.stubs.Set(time, 'sleep', Fake_sleep)
-        self.stubs.Set(utils, 'SSHPool', FakeSSHPool)
+        self.stubs.Set(ssh_utils, 'SSHPool', FakeSSHPool)
         self.stubs.Set(ssh_common.TseriesCommon, '_change_file_mode',
                        Fake_change_file_mode)
         Curr_test[0] = 'T'
