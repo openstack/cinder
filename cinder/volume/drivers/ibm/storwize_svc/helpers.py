@@ -28,8 +28,8 @@ from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import strutils
-from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import ssh as storwize_ssh
+from cinder.volume import utils
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
