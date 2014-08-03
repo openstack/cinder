@@ -7,10 +7,12 @@ Cinder Style Commandments
 
 Cinder Specific Commandments
 ----------------------------
-
+- [N314] Check for vi editor configuration in source files.
 - [N319] Validate that debug level logs are not translated
+- [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
 - [N324] Enforce no use of LOG.audit messages.  LOG.info should be used instead.
+
 
 General
 -------
