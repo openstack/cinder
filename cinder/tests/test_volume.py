@@ -1678,6 +1678,42 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           snapshot_id)
 
+    @mock.patch.object(db, 'snapshot_create',
+                       side_effect=exception.InvalidSnapshot(
+                           'Create snapshot in db failed!'))
+    def test_create_snapshot_failed_db_snapshot(self, mock_snapshot):
+        """Test exception handling when create snapshot in db failed."""
+        test_volume = tests_utils.create_volume(
+            self.context,
+            **self.volume_params)
+        self.volume.create_volume(self.context, test_volume['id'])
+        test_volume['status'] = 'available'
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidSnapshot,
+                          volume_api.create_snapshot,
+                          self.context,
+                          test_volume,
+                          'fake_name',
+                          'fake_description')
+
+    @mock.patch.object(QUOTAS, 'commit',
+                       side_effect=exception.QuotaError(
+                           'Snapshot quota commit failed!'))
+    def test_create_snapshot_failed_quota_commit(self, mock_snapshot):
+        """Test exception handling when snapshot quota commit failed."""
+        test_volume = tests_utils.create_volume(
+            self.context,
+            **self.volume_params)
+        self.volume.create_volume(self.context, test_volume['id'])
+        test_volume['status'] = 'available'
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.QuotaError,
+                          volume_api.create_snapshot,
+                          self.context,
+                          test_volume,
+                          'fake_name',
+                          'fake_description')
+
     def test_cannot_delete_volume_in_use(self):
         """Test volume can't be deleted in invalid stats."""
         # create a volume and assign to host

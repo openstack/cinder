@@ -524,13 +524,15 @@ class API(base.Base):
                    'encryption_key_id': volume['encryption_key_id'],
                    'metadata': metadata}
 
+        snapshot = None
         try:
             snapshot = self.db.snapshot_create(context, options)
             QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    self.db.snapshot_destroy(context, volume['id'])
+                    if snapshot:
+                        self.db.snapshot_destroy(context, snapshot['id'])
                 finally:
                     QUOTAS.rollback(context, reservations)
 
