@@ -28,7 +28,6 @@ from oslo.config import cfg
 from oslo.db import exception as db_exc
 from oslo.db import options
 from oslo.db.sqlalchemy import session as db_session
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import RelationshipProperty
@@ -450,12 +449,15 @@ def iscsi_target_create_safe(context, values):
     for (key, value) in values.iteritems():
         iscsi_target_ref[key] = value
     session = get_session()
-    with session.begin():
-        try:
-            iscsi_target_ref.save(session)
+
+    try:
+        with session.begin():
+            session.add(iscsi_target_ref)
             return iscsi_target_ref
-        except IntegrityError:
-            return None
+    # TODO(e0ne): Remove check on db_exc.DBError, when
+    #             Cinder will use oslo.db 0.4.0 or higher.
+    except (db_exc.DBError, db_exc.DBDuplicateEntry):
+        return None
 
 
 ###################
