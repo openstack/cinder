@@ -2422,6 +2422,19 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.driver.delete_volume(volume)
             self.assertNotIn(volume['id'], self.driver._vdiskcopyops)
 
+    def test_storwize_get_host_with_fc_connection(self):
+        # Create a FC host
+        del self._connector['initiator']
+        helper = self.driver._helpers
+        host_name = helper.create_host(self._connector)
+
+        # Remove the first wwpn from connector, and then try get host
+        wwpns = self._connector['wwpns']
+        wwpns.remove(wwpns[0])
+        host_name = helper.get_host_from_connector(self._connector)
+
+        self.assertIsNotNone(host_name)
+
     def test_storwize_initiator_multiple_preferred_nodes_matching(self):
 
         # Generate us a test volume

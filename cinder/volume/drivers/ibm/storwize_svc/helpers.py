@@ -194,21 +194,30 @@ class StorwizeHelpers(object):
                     except KeyError:
                         self.handle_keyerror('lsfabric', wwpn_info)
 
+        if host_name:
+            LOG.debug('leave: get_host_from_connector: host %s' % host_name)
+            return host_name
+
         # That didn't work, so try exhaustive search
-        if host_name is None:
-            hosts_info = self.ssh.lshost()
-            for name in hosts_info.select('name'):
-                resp = self.ssh.lshost(host=name)
-                for iscsi, wwpn in resp.select('iscsi_name', 'WWPN'):
-                    if ('initiator' in connector and
-                            iscsi == connector['initiator']):
+        hosts_info = self.ssh.lshost()
+        found = False
+        for name in hosts_info.select('name'):
+            resp = self.ssh.lshost(host=name)
+            if 'initiator' in connector:
+                for iscsi in resp.select('iscsi_name'):
+                    if iscsi == connector['initiator']:
                         host_name = name
-                    elif ('wwpns' in connector and
-                          len(connector['wwpns']) and
-                          wwpn and
-                          wwpn.lower() in
-                          [str(x).lower() for x in connector['wwpns']]):
+                        found = True
+                        break
+            elif 'wwpns' in connector and len(connector['wwpns']):
+                connector_wwpns = [str(x).lower() for x in connector['wwpns']]
+                for wwpn in resp.select('WWPN'):
+                    if wwpn and wwpn.lower() in connector_wwpns:
                         host_name = name
+                        found = True
+                        break
+            if found:
+                break
 
         LOG.debug('leave: get_host_from_connector: host %s' % host_name)
         return host_name
