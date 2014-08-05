@@ -137,10 +137,11 @@ class HP3PARCommon(object):
         2.0.13 - Added support for managing/unmanaging of volumes
         2.0.14 - Modified manage volume to use standard 'source-name' element.
         2.0.15 - Added support for volume retype
+        2.0.16 - Add a better log during delete_volume time. Bug #1349636
 
     """
 
-    VERSION = "2.0.15"
+    VERSION = "2.0.16"
 
     stats = {}
 
@@ -1105,9 +1106,19 @@ class HP3PARCommon(object):
                         self.client.removeVolumeFromVolumeSet(vvset_name,
                                                               volume_name)
                     self.client.deleteVolume(volume_name)
+                elif (ex.get_code() == 151 or ex.get_code() == 32):
+                    # the volume is being operated on in a background
+                    # task on the 3PAR.
+                    # TODO(walter-boring) do a retry a few times.
+                    # for now lets log a better message
+                    msg = _("The volume is currently busy on the 3PAR"
+                            " and cannot be deleted at this time. "
+                            "You can try again later.")
+                    LOG.error(msg)
+                    raise exception.VolumeIsBusy(message=msg)
                 else:
                     LOG.error(ex)
-                    raise ex
+                    raise exception.VolumeIsBusy(message=ex.get_description())
 
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
@@ -1120,7 +1131,7 @@ class HP3PARCommon(object):
             raise exception.NotAuthorized(ex.get_description())
         except hpexceptions.HTTPConflict as ex:
             LOG.error(ex)
-            raise exception.VolumeIsBusy(ex.get_description())
+            raise exception.VolumeIsBusy(message=ex.get_description())
         except Exception as ex:
             LOG.error(ex)
             raise exception.CinderException(ex)
