@@ -575,7 +575,7 @@ class StorwizeSVCDriver(san.SanDriver):
             msg = (_('create_volume_from_snapshot: Source and destination '
                      'size differ.'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            raise exception.InvalidInput(message=msg)
 
         opts = self._get_vdisk_params(volume['volume_type_id'])
         self._helpers.create_copy(snapshot['name'], volume['name'],
@@ -587,7 +587,7 @@ class StorwizeSVCDriver(san.SanDriver):
             msg = (_('create_cloned_volume: Source and destination '
                      'size differ.'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            raise exception.InvalidInput(message=msg)
 
         opts = self._get_vdisk_params(tgt_volume['volume_type_id'])
         self._helpers.create_copy(src_volume['name'], tgt_volume['name'],

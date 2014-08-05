@@ -1712,7 +1712,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Try to create where source size != target size
         vol2['size'] += 1
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidInput,
                           self.driver.create_volume_from_snapshot,
                           vol2, snap1)
         self._assert_vol_exists(vol2['name'], False)
@@ -1726,7 +1726,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Try to clone where source size != target size
         vol3['size'] += 1
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidInput,
                           self.driver.create_cloned_volume,
                           vol3, vol2)
         self._assert_vol_exists(vol3['name'], False)
