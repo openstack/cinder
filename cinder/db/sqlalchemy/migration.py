@@ -29,6 +29,24 @@ INIT_VERSION = 000
 _REPOSITORY = None
 
 
+def _ensure_reservations_index(migrate_engine):
+    meta = sqlalchemy.MetaData()
+    meta.bind = migrate_engine
+
+    reservations = sqlalchemy.Table('reservations', meta, autoload=True)
+    members = sorted(['deleted', 'expire'])
+    for idx in reservations.indexes:
+        if sorted(idx.columns.keys()) == members:
+            return
+
+    # Based on expire_reservations query
+    # from: cinder/db/sqlalchemy/api.py
+    index = sqlalchemy.Index('reservations_deleted_expire_idx',
+                             reservations.c.deleted, reservations.c.expire)
+
+    index.create(migrate_engine)
+
+
 def db_sync(version=None):
     if version is not None:
         try:
@@ -38,11 +56,14 @@ def db_sync(version=None):
 
     current_version = db_version()
     repository = _find_migrate_repo()
+    migrate_engine = get_engine()
     if version is None or version > current_version:
-        return versioning_api.upgrade(get_engine(), repository, version)
+        result = versioning_api.upgrade(migrate_engine, repository, version)
     else:
-        return versioning_api.downgrade(get_engine(), repository,
-                                        version)
+        result = versioning_api.downgrade(migrate_engine, repository,
+                                          version)
+    _ensure_reservations_index(migrate_engine)
+    return result
 
 
 def db_version():
