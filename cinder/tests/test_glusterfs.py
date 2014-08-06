@@ -793,7 +793,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             self.assertTrue(mock_do_umount.called)
             self.assertTrue(mock_logger.warning.called)
-            mock_logger.debug.assert_not_called()
+            self.assertFalse(mock_logger.debug.called)
 
     def test_unmount_shares_1share(self):
         self._driver.shares = {'127.7.7.7:/gluster1': None}
@@ -932,7 +932,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             try:
                 self._driver._do_umount(True, test_share)
             except putils.ProcessExecutionError:
-                mock_logger.info.assert_not_called()
+                self.assertFalse(mock_logger.info.called)
                 self.assertTrue(mock_logger.error.called)
             except Exception as e:
                 self.fail('Unexpected exception thrown:', e)
@@ -1842,8 +1842,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mock_local_path_volume.assert_called_with(snapshot['volume'])
         mock_read_info_file.assert_called_with(info_path)
-        mock_delete_if_exists.assert_not_called()
-        mock_write_info_file.assert_not_called()
+        self.assertFalse(mock_delete_if_exists.called)
+        self.assertFalse(mock_write_info_file.called)
 
         # Test case where snapshot_file != active_file
         snapshot = {'name': 'fake-volume',
