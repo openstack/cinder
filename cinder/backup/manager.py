@@ -322,10 +322,13 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
-            LOG.warn('Volume: %s, size: %d is larger than backup: %s, '
-                     'size: %d, continuing with restore.',
-                     volume['id'], volume['size'],
-                     backup['id'], backup['size'])
+            LOG.info(_('Volume: %(vol_id)s, size: %(vol_size)d is '
+                       'larger than backup: %(backup_id)s, '
+                       'size: %(backup_size)d, continuing with restore.'),
+                     {'vol_id': volume['id'],
+                      'vol_size': volume['size'],
+                      'backup_id': backup['id'],
+                      'backup_size': backup['size']})
 
         backup_service = self._map_service_to_driver(backup['service'])
         configured_service = self.driver_name
