@@ -22,6 +22,7 @@ from xml.dom import minidom
 
 import webob
 
+from cinder.api.contrib import volume_transfer
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -41,6 +42,7 @@ class VolumeTransferAPITestCase(test.TestCase):
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
         self.volume_transfer_api = API()
+        self.controller = volume_transfer.VolumeTransferController()
 
     def _create_transfer(self, volume_id=1,
                          display_name='test_transfer'):
@@ -53,13 +55,14 @@ class VolumeTransferAPITestCase(test.TestCase):
     def _create_volume(display_name='test_volume',
                        display_description='this is a test volume',
                        status='available',
-                       size=1):
+                       size=1,
+                       project_id='fake'):
         """Create a volume object."""
         vol = {}
         vol['host'] = 'fake_host'
         vol['size'] = size
         vol['user_id'] = 'fake'
-        vol['project_id'] = 'fake'
+        vol['project_id'] = project_id
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
@@ -231,6 +234,28 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.transfer_destroy(context.get_admin_context(), transfer2['id'])
         db.transfer_destroy(context.get_admin_context(), transfer1['id'])
         db.volume_destroy(context.get_admin_context(), volume_id_2)
+        db.volume_destroy(context.get_admin_context(), volume_id_1)
+
+    def test_list_transfers_with_all_tenants(self):
+        volume_id_1 = self._create_volume(size=5)
+        volume_id_2 = self._create_volume(size=5, project_id='fake1')
+        transfer1 = self._create_transfer(volume_id_1)
+        transfer2 = self._create_transfer(volume_id_2)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/os-volume-transfer?'
+                                      'all_tenants=1',
+                                      use_admin_context=True)
+        res_dict = self.controller.index(req)
+
+        expected = [(transfer1['id'], 'test_transfer'),
+                    (transfer2['id'], 'test_transfer')]
+        ret = []
+        for item in res_dict['transfers']:
+            ret.append((item['id'], item['name']))
+        self.assertEqual(set(expected), set(ret))
+
+        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
+        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
         db.volume_destroy(context.get_admin_context(), volume_id_1)
 
     def test_create_transfer_json(self):
