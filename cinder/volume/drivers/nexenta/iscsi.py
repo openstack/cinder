@@ -783,7 +783,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         location_info = '%(driver)s:%(host)s:%(volume)s' % {
             'driver': self.__class__.__name__,
             'host': self.restapi_host,
-            'volume': self.bucket_path + volume['name']
+            'volume': self.bucket_path
         }
 
         print "===============> NEXENTA get_volume_stats"
