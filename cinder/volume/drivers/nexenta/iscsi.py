@@ -31,7 +31,6 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.2.1'
 LOG = logging.getLogger(__name__)
 
 
@@ -53,7 +52,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 destroy snapshot on migration destination.
     """
 
-    VERSION = VERSION
+    VERSION = '1.2.1'
 
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
@@ -599,4 +598,205 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'location_info': location_info,
             'iscsi_target_portal_port': self.iscsi_target_portal_port,
             'nms_url': self.nms.url
+        }
+
+
+class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
+    """Executes volume driver commands on Nexenta Edge cluster.
+
+    Version history:
+        1.0.0 - Initial driver version.
+    """
+
+    VERSION = '1.0.0'
+
+    def __init__(self, *args, **kwargs):
+        super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
+        self.nms = None
+        if self.configuration:
+            self.configuration.append_config_values(
+                options.NEXENTA_CONNECTION_OPTIONS)
+            self.configuration.append_config_values(
+                options.NEXENTA_ISCSI_OPTIONS)
+            self.configuration.append_config_values(
+                options.NEXENTA_VOLUME_OPTIONS)
+        self.restapi_protocol = self.configuration.nexenta_rest_protocol
+        self.restapi_host = self.configuration.nexenta_host
+        self.restapi_port = self.configuration.nexenta_rest_port
+        self.restapi_user = self.configuration.nexenta_user
+        self.restapi_password = self.configuration.nexenta_password
+        self.bucket_path = self.configuration.nexenta_volume
+        self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
+        self.url_buckets = 'clusters/' + self.cluster + '/tenants/' + \
+            self.tenant + '/buckets'
+        self.iscsi_target_portal_port = \
+            self.configuration.nexenta_iscsi_target_portal_port
+
+    @property
+    def backend_name(self):
+        backend_name = None
+        if self.configuration:
+            backend_name = self.configuration.safe_get('volume_backend_name')
+        if not backend_name:
+            backend_name = self.__class__.__name__
+        return backend_name
+
+    def do_setup(self, context):
+        if self.restapi_protocol == 'auto':
+            protocol, auto = 'http', True
+        else:
+            protocol, auto = self.restapi_protocol, False
+        self.restapi = jsonrpc.NexentaEdgeResourceProxy(
+            protocol, self.restapi_host, self.restapi_port, '/',
+            self.restapi_user, self.restapi_password, auto=auto)
+
+    def check_for_setup_error(self):
+        """Verify that the bucket for our LUs exists.
+
+        :raise: :py:exc:`LookupError`
+        """
+        self.restapi.get(self.url_buckets, {'bucketName':self.bucket})
+
+    def _get_provider_location(self, volume):
+        """Returns restful resource provider location string."""
+        return '%(host)s:%(port)s,1 %(name)s 0' % {
+            'host': self.restapi_host,
+            'port': self.configuration.nexenta_iscsi_target_portal_port,
+            'name': self.bucket_path + '/' + volume['name']
+        }
+
+    def create_volume(self, volume):
+        """Creates a logical volume.
+
+        Can optionally return a Dictionary of changes to the volume
+        object to be persisted.
+
+        :param volume: volume reference
+        :return: model update dict for volume reference
+        """
+        rsp = self.restapi.post('iscsi', {
+                'objectPath' : self.bucket_path + '/' + volume['name'],
+                'volSizeMB' : int(volume['size']) * 1024,
+            })
+        return {'provider_location': self._get_provider_location(volume)}
+
+    def delete_volume(self, volume):
+        """Destroy a an object and corresponding snapview in the cluster.
+
+        :param volume: volume reference
+        """
+        rsp = self.restapi.get('iscsi', {
+                'objectPath' : self.bucket_path + '/' + volume['name']
+            })
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot."""
+        return {}
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot."""
+        pass
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
+        pass
+
+    def ensure_export(self, context, volume):
+        """Synchronously recreates an export for a logical volume."""
+        pass
+
+    def create_export(self, context, volume):
+        """Exports the volume.
+
+        Can optionally return a Dictionary of changes to the volume
+        object to be persisted.
+        """
+        pass
+
+    def remove_export(self, context, volume):
+        """Removes an export for a logical volume."""
+        pass
+
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+        return {
+            'driver_volume_type': 'NexentaEdgeiSCSI',
+            'data': {
+                'bucket_path': self.bucket_path
+            }
+        }
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Disallow connection from connector."""
+        pass
+
+    def detach_volume(self, context, volume):
+        """Callback for volume detached."""
+        pass
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch the image from image_service and write it to the volume."""
+        pass
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+        pass
+
+    def clone_image(self, volume, image_location, image_id, image_meta):
+        """Create a volume efficiently from an existing image.
+
+        image_location is a string whose format depends on the
+        image service backend in use. The driver should use it
+        to determine whether cloning is possible.
+
+        image_id is a string which represents id of the image.
+        It can be used by the driver to introspect internal
+        stores or registry to do an efficient image clone.
+
+        Returns a dict of volume properties eg. provider_location,
+        boolean indicating whether cloning occurred
+        """
+        return None, False
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+        pass
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume."""
+        pass
+
+    def backup_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume."""
+        raise NotImplementedError()
+
+    def restore_backup(self, context, backup, volume, backup_service):
+        """Restore an existing backup to a new or existing volume."""
+        raise NotImplementedError()
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+
+        If 'refresh' is True, run update the stats first.
+        """
+
+        location_info = '%(driver)s:%(host)s:%(volume)s' % {
+            'driver': self.__class__.__name__,
+            'host': self.restapi_host,
+            'volume': self.bucket_path + volume['name']
+        }
+
+        print "===============> NEXENTA get_volume_stats"
+        return {
+            'vendor_name': 'Nexenta',
+            'driver_version': self.VERSION,
+            'storage_protocol': 'iSCSI',
+            'reserved_percentage': 0,
+            'total_capacity_gb': 'infinite',
+            'free_capacity_gb': 'infinite',
+            'QoS_support': False,
+            'volume_backend_name': self.backend_name,
+            'location_info': location_info,
+            'iscsi_target_portal_port': self.iscsi_target_portal_port,
+            'restapi_url': self.restapi.url
         }

@@ -27,7 +27,7 @@ from oslo.config import cfg
 NEXENTA_CONNECTION_OPTIONS = [
     cfg.StrOpt('nexenta_host',
                default='',
-               help='IP address of Nexenta SA'),
+               help='IP address of Nexenta SA or Edge'),
     cfg.IntOpt('nexenta_rest_port',
                default=2000,
                help='HTTP port to connect to Nexenta REST API server'),
@@ -36,10 +36,10 @@ NEXENTA_CONNECTION_OPTIONS = [
                help='Use http or https for REST connection (default auto)'),
     cfg.StrOpt('nexenta_user',
                default='admin',
-               help='User name to connect to Nexenta SA'),
+               help='User name to connect to Nexenta SA or Edge'),
     cfg.StrOpt('nexenta_password',
                default='nexenta',
-               help='Password to connect to Nexenta SA',
+               help='Password to connect to Nexenta SA or Edge',
                secret=True),
 ]
 
@@ -49,9 +49,10 @@ NEXENTA_ISCSI_OPTIONS = [
                help='Nexenta target portal port'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
-               help='SA Pool that holds all volumes'),
+               help='Full path to Edge Bucket (e.g. cluster/tenant/bucket) or '
+                    'SA Pool that holds all volumes'),
     cfg.StrOpt('nexenta_target_prefix',
-               default='iqn.1986-03.com.sun:02:cinder-',
+               default='iqn.2005-11.com.nexenta:storage.',
                help='IQN prefix for iSCSI targets'),
     cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder/',
