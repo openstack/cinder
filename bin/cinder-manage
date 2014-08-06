@@ -249,11 +249,17 @@ class VersionCommands(object):
 class VolumeCommands(object):
     """Methods for dealing with a cloud in an odd state."""
 
-    def __init__(self, *args, **kwargs):
-        super(VolumeCommands, self).__init__(*args, **kwargs)
-        rpc.init(CONF)
-        target = messaging.Target(topic=CONF.volume_topic)
-        self.client = rpc.get_client(target)
+    def __init__(self):
+        self._client = None
+
+    @property
+    def rpc_client(self):
+        if not rpc.initialized():
+            rpc.init(CONF)
+            target = messaging.Target(topic=CONF.volume_topic)
+            self._client = rpc.get_client(target)
+
+        return self._client
 
     @args('volume_id',
           help='Volume ID to be deleted')
@@ -276,7 +282,7 @@ class VolumeCommands(object):
             print(_("Detach volume from instance and then try again."))
             return
 
-        cctxt = self.client.prepare(server=host)
+        cctxt = self.rpc_client.prepare(server=host)
         cctxt.cast(ctxt, "delete_volume", volume_id=volume['id'])
 
     @args('--currenthost', required=True, help='Existing volume host name')
