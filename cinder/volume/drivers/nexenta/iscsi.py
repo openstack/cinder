@@ -699,7 +699,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        pass
+        rsp = self.restapi.post(self.url_buckets + '/snapviews/' + \
+            snapshot['volume_name'] + '.snapview/' + self.bucket + \
+            '/' + snapshot['volume_name'] + '/snapshots/', {
+                'snapshotName': snapshot['name'] 
+            })
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
