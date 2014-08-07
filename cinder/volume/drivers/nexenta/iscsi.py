@@ -695,11 +695,16 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        return {}
+        rsp = self.restapi.post(self.buckets_url + '/snapviews/' + \
+            snapshot['volume_name'] + '.snapview/snapshots/' + \
+            snapshot['name'] + '/clonetenantnames/' + self.tenant + \
+            '/clonebucketnames/' + self.bucket + '/cloneobjectnames/' \
+            volume['name']
+            })
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        rsp = self.restapi.post(self.url_buckets + '/snapviews/' + \
+        rsp = self.restapi.post(self.buckets_url + '/snapviews/' + \
             snapshot['volume_name'] + '.snapview/' + self.bucket + \
             '/' + snapshot['volume_name'] + '/snapshots/', {
                 'snapshotName': snapshot['name'] 
@@ -707,7 +712,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        pass
+        rsp = self.restapi.post(self.buckets_url + '/snapviews/' + \
+            snapshot['volume_name'] + '.snapview/snapshots/' + snapshot['name']\
+            })
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
