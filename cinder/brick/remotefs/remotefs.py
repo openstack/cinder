@@ -133,7 +133,7 @@ class RemoteFsClient(object):
             except Exception as e:
                 mnt_errors[mnt_type] = six.text_type(e)
                 LOG.debug('Failed to do %s mount.', mnt_type)
-        raise exception.BrickException(_("NFS mount failed for share %(sh)s."
+        raise exception.BrickException(_("NFS mount failed for share %(sh)s. "
                                          "Error - %(error)s")
                                        % {'sh': nfs_share,
                                           'error': mnt_errors})
