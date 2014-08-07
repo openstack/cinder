@@ -58,6 +58,14 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_auth',
                default='per_user',
                help='Swift authentication mechanism'),
+    cfg.StrOpt('backup_swift_auth_version',
+               default='1',
+               help='Swift authentication version. Specify "1" for auth 1.0'
+                    ', or "2" for auth 2.0'),
+    cfg.StrOpt('backup_swift_tenant',
+               default=None,
+               help='Swift tenant/account name. Required when connecting'
+                    ' to an auth 2.0 system'),
     cfg.StrOpt('backup_swift_user',
                default=None,
                help='Swift user name'),
@@ -125,11 +133,14 @@ class SwiftBackupDriver(BackupDriver):
                             "but %(param)s not set")
                           % {'param': 'backup_swift_user'})
                 raise exception.ParameterNotFound(param='backup_swift_user')
-            self.conn = swift.Connection(authurl=CONF.backup_swift_url,
-                                         user=CONF.backup_swift_user,
-                                         key=CONF.backup_swift_key,
-                                         retries=self.swift_attempts,
-                                         starting_backoff=self.swift_backoff)
+            self.conn = swift.Connection(
+                authurl=CONF.backup_swift_url,
+                auth_version=CONF.backup_swift_auth_version,
+                tenant_name=CONF.backup_swift_tenant,
+                user=CONF.backup_swift_user,
+                key=CONF.backup_swift_key,
+                retries=self.swift_attempts,
+                starting_backoff=self.swift_backoff)
         else:
             self.conn = swift.Connection(retries=self.swift_attempts,
                                          preauthurl=self.swift_url,
