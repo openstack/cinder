@@ -21,7 +21,7 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import strutils
 from cinder import quota
 

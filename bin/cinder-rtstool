@@ -19,11 +19,10 @@ import sys
 
 import rtslib
 
-from cinder.openstack.common import gettextutils
-from cinder.openstack.common.gettextutils import _
+from cinder import i18n
+from cinder.i18n import _
 
-gettextutils.install('cinder')
-gettextutils.enable_lazy()
+i18n.enable_lazy()
 
 
 class RtstoolError(Exception):

@@ -19,7 +19,7 @@ Utility functions for Image transfer.
 from eventlet import timeout
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import io_util
 from cinder.volume.drivers.vmware import read_write_util as rw_util

@@ -29,7 +29,7 @@ import socket
 
 from oslo.config import cfg
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 
 
 CONF = cfg.CONF

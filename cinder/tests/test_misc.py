@@ -18,7 +18,7 @@ import os
 
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder import test
 
 

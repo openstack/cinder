@@ -39,9 +39,9 @@ from oslo import messaging
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
+from cinder.i18n import _
 from cinder import manager
 from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import utils

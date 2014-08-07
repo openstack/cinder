@@ -26,7 +26,7 @@ from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder.db import base
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder import utils
 

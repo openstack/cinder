@@ -24,7 +24,7 @@ import sqlalchemy
 
 from cinder.db.sqlalchemy.api import get_engine
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 
 INIT_VERSION = 000
 _REPOSITORY = None

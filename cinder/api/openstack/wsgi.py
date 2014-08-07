@@ -25,8 +25,8 @@ from xml.dom import minidom
 from xml.parsers import expat
 
 from cinder import exception
-from cinder.openstack.common import gettextutils
-from cinder.openstack.common.gettextutils import _
+from cinder import i18n
+from cinder.i18n import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -177,7 +177,7 @@ class Request(webob.Request):
         """
         if not self.accept_language:
             return None
-        all_languages = gettextutils.get_available_languages('cinder')
+        all_languages = i18n.get_available_languages()
         return self.accept_language.best_match(all_languages)
 
 
@@ -1159,7 +1159,7 @@ class Fault(webob.exc.HTTPException):
         fault_data = {
             fault_name: {
                 'code': code,
-                'message': gettextutils.translate(explanation, locale)}}
+                'message': i18n.translate(explanation, locale)}}
         if code == 413:
             retry = self.wrapped_exc.headers.get('Retry-After', None)
             if retry:
@@ -1222,7 +1222,7 @@ class OverLimitFault(webob.exc.HTTPException):
 
         def translate(msg):
             locale = request.best_match_language()
-            return gettextutils.translate(msg, locale)
+            return i18n.translate(msg, locale)
 
         self.content['overLimitFault']['message'] = \
             translate(self.content['overLimitFault']['message'])

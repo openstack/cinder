@@ -28,7 +28,7 @@ import sys
 from oslo.config import cfg
 import webob.exc
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 
 

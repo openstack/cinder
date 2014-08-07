@@ -23,7 +23,7 @@ import webob
 
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder import utils
 

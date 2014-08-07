@@ -20,7 +20,7 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder import quota
 
 

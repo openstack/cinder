@@ -26,8 +26,8 @@ from xml.etree import ElementTree as ET
 
 from cinder import context
 from cinder import exception
+from cinder.i18n import _
 from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder import utils

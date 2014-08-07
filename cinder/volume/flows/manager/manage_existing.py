@@ -17,7 +17,7 @@ from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.volume.flows.api import create_volume as create_api
 from cinder.volume.flows import common as flow_common

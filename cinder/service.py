@@ -28,7 +28,7 @@ from oslo import messaging
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
