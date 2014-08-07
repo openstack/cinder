@@ -740,3 +740,23 @@ class BrocadeZoningCliException(CinderException):
 
 class NetAppDriverException(VolumeDriverException):
     message = _("NetApp Cinder Driver exception.")
+
+
+class EMCVnxCLICmdError(VolumeBackendAPIException):
+    def __init__(self, cmd=None, rc=None, out='',
+                 log_as_error=True, **kwargs):
+        self.cmd = cmd
+        self.rc = rc
+        self.out = out
+        msg = _("EMCVnxCLICmdError : %(cmd)s "
+                "(Return Code: %(rc)s) "
+                "(Output: %(out)s) ") % \
+            {'cmd': cmd,
+             'rc': rc,
+             'out': out.split('\n')}
+        kwargs["data"] = msg
+        super(EMCVnxCLICmdError, self).__init__(**kwargs)
+        if log_as_error:
+            LOG.error(msg)
+        else:
+            LOG.warn(msg)

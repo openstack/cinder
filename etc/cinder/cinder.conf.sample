@@ -1093,19 +1093,41 @@
 # Options defined in cinder.volume.drivers.emc.emc_vnx_cli
 #
 
-# Naviseccli Path (string value)
+# VNX authentication scope type. (string value)
+#storage_vnx_authentication_type=global
+
+# Directory path that contains the VNX security file. Make
+# sure the security file is generated first. (string value)
+#storage_vnx_security_file_dir=<None>
+
+# Naviseccli Path. (string value)
 #naviseccli_path=
 
-# ISCSI pool name (string value)
+# Storage pool name (string value)
 #storage_vnx_pool_name=<None>
 
-# Default Time Out For CLI operations in minutes (integer
-# value)
-#default_timeout=20
+# VNX secondary SP IP Address. (string value)
+#san_secondary_ip=<None>
 
-# Default max number of LUNs in a storage group (integer
-# value)
-#max_luns_per_storage_group=256
+# Default Time Out For CLI operations in minutes. By default,
+# it is 365 days long. (integer value)
+#default_timeout=525600
+
+# Default max number of LUNs in a storage group. By default,
+# the value is 255. (integer value)
+#max_luns_per_storage_group=255
+
+# To destroy storage group when the last LUN is removed from
+# it. By default, the value is False. (boolean value)
+#destroy_empty_storage_group=false
+
+# Mapping between hostname and its iSCSI initiator IP
+# addresses. (string value)
+#iscsi_initiators=
+
+# Automatically register initiators. By default, the value is
+# False. (boolean value)
+#initiator_auto_registration=false
 
 
 #
