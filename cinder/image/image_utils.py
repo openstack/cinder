@@ -36,6 +36,7 @@ from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
+from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import utils as volume_utils
@@ -62,12 +63,30 @@ def qemu_img_info(path):
 
 def convert_image(source, dest, out_format, bps_limit=None):
     """Convert image to other format."""
+    start_time = timeutils.utcnow()
     cmd = ('qemu-img', 'convert', '-O', out_format, source, dest)
     cgcmd = volume_utils.setup_blkio_cgroup(source, dest, bps_limit)
     if cgcmd:
         cmd = tuple(cgcmd) + cmd
         cmd += ('-t', 'none')  # required to enable ratelimit by blkio cgroup
     utils.execute(*cmd, run_as_root=True)
+
+    duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
+
+    # NOTE(jdg): use a default of 1, mostly for unit test, but in
+    # some incredible event this is 0 (cirros image?) don't barf
+    if duration < 1:
+        duration = 1
+    fsz_mb = os.stat(source).st_size / units.Mi
+    mbps = (fsz_mb / duration)
+    LOG.debug('Image conversion details: src %(src)s, size %(sz).2f MB, '
+              'duration %(duration).2f, destination %(dest)s',
+              {'src': source,
+               'sz': fsz_mb,
+               'duration': duration,
+               'dest': dest})
+    LOG.info(_('Converted %(sz).2f MB image at %(mbps).2f MB/s'),
+             {'sz': fsz_mb, 'mbps': mbps})
 
 
 def resize_image(source, size, run_as_root=False):
@@ -81,9 +100,23 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     #             when it is added to glance.  Right now there is no
     #             auth checking in glance, so we assume that access was
     #             checked before we got here.
+    start_time = timeutils.utcnow()
     with fileutils.remove_path_on_error(path):
         with open(path, "wb") as image_file:
             image_service.download(context, image_id, image_file)
+    duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
+
+    # NOTE(jdg): use a default of 1, mostly for unit test, but in
+    # some incredible event this is 0 (cirros image?) don't barf
+    if duration < 1:
+        duration = 1
+    fsz_mb = os.stat(image_file.name).st_size / units.Mi
+    mbps = (fsz_mb / duration)
+    LOG.debug('Image fetch details: dest %(dest)s, size %(sz).2f MB, '
+              'duration %(duration).2f sec',
+              {'dest:': image_file.name, 'sz': fsz_mb, 'duration': duration})
+    LOG.info(_('Image download %(sz).2f MB at %(mbps).2f MB/s'),
+             {'sz': fsz_mb, 'mbps': mbps})
 
 
 def fetch_verify_image(context, image_service, image_id, dest,

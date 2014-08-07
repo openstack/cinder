@@ -26,6 +26,7 @@ from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import strutils
+from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
 from cinder import rpc
 from cinder import utils
@@ -108,6 +109,7 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
 
 def setup_blkio_cgroup(srcpath, dstpath, bps_limit, execute=utils.execute):
     if not bps_limit:
+        LOG.debug('Not using bps rate limiting on volume copy')
         return None
 
     try:
@@ -130,6 +132,8 @@ def setup_blkio_cgroup(srcpath, dstpath, bps_limit, execute=utils.execute):
         return None
 
     group_name = CONF.volume_copy_blkio_cgroup_name
+    LOG.debug('Setting rate limit to %s bps for blkio '
+              'group: %s' % (bps_limit, group_name))
     try:
         execute('cgcreate', '-g', 'blkio:%s' % group_name, run_as_root=True)
     except processutils.ProcessExecutionError:
@@ -211,7 +215,23 @@ def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
         cmd = cgcmd + cmd
 
     # Perform the copy
+    start_time = timeutils.utcnow()
     execute(*cmd, run_as_root=True)
+    duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
+
+    # NOTE(jdg): use a default of 1, mostly for unit test, but in
+    # some incredible event this is 0 (cirros image?) don't barf
+    if duration < 1:
+        duration = 1
+    mbps = (size_in_m / duration)
+    LOG.debug(('Volume copy details: src %(src)s, dest %(dest)s, '
+               'size %(sz).2f MB, duration %(duration).2f sec'),
+              {'src': srcstr,
+               'dest': deststr,
+               'sz': size_in_m,
+               'duration': duration})
+    LOG.info(_('Volume copy %(sz).2f MB at %(mbps).2f MB/s'),
+             {'sz': size_in_m, 'duration': mbps})
 
 
 def clear_volume(volume_size, volume_path, volume_clear=None,
@@ -246,7 +266,15 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
             value=volume_clear)
 
     clear_cmd.append(volume_path)
+    start_time = timeutils.utcnow()
     utils.execute(*clear_cmd, run_as_root=True)
+    duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
+
+    # NOTE(jdg): use a default of 1, mostly for unit test, but in
+    # some incredible event this is 0 (cirros image?) don't barf
+    if duration < 1:
+        duration = 1
+    LOG.info(_('Elapsed time for clear volume: %.2f sec') % duration)
 
 
 def supports_thin_provisioning():
