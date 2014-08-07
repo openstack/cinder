@@ -370,7 +370,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.configuration.nexenta_host = '1.1.1.1'
         self.configuration.nexenta_user = 'admin'
         self.configuration.nexenta_password = 'nexenta'
-        self.configuration.nexenta_volume = 'cinder'
+        self.configuration.nexenta_volume = 'cluster1/tenant1/bucket1'
         self.configuration.nexenta_rest_port = 2000
         self.configuration.nexenta_rest_protocol = 'http'
         self.configuration.nexenta_iscsi_target_portal_port = 3260

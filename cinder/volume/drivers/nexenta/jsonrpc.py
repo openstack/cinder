@@ -179,17 +179,19 @@ class NexentaEdgeResourceProxy(object):
                     request.get_method = lambda: 'DELETE'
                 response_obj = urllib2.urlopen(request)
 
-            rsp = jsonutils.loads(response_obj.read())
+            response_data = response_obj.read()
+            rsp = jsonutils.loads(response_data)
+        except urllib2.HTTPError, e:
+            response_data = e.read()
+            rsp = jsonutils.loads(response_data)
         except urllib2.URLError, e:
             rsp = { 'code' : str(e.reason), 'message' : str(e) }
-        except urllib2.HTTPError, e:
-            rsp = e.read()
-        except Exception:
+        except Exception, e:
             rsp = { 'code' : 'UNKNOWN_ERROR',
                 "message" : _("Received Unknown Error from the backend") }
 
         LOG.debug('Got response: %s', rsp)
 
-        if rsp.get('code') is not None:
-            raise NexentaJSONException(rsp.get('message'))
-        return rsp.get('response')
+        if rsp.has_key('code'):
+            raise NexentaJSONException(rsp['message'])
+        return rsp['response']

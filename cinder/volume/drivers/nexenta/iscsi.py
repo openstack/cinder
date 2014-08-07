@@ -627,7 +627,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.restapi_password = self.configuration.nexenta_password
         self.bucket_path = self.configuration.nexenta_volume
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
-        self.url_buckets = 'clusters/' + self.cluster + '/tenants/' + \
+        self.bucket_url = 'clusters/' + self.cluster + '/tenants/' + \
             self.tenant + '/buckets'
         self.iscsi_target_portal_port = \
             self.configuration.nexenta_iscsi_target_portal_port
@@ -655,7 +655,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :raise: :py:exc:`LookupError`
         """
-        self.restapi.get(self.url_buckets, {'bucketName':self.bucket})
+        self.restapi.get(self.bucket_url, {'bucketName':self.bucket})
 
     def _get_provider_location(self, volume):
         """Returns restful resource provider location string."""
@@ -685,9 +685,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
-        rsp = self.restapi.get('iscsi', {
-                'objectPath' : self.bucket_path + '/' + volume['name']
-            })
+        try:
+            rsp = self.restapi.get('iscsi', {
+                    'objectPath' : self.bucket_path + '/' + volume['name']
+                })
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while deleting: %s'), str(e))
+            pass
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -780,10 +784,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         If 'refresh' is True, run update the stats first.
         """
 
-        location_info = '%(driver)s:%(host)s:%(volume)s' % {
+        location_info = '%(driver)s:%(host)s:%(bucket)s' % {
             'driver': self.__class__.__name__,
             'host': self.restapi_host,
-            'volume': self.bucket_path + volume['name']
+            'bucket': self.bucket_path
         }
 
         print "===============> NEXENTA get_volume_stats"
