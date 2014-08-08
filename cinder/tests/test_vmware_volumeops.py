@@ -799,6 +799,26 @@ class VolumeOpsTestCase(test.TestCase):
                                                    backing,
                                                    'snapshot')
 
+    def test_snapshot_exists(self):
+        backing = mock.sentinel.backing
+        invoke_api = self.session.invoke_api
+        invoke_api.return_value = None
+
+        self.assertFalse(self.vops.snapshot_exists(backing))
+        invoke_api.assert_called_once_with(vim_util,
+                                           'get_object_property',
+                                           self.session.vim,
+                                           backing,
+                                           'snapshot')
+
+        snapshot = mock.Mock()
+        invoke_api.return_value = snapshot
+        snapshot.rootSnapshotList = None
+        self.assertFalse(self.vops.snapshot_exists(backing))
+
+        snapshot.rootSnapshotList = [mock.Mock()]
+        self.assertTrue(self.vops.snapshot_exists(backing))
+
     def test_delete_snapshot(self):
         backing = mock.sentinel.backing
         snapshot_name = mock.sentinel.snapshot_name
@@ -965,6 +985,20 @@ class VolumeOpsTestCase(test.TestCase):
                                                         "ReconfigVM_Task",
                                                         backing,
                                                         spec=reconfig_spec)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_rename_backing(self):
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        backing = mock.sentinel.backing
+        new_name = mock.sentinel.new_name
+        self.vops.rename_backing(backing, new_name)
+
+        self.session.invoke_api.assert_called_once_with(self.session.vim,
+                                                        "Rename_Task",
+                                                        backing,
+                                                        newName=new_name)
         self.session.wait_for_task.assert_called_once_with(task)
 
     def test_delete_file(self):
