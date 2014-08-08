@@ -28,7 +28,6 @@ from cinder.api.v2 import limits
 from cinder.api.v2 import router
 from cinder.api import versions
 from cinder import context
-from cinder import exception as exc
 from cinder.openstack.common import timeutils
 from cinder import wsgi
 
@@ -81,20 +80,6 @@ def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
     mapper['/v2'] = api_v2
     mapper['/'] = fault.FaultWrapper(versions.Versions())
     return mapper
-
-
-def stub_out_key_pair_funcs(stubs, have_key_pair=True):
-    def key_pair(context, user_id):
-        return [dict(name='key', public_key='public_key')]
-
-    def one_key_pair(context, user_id, name):
-        if name == 'key':
-            return dict(name='key', public_key='public_key')
-        else:
-            raise exc.KeypairNotFound(user_id=user_id, name=name)
-
-    def no_key_pair(context, user_id):
-        return []
 
 
 class FakeToken(object):

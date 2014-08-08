@@ -137,7 +137,6 @@ class SnapshotMetaDataTest(test.TestCase):
     def setUp(self):
         super(SnapshotMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
-        fakes.stub_out_key_pair_funcs(self.stubs)
         self.stubs.Set(cinder.db, 'volume_get', return_volume)
         self.stubs.Set(cinder.db, 'snapshot_get', return_snapshot)
         self.stubs.Set(cinder.db, 'snapshot_metadata_get',

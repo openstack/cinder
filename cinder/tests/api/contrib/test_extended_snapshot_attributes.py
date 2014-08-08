@@ -91,7 +91,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 200)
-        for i, snapshot in enumerate(self._get_snapshots(res.body)):
+        for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
                                           project_id='fake',
                                           progress='0%')
