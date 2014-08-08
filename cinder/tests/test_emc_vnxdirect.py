@@ -872,7 +872,7 @@ Message : Error occurred because connection refused. \
 Unable to establish a secure connection to the Management Server.
 """
         FAKE_ERROR_MSG = FAKE_ERROR_MSG.replace('\n', ' ')
-        FAKE_MIGRATE_PROPETY = """\
+        FAKE_MIGRATE_PROPERTY = """\
 Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
 Source LU ID:  63950
 Dest LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d_dest
@@ -884,7 +884,7 @@ Time Remaining:  0 second(s)
 """
         results = [(FAKE_ERROR_MSG, 255),
                    [SUCCEED,
-                    (FAKE_MIGRATE_PROPETY, 0),
+                    (FAKE_MIGRATE_PROPERTY, 0),
                     ('The specified source LUN is not currently migrating',
                      23)]]
         fake_cli = self.driverSetup(commands, results)
@@ -917,7 +917,7 @@ Time Remaining:  0 second(s)
 
         commands = [self.testData.MIGRATION_CMD(),
                     self.testData.MIGRATION_VERIFY_CMD(1)]
-        FAKE_MIGRATE_PROPETY = """\
+        FAKE_MIGRATE_PROPERTY = """\
 Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
 Source LU ID:  63950
 Dest LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d_dest
@@ -927,7 +927,7 @@ Current State:  MIGRATED
 Percent Complete:  100
 Time Remaining:  0 second(s)
 """
-        results = [SUCCEED, [(FAKE_MIGRATE_PROPETY, 0),
+        results = [SUCCEED, [(FAKE_MIGRATE_PROPERTY, 0),
                              ('The specified source LUN is not '
                               'currently migrating',
                               23)]]
@@ -957,7 +957,7 @@ Time Remaining:  0 second(s)
 
         commands = [self.testData.MIGRATION_CMD(5, 5),
                     self.testData.MIGRATION_VERIFY_CMD(5)]
-        FAKE_MIGRATE_PROPETY = """\
+        FAKE_MIGRATE_PROPERTY = """\
 Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
 Source LU ID:  63950
 Dest LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d_dest
@@ -967,7 +967,7 @@ Current State:  MIGRATED
 Percent Complete:  100
 Time Remaining:  0 second(s)
 """
-        results = [SUCCEED, [(FAKE_MIGRATE_PROPETY, 0),
+        results = [SUCCEED, [(FAKE_MIGRATE_PROPERTY, 0),
                              ('The specified source LUN is not '
                               'currently migrating',
                               23)]]
