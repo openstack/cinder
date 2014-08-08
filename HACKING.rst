@@ -9,7 +9,7 @@ Cinder Specific Commandments
 ----------------------------
 
 - [N319] Validate that debug level logs are not translated
-
+- [N323] Add check for explicit import of _() to ensure proper translation.
 General
 -------
 - Use 'raise' instead of 'raise e' to preserve original traceback or exception being reraised::
