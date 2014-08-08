@@ -29,6 +29,7 @@ from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import api
+from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim
 from cinder.volume.drivers.vmware import vim_util
@@ -253,6 +254,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         driver._select_ds_for_volume.side_effect = error_util.VimException('')
         self.assertRaises(error_util.VimFaultException, driver.create_volume,
                           volume)
+
+        # Clear side effects.
+        driver._select_ds_for_volume.side_effect = None
 
     def test_success_wait_for_task(self):
         """Test successful wait_for_task."""
@@ -501,12 +505,29 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         size = volume['size'] * units.Gi
         driver._select_datastore_summary.assert_called_once_with(size, dss)
 
-    def test_get_disk_type(self):
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    def test_get_disk_type(self, get_volume_type_extra_specs):
         """Test _get_disk_type."""
-        volume = FakeObject()
-        volume['volume_type_id'] = None
-        self.assertEqual(vmdk.VMwareEsxVmdkDriver._get_disk_type(volume),
-                         'thin')
+        # Test with no volume type.
+        volume = {'volume_type_id': None}
+        self.assertEqual(vmdk.THIN_VMDK_TYPE,
+                         vmdk.VMwareEsxVmdkDriver._get_disk_type(volume))
+
+        # Test with valid vmdk_type.
+        volume_type_id = mock.sentinel.volume_type_id
+        volume = {'volume_type_id': volume_type_id}
+        get_volume_type_extra_specs.return_value = vmdk.THICK_VMDK_TYPE
+
+        self.assertEqual(vmdk.THICK_VMDK_TYPE,
+                         vmdk.VMwareEsxVmdkDriver._get_disk_type(volume))
+        get_volume_type_extra_specs.assert_called_once_with(volume_type_id,
+                                                            'vmware:vmdk_type')
+        # Test with invalid vmdk_type.
+        get_volume_type_extra_specs.return_value = 'sparse'
+
+        self.assertRaises(error_util.InvalidDiskTypeException,
+                          vmdk.VMwareEsxVmdkDriver._get_disk_type,
+                          volume)
 
     def test_init_conn_with_instance_no_backing(self):
         """Test initialize_connection with instance and without backing."""
@@ -1400,6 +1421,163 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
+    @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
+    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
+                    get_volume_group_folder, generate_uuid,
+                    delete_temp_backing):
+        self._test_retype(ds_sel, vops, get_volume_type_extra_specs,
+                          get_volume_group_folder, generate_uuid,
+                          delete_temp_backing)
+
+    def _test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
+                     get_volume_group_folder, genereate_uuid,
+                     delete_temp_backing):
+        self._driver._storage_policy_enabled = True
+        context = mock.sentinel.context
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        new_type = {'id': 'abc'}
+
+        # Test with in-use volume.
+        vol = {'size': 1, 'status': 'retyping', 'name': 'vol-1',
+               'volume_type_id': 'def', 'instance_uuid': '583a8dbb'}
+        self.assertFalse(self._driver.retype(context, vol, new_type, diff,
+                                             host))
+
+        # Test with no backing.
+        vops.get_backing.return_value = None
+        vol['instance_uuid'] = None
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+
+        # Test with no disk type conversion, no profile change and
+        # compliant datastore.
+        ds_value = mock.sentinel.datastore_value
+        datastore = mock.Mock(value=ds_value)
+        vops.get_datastore.return_value = datastore
+
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        get_volume_type_extra_specs.side_effect = [vmdk.THIN_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   None,
+                                                   None]
+        ds_sel.is_datastore_compliant.return_value = True
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+
+        # Test with no disk type conversion, profile change and
+        # compliant datastore.
+        new_profile = mock.sentinel.new_profile
+        get_volume_type_extra_specs.side_effect = [vmdk.THIN_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   new_profile]
+        ds_sel.is_datastore_compliant.return_value = True
+        profile_id = mock.sentinel.profile_id
+        ds_sel.get_profile_id.return_value = profile_id
+
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+        vops.change_backing_profile.assert_called_once_with(backing,
+                                                            profile_id)
+
+        # Test with disk type conversion, profile change and a backing with
+        # snapshots. Also test the no candidate datastore case.
+        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   new_profile]
+        vops.snapshot_exists.return_value = True
+        ds_sel.select_datastore.return_value = ()
+
+        self.assertFalse(self._driver.retype(context, vol, new_type, diff,
+                                             host))
+        exp_req = {hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: [ds_value],
+                   hub.DatastoreSelector.PROFILE_NAME: new_profile,
+                   hub.DatastoreSelector.SIZE_BYTES: units.Gi}
+        ds_sel.select_datastore.assert_called_once_with(exp_req)
+
+        # Modify the previous case with a candidate datastore which is
+        # different than the backing's current datastore.
+        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   new_profile]
+        vops.snapshot_exists.return_value = True
+
+        host = mock.sentinel.host
+        rp = mock.sentinel.rp
+        candidate_ds = mock.Mock(value=mock.sentinel.candidate_ds_value)
+        summary = mock.Mock(datastore=candidate_ds)
+        ds_sel.select_datastore.return_value = (host, rp, summary)
+
+        folder = mock.sentinel.folder
+        get_volume_group_folder.return_value = folder
+
+        vops.change_backing_profile.reset_mock()
+
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+        vops.relocate_backing.assert_called_once_with(
+            backing, candidate_ds, rp, host, vmdk.THIN_VMDK_TYPE)
+        vops.move_backing_to_folder.assert_called_once_with(backing, folder)
+        vops.change_backing_profile.assert_called_once_with(backing,
+                                                            profile_id)
+
+        # Test with disk type conversion, profile change, backing with
+        # no snapshots and candidate datastore which is same as the backing
+        # datastore.
+        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   new_profile]
+        vops.snapshot_exists.return_value = False
+        summary.datastore = datastore
+
+        uuid = '025b654b-d4ed-47f9-8014-b71a7744eafc'
+        genereate_uuid.return_value = uuid
+
+        clone = mock.sentinel.clone
+        vops.clone_backing.return_value = clone
+
+        vops.change_backing_profile.reset_mock()
+
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+        vops.rename_backing.assert_called_once_with(backing, uuid)
+        vops.clone_backing.assert_called_once_with(
+            vol['name'], backing, None, volumeops.FULL_CLONE_TYPE,
+            datastore, vmdk.THIN_VMDK_TYPE)
+        delete_temp_backing.assert_called_once_with(backing)
+        vops.change_backing_profile.assert_called_once_with(clone,
+                                                            profile_id)
+
+        # Modify the previous case with exception during clone.
+        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   new_profile]
+
+        vops.clone_backing.side_effect = error_util.VimException('error')
+
+        vops.rename_backing.reset_mock()
+        vops.change_backing_profile.reset_mock()
+
+        self.assertRaises(
+            error_util.VimException, self._driver.retype, context, vol,
+            new_type, diff, host)
+        exp_rename_calls = [mock.call(backing, uuid),
+                            mock.call(backing, vol['name'])]
+        self.assertEqual(exp_rename_calls, vops.rename_backing.call_args_list)
+        self.assertFalse(vops.change_backing_profile.called)
+
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_extend_vmdk_virtual_disk(self, volume_ops):
         """Test vmdk._extend_vmdk_virtual_disk."""
@@ -2288,6 +2466,9 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         driver._select_datastore_summary.assert_called_once_with(size,
                                                                  filtered_dss)
 
+        # Clear side effects.
+        driver._filter_ds_by_profile.side_effect = None
+
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_extend_vmdk_virtual_disk(self, volume_ops):
         """Test vmdk._extend_vmdk_virtual_disk."""
@@ -2363,6 +2544,19 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                          _select_ds_for_volume,
                                                          _extend_virtual_disk,
                                                          fetch_optimized_image)
+
+    @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
+    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
+                    get_volume_group_folder, generate_uuid,
+                    delete_temp_backing):
+        self._test_retype(ds_sel, vops, get_volume_type_extra_specs,
+                          get_volume_group_folder, generate_uuid,
+                          delete_temp_backing)
 
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
