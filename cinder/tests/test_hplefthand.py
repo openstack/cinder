@@ -48,6 +48,7 @@ class HPLeftHandBaseDriver():
 
     serverName = 'fakehost'
     server_id = 0
+    server_uri = '/lhos/servers/0'
 
     snapshot_name = "fakeshapshot"
     snapshot_id = 3
@@ -805,7 +806,10 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # mock return value of getVolumeByName
         mock_client.getServerByName.side_effect = hpexceptions.HTTPNotFound()
         mock_client.createServer.return_value = {'id': self.server_id}
-        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumeByName.return_value = {
+            'id': self.volume_id,
+            'iscsiSessions': None
+        }
 
         # execute initialize_connection
         result = self.driver.initialize_connection(
@@ -839,6 +843,44 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             exception.VolumeBackendAPIException,
             self.driver.initialize_connection, self.volume, self.connector)
 
+    def test_initialize_connection_session_exists(self):
+
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        # mock return value of getVolumeByName
+        mock_client.getServerByName.side_effect = hpexceptions.HTTPNotFound()
+        mock_client.createServer.return_value = {'id': self.server_id}
+        mock_client.getVolumeByName.return_value = {
+            'id': self.volume_id,
+            'iscsiSessions': [{'server': {'uri': self.server_uri}}]
+        }
+
+        # execute initialize_connection
+        result = self.driver.initialize_connection(
+            self.volume,
+            self.connector)
+
+        # validate
+        self.assertEqual(result['driver_volume_type'], 'iscsi')
+        self.assertEqual(result['data']['target_discovered'], False)
+        self.assertEqual(result['data']['volume_id'], self.volume_id)
+        self.assertTrue('auth_method' not in result['data'])
+
+        expected = self.driver_startup_call_stack + [
+            mock.call.getServerByName('fakehost'),
+            mock.call.createServer
+            (
+                'fakehost',
+                'iqn.1993-08.org.debian:01:222',
+                None
+            ),
+            mock.call.getVolumeByName('fakevolume')]
+
+        # validate call chain
+        mock_client.assert_has_calls(expected)
+
     def test_initialize_connection_with_chaps(self):
 
         # setup drive with default configuration
@@ -851,7 +893,10 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'id': self.server_id,
             'chapAuthenticationRequired': True,
             'chapTargetSecret': 'dont_tell'}
-        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumeByName.return_value = {
+            'id': self.volume_id,
+            'iscsiSessions': None
+        }
 
         # execute initialize_connection
         result = self.driver.initialize_connection(
