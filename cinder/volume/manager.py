@@ -472,9 +472,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                                         {'status': 'error'})
                 raise exception.MetadataCopyFailure(reason=ex)
 
-        self.db.snapshot_update(context,
-                                snapshot_ref['id'], {'status': 'available',
-                                                     'progress': '100%'})
+        snapshot_ref = self.db.snapshot_update(context,
+                                               snapshot_ref['id'],
+                                               {'status': 'available',
+                                                'progress': '100%'})
 
         LOG.info(_("snapshot %s: created successfully"), snapshot_ref['id'])
         self._notify_about_snapshot_usage(context, snapshot_ref, "create.end")
