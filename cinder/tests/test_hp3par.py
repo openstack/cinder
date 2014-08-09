@@ -42,6 +42,9 @@ HP3PAR_SAN_SSH_PORT = 999
 HP3PAR_SAN_SSH_CON_TIMEOUT = 44
 HP3PAR_SAN_SSH_PRIVATE = 'foobar'
 
+CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
+CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
+
 
 class HP3PARBaseDriver(object):
 
@@ -171,6 +174,8 @@ class HP3PARBaseDriver(object):
         'TASK_DONE': TASK_DONE,
         'TASK_ACTIVE': TASK_ACTIVE,
         'HOST_EDIT_ADD': 1,
+        'CHAP_INITIATOR': 1,
+        'CHAP_TARGET': 2,
         'getPorts.return_value': {
             'members': FAKE_FC_PORTS + [FAKE_ISCSI_PORT]
         }
@@ -338,6 +343,7 @@ class HP3PARBaseDriver(object):
         configuration.hp3par_snapshot_expiration = ""
         configuration.hp3par_snapshot_retention = ""
         configuration.hp3par_iscsi_ips = []
+        configuration.hp3par_iscsi_chap_enabled = False
         return configuration
 
     @mock.patch(
@@ -1204,6 +1210,10 @@ class HP3PARBaseDriver(object):
                 None,
                 self.FAKE_HOST),
             mock.call.deleteHost(self.FAKE_HOST),
+            mock.call.removeVolumeMetaData(
+                self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
+            mock.call.removeVolumeMetaData(
+                self.VOLUME_3PAR_NAME, CHAP_PASS_KEY),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
@@ -2221,7 +2231,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.findHost.return_value = None
         mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
 
-        host = self.driver._create_host(self.volume, self.connector)
+        host, auth_username, auth_password = self.driver._create_host(
+            self.volume, self.connector)
         expected = [
             mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
             mock.call.getCPG(HP3PAR_CPG),
@@ -2236,6 +2247,67 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.assert_has_calls(expected)
 
         self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(auth_username, None)
+        self.assertEqual(auth_password, None)
+
+    def test_create_host_chap_enabled(self):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST}]
+        mock_client.findHost.return_value = None
+        mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
+
+        expected_mod_request = {
+            'chapOperation': mock_client.HOST_EDIT_ADD,
+            'chapOperationMode': mock_client.CHAP_INITIATOR,
+            'chapName': 'test-user',
+            'chapSecret': 'test-pass'
+        }
+
+        def get_side_effect(*args):
+            data = {'value': None}
+            if args[1] == CHAP_USER_KEY:
+                data['value'] = 'test-user'
+            elif args[1] == CHAP_PASS_KEY:
+                data['value'] = 'test-pass'
+            return data
+
+        mock_client.getVolumeMetaData.side_effect = get_side_effect
+
+        host, auth_username, auth_password = self.driver._create_host(
+            self.volume, self.connector)
+        expected = [
+            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.getHost(self.FAKE_HOST),
+            mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+            mock.call.createHost(
+                self.FAKE_HOST,
+                optional={'domain': None, 'persona': 1},
+                iscsiNames=['iqn.1993-08.org.debian:01:222']),
+            mock.call.modifyHost(
+                'fakehost',
+                expected_mod_request),
+            mock.call.getHost(self.FAKE_HOST)
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+        self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(auth_username, 'test-user')
+        self.assertEqual(auth_password, 'test-pass')
 
     def test_create_invalid_host(self):
         # setup_mock_client drive with default configuration
@@ -2248,7 +2320,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             {'name': 'fakehost.foo'}]
         mock_client.findHost.return_value = 'fakehost.foo'
 
-        host = self.driver._create_host(self.volume, self.connector)
+        host, auth_username, auth_password = self.driver._create_host(
+            self.volume, self.connector)
 
         expected = [
             mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
@@ -2260,6 +2333,63 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.assert_has_calls(expected)
 
         self.assertEqual(host['name'], 'fakehost.foo')
+        self.assertEqual(auth_username, None)
+        self.assertEqual(auth_password, None)
+
+    def test_create_invalid_host_chap_enabled(self):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('Host not found.'),
+            {'name': 'fakehost.foo'}]
+        mock_client.findHost.return_value = 'fakehost.foo'
+
+        def get_side_effect(*args):
+            data = {'value': None}
+            if args[1] == CHAP_USER_KEY:
+                data['value'] = 'test-user'
+            elif args[1] == CHAP_PASS_KEY:
+                data['value'] = 'test-pass'
+            return data
+
+        mock_client.getVolumeMetaData.side_effect = get_side_effect
+
+        expected_mod_request = {
+            'chapOperation': mock_client.HOST_EDIT_ADD,
+            'chapOperationMode': mock_client.CHAP_INITIATOR,
+            'chapName': 'test-user',
+            'chapSecret': 'test-pass'
+        }
+
+        host, auth_username, auth_password = self.driver._create_host(
+            self.volume, self.connector)
+
+        expected = [
+            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.getHost(self.FAKE_HOST),
+            mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+            mock.call.modifyHost(
+                'fakehost.foo',
+                expected_mod_request),
+            mock.call.getHost('fakehost.foo')
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+        self.assertEqual(host['name'], 'fakehost.foo')
+        self.assertEqual(auth_username, 'test-user')
+        self.assertEqual(auth_password, 'test-pass')
 
     def test_create_modify_host(self):
         # setup_mock_client drive with default configuration
@@ -2273,7 +2403,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
              'FCPaths': [{'wwn': '123456789012345'},
                          {'wwn': '123456789054321'}]}]
 
-        host = self.driver._create_host(self.volume, self.connector)
+        host, auth_username, auth_password = self.driver._create_host(
+            self.volume, self.connector)
 
         expected = [
             mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
@@ -2288,6 +2419,68 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.assert_has_calls(expected)
 
         self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(auth_username, None)
+        self.assertEqual(auth_password, None)
+        self.assertEqual(len(host['FCPaths']), 2)
+
+    def test_create_modify_host_chap_enabled(self):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            {'name': self.FAKE_HOST, 'FCPaths': []},
+            {'name': self.FAKE_HOST,
+             'FCPaths': [{'wwn': '123456789012345'},
+                         {'wwn': '123456789054321'}]}]
+
+        def get_side_effect(*args):
+            data = {'value': None}
+            if args[1] == CHAP_USER_KEY:
+                data['value'] = 'test-user'
+            elif args[1] == CHAP_PASS_KEY:
+                data['value'] = 'test-pass'
+            return data
+
+        mock_client.getVolumeMetaData.side_effect = get_side_effect
+
+        expected_mod_request = {
+            'chapOperation': mock_client.HOST_EDIT_ADD,
+            'chapOperationMode': mock_client.CHAP_INITIATOR,
+            'chapName': 'test-user',
+            'chapSecret': 'test-pass'
+        }
+
+        host, auth_username, auth_password = self.driver._create_host(
+            self.volume, self.connector)
+
+        expected = [
+            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.getHost(self.FAKE_HOST),
+            mock.call.modifyHost(
+                self.FAKE_HOST,
+                {'pathOperation': 1,
+                    'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
+            mock.call.modifyHost(
+                self.FAKE_HOST,
+                expected_mod_request
+            ),
+            mock.call.getHost(self.FAKE_HOST)]
+
+        mock_client.assert_has_calls(expected)
+
+        self.assertEqual(host['name'], self.FAKE_HOST)
+        self.assertEqual(auth_username, 'test-user')
+        self.assertEqual(auth_password, 'test-pass')
         self.assertEqual(len(host['FCPaths']), 2)
 
     def test_get_least_used_nsp_for_host_single(self):
@@ -2456,6 +2649,310 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         nsp = self.driver._get_least_used_nsp(vluns['members'],
                                               ['1:1:1', '1:2:1'])
         self.assertEqual(nsp, '1:1:1')
+
+    def test_set_3par_chaps(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        expected = []
+        self.driver._set_3par_chaps(
+            'test-host', 'test-vol', 'test-host', 'pass')
+        mock_client.assert_has_calls(expected)
+
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        expected_mod_request = {
+            'chapOperation': mock_client.HOST_EDIT_ADD,
+            'chapOperationMode': mock_client.CHAP_INITIATOR,
+            'chapName': 'test-host',
+            'chapSecret': 'fake'
+        }
+
+        expected = [
+            mock.call.modifyHost('test-host', expected_mod_request)
+        ]
+        self.driver._set_3par_chaps(
+            'test-host', 'test-vol', 'test-host', 'fake')
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_do_export(self, mock_utils):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+        mock_utils.return_value = 'random-pass'
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0,
+             'remoteName': 'iqn.1993-08.org.debian:01:222'}
+        ]
+        mock_client.getHost.return_value = {
+            'name': 'osv-0DM4qZEVSKON-DXN-NwVpw',
+            'initiatorChapEnabled': True
+        }
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-pass'
+        }
+
+        expected = []
+        expected_model = {'provider_auth': None}
+        model = self.driver._do_export(volume)
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_model, model)
+
+        mock_client.reset_mock()
+
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+        mock_utils.return_value = 'random-pass'
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0,
+             'remoteName': 'iqn.1993-08.org.debian:01:222'}
+        ]
+        mock_client.getHost.return_value = {
+            'name': 'osv-0DM4qZEVSKON-DXN-NwVpw',
+            'initiatorChapEnabled': True
+        }
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-pass'
+        }
+
+        expected = [
+            mock.call.getHostVLUNs('test-host'),
+            mock.call.getHost('test-host'),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY, 'test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY, 'random-pass')
+        ]
+        expected_model = {'provider_auth': 'CHAP test-host random-pass'}
+
+        model = self.driver._do_export(volume)
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_model, model)
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_do_export_host_not_found(self, mock_utils):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+        mock_utils.return_value = "random-pass"
+        mock_client.getHostVLUNs.side_effect = hpexceptions.HTTPNotFound(
+            'fake')
+
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-pass'
+        }
+
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+
+        expected = [
+            mock.call.getHostVLUNs('test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY, 'test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY, 'random-pass')
+        ]
+        expected_model = {'provider_auth': 'CHAP test-host random-pass'}
+
+        model = self.driver._do_export(volume)
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_model, model)
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_do_export_host_chap_disabled(self, mock_utils):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+        mock_utils.return_value = 'random-pass'
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0,
+             'remoteName': 'iqn.1993-08.org.debian:01:222'}
+        ]
+        mock_client.getHost.return_value = {
+            'name': 'fake-host',
+            'initiatorChapEnabled': False
+        }
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-pass'
+        }
+
+        mock_client.reset_mock()
+
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+
+        expected = [
+            mock.call.getHostVLUNs('test-host'),
+            mock.call.getHost('test-host'),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY, 'test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY, 'random-pass')
+        ]
+        expected_model = {'provider_auth': 'CHAP test-host random-pass'}
+
+        model = self.driver._do_export(volume)
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(expected_model, model)
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_do_export_no_active_vluns(self, mock_utils):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hp3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+        mock_utils.return_value = "random-pass"
+        mock_client.getHostVLUNs.return_value = [
+            {'active': False,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 0,
+             'remoteName': 'iqn.1993-08.org.debian:01:222'}
+        ]
+        mock_client.getHost.return_value = {
+            'name': 'fake-host',
+            'initiatorChapEnabled': True
+        }
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-pass'
+        }
+
+        expected = [
+            mock.call.getHostVLUNs('test-host'),
+            mock.call.getHost('test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY, 'test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY, 'random-pass')
+        ]
+        expected_model = {'provider_auth': 'CHAP test-host random-pass'}
+
+        model = self.driver._do_export(volume)
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(model, expected_model)
+
+    def test_ensure_export(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+
+        mock_client.getAllVolumeMetaData.return_value = {
+            'total': 0,
+            'members': []
+        }
+
+        model = self.driver.ensure_export(None, volume)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getAllVolumeMetaData('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.logout()
+        ]
+
+        expected_model = {'provider_auth': None}
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(model, expected_model)
+
+        mock_client.getAllVolumeMetaData.return_value = {
+            'total': 2,
+            'members': [
+                {
+                    'creationTimeSec': 1406074222,
+                    'value': 'fake-host',
+                    'key': CHAP_USER_KEY,
+                    'creationTime8601': '2014-07-22T17:10:22-07:00'
+                },
+                {
+                    'creationTimeSec': 1406074222,
+                    'value': 'random-pass',
+                    'key': CHAP_PASS_KEY,
+                    'creationTime8601': '2014-07-22T17:10:22-07:00'
+                }
+            ]
+        }
+
+        model = self.driver.ensure_export(None, volume)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.getAllVolumeMetaData('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.logout()
+        ]
+
+        expected_model = {'provider_auth': "CHAP fake-host random-pass"}
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(model, expected_model)
+
+    def test_ensure_export_missing_volume(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+
+        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound(
+            'fake')
+
+        model = self.driver.ensure_export(None, volume)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+            mock.call.logout()
+        ]
+
+        expected_model = None
+
+        mock_client.assert_has_calls(expected)
+        self.assertEqual(model, expected_model)
+
 
 VLUNS5_RET = ({'members':
                [{'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},

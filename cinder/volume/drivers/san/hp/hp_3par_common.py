@@ -66,7 +66,7 @@ from taskflow.patterns import linear_flow
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '3.0.0'
+MIN_CLIENT_VERSION = '3.1.0'
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -100,7 +100,10 @@ hp3par_opts = [
                 help="Enable HTTP debugging to 3PAR"),
     cfg.ListOpt('hp3par_iscsi_ips',
                 default=[],
-                help="List of target iSCSI addresses to use.")
+                help="List of target iSCSI addresses to use."),
+    cfg.BoolOpt('hp3par_iscsi_chap_enabled',
+                default=False,
+                help="Enable CHAP authentication for iSCSI connections."),
 ]
 
 
@@ -138,10 +141,13 @@ class HP3PARCommon(object):
         2.0.14 - Modified manage volume to use standard 'source-name' element.
         2.0.15 - Added support for volume retype
         2.0.16 - Add a better log during delete_volume time. Bug #1349636
+        2.0.17 - Added iSCSI CHAP support
+                 This update now requires 3.1.3 MU1 firmware
+                 and hp3parclient 3.1.0
 
     """
 
-    VERSION = "2.0.16"
+    VERSION = "2.0.17"
 
     stats = {}
 
