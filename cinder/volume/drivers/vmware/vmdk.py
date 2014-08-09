@@ -32,6 +32,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
+from cinder.openstack.common import uuidutils
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import error_util
@@ -49,6 +50,7 @@ EAGER_ZEROED_THICK_VMDK_TYPE = 'eagerZeroedThick'
 
 CREATE_PARAM_ADAPTER_TYPE = 'adapter_type'
 CREATE_PARAM_DISK_LESS = 'disk_less'
+CREATE_PARAM_BACKING_NAME = 'name'
 
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
@@ -136,6 +138,41 @@ def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
         return spec_value
 
     LOG.debug("Invalid spec value: %s specified." % spec_value)
+
+
+class ImageDiskType:
+    """Supported disk types in images."""
+
+    PREALLOCATED = "preallocated"
+    SPARSE = "sparse"
+    STREAM_OPTIMIZED = "streamOptimized"
+    THIN = "thin"
+
+    @staticmethod
+    def is_valid(extra_spec_disk_type):
+        """Check if the given disk type in extra_spec is valid.
+
+        :param extra_spec_disk_type: disk type to check
+        :return: True if valid
+        """
+        return extra_spec_disk_type in [ImageDiskType.PREALLOCATED,
+                                        ImageDiskType.SPARSE,
+                                        ImageDiskType.STREAM_OPTIMIZED,
+                                        ImageDiskType.THIN]
+
+    @staticmethod
+    def validate(extra_spec_disk_type):
+        """Validate the given disk type in extra_spec.
+
+        This method throws ImageUnacceptable if the disk type is not a
+        supported one.
+
+        :param extra_spec_disk_type: disk type
+        :raises: ImageUnacceptable
+        """
+        if not ImageDiskType.is_valid(extra_spec_disk_type):
+            raise exception.ImageUnacceptable(_("Invalid disk type: %s.") %
+                                              extra_spec_disk_type)
 
 
 class VMwareEsxVmdkDriver(driver.VolumeDriver):
@@ -459,12 +496,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # check if a storage profile needs to be associated with the backing VM
         profile_id = self._get_storage_profile_id(volume)
 
+        # Use volume name as the default backing name.
+        backing_name = create_params.get(CREATE_PARAM_BACKING_NAME,
+                                         volume['name'])
+
         # default is a backing with single disk
         disk_less = create_params.get(CREATE_PARAM_DISK_LESS, False)
         if disk_less:
             # create a disk-less backing-- disk can be added later; for e.g.,
             # by copying an image
-            return self.volumeops.create_backing_disk_less(volume['name'],
+            return self.volumeops.create_backing_disk_less(backing_name,
                                                            folder,
                                                            resource_pool,
                                                            host,
@@ -476,7 +517,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         size_kb = volume['size'] * units.Mi
         adapter_type = create_params.get(CREATE_PARAM_ADAPTER_TYPE,
                                          'lsiLogic')
-        return self.volumeops.create_backing(volume['name'],
+        return self.volumeops.create_backing(backing_name,
                                              size_kb,
                                              disk_type,
                                              folder,
@@ -813,18 +854,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         self._create_volume_from_snapshot(volume, snapshot)
 
-    def _get_ds_name_flat_vmdk_path(self, backing, vol_name):
-        """Get datastore name and folder path of the flat VMDK of the backing.
+    def _get_ds_name_folder_path(self, backing):
+        """Get datastore name and folder path of the given backing.
 
         :param backing: Reference to the backing entity
-        :param vol_name: Name of the volume
-        :return: datastore name and folder path of the VMDK of the backing
+        :return: datastore name and folder path of the backing
         """
-        file_path_name = self.volumeops.get_path_name(backing)
+        vmdk_ds_file_path = self.volumeops.get_path_name(backing)
         (datastore_name,
-         folder_path, _) = volumeops.split_datastore_path(file_path_name)
-        flat_vmdk_path = '%s%s-flat.vmdk' % (folder_path, vol_name)
-        return (datastore_name, flat_vmdk_path)
+         folder_path, _) = volumeops.split_datastore_path(vmdk_ds_file_path)
+        return (datastore_name, folder_path)
 
     @staticmethod
     def _validate_disk_format(disk_format):
@@ -838,54 +877,249 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.ImageUnacceptable(msg)
 
-    def _fetch_flat_image(self, context, volume, image_service, image_id,
-                          image_size):
-        """Creates a volume from flat glance image.
+    def _copy_image(self, context, dc_ref, image_service, image_id,
+                    image_size_in_bytes, ds_name, upload_file_path):
+        """Copy image (flat extent or sparse vmdk) to datastore."""
 
-        Creates a backing for the volume under the ESX/VC server and
-        copies the VMDK flat file from the glance image content.
-        The method assumes glance image is VMDK disk format and its
-        vmware_disktype is "sparse" or "preallocated", but not
-        "streamOptimized"
-        """
-        # Set volume size in GB from image metadata
-        volume['size'] = float(image_size) / units.Gi
-        # First create empty backing in the inventory
-        backing = self._create_backing_in_inventory(volume)
+        timeout = self.configuration.vmware_image_transfer_timeout_secs
+        host_ip = self.configuration.vmware_host_ip
+        cookies = self.session.vim.client.options.transport.cookiejar
+        dc_name = self.volumeops.get_entity_name(dc_ref)
+
+        LOG.debug("Copying image: %(image_id)s to %(path)s.",
+                  {'image_id': image_id,
+                   'path': upload_file_path})
+        vmware_images.fetch_flat_image(context,
+                                       timeout,
+                                       image_service,
+                                       image_id,
+                                       image_size=image_size_in_bytes,
+                                       host=host_ip,
+                                       data_center_name=dc_name,
+                                       datastore_name=ds_name,
+                                       cookies=cookies,
+                                       file_path=upload_file_path)
+        LOG.debug("Image: %(image_id)s copied to %(path)s.",
+                  {'image_id': image_id,
+                   'path': upload_file_path})
+
+    def _delete_temp_disk(self, descriptor_ds_file_path, dc_ref):
+        """Deletes a temporary virtual disk."""
+
+        LOG.debug("Deleting temporary disk: %s.", descriptor_ds_file_path)
+        try:
+            self.volumeops.delete_vmdk_file(
+                descriptor_ds_file_path, dc_ref)
+        except error_util.VimException:
+            LOG.warn(_("Error occurred while deleting temporary "
+                       "disk: %s."),
+                     descriptor_ds_file_path,
+                     exc_info=True)
+
+    def _copy_temp_virtual_disk(self, dc_ref, src_path, dest_path):
+        """Clones a temporary virtual disk and deletes it finally."""
 
         try:
-            (datastore_name,
-             flat_vmdk_path) = self._get_ds_name_flat_vmdk_path(backing,
-                                                                volume['name'])
-            host = self.volumeops.get_host(backing)
-            datacenter = self.volumeops.get_dc(host)
-            datacenter_name = self.volumeops.get_entity_name(datacenter)
-            flat_vmdk_ds_path = '[%s] %s' % (datastore_name, flat_vmdk_path)
-            # Delete the *-flat.vmdk file within the backing
-            self.volumeops.delete_file(flat_vmdk_ds_path, datacenter)
+            self.volumeops.copy_vmdk_file(
+                dc_ref, src_path.get_descriptor_ds_file_path(),
+                dest_path.get_descriptor_ds_file_path())
+        except error_util.VimException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Error occurred while copying %(src)s to "
+                                "%(dst)s."),
+                              {'src': src_path.get_descriptor_ds_file_path(),
+                               'dst': dest_path.get_descriptor_ds_file_path()})
+        finally:
+            # Delete temporary disk.
+            self._delete_temp_disk(src_path.get_descriptor_ds_file_path(),
+                                   dc_ref)
 
-            # copy over image from glance into *-flat.vmdk
-            timeout = self.configuration.vmware_image_transfer_timeout_secs
-            host_ip = self.configuration.vmware_host_ip
-            cookies = self.session.vim.client.options.transport.cookiejar
-            LOG.debug("Fetching glance image: %(id)s to server: %(host)s." %
-                      {'id': image_id, 'host': host_ip})
-            vmware_images.fetch_flat_image(context, timeout, image_service,
-                                           image_id, image_size=image_size,
-                                           host=host_ip,
-                                           data_center_name=datacenter_name,
-                                           datastore_name=datastore_name,
-                                           cookies=cookies,
-                                           file_path=flat_vmdk_path)
-            LOG.info(_("Done copying image: %(id)s to volume: %(vol)s.") %
-                     {'id': image_id, 'vol': volume['name']})
-        except Exception as excep:
-            err_msg = (_("Exception in copy_image_to_volume: "
-                         "%(excep)s. Deleting the backing: "
-                         "%(back)s.") % {'excep': excep, 'back': backing})
-            # delete the backing
+    def _create_virtual_disk_from_sparse_image(
+            self, context, image_service, image_id, image_size_in_bytes,
+            dc_ref, ds_name, folder_path, disk_name):
+        """Creates a flat extent virtual disk from sparse vmdk image."""
+
+        # Upload the image to a temporary virtual disk.
+        src_disk_name = uuidutils.generate_uuid()
+        src_path = volumeops.MonolithicSparseVirtualDiskPath(ds_name,
+                                                             folder_path,
+                                                             src_disk_name)
+
+        LOG.debug("Creating temporary virtual disk: %(path)s from sparse vmdk "
+                  "image: %(image_id)s.",
+                  {'path': src_path.get_descriptor_ds_file_path(),
+                   'image_id': image_id})
+        self._copy_image(context, dc_ref, image_service, image_id,
+                         image_size_in_bytes, ds_name,
+                         src_path.get_descriptor_file_path())
+
+        # Copy sparse disk to create a flat extent virtual disk.
+        dest_path = volumeops.FlatExtentVirtualDiskPath(ds_name,
+                                                        folder_path,
+                                                        disk_name)
+        self._copy_temp_virtual_disk(dc_ref, src_path, dest_path)
+        LOG.debug("Created virtual disk: %s from sparse vmdk image.",
+                  dest_path.get_descriptor_ds_file_path())
+        return dest_path
+
+    def _create_virtual_disk_from_preallocated_image(
+            self, context, image_service, image_id, image_size_in_bytes,
+            dc_ref, ds_name, folder_path, disk_name, adapter_type):
+        """Creates virtual disk from an image which is a flat extent."""
+
+        path = volumeops.FlatExtentVirtualDiskPath(ds_name,
+                                                   folder_path,
+                                                   disk_name)
+        LOG.debug("Creating virtual disk: %(path)s from (flat extent) image: "
+                  "%(image_id)s.",
+                  {'path': path.get_descriptor_ds_file_path(),
+                   'image_id': image_id})
+
+        # We first create a descriptor with desired settings.
+        self.volumeops.create_flat_extent_virtual_disk_descriptor(
+            dc_ref, path, image_size_in_bytes / units.Ki, adapter_type,
+            EAGER_ZEROED_THICK_VMDK_TYPE)
+        # Upload the image and use it as the flat extent.
+        try:
+            self._copy_image(context, dc_ref, image_service, image_id,
+                             image_size_in_bytes, ds_name,
+                             path.get_flat_extent_file_path())
+        except Exception:
+            # Delete the descriptor.
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Error occurred while copying image: "
+                                "%(image_id)s to %(path)s."),
+                              {'path': path.get_descriptor_ds_file_path(),
+                               'image_id': image_id})
+                LOG.debug("Deleting descriptor: %s.",
+                          path.get_descriptor_ds_file_path())
+                try:
+                    self.volumeops.delete_file(
+                        path.get_descriptor_ds_file_path(), dc_ref)
+                except error_util.VimException:
+                    LOG.warn(_("Error occurred while deleting "
+                               "descriptor: %s."),
+                             path.get_descriptor_ds_file_path(),
+                             exc_info=True)
+
+        LOG.debug("Created virtual disk: %s from flat extent image.",
+                  path.get_descriptor_ds_file_path())
+        return path
+
+    def _check_disk_conversion(self, image_disk_type, extra_spec_disk_type):
+        """Check if disk type conversion is needed."""
+
+        if image_disk_type == ImageDiskType.SPARSE:
+            # We cannot reliably determine the destination disk type of a
+            # virtual disk copied from a sparse image.
+            return True
+        # Virtual disk created from flat extent is always of type
+        # eagerZeroedThick.
+        return not (volumeops.VirtualDiskType.get_virtual_disk_type(
+                    extra_spec_disk_type) ==
+                    volumeops.VirtualDiskType.EAGER_ZEROED_THICK)
+
+    def _delete_temp_backing(self, backing):
+        """Deletes temporary backing."""
+
+        LOG.debug("Deleting backing: %s.", backing)
+        try:
             self.volumeops.delete_backing(backing)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+        except error_util.VimException:
+            LOG.warn(_("Error occurred while deleting backing: %s."),
+                     backing,
+                     exc_info=True)
+
+    def _create_volume_from_non_stream_optimized_image(
+            self, context, volume, image_service, image_id,
+            image_size_in_bytes, adapter_type, image_disk_type):
+        """Creates backing VM from non-streamOptimized image.
+
+        First, we create a disk-less backing. Then we create a virtual disk
+        using the image which is then attached to the backing VM. Finally, the
+        backing VM is cloned if disk type conversion is required.
+        """
+        # We should use the disk type in volume type for backing's virtual
+        # disk.
+        disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
+
+        # First, create a disk-less backing.
+        create_params = {CREATE_PARAM_DISK_LESS: True}
+
+        disk_conversion = self._check_disk_conversion(image_disk_type,
+                                                      disk_type)
+        if disk_conversion:
+            # The initial backing is a temporary one and used as the source
+            # for clone operation.
+            disk_name = uuidutils.generate_uuid()
+            create_params[CREATE_PARAM_BACKING_NAME] = disk_name
+        else:
+            disk_name = volume['name']
+
+        LOG.debug("Creating disk-less backing for volume: %(id)s with params: "
+                  "%(param)s.",
+                  {'id': volume['id'],
+                   'param': create_params})
+        backing = self._create_backing_in_inventory(volume, create_params)
+
+        try:
+            # Find the backing's datacenter, host, datastore and folder.
+            (ds_name, folder_path) = self._get_ds_name_folder_path(backing)
+            host = self.volumeops.get_host(backing)
+            dc_ref = self.volumeops.get_dc(host)
+
+            vmdk_path = None
+            attached = False
+
+            # Create flat extent virtual disk from the image.
+            if image_disk_type == ImageDiskType.SPARSE:
+                # Monolithic sparse image has embedded descriptor.
+                vmdk_path = self._create_virtual_disk_from_sparse_image(
+                    context, image_service, image_id, image_size_in_bytes,
+                    dc_ref, ds_name, folder_path, disk_name)
+            else:
+                # The image is just a flat extent.
+                vmdk_path = self._create_virtual_disk_from_preallocated_image(
+                    context, image_service, image_id, image_size_in_bytes,
+                    dc_ref, ds_name, folder_path, disk_name, adapter_type)
+
+            # Attach the virtual disk to the backing.
+            LOG.debug("Attaching virtual disk: %(path)s to backing: "
+                      "%(backing)s.",
+                      {'path': vmdk_path.get_descriptor_ds_file_path(),
+                       'backing': backing})
+
+            self.volumeops.attach_disk_to_backing(
+                backing, image_size_in_bytes / units.Ki, disk_type,
+                adapter_type, vmdk_path.get_descriptor_ds_file_path())
+            attached = True
+
+            if disk_conversion:
+                # Clone the temporary backing for disk type conversion.
+                (host, rp, folder, summary) = self._select_ds_for_volume(
+                    volume)
+                datastore = summary.datastore
+                LOG.debug("Cloning temporary backing: %s for disk type "
+                          "conversion.", backing)
+                self.volumeops.clone_backing(volume['name'],
+                                             backing,
+                                             None,
+                                             volumeops.FULL_CLONE_TYPE,
+                                             datastore,
+                                             disk_type)
+                self._delete_temp_backing(backing)
+        except Exception:
+            # Delete backing and virtual disk created from image.
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Error occured while creating volume: %(id)s"
+                                " from image: %(image_id)s."),
+                              {'id': volume['id'],
+                               'image_id': image_id})
+                self._delete_temp_backing(backing)
+                # Delete virtual disk if exists and unattached.
+                if vmdk_path is not None and not attached:
+                    self._delete_temp_disk(
+                        vmdk_path.get_descriptor_ds_file_path(), dc_ref)
 
     def _fetch_stream_optimized_image(self, context, volume, image_service,
                                       image_id, image_size, adapter_type):
@@ -1003,48 +1237,56 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :param image_id: Glance image id
         """
         LOG.debug("Copy glance image: %s to create new volume." % image_id)
-        # Record the volume size specified by the user, if the size is input
-        # from the API.
-        volume_size_in_gb = volume['size']
+
         # Verify glance image is vmdk disk format
         metadata = image_service.show(context, image_id)
         VMwareEsxVmdkDriver._validate_disk_format(metadata['disk_format'])
 
         # Get the disk type, adapter type and size of vmdk image
-        disk_type = 'preallocated'
-        adapter_type = 'lsiLogic'
+        image_disk_type = ImageDiskType.PREALLOCATED
+        image_adapter_type = volumeops.VirtualDiskAdapterType.LSI_LOGIC
         image_size_in_bytes = metadata['size']
         properties = metadata['properties']
         if properties:
             if 'vmware_disktype' in properties:
-                disk_type = properties['vmware_disktype']
+                image_disk_type = properties['vmware_disktype']
             if 'vmware_adaptertype' in properties:
-                adapter_type = properties['vmware_adaptertype']
+                image_adapter_type = properties['vmware_adaptertype']
 
         try:
-            if disk_type == 'streamOptimized':
+            # validate disk and adapter types in image meta-data
+            volumeops.VirtualDiskAdapterType.validate(image_adapter_type)
+            ImageDiskType.validate(image_disk_type)
+
+            if image_disk_type == ImageDiskType.STREAM_OPTIMIZED:
                 self._fetch_stream_optimized_image(context, volume,
                                                    image_service, image_id,
                                                    image_size_in_bytes,
-                                                   adapter_type)
+                                                   image_adapter_type)
             else:
-                self._fetch_flat_image(context, volume, image_service,
-                                       image_id, image_size_in_bytes)
+                self._create_volume_from_non_stream_optimized_image(
+                    context, volume, image_service, image_id,
+                    image_size_in_bytes, image_adapter_type, image_disk_type)
         except exception.CinderException as excep:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_("Exception in copying the image to the "
                                 "volume: %s."), excep)
 
-        # image_size_in_bytes is the capacity of the image in Bytes and
-        # volume_size_in_gb is the size specified by the user, if the
-        # size is input from the API.
-        #
-        # Convert the volume_size_in_gb into bytes and compare with the
-        # image size. If the volume_size_in_gb is greater, meaning the
-        # user specifies a larger volume, we need to extend/resize the vmdk
-        # virtual disk to the capacity specified by the user.
-        if volume_size_in_gb * units.Gi > image_size_in_bytes:
-            self._extend_vmdk_virtual_disk(volume['name'], volume_size_in_gb)
+        LOG.debug("Volume: %(id)s created from image: %(image_id)s.",
+                  {'id': volume['id'],
+                   'image_id': image_id})
+
+        # If the user-specified volume size is greater than image size, we need
+        # to extend the virtual disk to the capacity specified by the user.
+        volume_size_in_bytes = volume['size'] * units.Gi
+        if volume_size_in_bytes > image_size_in_bytes:
+            LOG.debug("Extending volume: %(id)s since the user specified "
+                      "volume size (bytes): %(size)s is greater than image"
+                      " size (bytes): %(image_size)s.",
+                      {'id': volume['id'],
+                       'size': volume_size_in_bytes,
+                       'image_size': image_size_in_bytes})
+            self._extend_vmdk_virtual_disk(volume['name'], volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Creates glance image from volume.
