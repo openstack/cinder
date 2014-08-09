@@ -61,13 +61,18 @@ loc_opts = [
                help='Naviseccli Path.'),
     cfg.StrOpt('storage_vnx_pool_name',
                default=None,
-               help='Storage pool name'),
+               help='Storage pool name.'),
     cfg.StrOpt('san_secondary_ip',
                default=None,
                help='VNX secondary SP IP Address.'),
     cfg.IntOpt('default_timeout',
                default=60 * 24 * 365,
                help='Default Time Out For CLI operations in minutes. '
+               'For example, LUN migration is a typical long '
+               'running operation, which depends on the LUN size and '
+               'the load of the array. '
+               'An upper bound in the specific deployment can be set to '
+               'avoid unnecessary long wait. '
                'By default, it is 365 days long.'),
     cfg.IntOpt('max_luns_per_storage_group',
                default=255,

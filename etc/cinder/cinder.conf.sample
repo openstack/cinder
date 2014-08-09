@@ -1103,14 +1103,18 @@
 # Naviseccli Path. (string value)
 #naviseccli_path=
 
-# Storage pool name (string value)
+# Storage pool name. (string value)
 #storage_vnx_pool_name=<None>
 
 # VNX secondary SP IP Address. (string value)
 #san_secondary_ip=<None>
 
-# Default Time Out For CLI operations in minutes. By default,
-# it is 365 days long. (integer value)
+# Default Time Out For CLI operations in minutes. For example,
+# LUN migration is a typical long running operation, which
+# depends on the LUN size and the load of the array. An upper
+# bound in the specific deployment can be set to avoid
+# unnecessary long wait. By default, it is 365 days long.
+# (integer value)
 #default_timeout=525600
 
 # Default max number of LUNs in a storage group. By default,
