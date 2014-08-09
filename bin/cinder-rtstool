@@ -95,7 +95,7 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
         if t.dump()['wwn'] == target_iqn:
             target = t
             break
-    if target == None:
+    if target is None:
         raise RtstoolError(_('Could not find target %s') % target_iqn)
 
     tpg = target.tpgs.next()  # get the first one

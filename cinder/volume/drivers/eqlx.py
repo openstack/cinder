@@ -450,7 +450,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             out = self._eql_execute('volume', 'select', volume['name'],
                                     'access', 'show')
             connection_id = self._parse_connection(connector, out)
-            if connection_id != None:
+            if connection_id is not None:
                 self._eql_execute('volume', 'select', volume['name'],
                                   'access', 'delete', connection_id)
         except Exception:

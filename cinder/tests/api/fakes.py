@@ -105,7 +105,7 @@ class HTTPRequest(webob.Request):
 
     @classmethod
     def blank(cls, *args, **kwargs):
-        if args != None:
+        if args is not None:
             if args[0].find('v1') == 0:
                 kwargs['base_url'] = 'http://localhost/v1'
             else:

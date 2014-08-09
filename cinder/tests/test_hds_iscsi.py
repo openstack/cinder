@@ -310,7 +310,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.driver.delete_volume(vol)
         # should not be deletable twice
         prov_loc = self.backend.getVolumebyProvider(vol['provider_location'])
-        self.assertTrue(prov_loc == None)
+        self.assertTrue(prov_loc is None)
 
     def test_extend_volume(self):
         vol = self._create_volume()
@@ -355,7 +355,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         lun = svol['provider_location']
         m_id_to_vol.return_value = svol
         self.driver.delete_snapshot(svol)
-        self.assertTrue(self.backend.getVolumebyProvider(lun) == None)
+        self.assertTrue(self.backend.getVolumebyProvider(lun) is None)
 
     def test_create_volume_from_snapshot(self):
         svol = self._create_volume()

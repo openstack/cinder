@@ -1527,7 +1527,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         vols = self._get_filer_volumes()
         for vol in vols:
             volume = vol.get_child_content('name')
-            if self.volume_list and not volume in self.volume_list:
+            if self.volume_list and volume not in self.volume_list:
                 continue
             state = vol.get_child_content('state')
             inconsistent = vol.get_child_content('is-inconsistent')

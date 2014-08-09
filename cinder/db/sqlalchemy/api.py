@@ -1189,7 +1189,7 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
         query = _generate_paginate_query(context, session, marker, limit,
                                          sort_key, sort_dir, filters)
         # No volumes would match, return empty list
-        if query == None:
+        if query is None:
             return []
         return query.all()
 
@@ -1227,7 +1227,7 @@ def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
         query = _generate_paginate_query(context, session, marker, limit,
                                          sort_key, sort_dir, filters)
         # No volumes would match, return empty list
-        if query == None:
+        if query is None:
             return []
         return query.all()
 
@@ -1260,11 +1260,11 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
         # 'no_migration_targets' is unique, must be either NULL or
         # not start with 'target:'
         if ('no_migration_targets' in filters and
-                filters['no_migration_targets'] == True):
+                filters['no_migration_targets'] is True):
             filters.pop('no_migration_targets')
             try:
                 column_attr = getattr(models.Volume, 'migration_status')
-                conditions = [column_attr == None,
+                conditions = [column_attr == None,  # noqa
                               column_attr.op('NOT LIKE')('target:%')]
                 query = query.filter(or_(*conditions))
             except AttributeError:
@@ -1665,7 +1665,7 @@ def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
     """Return snapshots that were active during window."""
 
     query = model_query(context, models.Snapshot, read_deleted="yes")
-    query = query.filter(or_(models.Snapshot.deleted_at == None,
+    query = query.filter(or_(models.Snapshot.deleted_at == None,  # noqa
                              models.Snapshot.deleted_at > begin))
     query = query.options(joinedload(models.Snapshot.volume))
     if end:
@@ -1991,7 +1991,7 @@ def volume_get_active_by_window(context,
                                 project_id=None):
     """Return volumes that were active during window."""
     query = model_query(context, models.Volume, read_deleted="yes")
-    query = query.filter(or_(models.Volume.deleted_at == None,
+    query = query.filter(or_(models.Volume.deleted_at == None,  # noqa
                              models.Volume.deleted_at > begin))
     if end:
         query = query.filter(models.Volume.created_at < end)
