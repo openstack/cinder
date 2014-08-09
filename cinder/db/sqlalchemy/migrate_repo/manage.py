@@ -17,8 +17,8 @@ import os
 
 from oslo.config import cfg
 
-from cinder.openstack.common import gettextutils
-gettextutils.enable_lazy()
+from cinder import i18n
+i18n.enable_lazy()
 
 from cinder.db.sqlalchemy import migrate_repo
 from cinder import version

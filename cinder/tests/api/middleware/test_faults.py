@@ -17,19 +17,30 @@ from xml.dom import minidom
 
 import gettext
 import mock
+from oslo.i18n import _lazy
 import webob.dec
 import webob.exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.openstack.common import gettextutils
+from cinder import i18n as cinder_i18n
+from cinder.i18n import _
 from cinder.openstack.common import jsonutils
 from cinder import test
 
 
 class TestFaults(test.TestCase):
     """Tests covering `cinder.api.openstack.faults:Fault` class."""
+
+    def setUp(self):
+        super(TestFaults, self).setUp()
+        back_use_lazy = _lazy.USE_LAZY
+        cinder_i18n.enable_lazy()
+        self.addCleanup(self._restore_use_lazy, back_use_lazy)
+
+    def _restore_use_lazy(self, back_use_lazy):
+        _lazy.USE_LAZY = back_use_lazy
 
     def _prepare_xml(self, xml_string):
         """Remove characters from string which hinder XML equality testing."""
@@ -110,15 +121,15 @@ class TestFaults(test.TestCase):
         self.assertNotIn('resizeNotAllowed', resp.body)
         self.assertIn('forbidden', resp.body)
 
-    def test_raise_http_with_localized_explanation(self):
+    @mock.patch('cinder.api.openstack.wsgi.i18n.translate')
+    def test_raise_http_with_localized_explanation(self, mock_translate):
         params = ('blah', )
-        expl = gettextutils.Message("String with params: %s" % params, 'test')
+        expl = _("String with params: %s") % params
 
         def _mock_translation(msg, locale):
             return "Mensaje traducido"
 
-        self.stubs.Set(gettextutils,
-                       "translate", _mock_translation)
+        mock_translate.side_effect = _mock_translation
 
         @webob.dec.wsgify
         def raiser(req):
@@ -131,10 +142,10 @@ class TestFaults(test.TestCase):
         self.assertIn(("Mensaje traducido"), resp.body)
         self.stubs.UnsetAll()
 
-    @mock.patch('cinder.openstack.common.gettextutils.gettext.translation')
+    @mock.patch('oslo.i18n._message.gettext.translation')
     def test_raise_invalid_with_localized_explanation(self, mock_translation):
-        msg_template = gettextutils.Message("Invalid input: %(reason)s", "")
-        reason = gettextutils.Message("Value is invalid", "")
+        msg_template = _("Invalid input: %(reason)s")
+        reason = _("Value is invalid")
 
         class MockESTranslations(gettext.GNUTranslations):
             def ugettext(self, msgid):
@@ -143,6 +154,9 @@ class TestFaults(test.TestCase):
                 elif "Value is invalid" in msgid:
                     return "El valor es invalido"
                 return msgid
+
+            def gettext(self, msgid):
+                return self.ugettext(msgid)
 
         def translation(domain, localedir=None, languages=None, fallback=None):
             return MockESTranslations()

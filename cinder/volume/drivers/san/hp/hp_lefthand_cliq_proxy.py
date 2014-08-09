@@ -23,7 +23,7 @@ operations on the SAN.
 from lxml import etree
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder.openstack.common import units

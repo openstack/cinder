@@ -24,7 +24,7 @@ from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests import conf_fixture

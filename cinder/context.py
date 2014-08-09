@@ -20,7 +20,7 @@
 import copy
 import uuid
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import local
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils

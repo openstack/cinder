@@ -26,7 +26,7 @@ from lxml import etree
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 

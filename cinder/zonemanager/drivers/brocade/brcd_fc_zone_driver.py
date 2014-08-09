@@ -33,8 +33,8 @@ add_connection and delete_connection interfaces.
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.i18n import _
 from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging

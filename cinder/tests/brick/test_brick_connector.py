@@ -19,7 +19,7 @@ import time
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils as putils

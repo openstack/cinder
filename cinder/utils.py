@@ -40,7 +40,7 @@ from xml.sax import saxutils
 
 from cinder.brick.initiator import connector
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging

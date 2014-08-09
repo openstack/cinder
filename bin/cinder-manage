@@ -72,15 +72,15 @@ POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
 if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
     sys.path.insert(0, POSSIBLE_TOPDIR)
 
-from cinder.openstack.common import gettextutils
-gettextutils.enable_lazy()
+from cinder import i18n
+i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
 from cinder import context
 from cinder import db
 from cinder.db import migration
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import rpc

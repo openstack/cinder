@@ -33,7 +33,7 @@ from oslo.config import cfg
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
 from cinder import utils

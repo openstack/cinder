@@ -14,7 +14,7 @@
 
 import datetime
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from oslo.config import cfg
 from sqlalchemy import MetaData, Table
