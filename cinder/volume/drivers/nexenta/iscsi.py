@@ -30,6 +30,7 @@ from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
+import urllib
 
 LOG = logging.getLogger(__name__)
 
@@ -695,27 +696,37 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        rsp = self.restapi.post(self.bucket_url + '/snapviews/' + \
-            snapshot['volume_name'] + '.snapview/snapshots/' + \
-            snapshot['name'] + '/clonetenantnames/' + self.tenant + \
-            '/clonebucketnames/' + self.bucket + '/cloneobjectnames/' + \
-            volume['name']
-            )
+        snap_url = self.bucket_url + '/' + self.bucket + \
+            '/snapviews/' + snapshot['volume_name'] + \
+            '.snapview/snapshots/' + snapshot['name']
+        snap_body = { 'ss_tenant' : self.tenant,
+                      'ss_bucket' : self.bucket,
+                      'ss_object' : volume['name']
+            }
+        data = urllib.urlencode(snap_body)
+        rsp = self.restapi.post(snap_url, data)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        rsp = self.restapi.post(self.bucket_url + '/' + self.bucket + \
+        snap_url = self.bucket_url + '/' + self.bucket + \
             '/snapviews/' + snapshot['volume_name'] + \
-            '.snapview/snapshotbucketnames/' + self.bucket + \
-            '/snapshotobjectnames/' + snapshot['volume_name'] + \
-            '/snapshots/' + snapshot['name'] 
-            )
+            '.snapview'
+        snap_body = { 'ss_bucket' : self.bucket,
+                      'ss_object' : snapshot['volume_name'],
+                      'ss_name' : snapshot['name']
+            }
+        data = urllib.urlencode(snap_body)
+        rsp = self.restapi.post(snap_url, data)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        rsp = self.restapi.post(self.bucket_url + '/snapviews/' + \
-            snapshot['volume_name'] + '.snapview/snapshots/' + snapshot['name'] \
-            )
+        try:
+            rsp = self.restapi.post(self.bucket_url + '/snapviews/' + \
+                snapshot['volume_name'] + '.snapview/snapshots/' + snapshot['name'] \
+                )
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while deleting: %s'), str(e))
+            pass
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
@@ -776,7 +787,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        pass
+        vol_url = self.bucket_url + '/objects/' + src_vref['volume_name']
+        clone_body = { 'tenant_name' : self.tenant,
+                      'bucket_name' : self.bucket,
+                      'object_name' : volume['name']
+            }
+        data = urllib.urlencode(clone_body)
+        rsp = self.restapi.post(vol_url, data)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
