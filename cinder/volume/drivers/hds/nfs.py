@@ -41,7 +41,7 @@ LOG = logging.getLogger(__name__)
 NFS_OPTS = [
     cfg.StrOpt('hds_hnas_nfs_config_file',
                default='/opt/hds/hnas/cinder_nfs_conf.xml',
-               help='configuration file for HDS NFS cinder plugin'), ]
+               help='Configuration file for HDS NFS cinder plugin'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(NFS_OPTS)

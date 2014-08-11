@@ -67,7 +67,7 @@ loc_opts = [
                help='VNX secondary SP IP Address.'),
     cfg.IntOpt('default_timeout',
                default=60 * 24 * 365,
-               help='Default Time Out For CLI operations in minutes. '
+               help='Default timeout for CLI operations in minutes. '
                'For example, LUN migration is a typical long '
                'running operation, which depends on the LUN size and '
                'the load of the array. '
