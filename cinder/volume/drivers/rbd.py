@@ -18,6 +18,7 @@ import io
 import json
 import math
 import os
+import six
 import tempfile
 import urllib
 
@@ -747,18 +748,18 @@ class RBDDriver(driver.VolumeDriver):
         try:
             fsid, pool, image, snapshot = self._parse_location(image_location)
         except exception.ImageUnacceptable as e:
-            LOG.debug('not cloneable: %s', e)
+            LOG.debug('not cloneable: %s', six.text_type(e))
             return False
 
         if self._get_fsid() != fsid:
-            reason = _('%s is in a different ceph cluster') % image_location
+            reason = ('%s is in a different ceph cluster') % image_location
             LOG.debug(reason)
             return False
 
         if image_meta['disk_format'] != 'raw':
-            reason = _("rbd image clone requires image format to be "
-                       "'raw' but image {0} is '{1}'").format(
-                           image_location, image_meta['disk_format'])
+            reason = ("rbd image clone requires image format to be "
+                      "'raw' but image {0} is '{1}'").format(
+                          image_location, image_meta['disk_format'])
             LOG.debug(reason)
             return False
 
